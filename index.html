@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pharmacy Quiz</title>
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <div id="exam-exit-modal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-title">End Exam?</div>
+
+        <div class="modal-text">
+          Ending now will submit your exam with current answers.
+        </div>
+
+        <div class="modal-actions">
+          <button id="cancel-exit-btn" class="modal-btn secondary">
+            Continue Exam
+          </button>
+
+          <button id="confirm-exit-btn" class="modal-btn primary">
+            End Exam
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="study-exit-modal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-title">End Study Session?</div>
+
+        <div class="modal-text">
+          Ending now will calculate your score and close this session.
+        </div>
+
+        <div class="modal-actions">
+          <button id="cancel-study-exit-btn" class="modal-btn secondary">
+            Continue Study
+          </button>
+
+          <button id="confirm-study-exit-btn" class="modal-btn primary">
+            End Session
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="quiz-container">
+      <!-- ================= HOME SCREEN ================= -->
+      <div id="home-screen" class="screen-active">
+        <div class="portal-wrapper">
+          <div class="portal-top">
+            <div class="portal-emblem">
+              <div class="emblem-shield">
+                <div class="emblem-cross"></div>
+              </div>
+            </div>
+            <div class="portal-authority">PHARMACY EXAMINATION AUTHORITY</div>
+          </div>
+
+          <div class="portal-middle">
+            <h1 class="portal-title">
+              Pharmacy Practice &amp; Assessment Portal
+            </h1>
+            <p class="portal-description">
+              A structured evaluation environment built to reflect real
+              examination conditions with accuracy, discipline, and integrity.
+            </p>
+          </div>
+
+          <div class="portal-bottom">
+            <button id="enter-platform-btn" class="portal-button">
+              ENTER PORTAL
+            </button>
+          </div>
+        </div>
+        <div class="portal-signature">AJIX</div>
+      </div>
+
+      <!-- ================= QUIZ MENU ================= -->
+      <div id="quiz-menu">
+        <!-- ===== FIXED HEADER AREA ===== -->
+        <div class="menu-fixed-header">
+          <div class="exam-identity-bar">
+            Best Pharmacy Examination Simulation Portal
+          </div>
+
+          <div class="menu-header">
+            <div class="menu-header-left">
+              <h2 class="menu-title">QUIZ CONTROL PANEL</h2>
+              <div class="menu-subtitle">Select a module to begin</div>
+            </div>
+
+            <button id="back-home-btn" class="portal-button menu-portal-btn">
+              &#8962; HOME
+            </button>
+          </div>
+        </div>
+        <!-- ===== END FIXED HEADER AREA ===== -->
+
+        <!-- ===== SCROLLABLE CONTENT ===== -->
+        <div class="menu-scroll-content">
+          <div class="menu-grid-single">
+            <div class="menu-card">
+              <h3 class="menu-section-title">Practice Modes</h3>
+
+              <div
+                class="menu-tile study-mode mode-btn"
+                data-tooltip="Practice with explanations, streak tracking, and mastery focus."
+              >
+                <div class="tile-content">
+                  <div class="tile-title">
+                    <span class="tile-icon" aria-hidden="true">&#128218;</span>
+                    <span>Study Mode</span>
+                  </div>
+                </div>
+                <div class="tile-arrow">→</div>
+              </div>
+
+              <div
+                class="menu-tile exam-mode mode-btn"
+                data-tooltip="Timed exam simulation with scoring and adaptive flow."
+              >
+                <div class="tile-content">
+                  <div class="tile-title">
+                    <span class="tile-icon" aria-hidden="true">&#128221;</span>
+                    <span>Exam Mode</span>
+                  </div>
+                </div>
+                <div class="tile-arrow">→</div>
+              </div>
+
+              <div class="menu-divider"></div>
+
+              <h3 class="menu-section-title analytics-heading">Analytics</h3>
+
+              <div
+                class="menu-tile dashboard-mode analytics-btn"
+                data-tooltip="View performance trends, category accuracy, and insights."
+              >
+                <div class="tile-content">
+                  <div class="tile-title">
+                    <span class="tile-icon" aria-hidden="true">&#128202;</span>
+                    <span>Performance Dashboard</span>
+                  </div>
+                </div>
+                <div class="tile-arrow">→</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="study-setup" class="setup-page">
+        <div class="study-fixed-header">
+          <!-- Identity Bar -->
+          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+
+          <!-- Main Header Row -->
+          <div class="study-main-header">
+            <h2 class="setup-page-title">&#128218; Study Mode</h2>
+            <button id="study-back-btn" class="study-menu-btn">☰ Menu</button>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="streak-badge-wrapper">
+            <div id="study-best-streak" class="streak-badge tier-basic">
+              <span class="streak-text">Best Streak</span>
+              <span id="study-badge-number" class="streak-number">0</span>
+            </div>
+          </div>
+          <div class="setup-card">
+            <div class="study-control-block">
+              <label>Study Type</label>
+              <select id="study-type-select" class="setup-select">
+                <option value="normal">Normal Study</option>
+                <option value="weak">Practice Weak Areas</option>
+              </select>
+            </div>
+
+            <div class="study-control-row">
+              <div class="study-control-block">
+                <label>Category</label>
+                <select id="study-category-select" class="setup-select">
+                  <option value="all">All Categories</option>
+                </select>
+              </div>
+
+              <div class="study-control-block">
+                <label>Start From</label>
+                <input
+                  type="number"
+                  id="study-start-number"
+                  class="setup-input"
+                  placeholder="#"
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <div class="start-btn-wrapper">
+              <button id="start-study-btn" class="start-btn">
+                Start Session
+              </button>
+            </div>
+          </div>
+
+          <div class="study-footer">
+            <div class="history-dropdown">
+              <div class="history-toggle" id="study-history-toggle">
+                Study History ▼
+              </div>
+              <div id="study-history" class="history-content hidden"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="exam-setup" class="setup-page">
+        <div class="study-fixed-header">
+          <!-- Identity Bar -->
+          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+
+          <!-- Main Header Row -->
+          <div class="study-main-header exam-header-layout">
+            <h2 class="setup-page-title">📝 Exam Mode</h2>
+
+            <button id="exam-back-btn" class="study-menu-btn">☰ Menu</button>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="setup-card">
+            <h3>Select Exam Type</h3>
+
+            <select id="exam-type-select" class="setup-select">
+              <option value="normal">Normal Exam</option>
+              <option value="smart">Smart Exam (Adaptive)</option>
+            </select>
+
+            <h3>Select Category</h3>
+
+            <select id="category-select" class="setup-select">
+              <option value="">All Categories</option>
+            </select>
+
+            <h3 style="margin-top: 25px">Select Number of Questions</h3>
+
+            <div class="exam-control-row">
+              <select id="exam-count-select" class="setup-select">
+                <option value="">-- Select Count --</option>
+                <option value="30">30 Questions</option>
+                <option value="50">50 Questions</option>
+                <option value="100">100 Questions</option>
+                <option value="all">Full Exam</option>
+              </select>
+
+              <button id="start-exam-btn" class="start-btn">Start Exam</button>
+            </div>
+          </div>
+
+          <div class="study-footer">
+            <div class="history-dropdown">
+              <div class="history-toggle" id="exam-history-toggle">
+                Exam History ▼
+              </div>
+              <div id="exam-history" class="history-content hidden"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= QUIZ AREA ================= -->
+      <div id="quiz-area" class="quiz-layout">
+        <!-- HEADER -->
+        <div class="app-header">
+          <div class="header-top">
+            <!-- LEFT -->
+            <div class="header-left">
+              <span id="mode-indicator">&#128218; Study Mode</span>
+            </div>
+
+            <!-- CENTER (Score + Streak) -->
+            <div class="header-center-stats">
+              <div id="header-stats" class="stats-box">
+                <div class="score-inline">
+                  <span class="inline-label">Score:</span>
+                  <span id="live-score" class="inline-value"></span>
+                </div>
+
+                <div class="divider"></div>
+
+                <div id="streak-box" class="streak-inline">
+                  <span class="inline-label">Streak:</span>
+                  <span id="streak-value" class="inline-value"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT (Icons only) -->
+            <div class="header-right">
+              <button id="back-btn-quiz" class="header-btn">←</button>
+              <button id="end-study-btn" class="header-btn danger hidden">
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <div class="header-meta">
+            <div id="progress"></div>
+            <div id="timer"></div>
+          </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="quiz-content">
+          <div class="question-card-modern">
+            <h2 id="question"></h2>
+
+            <div id="combo-block"></div>
+
+            <div id="answers" class="answers-grid-modern"></div>
+
+            <div id="explanation" class="explanation-modern hidden"></div>
+          </div>
+        </div>
+        <!-- END CONTENT -->
+
+        <!-- BOTTOM NAVIGATION -->
+        <div class="bottom-navigation">
+          <button id="prev-btn">Previous</button>
+          <button id="next-btn">Next</button>
+          <button id="back-review-btn" class="hidden">Back to Review</button>
+        </div>
+      </div>
+
+      <div id="review-screen" class="review-wrapper">
+        <div class="review-card">
+          <div class="review-title">Exam Review</div>
+
+          <div id="review-timer" class="review-timer"></div>
+
+          <div class="review-legend">
+            <span>
+              <div class="review-dot" style="background: #28a745"></div>
+              Answered
+            </span>
+            <span>
+              <div class="review-dot" style="background: #dc3545"></div>
+              Not Answered
+            </span>
+          </div>
+
+          <div id="review-list" class="review-grid"></div>
+
+          <button id="submit-exam" class="start-btn hidden">Submit Exam</button>
+        </div>
+      </div>
+      <div id="dashboard">
+        <div class="dashboard-wrapper">
+          <div class="dashboard-card">
+            <div class="dashboard-header">
+              <div>
+                <div class="dashboard-title">Performance Dashboard</div>
+                <div class="dashboard-subtitle">
+                  Your learning analytics overview
+                </div>
+              </div>
+              <button id="dashboard-close-btn" class="dashboard-close-btn">
+                ✕
+              </button>
+            </div>
+
+            <div class="dashboard-body">
+              <div class="dashboard-metrics">
+                <div class="metric-tile">
+                  <div class="metric-label">Total Attempts</div>
+                  <div class="metric-value" id="dash-total"></div>
+                </div>
+
+                <div class="metric-tile">
+                  <div class="metric-label">Overall Accuracy</div>
+                  <div class="metric-value" id="dash-accuracy"></div>
+                </div>
+
+                <div class="metric-tile">
+                  <div class="metric-label">Weak Questions</div>
+                  <div class="metric-value" id="dash-weak"></div>
+                </div>
+              </div>
+
+              <div class="dashboard-section-title">Category Breakdown</div>
+
+              <div class="dashboard-category-list" id="dash-categories"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="study-result-screen">
+        <div class="result-wrapper">
+          <div class="result-card">
+            <div class="result-title" id="result-title"></div>
+
+            <div class="result-body">
+              <div class="result-score-block">
+                <div class="result-percentage" id="result-percentage"></div>
+                <div class="result-score" id="result-score"></div>
+              </div>
+
+              <div class="result-feedback" id="result-feedback"></div>
+
+              <div id="result-review-section" class="hidden">
+                <div class="review-section-title">Detailed Review</div>
+                <div id="result-review-content"></div>
+                <button id="result-back-btn" class="result-btn secondary-btn">
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div class="result-actions">
+              <button id="result-review-btn" class="result-btn primary-btn">
+                Review
+              </button>
+              <button id="result-menu-btn" class="result-btn secondary-btn">
+                Back to Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="engine.js"></script>
+  </body>
+</html>

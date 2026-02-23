@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pharmacy Quiz - Admin Dashboard</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .login-screen {
+        max-width: 400px;
+        margin: 100px auto;
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .login-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        text-align: center;
+        color: #333;
+      }
+
+      .login-subtitle {
+        text-align: center;
+        color: #999;
+        margin-bottom: 30px;
+        font-size: 14px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+        font-size: 14px;
+      }
+
+      input[type="text"],
+      input[type="email"],
+      input[type="password"],
+      input[type="number"],
+      select,
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        font-family: inherit;
+      }
+
+      input[type="text"]:focus,
+      input[type="email"]:focus,
+      input[type="password"]:focus,
+      input[type="number"]:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      button:hover {
+        background: #555dd4;
+      }
+
+      button.danger {
+        background: #dc2626;
+      }
+
+      button.danger:hover {
+        background: #b91c1c;
+      }
+
+      button.secondary {
+        background: #6b7280;
+      }
+
+      button.secondary:hover {
+        background: #4b5563;
+      }
+
+      .dashboard {
+        display: none;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .dashboard.active {
+        display: block;
+      }
+
+      .header {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .header h1 {
+        font-size: 28px;
+        color: #333;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .header button {
+        width: auto;
+        padding: 10px 20px;
+        font-size: 14px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        flex-wrap: wrap;
+      }
+
+      .tab-btn {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 15px;
+        background: #f3f4f6;
+        border: 2px solid transparent;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 500;
+        color: #666;
+        transition: all 0.3s;
+      }
+
+      .tab-btn.active {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+      }
+
+      .tab-btn:hover {
+        background: #e5e7eb;
+      }
+
+      .tab-btn.active:hover {
+        background: #555dd4;
+      }
+
+      .content {
+        display: none;
+      }
+
+      .content.active {
+        display: block;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-label {
+        color: #999;
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+
+      .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #333;
+      }
+
+      .table-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      thead {
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+      }
+
+      th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+      }
+
+      td {
+        padding: 15px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 14px;
+        color: #666;
+      }
+
+      tr:hover {
+        background: #f9fafb;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+        background: #e5e7eb;
+        color: #333;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .btn-small:hover {
+        background: #d1d5db;
+      }
+
+      .btn-small.danger {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+
+      .btn-small.danger:hover {
+        background: #fecaca;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal.active {
+        display: flex;
+      }
+
+      .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .modal-title {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .modal-actions button {
+        flex: 1;
+      }
+
+      .alert {
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        font-size: 14px;
+      }
+
+      .alert.success {
+        background: #dcfce7;
+        color: #166534;
+        border-left: 4px solid #16a34a;
+      }
+
+      .alert.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border-left: 4px solid #dc2626;
+      }
+
+      .alert.info {
+        background: #dbeafe;
+        color: #1e40af;
+        border-left: 4px solid #2563eb;
+      }
+
+      .category-chip {
+        display: inline-block;
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 8px;
+        margin-bottom: 8px;
+      }
+
+      .form-options {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+      }
+
+      .option-input {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        align-items: center;
+      }
+
+      .option-input input {
+        flex: 1;
+      }
+
+      .option-input button {
+        width: auto;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .accuracy-bar {
+        width: 100%;
+        height: 20px;
+        background: #e5e7eb;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .accuracy-fill {
+        height: 100%;
+        background: #16a34a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .export-options {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .export-options button {
+        flex: 1;
+        min-width: 150px;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .password-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .password-wrapper input {
+        width: 100%;
+        padding-right: 40px;
+      }
+
+      .password-toggle {
+        position: absolute;
+        right: 12px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 0;
+        width: auto;
+        color: #667eea;
+        transition: color 0.2s;
+        font-weight: 500;
+      }
+
+      .password-toggle:hover {
+        color: #555dd4;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="login-screen">
+      <div class="login-title">Admin Dashboard</div>
+      <div class="login-subtitle">Pharmacy Quiz Backend Management</div>
+      <div class="form-group">
+        <label>Admin Key</label>
+        <div class="password-wrapper">
+          <input type="password" id="admin-key" placeholder="Enter admin key" />
+          <button
+            type="button"
+            class="password-toggle"
+            onclick="togglePasswordVisibility()"
+          >
+            Show
+          </button>
+        </div>
+      </div>
+      <button onclick="login()">Login</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="dashboard">
+      <div class="header">
+        <div>
+          <h1>📊 Admin Dashboard</h1>
+        </div>
+        <div class="header-actions">
+          <button class="secondary" onclick="refreshData()">🔄 Refresh</button>
+          <button class="danger" onclick="logout()">Logout</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('stats')">
+          📈 Statistics
+        </button>
+        <button class="tab-btn" onclick="switchTab('users')">👥 Users</button>
+        <button class="tab-btn" onclick="switchTab('questions')">
+          ❓ Questions
+        </button>
+        <button class="tab-btn" onclick="switchTab('export')">📥 Export</button>
+        <button class="tab-btn" onclick="switchTab('settings')">
+          ⚙️ Settings
+        </button>
+      </div>
+
+      <!-- STATISTICS TAB -->
+      <div id="stats" class="content active">
+        <div id="stats-alerts"></div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Users</div>
+            <div class="stat-value" id="stat-users">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Questions</div>
+            <div class="stat-value" id="stat-questions">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Attempts</div>
+            <div class="stat-value" id="stat-attempts">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Categories</div>
+            <div class="stat-value" id="stat-categories">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Average Score</div>
+            <div class="stat-value" id="stat-avg-score">0%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Sync Events</div>
+            <div class="stat-value" id="stat-sync-events">0</div>
+          </div>
+        </div>
+
+        <h2 style="color: white; margin-top: 20px; margin-bottom: 10px">
+          Category Performance
+        </h2>
+        <div id="category-performance"></div>
+      </div>
+
+      <!-- USERS TAB -->
+      <div id="users" class="content">
+        <div style="margin-bottom: 20px">
+          <button onclick="openUserModal()">➕ Add User</button>
+        </div>
+        <div id="users-alerts"></div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-table">
+              <tr>
+                <td colspan="5" style="text-align: center; color: #ccc">
+                  Loading...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- QUESTIONS TAB -->
+      <div id="questions" class="content">
+        <div style="margin-bottom: 20px">
+          <button onclick="openQuestionModal()">➕ Add Question</button>
+        </div>
+        <div id="questions-alerts"></div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Text</th>
+                <th>Category</th>
+                <th>Options</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="questions-table">
+              <tr>
+                <td colspan="5" style="text-align: center; color: #ccc">
+                  Loading...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- EXPORT TAB -->
+      <div id="export" class="content">
+        <div
+          style="
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+          "
+        >
+          <h3 style="margin-bottom: 20px; color: #333">Export Data</h3>
+
+          <div style="margin-bottom: 30px">
+            <h4 style="margin-bottom: 15px; color: #666">
+              Full Database Export
+            </h4>
+            <div class="export-options">
+              <button onclick="exportData('json')">📄 Export as JSON</button>
+              <button onclick="exportData('csv')">
+                📊 Export Attempts as CSV
+              </button>
+            </div>
+          </div>
+
+          <div
+            style="
+              margin-bottom: 30px;
+              padding-top: 30px;
+              border-top: 1px solid #e5e7eb;
+            "
+          >
+            <h4 style="margin-bottom: 15px; color: #666">Data Summary</h4>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-label">Users</div>
+                <div class="stat-value" id="export-users">0</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Questions</div>
+                <div class="stat-value" id="export-questions">0</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Attempts</div>
+                <div class="stat-value" id="export-attempts">0</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Sync Events</div>
+                <div class="stat-value" id="export-sync">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS TAB -->
+      <div id="settings" class="content">
+        <div style="background: white; padding: 30px; border-radius: 10px">
+          <h3 style="margin-bottom: 20px; color: #333">System Settings</h3>
+
+          <div
+            style="
+              margin-bottom: 30px;
+              padding-bottom: 30px;
+              border-bottom: 1px solid #e5e7eb;
+            "
+          >
+            <h4 style="margin-bottom: 15px; color: #666">Seed Questions</h4>
+            <p style="color: #999; margin-bottom: 15px; font-size: 14px">
+              Reload questions from the Quiz/data.js file
+            </p>
+            <button onclick="seedQuestions()">
+              🌱 Seed Questions from Frontend Data
+            </button>
+          </div>
+
+          <div
+            style="
+              margin-bottom: 30px;
+              padding-bottom: 30px;
+              border-bottom: 1px solid #e5e7eb;
+            "
+          >
+            <h4 style="margin-bottom: 15px; color: #666">Reset System</h4>
+            <p style="color: #999; margin-bottom: 15px; font-size: 14px">
+              Clear all users and attempts (questions will be re-seeded)
+            </p>
+            <button class="danger" onclick="resetSystem()">
+              🗑️ Reset All Data
+            </button>
+          </div>
+
+          <div id="settings-alerts"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="user-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-title">Add User</div>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="user-name" placeholder="John Doe" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="user-email" placeholder="john@example.com" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input
+            type="password"
+            id="user-password"
+            placeholder="Password (min 6 chars)"
+          />
+        </div>
+        <div class="modal-actions">
+          <button onclick="closeUserModal()">Cancel</button>
+          <button onclick="saveUser()">Create User</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="question-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-title">Add Question</div>
+        <div class="form-group">
+          <label>Question Text</label>
+          <textarea
+            id="q-text"
+            placeholder="Enter question text"
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" id="q-category" placeholder="e.g., Cardiology" />
+        </div>
+        <div class="form-group">
+          <label>Options</label>
+          <div class="form-options" id="q-options">
+            <div class="option-input">
+              <input type="text" placeholder="Option A" class="q-option" />
+            </div>
+            <div class="option-input">
+              <input type="text" placeholder="Option B" class="q-option" />
+            </div>
+            <div class="option-input">
+              <input type="text" placeholder="Option C" class="q-option" />
+            </div>
+            <div class="option-input">
+              <input type="text" placeholder="Option D" class="q-option" />
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Correct Answer (0-3)</label>
+          <input type="number" id="q-correct" placeholder="0" min="0" max="3" />
+        </div>
+        <div class="modal-actions">
+          <button onclick="closeQuestionModal()">Cancel</button>
+          <button onclick="saveQuestion()">Create Question</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE =
+        localStorage.getItem("quizApiBase")?.trim() ||
+        "http://localhost:4000/api";
+      const ADMIN_KEY_STORAGE = "adminKey";
+      let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
+
+      function getHeaders() {
+        return {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        };
+      }
+
+      function showAlert(containerId, message, type = "info") {
+        const container = document.getElementById(containerId);
+        const alert = document.createElement("div");
+        alert.className = `alert ${type}`;
+        alert.textContent = message;
+        container.innerHTML = "";
+        container.appendChild(alert);
+      }
+
+      function togglePasswordVisibility() {
+        const passwordInput = document.getElementById("admin-key");
+        const toggleBtn = document.querySelector(".password-toggle");
+
+        if (passwordInput.type === "password") {
+          passwordInput.type = "text";
+          toggleBtn.textContent = "Hide";
+        } else {
+          passwordInput.type = "password";
+          toggleBtn.textContent = "Show";
+        }
+      }
+
+      async function login() {
+        adminKey = document.getElementById("admin-key").value;
+        if (!adminKey) {
+          alert("Please enter admin key");
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/health`, {
+            headers: getHeaders(),
+          });
+
+          if (res.ok) {
+            localStorage.setItem(ADMIN_KEY_STORAGE, adminKey);
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("dashboard").classList.add("active");
+            refreshData();
+          } else {
+            alert("Invalid admin key");
+          }
+        } catch (err) {
+          alert("Failed to connect to backend: " + err.message);
+        }
+      }
+
+      function logout() {
+        localStorage.removeItem(ADMIN_KEY_STORAGE);
+        adminKey = null;
+        document.getElementById("login-screen").style.display = "block";
+        document.getElementById("dashboard").classList.remove("active");
+        document.getElementById("admin-key").value = "";
+      }
+
+      async function refreshData() {
+        await loadStats();
+        await loadUsers();
+        await loadQuestions();
+        await loadExportData();
+      }
+
+      async function loadStats() {
+        try {
+          const res = await fetch(`${API_BASE}/admin/stats`, {
+            headers: getHeaders(),
+          });
+          const data = await res.json();
+
+          document.getElementById("stat-users").textContent = data.totalUsers;
+          document.getElementById("stat-questions").textContent =
+            data.totalQuestions;
+          document.getElementById("stat-attempts").textContent =
+            data.totalAttempts;
+          document.getElementById("stat-categories").textContent =
+            data.totalCategories;
+          document.getElementById("stat-avg-score").textContent =
+            data.averageScore + "%";
+          document.getElementById("stat-sync-events").textContent =
+            data.totalSyncEvents;
+
+          const catPerf = document.getElementById("category-performance");
+          catPerf.innerHTML = "";
+          if (Array.isArray(data.categories)) {
+            data.categories.forEach((cat) => {
+              const percent = cat.accuracy || 0;
+              const div = document.createElement("div");
+              div.style.marginBottom = "15px";
+              div.style.background = "white";
+              div.style.padding = "15px";
+              div.style.borderRadius = "5px";
+              div.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <strong style="color: #333;">${cat.category}</strong>
+                                <span style="color: #667eea; font-weight: 600;">${percent}% (${cat.correct}/${cat.attempts})</span>
+                            </div>
+                            <div class="accuracy-bar">
+                                <div class="accuracy-fill" style="width: ${percent}%">${percent}%</div>
+                            </div>
+                        `;
+              catPerf.appendChild(div);
+            });
+          }
+        } catch (err) {
+          console.error("Failed to load stats:", err);
+          showAlert("stats-alerts", "Failed to load statistics", "error");
+        }
+      }
+
+      async function loadUsers() {
+        try {
+          const res = await fetch(`${API_BASE}/admin/users`, {
+            headers: getHeaders(),
+          });
+          const data = await res.json();
+
+          const tbody = document.getElementById("users-table");
+          tbody.innerHTML = "";
+
+          if (data.users.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="5" style="text-align: center; color: #ccc;">No users yet</td></tr>';
+            return;
+          }
+
+          data.users.forEach((user) => {
+            const tr = document.createElement("tr");
+            const createdDate = new Date(user.createdAt).toLocaleDateString();
+            tr.innerHTML = `
+                        <td>${user.id.substring(0, 8)}...</td>
+                        <td>${user.name}</td>
+                        <td>${user.email}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn-small danger" onclick="deleteUser('${user.id}')">Delete</button>
+                            </div>
+                        </td>
+                    `;
+            tbody.appendChild(tr);
+          });
+        } catch (err) {
+          console.error("Failed to load users:", err);
+          showAlert("users-alerts", "Failed to load users", "error");
+        }
+      }
+
+      async function loadQuestions() {
+        try {
+          const res = await fetch(`${API_BASE}/admin/questions`, {
+            headers: getHeaders(),
+          });
+          const data = await res.json();
+
+          const tbody = document.getElementById("questions-table");
+          tbody.innerHTML = "";
+
+          if (data.questions.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="5" style="text-align: center; color: #ccc;">No questions yet</td></tr>';
+            return;
+          }
+
+          data.questions.slice(0, 20).forEach((q) => {
+            const tr = document.createElement("tr");
+            const text = q.text.substring(0, 50) + "...";
+            const options = Array.isArray(q.options) ? q.options.length : 0;
+            tr.innerHTML = `
+                        <td>${q.id}</td>
+                        <td>${text}</td>
+                        <td><span class="category-chip">${q.category}</span></td>
+                        <td>${options} options</td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn-small" onclick="editQuestion('${q.id}')">Edit</button>
+                                <button class="btn-small danger" onclick="deleteQuestion('${q.id}')">Delete</button>
+                            </div>
+                        </td>
+                    `;
+            tbody.appendChild(tr);
+          });
+
+          if (data.questions.length > 20) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td colspan="5" style="text-align: center; color: #999;">... and ${data.questions.length - 20} more</td>`;
+            tbody.appendChild(tr);
+          }
+        } catch (err) {
+          console.error("Failed to load questions:", err);
+          showAlert("questions-alerts", "Failed to load questions", "error");
+        }
+      }
+
+      async function loadExportData() {
+        try {
+          const res = await fetch(`${API_BASE}/admin/stats`, {
+            headers: getHeaders(),
+          });
+          const data = await res.json();
+
+          document.getElementById("export-users").textContent = data.totalUsers;
+          document.getElementById("export-questions").textContent =
+            data.totalQuestions;
+          document.getElementById("export-attempts").textContent =
+            data.totalAttempts;
+          document.getElementById("export-sync").textContent =
+            data.totalSyncEvents;
+        } catch (err) {
+          console.error("Failed to load export data:", err);
+        }
+      }
+
+      async function deleteUser(userId) {
+        if (!confirm("Delete this user? This action cannot be undone.")) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+            method: "DELETE",
+            headers: getHeaders(),
+          });
+
+          if (res.ok) {
+            showAlert("users-alerts", "User deleted successfully", "success");
+            loadUsers();
+          } else {
+            showAlert("users-alerts", "Failed to delete user", "error");
+          }
+        } catch (err) {
+          showAlert("users-alerts", "Error: " + err.message, "error");
+        }
+      }
+
+      async function deleteQuestion(questionId) {
+        if (!confirm("Delete this question? This action cannot be undone."))
+          return;
+
+        try {
+          const res = await fetch(`${API_BASE}/admin/questions/${questionId}`, {
+            method: "DELETE",
+            headers: getHeaders(),
+          });
+
+          if (res.ok) {
+            showAlert(
+              "questions-alerts",
+              "Question deleted successfully",
+              "success",
+            );
+            loadQuestions();
+          } else {
+            showAlert("questions-alerts", "Failed to delete question", "error");
+          }
+        } catch (err) {
+          showAlert("questions-alerts", "Error: " + err.message, "error");
+        }
+      }
+
+      function switchTab(tabName) {
+        // Hide all content
+        document
+          .querySelectorAll(".content")
+          .forEach((el) => el.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((el) => el.classList.remove("active"));
+
+        // Show selected content
+        document.getElementById(tabName).classList.add("active");
+        event.target.classList.add("active");
+      }
+
+      function openUserModal() {
+        document.getElementById("user-modal").classList.add("active");
+      }
+
+      function closeUserModal() {
+        document.getElementById("user-modal").classList.remove("active");
+        document.getElementById("user-name").value = "";
+        document.getElementById("user-email").value = "";
+        document.getElementById("user-password").value = "";
+      }
+
+      async function saveUser() {
+        const name = document.getElementById("user-name").value;
+        const email = document.getElementById("user-email").value;
+        const password = document.getElementById("user-password").value;
+
+        if (!name || !email || !password) {
+          alert("All fields required");
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password }),
+          });
+
+          if (res.ok) {
+            showAlert("users-alerts", "User created successfully", "success");
+            closeUserModal();
+            loadUsers();
+          } else {
+            const data = await res.json();
+            showAlert(
+              "users-alerts",
+              data.error || "Failed to create user",
+              "error",
+            );
+          }
+        } catch (err) {
+          showAlert("users-alerts", "Error: " + err.message, "error");
+        }
+      }
+
+      function openQuestionModal() {
+        document.getElementById("question-modal").classList.add("active");
+      }
+
+      function closeQuestionModal() {
+        document.getElementById("question-modal").classList.remove("active");
+        document.getElementById("q-text").value = "";
+        document.getElementById("q-category").value = "";
+        document.getElementById("q-correct").value = "";
+        document.querySelectorAll(".q-option").forEach((el) => (el.value = ""));
+      }
+
+      async function saveQuestion() {
+        const text = document.getElementById("q-text").value;
+        const category = document.getElementById("q-category").value;
+        const correct = parseInt(document.getElementById("q-correct").value);
+        const options = [];
+
+        document.querySelectorAll(".q-option").forEach((el) => {
+          if (el.value) options.push(el.value);
+        });
+
+        if (!text || !category || options.length < 2 || isNaN(correct)) {
+          alert("Fill all fields. Need at least 2 options.");
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_BASE}/admin/questions`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({ text, category, options, correct }),
+          });
+
+          if (res.ok) {
+            showAlert(
+              "questions-alerts",
+              "Question created successfully",
+              "success",
+            );
+            closeQuestionModal();
+            loadQuestions();
+          } else {
+            const data = await res.json();
+            showAlert(
+              "questions-alerts",
+              data.error || "Failed to create question",
+              "error",
+            );
+          }
+        } catch (err) {
+          showAlert("questions-alerts", "Error: " + err.message, "error");
+        }
+      }
+
+      async function exportData(format) {
+        try {
+          const url = `${API_BASE}/admin/export?format=${format}`;
+          window.location.href = url;
+        } catch (err) {
+          showAlert("export-alerts", "Export failed: " + err.message, "error");
+        }
+      }
+
+      async function seedQuestions() {
+        if (
+          !confirm(
+            "Reload questions from frontend data? This will replace existing questions.",
+          )
+        )
+          return;
+
+        try {
+          const res = await fetch(`${API_BASE}/admin/seed-questions`, {
+            method: "POST",
+            headers: getHeaders(),
+          });
+
+          const data = await res.json();
+          if (data.seeded) {
+            showAlert(
+              "settings-alerts",
+              `Seeded ${data.count} questions`,
+              "success",
+            );
+            loadQuestions();
+            loadStats();
+          } else {
+            showAlert("settings-alerts", "Questions already seeded", "info");
+          }
+        } catch (err) {
+          showAlert("settings-alerts", "Error: " + err.message, "error");
+        }
+      }
+
+      async function resetSystem() {
+        if (
+          !confirm(
+            "⚠️ This will DELETE all users and attempts. Questions will be re-seeded.",
+          )
+        )
+          return;
+        if (!confirm("This action CANNOT be undone. Are you absolutely sure?"))
+          return;
+
+        try {
+          const res = await fetch(`${API_BASE}/admin/reset`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify({
+              confirmToken: "RESET_PHARMACY_QUIZ_DATA_CONFIRMED",
+            }),
+          });
+
+          if (res.ok) {
+            showAlert(
+              "settings-alerts",
+              "System reset successfully",
+              "success",
+            );
+            refreshData();
+          } else {
+            showAlert("settings-alerts", "Reset failed", "error");
+          }
+        } catch (err) {
+          showAlert("settings-alerts", "Error: " + err.message, "error");
+        }
+      }
+
+      // Initialize
+      if (adminKey) {
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("dashboard").classList.add("active");
+        refreshData();
+      }
+    </script>
+  </body>
+</html>

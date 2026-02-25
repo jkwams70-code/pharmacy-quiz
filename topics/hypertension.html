@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hypertension - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f3f8ff;
+        --surface: #ffffff;
+        --ink: #10233d;
+        --muted: #516174;
+        --line: #d8e3f0;
+        --brand: #0f3f7f;
+        --brand-soft: #e7f0ff;
+        --ok-soft: #ebfbef;
+        --warn-soft: #fff6e8;
+        --danger-soft: #ffefef;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 85% 6%, #cfe4ff 0%, transparent 30%),
+          radial-gradient(circle at 8% 24%, #d5f5ff 0%, transparent 22%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1200px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(12, 36, 68, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #34465e;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #eef4ff;
+        color: #17385f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fbfdff 0%, #f0f6ff 62%, #ebf9f6 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #082848;
+        font-size: clamp(1.4rem, 2.4vw, 2.05rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .hero-layout .hero-grid {
+        margin-top: 0;
+      }
+
+      .hero-visual {
+        border: 1px solid #cfe0f6;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #17416e;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #58718a;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: 180px;
+        display: block;
+      }
+
+      .metric {
+        border: 1px solid #cfe0f6;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #58708a;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #1f3b5e;
+        font-weight: 700;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #0f3f7f;
+        font-size: 1.15rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #32465d;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1d3858;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #2e4661;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #f2f7ff;
+        color: #163b64;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #cfe0f3;
+        background: #f6fbff;
+        color: #234666;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #1f71d4;
+        border-radius: 10px;
+        background: #edf5ff;
+        color: #1f4066;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #c77700;
+        background: var(--warn-soft);
+      }
+
+      .callout.alert {
+        border-left-color: #b21818;
+        background: var(--danger-soft);
+      }
+
+      .algorithm {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #cdddf1;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f8fbff;
+      }
+
+      .step strong {
+        color: #0f3f7f;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #426a95;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram-card svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .refs a {
+        color: #1659a8;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 980px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-hypertension">1. What Is Hypertension?</a>
+        <a href="#primary-vs-secondary">2. Primary vs Secondary Hypertension</a>
+        <a href="#risk-factors">3. Risk Factors</a>
+        <a href="#complications">4. Complications</a>
+        <a href="#treatment-goals">5. Treatment Goals</a>
+        <a href="#lifestyle-management">6. Non-Pharmacologic Management</a>
+        <a href="#first-line-drug-classes">7. First-Line Drug Classes</a>
+        <a href="#special-populations">8. Special Populations</a>
+        <a href="#resistant-hypertension">9. Resistant Hypertension</a>
+        <a href="#hypertensive-crisis">10. Hypertensive Crisis</a>
+        <a href="#exam-traps">11. Common Exam Traps</a>
+        <a href="#quick-revision">12. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Hypertension</h1>
+          <p class="subtitle">
+            Clinical Overview and Exam Mastery Guide. Focus areas include blood
+            pressure staging, first-line therapy, special populations, resistant
+            hypertension, and hypertensive crisis.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Core Goal</div>
+                <div class="v">BP below 130/80 mmHg</div>
+              </div>
+              <div class="metric">
+                <div class="k">Primary HTN</div>
+                <div class="v">Around 90 to 95 percent</div>
+              </div>
+              <div class="metric">
+                <div class="k">Emergency Threshold</div>
+                <div class="v">At least 180 / 120 + organ injury</div>
+              </div>
+              <div class="metric">
+                <div class="k">Resistant HTN Step</div>
+                <div class="v">Add spironolactone</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Blood Pressure Severity Snapshot</h3>
+              <svg viewBox="0 0 420 190" aria-label="Hypertension severity visual">
+                <rect x="1" y="1" width="418" height="188" rx="14" fill="#f7fbff" stroke="#d6e4f3"></rect>
+                <rect x="28" y="32" width="364" height="24" rx="12" fill="#eaf2fb" stroke="#d5e4f4"></rect>
+                <rect x="28" y="32" width="130" height="24" rx="12" fill="#d9f2e5"></rect>
+                <rect x="158" y="32" width="74" height="24" fill="#fff3cc"></rect>
+                <rect x="232" y="32" width="78" height="24" fill="#ffe1b3"></rect>
+                <rect x="310" y="32" width="82" height="24" rx="12" fill="#ffd5d5"></rect>
+                <text x="33" y="49" fill="#1c5a42" font-size="11" font-weight="700">Normal</text>
+                <text x="167" y="49" fill="#7b5b1f" font-size="11" font-weight="700">Elevated</text>
+                <text x="245" y="49" fill="#8d4c12" font-size="11" font-weight="700">Stage 1</text>
+                <text x="323" y="49" fill="#8b1a1a" font-size="11" font-weight="700">Stage 2</text>
+
+                <line x1="328" y1="80" x2="328" y2="131" stroke="#b11f1f" stroke-width="2"></line>
+                <polygon points="328,131 322,121 334,121" fill="#b11f1f"></polygon>
+                <rect x="266" y="132" width="124" height="42" rx="9" fill="#fff1f1" stroke="#f2caca"></rect>
+                <text x="278" y="151" fill="#8b1a1a" font-size="11" font-weight="700">Crisis risk zone</text>
+                <text x="278" y="166" fill="#8b4b4b" font-size="10">Evaluate organ damage</text>
+
+                <path d="M96 136c0-10 8-18 18-18 6 0 11 2 14 7 4-5 9-7 15-7 10 0 18 8 18 18 0 14-12 22-33 39-21-17-32-25-32-39z" fill="#0f3f7f" opacity="0.88"></path>
+                <text x="54" y="171" fill="#234d7a" font-size="10" font-weight="700">Target <130 / 80 for most</text>
+              </svg>
+              <p>Color bands and markers help rapid staging and urgency recognition.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-hypertension">
+          <h2>1. What Is Hypertension?</h2>
+          <p>
+            Hypertension is a chronic elevation in blood pressure that increases
+            risk of cardiovascular disease, stroke, heart failure, kidney
+            disease, and death. It is often asymptomatic until complications
+            appear.
+          </p>
+          <div class="stack">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>ACC/AHA Class</th>
+                  <th>Blood Pressure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Normal</td>
+                  <td>Below 120 / 80 mmHg</td>
+                </tr>
+                <tr>
+                  <td>Elevated</td>
+                  <td>120 to 129 / below 80</td>
+                </tr>
+                <tr>
+                  <td>Stage 1</td>
+                  <td>130 to 139 or 80 to 89</td>
+                </tr>
+                <tr>
+                  <td>Stage 2</td>
+                  <td>At least 140 or at least 90</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout">
+              Blood pressure is interpreted as systolic (top number) over
+              diastolic (bottom number).
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="primary-vs-secondary">
+          <h2>2. Primary vs Secondary Hypertension</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Primary (Essential)</h3>
+              <ul>
+                <li>Accounts for around 90 to 95 percent of cases</li>
+                <li>No single identifiable cause</li>
+                <li>Linked to genetics, age, and lifestyle</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Secondary</h3>
+              <ul>
+                <li>CKD, renal artery stenosis, hyperaldosteronism</li>
+                <li>Pheochromocytoma, obstructive sleep apnea</li>
+                <li>Drug-induced: NSAIDs, steroids, oral contraceptives</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout warn">
+            Exam clue: resistant hypertension should trigger evaluation for
+            secondary causes.
+          </div>
+        </section>
+
+        <section class="section" id="risk-factors">
+          <h2>3. Risk Factors</h2>
+          <div class="chips">
+            <span class="chip">Age</span>
+            <span class="chip">Obesity</span>
+            <span class="chip">High sodium intake</span>
+            <span class="chip">Sedentary lifestyle</span>
+            <span class="chip">Diabetes</span>
+            <span class="chip">Dyslipidemia</span>
+            <span class="chip">Smoking</span>
+            <span class="chip">Family history</span>
+          </div>
+        </section>
+
+        <section class="section" id="complications">
+          <h2>4. Complications of Uncontrolled Hypertension</h2>
+          <div class="grid-3">
+            <div class="box"><h3>Brain</h3><p>Stroke</p></div>
+            <div class="box"><h3>Heart</h3><p>Myocardial infarction, heart failure</p></div>
+            <div class="box"><h3>Kidney</h3><p>Chronic kidney disease</p></div>
+            <div class="box"><h3>Eye</h3><p>Retinopathy</p></div>
+            <div class="box"><h3>Vasculature</h3><p>Peripheral arterial disease</p></div>
+            <div class="box"><h3>Theme</h3><p>Target-organ damage</p></div>
+          </div>
+        </section>
+
+        <section class="section" id="treatment-goals">
+          <h2>5. Treatment Goals</h2>
+          <p>
+            For most patients, target BP is below 130/80 mmHg. Patients with
+            diabetes, CKD, or established ASCVD typically require strict
+            sustained control and closer follow-up.
+          </p>
+        </section>
+
+        <section class="section" id="lifestyle-management">
+          <h2>6. Non-Pharmacologic Management</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Core Interventions</h3>
+              <ul>
+                <li>Weight reduction</li>
+                <li>DASH diet</li>
+                <li>Sodium restriction</li>
+                <li>Regular exercise</li>
+                <li>Limit alcohol</li>
+                <li>Smoking cessation</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Exam Message</h3>
+              <ul>
+                <li>Recommended for all BP stages</li>
+                <li>Can significantly lower systolic pressure</li>
+                <li>May delay medications in early disease</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="first-line-drug-classes">
+          <h2>7. Pharmacologic Management - First-Line Drug Classes</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Core First-Line Options</h3>
+              <ul>
+                <li>Thiazide diuretics</li>
+                <li>ACE inhibitors</li>
+                <li>ARBs</li>
+                <li>Calcium channel blockers</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Beta Blockers</h3>
+              <p>
+                Not first-line in uncomplicated hypertension unless there is a
+                compelling indication such as CAD or heart failure.
+              </p>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="box">
+              <h3>A. Thiazide Diuretics</h3>
+              <p>Examples: hydrochlorothiazide, chlorthalidone.</p>
+              <ul>
+                <li>Often effective in Black patients</li>
+                <li>May cause hypokalemia</li>
+                <li>May increase uric acid and glucose</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>B. ACE Inhibitors</h3>
+              <p>Examples: lisinopril, enalapril.</p>
+              <ul>
+                <li>Renal protection and reduced proteinuria in diabetes</li>
+                <li>Adverse effects: dry cough, hyperkalemia, angioedema</li>
+                <li>Contraindicated in pregnancy</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>C. ARBs</h3>
+              <p>Examples: losartan, valsartan.</p>
+              <ul>
+                <li>Alternative when ACE inhibitor is not tolerated</li>
+                <li>Renal and cardiovascular protection remains strong</li>
+                <li>No ACE inhibitor cough effect</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>D. Calcium Channel Blockers</h3>
+              <ul>
+                <li>DHP (amlodipine): vasodilation, peripheral edema</li>
+                <li>Non-DHP (diltiazem, verapamil): lower heart rate</li>
+                <li>Avoid non-DHP agents in HFrEF</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="special-populations">
+          <h2>8. Special Populations</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Population</th>
+                <th>Preferred Approach</th>
+                <th>Important Avoidance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Black patients</td>
+                <td>Thiazide or CCB often preferred first-line</td>
+                <td>Individualize combination strategy</td>
+              </tr>
+              <tr>
+                <td>CKD</td>
+                <td>ACE inhibitor or ARB preferred</td>
+                <td>Monitor potassium and renal function</td>
+              </tr>
+              <tr>
+                <td>Diabetes</td>
+                <td>ACE inhibitor or ARB preferred</td>
+                <td>Track renal outcomes and albuminuria</td>
+              </tr>
+              <tr>
+                <td>Pregnancy</td>
+                <td>Labetalol, methyldopa, nifedipine</td>
+                <td>Avoid ACEI, ARB, and direct renin inhibitors</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="resistant-hypertension">
+          <h2>9. Resistant Hypertension</h2>
+          <p>
+            Defined as blood pressure above goal despite three medications,
+            including a diuretic.
+          </p>
+          <div class="callout">
+            Next step: add spironolactone and reassess secondary causes,
+            adherence, and sodium intake.
+          </div>
+        </section>
+
+        <section class="section" id="hypertensive-crisis">
+          <h2>10. Hypertensive Crisis</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Hypertensive Urgency</h3>
+              <ul>
+                <li>At least 180 / 120 without acute organ damage</li>
+                <li>Usually treated with oral medication adjustments</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Hypertensive Emergency</h3>
+              <ul>
+                <li>At least 180 / 120 with organ damage</li>
+                <li>Requires IV therapy and monitored care</li>
+                <li>Typical IV options: nicardipine, labetalol, nitroprusside</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout alert">
+            Lower blood pressure gradually in emergency settings to avoid
+            ischemic injury.
+          </div>
+          <div class="diagram-card">
+            <p class="diagram-title">Urgency vs Emergency Decision Diagram</p>
+            <svg viewBox="0 0 920 250" aria-label="Hypertensive crisis decision diagram">
+              <rect x="24" y="92" width="220" height="62" rx="12" fill="#ffffff" stroke="#d7e3f1"></rect>
+              <text x="42" y="118" fill="#1f3f5f" font-size="14" font-weight="700">BP at least 180 / 120</text>
+              <text x="42" y="138" fill="#5a7690" font-size="12">Confirm and assess symptoms</text>
+
+              <line x1="244" y1="123" x2="332" y2="60" stroke="#2f7d73" stroke-width="2"></line>
+              <polygon points="332,60 322,58 327,67" fill="#2f7d73"></polygon>
+              <line x1="244" y1="123" x2="332" y2="186" stroke="#b11f1f" stroke-width="2"></line>
+              <polygon points="332,186 327,177 322,188" fill="#b11f1f"></polygon>
+
+              <rect x="332" y="28" width="260" height="66" rx="12" fill="#edf9f4" stroke="#caeadf"></rect>
+              <text x="352" y="54" fill="#126458" font-size="14" font-weight="700">No target-organ damage</text>
+              <text x="352" y="74" fill="#3f6e69" font-size="12">Hypertensive urgency</text>
+
+              <rect x="332" y="154" width="260" height="66" rx="12" fill="#fff1f1" stroke="#f1cbcb"></rect>
+              <text x="352" y="180" fill="#8b1a1a" font-size="14" font-weight="700">Target-organ damage present</text>
+              <text x="352" y="200" fill="#8d5959" font-size="12">Hypertensive emergency</text>
+
+              <line x1="592" y1="61" x2="680" y2="61" stroke="#2f7d73" stroke-width="2"></line>
+              <polygon points="680,61 670,55 670,67" fill="#2f7d73"></polygon>
+              <line x1="592" y1="187" x2="680" y2="187" stroke="#b11f1f" stroke-width="2"></line>
+              <polygon points="680,187 670,181 670,193" fill="#b11f1f"></polygon>
+
+              <rect x="680" y="28" width="214" height="66" rx="12" fill="#ffffff" stroke="#d7e3f1"></rect>
+              <text x="699" y="54" fill="#126458" font-size="13" font-weight="700">Oral meds / close follow-up</text>
+              <text x="699" y="74" fill="#557183" font-size="12">Do not over-correct rapidly</text>
+
+              <rect x="680" y="154" width="214" height="66" rx="12" fill="#ffffff" stroke="#d7e3f1"></rect>
+              <text x="699" y="180" fill="#8b1a1a" font-size="13" font-weight="700">IV therapy + monitored care</text>
+              <text x="699" y="200" fill="#6a4d4d" font-size="12">Lower BP gradually</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Management Recap Drill</h2>
+          <div class="algorithm">
+            <div class="step"><strong>Step 1:</strong> Confirm BP classification and repeat accurate measurement.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> Start lifestyle modification for all patients.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Stage 1 with high ASCVD risk or Stage 2 -> start medication.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 4:</strong> Use first-line classes: thiazide, ACEI, ARB, CCB.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 5:</strong> If uncontrolled, add second agent from a different class.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 6:</strong> If still uncontrolled on three agents including diuretic, add spironolactone.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 7:</strong> At least 180/120 with organ damage -> IV emergency protocol with gradual reduction.</div>
+          </div>
+          <div class="diagram-card">
+            <p class="diagram-title">Treatment Escalation Flow Diagram</p>
+            <svg viewBox="0 0 920 260" aria-label="Hypertension treatment escalation diagram">
+              <rect x="20" y="20" width="180" height="56" rx="11" fill="#ffffff" stroke="#d8e4f2"></rect>
+              <text x="40" y="46" fill="#1f3f5f" font-size="13" font-weight="700">Classify BP</text>
+              <text x="40" y="63" fill="#5a7690" font-size="12">ACC/AHA staging</text>
+
+              <rect x="240" y="20" width="190" height="56" rx="11" fill="#eef8ff" stroke="#cfe2f6"></rect>
+              <text x="258" y="46" fill="#16416b" font-size="13" font-weight="700">Lifestyle for all</text>
+              <text x="258" y="63" fill="#58718a" font-size="12">DASH, sodium, exercise</text>
+
+              <rect x="470" y="20" width="210" height="56" rx="11" fill="#f6fbff" stroke="#d8e4f2"></rect>
+              <text x="488" y="46" fill="#16416b" font-size="13" font-weight="700">Medication trigger</text>
+              <text x="488" y="63" fill="#58718a" font-size="12">Stage 2 or high-risk Stage 1</text>
+
+              <rect x="720" y="20" width="180" height="56" rx="11" fill="#eef8ff" stroke="#cfe2f6"></rect>
+              <text x="736" y="46" fill="#16416b" font-size="13" font-weight="700">First-line class</text>
+              <text x="736" y="63" fill="#58718a" font-size="12">Thiazide / ACEI / ARB / CCB</text>
+
+              <line x1="200" y1="48" x2="240" y2="48" stroke="#5d7da0" stroke-width="2"></line>
+              <polygon points="240,48 230,42 230,54" fill="#5d7da0"></polygon>
+              <line x1="430" y1="48" x2="470" y2="48" stroke="#5d7da0" stroke-width="2"></line>
+              <polygon points="470,48 460,42 460,54" fill="#5d7da0"></polygon>
+              <line x1="680" y1="48" x2="720" y2="48" stroke="#5d7da0" stroke-width="2"></line>
+              <polygon points="720,48 710,42 710,54" fill="#5d7da0"></polygon>
+
+              <line x1="810" y1="76" x2="810" y2="126" stroke="#b96a10" stroke-width="2"></line>
+              <polygon points="810,126 804,116 816,116" fill="#b96a10"></polygon>
+
+              <rect x="640" y="126" width="260" height="56" rx="11" fill="#fff5e8" stroke="#f2d7b4"></rect>
+              <text x="660" y="152" fill="#9a5a06" font-size="13" font-weight="700">Not at goal?</text>
+              <text x="660" y="169" fill="#7d683f" font-size="12">Add second class from different group</text>
+
+              <line x1="770" y1="182" x2="770" y2="232" stroke="#a61b1b" stroke-width="2"></line>
+              <polygon points="770,232 764,222 776,222" fill="#a61b1b"></polygon>
+
+              <rect x="520" y="232" width="380" height="56" rx="11" fill="#fff1f1" stroke="#f0caca"></rect>
+              <text x="540" y="258" fill="#8b1a1a" font-size="13" font-weight="700">Still uncontrolled on 3 meds incl. diuretic</text>
+              <text x="540" y="275" fill="#8b5555" font-size="12">Resistant HTN: add spironolactone and re-evaluate causes/adherence</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References</h2>
+          <div class="stack">
+            <div class="box">
+              <h3>ACC/AHA Guideline Publication</h3>
+              <a
+                href="https://www.ahajournals.org/doi/10.1161/HYP.0000000000000065"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.ahajournals.org/doi/10.1161/HYP.0000000000000065
+              </a>
+            </div>
+            <div class="box">
+              <h3>ACC Guideline Hub</h3>
+              <a
+                href="https://www.acc.org/guidelines/hubs/high-blood-pressure"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.acc.org/guidelines/hubs/high-blood-pressure
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>11. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">ACE inhibitor plus ARB combination is generally not recommended.</div>
+            <div class="callout alert">Beta blockers are not first-line for uncomplicated hypertension.</div>
+            <div class="callout alert">ACE inhibitors are contraindicated in pregnancy.</div>
+            <div class="callout alert">Thiazides can increase uric acid.</div>
+            <div class="callout alert">Do not lower BP too rapidly in hypertensive emergency.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>12. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>First-line: thiazide, ACEI, ARB, CCB</li>
+                <li>Goal: below 130/80 mmHg for most patients</li>
+                <li>Lifestyle intervention is mandatory</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>High-Yield Management Triggers</h3>
+              <ul>
+                <li>Resistant HTN -> add spironolactone</li>
+                <li>Emergency HTN -> IV therapy and gradual BP reduction</li>
+                <li>Secondary workup in resistant or atypical cases</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

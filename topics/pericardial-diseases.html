@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pericardial Diseases - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #a1323d;
+        --brand-soft: #fff1f3;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #ffd8dc 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e5f6ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff3f5;
+        color: #7f2730;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff2f4 56%, #eefaf6 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #a1323d;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #7c2630;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0d2d6;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7b6168;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #7c2630;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #f0cfd4;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #7c2630;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #7c2630;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff3f5;
+        color: #7c2630;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #7c2630;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-are-pericardial-diseases">1. What Are Pericardial Diseases?</a>
+        <a href="#acute-pericarditis">2. Acute Pericarditis</a>
+        <a href="#pericardial-effusion">3. Pericardial Effusion</a>
+        <a href="#cardiac-tamponade">4. Cardiac Tamponade</a>
+        <a href="#constrictive-pericarditis">5. Constrictive Pericarditis</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">6. Common Exam Traps</a>
+        <a href="#quick-revision">7. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Pericardial Diseases</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for acute pericarditis,
+            pericardial effusion, tamponade emergencies, and constrictive pericarditis.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Pericarditis Core</div>
+                <div class="v">NSAID plus colchicine</div>
+              </div>
+              <div class="metric">
+                <div class="k">ECG Clue</div>
+                <div class="v">Diffuse ST elevation</div>
+              </div>
+              <div class="metric">
+                <div class="k">Tamponade</div>
+                <div class="v">Drainage emergency</div>
+              </div>
+              <div class="metric">
+                <div class="k">Constrictive Disease</div>
+                <div class="v">Pericardiectomy definitive</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Pericardial Disease Spectrum</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Pericardial disease diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="146" height="72" rx="10" fill="#fff2f4" stroke="#f0d2d6" />
+                <text x="93" y="54" text-anchor="middle" font-size="13" fill="#7c2630" font-weight="700">Pericarditis</text>
+                <text x="93" y="72" text-anchor="middle" font-size="12" fill="#7f5f66">Inflammatory pain</text>
+                <text x="93" y="88" text-anchor="middle" font-size="12" fill="#7f5f66">NSAID + colchicine</text>
+
+                <rect x="176" y="30" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Effusion</text>
+                <text x="249" y="72" text-anchor="middle" font-size="12" fill="#5f7488">Fluid accumulation</text>
+                <text x="249" y="88" text-anchor="middle" font-size="12" fill="#5f7488">Monitor vs drain</text>
+
+                <rect x="332" y="30" width="146" height="72" rx="10" fill="#fff1f1" stroke="#f2cbcb" />
+                <text x="405" y="54" text-anchor="middle" font-size="13" fill="#8b1a1a" font-weight="700">Tamponade</text>
+                <text x="405" y="72" text-anchor="middle" font-size="12" fill="#8d5959">Shock physiology</text>
+                <text x="405" y="88" text-anchor="middle" font-size="12" fill="#8d5959">Urgent drainage</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Chronic fibrotic endpoint: constrictive pericarditis
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  Impaired ventricular filling with right-sided failure pattern
+                </text>
+              </svg>
+              <p>Key decision point: inflammation management versus emergency decompression.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-are-pericardial-diseases">
+          <h2>1. What Are Pericardial Diseases?</h2>
+          <p>
+            The pericardium is the fibrous sac around the heart. High-yield
+            pericardial conditions include acute pericarditis, pericardial
+            effusion, cardiac tamponade, and constrictive pericarditis.
+          </p>
+          <div class="chips">
+            <span class="chip">Acute pericarditis</span>
+            <span class="chip">Pericardial effusion</span>
+            <span class="chip">Cardiac tamponade</span>
+            <span class="chip">Constrictive pericarditis</span>
+          </div>
+        </section>
+
+        <section class="section" id="acute-pericarditis">
+          <h2>2. Acute Pericarditis</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology and Causes</h3>
+              <ul>
+                <li>Pericardial inflammation</li>
+                <li>Common causes: viral, post-MI (Dressler), uremia, autoimmune disease</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Classic Presentation</h3>
+              <ul>
+                <li>Sharp pleuritic chest pain</li>
+                <li>Worse supine, better leaning forward</li>
+                <li>Pericardial friction rub</li>
+                <li>ECG: diffuse ST elevation with PR depression</li>
+              </ul>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug/Class</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NSAIDs (ibuprofen, aspirin)</td>
+                <td>COX inhibition lowers prostaglandin synthesis and inflammation</td>
+                <td>GI irritation, bleeding risk, renal dysfunction</td>
+                <td>Active GI bleeding, severe renal impairment</td>
+              </tr>
+              <tr>
+                <td>Colchicine (add-on)</td>
+                <td>Microtubule inhibition reduces neutrophil-driven inflammation</td>
+                <td>Diarrhea, GI upset</td>
+                <td>Severe renal/hepatic impairment; strong recurrence-prevention role</td>
+              </tr>
+              <tr>
+                <td>Corticosteroids (reserved)</td>
+                <td>Broad anti-inflammatory gene regulation effects</td>
+                <td>Hyperglycemia, fluid retention, immunosuppression</td>
+                <td>Reserve for autoimmune causes or NSAID failure; early use can raise recurrence risk</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="pericardial-effusion">
+          <h2>3. Pericardial Effusion</h2>
+          <p>
+            Pericardial effusion is fluid accumulation in the pericardial space.
+            Small stable effusions can be monitored, while large or symptomatic
+            effusions may require drainage.
+          </p>
+        </section>
+
+        <section class="section" id="cardiac-tamponade">
+          <h2>4. Cardiac Tamponade</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology</h3>
+              <ul>
+                <li>Rapid pressure rise in the pericardial sac</li>
+                <li>Reduced ventricular filling</li>
+                <li>Drop in cardiac output and shock risk</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Classic Findings</h3>
+              <ul>
+                <li>Beck triad: hypotension, JVD, muffled heart sounds</li>
+                <li>Pulsus paradoxus</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout alert">
+            Definitive management is emergency pericardiocentesis. Drugs do not
+            reverse tamponade physiology.
+          </div>
+          <div class="callout warn">
+            IV fluids may be used as temporary hemodynamic support while preparing for drainage.
+          </div>
+        </section>
+
+        <section class="section" id="constrictive-pericarditis">
+          <h2>5. Constrictive Pericarditis</h2>
+          <p>
+            Chronic pericardial scarring restricts ventricular filling and often
+            presents with right-sided heart failure features. Definitive treatment
+            is surgical pericardiectomy.
+          </p>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Pericarditis 1:</strong> start NSAID as first-line anti-inflammatory therapy.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Pericarditis 2:</strong> add colchicine to reduce recurrence.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Pericarditis 3:</strong> reserve steroids for selected cases.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Tamponade:</strong> perform urgent pericardial drainage.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Constrictive disease:</strong> plan definitive surgical management.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Pericarditis and Tamponade Emergency Flowchart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ESC Guidelines for Pericardial Diseases</h3>
+              <a
+                href="https://www.escardio.org/Guidelines"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.escardio.org/Guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>Guideline Focus</h3>
+              <ul>
+                <li>NSAID and colchicine strategy</li>
+                <li>Recurrence prevention</li>
+                <li>Tamponade emergency management</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>6. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Colchicine lowers recurrence risk in acute pericarditis.</div>
+            <div class="callout alert">Pericarditis ST elevation is typically diffuse, not localized to one territory.</div>
+            <div class="callout alert">Tamponade requires drainage, not drug-only therapy.</div>
+            <div class="callout alert">Early steroid use can increase recurrence risk.</div>
+            <div class="callout alert">Pain that improves leaning forward supports pericarditis pattern.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>7. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Pericarditis presents with inflammatory positional chest pain</li>
+                <li>Standard regimen is NSAID plus colchicine</li>
+                <li>Tamponade is a drainage emergency</li>
+                <li>Constrictive disease reflects chronic pericardial scarring</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Pericardial Diseases</li>
+                <li>
+                  Subtopics: acute pericarditis, colchicine, tamponade,
+                  constrictive pericarditis
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

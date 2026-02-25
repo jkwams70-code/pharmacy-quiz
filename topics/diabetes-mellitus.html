@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diabetes Mellitus - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #0f6a45;
+        --brand-soft: #eaf8f1;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #d8f5e7 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e6f3ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #edf9f2;
+        color: #0f6a45;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #edf9f2 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #0f6a45;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #0b5a3a;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #d2ecd8;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #5f7d6b;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #0b5a3a;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #d2ebd8;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #0b5a3a;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #0b5a3a;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #effaf3;
+        color: #0b5a3a;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #0b5a3a;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-diabetes">1. What Is Diabetes Mellitus?</a>
+        <a href="#classification">2. Classification</a>
+        <a href="#diagnostic-criteria">3. Diagnostic Criteria</a>
+        <a href="#pathophysiology">4. Type 2 Pathophysiology</a>
+        <a href="#goals-of-therapy">5. Goals of Therapy</a>
+        <a href="#type-1-management">6. Type 1 Management</a>
+        <a href="#type-2-pharmacology">7. Type 2 Pharmacologic Therapy</a>
+        <a href="#acute-complications">8. Acute Complications</a>
+        <a href="#chronic-complications">9. Chronic Complications</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">10. Common Exam Traps</a>
+        <a href="#quick-revision">11. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Endocrinology</span>
+          <h1>Diabetes Mellitus</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for T1DM/T2DM diagnosis, insulin and non-insulin drugs,
+            acute emergencies (DKA/HHS), and long-term complication prevention.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">T1DM</div>
+                <div class="v">Absolute insulin deficiency</div>
+              </div>
+              <div class="metric">
+                <div class="k">T2DM</div>
+                <div class="v">Insulin resistance dominant</div>
+              </div>
+              <div class="metric">
+                <div class="k">First-Line T2DM</div>
+                <div class="v">Metformin</div>
+              </div>
+              <div class="metric">
+                <div class="k">A1C Target</div>
+                <div class="v">Usually under 7 percent</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Type 2 DM Therapeutic Targets</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Type 2 diabetes pathway targets">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="146" height="72" rx="10" fill="#effaf3" stroke="#d2ecd8" />
+                <text x="93" y="54" text-anchor="middle" font-size="13" fill="#0b5a3a" font-weight="700">Liver</text>
+                <text x="93" y="72" text-anchor="middle" font-size="12" fill="#607d6b">Metformin lowers</text>
+                <text x="93" y="88" text-anchor="middle" font-size="12" fill="#607d6b">hepatic output</text>
+
+                <rect x="176" y="30" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Kidney</text>
+                <text x="249" y="72" text-anchor="middle" font-size="12" fill="#5f7488">SGLT2 blockade</text>
+                <text x="249" y="88" text-anchor="middle" font-size="12" fill="#5f7488">glucose excretion</text>
+
+                <rect x="332" y="30" width="146" height="72" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+                <text x="405" y="54" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">Incretin axis</text>
+                <text x="405" y="72" text-anchor="middle" font-size="12" fill="#5b7a74">GLP-1 effect</text>
+                <text x="405" y="88" text-anchor="middle" font-size="12" fill="#5b7a74">satiety and insulin</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Cardiorenal benefit now drives regimen selection
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  HF, CKD, and ASCVD context guide SGLT2 or GLP-1 prioritization
+                </text>
+              </svg>
+              <p>Modern treatment choices are glucose-focused and risk-modifying.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-diabetes">
+          <h2>1. What Is Diabetes Mellitus?</h2>
+          <p>
+            Diabetes mellitus is chronic hyperglycemia caused by insulin deficiency,
+            insulin resistance, or both. Persistent hyperglycemia drives microvascular
+            and macrovascular complications.
+          </p>
+        </section>
+
+        <section class="section" id="classification">
+          <h2>2. Classification</h2>
+          <div class="grid-2">
+            <div class="box">
+              <ul>
+                <li>Type 1 diabetes: autoimmune beta-cell destruction, absolute insulin deficiency</li>
+                <li>Type 2 diabetes: insulin resistance plus relative insulin deficiency</li>
+                <li>Gestational diabetes</li>
+              </ul>
+            </div>
+            <div class="box">
+              <ul>
+                <li>Secondary diabetes examples: steroid-induced, pancreatitis, Cushing syndrome</li>
+                <li>T1DM requires lifelong insulin</li>
+                <li>T2DM is most prevalent form</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="diagnostic-criteria">
+          <h2>3. Diagnostic Criteria</h2>
+          <div class="chips">
+            <span class="chip">A1C 6.5 percent or higher</span>
+            <span class="chip">Fasting glucose 126 mg/dL or higher</span>
+            <span class="chip">Random glucose 200 mg/dL with symptoms</span>
+            <span class="chip">2-hour OGTT 200 mg/dL or higher</span>
+          </div>
+          <div class="callout warn">
+            Prediabetes range: A1C 5.7 to 6.4 percent.
+          </div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>4. Pathophysiology of Type 2 DM</h2>
+          <div class="grid-3">
+            <div class="box">
+              <ul>
+                <li>Insulin resistance</li>
+                <li>Increased hepatic glucose output</li>
+              </ul>
+            </div>
+            <div class="box">
+              <ul>
+                <li>Progressive beta-cell dysfunction</li>
+                <li>Increased glucagon signaling</li>
+              </ul>
+            </div>
+            <div class="box">
+              <ul>
+                <li>Increased renal glucose reabsorption</li>
+                <li>Incretin axis dysfunction</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="goals-of-therapy">
+          <h2>5. Goals of Therapy</h2>
+          <div class="chips">
+            <span class="chip">Control hyperglycemia</span>
+            <span class="chip">Prevent complications</span>
+            <span class="chip">Reduce cardiovascular risk</span>
+            <span class="chip">Individualize A1C target</span>
+          </div>
+          <div class="callout">
+            Common target is A1C under 7 percent, individualized by age, comorbidity, and hypoglycemia risk.
+          </div>
+        </section>
+
+        <section class="section" id="type-1-management">
+          <h2>6. Type 1 Diabetes Management</h2>
+          <p>Insulin is mandatory.</p>
+          <div class="box stack">
+            <h3>Insulin</h3>
+            <ul>
+              <li>MOA: replaces endogenous insulin, increases glucose uptake, suppresses hepatic glucose production</li>
+              <li>Rapid-acting: lispro, aspart, glulisine</li>
+              <li>Short-acting: regular insulin</li>
+              <li>Long-acting: glargine, detemir, degludec</li>
+              <li>Side effects: hypoglycemia, weight gain, lipodystrophy</li>
+              <li>Contraindication: current hypoglycemia episode</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="type-2-pharmacology">
+          <h2>7. Type 2 Diabetes Pharmacologic Therapy</h2>
+          <div class="callout">Metformin is first-line unless contraindicated.</div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Class / Examples</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / High-Yield Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Metformin (biguanide)</td>
+                <td>Reduces hepatic glucose production, improves insulin sensitivity, lowers intestinal glucose absorption</td>
+                <td>GI upset, B12 deficiency, rare lactic acidosis</td>
+                <td>Severe renal impairment, acute metabolic acidosis</td>
+              </tr>
+              <tr>
+                <td>SGLT2 inhibitors (empagliflozin, dapagliflozin)</td>
+                <td>Block renal SGLT2, increasing urinary glucose excretion</td>
+                <td>Genital infections, volume depletion, euglycemic DKA</td>
+                <td>Severe renal impairment; strong HF and CKD benefit</td>
+              </tr>
+              <tr>
+                <td>GLP-1 receptor agonists (semaglutide, liraglutide)</td>
+                <td>Glucose-dependent insulin increase, glucagon suppression, delayed gastric emptying, satiety enhancement</td>
+                <td>Nausea, vomiting, rare pancreatitis</td>
+                <td>Personal/family medullary thyroid carcinoma history</td>
+              </tr>
+              <tr>
+                <td>DPP-4 inhibitors (sitagliptin)</td>
+                <td>Prevent incretin breakdown and increase endogenous GLP-1 activity</td>
+                <td>Nasopharyngitis, rare pancreatitis</td>
+                <td>Dose adjust by renal function; modest efficacy</td>
+              </tr>
+              <tr>
+                <td>Sulfonylureas (glipizide, glyburide)</td>
+                <td>Stimulate pancreatic insulin release from beta cells</td>
+                <td>Hypoglycemia, weight gain</td>
+                <td>Glyburide caution in renal impairment</td>
+              </tr>
+              <tr>
+                <td>TZDs (pioglitazone)</td>
+                <td>PPAR-gamma activation improves insulin sensitivity</td>
+                <td>Weight gain, edema, HF worsening</td>
+                <td>Contraindicated in NYHA class III-IV heart failure</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="acute-complications">
+          <h2>8. Acute Complications</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>DKA (more common in T1DM)</h3>
+              <ul>
+                <li>Hyperglycemia, ketonemia, metabolic acidosis</li>
+                <li>Management: IV fluids, IV insulin, potassium replacement</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>HHS (more common in T2DM)</h3>
+              <ul>
+                <li>Severe hyperglycemia, hyperosmolarity, minimal ketosis</li>
+                <li>Management parallels DKA framework with fluid-first strategy</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="chronic-complications">
+          <h2>9. Chronic Complications</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Microvascular</h3>
+              <ul>
+                <li>Retinopathy</li>
+                <li>Nephropathy</li>
+                <li>Neuropathy</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Macrovascular</h3>
+              <ul>
+                <li>Coronary artery disease</li>
+                <li>Stroke</li>
+                <li>Peripheral arterial disease</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout">
+            Aggressive glucose, blood pressure, and lipid control reduces long-term risk.
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>T2DM 1:</strong> start metformin when eligible.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>T2DM 2:</strong> if ASCVD/HF/CKD, prioritize SGLT2 inhibitor or GLP-1 receptor agonist.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>T2DM 3:</strong> add agents if A1C remains above target.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>T2DM 4:</strong> initiate insulin when uncontrolled or catabolic.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>DKA:</strong> fluids, insulin, potassium.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert ADA Diabetes Treatment Algorithm and Insulin Regimen Diagram Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ADA Standards of Care</h3>
+              <a href="https://diabetes.org" target="_blank" rel="noopener">
+                https://diabetes.org
+              </a>
+            </div>
+            <div class="box">
+              <h3>Guideline Scope</h3>
+              <ul>
+                <li>Treatment algorithms and A1C targets</li>
+                <li>Insulin initiation strategy</li>
+                <li>Cardiovascular and renal risk-based therapy</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>10. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Metformin remains first-line unless contraindicated.</div>
+            <div class="callout alert">SGLT2 inhibitors are strongly favored with HF or CKD.</div>
+            <div class="callout alert">GLP-1 receptor agonists support weight loss and ASCVD risk reduction.</div>
+            <div class="callout alert">Sulfonylureas increase hypoglycemia risk.</div>
+            <div class="callout alert">TZDs are contraindicated in advanced heart failure.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>11. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>T1DM requires insulin</li>
+                <li>T2DM centers on insulin resistance and progressive beta-cell dysfunction</li>
+                <li>Metformin is foundational</li>
+                <li>SGLT2 and GLP-1 classes provide major cardiorenal advantages</li>
+                <li>DKA management is fluids plus insulin plus potassium</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Diabetes Mellitus</li>
+                <li>
+                  Subtopics: T1DM, T2DM, insulin therapy, oral agents, DKA, HHS, complications
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

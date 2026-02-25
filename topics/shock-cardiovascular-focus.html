@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shock (Cardiovascular Focus) - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556b84;
+        --line: #d7e4f0;
+        --brand: #8a260f;
+        --brand-soft: #fff2ed;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #ffdccc 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e4f4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff5ef;
+        color: #702010;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff3ed 56%, #eefaf6 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #8a260f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #6c1e0d;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0d6cc;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7d655d;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #6c1e0d;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #efd6cb;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6c1e0d;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6c1e0d;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff4ef;
+        color: #6c1e0d;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6c1e0d;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-shock">1. What Is Shock?</a>
+        <a href="#types-of-shock">2. Types of Shock</a>
+        <a href="#cardiogenic-shock">3. Cardiogenic Shock</a>
+        <a href="#vasopressors-and-inotropes">4. Vasopressors and Inotropes</a>
+        <a href="#cardiogenic-shock-protocol">5. Cardiogenic Shock Protocol</a>
+        <a href="#hypovolemic-shock">6. Hypovolemic Shock</a>
+        <a href="#septic-shock">7. Septic Shock</a>
+        <a href="#obstructive-shock">8. Obstructive Shock</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">9. Common Exam Traps</a>
+        <a href="#quick-revision">10. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Shock (Cardiovascular Focus)</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for cardiogenic and obstructive shock,
+            with high-yield vasopressor/inotrope selection and protocol sequencing.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Core Problem</div>
+                <div class="v">Tissue hypoperfusion</div>
+              </div>
+              <div class="metric">
+                <div class="k">Cardiogenic Driver</div>
+                <div class="v">Pump failure (often MI)</div>
+              </div>
+              <div class="metric">
+                <div class="k">First-Line Pressor</div>
+                <div class="v">Norepinephrine</div>
+              </div>
+              <div class="metric">
+                <div class="k">Definitive Principle</div>
+                <div class="v">Treat the cause</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Shock Decision Framework</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Shock overview diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="220" height="72" rx="10" fill="#fff3ee" stroke="#f0d8cd" />
+                <text x="40" y="55" fill="#6c1e0d" font-size="13" font-weight="700">Cardiogenic shock</text>
+                <text x="40" y="73" fill="#7f655d" font-size="12">Pump failure -> low CO</text>
+                <text x="40" y="89" fill="#7f655d" font-size="12">Pressor/inotrope plus reperfusion</text>
+
+                <rect x="260" y="30" width="220" height="72" rx="10" fill="#fff1f1" stroke="#f2cbcb" />
+                <text x="280" y="55" fill="#8b1a1a" font-size="13" font-weight="700">Obstructive shock</text>
+                <text x="280" y="73" fill="#8d5959" font-size="12">PE/tamponade/pneumothorax</text>
+                <text x="280" y="89" fill="#8d5959" font-size="12">Requires mechanical correction</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Hemodynamic support is a bridge, not final treatment
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  Shock survival depends on rapid identification and reversal of the cause
+                </text>
+              </svg>
+              <p>Drug choice and source-control timing determine outcomes.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-shock">
+          <h2>1. What Is Shock?</h2>
+          <p>
+            Shock is life-threatening inadequate tissue perfusion causing organ dysfunction.
+            The core defect is insufficient oxygen delivery to cells.
+          </p>
+        </section>
+
+        <section class="section" id="types-of-shock">
+          <h2>2. Types of Shock (High-Yield Classification)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <ul>
+                <li>Cardiogenic shock</li>
+                <li>Hypovolemic shock</li>
+                <li>Distributive shock: septic, anaphylactic</li>
+              </ul>
+            </div>
+            <div class="box">
+              <ul>
+                <li>Obstructive shock</li>
+                <li>Cardiovascular emphasis: cardiogenic and obstructive phenotypes</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="cardiogenic-shock">
+          <h2>3. Cardiogenic Shock</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology</h3>
+              <ul>
+                <li>Severe pump failure with low cardiac output</li>
+                <li>Hypotension and tissue hypoperfusion</li>
+                <li>Most common trigger: acute MI</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Clinical Features</h3>
+              <ul>
+                <li>Hypotension</li>
+                <li>Cool extremities</li>
+                <li>Elevated JVP</li>
+                <li>Pulmonary edema</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout">
+            Goals: improve cardiac output, maintain perfusion pressure, and rapidly treat the underlying cause.
+          </div>
+        </section>
+
+        <section class="section" id="vasopressors-and-inotropes">
+          <h2>4. Vasopressors and Inotropes</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Use / Contraindications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Norepinephrine</td>
+                <td>Alpha-1 vasoconstriction with beta-1 support of contractility</td>
+                <td>Arrhythmias, peripheral ischemia</td>
+                <td>First-line vasopressor in most shock states (including hypotensive cardiogenic shock)</td>
+              </tr>
+              <tr>
+                <td>Dobutamine</td>
+                <td>Beta-1 inotropy increases contractility and cardiac output</td>
+                <td>Tachycardia, hypotension</td>
+                <td>Useful for low-output states when BP is adequate or pressor-supported</td>
+              </tr>
+              <tr>
+                <td>Dopamine</td>
+                <td>Dose-dependent dopaminergic/beta/alpha effects</td>
+                <td>Arrhythmias, tachycardia</td>
+                <td>Less preferred due to rhythm risk profile</td>
+              </tr>
+              <tr>
+                <td>Epinephrine</td>
+                <td>Mixed alpha and beta agonism</td>
+                <td>Arrhythmias, lactic rise, ischemia risk</td>
+                <td>Key for anaphylactic shock and selected refractory shock scenarios</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="cardiogenic-shock-protocol">
+          <h2>5. Cardiogenic Shock Protocol</h2>
+          <div class="flow">
+            <div class="step"><strong>1:</strong> immediate cause treatment (e.g., MI to PCI/revascularization).</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>2:</strong> start norepinephrine if hypotensive.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>3:</strong> add dobutamine if low output persists.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>4:</strong> evaluate mechanical support (IABP/ECMO) when refractory.</div>
+          </div>
+        </section>
+
+        <section class="section" id="hypovolemic-shock">
+          <h2>6. Hypovolemic Shock</h2>
+          <p>
+            Common causes include blood loss and severe dehydration. Primary treatment is
+            volume restoration with IV fluids and blood products when indicated.
+          </p>
+          <div class="callout warn">
+            Vasopressors are secondary and should generally follow adequate volume resuscitation.
+          </div>
+        </section>
+
+        <section class="section" id="septic-shock">
+          <h2>7. Septic Shock (Brief Overview)</h2>
+          <p>
+            Septic shock features infection-driven vasodilation and circulatory failure.
+            Initial management: fluids plus norepinephrine; vasopressin may be added in refractory cases.
+          </p>
+        </section>
+
+        <section class="section" id="obstructive-shock">
+          <h2>8. Obstructive Shock</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Examples</h3>
+              <ul>
+                <li>Massive pulmonary embolism</li>
+                <li>Cardiac tamponade</li>
+                <li>Tension pneumothorax</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Definitive Treatment</h3>
+              <ul>
+                <li>Remove the obstruction</li>
+                <li>Thrombolysis/embolectomy for massive PE (selected patients)</li>
+                <li>Pericardiocentesis for tamponade</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout alert">
+            Drug support alone is not definitive in obstructive shock.
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Cardiogenic:</strong> treat cause, start norepinephrine if hypotensive, add dobutamine for low output.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Hypovolemic:</strong> fluids/blood first.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Septic:</strong> fluids plus norepinephrine.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Obstructive:</strong> mechanically relieve obstruction.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Shock Type Differentiation and Vasopressor Selection Flowchart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>AHA Cardiogenic Shock Guidance</h3>
+              <a href="https://www.ahajournals.org" target="_blank" rel="noopener">
+                https://www.ahajournals.org
+              </a>
+            </div>
+            <div class="box">
+              <h3>Surviving Sepsis Campaign</h3>
+              <a href="https://www.sccm.org/SurvivingSepsisCampaign/Guidelines" target="_blank" rel="noopener">
+                https://www.sccm.org/SurvivingSepsisCampaign/Guidelines
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>9. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Norepinephrine is first-line vasopressor in most shock states.</div>
+            <div class="callout alert">Dobutamine improves contractility but can reduce blood pressure.</div>
+            <div class="callout alert">Definitive shock care requires source/cause correction.</div>
+            <div class="callout alert">Hypovolemia usually requires fluids before pressors.</div>
+            <div class="callout alert">Obstructive shock needs mechanical correction.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>10. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Shock is systemic tissue hypoperfusion</li>
+                <li>Cardiogenic shock is pump failure</li>
+                <li>Norepinephrine is core first-line pressor</li>
+                <li>Dobutamine is inotrope support for low output</li>
+                <li>Fixing the cause is mandatory</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Shock</li>
+                <li>
+                  Subtopics: cardiogenic shock, vasopressors, inotropes, septic shock, obstructive shock
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>COPD - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #8a5a0f;
+        --soft: #fff6e8;
+        --good-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --alert-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 86% 9%, #ffe9c9 0%, transparent 32%),
+          radial-gradient(circle at 8% 20%, #eaf4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff8ee;
+        color: #8a5a0f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff8ee 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--soft);
+        color: #8a5a0f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #7a4f0d;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0dfbd;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7c6a48;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #7a4f0d;
+        font-weight: 700;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #7a4f0d;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff8ee;
+        color: #7a4f0d;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--good-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--alert-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #7a4f0d;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram p {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      details.quiz {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px 12px;
+      }
+
+      details.quiz summary {
+        cursor: pointer;
+        color: #1f4061;
+        font-weight: 700;
+      }
+
+      details.quiz p {
+        margin: 10px 0 0;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-copd">1. Definition</a>
+        <a href="#pathophysiology">2. Pathophysiology</a>
+        <a href="#gold-classification">3. GOLD Classification</a>
+        <a href="#rescue-bronchodilators">4. Rescue Bronchodilators</a>
+        <a href="#lama">5. LAMA</a>
+        <a href="#laba">6. LABA</a>
+        <a href="#laba-lama">7. LABA + LAMA</a>
+        <a href="#ics">8. ICS Role</a>
+        <a href="#triple-therapy">9. Triple Therapy</a>
+        <a href="#roflumilast">10. PDE-4 Inhibitor</a>
+        <a href="#acute-exacerbation">11. Acute Exacerbation</a>
+        <a href="#oxygen-therapy">12. Oxygen Therapy</a>
+        <a href="#management-recap-drill">Management Recap Drill</a>
+        <a href="#guidelines">Guidelines</a>
+        <a href="#exam-traps">13. Common Exam Traps</a>
+        <a href="#quick-revision">14. Quick Revision Summary</a>
+        <a href="#practice-questions">Practice Questions</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Respiratory Disorders</span>
+          <h1>COPD</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for GOLD treatment groups,
+            maintenance inhaler logic, exacerbation management, and oxygen criteria.
+          </p>
+          <div class="hero-grid">
+            <div class="metric">
+              <div class="k">Core Disease</div>
+              <div class="v">Progressive airflow limitation</div>
+            </div>
+            <div class="metric">
+              <div class="k">Major Cause</div>
+              <div class="v">Smoking exposure</div>
+            </div>
+            <div class="metric">
+              <div class="k">Maintenance Base</div>
+              <div class="v">LAMA and/or LABA</div>
+            </div>
+            <div class="metric">
+              <div class="k">Oxygen Target</div>
+              <div class="v">SpO2 88-92%</div>
+            </div>
+          </div>
+          <div class="diagram">
+            <p>COPD Structural Disease Model</p>
+            <svg viewBox="0 0 760 220" role="img" aria-label="COPD pathophysiology illustration">
+              <rect x="0" y="0" width="760" height="220" rx="12" fill="#fbfdff" />
+              <rect x="20" y="25" width="220" height="70" rx="10" fill="#fff8ee" stroke="#f0dfbd" />
+              <text x="130" y="48" text-anchor="middle" font-size="13" fill="#7a4f0d" font-weight="700">Chronic irritation</text>
+              <text x="130" y="66" text-anchor="middle" font-size="12" fill="#7c6a48">smoke / biomass / pollutants</text>
+              <rect x="270" y="25" width="220" height="70" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+              <text x="380" y="48" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Airway disease</text>
+              <text x="380" y="66" text-anchor="middle" font-size="12" fill="#5f7488">mucus + narrowing</text>
+              <rect x="520" y="25" width="220" height="70" rx="10" fill="#fff0f0" stroke="#f2cbcb" />
+              <text x="630" y="48" text-anchor="middle" font-size="13" fill="#8a3a3a" font-weight="700">Parenchymal loss</text>
+              <text x="630" y="66" text-anchor="middle" font-size="12" fill="#8a4e4e">emphysema + recoil loss</text>
+              <path d="M240 60 L270 60" stroke="#9cb3c7" stroke-width="3" />
+              <path d="M490 60 L520 60" stroke="#9cb3c7" stroke-width="3" />
+              <rect x="20" y="120" width="720" height="75" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+              <text x="380" y="147" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">Result: persistent airflow obstruction (not fully reversible)</text>
+              <text x="380" y="166" text-anchor="middle" font-size="12" fill="#45637e">Therapy focus: bronchodilation + exacerbation prevention + smoking cessation</text>
+            </svg>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-copd">
+          <h2>1. Definition</h2>
+          <p>
+            COPD is a progressive, largely irreversible airflow limitation syndrome
+            driven by chronic bronchitis, emphysema, or both. Smoking is the main cause.
+          </p>
+          <div class="chips">
+            <span class="chip">Chronic bronchitis</span>
+            <span class="chip">Emphysema</span>
+            <span class="chip">Not fully reversible</span>
+          </div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>2. Pathophysiology</h2>
+          <div class="flow">
+            <div class="step"><strong>Step 1:</strong> Chronic airway inflammation develops.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> Airway narrowing and mucus hypersecretion increase resistance.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Alveolar wall destruction causes air trapping and reduced recoil.</div>
+          </div>
+          <div class="callout alert">Unlike asthma, airflow obstruction in COPD is not fully reversible.</div>
+        </section>
+
+        <section class="section" id="gold-classification">
+          <h2>3. GOLD Classification (Treatment-Based)</h2>
+          <p>Classify by symptom burden (mMRC/CAT) and exacerbation history.</p>
+          <div class="chips">
+            <span class="chip">Group A</span>
+            <span class="chip">Group B</span>
+            <span class="chip">Group E</span>
+          </div>
+          <div class="diagram">
+            <p>GOLD Grouping and Initial Treatment</p>
+            <svg viewBox="0 0 760 190" role="img" aria-label="GOLD A B E treatment overview">
+              <rect x="0" y="0" width="760" height="190" rx="12" fill="#fbfdff" />
+              <rect x="30" y="48" width="220" height="95" rx="10" fill="#fff8ee" stroke="#f0dfbd" />
+              <text x="140" y="72" text-anchor="middle" font-size="14" fill="#7a4f0d" font-weight="700">Group A</text>
+              <text x="140" y="94" text-anchor="middle" font-size="12" fill="#7c6a48">Low symptoms / low exacerbation risk</text>
+              <text x="140" y="113" text-anchor="middle" font-size="12" fill="#7a4f0d">Single bronchodilator</text>
+              <rect x="270" y="48" width="220" height="95" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+              <text x="380" y="72" text-anchor="middle" font-size="14" fill="#1f4467" font-weight="700">Group B</text>
+              <text x="380" y="94" text-anchor="middle" font-size="12" fill="#5f7488">More symptoms / lower exacerbation risk</text>
+              <text x="380" y="113" text-anchor="middle" font-size="12" fill="#1f4467">LABA or LAMA</text>
+              <rect x="510" y="48" width="220" height="95" rx="10" fill="#fff0f0" stroke="#f2cbcb" />
+              <text x="620" y="72" text-anchor="middle" font-size="14" fill="#8a3a3a" font-weight="700">Group E</text>
+              <text x="620" y="94" text-anchor="middle" font-size="12" fill="#8a4e4e">Exacerbation-prone</text>
+              <text x="620" y="113" text-anchor="middle" font-size="12" fill="#8a3a3a">LABA + LAMA (consider ICS)</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section" id="rescue-bronchodilators">
+          <h2>4. Short-Acting Bronchodilators (Rescue)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Albuterol (SABA)</h3>
+              <ul>
+                <li>Dose: 2 puffs every 4 to 6 hours as needed or 2.5 mg neb as needed</li>
+                <li>MOA: beta-2 agonist bronchodilation</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Ipratropium (SAMA)</h3>
+              <ul>
+                <li>Dose: 2 puffs (17 mcg per puff) four times daily</li>
+                <li>MOA: muscarinic blockade to reduce bronchoconstriction</li>
+                <li>Side effect: dry mouth</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="lama">
+          <h2>5. Long-Acting Muscarinic Antagonists (LAMA)</h2>
+          <div class="box">
+            <h3>Tiotropium (first-line maintenance)</h3>
+            <ul>
+              <li>MOA: M3 receptor blockade with long-acting bronchodilation</li>
+              <li>Dose: 18 mcg inhaled once daily (HandiHaler) or 2.5 mcg (2 inhalations) daily (Respimat)</li>
+              <li>Side effects: dry mouth, urinary retention</li>
+              <li>Caution: narrow-angle glaucoma</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="laba">
+          <h2>6. LABA (Long-Acting Beta Agonists)</h2>
+          <div class="box">
+            <ul>
+              <li>Salmeterol dose: 50 mcg twice daily</li>
+              <li>MOA: sustained bronchodilation</li>
+              <li>Maintenance use is appropriate in COPD</li>
+            </ul>
+          </div>
+          <div class="callout warn">High-yield distinction: LABA can be used alone in COPD (unlike asthma).</div>
+        </section>
+
+        <section class="section" id="laba-lama">
+          <h2>7. LABA + LAMA Combination</h2>
+          <div class="box">
+            <ul>
+              <li>Preferred in moderate to severe symptomatic COPD</li>
+              <li>Example: umeclidinium/vilanterol, 1 inhalation once daily</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="ics">
+          <h2>8. Inhaled Corticosteroids (ICS) Role</h2>
+          <div class="box">
+            <ul>
+              <li>Use in frequent exacerbations and/or high eosinophils</li>
+              <li>Example (in combination): fluticasone 250 to 500 mcg twice daily</li>
+              <li>Risk: increased pneumonia incidence</li>
+              <li>Not first-line as monotherapy in COPD</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="triple-therapy">
+          <h2>9. Triple Therapy (ICS + LABA + LAMA)</h2>
+          <div class="box">
+            <ul>
+              <li>For severe disease or frequent exacerbations</li>
+              <li>Example: fluticasone/umeclidinium/vilanterol, 1 inhalation once daily</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="roflumilast">
+          <h2>10. Phosphodiesterase-4 Inhibitor</h2>
+          <div class="box">
+            <h3>Roflumilast</h3>
+            <ul>
+              <li>Use: severe COPD with chronic bronchitis and frequent exacerbations</li>
+              <li>MOA: PDE-4 inhibition reduces inflammation</li>
+              <li>Dose: 500 mcg orally once daily</li>
+              <li>Side effects: weight loss, diarrhea, insomnia</li>
+              <li>Contraindication: moderate to severe liver impairment</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="acute-exacerbation">
+          <h2>11. Acute COPD Exacerbation</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Bronchodilator + Steroid Core</h3>
+              <ul>
+                <li>Frequent SABA plus or minus SAMA dosing</li>
+                <li>Prednisone 40 mg orally daily for 5 days</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Antibiotic Trigger Criteria</h3>
+              <ul>
+                <li>Increased sputum purulence</li>
+                <li>Increased sputum volume</li>
+                <li>Increased dyspnea</li>
+              </ul>
+            </div>
+          </div>
+          <div class="box stack">
+            <h3>Common 5-7 day regimens if infection suspected</h3>
+            <div class="chips">
+              <span class="chip">Amoxicillin/clavulanate</span>
+              <span class="chip">Azithromycin</span>
+              <span class="chip">Doxycycline</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="oxygen-therapy">
+          <h2>12. Oxygen Therapy</h2>
+          <div class="box">
+            <ul>
+              <li>Indicated when PaO2 <= 55 mmHg or oxygen saturation <= 88%</li>
+              <li>Long-term oxygen therapy improves survival in qualifying patients</li>
+              <li>Target saturation: 88-92%</li>
+              <li>Avoid over-oxygenation due to CO2 retention risk</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Group A:</strong> single bronchodilator.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Group B:</strong> LABA or LAMA.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Group E:</strong> LABA + LAMA, then consider ICS for frequent exacerbations.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Exacerbation:</strong> SABA + steroid plus or minus antibiotics.</div>
+          </div>
+        </section>
+
+        <section class="section refs" id="guidelines">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>GOLD Guidelines</h3>
+              <a href="https://goldcopd.org" target="_blank" rel="noopener">https://goldcopd.org</a>
+            </div>
+            <div class="box">
+              <h3>Guideline Scope</h3>
+              <ul>
+                <li>Group A/B/E classification</li>
+                <li>Inhaler selection and escalation</li>
+                <li>Exacerbation and oxygen criteria</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>13. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">LABA monotherapy is allowed in COPD (unlike asthma).</div>
+            <div class="callout alert">ICS can increase pneumonia risk in COPD.</div>
+            <div class="callout alert">A 5-day prednisone course is usually sufficient in exacerbation.</div>
+            <div class="callout alert">Oxygen target is 88-92%, not normal-range saturation.</div>
+            <div class="callout alert">LAMA is a strong first-line maintenance option.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>14. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Smoking is the major COPD cause</li>
+                <li>LAMA or LABA is baseline maintenance</li>
+                <li>LABA/LAMA combination is preferred in symptomatic disease</li>
+                <li>Add ICS for frequent exacerbators or high eosinophils</li>
+                <li>Exacerbation core: bronchodilator + steroid</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>High-Yield Subtopics</h3>
+              <ul>
+                <li>GOLD A/B/E treatment logic</li>
+                <li>LAMA/LABA dosing and role</li>
+                <li>ICS limitations in COPD</li>
+                <li>Oxygen criteria and target range</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="practice-questions">
+          <h2>Practice Questions</h2>
+          <div class="stack">
+            <details class="quiz">
+              <summary>1) Which maintenance class is a strong first-line option in COPD?</summary>
+              <p><strong>Answer:</strong> LAMA (for example, tiotropium).</p>
+            </details>
+            <details class="quiz">
+              <summary>2) Is LABA monotherapy acceptable in COPD?</summary>
+              <p><strong>Answer:</strong> Yes. Unlike asthma, LABA alone can be used in COPD maintenance.</p>
+            </details>
+            <details class="quiz">
+              <summary>3) Typical systemic steroid duration in acute COPD exacerbation?</summary>
+              <p><strong>Answer:</strong> Prednisone 40 mg daily for 5 days.</p>
+            </details>
+            <details class="quiz">
+              <summary>4) When should long-term oxygen be considered?</summary>
+              <p><strong>Answer:</strong> PaO2 <= 55 mmHg or oxygen saturation <= 88%.</p>
+            </details>
+            <details class="quiz">
+              <summary>5) What oxygen saturation target is usually used in COPD exacerbation?</summary>
+              <p><strong>Answer:</strong> 88-92% to avoid over-oxygenation and CO2 retention.</p>
+            </details>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

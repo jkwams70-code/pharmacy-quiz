@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pulmonary Hypertension - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f7fcff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #536b83;
+        --line: #d7e4f0;
+        --brand: #0f5a66;
+        --brand-soft: #eaf9fc;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #d7f4ff 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e5fff6 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #ecf9fc;
+        color: #0f5a66;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #ecf9fc 56%, #eefaf6 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #0f5a66;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #114750;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #cfeaf0;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #5d7a81;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #114750;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #cde7ec;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #11515c;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #11515c;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #effbfd;
+        color: #11515c;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #11515c;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-ph">1. What Is Pulmonary Hypertension?</a>
+        <a href="#classification">2. WHO Classification</a>
+        <a href="#pathophysiology">3. PAH Pathophysiology</a>
+        <a href="#group-1-management">4. Group 1 PAH Management</a>
+        <a href="#group-specific-management">5. Group-Specific Management</a>
+        <a href="#right-heart-failure-management">6. Right Heart Failure Management</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">7. Common Exam Traps</a>
+        <a href="#quick-revision">8. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Respiratory Disorders</span>
+          <h1>Pulmonary Hypertension</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for PH classification,
+            Group 1 PAH targeted therapy, CTEPH strategy, and right-heart failure support.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Definition</div>
+                <div class="v">mPAP 20 mmHg or higher</div>
+              </div>
+              <div class="metric">
+                <div class="k">Diagnostic Standard</div>
+                <div class="v">Right heart catheterization</div>
+              </div>
+              <div class="metric">
+                <div class="k">Main Drug Target Group</div>
+                <div class="v">WHO Group 1 PAH</div>
+              </div>
+              <div class="metric">
+                <div class="k">Core Pathways</div>
+                <div class="v">Endothelin, NO, prostacyclin</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>PAH Therapeutic Pathways</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="PAH pathway diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="146" height="72" rx="10" fill="#edf9fc" stroke="#cfeaf0" />
+                <text x="93" y="54" text-anchor="middle" font-size="13" fill="#11515c" font-weight="700">Endothelin</text>
+                <text x="93" y="72" text-anchor="middle" font-size="12" fill="#4f7880">ERA blockade</text>
+                <text x="93" y="88" text-anchor="middle" font-size="12" fill="#4f7880">less constriction</text>
+
+                <rect x="176" y="30" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">NO-cGMP</text>
+                <text x="249" y="72" text-anchor="middle" font-size="12" fill="#5f7488">PDE-5 inhibitor</text>
+                <text x="249" y="88" text-anchor="middle" font-size="12" fill="#5f7488">or sGC stimulator</text>
+
+                <rect x="332" y="30" width="146" height="72" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+                <text x="405" y="54" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">Prostacyclin</text>
+                <text x="405" y="72" text-anchor="middle" font-size="12" fill="#5b7a74">vasodilation</text>
+                <text x="405" y="88" text-anchor="middle" font-size="12" fill="#5b7a74">antiproliferative</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Group 1 PAH: combination therapy is common
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  ERA plus PDE-5 inhibitor initial strategy, escalate to prostacyclin when severe
+                </text>
+              </svg>
+              <p>Modern PAH regimens combine targeted pathway therapies.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-ph">
+          <h2>1. What Is Pulmonary Hypertension (PH)?</h2>
+          <p>
+            Pulmonary hypertension is elevated pressure in pulmonary arteries and
+            is defined by mean pulmonary arterial pressure of 20 mmHg or higher
+            on right heart catheterization.
+          </p>
+          <div class="chips">
+            <span class="chip">Right ventricular strain</span>
+            <span class="chip">Right heart failure</span>
+            <span class="chip">High untreated mortality</span>
+          </div>
+        </section>
+
+        <section class="section" id="classification">
+          <h2>2. Classification (WHO Groups)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <ul>
+                <li>Group 1: Pulmonary arterial hypertension (PAH)</li>
+                <li>Group 2: PH due to left heart disease</li>
+                <li>Group 3: PH due to lung disease/hypoxia</li>
+              </ul>
+            </div>
+            <div class="box">
+              <ul>
+                <li>Group 4: Chronic thromboembolic PH (CTEPH)</li>
+                <li>Group 5: Multifactorial/unclear mechanisms</li>
+                <li>Targeted PH drugs mainly apply to Group 1</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>3. Pathophysiology (PAH)</h2>
+          <div class="grid-3">
+            <div class="box">
+              <h3>Endothelin Pathway</h3>
+              <p>Excess signaling drives vasoconstriction and remodeling.</p>
+            </div>
+            <div class="box">
+              <h3>Nitric Oxide Pathway</h3>
+              <p>Impaired signaling reduces vasodilation reserve.</p>
+            </div>
+            <div class="box">
+              <h3>Prostacyclin Pathway</h3>
+              <p>Reduced prostacyclin worsens vasoconstriction and proliferation.</p>
+            </div>
+          </div>
+          <div class="callout">
+            PAH pharmacology targets these three pathways directly.
+          </div>
+        </section>
+
+        <section class="section" id="group-1-management">
+          <h2>4. Management of Group 1 PAH</h2>
+          <p>
+            Goals are to reduce pulmonary vascular resistance, improve exercise
+            capacity, and delay progression.
+          </p>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug Class</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Endothelin receptor antagonists (bosentan, ambrisentan, macitentan)</td>
+                <td>Block endothelin-1 signaling, reducing vasoconstriction and remodeling</td>
+                <td>Hepatotoxicity (especially bosentan), edema, anemia</td>
+                <td>Pregnancy contraindication, severe liver impairment; monthly liver monitoring (especially bosentan)</td>
+              </tr>
+              <tr>
+                <td>PDE-5 inhibitors (sildenafil, tadalafil)</td>
+                <td>Inhibit PDE-5, increase cGMP, enhance NO-mediated vasodilation</td>
+                <td>Headache, flushing, hypotension</td>
+                <td>Contraindicated with nitrates and severe hypotension</td>
+              </tr>
+              <tr>
+                <td>Prostacyclin analogues (epoprostenol, treprostinil, iloprost)</td>
+                <td>Prostacyclin receptor effect: potent vasodilation, antiproliferative action, reduced platelet aggregation</td>
+                <td>Hypotension, jaw pain, flushing, infusion-site pain</td>
+                <td>IV forms may require continuous infusion; severe disease escalation class</td>
+              </tr>
+              <tr>
+                <td>Soluble guanylate cyclase stimulator (riociguat)</td>
+                <td>Directly stimulates sGC, increasing cGMP and vasodilation</td>
+                <td>Hypotension, headache, dyspepsia</td>
+                <td>Pregnancy contraindication; do not combine with PDE-5 inhibitors</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout">
+            Initial PAH strategy often uses combination therapy such as ERA plus PDE-5 inhibitor.
+          </div>
+        </section>
+
+        <section class="section" id="group-specific-management">
+          <h2>5. Group-Specific Management</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Groups 2 and 3</h3>
+              <ul>
+                <li>Group 2: treat underlying left-sided heart disease</li>
+                <li>Group 3: optimize lung disease and oxygenation</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Group 4 (CTEPH)</h3>
+              <ul>
+                <li>Lifelong anticoagulation</li>
+                <li>Pulmonary endarterectomy when operable</li>
+                <li>Riociguat for selected inoperable/persistent disease</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="right-heart-failure-management">
+          <h2>6. Right Heart Failure Management</h2>
+          <div class="chips">
+            <span class="chip">Diuretics for volume overload</span>
+            <span class="chip">Oxygen support</span>
+            <span class="chip">Careful preload handling</span>
+          </div>
+          <div class="callout.warn">
+            Avoid overly aggressive preload reduction in unstable right-sided failure.
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>PAH 1:</strong> confirm diagnosis with right heart catheterization.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAH 2:</strong> initiate pathway-targeted therapy (often ERA plus PDE-5 inhibitor).</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAH 3:</strong> escalate to prostacyclin therapy for severe/high-risk disease.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAH 4:</strong> monitor toxicity (especially liver function with bosentan).</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAH 5:</strong> avoid pregnancy with teratogenic regimens.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>CTEPH:</strong> anticoagulate and evaluate for surgery.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Pulmonary Hypertension Treatment Pathway Diagram Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ESC/ERS Guidelines for Pulmonary Hypertension</h3>
+              <a
+                href="https://www.escardio.org/Guidelines"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.escardio.org/Guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>Guideline Scope</h3>
+              <ul>
+                <li>Risk stratification</li>
+                <li>Initial combination therapy</li>
+                <li>Escalation to advanced treatment</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>7. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Most targeted PH drugs are for Group 1 PAH, not all PH groups.</div>
+            <div class="callout alert">ERAs are teratogenic.</div>
+            <div class="callout alert">Do not combine PDE-5 inhibitors with nitrates.</div>
+            <div class="callout alert">IV epoprostenol has survival benefit in severe PAH.</div>
+            <div class="callout alert">Riociguat has a key role in inoperable CTEPH.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>8. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>PH is defined hemodynamically (mPAP 20 mmHg or higher)</li>
+                <li>Five WHO groups, with targeted pharmacology centered on Group 1</li>
+                <li>Three treatment pathways: endothelin, NO-cGMP, prostacyclin</li>
+                <li>Combination therapy is common in PAH</li>
+                <li>Severe disease often requires prostacyclin escalation</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Pulmonary Hypertension</li>
+                <li>
+                  Subtopics: WHO groups, ERA, PDE-5 inhibitors, prostacyclin,
+                  CTEPH management
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

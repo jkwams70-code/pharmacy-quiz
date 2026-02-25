@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Valvular Heart Disease - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132741;
+        --muted: #546a82;
+        --line: #d7e3f0;
+        --brand: #8a1f4d;
+        --brand-soft: #fff0f7;
+        --teal-soft: #edf9f7;
+        --warn-soft: #fff6e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 86% 7%, #ffd9e9 0%, transparent 30%),
+          radial-gradient(circle at 10% 20%, #e0f3ff 0%, transparent 25%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #354a64;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff2f8;
+        color: #70213f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(
+          160deg,
+          #fffdfd 0%,
+          #fff2f8 56%,
+          #edf9f7 100%
+        );
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #8a1f4d;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #691a39;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0d4e2;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7c5a6a;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #671938;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #efcfdd;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6e1f40;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6d1f40;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff3f8;
+        color: #6e1f40;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6d1f40;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-vhd">1. What Is Valvular Heart Disease?</a>
+        <a href="#major-valve-disorders">2. Major Valve Disorders</a>
+        <a href="#aortic-stenosis">3. Aortic Stenosis</a>
+        <a href="#aortic-regurgitation">4. Aortic Regurgitation</a>
+        <a href="#mitral-regurgitation">5. Mitral Regurgitation</a>
+        <a href="#mitral-stenosis">6. Mitral Stenosis</a>
+        <a href="#prosthetic-valves">7. Prosthetic Valves</a>
+        <a href="#endocarditis-prophylaxis">8. Endocarditis Prophylaxis</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">9. Common Exam Traps</a>
+        <a href="#quick-revision">10. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Valvular Heart Disease</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide covering aortic and mitral
+            valve disease, drug support strategies, intervention timing, and
+            prosthetic valve anticoagulation.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Core Lesions</div>
+                <div class="v">Stenosis or regurgitation</div>
+              </div>
+              <div class="metric">
+                <div class="k">High-Yield Valves</div>
+                <div class="v">Aortic and mitral</div>
+              </div>
+              <div class="metric">
+                <div class="k">Severe AS Clue</div>
+                <div class="v">SAD triad</div>
+              </div>
+              <div class="metric">
+                <div class="k">Mechanical Valve</div>
+                <div class="v">Warfarin required</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Valve Lesion Pattern</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Valvular lesions diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="35" width="205" height="66" rx="10" fill="#fff2f8" stroke="#f0d3e0" />
+                <text x="42" y="60" fill="#7a2047" font-size="13" font-weight="700">Stenosis</text>
+                <text x="42" y="80" fill="#7b5b6a" font-size="12">Narrow orifice -> pressure overload</text>
+                <rect x="275" y="35" width="205" height="66" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="297" y="60" fill="#214766" font-size="13" font-weight="700">Regurgitation</text>
+                <text x="297" y="80" fill="#59748e" font-size="12">Backflow -> volume overload</text>
+                <path d="M225 68H275" stroke="#9bb6d2" stroke-width="2.2" marker-end="url(#arr)" />
+
+                <rect x="20" y="130" width="460" height="66" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="42" y="156" fill="#294761" font-size="13" font-weight="700">Definitive strategy in severe disease</text>
+                <text x="42" y="174" fill="#45637e" font-size="12">Surgical replacement/repair or transcatheter intervention (selected patients)</text>
+                <defs>
+                  <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#9bb6d2"></path>
+                  </marker>
+                </defs>
+              </svg>
+              <p>Medical therapy supports symptoms; intervention is definitive in advanced lesions.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-vhd">
+          <h2>1. What Is Valvular Heart Disease?</h2>
+          <p>
+            Valvular heart disease (VHD) is dysfunction of one or more cardiac
+            valves resulting in stenosis (narrowing) or regurgitation
+            (backflow). The most tested lesions involve aortic and mitral valves.
+          </p>
+          <div class="chips">
+            <span class="chip">Aortic valve</span>
+            <span class="chip">Mitral valve</span>
+            <span class="chip">Stenosis</span>
+            <span class="chip">Regurgitation</span>
+          </div>
+        </section>
+
+        <section class="section" id="major-valve-disorders">
+          <h2>2. Major Valve Disorders</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Aortic Lesions</h3>
+              <ul>
+                <li>Aortic stenosis (AS)</li>
+                <li>Aortic regurgitation (AR)</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Mitral Lesions</h3>
+              <ul>
+                <li>Mitral regurgitation (MR)</li>
+                <li>Mitral stenosis (MS)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="aortic-stenosis">
+          <h2>3. Aortic Stenosis (AS)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology</h3>
+              <ul>
+                <li>Calcific degeneration or congenital bicuspid valve</li>
+                <li>LV outflow obstruction and increased afterload</li>
+                <li>Left ventricular hypertrophy</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Classic Symptoms</h3>
+              <ul>
+                <li>Syncope</li>
+                <li>Angina</li>
+                <li>Dyspnea (heart failure)</li>
+              </ul>
+              <p><strong>SAD</strong> is the classic severe AS triad.</p>
+            </div>
+          </div>
+          <div class="callout warn">
+            Definitive treatment is valve replacement (surgical AVR or TAVR in
+            selected patients). Drugs are supportive and do not reverse severe AS.
+          </div>
+          <div class="callout alert">
+            Avoid aggressive vasodilation in severe aortic stenosis.
+          </div>
+        </section>
+
+        <section class="section" id="aortic-regurgitation">
+          <h2>4. Aortic Regurgitation (AR)</h2>
+          <p>
+            Incomplete valve closure causes diastolic backflow into the LV,
+            leading to chronic volume overload and LV dilation.
+          </p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Therapy</th>
+                <th>MOA</th>
+                <th>Side Effects</th>
+                <th>Contraindications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ACE inhibitors</td>
+                <td>Reduce angiotensin II and systemic vascular resistance (afterload reduction)</td>
+                <td>Cough, hyperkalemia, renal impairment</td>
+                <td>Pregnancy, bilateral renal artery stenosis</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout">
+            Definitive treatment is valve replacement when symptomatic or with LV dysfunction.
+          </div>
+        </section>
+
+        <section class="section" id="mitral-regurgitation">
+          <h2>5. Mitral Regurgitation (MR)</h2>
+          <p>
+            Backflow into the left atrium causes volume overload, left atrial
+            enlargement, and increased risk of atrial fibrillation.
+          </p>
+          <div class="stack">
+            <div class="box">
+              <h3>Management Priorities</h3>
+              <ul>
+                <li>Valve repair is preferred for suitable symptomatic patients</li>
+                <li>Afterload reduction support (e.g., ACE inhibitors)</li>
+                <li>Diuretics for congestion symptom control</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Loop Diuretics</h3>
+              <ul>
+                <li>MOA: inhibit Na-K-2Cl transporter in loop of Henle</li>
+                <li>Effect: reduce volume overload symptoms</li>
+                <li>Side effects: hypokalemia, dehydration, hypotension</li>
+                <li>Role: symptom control only (not definitive lesion correction)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="mitral-stenosis">
+          <h2>6. Mitral Stenosis (MS)</h2>
+          <p>
+            Often rheumatic in origin. Obstructed LV filling raises left atrial
+            pressure, causes pulmonary congestion, and increases AF/thromboembolic risk.
+          </p>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Beta Blockers</h3>
+              <ul>
+                <li>MOA: slow heart rate and increase diastolic filling time</li>
+                <li>Side effects: bradycardia, fatigue</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Anticoagulation (If AF)</h3>
+              <ul>
+                <li>Warfarin preferred in rheumatic MS with AF</li>
+                <li>Goal: reduce systemic embolic stroke risk</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="prosthetic-valves">
+          <h2>7. Prosthetic Valves</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Mechanical Valves</h3>
+              <ul>
+                <li>Durable option</li>
+                <li>Requires lifelong warfarin anticoagulation</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Bioprosthetic Valves</h3>
+              <ul>
+                <li>Less durable</li>
+                <li>Shorter anticoagulation duration in many cases</li>
+              </ul>
+            </div>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>MOA</th>
+                <th>Monitoring</th>
+                <th>Contraindications / Traps</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Warfarin (mechanical valve)</td>
+                <td>Inhibits vitamin K-dependent factors II, VII, IX, X</td>
+                <td>INR typically 2.5 to 3.5 (valve dependent)</td>
+                <td>Pregnancy contraindication; DOACs contraindicated in mechanical valves</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="endocarditis-prophylaxis">
+          <h2>8. Infective Endocarditis Prophylaxis</h2>
+          <div class="stack">
+            <div class="box">
+              <h3>Who Needs Prophylaxis?</h3>
+              <ul>
+                <li>Prosthetic valve patients</li>
+                <li>Prior infective endocarditis</li>
+                <li>Certain congenital heart diseases</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Procedure Context</h3>
+              <ul>
+                <li>Before high-risk dental procedures with gingival manipulation</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Amoxicillin (First-line)</h3>
+              <ul>
+                <li>MOA: beta-lactam, inhibits bacterial cell wall synthesis</li>
+                <li>Use: prophylaxis in high-risk groups only</li>
+                <li>Major side effects: hypersensitivity rash, GI upset</li>
+                <li>Contraindication: serious beta-lactam allergy</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Aortic stenosis:</strong> valve replacement is definitive.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Aortic regurgitation:</strong> afterload reduction support, surgery if symptomatic/LV dysfunction.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Mitral regurgitation:</strong> repair preferred; ACE inhibitor plus diuretic support.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Mitral stenosis:</strong> rate control and anticoagulate if AF present.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Mechanical valve:</strong> warfarin only (no DOACs).</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Valvular Disease Diagnostic and Treatment Flowchart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ACC/AHA Guideline: Valvular Heart Disease</h3>
+              <a
+                href="https://www.acc.org/guidelines"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>High-Yield Scope</h3>
+              <ul>
+                <li>Timing of surgery/intervention</li>
+                <li>TAVR candidacy principles</li>
+                <li>Prosthetic valve anticoagulation</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>9. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">DOACs are contraindicated in mechanical valves.</div>
+            <div class="callout alert">Severe AS: avoid aggressive vasodilation.</div>
+            <div class="callout alert">MS with AF requires anticoagulation.</div>
+            <div class="callout alert">SAD describes severe AS symptom triad.</div>
+            <div class="callout alert">Definitive severe valve disease treatment is intervention, not medical therapy alone.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>10. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Core Memory Anchors</h3>
+              <ul>
+                <li>AS: pressure overload</li>
+                <li>AR: volume overload</li>
+                <li>MR: left atrial dilation and AF tendency</li>
+                <li>MS: often rheumatic</li>
+                <li>Mechanical valves: lifelong warfarin</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Valvular Heart Disease</li>
+                <li>
+                  Subtopics: aortic stenosis, aortic regurgitation, mitral regurgitation, mitral stenosis, prosthetic valves, endocarditis prophylaxis
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

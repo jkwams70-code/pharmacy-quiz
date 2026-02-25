@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aortic Diseases - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #142740;
+        --muted: #546b84;
+        --line: #d7e3f0;
+        --brand: #8a2c1f;
+        --brand-soft: #fff2ef;
+        --teal-soft: #edf9f7;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #ffdcd4 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e2f4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #374e69;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff4f1;
+        color: #6e261c;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fffefe 0%, #fff2ef 56%, #edf9f7 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #8a2c1f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #6d231a;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0d6d1;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7d605a;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #6b231a;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #efd4cf;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6c241b;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6d231a;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff4f1;
+        color: #6d241b;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6d241b;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-are-aortic-diseases">1. What Are Aortic Diseases?</a>
+        <a href="#aortic-dissection">2. Aortic Dissection</a>
+        <a href="#aortic-aneurysm">3. Aortic Aneurysm</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">4. Common Exam Traps</a>
+        <a href="#quick-revision">5. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Aortic Diseases</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for aortic dissection,
+            thoracic and abdominal aneurysms, emergency drug sequence, and
+            intervention thresholds.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Emergency Axis</div>
+                <div class="v">Aortic dissection</div>
+              </div>
+              <div class="metric">
+                <div class="k">Drug Sequence</div>
+                <div class="v">Beta blocker before vasodilator</div>
+              </div>
+              <div class="metric">
+                <div class="k">Type A</div>
+                <div class="v">Surgical emergency</div>
+              </div>
+              <div class="metric">
+                <div class="k">AAA Threshold</div>
+                <div class="v">About 5.5 cm</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Dissection and Aneurysm Framework</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Aortic disease diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="220" height="74" rx="10" fill="#fff4f1" stroke="#f0d8d2" />
+                <text x="40" y="55" fill="#6d231a" font-size="13" font-weight="700">Aortic dissection</text>
+                <text x="40" y="73" fill="#7e5b56" font-size="12">Intimal tear -> false lumen</text>
+                <text x="40" y="89" fill="#7e5b56" font-size="12">High acute mortality risk</text>
+
+                <rect x="260" y="30" width="220" height="74" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="280" y="55" fill="#1f4467" font-size="13" font-weight="700">Aortic aneurysm</text>
+                <text x="280" y="73" fill="#5f7488" font-size="12">Progressive dilation</text>
+                <text x="280" y="89" fill="#5f7488" font-size="12">Rupture risk rises with size</text>
+
+                <rect x="20" y="128" width="460" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="250" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Initial dissection protocol: HR control first
+                </text>
+                <text x="250" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  IV beta blocker -> target HR under 60 -> add vasodilator only if BP remains high
+                </text>
+              </svg>
+              <p>Correct treatment sequence is critical in the first minutes.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-are-aortic-diseases">
+          <h2>1. What Are Aortic Diseases?</h2>
+          <p>
+            Major exam-relevant aortic conditions include aortic dissection,
+            thoracic aortic aneurysm (TAA), and abdominal aortic aneurysm (AAA).
+            All carry significant mortality risk if not recognized and managed early.
+          </p>
+          <div class="chips">
+            <span class="chip">Aortic dissection</span>
+            <span class="chip">TAA</span>
+            <span class="chip">AAA</span>
+          </div>
+        </section>
+
+        <section class="section" id="aortic-dissection">
+          <h2>2. Aortic Dissection</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology and Presentation</h3>
+              <ul>
+                <li>Intimal tear allows blood into the media, creating a false lumen</li>
+                <li>May rupture or occlude branch vessels</li>
+                <li>Classic pain: sudden, tearing chest/back pain</li>
+                <li>Pulse deficits and inter-arm BP difference may be present</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Classification</h3>
+              <ul>
+                <li>Type A: involves ascending aorta, surgical emergency</li>
+                <li>Type B: no ascending involvement, often initially medical if uncomplicated</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            Goal of initial treatment: reduce aortic shear stress immediately.
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th>Drug/Class</th>
+                <th>MOA</th>
+                <th>Side Effects</th>
+                <th>Contraindications / Rules</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1 (first)</td>
+                <td>IV beta blockers (esmolol, labetalol)</td>
+                <td>Beta-1 blockade lowers HR and contractility, reducing wall shear force</td>
+                <td>Bradycardia, hypotension, fatigue</td>
+                <td>Severe bradycardia, cardiogenic shock; target HR under 60 bpm</td>
+              </tr>
+              <tr>
+                <td>2 (if BP still high)</td>
+                <td>Nitroprusside</td>
+                <td>Nitric oxide donor causing arterial and venous dilation, reducing afterload</td>
+                <td>Hypotension, cyanide toxicity at high exposure</td>
+                <td>Never use before beta blockade (reflex tachycardia worsens dissection)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>Definitive Treatment</h3>
+              <ul>
+                <li>Type A: immediate surgery</li>
+                <li>Type B: medical management unless complicated</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Complicated Type B Triggers</h3>
+              <ul>
+                <li>Malperfusion</li>
+                <li>Persistent pain or expansion</li>
+                <li>Impending rupture/hemodynamic instability</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="aortic-aneurysm">
+          <h2>3. Aortic Aneurysm (AAA and TAA)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>AAA Overview</h3>
+              <ul>
+                <li>Most common aneurysm phenotype in exams</li>
+                <li>Risk factors: smoking, male sex, age over 65</li>
+                <li>Screening: one-time ultrasound in men age 65-75 who ever smoked</li>
+                <li>Management: monitor small aneurysms, repair large aneurysms</li>
+                <li>Typical repair threshold: around 5.5 cm</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>TAA Overview</h3>
+              <ul>
+                <li>Often linked to hypertension or genetic syndromes (e.g., Marfan)</li>
+                <li>Goal: reduce aortic wall stress and progression</li>
+                <li>Beta blockers reduce HR and shear stress</li>
+                <li>ARBs (e.g., losartan) used in Marfan-related aortopathy</li>
+              </ul>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Medical Agent</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / Cautions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Beta blockers</td>
+                <td>Reduce heart rate, contractility, and aortic wall shear stress</td>
+                <td>Bradycardia, fatigue, hypotension</td>
+                <td>Severe bradycardia, cardiogenic shock</td>
+              </tr>
+              <tr>
+                <td>ARBs (losartan)</td>
+                <td>Block angiotensin II receptor, may reduce progressive aortic dilation in Marfan syndrome</td>
+                <td>Hyperkalemia, dizziness, renal dysfunction</td>
+                <td>Pregnancy, bilateral renal artery stenosis</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Aortic dissection 1:</strong> start IV beta blocker immediately.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Aortic dissection 2:</strong> reduce HR to under 60 bpm.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Aortic dissection 3:</strong> add vasodilator only if BP remains elevated.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Aortic dissection 4:</strong> Type A goes to urgent surgery.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Aneurysm strategy:</strong> monitor size, control BP, repair once threshold/high risk reached.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Aortic Dissection Emergency Algorithm and Aneurysm Monitoring Chart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ACC/AHA Guideline for Diagnosis and Management of Aortic Disease</h3>
+              <a href="https://www.acc.org/guidelines" target="_blank" rel="noopener">
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>Guideline Focus Areas</h3>
+              <ul>
+                <li>Dissection emergency protocol</li>
+                <li>Blood pressure and heart rate targets</li>
+                <li>Aneurysm repair thresholds</li>
+                <li>Genetic syndrome management</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>4. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Always start beta blocker first in aortic dissection.</div>
+            <div class="callout alert">Do not give vasodilator alone before rate control.</div>
+            <div class="callout alert">Type A dissection is a surgical emergency.</div>
+            <div class="callout alert">AAA screening target: male ever-smokers age 65-75.</div>
+            <div class="callout alert">AAA repair threshold is typically around 5.5 cm.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>5. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Dissection: sudden tearing pain and hemodynamic emergency</li>
+                <li>Control HR before BP vasodilation</li>
+                <li>Aneurysm: progressive dilation with size-dependent rupture risk</li>
+                <li>Beta blockers lower aortic wall stress</li>
+                <li>Type A dissection requires urgent surgery</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Aortic Diseases</li>
+                <li>
+                  Subtopics: aortic dissection, AAA, TAA, beta blocker emergency use,
+                  surgical thresholds
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

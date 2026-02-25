@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Osteoporosis and Bone Metabolism - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #6a4b0f;
+        --brand-soft: #fff7ea;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #f6ebcc 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e9f4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff9ef;
+        color: #6a4b0f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff9ef 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #6a4b0f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #563c0c;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #efe4cc;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7a6c56;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #563c0c;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #efe4cc;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #563c0c;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #563c0c;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff9ef;
+        color: #563c0c;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #563c0c;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#definition">1. Definition</a>
+        <a href="#risk-factors">2. Risk Factors</a>
+        <a href="#treatment-overview">3. Treatment Overview</a>
+        <a href="#calcium-vitamin-d">4. Calcium and Vitamin D</a>
+        <a href="#bisphosphonates">5. Bisphosphonates</a>
+        <a href="#denosumab">6. Denosumab</a>
+        <a href="#teriparatide">7. Teriparatide</a>
+        <a href="#romosozumab">8. Romosozumab</a>
+        <a href="#serms">9. SERMs</a>
+        <a href="#glucocorticoid-induced">10. Glucocorticoid-Induced Osteoporosis</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">11. Common Exam Traps</a>
+        <a href="#quick-revision">12. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Endocrinology</span>
+          <h1>Osteoporosis and Bone Metabolism</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide covering antiresorptive and anabolic therapies,
+            dosing regimens, administration rules, and fracture-risk strategy.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Diagnostic Anchor</div>
+                <div class="v">T-score -2.5 or lower</div>
+              </div>
+              <div class="metric">
+                <div class="k">First-Line Class</div>
+                <div class="v">Bisphosphonates</div>
+              </div>
+              <div class="metric">
+                <div class="k">Denosumab Schedule</div>
+                <div class="v">Every 6 months</div>
+              </div>
+              <div class="metric">
+                <div class="k">Teriparatide Limit</div>
+                <div class="v">2 years lifetime</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Bone Therapy Classes at a Glance</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Osteoporosis treatment map">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="146" height="72" rx="10" fill="#fff9ef" stroke="#efe4cc" />
+                <text x="93" y="54" text-anchor="middle" font-size="13" fill="#563c0c" font-weight="700">Antiresorptive</text>
+                <text x="93" y="72" text-anchor="middle" font-size="12" fill="#7a6c56">bisphosphonate</text>
+                <text x="93" y="88" text-anchor="middle" font-size="12" fill="#7a6c56">denosumab, SERM</text>
+
+                <rect x="176" y="30" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Anabolic</text>
+                <text x="249" y="72" text-anchor="middle" font-size="12" fill="#5f7488">teriparatide</text>
+                <text x="249" y="88" text-anchor="middle" font-size="12" fill="#5f7488">romosozumab</text>
+
+                <rect x="332" y="30" width="146" height="72" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+                <text x="405" y="54" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">Foundation</text>
+                <text x="405" y="72" text-anchor="middle" font-size="12" fill="#5b7a74">calcium</text>
+                <text x="405" y="88" text-anchor="middle" font-size="12" fill="#5b7a74">vitamin D</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Regimen choice is fracture-risk and tolerance based
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  Oral adherence, renal function, and prior fractures guide escalation
+                </text>
+              </svg>
+              <p>Use antiresorptive or anabolic strategy based on risk severity and contraindications.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="definition">
+          <h2>1. Definition</h2>
+          <p>
+            Osteoporosis is decreased bone mass with microarchitectural deterioration,
+            causing increased fracture risk. Diagnostic anchors include T-score -2.5 or lower
+            or a fragility fracture.
+          </p>
+        </section>
+
+        <section class="section" id="risk-factors">
+          <h2>2. Risk Factors</h2>
+          <div class="chips">
+            <span class="chip">Postmenopausal state</span>
+            <span class="chip">Chronic glucocorticoids</span>
+            <span class="chip">Smoking and alcohol</span>
+            <span class="chip">Low BMI</span>
+            <span class="chip">CKD</span>
+            <span class="chip">Hypogonadism</span>
+          </div>
+        </section>
+
+        <section class="section" id="treatment-overview">
+          <h2>3. Treatment Overview</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>First-Line for Most</h3>
+              <ul>
+                <li>Bisphosphonates</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Other Options</h3>
+              <ul>
+                <li>Denosumab</li>
+                <li>Teriparatide</li>
+                <li>Romosozumab</li>
+                <li>SERMs or hormone therapy in selected patients</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="calcium-vitamin-d">
+          <h2>4. Calcium and Vitamin D</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Supplement</th>
+                <th>Dose Regimen</th>
+                <th>MOA / Role</th>
+                <th>Side Effects</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Calcium</td>
+                <td>1000-1200 mg elemental calcium daily, split if over 500 mg per dose</td>
+                <td>Provides mineral substrate for bone maintenance</td>
+                <td>Constipation, kidney stone risk at excessive dosing</td>
+              </tr>
+              <tr>
+                <td>Vitamin D (cholecalciferol)</td>
+                <td>800-1000 IU daily; deficiency repletion 50,000 IU weekly for 6-8 weeks</td>
+                <td>Increases calcium absorption and supports mineralization</td>
+                <td>Hypercalcemia with excessive intake</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="bisphosphonates">
+          <h2>5. Bisphosphonates (First-Line)</h2>
+          <p>MOA for class: bind bone surface and inhibit osteoclast-mediated bone resorption.</p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Dose Regimen</th>
+                <th>Key Administration / Use</th>
+                <th>Side Effects</th>
+                <th>Contraindications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Alendronate</td>
+                <td>70 mg orally weekly or 10 mg daily</td>
+                <td>Morning empty stomach, full glass water, remain upright 30 minutes</td>
+                <td>Esophagitis, rare jaw osteonecrosis, atypical femur fracture with prolonged use</td>
+                <td>Esophageal motility disorders, inability to sit upright, hypocalcemia</td>
+              </tr>
+              <tr>
+                <td>Zoledronic acid</td>
+                <td>5 mg IV once yearly</td>
+                <td>Useful when oral therapy is not tolerated</td>
+                <td>Acute phase flu-like reaction, hypocalcemia</td>
+                <td>Severe renal impairment, hypocalcemia</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="denosumab">
+          <h2>6. Denosumab</h2>
+          <div class="box stack">
+            <ul>
+              <li>MOA: monoclonal antibody against RANKL, suppressing osteoclast activation</li>
+              <li>Dose regimen: 60 mg subcutaneous every 6 months</li>
+              <li>Side effects: hypocalcemia, skin infections, rare jaw osteonecrosis</li>
+              <li>Contraindication: hypocalcemia</li>
+              <li>High-yield caution: abrupt discontinuation can trigger rebound vertebral fractures</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="teriparatide">
+          <h2>7. Teriparatide</h2>
+          <div class="box stack">
+            <ul>
+              <li>MOA: recombinant PTH analog with intermittent anabolic stimulation of bone formation</li>
+              <li>Dose regimen: 20 mcg subcutaneous daily</li>
+              <li>Maximum duration: 2 years lifetime</li>
+              <li>Side effects: hypercalcemia, dizziness</li>
+              <li>Contraindications: bone malignancy risk states, Paget disease</li>
+              <li>Use context: severe osteoporosis or multiple fragility fractures</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="romosozumab">
+          <h2>8. Romosozumab</h2>
+          <div class="box stack">
+            <ul>
+              <li>MOA: sclerostin inhibition increases bone formation and decreases resorption</li>
+              <li>Dose regimen: 210 mg subcutaneous monthly</li>
+              <li>Maximum duration: 12 months</li>
+              <li>Side effect concern: possible increased cardiovascular event risk</li>
+              <li>Contraindication: recent myocardial infarction or stroke</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="serms">
+          <h2>9. SERMs (Raloxifene)</h2>
+          <div class="box stack">
+            <ul>
+              <li>MOA: selective estrogen receptor modulation reduces bone resorption</li>
+              <li>Dose regimen: 60 mg orally daily</li>
+              <li>Side effects: hot flashes, venous thromboembolism risk</li>
+              <li>Contraindication: prior thromboembolic disease</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="glucocorticoid-induced">
+          <h2>10. Glucocorticoid-Induced Osteoporosis</h2>
+          <p>
+            Consider treatment when prednisone-equivalent dose is 5 mg/day or more
+            for at least 3 months. Preferred initial therapy is often a bisphosphonate.
+          </p>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>All patients:</strong> ensure calcium and vitamin D adequacy.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>First-line:</strong> weekly oral alendronate when tolerated.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Oral intolerance:</strong> consider yearly zoledronic acid or denosumab every 6 months.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Very high fracture risk:</strong> use anabolic strategy such as teriparatide.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Osteoporosis Treatment Algorithm Diagram Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>National Osteoporosis Foundation</h3>
+              <a href="https://www.nof.org" target="_blank" rel="noopener">
+                https://www.nof.org
+              </a>
+            </div>
+            <div class="box">
+              <h3>Endocrine Society Guidelines</h3>
+              <a href="https://www.endocrine.org" target="_blank" rel="noopener">
+                https://www.endocrine.org
+              </a>
+            </div>
+          </div>
+          <div class="callout">
+            These guidelines cover initiation thresholds, therapy selection, duration, and drug-holiday strategy.
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>11. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Bisphosphonates remain first-line in many patients.</div>
+            <div class="callout alert">Oral bisphosphonate administration requires remaining upright for 30 minutes.</div>
+            <div class="callout alert">Stopping denosumab abruptly can cause rebound vertebral fracture risk.</div>
+            <div class="callout alert">Teriparatide has a 2-year lifetime treatment limit.</div>
+            <div class="callout alert">Raloxifene increases venous thromboembolism risk.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>12. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>T-score -2.5 or lower indicates osteoporosis</li>
+                <li>Weekly alendronate is a common first-line regimen</li>
+                <li>Denosumab is given every 6 months</li>
+                <li>Teriparatide is bone-anabolic therapy</li>
+                <li>Calcium plus vitamin D is foundational for all regimens</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Osteoporosis and Bone Metabolism</li>
+                <li>
+                  Subtopics: bisphosphonates, denosumab, teriparatide, romosozumab,
+                  glucocorticoid-induced osteoporosis
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

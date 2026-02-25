@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Congenital Heart Disease - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #0f5b9a;
+        --brand-soft: #edf5ff;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #d9e8ff 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e7fbf4 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #eff6ff;
+        color: #0f5b9a;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #eff6ff 56%, #eefaf6 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #0f5b9a;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #0d4f86;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #d3e4f7;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #60748b;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #0d4f86;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #d4e5f8;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #0d4f86;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #0d4f86;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #f1f7ff;
+        color: #0d4f86;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #0d4f86;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-chd">1. What Is Congenital Heart Disease?</a>
+        <a href="#left-to-right-shunts">2. Left-to-Right Shunts</a>
+        <a href="#pda">3. Patent Ductus Arteriosus</a>
+        <a href="#keep-ductus-open">4. Keeping Ductus Open</a>
+        <a href="#cyanotic-defects">5. Cyanotic Defects</a>
+        <a href="#eisenmenger">6. Eisenmenger Syndrome</a>
+        <a href="#endocarditis-prophylaxis">7. Endocarditis Prophylaxis</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">8. Common Exam Traps</a>
+        <a href="#quick-revision">9. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Congenital Heart Disease</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for shunt physiology, ductus arteriosus
+            pharmacology, cyanotic lesion stabilization, and Eisenmenger progression.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Core Concept</div>
+                <div class="v">Structural defect at birth</div>
+              </div>
+              <div class="metric">
+                <div class="k">Shunt Direction</div>
+                <div class="v">Left-to-right vs right-to-left</div>
+              </div>
+              <div class="metric">
+                <div class="k">PDA Strategy</div>
+                <div class="v">Close or keep open by indication</div>
+              </div>
+              <div class="metric">
+                <div class="k">Cyanosis Marker</div>
+                <div class="v">Right-to-left flow</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Ductus Arteriosus Decision Axis</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="PDA management diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="220" height="72" rx="10" fill="#f1f7ff" stroke="#d3e4f7" />
+                <text x="40" y="55" fill="#0d4f86" font-size="13" font-weight="700">Need PDA closed</text>
+                <text x="40" y="73" fill="#61788f" font-size="12">Indomethacin or ibuprofen</text>
+                <text x="40" y="89" fill="#61788f" font-size="12">lower prostaglandin effect</text>
+
+                <rect x="260" y="30" width="220" height="72" rx="10" fill="#eefaf6" stroke="#d4ece4" />
+                <text x="280" y="55" fill="#1c564f" font-size="13" font-weight="700">Need PDA open</text>
+                <text x="280" y="73" fill="#5b7a74" font-size="12">Alprostadil (PGE1)</text>
+                <text x="280" y="89" fill="#5b7a74" font-size="12">maintains ductal patency</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Long-standing left-to-right shunt can reverse
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  Pulmonary hypertension progression leads to Eisenmenger physiology
+                </text>
+              </svg>
+              <p>Same structure, opposite pharmacologic goals depending on lesion context.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-chd">
+          <h2>1. What Is Congenital Heart Disease (CHD)?</h2>
+          <p>
+            Congenital heart disease is a structural cardiac defect present at birth.
+            High-yield exam focus includes shunt direction, ductus arteriosus management,
+            and stabilization of cyanotic neonatal lesions.
+          </p>
+        </section>
+
+        <section class="section" id="left-to-right-shunts">
+          <h2>2. Major Left-to-Right Shunts</h2>
+          <div class="grid-2">
+            <div class="box">
+              <ul>
+                <li>Atrial septal defect (ASD)</li>
+                <li>Ventricular septal defect (VSD)</li>
+                <li>Patent ductus arteriosus (PDA)</li>
+              </ul>
+            </div>
+            <div class="box">
+              <ul>
+                <li>Increase pulmonary blood flow</li>
+                <li>Can progress to pulmonary hypertension</li>
+                <li>Late reversal risk: Eisenmenger syndrome</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="pda">
+          <h2>3. Patent Ductus Arteriosus (PDA)</h2>
+          <p>
+            The ductus arteriosus connects pulmonary artery to aorta in fetal life
+            and should close after birth. Persistent patency produces abnormal shunt flow.
+          </p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Closure Drug</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Indomethacin</td>
+                <td>NSAID COX inhibition lowers prostaglandin levels and promotes ductal closure</td>
+                <td>Renal impairment, GI bleeding, NEC risk in neonates</td>
+                <td>Renal failure, thrombocytopenia, high bleeding risk</td>
+              </tr>
+              <tr>
+                <td>Ibuprofen</td>
+                <td>NSAID with similar prostaglandin-lowering closure mechanism</td>
+                <td>Renal dysfunction, GI effects, bleeding risk</td>
+                <td>Renal impairment and major bleeding risk states</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="keep-ductus-open">
+          <h2>4. Keeping Ductus Open (Life-Saving in Selected Defects)</h2>
+          <p>
+            In some cyanotic lesions, maintaining ductal patency is required until surgery
+            (for example, transposition of the great arteries).
+          </p>
+          <div class="box stack">
+            <h3>Prostaglandin E1 (Alprostadil)</h3>
+            <ul>
+              <li>MOA: relaxes ductal smooth muscle and keeps the ductus arteriosus open</li>
+              <li>Major side effects: apnea, hypotension, fever</li>
+              <li>Use: neonatal stabilization bridge to definitive intervention</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="cyanotic-defects">
+          <h2>5. Major Cyanotic Defects (Right-to-Left Shunts)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <ul>
+                <li>Tetralogy of Fallot</li>
+                <li>Transposition of the great arteries</li>
+                <li>Tricuspid atresia</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Tetralogy of Fallot Components</h3>
+              <ul>
+                <li>VSD</li>
+                <li>Pulmonary stenosis</li>
+                <li>Overriding aorta</li>
+                <li>RV hypertrophy</li>
+              </ul>
+            </div>
+          </div>
+          <div class="box stack">
+            <h3>Hypercyanotic (Tet) Spell Management</h3>
+            <ul>
+              <li>Knee-to-chest positioning</li>
+              <li>Supplemental oxygen</li>
+              <li>Morphine</li>
+            </ul>
+            <p>
+              Morphine reduces sympathetic outflow and infundibular spasm.
+              Monitor for respiratory depression and hypotension.
+            </p>
+          </div>
+        </section>
+
+        <section class="section" id="eisenmenger">
+          <h2>6. Eisenmenger Syndrome</h2>
+          <p>
+            Long-standing left-to-right shunt may cause progressive pulmonary vascular disease,
+            eventually reversing to right-to-left flow with cyanosis.
+          </p>
+          <div class="chips">
+            <span class="chip">Pulmonary hypertension management</span>
+            <span class="chip">Avoid pregnancy</span>
+          </div>
+        </section>
+
+        <section class="section" id="endocarditis-prophylaxis">
+          <h2>7. Endocarditis Prophylaxis in CHD</h2>
+          <div class="box">
+            <ul>
+              <li>High-risk defects may need prophylaxis before selected dental procedures</li>
+              <li>Standard agent: amoxicillin</li>
+              <li>MOA: beta-lactam inhibition of bacterial cell wall synthesis</li>
+              <li>Contraindication: serious beta-lactam allergy</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>PDA closure:</strong> indomethacin or ibuprofen.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Need ductus open:</strong> start prostaglandin E1.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Tet spell:</strong> knee-to-chest, oxygen, morphine.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Eisenmenger:</strong> manage pulmonary hypertension and avoid pregnancy.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Congenital Heart Defect Classification and PDA Management Diagram Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>AHA/ACC Adult Congenital Heart Disease Guidelines</h3>
+              <a href="https://www.acc.org/guidelines" target="_blank" rel="noopener">
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>Guideline Scope</h3>
+              <ul>
+                <li>PDA management and stabilization</li>
+                <li>Cyanotic defect strategy and surgical timing</li>
+                <li>Endocarditis prophylaxis indications</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>8. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Indomethacin closes PDA.</div>
+            <div class="callout alert">Prostaglandin E1 keeps PDA open.</div>
+            <div class="callout alert">Tet spells: oxygen plus morphine is a classic acute step.</div>
+            <div class="callout alert">Untreated long-standing shunt can evolve to Eisenmenger.</div>
+            <div class="callout alert">Cyanosis generally indicates right-to-left shunt physiology.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>9. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Left-to-right shunts increase pulmonary flow and volume load</li>
+                <li>Right-to-left shunts cause cyanosis</li>
+                <li>PDA strategy depends on lesion goals</li>
+                <li>Prostaglandin keeps ductus open, NSAIDs promote closure</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Congenital Heart Disease</li>
+                <li>
+                  Subtopics: PDA, tetralogy of Fallot, cyanotic defects,
+                  prostaglandin use, Eisenmenger
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

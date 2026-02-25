@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dyslipidemia - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f7fbff;
+        --surface: #ffffff;
+        --ink: #12243c;
+        --muted: #55697f;
+        --line: #d7e3f0;
+        --brand: #0f3f7f;
+        --brand-soft: #e9f1ff;
+        --teal-soft: #eefbf8;
+        --warn-soft: #fff6e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #d9e9ff 0%, transparent 30%),
+          radial-gradient(circle at 7% 22%, #dff6ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #354a64;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #edf4ff;
+        color: #1d4670;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fcfdff 0%, #f1f6ff 58%, #edf9f7 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #0d3258;
+        font-size: clamp(1.45rem, 2.4vw, 2.08rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #cfe0f6;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #607792;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #173d64;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #d2e3f8;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #1b466f;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual img {
+        width: 100%;
+        height: 185px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid #e1ebf7;
+        background: #f8fbff;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #104172;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #f2f7ff;
+        color: #1a456e;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #0f3f7f;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram-card svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-dyslipidemia">1. What Is Dyslipidemia?</a>
+        <a href="#pathophysiology">2. Pathophysiology</a>
+        <a href="#risk-assessment">3. Risk Assessment</a>
+        <a href="#first-line-therapy">4. First-Line Therapy</a>
+        <a href="#non-statin-therapy">5. Non-Statin Therapy</a>
+        <a href="#hypertriglyceridemia">6. Hypertriglyceridemia</a>
+        <a href="#treatment-strategy-summary">7. Treatment Strategy Summary</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">8. Common Exam Traps</a>
+        <a href="#quick-revision">9. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Dyslipidemia</h1>
+          <p class="subtitle">
+            Clinical Overview and Exam Mastery Guide covering LDL-centered risk
+            reduction, statin-first treatment, non-statin escalation, and
+            hypertriglyceridemia strategy.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Primary Target</div>
+                <div class="v">LDL cholesterol</div>
+              </div>
+              <div class="metric">
+                <div class="k">First-Line</div>
+                <div class="v">Statin therapy</div>
+              </div>
+              <div class="metric">
+                <div class="k">Escalation</div>
+                <div class="v">Ezetimibe then PCSK9</div>
+              </div>
+              <div class="metric">
+                <div class="k">TG Warning</div>
+                <div class="v">At least 500 mg/dL risk</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Atherosclerosis Context</h3>
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/3/37/Blausen_0015_Atheroma.png"
+                alt="Atherosclerotic plaque within artery"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
+              <p>LDL-driven plaque formation underpins dyslipidemia-related ASCVD risk.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-dyslipidemia">
+          <h2>1. What Is Dyslipidemia?</h2>
+          <p>
+            Dyslipidemia refers to abnormal lipid levels that increase
+            atherosclerotic cardiovascular disease risk.
+          </p>
+          <div class="chips">
+            <span class="chip">LDL (bad cholesterol)</span>
+            <span class="chip">HDL (good cholesterol)</span>
+            <span class="chip">Triglycerides</span>
+          </div>
+          <div class="callout">LDL is the primary treatment target.</div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>2. Pathophysiology</h2>
+          <div class="flow">
+            <div class="step"><strong>Step 1:</strong> Excess LDL penetrates arterial wall</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> LDL oxidation and inflammation</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Atherosclerotic plaque formation</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 4:</strong> Plaque rupture may lead to ACS</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">LDL to ASCVD Pathway Diagram</p>
+            <svg viewBox="0 0 930 250" aria-label="Dyslipidemia pathophysiology diagram">
+              <rect x="24" y="96" width="220" height="58" rx="11" fill="#ffffff" stroke="#d8e4f2"></rect>
+              <text x="42" y="121" fill="#1f3f5f" font-size="14" font-weight="700">Elevated LDL</text>
+              <text x="42" y="140" fill="#5a7690" font-size="12">Retention in intima</text>
+
+              <line x1="244" y1="125" x2="350" y2="125" stroke="#5f7da1" stroke-width="2"></line>
+              <polygon points="350,125 340,119 340,131" fill="#5f7da1"></polygon>
+
+              <rect x="350" y="96" width="224" height="58" rx="11" fill="#eef7ff" stroke="#cfe2f6"></rect>
+              <text x="368" y="121" fill="#19446e" font-size="14" font-weight="700">Oxidation + inflammation</text>
+              <text x="368" y="140" fill="#5a7690" font-size="12">Foam cell cascade</text>
+
+              <line x1="574" y1="125" x2="684" y2="125" stroke="#5f7da1" stroke-width="2"></line>
+              <polygon points="684,125 674,119 674,131" fill="#5f7da1"></polygon>
+
+              <rect x="684" y="96" width="222" height="58" rx="11" fill="#fff4f3" stroke="#f0d0cd"></rect>
+              <text x="704" y="121" fill="#6f1f1f" font-size="14" font-weight="700">Atherosclerotic plaque</text>
+              <text x="704" y="140" fill="#7e5d5d" font-size="12">Progressive lumen narrowing</text>
+
+              <line x1="795" y1="154" x2="795" y2="205" stroke="#b11f1f" stroke-width="2"></line>
+              <polygon points="795,205 789,195 801,195" fill="#b11f1f"></polygon>
+
+              <rect x="688" y="205" width="218" height="44" rx="10" fill="#fff0f0" stroke="#f2cbcb"></rect>
+              <text x="706" y="231" fill="#8b1a1a" font-size="13" font-weight="700">Plaque rupture -> ACS risk</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section" id="risk-assessment">
+          <h2>3. Risk Assessment</h2>
+          <p>Use ASCVD Risk Estimator to guide statin need and treatment intensity.</p>
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>Assess</h3>
+              <ul>
+                <li>10-year ASCVD risk</li>
+                <li>Need for statin therapy</li>
+                <li>Intensity of treatment</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>High-Risk Groups</h3>
+              <ul>
+                <li>Clinical ASCVD</li>
+                <li>LDL at least 190 mg/dL</li>
+                <li>Diabetes age 40 to 75</li>
+                <li>Elevated 10-year ASCVD risk</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="first-line-therapy">
+          <h2>4. First-Line Therapy: Statins</h2>
+          <p>Statins are the cornerstone of dyslipidemia treatment.</p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Intensity</th>
+                <th>Common Regimens</th>
+                <th>Typical Use</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>High-intensity</td>
+                <td>Atorvastatin 40 to 80 mg, Rosuvastatin 20 to 40 mg</td>
+                <td>Very high risk, LDL at least 190, secondary prevention</td>
+              </tr>
+              <tr>
+                <td>Moderate-intensity</td>
+                <td>Lower atorvastatin/rosuvastatin doses, simvastatin, pravastatin</td>
+                <td>Diabetes, intermediate risk, statin initiation in many primary settings</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="box stack">
+            <h3>A. Statins</h3>
+            <ul>
+              <li>MOA: inhibit HMG-CoA reductase and lower hepatic cholesterol synthesis</li>
+              <li>Increase LDL receptor expression and LDL clearance</li>
+              <li>Benefits: lower LDL, reduce cardiovascular events, reduce mortality</li>
+              <li>Major side effects: myopathy, rare rhabdomyolysis, elevated liver enzymes, rare new-onset diabetes</li>
+              <li>Contraindications: active liver disease, pregnancy, breastfeeding</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="non-statin-therapy">
+          <h2>5. Non-Statin Therapy</h2>
+          <p>Use when statin intolerance exists, LDL remains above goal, or risk is very high.</p>
+
+          <div class="stack">
+            <div class="box">
+              <h3>B. Ezetimibe</h3>
+              <ul>
+                <li>MOA: inhibits NPC1L1 transporter and lowers intestinal cholesterol absorption</li>
+                <li>Benefit: LDL reduction, especially as statin add-on</li>
+                <li>Side effects: usually mild GI symptoms</li>
+                <li>Contraindication: severe liver disease when combined with statin</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>C. PCSK9 Inhibitors (Alirocumab, Evolocumab)</h3>
+              <ul>
+                <li>MOA: inhibit PCSK9 and prevent LDL receptor degradation</li>
+                <li>Benefits: large LDL reduction and lower CV events</li>
+                <li>Side effects: injection-site reactions, flu-like symptoms</li>
+                <li>Contraindication: hypersensitivity</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>D. Bempedoic Acid</h3>
+              <ul>
+                <li>MOA: ATP-citrate lyase inhibition upstream of statins</li>
+                <li>Benefit: LDL lowering, useful in statin intolerance</li>
+                <li>Side effects: hyperuricemia, rare tendon rupture</li>
+                <li>Contraindication/caution: gout history</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>E. Fibrates (Fenofibrate, Gemfibrozil)</h3>
+              <ul>
+                <li>MOA: PPAR-alpha activation increases lipoprotein lipase activity</li>
+                <li>Primary use: severe hypertriglyceridemia</li>
+                <li>Side effects: myopathy risk (higher with statins), gallstones</li>
+                <li>Contraindications: severe liver disease, severe renal impairment</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>F. Omega-3 Fatty Acids</h3>
+              <ul>
+                <li>MOA: reduce hepatic triglyceride synthesis</li>
+                <li>Use: high triglycerides</li>
+                <li>Side effects: GI upset, fishy taste</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="hypertriglyceridemia">
+          <h2>6. Hypertriglyceridemia</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>When TG at least 500 mg/dL</h3>
+              <ul>
+                <li>Pancreatitis risk increases</li>
+                <li>Treat with fibrates or omega-3 therapy</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>ASCVD Context</h3>
+              <ul>
+                <li>Statins still required for overall ASCVD prevention</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="treatment-strategy-summary">
+          <h2>7. Treatment Strategy Summary</h2>
+          <div class="flow">
+            <div class="step"><strong>Step 1:</strong> Start high-intensity statin for high LDL/high risk</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> Reassess lipid panel in 4 to 12 weeks</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Add ezetimibe if LDL remains above goal</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 4:</strong> Add PCSK9 inhibitor for very high-risk persistent elevation</div>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>1:</strong> Assess ASCVD risk profile</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>2:</strong> Start correct statin intensity</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>3:</strong> Recheck lipids in 4 to 12 weeks</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>4:</strong> Add ezetimibe if LDL not controlled</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>5:</strong> Add PCSK9 inhibitor for very high-risk persistent LDL elevation</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>6:</strong> Treat triglycerides when at least 500 to prevent pancreatitis</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>[Insert Dyslipidemia Treatment Algorithm Flowchart Here During UI Integration]</p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References</h2>
+          <div class="stack">
+            <div class="box">
+              <h3>ACC/AHA Guideline on Blood Cholesterol Management</h3>
+              <a href="https://www.acc.org/guidelines" target="_blank" rel="noopener">
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+          </div>
+          <div class="callout">
+            These guidelines inform statin intensity, ASCVD risk assessment,
+            non-statin use, and treatment thresholds.
+          </div>
+
+          <div class="stack">
+            <div class="box">
+              <h3>Image Attribution (Wikimedia Commons)</h3>
+              <ul>
+                <li>Atheroma illustration - Blausen.com staff, CC BY 3.0</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>8. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Statins are first-line in most dyslipidemia treatment pathways.</div>
+            <div class="callout alert">LDL at least 190 mg/dL generally requires high-intensity statin independent of calculated risk.</div>
+            <div class="callout alert">Diabetes age 40 to 75 usually requires at least moderate-intensity statin.</div>
+            <div class="callout alert">Statins are contraindicated in pregnancy and breastfeeding.</div>
+            <div class="callout alert">Fibrates primarily target high triglycerides, not LDL.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>9. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>LDL is the primary treatment target</li>
+                <li>Statins reduce mortality and events</li>
+                <li>Add ezetimibe before PCSK9 in common escalation pathways</li>
+                <li>TG at least 500 means pancreatitis prevention priority</li>
+                <li>Monitor liver-related symptoms and adverse effects clinically</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Dyslipidemia</li>
+                <li>Subtopics: statins, non-statin agents, ASCVD risk, hypertriglyceridemia, treatment intensification</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

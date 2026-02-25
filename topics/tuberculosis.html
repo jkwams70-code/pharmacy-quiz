@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tuberculosis - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #7b1f4a;
+        --soft: #ffeef7;
+        --good-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --alert-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 86% 9%, #ffdff0 0%, transparent 32%),
+          radial-gradient(circle at 8% 20%, #eaf4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff1f9;
+        color: #7b1f4a;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff1f9 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--soft);
+        color: #7b1f4a;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #6a1b3f;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f3d2e6;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7e5b6f;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #6a1b3f;
+        font-weight: 700;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6a1b3f;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff1f9;
+        color: #6a1b3f;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--good-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--alert-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6a1b3f;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram p {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      details.quiz {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px 12px;
+      }
+
+      details.quiz summary {
+        cursor: pointer;
+        color: #1f4061;
+        font-weight: 700;
+      }
+
+      details.quiz p {
+        margin: 10px 0 0;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#types-of-tb">1. Types of TB</a>
+        <a href="#latent-tb">2. Latent TB Treatment</a>
+        <a href="#active-tb">3. Active TB (RIPE)</a>
+        <a href="#monitoring">4. Monitoring</a>
+        <a href="#drug-resistant-tb">5. Drug-Resistant TB</a>
+        <a href="#counseling">6. Counseling Points</a>
+        <a href="#management-recap-drill">Management Recap Drill</a>
+        <a href="#guidelines">Guidelines</a>
+        <a href="#exam-traps">7. Common Exam Traps</a>
+        <a href="#quick-revision">8. Quick Revision Summary</a>
+        <a href="#practice-questions">Practice Questions</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Infectious Diseases</span>
+          <h1>Tuberculosis</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for latent versus active TB,
+            RIPE regimen logic, toxicity monitoring, and resistant TB strategy.
+          </p>
+          <div class="hero-grid">
+            <div class="metric">
+              <div class="k">Latent TB</div>
+              <div class="v">No active disease symptoms</div>
+            </div>
+            <div class="metric">
+              <div class="k">Active TB Core</div>
+              <div class="v">RIPE initial phase</div>
+            </div>
+            <div class="metric">
+              <div class="k">Major Safety</div>
+              <div class="v">Hepatotoxicity monitoring</div>
+            </div>
+            <div class="metric">
+              <div class="k">High-Yield Add-on</div>
+              <div class="v">Pyridoxine with INH</div>
+            </div>
+          </div>
+          <div class="diagram">
+            <p>Latent vs Active TB Decision Frame</p>
+            <svg viewBox="0 0 760 220" role="img" aria-label="Latent versus active TB framework">
+              <rect x="0" y="0" width="760" height="220" rx="12" fill="#fbfdff" />
+              <rect x="20" y="26" width="350" height="78" rx="10" fill="#fff1f9" stroke="#f3d2e6" />
+              <text x="195" y="50" text-anchor="middle" font-size="14" fill="#6a1b3f" font-weight="700">Latent TB Infection (LTBI)</text>
+              <text x="195" y="69" text-anchor="middle" font-size="12" fill="#7e5b6f">Positive test, no symptoms</text>
+              <text x="195" y="85" text-anchor="middle" font-size="12" fill="#7e5b6f">No active disease signs</text>
+              <rect x="390" y="26" width="350" height="78" rx="10" fill="#fff0f0" stroke="#f2cbcb" />
+              <text x="565" y="50" text-anchor="middle" font-size="14" fill="#8a3a3a" font-weight="700">Active TB</text>
+              <text x="565" y="69" text-anchor="middle" font-size="12" fill="#8a4e4e">Cough > 3 weeks, weight loss</text>
+              <text x="565" y="85" text-anchor="middle" font-size="12" fill="#8a4e4e">Night sweats, hemoptysis</text>
+              <rect x="20" y="124" width="720" height="72" rx="10" fill="#fff" stroke="#d8e4f2" />
+              <text x="380" y="151" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">Treat latent TB to prevent progression; treat active TB to cure disease and stop transmission</text>
+              <text x="380" y="170" text-anchor="middle" font-size="12" fill="#45637e">Accurate classification determines duration and drug count</text>
+            </svg>
+          </div>
+        </header>
+
+        <section class="section" id="types-of-tb">
+          <h2>1. Types of TB</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Latent TB Infection (LTBI)</h3>
+              <ul>
+                <li>Positive test for TB infection</li>
+                <li>No symptoms</li>
+                <li>No active disease findings</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Active TB</h3>
+              <ul>
+                <li>Cough lasting more than 3 weeks</li>
+                <li>Weight loss and night sweats</li>
+                <li>May include hemoptysis</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="latent-tb">
+          <h2>2. Latent TB Treatment</h2>
+          <p>Goal: prevent progression from latent infection to active disease.</p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Regimen</th>
+                <th>Dose / Duration</th>
+                <th>Key Safety Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Isoniazid (INH)</td>
+                <td>300 mg orally daily for 6 to 9 months<br />Alternative: 900 mg weekly with rifapentine (DOT)</td>
+                <td>Hepatotoxicity, peripheral neuropathy; add pyridoxine 25 to 50 mg daily</td>
+              </tr>
+              <tr>
+                <td>Rifampin</td>
+                <td>600 mg orally daily for 4 months</td>
+                <td>Useful when INH not tolerated; drug interactions via CYP induction</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout warn">Baseline LFTs are especially important in higher-risk patients.</div>
+        </section>
+
+        <section class="section" id="active-tb">
+          <h2>3. Active TB Treatment (RIPE)</h2>
+          <div class="chips">
+            <span class="chip">Initial phase: 2 months</span>
+            <span class="chip">Continuation: 4 months</span>
+            <span class="chip">Standard total: 6 months</span>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>Dose</th>
+                <th>MOA</th>
+                <th>High-Yield Toxicities / Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Isoniazid (INH)</td>
+                <td>5 mg/kg daily (max 300 mg daily)</td>
+                <td>Inhibits mycolic acid synthesis</td>
+                <td>Hepatitis, peripheral neuropathy; always add pyridoxine</td>
+              </tr>
+              <tr>
+                <td>Rifampin</td>
+                <td>10 mg/kg daily (max 600 mg daily)</td>
+                <td>Inhibits RNA polymerase</td>
+                <td>Hepatotoxicity, orange body fluids, strong CYP450 inducer, lowers OCP effectiveness</td>
+              </tr>
+              <tr>
+                <td>Pyrazinamide</td>
+                <td>20 to 25 mg/kg daily</td>
+                <td>Disrupts mycobacterial membrane metabolism</td>
+                <td>Hepatotoxicity, hyperuricemia, gout risk</td>
+              </tr>
+              <tr>
+                <td>Ethambutol</td>
+                <td>15 to 20 mg/kg daily</td>
+                <td>Inhibits cell wall synthesis</td>
+                <td>Optic neuritis, red-green color vision changes; baseline vision testing needed</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="monitoring">
+          <h2>4. Monitoring During Active TB</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Laboratory and Clinical Monitoring</h3>
+              <ul>
+                <li>Monthly LFTs if high risk</li>
+                <li>Uric acid monitoring with pyrazinamide when indicated</li>
+                <li>Evaluate adherence and adverse effects at each follow-up</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Targeted Safety Checks</h3>
+              <ul>
+                <li>Baseline and follow-up vision for ethambutol</li>
+                <li>Stop or adjust therapy if severe hepatitis is suspected</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="drug-resistant-tb">
+          <h2>5. Drug-Resistant TB (Brief Overview)</h2>
+          <div class="box">
+            <ul>
+              <li>MDR-TB: resistance to at least INH and rifampin</li>
+              <li>Common second-line components: fluoroquinolones, linezolid, bedaquiline</li>
+              <li>Treatment duration often extends to 18 to 24 months</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="counseling">
+          <h2>6. Important Counseling Points</h2>
+          <div class="box">
+            <ul>
+              <li>Strict adherence is critical; do not skip doses</li>
+              <li>Orange urine/tears with rifampin is expected</li>
+              <li>Use backup contraception due to rifampin interaction with OCPs</li>
+              <li>Report visual changes, severe fatigue, jaundice, or persistent nausea promptly</li>
+            </ul>
+          </div>
+          <div class="diagram">
+            <p>TB Treatment Phase Flow</p>
+            <svg viewBox="0 0 760 210" role="img" aria-label="Latent and active TB treatment phase algorithm">
+              <rect x="0" y="0" width="760" height="210" rx="12" fill="#fbfdff" />
+              <rect x="20" y="24" width="220" height="66" rx="10" fill="#fff1f9" stroke="#f3d2e6" />
+              <text x="130" y="49" text-anchor="middle" font-size="13" fill="#6a1b3f" font-weight="700">Latent TB pathway</text>
+              <text x="130" y="68" text-anchor="middle" font-size="12" fill="#7e5b6f">INH 6-9 months or rifampin 4 months</text>
+              <rect x="270" y="24" width="220" height="66" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+              <text x="380" y="49" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Active TB initial phase</text>
+              <text x="380" y="68" text-anchor="middle" font-size="12" fill="#5f7488">RIPE for 2 months</text>
+              <rect x="520" y="24" width="220" height="66" rx="10" fill="#fff8ee" stroke="#f0dfbd" />
+              <text x="630" y="49" text-anchor="middle" font-size="13" fill="#7a4f0d" font-weight="700">Continuation phase</text>
+              <text x="630" y="68" text-anchor="middle" font-size="12" fill="#7c6a48">INH + rifampin for 4 months</text>
+              <rect x="20" y="114" width="720" height="72" rx="10" fill="#fff" stroke="#d8e4f2" />
+              <text x="380" y="140" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">Always combine INH with pyridoxine and monitor for toxicity</text>
+              <text x="380" y="159" text-anchor="middle" font-size="12" fill="#45637e">Adjust regimen based on susceptibility and tolerability</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Latent TB:</strong> INH 6 to 9 months OR rifampin 4 months.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Active TB:</strong> RIPE for 2 months, then INH + rifampin for 4 months.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Always:</strong> add vitamin B6 with INH and monitor safety.</div>
+          </div>
+        </section>
+
+        <section class="section refs" id="guidelines">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>CDC Tuberculosis Guidance</h3>
+              <a href="https://www.cdc.gov/tb" target="_blank" rel="noopener">https://www.cdc.gov/tb</a>
+            </div>
+            <div class="box">
+              <h3>WHO Tuberculosis Guidance</h3>
+              <a href="https://www.who.int/teams/global-tuberculosis-programme" target="_blank" rel="noopener">WHO TB Programme</a>
+            </div>
+          </div>
+          <div class="callout warn">Local policy and susceptibility data should guide final regimen choices.</div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>7. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Rifampin induces CYP450 and can reduce oral contraceptive effectiveness.</div>
+            <div class="callout alert">Ethambutol can cause optic neuritis and red-green vision changes.</div>
+            <div class="callout alert">Pyrazinamide can raise uric acid and trigger gout.</div>
+            <div class="callout alert">INH should be paired with pyridoxine to reduce neuropathy risk.</div>
+            <div class="callout alert">Standard drug-susceptible active TB is RIPE-based with a 6-month total course.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>8. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Latent TB is not the same as active disease</li>
+                <li>RIPE is the standard initial active TB regimen</li>
+                <li>Hepatotoxicity risk exists with INH, rifampin, and pyrazinamide</li>
+                <li>Vitamin B6 supplementation is routine with INH</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>High-Yield Subtopics</h3>
+              <ul>
+                <li>LTBI regimen selection</li>
+                <li>RIPE phase timing and doses</li>
+                <li>Drug-specific toxicities and interactions</li>
+                <li>MDR-TB overview and duration</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="practice-questions">
+          <h2>Practice Questions</h2>
+          <div class="stack">
+            <details class="quiz">
+              <summary>1) What are two key differences between latent and active TB?</summary>
+              <p><strong>Answer:</strong> Latent TB has no active disease symptoms and no contagious pulmonary disease, while active TB has clinical disease (for example cough and constitutional symptoms) and requires multi-drug treatment.</p>
+            </details>
+            <details class="quiz">
+              <summary>2) Why is pyridoxine co-prescribed with INH?</summary>
+              <p><strong>Answer:</strong> To reduce INH-associated peripheral neuropathy risk.</p>
+            </details>
+            <details class="quiz">
+              <summary>3) Which RIPE drug is most associated with optic neuritis?</summary>
+              <p><strong>Answer:</strong> Ethambutol.</p>
+            </details>
+            <details class="quiz">
+              <summary>4) What major interaction should be remembered with rifampin?</summary>
+              <p><strong>Answer:</strong> Strong CYP450 induction, including reduced hormonal contraceptive effectiveness.</p>
+            </details>
+            <details class="quiz">
+              <summary>5) What defines MDR-TB in this overview?</summary>
+              <p><strong>Answer:</strong> Resistance to at least isoniazid and rifampin.</p>
+            </details>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

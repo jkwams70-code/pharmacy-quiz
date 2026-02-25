@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Asthma - Clinical Study Note</title>
+    <style>
+      :root { --bg:#f8fbff; --surface:#fff; --ink:#132841; --muted:#556c84; --line:#d7e4f0; --brand:#0f6a76; --soft:#eaf9fb; --warn:#fff7e8; --alert:#fff0f0; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:"Segoe UI",Tahoma,Arial,sans-serif; color:var(--ink); background:radial-gradient(circle at 84% 8%, #d6f5fb 0%, transparent 31%), radial-gradient(circle at 10% 20%, #eaf4ff 0%, transparent 24%), var(--bg); }
+      .wrap { width:min(1240px,94vw); margin:22px auto 34px; display:grid; grid-template-columns:290px 1fr; gap:16px; }
+      .panel { background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 24px rgba(13,34,62,.06); }
+      .toc { position:sticky; top:16px; max-height:calc(100dvh - 32px); overflow:auto; padding:14px; }
+      .toc h2 { margin:0 0 10px; color:var(--brand); font-size:1rem; }
+      .toc a { display:block; text-decoration:none; color:#36506c; border-radius:8px; padding:7px 9px; font-size:13px; }
+      .toc a:hover { background:#effcfe; color:#0f6a76; }
+      .content { padding:0 0 18px; }
+      .hero { padding:20px; border-bottom:1px solid var(--line); background:linear-gradient(160deg,#fff 0%,#effcfe 56%,#eef7ff 100%); }
+      .eyebrow { display:inline-flex; align-items:center; min-height:28px; padding:5px 12px; border-radius:999px; background:var(--soft); color:#0f6a76; font-size:12px; font-weight:700; margin-bottom:10px; }
+      h1 { margin:0; color:#0f5761; font-size:clamp(1.42rem,2.4vw,2.04rem); }
+      .subtitle { margin:8px 0 0; color:var(--muted); line-height:1.55; }
+      .hero-grid { margin-top:14px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+      .metric { border:1px solid #cfe9ee; border-radius:12px; background:#fff; padding:10px; }
+      .metric .k { font-size:11px; color:#5f7980; margin-bottom:6px; text-transform:uppercase; }
+      .metric .v { font-size:14px; color:#0f5761; font-weight:700; }
+      .section { padding:16px 20px; border-bottom:1px solid #edf3fb; }
+      .section:last-child { border-bottom:none; }
+      .section h2 { margin:0 0 10px; color:#0f5761; font-size:1.16rem; }
+      .section p { margin:0; color:#314860; line-height:1.56; }
+      .stack { margin-top:10px; display:grid; gap:10px; }
+      .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+      .box { border:1px solid var(--line); border-radius:12px; padding:11px 12px; background:#fff; }
+      .box h3 { margin:0 0 7px; font-size:.97rem; color:#1f4061; }
+      .box ul { margin:0 0 0 17px; padding:0; }
+      .box li { margin:4px 0; color:#304860; }
+      .table { margin-top:8px; width:100%; border-collapse:collapse; border-radius:12px; border:1px solid var(--line); overflow:hidden; }
+      .table th,.table td { padding:10px; text-align:left; font-size:14px; border-bottom:1px solid #e8eff8; vertical-align:top; }
+      .table th { background:#effcfe; color:#0f5761; }
+      .table tr:last-child td { border-bottom:none; }
+      .chips { margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
+      .chip { display:inline-flex; align-items:center; min-height:30px; padding:4px 10px; border-radius:999px; border:1px solid #d8e4f2; background:#f8fbff; color:#254764; font-size:13px; font-weight:600; }
+      .callout { margin-top:10px; border-left:4px solid #0f766e; border-radius:10px; background:#eefaf6; color:#175358; padding:10px 12px; }
+      .callout.warn { border-left-color:#b66a00; background:var(--warn); color:#7c5b1d; }
+      .callout.alert { border-left-color:#b91c1c; background:var(--alert); color:#6d2222; }
+      .flow { margin-top:10px; display:grid; gap:9px; }
+      .step { border:1px solid #d5e3f4; border-radius:12px; padding:10px 11px; background:#f9fcff; }
+      .step strong { color:#0f5761; }
+      .arrow { width:30px; height:30px; margin:0 auto; border-radius:999px; border:1px solid #c9d8ec; background:#f6fbff; color:#456887; font-weight:900; display:grid; place-items:center; line-height:1; }
+      .diagram { margin-top:10px; border:1px solid #d8e4f2; border-radius:12px; background:#fbfdff; padding:11px; }
+      .diagram p { margin:0 0 8px; font-size:.9rem; color:#1d3f62; font-weight:700; }
+      .diagram svg { width:100%; height:auto; display:block; }
+      details.quiz { border:1px solid var(--line); border-radius:12px; background:#fff; padding:10px 12px; }
+      details.quiz summary { cursor:pointer; color:#1f4061; font-weight:700; }
+      details.quiz p { margin:10px 0 0; }
+      .refs a { color:#145aa9; text-decoration:none; word-break:break-word; }
+      .refs a:hover { text-decoration:underline; }
+      @media (max-width:1040px) { .wrap { grid-template-columns:1fr; } .toc { position:static; max-height:none; } .hero-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+      @media (max-width:760px) { .grid-2,.hero-grid { grid-template-columns:1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-asthma">1. Definition</a>
+        <a href="#pathophysiology">2. Pathophysiology</a>
+        <a href="#classification">3. Classification</a>
+        <a href="#saba">4. SABA</a>
+        <a href="#ics">5. Inhaled Corticosteroids</a>
+        <a href="#laba">6. LABA</a>
+        <a href="#ics-laba">7. ICS + LABA</a>
+        <a href="#lama">8. LAMA</a>
+        <a href="#ltra">9. Leukotriene Receptor Antagonist</a>
+        <a href="#biologics">10. Biologics</a>
+        <a href="#acute-exacerbation">11. Acute Exacerbation</a>
+        <a href="#stepwise-summary">Stepwise Summary</a>
+        <a href="#guidelines">Guidelines</a>
+        <a href="#exam-traps">12. Common Exam Traps</a>
+        <a href="#quick-revision">13. Quick Revision Summary</a>
+        <a href="#practice-questions">Practice Questions</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Respiratory Disorders</span>
+          <h1>Asthma</h1>
+          <p class="subtitle">Clinical overview and exam mastery guide for inflammation-first management, stepwise escalation, acute exacerbation treatment, and biologic selection.</p>
+          <div class="hero-grid">
+            <div class="metric"><div class="k">Disease Core</div><div class="v">Chronic airway inflammation</div></div>
+            <div class="metric"><div class="k">Controller Foundation</div><div class="v">ICS</div></div>
+            <div class="metric"><div class="k">Rescue Drug</div><div class="v">SABA</div></div>
+            <div class="metric"><div class="k">Key Exam Rule</div><div class="v">Never LABA alone</div></div>
+          </div>
+          <div class="diagram">
+            <p>Inflammation-First Disease Model</p>
+            <svg viewBox="0 0 520 180" role="img" aria-label="Asthma pathogenesis overview">
+              <rect x="0" y="0" width="520" height="180" rx="12" fill="#fbfdff" />
+              <rect x="20" y="26" width="150" height="58" rx="10" fill="#effcfe" stroke="#cfe9ee" />
+              <text x="95" y="47" text-anchor="middle" font-size="13" fill="#0f5761" font-weight="700">Trigger</text>
+              <text x="95" y="65" text-anchor="middle" font-size="12" fill="#5f7980">allergen / irritant</text>
+              <rect x="185" y="26" width="150" height="58" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+              <text x="260" y="47" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Inflammation</text>
+              <text x="260" y="65" text-anchor="middle" font-size="12" fill="#5f7488">eosinophils + mucus</text>
+              <rect x="350" y="26" width="150" height="58" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+              <text x="425" y="47" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">Bronchospasm</text>
+              <text x="425" y="65" text-anchor="middle" font-size="12" fill="#5b7a74">airflow limitation</text>
+              <path d="M170 56 L185 56" stroke="#9cb3c7" stroke-width="3" />
+              <path d="M335 56 L350 56" stroke="#9cb3c7" stroke-width="3" />
+              <rect x="20" y="106" width="480" height="56" rx="10" fill="#fff" stroke="#d8e4f2" />
+              <text x="260" y="129" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">ICS controls disease biology; bronchodilators relieve symptoms</text>
+              <text x="260" y="147" text-anchor="middle" font-size="12" fill="#45637e">Exam logic: inflammation first, bronchospasm second</text>
+            </svg>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-asthma">
+          <h2>1. Definition</h2>
+          <p>Asthma is a chronic inflammatory airway disease characterized by reversible airway obstruction, bronchial hyperresponsiveness, and recurrent symptoms.</p>
+          <div class="chips"><span class="chip">Reversible obstruction</span><span class="chip">Hyperresponsive airway</span><span class="chip">Inflammation-driven</span></div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>2. Pathophysiology</h2>
+          <div class="flow">
+            <div class="step"><strong>Step 1:</strong> Allergen exposure triggers IgE-mediated immune activation.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> Eosinophilic inflammation causes edema and mucus hypersecretion.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Airway smooth muscle constriction causes variable airflow limitation.</div>
+          </div>
+          <div class="callout">High-yield rule: inflammation first, bronchospasm second. ICS is foundation therapy.</div>
+        </section>
+
+        <section class="section" id="classification">
+          <h2>3. Classification (Adults)</h2>
+          <p>Severity is categorized by symptom frequency and control pattern.</p>
+          <div class="chips"><span class="chip">Intermittent</span><span class="chip">Mild persistent</span><span class="chip">Moderate persistent</span><span class="chip">Severe persistent</span></div>
+          <div class="callout warn">Escalate stepwise for poor control and step down after sustained control.</div>
+        </section>
+
+        <section class="section" id="saba">
+          <h2>4. Short-Acting Beta Agonists (SABA)</h2>
+          <div class="box">
+            <h3>Albuterol</h3>
+            <ul>
+              <li><strong>MOA:</strong> beta-2 stimulation for rapid bronchodilation</li>
+              <li><strong>MDI:</strong> 2 puffs (90 mcg per puff) every 4 to 6 hours as needed</li>
+              <li><strong>Neb:</strong> 2.5 mg every 4 to 6 hours as needed</li>
+              <li><strong>Side effects:</strong> tachycardia, tremor, hypokalemia</li>
+              <li><strong>Caution:</strong> severe cardiac disease</li>
+              <li><strong>Role:</strong> rescue only</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="ics">
+          <h2>5. Inhaled Corticosteroids (ICS)</h2>
+          <p>ICS is the foundation of persistent asthma management.</p>
+          <table class="table">
+            <thead><tr><th>Drug</th><th>MOA</th><th>Dose Regimens</th><th>Side Effects</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Fluticasone (MDI)</td><td>Reduces cytokine-driven airway inflammation</td><td>Low: 100-250 mcg BID; Moderate: 250-500 mcg BID; High: over 500 mcg BID</td><td>Oral candidiasis, dysphonia</td><td>Rinse mouth after use</td></tr>
+              <tr><td>Budesonide</td><td>Inhaled anti-inflammatory corticosteroid</td><td>Dose by inhaler and severity step</td><td>Thrush, hoarseness</td><td>Controller backbone</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="laba">
+          <h2>6. LABA (Long-Acting Beta Agonists)</h2>
+          <div class="box"><ul><li><strong>Examples:</strong> salmeterol, formoterol</li><li><strong>Dose example:</strong> salmeterol 50 mcg twice daily</li><li><strong>Critical rule:</strong> never LABA monotherapy in asthma</li></ul></div>
+        </section>
+
+        <section class="section" id="ics-laba">
+          <h2>7. ICS + LABA Combination</h2>
+          <div class="box"><ul><li><strong>Examples:</strong> fluticasone/salmeterol, budesonide/formoterol</li><li><strong>Dose example:</strong> budesonide/formoterol 160/4.5 mcg, 2 inhalations twice daily</li><li><strong>Use:</strong> moderate to severe persistent asthma</li></ul></div>
+        </section>
+
+        <section class="section" id="lama">
+          <h2>8. LAMA (Long-Acting Muscarinic Antagonist)</h2>
+          <div class="box"><ul><li><strong>Example:</strong> tiotropium</li><li><strong>MOA:</strong> M3 blockade reduces bronchoconstriction</li><li><strong>Dose:</strong> 2.5 mcg inhaled once daily</li><li><strong>Role:</strong> add-on in severe/uncontrolled asthma</li></ul></div>
+        </section>
+
+        <section class="section" id="ltra">
+          <h2>9. Leukotriene Receptor Antagonists</h2>
+          <div class="box"><h3>Montelukast</h3><ul><li><strong>MOA:</strong> blocks leukotriene receptors</li><li><strong>Dose:</strong> 10 mg orally once daily</li><li><strong>Side effects:</strong> headache, neuropsychiatric effects</li><li><strong>Caution:</strong> psychiatric history</li></ul></div>
+        </section>
+
+        <section class="section" id="biologics">
+          <h2>10. Biologic Therapy (Severe Asthma)</h2>
+          <table class="table">
+            <thead><tr><th>Agent</th><th>MOA</th><th>Dose</th><th>Best Fit</th></tr></thead>
+            <tbody>
+              <tr><td>Omalizumab (Anti-IgE)</td><td>Binds free IgE to blunt allergic cascade</td><td>150-375 mg SC every 2 to 4 weeks (weight + IgE based)</td><td>Severe allergic asthma</td></tr>
+              <tr><td>Mepolizumab (Anti-IL-5)</td><td>Reduces eosinophilic inflammation</td><td>100 mg SC every 4 weeks</td><td>Severe eosinophilic asthma</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="acute-exacerbation">
+          <h2>11. Acute Exacerbation Management</h2>
+          <div class="grid-2">
+            <div class="box"><h3>Immediate</h3><ul><li>Albuterol 2 to 8 puffs every 20 minutes for first hour</li><li>Prednisone 40 to 60 mg orally daily for 5 to 7 days</li><li>Or IV methylprednisolone 60 to 125 mg every 6 to 8 hours</li></ul></div>
+            <div class="box"><h3>Severe Escalation</h3><ul><li>Add ipratropium nebulization</li><li>Give oxygen if SpO2 under 90 percent</li><li>Reassess repeatedly for respiratory fatigue</li></ul></div>
+          </div>
+        </section>
+
+        <section class="section" id="stepwise-summary">
+          <h2>Stepwise Summary</h2>
+          <div class="flow">
+            <div class="step"><strong>Step 1:</strong> SABA as needed.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> Low-dose ICS.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Low-dose ICS + LABA.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 4:</strong> Medium/high-dose ICS + LABA.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Step 5:</strong> Add LAMA or phenotype-selected biologic.</div>
+          </div>
+          <div class="callout">Step down once control is stable and exacerbation risk is low.</div>
+          <div class="diagram">
+            <p>Controller Escalation Ladder</p>
+            <svg viewBox="0 0 760 190" role="img" aria-label="Asthma stepwise treatment ladder">
+              <rect x="0" y="0" width="760" height="190" rx="12" fill="#fbfdff" />
+              <rect x="30" y="140" width="120" height="32" rx="8" fill="#eaf9fb" stroke="#cfe9ee" /><text x="90" y="161" text-anchor="middle" font-size="12" fill="#0f5761">Step 1: SABA PRN</text>
+              <rect x="170" y="115" width="120" height="32" rx="8" fill="#eaf9fb" stroke="#cfe9ee" /><text x="230" y="136" text-anchor="middle" font-size="12" fill="#0f5761">Step 2: Low ICS</text>
+              <rect x="310" y="90" width="140" height="32" rx="8" fill="#eef7ff" stroke="#d8e6f6" /><text x="380" y="111" text-anchor="middle" font-size="12" fill="#1f4467">Step 3: ICS + LABA</text>
+              <rect x="470" y="65" width="160" height="32" rx="8" fill="#eef7ff" stroke="#d8e6f6" /><text x="550" y="86" text-anchor="middle" font-size="12" fill="#1f4467">Step 4: Med/High ICS + LABA</text>
+              <rect x="560" y="28" width="170" height="32" rx="8" fill="#eefaf7" stroke="#d4ece4" /><text x="645" y="49" text-anchor="middle" font-size="12" fill="#1c564f">Step 5: LAMA / Biologic</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section refs" id="guidelines">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box"><h3>Global Initiative for Asthma (GINA)</h3><a href="https://ginasthma.org" target="_blank" rel="noopener">https://ginasthma.org</a></div>
+            <div class="box"><h3>Guideline Scope</h3><ul><li>Step therapy and controller vs reliever strategy</li><li>Biologic eligibility in severe phenotypes</li><li>Acute exacerbation management standards</li></ul></div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>12. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">LABA monotherapy is unsafe in asthma.</div>
+            <div class="callout alert">ICS remains the cornerstone controller class.</div>
+            <div class="callout alert">Montelukast has neuropsychiatric warning risk.</div>
+            <div class="callout alert">Exacerbations need short-course systemic steroids.</div>
+            <div class="callout alert">Always advise mouth rinse after ICS use.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>13. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box"><h3>Must Remember</h3><ul><li>Asthma is primarily an inflammatory airway disease</li><li>ICS is first-line controller in persistent asthma</li><li>LABA is add-on, never standalone</li><li>Biologics are for severe phenotype-selected disease</li><li>Exacerbation core: SABA plus systemic corticosteroid</li></ul></div>
+            <div class="box"><h3>High-Yield Subtopics</h3><ul><li>SABA, ICS, LABA combinations</li><li>LAMA and LTRA add-on role</li><li>Biologic choice by phenotype</li><li>Acute exacerbation escalation</li></ul></div>
+          </div>
+        </section>
+
+        <section class="section" id="practice-questions">
+          <h2>Practice Questions</h2>
+          <div class="stack">
+            <details class="quiz"><summary>1) What is the controller foundation for persistent asthma?</summary><p><strong>Answer:</strong> Inhaled corticosteroid (ICS), because it targets underlying airway inflammation.</p></details>
+            <details class="quiz"><summary>2) Why is LABA monotherapy incorrect in asthma?</summary><p><strong>Answer:</strong> LABA without ICS can mask symptoms while inflammation persists and risk increases.</p></details>
+            <details class="quiz"><summary>3) First-hour acute exacerbation reliever approach?</summary><p><strong>Answer:</strong> Repeated albuterol dosing (2 to 8 puffs every 20 minutes), then reassess response.</p></details>
+            <details class="quiz"><summary>4) Which biologic targets IgE-mediated allergic asthma?</summary><p><strong>Answer:</strong> Omalizumab (anti-IgE), dosed by baseline IgE and body weight.</p></details>
+            <details class="quiz"><summary>5) Which oral add-on has a neuropsychiatric caution?</summary><p><strong>Answer:</strong> Montelukast (LTRA).</p></details>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

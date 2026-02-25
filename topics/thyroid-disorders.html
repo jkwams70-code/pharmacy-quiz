@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thyroid Disorders - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #6b3f0f;
+        --brand-soft: #fff5e9;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #ffe7c7 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e7f4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff7ed;
+        color: #6b3f0f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff7ed 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #6b3f0f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #5c340c;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f1e0c7;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7b6a58;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #5c340c;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #f0dfc8;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #5c340c;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #5c340c;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff8ef;
+        color: #5c340c;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #5c340c;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#thyroid-physiology">1. Thyroid Physiology</a>
+        <a href="#hypothyroidism">2. Hypothyroidism</a>
+        <a href="#hypothyroidism-management">3. Hypothyroidism Management</a>
+        <a href="#myxedema-coma">4. Myxedema Coma</a>
+        <a href="#hyperthyroidism">5. Hyperthyroidism</a>
+        <a href="#hyperthyroidism-management">6. Hyperthyroidism Management</a>
+        <a href="#thyroid-storm">7. Thyroid Storm</a>
+        <a href="#subclinical-disease">8. Subclinical Thyroid Disease</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">9. Common Exam Traps</a>
+        <a href="#quick-revision">10. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Endocrinology</span>
+          <h1>Thyroid Disorders</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for hypothyroidism, hyperthyroidism,
+            thyroid storm sequence, and levothyroxine/antithyroid drug strategy.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Most Sensitive Test</div>
+                <div class="v">TSH</div>
+              </div>
+              <div class="metric">
+                <div class="k">Hypothyroid Core Drug</div>
+                <div class="v">Levothyroxine</div>
+              </div>
+              <div class="metric">
+                <div class="k">Hyperthyroid First-Line</div>
+                <div class="v">Methimazole</div>
+              </div>
+              <div class="metric">
+                <div class="k">Storm Sequence</div>
+                <div class="v">PTU then iodine</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>TSH Axis and Drug Targets</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Thyroid axis diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="146" height="72" rx="10" fill="#fff8ef" stroke="#f1e0c7" />
+                <text x="93" y="54" text-anchor="middle" font-size="13" fill="#5c340c" font-weight="700">TRH</text>
+                <text x="93" y="72" text-anchor="middle" font-size="12" fill="#7b6a58">Hypothalamus</text>
+                <text x="93" y="88" text-anchor="middle" font-size="12" fill="#7b6a58">regulatory start</text>
+
+                <rect x="176" y="30" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">TSH</text>
+                <text x="249" y="72" text-anchor="middle" font-size="12" fill="#5f7488">Pituitary output</text>
+                <text x="249" y="88" text-anchor="middle" font-size="12" fill="#5f7488">sensitive marker</text>
+
+                <rect x="332" y="30" width="146" height="72" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+                <text x="405" y="54" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">T4/T3</text>
+                <text x="405" y="72" text-anchor="middle" font-size="12" fill="#5b7a74">Thyroid hormone</text>
+                <text x="405" y="88" text-anchor="middle" font-size="12" fill="#5b7a74">negative feedback</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Treatment pivots on under- vs over-production
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  Replace hormone in hypothyroidism, suppress synthesis/release in hyperthyroidism
+                </text>
+              </svg>
+              <p>Drug sequencing is especially critical in thyroid storm.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="thyroid-physiology">
+          <h2>1. Thyroid Physiology (Foundation First)</h2>
+          <p>
+            Thyroid gland produces T4 and T3 (active form). Regulation follows
+            hypothalamic TRH to pituitary TSH to thyroid hormone release, with
+            T3/T4 negative feedback on TSH.
+          </p>
+          <div class="callout">High-yield diagnostic rule: TSH is the most sensitive screening test.</div>
+        </section>
+
+        <section class="section" id="hypothyroidism">
+          <h2>2. Hypothyroidism</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Common Causes</h3>
+              <ul>
+                <li>Hashimoto thyroiditis (most common)</li>
+                <li>Post-thyroidectomy or radioiodine</li>
+                <li>Iodine deficiency</li>
+                <li>Drug-related (e.g., amiodarone)</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Clinical Features</h3>
+              <ul>
+                <li>Weight gain, fatigue, cold intolerance</li>
+                <li>Constipation, bradycardia, dry skin</li>
+                <li>Severe emergency: myxedema coma</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="hypothyroidism-management">
+          <h2>3. Management of Hypothyroidism</h2>
+          <div class="box stack">
+            <h3>Levothyroxine (T4)</h3>
+            <ul>
+              <li>MOA: synthetic T4 replacement converted peripherally to T3</li>
+              <li>Dosing: take on empty stomach; separate calcium/iron by at least 4 hours</li>
+              <li>Monitoring: recheck TSH every 6 to 8 weeks after dose changes</li>
+              <li>Over-replacement effects: tachycardia, arrhythmias, long-term bone loss risk</li>
+              <li>Contra/caution: untreated adrenal insufficiency; cautious titration in elderly/CAD</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="myxedema-coma">
+          <h2>4. Myxedema Coma (Emergency)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Typical Features</h3>
+              <ul>
+                <li>Hypothermia</li>
+                <li>Bradycardia</li>
+                <li>Altered mental status</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Treatment Core</h3>
+              <ul>
+                <li>IV levothyroxine</li>
+                <li>IV hydrocortisone until adrenal insufficiency is excluded</li>
+                <li>Supportive ICU-level care</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="hyperthyroidism">
+          <h2>5. Hyperthyroidism</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Causes</h3>
+              <ul>
+                <li>Graves disease (most common)</li>
+                <li>Toxic multinodular goiter</li>
+                <li>Thyroiditis</li>
+                <li>Amiodarone-associated thyroid dysfunction</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Clinical Features</h3>
+              <ul>
+                <li>Weight loss, heat intolerance, tremor</li>
+                <li>Palpitations, anxiety, diarrhea</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="hyperthyroidism-management">
+          <h2>6. Management of Hyperthyroidism</h2>
+          <p>Core options: antithyroid drugs, radioactive iodine, or surgery.</p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug/Class</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Methimazole (first-line)</td>
+                <td>Inhibits thyroid peroxidase and blocks T3/T4 synthesis</td>
+                <td>Rash, agranulocytosis, hepatotoxicity</td>
+                <td>Avoid in first-trimester pregnancy (use PTU)</td>
+              </tr>
+              <tr>
+                <td>Propylthiouracil (PTU)</td>
+                <td>Inhibits thyroid hormone synthesis and peripheral T4 to T3 conversion</td>
+                <td>Hepatotoxicity (greater severity risk), agranulocytosis</td>
+                <td>Preferred in first trimester and thyroid storm contexts</td>
+              </tr>
+              <tr>
+                <td>Beta blockers (e.g., propranolol)</td>
+                <td>Beta blockade reduces adrenergic symptoms; propranolol also lowers T4 to T3 conversion</td>
+                <td>Bradycardia, fatigue, hypotension</td>
+                <td>Symptom control in most hyperthyroid presentations</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="thyroid-storm">
+          <h2>7. Thyroid Storm (Life-Threatening)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Features</h3>
+              <ul>
+                <li>High fever</li>
+                <li>Tachycardia</li>
+                <li>Delirium/encephalopathy</li>
+                <li>Heart failure risk</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Critical Exam Sequence</h3>
+              <ul>
+                <li>1. PTU</li>
+                <li>2. Iodine (after PTU)</li>
+                <li>3. Beta blocker</li>
+                <li>4. Steroid</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout alert">
+            Iodine must be given after PTU in storm management to avoid fueling new hormone synthesis.
+          </div>
+        </section>
+
+        <section class="section" id="subclinical-disease">
+          <h2>8. Subclinical Thyroid Disease</h2>
+          <p>
+            Defined by abnormal TSH with normal circulating T3/T4. Treatment decisions
+            depend on TSH magnitude, symptoms, age, and comorbidity profile.
+          </p>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Hypothyroidism:</strong> start levothyroxine and monitor TSH.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Hyperthyroidism:</strong> methimazole first-line (except first trimester).</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PTU role:</strong> first trimester and thyroid storm.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Storm sequence:</strong> PTU then iodine, plus beta blocker and steroid.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Thyroid Disorder Diagnosis and Treatment Algorithm Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>American Thyroid Association Guidelines</h3>
+              <a href="https://www.thyroid.org" target="_blank" rel="noopener">
+                https://www.thyroid.org
+              </a>
+            </div>
+            <div class="box">
+              <h3>Guideline Scope</h3>
+              <ul>
+                <li>Levothyroxine dosing and monitoring</li>
+                <li>Hyperthyroidism treatment pathways</li>
+                <li>Thyroid storm protocol</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>9. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Methimazole is first-line except in first trimester.</div>
+            <div class="callout alert">PTU inhibits peripheral T4 to T3 conversion.</div>
+            <div class="callout alert">Iodine must follow PTU in thyroid storm.</div>
+            <div class="callout alert">TSH is usually the most sensitive initial test.</div>
+            <div class="callout alert">Levothyroxine absorption is reduced by food, calcium, and iron.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>10. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>TSH guides screening and dose adjustment</li>
+                <li>Hypothyroidism treatment is levothyroxine replacement</li>
+                <li>Hyperthyroidism usually starts with methimazole</li>
+                <li>Thyroid storm starts with PTU before iodine</li>
+                <li>Beta blockers control adrenergic symptom burden</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Thyroid Disorders</li>
+                <li>
+                  Subtopics: hypothyroidism, hyperthyroidism, methimazole, PTU,
+                  thyroid storm, levothyroxine monitoring
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

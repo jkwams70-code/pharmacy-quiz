@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pulmonary Embolism (PE) - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f7fbff;
+        --surface: #ffffff;
+        --ink: #10243d;
+        --muted: #536c85;
+        --line: #d8e6f3;
+        --brand: #0f4f8c;
+        --brand-soft: #e9f3ff;
+        --good-soft: #eefbf6;
+        --warn-soft: #fff7e8;
+        --alert-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 86% 8%, #dceeff 0%, transparent 30%),
+          radial-gradient(circle at 9% 20%, #e9f7ff 0%, transparent 26%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1200px, 94vw);
+        margin: 22px auto 34px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 26px rgba(12, 34, 62, 0.06);
+      }
+
+      .hero {
+        padding: 22px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #edf6ff 56%, #eef8f5 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #0f4f8c;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #0d426f;
+        font-size: clamp(1.45rem, 2.4vw, 2.05rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.56;
+      }
+
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #cfe1f4;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #5d7790;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #0d426f;
+        font-weight: 700;
+      }
+
+      .quick-nav {
+        position: sticky;
+        top: 10px;
+        z-index: 8;
+        margin: 12px 0 16px;
+        padding: 10px;
+        border: 1px solid #d9e6f4;
+        border-radius: 12px;
+        background: #ffffffd6;
+        backdrop-filter: blur(3px);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .quick-nav a {
+        text-decoration: none;
+        color: #245079;
+        border: 1px solid #d4e2f2;
+        background: #f7fbff;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .quick-nav a:hover {
+        background: #eaf3ff;
+      }
+
+      .timeline {
+        position: relative;
+        padding: 6px 0 10px;
+      }
+
+      .timeline::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        transform: translateX(-1px);
+        background: linear-gradient(180deg, #d3e3f5, #c8dbf0);
+      }
+
+      .row {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin: 0 0 14px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+        padding: 14px;
+      }
+
+      .row:nth-child(odd) .card {
+        grid-column: 1;
+        border-left: 4px solid #0f4f8c;
+      }
+
+      .row:nth-child(even) .card {
+        grid-column: 2;
+        border-right: 4px solid #0f4f8c;
+      }
+
+      .dot {
+        position: absolute;
+        left: 50%;
+        top: 18px;
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        transform: translateX(-7px);
+        border: 2px solid #8bb2d8;
+        background: #fff;
+      }
+
+      .card h2 {
+        margin: 0 0 10px;
+        color: #0d426f;
+        font-size: 1.08rem;
+      }
+
+      .card p {
+        margin: 0;
+        color: #304760;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.96rem;
+        color: #1d4063;
+      }
+
+      .box ul {
+        margin: 0 0 0 16px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #edf6ff;
+        color: #0d426f;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #245079;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--good-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--alert-soft);
+        color: #6d2222;
+      }
+
+      .diagram {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram p {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      details.quiz {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px 12px;
+      }
+
+      details.quiz summary {
+        cursor: pointer;
+        color: #1f4061;
+        font-weight: 700;
+      }
+
+      details.quiz p {
+        margin: 10px 0 0;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 980px) {
+        .timeline::before {
+          display: none;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+        }
+
+        .row:nth-child(odd) .card,
+        .row:nth-child(even) .card {
+          grid-column: 1;
+          border-left: 4px solid #0f4f8c;
+          border-right: 1px solid var(--line);
+        }
+
+        .dot {
+          display: none;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .hero-grid,
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <article class="panel">
+        <header class="hero">
+          <span class="eyebrow">Pulmonology</span>
+          <h1>Pulmonary Embolism (PE)</h1>
+          <p class="subtitle">
+            Respiratory-focused PE overview with severity triage, anticoagulation selection,
+            thrombolysis decision points, and duration planning.
+          </p>
+          <div class="hero-grid">
+            <div class="metric">
+              <div class="k">Typical Source</div>
+              <div class="v">Lower-extremity DVT</div>
+            </div>
+            <div class="metric">
+              <div class="k">Massive PE</div>
+              <div class="v">Hypotension or shock</div>
+            </div>
+            <div class="metric">
+              <div class="k">Stable PE</div>
+              <div class="v">DOAC preferred</div>
+            </div>
+            <div class="metric">
+              <div class="k">Minimum Duration</div>
+              <div class="v">3 months</div>
+            </div>
+          </div>
+          <div class="diagram">
+            <p>PE Risk Stratification and Treatment Trigger Map</p>
+            <svg viewBox="0 0 760 220" role="img" aria-label="Pulmonary embolism risk and treatment flow">
+              <rect x="0" y="0" width="760" height="220" rx="12" fill="#fbfdff" />
+              <rect x="20" y="24" width="220" height="74" rx="10" fill="#fff0f0" stroke="#f2cbcb" />
+              <text x="130" y="49" text-anchor="middle" font-size="14" fill="#8a3a3a" font-weight="700">Massive PE</text>
+              <text x="130" y="69" text-anchor="middle" font-size="12" fill="#8a4e4e">Hypotension / shock</text>
+              <text x="130" y="85" text-anchor="middle" font-size="12" fill="#8a4e4e">Consider thrombolysis</text>
+              <rect x="270" y="24" width="220" height="74" rx="10" fill="#fff8ee" stroke="#f0dfbd" />
+              <text x="380" y="49" text-anchor="middle" font-size="14" fill="#7a4f0d" font-weight="700">Submassive PE</text>
+              <text x="380" y="69" text-anchor="middle" font-size="12" fill="#7c6a48">RV dysfunction / troponin+</text>
+              <text x="380" y="85" text-anchor="middle" font-size="12" fill="#7c6a48">Escalated monitoring</text>
+              <rect x="520" y="24" width="220" height="74" rx="10" fill="#eef7ff" stroke="#d0e7f9" />
+              <text x="630" y="49" text-anchor="middle" font-size="14" fill="#0f4c72" font-weight="700">Low Risk PE</text>
+              <text x="630" y="69" text-anchor="middle" font-size="12" fill="#52718a">Hemodynamically stable</text>
+              <text x="630" y="85" text-anchor="middle" font-size="12" fill="#52718a">Anticoagulation first</text>
+              <rect x="20" y="122" width="720" height="72" rx="10" fill="#fff" stroke="#d8e4f2" />
+              <text x="380" y="148" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">Initiate anticoagulation early when suspicion is high and bleeding risk is acceptable</text>
+              <text x="380" y="167" text-anchor="middle" font-size="12" fill="#45637e">Choose UFH/LMWH/DOAC based on stability, renal function, and bleeding profile</text>
+            </svg>
+          </div>
+        </header>
+
+        <nav class="quick-nav">
+          <a href="#definition">Definition</a>
+          <a href="#clinical-presentation">Presentation</a>
+          <a href="#risk-stratification">Risk Stratification</a>
+          <a href="#initial-anticoagulation">Initial Anticoagulation</a>
+          <a href="#doacs">DOACs</a>
+          <a href="#thrombolysis">Thrombolysis</a>
+          <a href="#duration">Duration</a>
+          <a href="#ivc-filter">IVC Filter</a>
+          <a href="#management-recap-drill">Recap Drill</a>
+          <a href="#exam-traps">Exam Traps</a>
+          <a href="#practice-questions">Practice</a>
+        </nav>
+
+        <div class="timeline">
+          <section class="row" id="definition">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>1. Definition</h2>
+              <p>
+                Pulmonary embolism is obstruction of the pulmonary arterial circulation,
+                most often due to thrombus migration from lower-extremity DVT.
+              </p>
+            </div>
+          </section>
+
+          <section class="row" id="clinical-presentation">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>2. Clinical Presentation</h2>
+              <div class="grid-2">
+                <div class="box">
+                  <h3>Common</h3>
+                  <ul>
+                    <li>Sudden dyspnea</li>
+                    <li>Pleuritic chest pain</li>
+                    <li>Tachycardia</li>
+                    <li>Hypoxia</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <h3>Severe</h3>
+                  <ul>
+                    <li>Hypotension</li>
+                    <li>Shock</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="row" id="risk-stratification">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>3. Risk Stratification</h2>
+              <div class="chips">
+                <span class="chip">Massive: hypotension / shock</span>
+                <span class="chip">Submassive: RV dysfunction + troponin elevation</span>
+                <span class="chip">Low-risk: stable hemodynamics</span>
+              </div>
+              <div class="callout warn">Severity category drives urgency and whether thrombolysis is indicated.</div>
+            </div>
+          </section>
+
+          <section class="row" id="initial-anticoagulation">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>4. Initial Anticoagulation</h2>
+              <p>Start promptly when PE is suspected and bleeding risk is acceptable.</p>
+
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>MOA</th>
+                    <th>Dose</th>
+                    <th>Monitoring</th>
+                    <th>Contraindications</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Unfractionated heparin (UFH)</td>
+                    <td>Antithrombin activation; inhibits thrombin (IIa) and Xa</td>
+                    <td>80 units/kg IV bolus, then 18 units/kg/hour infusion</td>
+                    <td>aPTT target about 1.5 to 2.5x control</td>
+                    <td>Active major bleeding, prior HIT</td>
+                  </tr>
+                  <tr>
+                    <td>Enoxaparin (LMWH)</td>
+                    <td>Predominantly inhibits factor Xa</td>
+                    <td>1 mg/kg SC every 12 hours OR 1.5 mg/kg once daily</td>
+                    <td>Clinical bleeding surveillance; renal function; anti-Xa in select high-risk settings</td>
+                    <td>Active bleeding, history of HIT (use caution), severe renal dysfunction without adjustment</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="grid-2 stack">
+                <div class="box">
+                  <h3>UFH Preferred When</h3>
+                  <ul>
+                    <li>Severe renal impairment</li>
+                    <li>High bleeding concern (short half-life and reversibility)</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <h3>Shared Risks</h3>
+                  <ul>
+                    <li>Bleeding</li>
+                    <li>HIT risk (lower with LMWH than UFH)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="row" id="doacs">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>5. Direct Oral Anticoagulants (DOACs)</h2>
+              <p>Preferred for most hemodynamically stable PE patients.</p>
+
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>MOA</th>
+                    <th>Dose</th>
+                    <th>Monitoring</th>
+                    <th>Contraindications</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Apixaban</td>
+                    <td>Direct factor Xa inhibitor</td>
+                    <td>10 mg BID for 7 days, then 5 mg BID; extended prevention 2.5 mg BID</td>
+                    <td>No routine coagulation monitoring; monitor renal/hepatic function and bleeding</td>
+                    <td>Active bleeding, severe renal failure, major hepatic disease with coagulopathy</td>
+                  </tr>
+                  <tr>
+                    <td>Rivaroxaban</td>
+                    <td>Direct factor Xa inhibitor</td>
+                    <td>15 mg BID for 21 days, then 20 mg once daily</td>
+                    <td>No routine coagulation monitoring; monitor renal/hepatic function and bleeding</td>
+                    <td>Active bleeding, severe renal failure, major hepatic disease with coagulopathy</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="callout">Main advantage: fixed dosing without routine lab anticoagulation checks.</div>
+            </div>
+          </section>
+
+          <section class="row" id="thrombolysis">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>6. Thrombolysis (Massive PE Only)</h2>
+              <div class="box">
+                <h3>Alteplase (tPA)</h3>
+                <ul>
+                  <li><strong>MOA:</strong> converts plasminogen to plasmin for fibrin clot lysis</li>
+                  <li><strong>Dose:</strong> 100 mg IV over 2 hours</li>
+                  <li><strong>Monitoring:</strong> hemodynamics, bleeding signs, neurologic status</li>
+                  <li><strong>Contraindications:</strong> active bleeding, recent stroke, recent major surgery</li>
+                </ul>
+              </div>
+              <div class="callout alert">Reserve for hemodynamic instability due to substantial bleeding risk.</div>
+            </div>
+          </section>
+
+          <section class="row" id="duration">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>7. Duration of Anticoagulation</h2>
+              <div class="grid-2">
+                <div class="box">
+                  <h3>Provoked PE</h3>
+                  <ul>
+                    <li>Typically 3 months</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <h3>Unprovoked PE</h3>
+                  <ul>
+                    <li>At least 3 months, then reassess for indefinite treatment</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="box stack">
+                <h3>Cancer-Associated PE</h3>
+                <ul>
+                  <li>DOAC often preferred unless bleeding profile suggests otherwise</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="row" id="ivc-filter">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>8. Inferior Vena Cava (IVC) Filter</h2>
+              <div class="box">
+                <ul>
+                  <li>Use when there is an absolute contraindication to anticoagulation</li>
+                  <li>Remove when anticoagulation can be safely initiated</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="row" id="management-recap-drill">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>Management Recap Drill</h2>
+              <div class="stack">
+                <div class="box"><strong>Stable PE:</strong> start DOAC in most cases.</div>
+                <div class="box"><strong>Severe renal impairment:</strong> prefer UFH.</div>
+                <div class="box"><strong>Massive PE:</strong> evaluate for thrombolysis.</div>
+                <div class="box"><strong>Duration anchor:</strong> minimum 3 months.</div>
+              </div>
+
+              <div class="diagram">
+                <p>PE Treatment Flow</p>
+                <svg viewBox="0 0 760 205" role="img" aria-label="PE treatment decision flowchart">
+                  <rect x="0" y="0" width="760" height="205" rx="12" fill="#fbfdff" />
+                  <rect x="20" y="20" width="220" height="62" rx="10" fill="#eef7ff" stroke="#d0e7f9" />
+                  <text x="130" y="44" text-anchor="middle" font-size="13" fill="#0f4c72" font-weight="700">Suspected / confirmed PE</text>
+                  <text x="130" y="62" text-anchor="middle" font-size="12" fill="#52718a">Assess bleeding + stability</text>
+                  <rect x="270" y="20" width="220" height="62" rx="10" fill="#fff8ee" stroke="#f0dfbd" />
+                  <text x="380" y="44" text-anchor="middle" font-size="13" fill="#7a4f0d" font-weight="700">Hemodynamically stable</text>
+                  <text x="380" y="62" text-anchor="middle" font-size="12" fill="#7c6a48">DOAC or heparin pathway</text>
+                  <rect x="520" y="20" width="220" height="62" rx="10" fill="#fff0f0" stroke="#f2cbcb" />
+                  <text x="630" y="44" text-anchor="middle" font-size="13" fill="#8a3a3a" font-weight="700">Shock / hypotension</text>
+                  <text x="630" y="62" text-anchor="middle" font-size="12" fill="#8a4e4e">Massive PE, consider tPA</text>
+                  <rect x="20" y="108" width="720" height="72" rx="10" fill="#fff" stroke="#d8e4f2" />
+                  <text x="380" y="134" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">Continue anticoagulation and plan duration by provoked/unprovoked/cancer context</text>
+                  <text x="380" y="153" text-anchor="middle" font-size="12" fill="#45637e">Reassess bleeding risk periodically throughout therapy</text>
+                </svg>
+              </div>
+            </div>
+          </section>
+
+          <section class="row refs" id="guidelines">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>Guideline References (Management)</h2>
+              <div class="grid-2">
+                <div class="box">
+                  <h3>CHEST Guidance</h3>
+                  <a href="https://www.chestnet.org" target="_blank" rel="noopener">https://www.chestnet.org</a>
+                </div>
+                <div class="box">
+                  <h3>ESC PE Guidance</h3>
+                  <p>European Society of Cardiology pulmonary embolism guidance</p>
+                </div>
+              </div>
+              <div class="chips">
+                <span class="chip">DOAC dosing</span>
+                <span class="chip">Thrombolysis criteria</span>
+                <span class="chip">Duration recommendations</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="row" id="exam-traps">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>9. Common Exam Traps</h2>
+              <div class="stack">
+                <div class="callout alert">Apixaban initial loading: 10 mg BID for 7 days.</div>
+                <div class="callout alert">Rivaroxaban initial phase: 15 mg BID for 21 days.</div>
+                <div class="callout alert">Massive PE with instability can warrant thrombolysis.</div>
+                <div class="callout alert">IVC filter is for anticoagulation contraindication, not routine use.</div>
+                <div class="callout alert">Stable PE generally favors DOAC-based treatment.</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="row" id="quick-revision">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>10. Quick Revision Summary</h2>
+              <div class="grid-2">
+                <div class="box">
+                  <h3>Must Remember</h3>
+                  <ul>
+                    <li>Most PE events originate from DVT</li>
+                    <li>DOAC first-line for most stable patients</li>
+                    <li>UFH is useful in severe renal failure or unstable contexts</li>
+                    <li>tPA is reserved for hemodynamic compromise</li>
+                    <li>Minimum anticoagulation duration is usually 3 months</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <h3>High-Yield Subtopics</h3>
+                  <ul>
+                    <li>DOAC loading and maintenance dose transitions</li>
+                    <li>UFH infusion and aPTT adjustment logic</li>
+                    <li>Thrombolysis indications and contraindications</li>
+                    <li>Provoked vs unprovoked duration decisions</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="row" id="practice-questions">
+            <span class="dot"></span>
+            <div class="card">
+              <h2>Practice Questions</h2>
+              <div class="stack">
+                <details class="quiz">
+                  <summary>1) What loading schedule is used for apixaban in acute PE?</summary>
+                  <p><strong>Answer:</strong> 10 mg twice daily for 7 days, then 5 mg twice daily.</p>
+                </details>
+                <details class="quiz">
+                  <summary>2) Which anticoagulant is often preferred in severe renal impairment?</summary>
+                  <p><strong>Answer:</strong> UFH, because it is short-acting, reversible, and easier to titrate with aPTT.</p>
+                </details>
+                <details class="quiz">
+                  <summary>3) What is the standard rivaroxaban transition schedule in PE?</summary>
+                  <p><strong>Answer:</strong> 15 mg twice daily for 21 days, then 20 mg once daily.</p>
+                </details>
+                <details class="quiz">
+                  <summary>4) When is systemic thrombolysis most appropriate in PE?</summary>
+                  <p><strong>Answer:</strong> Massive PE with hemodynamic instability (for example hypotension/shock), if no major contraindication.</p>
+                </details>
+                <details class="quiz">
+                  <summary>5) What is the typical minimum duration of anticoagulation after PE?</summary>
+                  <p><strong>Answer:</strong> At least 3 months, then extended based on recurrence and bleeding risk profile.</p>
+                </details>
+              </div>
+            </div>
+          </section>
+        </div>
+      </article>
+    </div>
+  </body>
+</html>

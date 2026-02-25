@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pharmacy Topic Library</title>
+    <style>
+      :root {
+        --bg-1: #f8fbff;
+        --bg-2: #eef5ff;
+        --ink: #0f172a;
+        --muted: #475569;
+        --card: #ffffff;
+        --line: #dbe5f2;
+        --accent: #0f3f7f;
+        --accent-soft: #dbeafe;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
+        min-height: 100vh;
+      }
+
+      .wrap {
+        width: min(1100px, 94vw);
+        margin: 28px auto;
+      }
+
+      .hero {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      }
+
+      .hero h1 {
+        margin: 0 0 8px;
+        color: #0b2d59;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .controls {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1fr 260px 260px;
+        gap: 10px;
+      }
+
+      .controls input,
+      .controls select {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+
+      .grid {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .category {
+        font-size: 12px;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-radius: 999px;
+        padding: 4px 10px;
+        width: fit-content;
+        font-weight: 700;
+      }
+
+      .title {
+        margin: 0;
+        font-size: 20px;
+        color: #0b2d59;
+      }
+
+      .summary {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .meta {
+        font-size: 12px;
+        color: #64748b;
+      }
+
+      .cta {
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid #bfd6ef;
+        background: #f3f8ff;
+        color: #0f3f7f;
+        font-weight: 700;
+      }
+
+      .empty {
+        margin-top: 16px;
+        padding: 14px;
+        border-radius: 10px;
+        border: 1px dashed #bfd6ef;
+        color: #475569;
+        background: #ffffffb8;
+      }
+
+      @media (max-width: 760px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="hero">
+        <h1>Clinical Topic Library</h1>
+        <p>
+          Open structured notes by topic, then deep-link from quiz questions
+          using <code>topicSlug</code> and optional <code>sectionId</code>.
+        </p>
+        <div class="controls">
+          <input
+            id="search"
+            type="search"
+            placeholder="Search by topic title, tag, or summary"
+          />
+          <select id="category">
+            <option value="all">All Categories</option>
+          </select>
+          <select id="topic">
+            <option value="all">All Topics</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="cards" class="grid"></div>
+      <div id="empty" class="empty" hidden>No topics found.</div>
+    </div>
+
+    <script>
+      const cardsEl = document.getElementById("cards");
+      const emptyEl = document.getElementById("empty");
+      const searchEl = document.getElementById("search");
+      const categoryEl = document.getElementById("category");
+      const topicEl = document.getElementById("topic");
+      let catalog = { topics: [], categories: [] };
+      const fallbackCatalog = {
+        categories: ["Cardiovascular Disorders"],
+        topics: [
+          {
+            slug: "hypertension",
+            title: "Hypertension",
+            category: "Cardiovascular Disorders",
+            summary:
+              "Blood pressure classification, first-line treatment, special populations, resistant hypertension, and hypertensive crisis.",
+            notePath: "hypertension.html",
+            tags: ["htn", "hpt", "high-blood-pressure"],
+            sections: [],
+          },
+          {
+            slug: "heart-failure",
+            title: "Heart Failure",
+            category: "Cardiovascular Disorders",
+            summary:
+              "HFrEF/HFpEF classification, four-pillar HFrEF therapy, acute decompensation, and exam traps.",
+            notePath: "heart-failure.html",
+            tags: ["hf", "hfrEF", "hfpef"],
+            sections: [],
+          },
+        ],
+      };
+
+      function matchesTopic(topic, search, category, selectedTopic) {
+        if (category !== "all" && topic.category !== category) {
+          return false;
+        }
+        if (selectedTopic !== "all" && topic.slug !== selectedTopic) {
+          return false;
+        }
+        if (!search) return true;
+        const haystack = [
+          topic.title,
+          topic.summary,
+          topic.category,
+          topic.slug,
+          ...(Array.isArray(topic.tags) ? topic.tags : []),
+          ...(Array.isArray(topic.sections)
+            ? topic.sections.map((section) => section.title || "")
+            : []),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(search);
+      }
+
+      function populateTopicOptions() {
+        const selectedCategory = categoryEl.value;
+        const selectedTopic = topicEl.value;
+        const topicList = (catalog.topics || [])
+          .filter(
+            (topic) =>
+              selectedCategory === "all" || topic.category === selectedCategory,
+          )
+          .sort((a, b) =>
+            String(a.title || a.slug || "").localeCompare(
+              String(b.title || b.slug || ""),
+            ),
+          );
+
+        topicEl.innerHTML = '<option value="all">All Topics</option>';
+        topicList.forEach((topic) => {
+          const option = document.createElement("option");
+          option.value = topic.slug || "";
+          option.textContent = topic.title || topic.slug || "Untitled Topic";
+          topicEl.appendChild(option);
+        });
+
+        if (
+          selectedTopic &&
+          [...topicEl.options].some((option) => option.value === selectedTopic)
+        ) {
+          topicEl.value = selectedTopic;
+        } else {
+          topicEl.value = "all";
+        }
+      }
+
+      function render() {
+        const search = searchEl.value.trim().toLowerCase();
+        const category = categoryEl.value;
+        const selectedTopic = topicEl.value;
+        const filtered = (catalog.topics || []).filter((topic) =>
+          matchesTopic(topic, search, category, selectedTopic),
+        );
+
+        cardsEl.innerHTML = "";
+
+        filtered.forEach((topic) => {
+          const card = document.createElement("article");
+          card.className = "card";
+          const sectionCount = Array.isArray(topic.sections)
+            ? topic.sections.length
+            : 0;
+
+          card.innerHTML = `
+            <div class="category">${topic.category || "General"}</div>
+            <h2 class="title">${topic.title || "Untitled Topic"}</h2>
+            <p class="summary">${topic.summary || ""}</p>
+            <div class="meta">${sectionCount} mapped sections</div>
+            <a class="cta" href="${topic.notePath}" target="_blank" rel="noopener">Open Study Note</a>
+          `;
+
+          cardsEl.appendChild(card);
+        });
+
+        emptyEl.hidden = filtered.length > 0;
+      }
+
+      async function init() {
+        try {
+          const response = await fetch("./topics.json", { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`Failed to load topics.json (${response.status})`);
+          }
+          catalog = await response.json();
+        } catch (error) {
+          console.warn("Falling back to built-in topic list:", error);
+          catalog = fallbackCatalog;
+        }
+
+        const categories = Array.isArray(catalog.categories)
+          ? catalog.categories
+          : [];
+        categories.forEach((name) => {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          categoryEl.appendChild(option);
+        });
+
+        searchEl.addEventListener("input", render);
+        categoryEl.addEventListener("change", () => {
+          populateTopicOptions();
+          render();
+        });
+        topicEl.addEventListener("change", render);
+        populateTopicOptions();
+        render();
+      }
+
+      init();
+    </script>
+  </body>
+</html>

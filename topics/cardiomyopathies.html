@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cardiomyopathies - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132741;
+        --muted: #566c84;
+        --line: #d7e3f0;
+        --brand: #6b2f8a;
+        --brand-soft: #f8f0ff;
+        --teal-soft: #eef9f7;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #ead8ff 0%, transparent 31%),
+          radial-gradient(circle at 9% 22%, #e1f4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #374d68;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #f8f2ff;
+        color: #5b2975;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fffefe 0%, #f8f1ff 56%, #eef9f7 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #6b2f8a;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #54256d;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #e6d4f2;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #786487;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #54256d;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #e8d8f2;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #5e2a7a;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #5d2a79;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #f8f2ff;
+        color: #5e2a79;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #5e2a79;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-are-cardiomyopathies">1. What Are Cardiomyopathies?</a>
+        <a href="#dilated-cardiomyopathy">2. Dilated Cardiomyopathy</a>
+        <a href="#hypertrophic-cardiomyopathy">3. Hypertrophic Cardiomyopathy</a>
+        <a href="#restrictive-cardiomyopathy">4. Restrictive Cardiomyopathy</a>
+        <a href="#sudden-cardiac-death-risk">5. Sudden Cardiac Death Risk</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">6. Common Exam Traps</a>
+        <a href="#quick-revision">7. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Cardiomyopathies</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for dilated, hypertrophic,
+            and restrictive cardiomyopathy with high-yield pharmacology and ICD risk strategy.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">DCM</div>
+                <div class="v">Dilation and reduced EF</div>
+              </div>
+              <div class="metric">
+                <div class="k">HCM</div>
+                <div class="v">Hypertrophy and LVOT risk</div>
+              </div>
+              <div class="metric">
+                <div class="k">RCM</div>
+                <div class="v">Stiff ventricle, preserved EF</div>
+              </div>
+              <div class="metric">
+                <div class="k">Sudden Death Prevention</div>
+                <div class="v">ICD in high-risk patients</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Classification Snapshot</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Cardiomyopathy classification diagram">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="28" width="146" height="72" rx="10" fill="#f8f2ff" stroke="#e7d8f2" />
+                <text x="93" y="53" text-anchor="middle" font-size="13" fill="#5d2a79" font-weight="700">DCM</text>
+                <text x="93" y="71" text-anchor="middle" font-size="12" fill="#6f6280">Dilated</text>
+                <text x="93" y="87" text-anchor="middle" font-size="12" fill="#6f6280">Low EF</text>
+
+                <rect x="176" y="28" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="53" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">HCM</text>
+                <text x="249" y="71" text-anchor="middle" font-size="12" fill="#5f7488">Hypertrophy</text>
+                <text x="249" y="87" text-anchor="middle" font-size="12" fill="#5f7488">LVOT obstruction</text>
+
+                <rect x="332" y="28" width="146" height="72" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+                <text x="405" y="53" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">RCM</text>
+                <text x="405" y="71" text-anchor="middle" font-size="12" fill="#5b7a74">Stiff ventricle</text>
+                <text x="405" y="87" text-anchor="middle" font-size="12" fill="#5b7a74">Preserved EF</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Key Exam Axis: hemodynamics + sudden death risk
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#42607b">
+                  DCM -> HF therapy | HCM -> rate/contractility control | RCM -> underlying cause focus
+                </text>
+              </svg>
+              <p>Different morphology patterns drive different treatment priorities.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-are-cardiomyopathies">
+          <h2>1. What Are Cardiomyopathies?</h2>
+          <p>
+            Cardiomyopathies are diseases of cardiac muscle that impair pump
+            function and/or ventricular filling. Core categories include
+            dilated cardiomyopathy (DCM), hypertrophic cardiomyopathy (HCM),
+            and restrictive cardiomyopathy (RCM).
+          </p>
+          <div class="chips">
+            <span class="chip">Dilated cardiomyopathy</span>
+            <span class="chip">Hypertrophic cardiomyopathy</span>
+            <span class="chip">Restrictive cardiomyopathy</span>
+          </div>
+        </section>
+
+        <section class="section" id="dilated-cardiomyopathy">
+          <h2>2. Dilated Cardiomyopathy (DCM)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology and Causes</h3>
+              <ul>
+                <li>Ventricular dilation with reduced systolic function</li>
+                <li>Decreased ejection fraction and HFrEF progression</li>
+                <li>Common causes: idiopathic, viral myocarditis, alcohol, anthracyclines, genetics</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Clinical Features</h3>
+              <ul>
+                <li>Dyspnea</li>
+                <li>Fatigue</li>
+                <li>Peripheral edema</li>
+                <li>Signs of heart failure</li>
+              </ul>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Core DCM Therapy</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / Cautions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ARNI / ACE inhibitor / ARB</td>
+                <td>RAAS pathway suppression and/or neprilysin modulation to reduce afterload/remodeling</td>
+                <td>Hypotension, hyperkalemia, renal dysfunction, cough (ACE inhibitor)</td>
+                <td>Pregnancy; angioedema history for ARNI/ACE inhibitor contexts</td>
+              </tr>
+              <tr>
+                <td>Evidence-based beta blockers</td>
+                <td>Reduce adrenergic drive, lower HR, improve remodeling over time</td>
+                <td>Bradycardia, fatigue, hypotension</td>
+                <td>Cardiogenic shock, severe bradycardia, unstable decompensation at initiation</td>
+              </tr>
+              <tr>
+                <td>MRA (spironolactone/eplerenone)</td>
+                <td>Aldosterone receptor blockade, reduced fibrosis/remodeling</td>
+                <td>Hyperkalemia, renal dysfunction, gynecomastia (spironolactone)</td>
+                <td>Severe renal impairment, significant hyperkalemia</td>
+              </tr>
+              <tr>
+                <td>SGLT2 inhibitors</td>
+                <td>Renal sodium-glucose transport inhibition with cardiorenal benefit</td>
+                <td>Volume depletion, genital infections, rare euglycemic DKA</td>
+                <td>Severe renal dysfunction (agent specific), type 1 diabetes</td>
+              </tr>
+              <tr>
+                <td>Loop diuretics (symptom control)</td>
+                <td>Na-K-2Cl inhibition in loop of Henle to reduce congestion</td>
+                <td>Hypokalemia, hypotension, dehydration</td>
+                <td>Use with electrolyte and renal monitoring</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout">
+            Treat DCM as HFrEF. In severely reduced EF with high arrhythmic risk, evaluate for ICD.
+          </div>
+        </section>
+
+        <section class="section" id="hypertrophic-cardiomyopathy">
+          <h2>3. Hypertrophic Cardiomyopathy (HCM)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology and Risk</h3>
+              <ul>
+                <li>Asymmetric septal hypertrophy</li>
+                <li>Dynamic LV outflow tract obstruction (obstructive subtype)</li>
+                <li>Diastolic dysfunction</li>
+                <li>Sudden cardiac death risk, especially in young athletes</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Symptoms</h3>
+              <ul>
+                <li>Syncope</li>
+                <li>Dyspnea</li>
+                <li>Chest pain</li>
+              </ul>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>HCM Therapy</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / Cautions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Beta blockers (first-line)</td>
+                <td>Lower HR and contractility, improve diastolic filling, reduce LVOT obstruction</td>
+                <td>Bradycardia, fatigue</td>
+                <td>Severe bradycardia, cardiogenic shock</td>
+              </tr>
+              <tr>
+                <td>Non-DHP CCB (verapamil)</td>
+                <td>Lower contractility and improve diastolic relaxation</td>
+                <td>Bradycardia, hypotension, constipation</td>
+                <td>Avoid in severe obstruction with hypotension</td>
+              </tr>
+              <tr>
+                <td>Disopyramide (obstructive HCM add-on)</td>
+                <td>Class IA sodium channel blockade with negative inotropic effect</td>
+                <td>Anticholinergic effects, QT prolongation</td>
+                <td>Baseline prolonged QT or major proarrhythmic risk</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout alert">
+            High-yield trap: avoid preload-reducing drugs in severe obstructive HCM
+            (nitrates, aggressive diuresis, and vasodilators such as ACE inhibitors in severe obstruction)
+            because obstruction can worsen.
+          </div>
+        </section>
+
+        <section class="section" id="restrictive-cardiomyopathy">
+          <h2>4. Restrictive Cardiomyopathy (RCM)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology and Causes</h3>
+              <ul>
+                <li>Stiff ventricles with impaired diastolic filling</li>
+                <li>Ejection fraction often preserved</li>
+                <li>Common causes: amyloidosis, hemochromatosis, sarcoidosis</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Clinical Pattern and Strategy</h3>
+              <ul>
+                <li>Right-sided heart failure features, fatigue, edema</li>
+                <li>Treat underlying disease</li>
+                <li>Use diuretics cautiously for symptoms</li>
+                <li>Manage arrhythmias as needed</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout warn">
+            There is no universal curative pharmacotherapy for RCM; treatment is cause-specific plus symptom control.
+          </div>
+        </section>
+
+        <section class="section" id="sudden-cardiac-death-risk">
+          <h2>5. Sudden Cardiac Death Risk</h2>
+          <p>
+            In HCM and severe DCM, evaluate for high-risk markers and ICD candidacy.
+          </p>
+          <div class="chips">
+            <span class="chip">Family history of sudden death</span>
+            <span class="chip">Severe LV hypertrophy</span>
+            <span class="chip">Syncope</span>
+            <span class="chip">Ventricular arrhythmias</span>
+          </div>
+          <div class="callout">
+            ICD therapy is a key prevention strategy in high-risk cardiomyopathy patients.
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>DCM:</strong> treat as HFrEF with full guideline-directed therapy.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>DCM severe EF reduction:</strong> assess ICD indications.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>HCM:</strong> beta blocker first-line, then verapamil/disopyramide when indicated.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>HCM:</strong> avoid strong preload reduction in severe obstructive disease.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>RCM:</strong> treat underlying cause and control symptoms cautiously.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Cardiomyopathy Classification and Management Flowchart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ACC/AHA Guideline for Hypertrophic Cardiomyopathy</h3>
+              <a href="https://www.acc.org/guidelines" target="_blank" rel="noopener">
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>ACC/AHA Heart Failure Guidelines (DCM Framework)</h3>
+              <a href="https://www.acc.org/guidelines" target="_blank" rel="noopener">
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>6. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">HCM with severe obstruction: avoid aggressive preload reduction.</div>
+            <div class="callout alert">DCM management follows HFrEF treatment principles.</div>
+            <div class="callout alert">RCM often presents with preserved EF despite severe filling abnormality.</div>
+            <div class="callout alert">Young athlete sudden death pattern should raise concern for HCM.</div>
+            <div class="callout alert">ICD decisions are central in high-risk cardiomyopathy.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>7. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>DCM = dilation with reduced EF</li>
+                <li>HCM = hypertrophy with possible dynamic LVOT obstruction</li>
+                <li>RCM = stiff ventricle with impaired filling</li>
+                <li>HCM core drug: beta blocker</li>
+                <li>DCM requires comprehensive HF therapy</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Cardiomyopathies</li>
+                <li>
+                  Subtopics: dilated cardiomyopathy, hypertrophic cardiomyopathy,
+                  restrictive cardiomyopathy, ICD indications, sudden death risk
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

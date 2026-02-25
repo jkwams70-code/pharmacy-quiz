@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ischemic Heart Disease - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #12243d;
+        --muted: #54677d;
+        --line: #d7e3f0;
+        --brand: #7a1f1f;
+        --brand-soft: #fff0ef;
+        --teal-soft: #eefbf8;
+        --warn-soft: #fff6e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 86% 7%, #ffd8d4 0%, transparent 30%),
+          radial-gradient(circle at 7% 22%, #dff6ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #354a64;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff4f3;
+        color: #6b1f1f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fffdfd 0%, #fff3f1 58%, #eefbf8 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #7a1f1f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #5f1b1b;
+        font-size: clamp(1.45rem, 2.4vw, 2.08rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0cfcc;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7c5959;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #5f1d1d;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #efd0cd;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6f1f1f;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: 180px;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6d1f1f;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff4f3;
+        color: #6f1f1f;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6d1f1f;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram-card svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-ihd">1. What Is Ischemic Heart Disease?</a>
+        <a href="#pathophysiology">2. Pathophysiology</a>
+        <a href="#clinical-classification">3. Clinical Classification</a>
+        <a href="#stable-angina-management">4. Stable Angina Management</a>
+        <a href="#acs-management">5. ACS Management</a>
+        <a href="#secondary-prevention">6. Secondary Prevention</a>
+        <a href="#recap-drill">Recap Drill</a>
+        <a href="#exam-traps">7. Common Exam Traps</a>
+        <a href="#quick-revision">8. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Ischemic Heart Disease (IHD)</h1>
+          <p class="subtitle">
+            Clinical Overview and Exam Mastery Guide covering stable angina,
+            acute coronary syndromes, core pharmacology, reperfusion strategy,
+            and secondary prevention.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Core Disease</div>
+                <div class="v">Coronary flow-limiting atherosclerosis</div>
+              </div>
+              <div class="metric">
+                <div class="k">Stable Pattern</div>
+                <div class="v">Predictable exertional angina</div>
+              </div>
+              <div class="metric">
+                <div class="k">ACS Driver</div>
+                <div class="v">Plaque rupture plus thrombosis</div>
+              </div>
+              <div class="metric">
+                <div class="k">STEMI Priority</div>
+                <div class="v">Immediate reperfusion (PCI)</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Coronary Occlusion Visual</h3>
+              <svg viewBox="0 0 420 190" aria-label="IHD coronary artery visual">
+                <rect x="1" y="1" width="418" height="188" rx="14" fill="#fff9f8" stroke="#edd2ce"></rect>
+                <rect x="28" y="58" width="360" height="30" rx="15" fill="#fde9e7" stroke="#efc8c3"></rect>
+                <rect x="28" y="58" width="360" height="30" rx="15" fill="none" stroke="#cf4b4b" stroke-width="2"></rect>
+                <ellipse cx="236" cy="73" rx="62" ry="18" fill="#f9c0b7"></ellipse>
+                <ellipse cx="236" cy="73" rx="36" ry="10" fill="#e55d52"></ellipse>
+                <text x="198" y="76" fill="#ffffff" font-size="10" font-weight="700">Plaque</text>
+                <line x1="236" y1="90" x2="236" y2="136" stroke="#a82d2d" stroke-width="2"></line>
+                <polygon points="236,136 230,126 242,126" fill="#a82d2d"></polygon>
+                <rect x="164" y="136" width="144" height="34" rx="8" fill="#fff0f0" stroke="#f2c6c6"></rect>
+                <text x="178" y="156" fill="#8d1b1b" font-size="11" font-weight="700">Reduced myocardial flow</text>
+                <text x="42" y="48" fill="#6b1f1f" font-size="11" font-weight="700">Coronary artery lumen</text>
+              </svg>
+              <p>Progressive narrowing limits oxygen delivery and triggers ischemic symptoms/events.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-ihd">
+          <h2>1. What Is Ischemic Heart Disease?</h2>
+          <p>
+            Ischemic Heart Disease (IHD), also called Coronary Artery Disease
+            (CAD), occurs when coronary arteries are narrowed or blocked by
+            atherosclerosis, reducing blood flow to myocardium.
+          </p>
+          <div class="chips">
+            <span class="chip">Angina</span>
+            <span class="chip">Myocardial infarction</span>
+            <span class="chip">Arrhythmias</span>
+            <span class="chip">Sudden cardiac death</span>
+          </div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>2. Pathophysiology</h2>
+          <div class="flow">
+            <div class="step"><strong>Step 1:</strong> Atherosclerotic plaque formation</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> Plaque rupture</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Platelet activation</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 4:</strong> Thrombus formation and coronary occlusion</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Stable Angina vs ACS Pathway Diagram</p>
+            <svg viewBox="0 0 930 250" aria-label="IHD stable vs ACS diagram">
+              <rect x="24" y="100" width="240" height="58" rx="11" fill="#ffffff" stroke="#d8e4f2"></rect>
+              <text x="45" y="126" fill="#1f3f5f" font-size="14" font-weight="700">Atherosclerotic plaque</text>
+              <text x="45" y="144" fill="#5a7690" font-size="12">Coronary narrowing</text>
+
+              <line x1="264" y1="129" x2="360" y2="70" stroke="#2f7d73" stroke-width="2"></line>
+              <polygon points="360,70 350,68 355,77" fill="#2f7d73"></polygon>
+              <line x1="264" y1="129" x2="360" y2="189" stroke="#b11f1f" stroke-width="2"></line>
+              <polygon points="360,189 355,180 350,191" fill="#b11f1f"></polygon>
+
+              <rect x="360" y="38" width="244" height="64" rx="11" fill="#eefaf8" stroke="#caeadf"></rect>
+              <text x="380" y="64" fill="#11645a" font-size="14" font-weight="700">Stable plaque</text>
+              <text x="380" y="83" fill="#4c746f" font-size="12">Demand ischemia, exertional pain</text>
+
+              <rect x="360" y="157" width="244" height="64" rx="11" fill="#fff1f1" stroke="#f2cbcb"></rect>
+              <text x="380" y="183" fill="#8b1a1a" font-size="14" font-weight="700">Plaque rupture + clot</text>
+              <text x="380" y="202" fill="#8d5858" font-size="12">Acute coronary syndromes</text>
+
+              <line x1="604" y1="70" x2="700" y2="70" stroke="#2f7d73" stroke-width="2"></line>
+              <polygon points="700,70 690,64 690,76" fill="#2f7d73"></polygon>
+              <line x1="604" y1="189" x2="700" y2="189" stroke="#b11f1f" stroke-width="2"></line>
+              <polygon points="700,189 690,183 690,195" fill="#b11f1f"></polygon>
+
+              <rect x="700" y="38" width="206" height="64" rx="11" fill="#ffffff" stroke="#d8e4f2"></rect>
+              <text x="720" y="64" fill="#11645a" font-size="13" font-weight="700">Stable angina</text>
+              <text x="720" y="83" fill="#5a7690" font-size="12">Relief with rest or nitro</text>
+
+              <rect x="700" y="157" width="206" height="64" rx="11" fill="#ffffff" stroke="#d8e4f2"></rect>
+              <text x="720" y="183" fill="#8b1a1a" font-size="13" font-weight="700">UA / NSTEMI / STEMI</text>
+              <text x="720" y="202" fill="#6f4f4f" font-size="12">Urgent ACS pathway</text>
+            </svg>
+          </div>
+
+          <div class="callout warn">
+            Stable plaque leads to stable angina. Plaque rupture with thrombosis
+            leads to ACS.
+          </div>
+        </section>
+
+        <section class="section" id="clinical-classification">
+          <h2>3. Clinical Classification</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>A. Stable Angina</h3>
+              <ul>
+                <li>Predictable chest pain</li>
+                <li>Triggered by exertion</li>
+                <li>Relieved by rest or nitroglycerin</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>B. Acute Coronary Syndromes (ACS)</h3>
+              <ul>
+                <li>Unstable angina</li>
+                <li>NSTEMI</li>
+                <li>STEMI</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout alert">ACS is plaque rupture plus thrombosis until proven otherwise.</div>
+        </section>
+
+        <section class="section" id="stable-angina-management">
+          <h2>4. Management of Stable Angina</h2>
+          <p>Goals: reduce symptoms, prevent progression, reduce mortality.</p>
+
+          <div class="stack">
+            <div class="box">
+              <h3>A. Nitrates (Nitroglycerin)</h3>
+              <div class="grid-2">
+                <div>
+                  <p><strong>MOA</strong></p>
+                  <ul>
+                    <li>Converted to nitric oxide</li>
+                    <li>Venous vasodilation</li>
+                    <li>Reduced preload and myocardial oxygen demand</li>
+                  </ul>
+                </div>
+                <div>
+                  <p><strong>Use / Safety</strong></p>
+                  <ul>
+                    <li>Acute angina relief and prophylaxis before exertion</li>
+                    <li>Side effects: headache, hypotension, reflex tachycardia</li>
+                    <li>Contra: PDE-5 inhibitors, severe hypotension, RV infarction</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="box">
+              <h3>B. Beta Blockers</h3>
+              <ul>
+                <li>MOA: beta1 blockade lowers HR, contractility, and oxygen demand</li>
+                <li>Benefits: reduced post-MI mortality, fewer angina episodes</li>
+                <li>Side effects: bradycardia, hypotension, fatigue</li>
+                <li>Contraindications: severe bradycardia, cardiogenic shock</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>C. Calcium Channel Blockers</h3>
+              <ul>
+                <li>MOA: block L-type calcium channels causing vasodilation and lower afterload</li>
+                <li>Useful when beta blockers are contraindicated or insufficient</li>
+                <li>Avoid non-DHP agents in HFrEF</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>D. Ranolazine</h3>
+              <ul>
+                <li>MOA: inhibits late sodium current and improves relaxation</li>
+                <li>Role: refractory angina add-on therapy</li>
+                <li>Side effect: QT prolongation</li>
+                <li>Contra: baseline significant QT prolongation, strong CYP3A inhibitors</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="acs-management">
+          <h2>5. Management of Acute Coronary Syndromes (ACS)</h2>
+          <p>
+            Immediate priorities: restore perfusion, prevent clot propagation,
+            and reduce myocardial workload.
+          </p>
+
+          <div class="stack">
+            <div class="box">
+              <h3>A. Antiplatelet Therapy</h3>
+              <div class="grid-2">
+                <div>
+                  <p><strong>Aspirin</strong></p>
+                  <ul>
+                    <li>MOA: irreversible COX-1 inhibition, lower thromboxane A2</li>
+                    <li>Side effects: GI bleeding, dyspepsia</li>
+                    <li>Contra: active bleeding</li>
+                  </ul>
+                </div>
+                <div>
+                  <p><strong>P2Y12 Inhibitors</strong></p>
+                  <ul>
+                    <li>Clopidogrel, ticagrelor, prasugrel</li>
+                    <li>MOA: ADP receptor blockade, reduced platelet aggregation</li>
+                    <li>Side effects: bleeding, dyspnea (ticagrelor)</li>
+                    <li>Contra: active bleeding, prior stroke (prasugrel)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="box">
+              <h3>B. Anticoagulants</h3>
+              <ul>
+                <li>Heparin, enoxaparin</li>
+                <li>MOA: potentiate antithrombin, inhibit thrombin and factor Xa</li>
+                <li>Side effects: bleeding, HIT (heparin)</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>C. High-Intensity Statins</h3>
+              <ul>
+                <li>Atorvastatin, rosuvastatin</li>
+                <li>MOA: HMG-CoA reductase inhibition, lower cholesterol synthesis, stabilize plaque</li>
+                <li>Benefits: lower recurrent events and improve survival</li>
+                <li>Side effects: myopathy, elevated liver enzymes</li>
+                <li>Contraindications: active liver disease, pregnancy</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>D. Reperfusion</h3>
+              <ul>
+                <li>STEMI: PCI preferred, fibrinolysis if PCI unavailable</li>
+                <li>NSTEMI: risk stratification, early invasive strategy for high-risk patients</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">ACS Immediate Management Flow Diagram</p>
+            <svg viewBox="0 0 940 290" aria-label="ACS algorithm diagram">
+              <rect x="20" y="20" width="220" height="56" rx="11" fill="#ffffff" stroke="#d8e4f2"></rect>
+              <text x="38" y="46" fill="#1f3f5f" font-size="13" font-weight="700">Suspected ACS</text>
+              <text x="38" y="63" fill="#5a7690" font-size="12">ECG + troponin + vitals</text>
+
+              <rect x="278" y="20" width="176" height="56" rx="11" fill="#fff4f3" stroke="#f0d0cd"></rect>
+              <text x="294" y="46" fill="#6f1f1f" font-size="13" font-weight="700">Aspirin now</text>
+              <text x="294" y="63" fill="#7c5d5d" font-size="12">Start antiplatelet base</text>
+
+              <rect x="492" y="20" width="188" height="56" rx="11" fill="#fff4f3" stroke="#f0d0cd"></rect>
+              <text x="508" y="46" fill="#6f1f1f" font-size="13" font-weight="700">Add P2Y12 inhibitor</text>
+              <text x="508" y="63" fill="#7c5d5d" font-size="12">DAPT strategy</text>
+
+              <rect x="718" y="20" width="202" height="56" rx="11" fill="#eefbf8" stroke="#caeadf"></rect>
+              <text x="734" y="46" fill="#126458" font-size="13" font-weight="700">Anticoagulation + statin</text>
+              <text x="734" y="63" fill="#4b746f" font-size="12">Heparin/LMWH + high-intensity statin</text>
+
+              <line x1="240" y1="48" x2="278" y2="48" stroke="#5f7da1" stroke-width="2"></line>
+              <polygon points="278,48 268,42 268,54" fill="#5f7da1"></polygon>
+              <line x1="454" y1="48" x2="492" y2="48" stroke="#5f7da1" stroke-width="2"></line>
+              <polygon points="492,48 482,42 482,54" fill="#5f7da1"></polygon>
+              <line x1="680" y1="48" x2="718" y2="48" stroke="#5f7da1" stroke-width="2"></line>
+              <polygon points="718,48 708,42 708,54" fill="#5f7da1"></polygon>
+
+              <line x1="819" y1="76" x2="819" y2="122" stroke="#b56a10" stroke-width="2"></line>
+              <polygon points="819,122 813,112 825,112" fill="#b56a10"></polygon>
+
+              <rect x="698" y="122" width="222" height="56" rx="11" fill="#fff7ea" stroke="#f2debf"></rect>
+              <text x="714" y="148" fill="#9a5b06" font-size="13" font-weight="700">STEMI?</text>
+              <text x="714" y="165" fill="#80693f" font-size="12">Immediate reperfusion decision</text>
+
+              <line x1="698" y1="150" x2="560" y2="214" stroke="#b11f1f" stroke-width="2"></line>
+              <polygon points="560,214 567,205 571,216" fill="#b11f1f"></polygon>
+              <line x1="920" y1="150" x2="920" y2="214" stroke="#2f7d73" stroke-width="2"></line>
+              <polygon points="920,214 914,204 926,204" fill="#2f7d73"></polygon>
+
+              <rect x="392" y="214" width="312" height="60" rx="11" fill="#fff1f1" stroke="#f2cbcb"></rect>
+              <text x="410" y="240" fill="#8b1a1a" font-size="13" font-weight="700">STEMI: PCI preferred</text>
+              <text x="410" y="258" fill="#8d5959" font-size="12">Fibrinolysis if PCI cannot be delivered in time</text>
+
+              <rect x="726" y="214" width="194" height="60" rx="11" fill="#eefaf8" stroke="#caeadf"></rect>
+              <text x="742" y="240" fill="#126458" font-size="13" font-weight="700">NSTEMI/UA</text>
+              <text x="742" y="258" fill="#4b746f" font-size="12">Risk stratify and consider early invasive strategy</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section" id="secondary-prevention">
+          <h2>6. Secondary Prevention</h2>
+          <p>All post-MI patients should receive:</p>
+          <div class="chips">
+            <span class="chip">DAPT</span>
+            <span class="chip">Beta blocker</span>
+            <span class="chip">ACE inhibitor</span>
+            <span class="chip">High-intensity statin</span>
+          </div>
+          <div class="callout">Lifestyle modification remains mandatory.</div>
+        </section>
+
+        <section class="section" id="recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Stable angina:</strong> Nitroglycerin for acute relief</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Chronic control:</strong> Beta blocker first-line</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Escalate if needed:</strong> Add CCB or ranolazine</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>ACS sequence:</strong> Aspirin -> P2Y12 -> anticoagulation -> statin -> reperfusion</div>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ACC/AHA Guideline for Chronic Coronary Disease</h3>
+              <a
+                href="https://www.acc.org/guidelines"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>ACC/AHA Guideline for Acute Coronary Syndromes</h3>
+              <a
+                href="https://www.acc.org/guidelines"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>7. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Do not combine nitrates with PDE-5 inhibitors.</div>
+            <div class="callout alert">Prasugrel is contraindicated with prior stroke history.</div>
+            <div class="callout alert">Beta blockers reduce mortality after myocardial infarction.</div>
+            <div class="callout alert">Post-ACS statin therapy is required even with normal LDL.</div>
+            <div class="callout alert">STEMI requires urgent reperfusion strategy.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>8. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Stable angina is demand ischemia</li>
+                <li>ACS is plaque rupture until proven otherwise</li>
+                <li>MONA is outdated; prioritize DAPT plus anticoagulation</li>
+                <li>STEMI points to urgent PCI pathway</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Post-MI Core Bundle</h3>
+              <ul>
+                <li>High-intensity statin</li>
+                <li>Beta blocker</li>
+                <li>ACE inhibitor</li>
+                <li>DAPT and risk-factor control</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Ischemic Heart Disease</li>
+                <li>Subtopics: stable angina, NSTEMI, STEMI, DAPT, secondary prevention</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

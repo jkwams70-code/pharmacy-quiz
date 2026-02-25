@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Peripheral Arterial Disease (PAD) - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f6fbff;
+        --surface: #ffffff;
+        --ink: #132a41;
+        --muted: #4f667f;
+        --line: #d5e4f3;
+        --brand: #7a3a10;
+        --brand-soft: #fff3eb;
+        --blue-soft: #edf6ff;
+        --teal-soft: #ebfaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff1f1;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 86% 6%, #ffe6d4 0%, transparent 31%),
+          radial-gradient(circle at 10% 18%, #e2f1ff 0%, transparent 25%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #35506e;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff4ee;
+        color: #6e3410;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(
+          160deg,
+          #fffefe 0%,
+          #fff4ec 55%,
+          #edf7ff 100%
+        );
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #7a3a10;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #64300f;
+        font-size: clamp(1.42rem, 2.4vw, 2.02rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f1dacb;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #80563d;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #64300f;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #efd8cb;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6d3411;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5a748f;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6d3411;
+        font-size: 1.15rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #304a64;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1d4369;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #2f4962;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff5ee;
+        color: #6a3310;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #214a6a;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #14535b;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b06b00;
+        background: var(--warn-soft);
+        color: #7f5d1f;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6c2020;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6b3411;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-pad">1. What Is PAD?</a>
+        <a href="#pathophysiology">2. Pathophysiology</a>
+        <a href="#clinical-presentation">3. Clinical Presentation</a>
+        <a href="#diagnosis">4. Diagnosis</a>
+        <a href="#management-goals">5. Management Goals</a>
+        <a href="#foundational-therapy">6. Foundational Therapy</a>
+        <a href="#symptom-improvement-therapy">7. Symptom Improvement Therapy</a>
+        <a href="#revascularization">8. Revascularization</a>
+        <a href="#antithrombotic-intensification">9. Antithrombotic Intensification</a>
+        <a href="#risk-factor-management">10. Risk Factor Management</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">11. Common Exam Traps</a>
+        <a href="#quick-revision">12. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Peripheral Arterial Disease (PAD)</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide covering ABI diagnosis,
+            risk reduction therapy, claudication treatment, and revascularization
+            decisions.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Disease Frame</div>
+                <div class="v">Systemic atherosclerosis</div>
+              </div>
+              <div class="metric">
+                <div class="k">Diagnostic Anchor</div>
+                <div class="v">ABI &lt; 0.90</div>
+              </div>
+              <div class="metric">
+                <div class="k">Core Prevention</div>
+                <div class="v">Antiplatelet + statin</div>
+              </div>
+              <div class="metric">
+                <div class="k">Symptom Drug</div>
+                <div class="v">Cilostazol</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>PAD Progression and Ischemic Burden</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="PAD progression overview">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="28" width="132" height="70" rx="10" fill="#fff4ec" stroke="#f1dbc9" />
+                <text x="86" y="54" text-anchor="middle" font-size="13" fill="#6b3310" font-weight="700">
+                  Plaque growth
+                </text>
+                <text x="86" y="72" text-anchor="middle" font-size="12" fill="#6b3310">
+                  in limb arteries
+                </text>
+                <rect x="184" y="28" width="132" height="70" rx="10" fill="#eef6ff" stroke="#d6e5f7" />
+                <text x="250" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">
+                  Flow drops
+                </text>
+                <text x="250" y="72" text-anchor="middle" font-size="12" fill="#1f4467">
+                  on exertion
+                </text>
+                <rect x="348" y="28" width="132" height="70" rx="10" fill="#ebfaf6" stroke="#d3ece3" />
+                <text x="414" y="54" text-anchor="middle" font-size="13" fill="#19554d" font-weight="700">
+                  Ischemic pain
+                </text>
+                <text x="414" y="72" text-anchor="middle" font-size="12" fill="#19554d">
+                  and limb risk
+                </text>
+                <path d="M152 62H184" stroke="#9bb7d3" stroke-width="2.2" marker-end="url(#a)" />
+                <path d="M316 62H348" stroke="#9bb7d3" stroke-width="2.2" marker-end="url(#a)" />
+                <rect x="20" y="126" width="460" height="72" rx="10" fill="#ffffff" stroke="#d6e4f2" />
+                <text x="250" y="151" text-anchor="middle" font-size="13" fill="#284762" font-weight="700">
+                  Clinical Arc: Claudication -> Critical Limb Ischemia
+                </text>
+                <text x="250" y="170" text-anchor="middle" font-size="12" fill="#3b5670">
+                  Non-healing ulcers, rest pain, and gangrene indicate advanced disease
+                </text>
+                <defs>
+                  <marker id="a" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#9bb7d3"></path>
+                  </marker>
+                </defs>
+              </svg>
+              <p>
+                PAD is both a limb disease and a high cardiovascular risk marker.
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-pad">
+          <h2>1. What Is Peripheral Arterial Disease?</h2>
+          <p>
+            Peripheral arterial disease (PAD) is a systemic atherosclerotic
+            disease involving arteries of the limbs, most commonly lower
+            extremities. It is strongly associated with future MI, stroke, and
+            vascular death.
+          </p>
+          <div class="chips">
+            <span class="chip">Limb ischemia</span>
+            <span class="chip">Systemic risk marker</span>
+            <span class="chip">Lower-extremity dominant</span>
+          </div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>2. Pathophysiology</h2>
+          <div class="flow">
+            <div class="step"><strong>Step 1:</strong> Atherosclerotic plaque narrows peripheral arteries.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 2:</strong> Exertion causes oxygen supply-demand mismatch.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 3:</strong> Ischemic pain develops (claudication).</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Step 4:</strong> Progression may lead to critical limb ischemia.</div>
+          </div>
+        </section>
+
+        <section class="section" id="clinical-presentation">
+          <h2>3. Clinical Presentation</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>A. Intermittent Claudication</h3>
+              <ul>
+                <li>Leg pain with walking/exertion</li>
+                <li>Predictably relieved by rest</li>
+                <li>Functional limitation over time</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>B. Critical Limb Ischemia</h3>
+              <ul>
+                <li>Rest pain</li>
+                <li>Non-healing ulcers</li>
+                <li>Gangrene and threatened limb</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="diagnosis">
+          <h2>4. Diagnosis</h2>
+          <div class="grid-3">
+            <div class="box">
+              <h3>ABI Formula</h3>
+              <p>ABI = ankle systolic BP / brachial systolic BP</p>
+            </div>
+            <div class="box">
+              <h3>Interpretation</h3>
+              <ul>
+                <li>Normal: 1.0 to 1.4</li>
+                <li>PAD: &lt; 0.90</li>
+                <li>Severe disease: &lt; 0.40</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Exam Pearl</h3>
+              <p>ABI under 0.90 supports PAD diagnosis.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="management-goals">
+          <h2>5. Management Goals</h2>
+          <div class="chips">
+            <span class="chip">Reduce cardiovascular risk</span>
+            <span class="chip">Improve walking symptoms</span>
+            <span class="chip">Prevent limb loss</span>
+          </div>
+        </section>
+
+        <section class="section" id="foundational-therapy">
+          <h2>6. Foundational Therapy (All PAD Patients)</h2>
+          <div class="callout">
+            Treat PAD as a coronary-risk-equivalent state: antiplatelet therapy,
+            high-intensity statin, blood pressure control, and smoking cessation.
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug/Class</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Aspirin</td>
+                <td>Irreversibly inhibits COX-1, lowering thromboxane A2 and platelet aggregation</td>
+                <td>GI bleeding, dyspepsia</td>
+                <td>Active bleeding</td>
+              </tr>
+              <tr>
+                <td>Clopidogrel</td>
+                <td>P2Y12 receptor blockade, inhibiting ADP-mediated platelet aggregation</td>
+                <td>Bleeding</td>
+                <td>Active bleeding</td>
+              </tr>
+              <tr>
+                <td>High-intensity statins (atorvastatin, rosuvastatin)</td>
+                <td>HMG-CoA reductase inhibition, increased LDL receptor expression</td>
+                <td>Myopathy, elevated liver enzymes</td>
+                <td>Active liver disease, pregnancy</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="callout warn">
+            In exam framing, PAD patients should receive statin therapy
+            regardless of baseline LDL value.
+          </div>
+        </section>
+
+        <section class="section" id="symptom-improvement-therapy">
+          <h2>7. Symptom Improvement Therapy</h2>
+          <div class="stack">
+            <div class="box">
+              <h3>A. Cilostazol</h3>
+              <ul>
+                <li>MOA: phosphodiesterase III inhibition, increased cAMP, vasodilation, antiplatelet effect</li>
+                <li>Benefits: improves walking distance and claudication symptoms</li>
+                <li>Side effects: headache, palpitations, diarrhea</li>
+                <li>Contraindication: heart failure (black box warning)</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>B. Pentoxifylline</h3>
+              <ul>
+                <li>MOA: improves RBC flexibility and lowers blood viscosity</li>
+                <li>Clinical use: less effective than cilostazol</li>
+                <li>Position: not first-line for claudication symptom relief</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="revascularization">
+          <h2>8. Revascularization</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Indications</h3>
+              <ul>
+                <li>Lifestyle-limiting claudication despite therapy</li>
+                <li>Critical limb ischemia</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Approaches</h3>
+              <ul>
+                <li>Endovascular: angioplasty, stent</li>
+                <li>Surgical bypass in selected anatomy</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="antithrombotic-intensification">
+          <h2>9. Antithrombotic Intensification</h2>
+          <p>
+            In selected high-risk PAD patients, low-dose rivaroxaban plus aspirin
+            can reduce major adverse cardiovascular and limb events.
+          </p>
+        </section>
+
+        <section class="section" id="risk-factor-management">
+          <h2>10. Risk Factor Management</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Highest Impact</h3>
+              <ul>
+                <li>Smoking cessation</li>
+                <li>Exercise therapy</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Additional Control</h3>
+              <ul>
+                <li>Blood pressure management</li>
+                <li>Diabetes optimization</li>
+                <li>Long-term adherence monitoring</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout">
+            Supervised exercise programs meaningfully improve walking distance.
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>PAD 1:</strong> Start antiplatelet therapy.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAD 2:</strong> Start high-intensity statin.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAD 3:</strong> Control BP and other risk factors.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAD 4:</strong> Prioritize smoking cessation and exercise.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAD 5:</strong> Add cilostazol for claudication if eligible.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>PAD 6:</strong> Revascularize when severe or refractory.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert PAD Diagnosis and Treatment Flowchart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ACC/AHA Lower Extremity PAD Guideline Hub</h3>
+              <a href="https://www.acc.org/guidelines" target="_blank" rel="noopener">
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>Core Focus Areas</h3>
+              <ul>
+                <li>Antiplatelet strategy</li>
+                <li>Statin and risk-factor control</li>
+                <li>Exercise therapy and revascularization indications</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>11. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Cilostazol is contraindicated in heart failure.</div>
+            <div class="callout alert">PAD patients should receive statins even with normal LDL.</div>
+            <div class="callout alert">Smoking cessation has the largest impact on progression.</div>
+            <div class="callout alert">ABI below 0.90 supports PAD diagnosis.</div>
+            <div class="callout alert">Pentoxifylline is less effective than cilostazol.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>12. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>PAD is systemic atherosclerosis, not an isolated limb problem</li>
+                <li>ABI under 0.90 is diagnostic in most exam contexts</li>
+                <li>All PAD patients need antiplatelet and statin backbone therapy</li>
+                <li>Cilostazol improves claudication but avoid in heart failure</li>
+                <li>Advanced disease needs revascularization planning</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Peripheral Arterial Disease</li>
+                <li>
+                  Subtopics: ABI, antiplatelets, statins, cilostazol, critical
+                  limb ischemia
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

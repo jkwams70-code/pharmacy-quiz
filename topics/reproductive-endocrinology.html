@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reproductive Endocrinology - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #8a1f53;
+        --brand-soft: #fff0f7;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #ffd8eb 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #eaf4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff2f8;
+        color: #78194a;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff2f8 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #8a1f53;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #6d1941;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0d4e3;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7a6070;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #6d1941;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #f0d4e3;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6d1941;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6d1941;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff3f8;
+        color: #6d1941;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6d1941;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#pcos">1. Polycystic Ovary Syndrome</a>
+        <a href="#menopause-hrt">2. Menopause and HRT</a>
+        <a href="#hormonal-contraceptives">3. Hormonal Contraceptives</a>
+        <a href="#male-hypogonadism">4. Male Hypogonadism</a>
+        <a href="#erectile-dysfunction">5. Erectile Dysfunction</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">6. Common Exam Traps</a>
+        <a href="#quick-revision">7. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Women's &amp; Men's Health</span>
+          <h1>Reproductive Endocrinology</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide covering PCOS, menopause and HRT,
+            contraceptive pharmacology, male hypogonadism, and erectile dysfunction.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">PCOS Base</div>
+                <div class="v">Insulin resistance + hyperandrogenism</div>
+              </div>
+              <div class="metric">
+                <div class="k">HRT Rule</div>
+                <div class="v">Add progestin if uterus present</div>
+              </div>
+              <div class="metric">
+                <div class="k">Hypogonadism</div>
+                <div class="v">Testosterone replacement</div>
+              </div>
+              <div class="metric">
+                <div class="k">ED Trap</div>
+                <div class="v">No PDE-5 with nitrates</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Therapeutic Decision Themes</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Reproductive endocrinology decision map">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="146" height="72" rx="10" fill="#fff3f8" stroke="#f0d4e3" />
+                <text x="93" y="54" text-anchor="middle" font-size="13" fill="#6d1941" font-weight="700">PCOS</text>
+                <text x="93" y="72" text-anchor="middle" font-size="12" fill="#7a6070">cycle control</text>
+                <text x="93" y="88" text-anchor="middle" font-size="12" fill="#7a6070">androgen control</text>
+
+                <rect x="176" y="30" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Menopause</text>
+                <text x="249" y="72" text-anchor="middle" font-size="12" fill="#5f7488">symptom relief</text>
+                <text x="249" y="88" text-anchor="middle" font-size="12" fill="#5f7488">risk screening</text>
+
+                <rect x="332" y="30" width="146" height="72" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+                <text x="405" y="54" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">Male health</text>
+                <text x="405" y="72" text-anchor="middle" font-size="12" fill="#5b7a74">testosterone</text>
+                <text x="405" y="88" text-anchor="middle" font-size="12" fill="#5b7a74">ED management</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Match treatment to contraindications and reproductive goals
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  Safety screening often determines first-choice drug class
+                </text>
+              </svg>
+              <p>Therapy selection changes with fertility goals, thrombosis risk, and comorbidity profile.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="pcos">
+          <h2>1. Polycystic Ovary Syndrome (PCOS)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Pathophysiology and Features</h3>
+              <ul>
+                <li>Insulin resistance</li>
+                <li>Hyperandrogenism</li>
+                <li>Ovulatory dysfunction</li>
+                <li>Clinical: irregular menses, hirsutism, acne, obesity, infertility</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Treatment Principle</h3>
+              <ul>
+                <li>Goal-directed care: cycle control vs fertility focus</li>
+              </ul>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug/Class</th>
+                <th>MOA</th>
+                <th>Dose Regimen</th>
+                <th>Side Effects</th>
+                <th>Contraindications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Combined oral contraceptives</td>
+                <td>Suppress LH, reduce ovarian androgen production, regulate cycle</td>
+                <td>Ethinyl estradiol 20-35 mcg plus progestin, one tablet daily (21-28 day cycle)</td>
+                <td>Nausea, breast tenderness, VTE risk</td>
+                <td>Prior DVT/PE, migraine with aura, uncontrolled hypertension, smoking over age 35</td>
+              </tr>
+              <tr>
+                <td>Metformin</td>
+                <td>Improves insulin sensitivity and may improve ovulation</td>
+                <td>Start 500 mg daily, titrate to 1000-2000 mg/day divided</td>
+                <td>GI upset, rare lactic acidosis</td>
+                <td>Severe renal impairment, acute metabolic acidosis</td>
+              </tr>
+              <tr>
+                <td>Spironolactone</td>
+                <td>Androgen receptor blockade for hirsutism control</td>
+                <td>50-100 mg orally twice daily</td>
+                <td>Hyperkalemia, menstrual irregularity</td>
+                <td>Pregnancy (teratogenic) and significant hyperkalemia risk; use reliable contraception</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="menopause-hrt">
+          <h2>2. Menopause and Hormone Replacement Therapy (HRT)</h2>
+          <p>
+            Indicated for severe vasomotor symptoms or genitourinary syndrome after risk assessment.
+          </p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Therapy</th>
+                <th>MOA</th>
+                <th>Dose Regimen</th>
+                <th>Side Effects</th>
+                <th>Contraindications / Rules</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Estradiol (oral or transdermal)</td>
+                <td>Replaces declining estrogen</td>
+                <td>Oral 0.5-2 mg daily; patch 0.025-0.1 mg/day</td>
+                <td>Breast tenderness, VTE/stroke risk</td>
+                <td>Contraindicated in breast cancer, prior DVT/PE, active liver disease</td>
+              </tr>
+              <tr>
+                <td>Medroxyprogesterone (if uterus intact)</td>
+                <td>Progestin endometrial protection against unopposed estrogen effect</td>
+                <td>2.5-5 mg daily</td>
+                <td>Mood change, bleeding pattern changes</td>
+                <td>Required when uterus is present to reduce endometrial cancer risk</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="hormonal-contraceptives">
+          <h2>3. Hormonal Contraceptives</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>MOA</th>
+                <th>Dose Regimen</th>
+                <th>Key Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Combined oral contraceptive</td>
+                <td>Suppresses ovulation, thickens cervical mucus, thins endometrium</td>
+                <td>Ethinyl estradiol 20-35 mcg daily with progestin</td>
+                <td>Use only when estrogen is safe</td>
+              </tr>
+              <tr>
+                <td>Progestin-only pill</td>
+                <td>Mainly thickens cervical mucus and alters endometrium</td>
+                <td>Norethindrone 0.35 mg daily</td>
+                <td>Useful during breastfeeding or estrogen contraindication</td>
+              </tr>
+              <tr>
+                <td>Depot medroxyprogesterone (DMPA)</td>
+                <td>Ovulation suppression and endometrial effect</td>
+                <td>150 mg IM every 3 months</td>
+                <td>Weight gain and bone density reduction can occur</td>
+              </tr>
+              <tr>
+                <td>Levonorgestrel IUD</td>
+                <td>Local progestin effect on endometrium/cervical mucus</td>
+                <td>Device duration 3-8 years by product</td>
+                <td>Long-acting reversible method</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="male-hypogonadism">
+          <h2>4. Male Hypogonadism</h2>
+          <div class="box stack">
+            <h3>Testosterone Replacement</h3>
+            <ul>
+              <li>MOA: restores physiologic serum testosterone</li>
+              <li>IM cypionate: 50-100 mg weekly or 100-200 mg every 2 weeks</li>
+              <li>Transdermal gel: 50-100 mg daily</li>
+              <li>Side effects: polycythemia, acne, infertility, prostate enlargement</li>
+              <li>Contraindications: prostate or breast cancer</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="erectile-dysfunction">
+          <h2>5. Erectile Dysfunction (ED)</h2>
+          <p>Most common etiology is vascular dysfunction.</p>
+          <div class="box stack">
+            <h3>PDE-5 Inhibitors (Sildenafil, Tadalafil)</h3>
+            <ul>
+              <li>MOA: PDE-5 inhibition raises cGMP and augments nitric oxide-mediated vasodilation</li>
+              <li>Sildenafil dose: 50 mg about 1 hour pre-intercourse (range 25-100 mg)</li>
+              <li>Side effects: headache, flushing, hypotension</li>
+              <li>Contraindication: concurrent nitrate use (risk of severe hypotension)</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>PCOS:</strong> COC first-line for cycle control, add spironolactone for hirsutism with contraception.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Menopause:</strong> estrogen with progestin when uterus is intact.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Contraception:</strong> choose COC when safe; progestin-only when estrogen unsafe.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Hypogonadism:</strong> testosterone replacement with safety monitoring.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>ED:</strong> sildenafil class, never with nitrates.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Reproductive Endocrine Treatment Algorithm Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Endocrine Society Guidelines</h3>
+              <a href="https://www.endocrine.org" target="_blank" rel="noopener">
+                https://www.endocrine.org
+              </a>
+            </div>
+            <div class="box">
+              <h3>ACOG Guidance</h3>
+              <a href="https://www.acog.org" target="_blank" rel="noopener">
+                https://www.acog.org
+              </a>
+            </div>
+          </div>
+          <div class="callout">
+            Core scope includes PCOS care, HRT risk-safety balance, testosterone therapy, and contraceptive eligibility.
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>6. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Do not use estrogen in migraine with aura.</div>
+            <div class="callout alert">Add progestin when uterus is intact during systemic estrogen therapy.</div>
+            <div class="callout alert">Exogenous testosterone suppresses fertility.</div>
+            <div class="callout alert">PDE-5 inhibitors are contraindicated with nitrates.</div>
+            <div class="callout alert">Spironolactone is teratogenic and requires contraception planning.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>7. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>PCOS centers on insulin resistance and hyperandrogenism</li>
+                <li>COCs regulate cycle and reduce androgenic features</li>
+                <li>HRT must account for uterus status and thrombotic risk</li>
+                <li>Testosterone therapy requires adverse effect monitoring</li>
+                <li>Sildenafil-class drugs cannot be combined with nitrates</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Reproductive Endocrinology</li>
+                <li>
+                  Subtopics: PCOS, HRT, contraception, hypogonadism, erectile dysfunction
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

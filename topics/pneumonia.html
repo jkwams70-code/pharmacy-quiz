@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pneumonia - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #0f5c8a;
+        --soft: #ebf6ff;
+        --good-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --alert-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 86% 9%, #d9efff 0%, transparent 32%),
+          radial-gradient(circle at 8% 20%, #eaf4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #eef7ff;
+        color: #0f5c8a;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #eef7ff 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--soft);
+        color: #0f5c8a;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #0f4c72;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #d0e7f9;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #52718a;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #0f4c72;
+        font-weight: 700;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #0f4c72;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #eef7ff;
+        color: #0f4c72;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--good-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--alert-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #0f4c72;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram p {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      details.quiz {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px 12px;
+      }
+
+      details.quiz summary {
+        cursor: pointer;
+        color: #1f4061;
+        font-weight: 700;
+      }
+
+      details.quiz p {
+        margin: 10px 0 0;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-pneumonia">1. Definition</a>
+        <a href="#common-pathogens">2. Common Pathogens</a>
+        <a href="#cap-outpatient-no-comorb">3A. CAP Outpatient (No Comorbidities)</a>
+        <a href="#cap-outpatient-comorb">3B. CAP Outpatient (With Comorbidities)</a>
+        <a href="#cap-inpatient-non-icu">4. Inpatient CAP (Non-ICU)</a>
+        <a href="#cap-icu">5. ICU CAP</a>
+        <a href="#hap">6. HAP</a>
+        <a href="#vap">7. VAP</a>
+        <a href="#duration">8. Duration of Therapy</a>
+        <a href="#management-recap-drill">Management Recap Drill</a>
+        <a href="#guidelines">Guidelines</a>
+        <a href="#exam-traps">9. Common Exam Traps</a>
+        <a href="#quick-revision">10. Quick Revision Summary</a>
+        <a href="#practice-questions">Practice Questions</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Infectious Diseases</span>
+          <h1>Pneumonia</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for CAP, HAP, and VAP with
+            empiric therapy logic, dosing, MRSA risk decisions, and duration strategy.
+          </p>
+          <div class="hero-grid">
+            <div class="metric">
+              <div class="k">Core Diagnosis</div>
+              <div class="v">Lung parenchymal infection</div>
+            </div>
+            <div class="metric">
+              <div class="k">CAP Typical</div>
+              <div class="v">S. pneumoniae common</div>
+            </div>
+            <div class="metric">
+              <div class="k">HAP/VAP Risk</div>
+              <div class="v">Pseudomonas + MRSA</div>
+            </div>
+            <div class="metric">
+              <div class="k">Duration Anchor</div>
+              <div class="v">CAP 5+ days, HAP/VAP 7 days</div>
+            </div>
+          </div>
+          <div class="diagram">
+            <p>Pneumonia Type and Empiric Spectrum Map</p>
+            <svg viewBox="0 0 760 220" role="img" aria-label="CAP HAP VAP pathogen and coverage framework">
+              <rect x="0" y="0" width="760" height="220" rx="12" fill="#fbfdff" />
+              <rect x="20" y="26" width="220" height="75" rx="10" fill="#eef7ff" stroke="#d0e7f9" />
+              <text x="130" y="50" text-anchor="middle" font-size="14" fill="#0f4c72" font-weight="700">CAP</text>
+              <text x="130" y="70" text-anchor="middle" font-size="12" fill="#52718a">S. pneumoniae, H. influenzae</text>
+              <text x="130" y="86" text-anchor="middle" font-size="12" fill="#52718a">Atypicals</text>
+
+              <rect x="270" y="26" width="220" height="75" rx="10" fill="#fff8ee" stroke="#f0dfbd" />
+              <text x="380" y="50" text-anchor="middle" font-size="14" fill="#7a4f0d" font-weight="700">HAP</text>
+              <text x="380" y="70" text-anchor="middle" font-size="12" fill="#7c6a48">Pseudomonas risk</text>
+              <text x="380" y="86" text-anchor="middle" font-size="12" fill="#7c6a48">MRSA consideration</text>
+
+              <rect x="520" y="26" width="220" height="75" rx="10" fill="#fff0f0" stroke="#f2cbcb" />
+              <text x="630" y="50" text-anchor="middle" font-size="14" fill="#8a3a3a" font-weight="700">VAP</text>
+              <text x="630" y="70" text-anchor="middle" font-size="12" fill="#8a4e4e">Higher MDR risk</text>
+              <text x="630" y="86" text-anchor="middle" font-size="12" fill="#8a4e4e">Culture-guided de-escalation</text>
+
+              <rect x="20" y="122" width="720" height="72" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+              <text x="380" y="148" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">Empiric first, then narrow once microbiology returns</text>
+              <text x="380" y="167" text-anchor="middle" font-size="12" fill="#45637e">Avoid unnecessary broad-spectrum continuation</text>
+            </svg>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-pneumonia">
+          <h2>1. Definition</h2>
+          <p>Pneumonia is infection of lung parenchyma.</p>
+          <div class="chips">
+            <span class="chip">Community-Acquired (CAP)</span>
+            <span class="chip">Hospital-Acquired (HAP)</span>
+            <span class="chip">Ventilator-Associated (VAP)</span>
+          </div>
+        </section>
+
+        <section class="section" id="common-pathogens">
+          <h2>2. Common Pathogens</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>CAP</h3>
+              <ul>
+                <li>Streptococcus pneumoniae</li>
+                <li>Haemophilus influenzae</li>
+                <li>Atypicals: Mycoplasma, Chlamydia, Legionella</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>HAP/VAP</h3>
+              <ul>
+                <li>Pseudomonas</li>
+                <li>MRSA</li>
+                <li>Gram-negative rods</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="cap-outpatient-no-comorb">
+          <h2>3A. Community-Acquired Pneumonia (Outpatient, No Comorbidities)</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>MOA</th>
+                <th>Dose</th>
+                <th>Key Risks / Contraindications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Amoxicillin</td>
+                <td>Beta-lactam cell wall synthesis inhibition</td>
+                <td>1 g orally three times daily</td>
+                <td>GI upset, rash; avoid in severe penicillin allergy</td>
+              </tr>
+              <tr>
+                <td>Doxycycline</td>
+                <td>30S ribosomal inhibition</td>
+                <td>100 mg orally twice daily</td>
+                <td>Photosensitivity, GI upset; avoid in pregnancy and children under 8 years</td>
+              </tr>
+              <tr>
+                <td>Azithromycin (if local resistance low)</td>
+                <td>Macrolide 50S inhibition</td>
+                <td>500 mg day 1, then 250 mg daily days 2-5</td>
+                <td>QT prolongation risk; avoid in known prolonged QT</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="cap-outpatient-comorb">
+          <h2>3B. CAP Outpatient (With Comorbidities)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Option 1</h3>
+              <ul>
+                <li>Amoxicillin-clavulanate + azithromycin</li>
+                <li>Amox-clav dose example: 875/125 mg twice daily</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Option 2</h3>
+              <ul>
+                <li>Respiratory fluoroquinolone (for example, levofloxacin)</li>
+                <li>Levofloxacin dose: 750 mg daily for 5 days</li>
+                <li>MOA: DNA gyrase inhibition</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout alert">
+            Levofloxacin risks: tendon injury, QT prolongation, dysglycemia.
+            Avoid in pregnancy and myasthenia gravis.
+          </div>
+        </section>
+
+        <section class="section" id="cap-inpatient-non-icu">
+          <h2>4. Inpatient CAP (Non-ICU)</h2>
+          <div class="box">
+            <ul>
+              <li>Ceftriaxone + azithromycin is a common regimen</li>
+              <li>Ceftriaxone dose: 1-2 g IV daily</li>
+              <li>Alternative: levofloxacin 750 mg IV daily</li>
+              <li>Ceftriaxone risks: biliary sludge, rash</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="cap-icu">
+          <h2>5. ICU CAP</h2>
+          <div class="box">
+            <ul>
+              <li>Beta-lactam + macrolide OR beta-lactam + fluoroquinolone</li>
+              <li>Add vancomycin if MRSA risk factors are present</li>
+              <li>Vancomycin dose: 15-20 mg/kg IV every 8-12 hours</li>
+              <li>Target trough (severe infection): 15-20 mcg/mL</li>
+              <li>Risks: nephrotoxicity, red man syndrome</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="hap">
+          <h2>6. Hospital-Acquired Pneumonia (HAP)</h2>
+          <div class="box">
+            <ul>
+              <li>Must cover Pseudomonas and evaluate MRSA risk</li>
+              <li>Example empiric: piperacillin-tazobactam + vancomycin</li>
+              <li>Piperacillin-tazobactam dose: 4.5 g IV every 6 hours</li>
+              <li>Risks: renal injury, electrolyte imbalance</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="vap">
+          <h2>7. Ventilator-Associated Pneumonia (VAP)</h2>
+          <div class="box">
+            <ul>
+              <li>Higher MDR risk than many HAP presentations</li>
+              <li>Use anti-pseudomonal beta-lactam + MRSA coverage when indicated</li>
+              <li>De-escalate once culture and susceptibility data are available</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="duration">
+          <h2>8. Duration of Therapy</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>CAP</h3>
+              <ul>
+                <li>Minimum 5 days</li>
+                <li>Afebrile for 48-72 hours with clinical stability</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>HAP/VAP</h3>
+              <ul>
+                <li>Typical: 7 days</li>
+                <li>Longer course only if complications or poor response</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Outpatient CAP:</strong> amoxicillin OR doxycycline (or azithro if low resistance).</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Comorbid outpatient:</strong> amox-clav + azithro OR levofloxacin.</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>Inpatient CAP:</strong> ceftriaxone + azithromycin (or levofloxacin).</div>
+            <div class="arrow">&#8595;</div>
+            <div class="step"><strong>HAP/VAP:</strong> anti-pseudomonal coverage + MRSA consideration; de-escalate by cultures.</div>
+          </div>
+          <div class="diagram">
+            <p>CAP vs HAP/VAP Empiric Treatment Algorithm</p>
+            <svg viewBox="0 0 760 210" role="img" aria-label="Pneumonia empiric treatment algorithm">
+              <rect x="0" y="0" width="760" height="210" rx="12" fill="#fbfdff" />
+              <rect x="20" y="22" width="220" height="64" rx="10" fill="#eef7ff" stroke="#d0e7f9" />
+              <text x="130" y="46" text-anchor="middle" font-size="13" fill="#0f4c72" font-weight="700">CAP pathway</text>
+              <text x="130" y="65" text-anchor="middle" font-size="12" fill="#52718a">Outpatient vs inpatient selection</text>
+              <rect x="270" y="22" width="220" height="64" rx="10" fill="#fff8ee" stroke="#f0dfbd" />
+              <text x="380" y="46" text-anchor="middle" font-size="13" fill="#7a4f0d" font-weight="700">HAP pathway</text>
+              <text x="380" y="65" text-anchor="middle" font-size="12" fill="#7c6a48">Broad empiric with pseudomonal focus</text>
+              <rect x="520" y="22" width="220" height="64" rx="10" fill="#fff0f0" stroke="#f2cbcb" />
+              <text x="630" y="46" text-anchor="middle" font-size="13" fill="#8a3a3a" font-weight="700">VAP pathway</text>
+              <text x="630" y="65" text-anchor="middle" font-size="12" fill="#8a4e4e">Higher MDR concern</text>
+              <rect x="20" y="110" width="720" height="72" rx="10" fill="#fff" stroke="#d8e4f2" />
+              <text x="380" y="136" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">Step down by culture results as early as feasible</text>
+              <text x="380" y="155" text-anchor="middle" font-size="12" fill="#45637e">Narrowing therapy improves safety and stewardship</text>
+            </svg>
+          </div>
+        </section>
+
+        <section class="section refs" id="guidelines">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>IDSA / ATS Guidance</h3>
+              <a href="https://www.idsociety.org" target="_blank" rel="noopener">https://www.idsociety.org</a>
+            </div>
+            <div class="box">
+              <h3>Guideline Scope</h3>
+              <ul>
+                <li>CAP outpatient vs inpatient regimens</li>
+                <li>MRSA and pseudomonal risk stratification</li>
+                <li>HAP/VAP empiric therapy and duration recommendations</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>9. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Levofloxacin CAP regimen is often 750 mg daily for 5 days.</div>
+            <div class="callout alert">Doxycycline is an acceptable first-line CAP option.</div>
+            <div class="callout alert">Add MRSA coverage only when risk factors are present.</div>
+            <div class="callout alert">Minimum CAP duration is 5 days with stability criteria.</div>
+            <div class="callout alert">Always de-escalate when cultures permit.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>10. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>CAP commonly involves S. pneumoniae</li>
+                <li>HAP/VAP carries pseudomonal and MRSA risk</li>
+                <li>Beta-lactam + macrolide is common in inpatient CAP</li>
+                <li>Therapy often lasts 5-7 days depending on syndrome and response</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>High-Yield Subtopics</h3>
+              <ul>
+                <li>CAP empiric outpatient logic</li>
+                <li>Comorbidity-driven outpatient escalation</li>
+                <li>HAP/VAP broad-to-narrow sequence</li>
+                <li>MRSA risk-based add-on decisions</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="practice-questions">
+          <h2>Practice Questions</h2>
+          <div class="stack">
+            <details class="quiz">
+              <summary>1) Outpatient CAP without comorbidities: name two first-line options.</summary>
+              <p><strong>Answer:</strong> Amoxicillin or doxycycline (azithromycin only where macrolide resistance is acceptably low).</p>
+            </details>
+            <details class="quiz">
+              <summary>2) What is a common high-dose short-course levofloxacin CAP regimen?</summary>
+              <p><strong>Answer:</strong> 750 mg once daily for 5 days.</p>
+            </details>
+            <details class="quiz">
+              <summary>3) Typical inpatient non-ICU CAP combination?</summary>
+              <p><strong>Answer:</strong> Ceftriaxone plus azithromycin.</p>
+            </details>
+            <details class="quiz">
+              <summary>4) Core empiric concept for HAP/VAP?</summary>
+              <p><strong>Answer:</strong> Ensure anti-pseudomonal coverage and add MRSA therapy when risk indicates.</p>
+            </details>
+            <details class="quiz">
+              <summary>5) Minimum CAP duration if clinically stable?</summary>
+              <p><strong>Answer:</strong> At least 5 days, with afebrile period and clinical stability.</p>
+            </details>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

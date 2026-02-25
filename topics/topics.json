@@ -1,0 +1,812 @@
+{
+  "version": 1,
+  "generatedAt": "2026-02-24T00:00:00Z",
+  "categories": [
+    "Cardiovascular Disorders",
+    "Infectious Diseases",
+    "Endocrinology",
+    "Respiratory Disorders",
+    "Renal & Electrolyte Disorders",
+    "Gastrointestinal Disorders",
+    "Neurology & Psychiatry",
+    "Hematology",
+    "Oncology",
+    "Rheumatology & Pain",
+    "Women's & Men's Health",
+    "Immunizations",
+    "Pharmacy Law & Ethics"
+  ],
+  "topics": [
+    {
+      "slug": "hypertension",
+      "title": "Hypertension",
+      "category": "Cardiovascular Disorders",
+      "summary": "Blood pressure classification, first-line treatment, special populations, resistant hypertension, and hypertensive crisis.",
+      "level": "core",
+      "notePath": "hypertension.html",
+      "tags": [
+        "htn",
+        "hpt",
+        "high-blood-pressure",
+        "acc-aha",
+        "thiazide",
+        "acei",
+        "arb",
+        "ccb",
+        "resistant-hypertension"
+      ],
+      "sections": [
+        { "id": "what-is-hypertension", "title": "What Is Hypertension?" },
+        { "id": "primary-vs-secondary", "title": "Primary vs Secondary Hypertension" },
+        { "id": "risk-factors", "title": "Risk Factors" },
+        { "id": "complications", "title": "Complications" },
+        { "id": "treatment-goals", "title": "Treatment Goals" },
+        { "id": "lifestyle-management", "title": "Non-Pharmacologic Management" },
+        { "id": "first-line-drug-classes", "title": "First-Line Drug Classes" },
+        { "id": "special-populations", "title": "Special Populations" },
+        { "id": "resistant-hypertension", "title": "Resistant Hypertension" },
+        { "id": "hypertensive-crisis", "title": "Hypertensive Crisis" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "heart-failure",
+      "title": "Heart Failure",
+      "category": "Cardiovascular Disorders",
+      "summary": "HFrEF/HFpEF classification, four-pillar HFrEF therapy, acute decompensation, and exam traps.",
+      "level": "core",
+      "notePath": "heart-failure.html",
+      "tags": [
+        "gdmt",
+        "hfrEF",
+        "hfpef",
+        "arni",
+        "sglt2"
+      ],
+      "sections": [
+        { "id": "what-is-heart-failure", "title": "What Is Heart Failure?" },
+        { "id": "classification", "title": "Classification" },
+        { "id": "pathophysiology", "title": "Pathophysiology" },
+        { "id": "clinical-presentation", "title": "Clinical Presentation" },
+        { "id": "hfrEF-four-pillars", "title": "HFrEF Four Foundational Pillars" },
+        { "id": "additional-therapies", "title": "Additional Therapies" },
+        { "id": "symptom-control", "title": "Symptom Control" },
+        { "id": "acute-decompensated-hf", "title": "Acute Decompensated HF" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "ischemic-heart-disease",
+      "title": "Ischemic Heart Disease",
+      "category": "Cardiovascular Disorders",
+      "summary": "Stable angina vs ACS, antiplatelets, anticoagulants, reperfusion, and secondary prevention.",
+      "level": "core",
+      "notePath": "ischemic-heart-disease.html",
+      "tags": [
+        "ihd",
+        "cad",
+        "acs",
+        "nstemi",
+        "stemi",
+        "dapt",
+        "statin",
+        "nitroglycerin"
+      ],
+      "sections": [
+        { "id": "what-is-ihd", "title": "What Is Ischemic Heart Disease?" },
+        { "id": "pathophysiology", "title": "Pathophysiology" },
+        { "id": "clinical-classification", "title": "Clinical Classification" },
+        { "id": "stable-angina-management", "title": "Management of Stable Angina" },
+        { "id": "acs-management", "title": "Management of Acute Coronary Syndromes" },
+        { "id": "secondary-prevention", "title": "Secondary Prevention" },
+        { "id": "recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "arrhythmias",
+      "title": "Arrhythmias",
+      "category": "Cardiovascular Disorders",
+      "summary": "AF, VT, bradyarrhythmias, antiarrhythmic drug classes, and anticoagulation strategy.",
+      "level": "core",
+      "notePath": "arrhythmias.html",
+      "tags": [
+        "af",
+        "atrial-fibrillation",
+        "vt",
+        "vaughan-williams",
+        "doac",
+        "warfarin",
+        "amiodarone",
+        "digoxin"
+      ],
+      "sections": [
+        { "id": "what-are-arrhythmias", "title": "What Are Arrhythmias?" },
+        { "id": "electrophysiology-refresher", "title": "Basic Electrophysiology Refresher" },
+        { "id": "major-arrhythmias-tested", "title": "Major Arrhythmias Tested" },
+        { "id": "atrial-fibrillation", "title": "Atrial Fibrillation (AF)" },
+        { "id": "stroke-prevention-in-af", "title": "Stroke Prevention in AF" },
+        { "id": "ventricular-arrhythmias", "title": "Ventricular Arrhythmias" },
+        { "id": "bradyarrhythmias", "title": "Bradyarrhythmias" },
+        { "id": "vaughan-williams-summary", "title": "Vaughan-Williams Classification Summary" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "dyslipidemia",
+      "title": "Dyslipidemia",
+      "category": "Cardiovascular Disorders",
+      "summary": "LDL-focused risk reduction, statins, non-statin escalation, and hypertriglyceridemia strategy.",
+      "level": "core",
+      "notePath": "dyslipidemia.html",
+      "tags": [
+        "ldl",
+        "ascvd",
+        "statin",
+        "pcsk9",
+        "ezetimibe",
+        "fibrate",
+        "triglycerides"
+      ],
+      "sections": [
+        { "id": "what-is-dyslipidemia", "title": "What Is Dyslipidemia?" },
+        { "id": "pathophysiology", "title": "Pathophysiology" },
+        { "id": "risk-assessment", "title": "Risk Assessment" },
+        { "id": "first-line-therapy", "title": "First-Line Therapy" },
+        { "id": "non-statin-therapy", "title": "Non-Statin Therapy" },
+        { "id": "hypertriglyceridemia", "title": "Hypertriglyceridemia" },
+        { "id": "treatment-strategy-summary", "title": "Treatment Strategy Summary" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "anticoagulation-vte",
+      "title": "Anticoagulation & VTE",
+      "category": "Hematology",
+      "summary": "DVT/PE framework, DOAC-first strategy, heparins, warfarin, HIT, thrombolysis, and duration decisions.",
+      "level": "core",
+      "notePath": "anticoagulation-vte.html",
+      "tags": [
+        "vte",
+        "dvt",
+        "pe",
+        "doac",
+        "warfarin",
+        "heparin",
+        "hit",
+        "thrombolysis"
+      ],
+      "sections": [
+        { "id": "what-is-vte", "title": "What Is VTE?" },
+        { "id": "pathophysiology", "title": "Pathophysiology" },
+        { "id": "clinical-presentation", "title": "Clinical Presentation" },
+        { "id": "management-overview", "title": "Management Overview" },
+        { "id": "doacs", "title": "DOACs" },
+        { "id": "heparins", "title": "Heparins" },
+        { "id": "warfarin", "title": "Warfarin" },
+        { "id": "duration-of-therapy", "title": "Duration of Therapy" },
+        { "id": "pe-severity", "title": "PE Severity and Thrombolysis" },
+        { "id": "special-situations", "title": "Special Situations" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "peripheral-arterial-disease",
+      "title": "Peripheral Arterial Disease",
+      "category": "Cardiovascular Disorders",
+      "summary": "PAD diagnosis with ABI, prevention-first therapy, claudication management, and revascularization strategy.",
+      "level": "core",
+      "notePath": "peripheral-arterial-disease.html",
+      "tags": [
+        "pad",
+        "claudication",
+        "abi",
+        "cilostazol",
+        "critical-limb-ischemia",
+        "antiplatelet",
+        "statin"
+      ],
+      "sections": [
+        { "id": "what-is-pad", "title": "What Is Peripheral Arterial Disease?" },
+        { "id": "pathophysiology", "title": "Pathophysiology" },
+        { "id": "clinical-presentation", "title": "Clinical Presentation" },
+        { "id": "diagnosis", "title": "Diagnosis" },
+        { "id": "management-goals", "title": "Management Goals" },
+        { "id": "foundational-therapy", "title": "Foundational Therapy" },
+        { "id": "symptom-improvement-therapy", "title": "Symptom Improvement Therapy" },
+        { "id": "revascularization", "title": "Revascularization" },
+        { "id": "antithrombotic-intensification", "title": "Antithrombotic Intensification" },
+        { "id": "risk-factor-management", "title": "Risk Factor Management" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "valvular-heart-disease",
+      "title": "Valvular Heart Disease",
+      "category": "Cardiovascular Disorders",
+      "summary": "Aortic and mitral valve lesion patterns, supportive pharmacology, intervention timing, and prosthetic valve anticoagulation.",
+      "level": "core",
+      "notePath": "valvular-heart-disease.html",
+      "tags": [
+        "vhd",
+        "aortic-stenosis",
+        "aortic-regurgitation",
+        "mitral-regurgitation",
+        "mitral-stenosis",
+        "tavr",
+        "prosthetic-valve",
+        "warfarin"
+      ],
+      "sections": [
+        { "id": "what-is-vhd", "title": "What Is Valvular Heart Disease?" },
+        { "id": "major-valve-disorders", "title": "Major Valve Disorders" },
+        { "id": "aortic-stenosis", "title": "Aortic Stenosis" },
+        { "id": "aortic-regurgitation", "title": "Aortic Regurgitation" },
+        { "id": "mitral-regurgitation", "title": "Mitral Regurgitation" },
+        { "id": "mitral-stenosis", "title": "Mitral Stenosis" },
+        { "id": "prosthetic-valves", "title": "Prosthetic Valves" },
+        { "id": "endocarditis-prophylaxis", "title": "Endocarditis Prophylaxis" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "cardiomyopathies",
+      "title": "Cardiomyopathies",
+      "category": "Cardiovascular Disorders",
+      "summary": "DCM, HCM, and RCM with high-yield pharmacology, obstruction traps, and ICD risk framework.",
+      "level": "core",
+      "notePath": "cardiomyopathies.html",
+      "tags": [
+        "dcm",
+        "hcm",
+        "rcm",
+        "lvot",
+        "icd",
+        "sudden-cardiac-death",
+        "heart-failure"
+      ],
+      "sections": [
+        { "id": "what-are-cardiomyopathies", "title": "What Are Cardiomyopathies?" },
+        { "id": "dilated-cardiomyopathy", "title": "Dilated Cardiomyopathy" },
+        { "id": "hypertrophic-cardiomyopathy", "title": "Hypertrophic Cardiomyopathy" },
+        { "id": "restrictive-cardiomyopathy", "title": "Restrictive Cardiomyopathy" },
+        { "id": "sudden-cardiac-death-risk", "title": "Sudden Cardiac Death Risk" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "aortic-diseases",
+      "title": "Aortic Diseases",
+      "category": "Cardiovascular Disorders",
+      "summary": "Aortic dissection emergency sequence, AAA/TAA surveillance, blood pressure strategy, and repair thresholds.",
+      "level": "core",
+      "notePath": "aortic-diseases.html",
+      "tags": [
+        "aortic-dissection",
+        "aaa",
+        "taa",
+        "beta-blocker",
+        "nitroprusside",
+        "marfan",
+        "surgical-threshold"
+      ],
+      "sections": [
+        { "id": "what-are-aortic-diseases", "title": "What Are Aortic Diseases?" },
+        { "id": "aortic-dissection", "title": "Aortic Dissection" },
+        { "id": "aortic-aneurysm", "title": "Aortic Aneurysm" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "asthma",
+      "title": "Asthma",
+      "category": "Respiratory Disorders",
+      "summary": "Inflammation-first asthma management, stepwise controller escalation, acute exacerbation treatment, and biologic selection.",
+      "level": "core",
+      "notePath": "asthma.html",
+      "tags": [
+        "asthma",
+        "saba",
+        "ics",
+        "laba",
+        "lama",
+        "montelukast",
+        "omalizumab",
+        "mepolizumab",
+        "exacerbation",
+        "gina"
+      ],
+      "sections": [
+        { "id": "what-is-asthma", "title": "What Is Asthma?" },
+        { "id": "pathophysiology", "title": "Pathophysiology" },
+        { "id": "classification", "title": "Classification (Adults)" },
+        { "id": "saba", "title": "Short-Acting Beta Agonists (SABA)" },
+        { "id": "ics", "title": "Inhaled Corticosteroids (ICS)" },
+        { "id": "laba", "title": "Long-Acting Beta Agonists (LABA)" },
+        { "id": "ics-laba", "title": "ICS + LABA Combination" },
+        { "id": "lama", "title": "LAMA Add-On Therapy" },
+        { "id": "ltra", "title": "Leukotriene Receptor Antagonists" },
+        { "id": "biologics", "title": "Biologic Therapy (Severe Asthma)" },
+        { "id": "acute-exacerbation", "title": "Acute Exacerbation Management" },
+        { "id": "stepwise-summary", "title": "Stepwise Treatment Summary" },
+        { "id": "guidelines", "title": "Guideline References" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" },
+        { "id": "practice-questions", "title": "Practice Questions" }
+      ]
+    },
+    {
+      "slug": "copd",
+      "title": "COPD",
+      "category": "Respiratory Disorders",
+      "summary": "GOLD A/B/E treatment logic, maintenance inhaler selection, exacerbation management, and oxygen therapy criteria.",
+      "level": "core",
+      "notePath": "copd.html",
+      "tags": [
+        "copd",
+        "gold",
+        "lama",
+        "laba",
+        "ics",
+        "triple-therapy",
+        "roflumilast",
+        "oxygen",
+        "exacerbation"
+      ],
+      "sections": [
+        { "id": "what-is-copd", "title": "What Is COPD?" },
+        { "id": "pathophysiology", "title": "Pathophysiology" },
+        { "id": "gold-classification", "title": "GOLD Classification (A/B/E)" },
+        { "id": "rescue-bronchodilators", "title": "Short-Acting Bronchodilators" },
+        { "id": "lama", "title": "Long-Acting Muscarinic Antagonists (LAMA)" },
+        { "id": "laba", "title": "Long-Acting Beta Agonists (LABA)" },
+        { "id": "laba-lama", "title": "LABA + LAMA Combination" },
+        { "id": "ics", "title": "ICS Role in COPD" },
+        { "id": "triple-therapy", "title": "Triple Therapy (ICS + LABA + LAMA)" },
+        { "id": "roflumilast", "title": "PDE-4 Inhibitor (Roflumilast)" },
+        { "id": "acute-exacerbation", "title": "Acute Exacerbation Management" },
+        { "id": "oxygen-therapy", "title": "Oxygen Therapy Criteria" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "guidelines", "title": "Guideline References" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" },
+        { "id": "practice-questions", "title": "Practice Questions" }
+      ]
+    },
+    {
+      "slug": "pneumonia",
+      "title": "Pneumonia",
+      "category": "Infectious Diseases",
+      "summary": "CAP, HAP, and VAP empiric treatment logic with dosing, MRSA risk strategy, de-escalation, and therapy duration.",
+      "level": "core",
+      "notePath": "pneumonia.html",
+      "tags": [
+        "pneumonia",
+        "cap",
+        "hap",
+        "vap",
+        "mrsa",
+        "pseudomonas",
+        "ceftriaxone",
+        "azithromycin",
+        "levofloxacin",
+        "idsa"
+      ],
+      "sections": [
+        { "id": "what-is-pneumonia", "title": "What Is Pneumonia?" },
+        { "id": "common-pathogens", "title": "Common Pathogens" },
+        { "id": "cap-outpatient-no-comorb", "title": "CAP Outpatient (No Comorbidities)" },
+        { "id": "cap-outpatient-comorb", "title": "CAP Outpatient (With Comorbidities)" },
+        { "id": "cap-inpatient-non-icu", "title": "Inpatient CAP (Non-ICU)" },
+        { "id": "cap-icu", "title": "ICU CAP" },
+        { "id": "hap", "title": "Hospital-Acquired Pneumonia (HAP)" },
+        { "id": "vap", "title": "Ventilator-Associated Pneumonia (VAP)" },
+        { "id": "duration", "title": "Duration of Therapy" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "guidelines", "title": "Guideline References" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" },
+        { "id": "practice-questions", "title": "Practice Questions" }
+      ]
+    },
+    {
+      "slug": "tuberculosis",
+      "title": "Tuberculosis",
+      "category": "Infectious Diseases",
+      "summary": "Latent versus active TB management, RIPE therapy phases, toxicity monitoring, and drug-resistant TB overview.",
+      "level": "core",
+      "notePath": "tuberculosis.html",
+      "tags": [
+        "tuberculosis",
+        "tb",
+        "latent-tb",
+        "active-tb",
+        "ripe",
+        "isoniazid",
+        "rifampin",
+        "ethambutol",
+        "pyrazinamide",
+        "mdr-tb"
+      ],
+      "sections": [
+        { "id": "types-of-tb", "title": "Types of TB" },
+        { "id": "latent-tb", "title": "Latent TB Treatment" },
+        { "id": "active-tb", "title": "Active TB (RIPE Therapy)" },
+        { "id": "monitoring", "title": "Monitoring During Active TB" },
+        { "id": "drug-resistant-tb", "title": "Drug-Resistant TB Overview" },
+        { "id": "counseling", "title": "Important Counseling Points" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "guidelines", "title": "Guideline References" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" },
+        { "id": "practice-questions", "title": "Practice Questions" }
+      ]
+    },
+    {
+      "slug": "pulmonary-hypertension",
+      "title": "Pulmonary Hypertension",
+      "category": "Respiratory Disorders",
+      "summary": "WHO group classification, Group 1 PAH targeted pathways, CTEPH strategy, and right-heart support.",
+      "level": "core",
+      "notePath": "pulmonary-hypertension.html",
+      "tags": [
+        "ph",
+        "pah",
+        "cteph",
+        "era",
+        "pde5",
+        "prostacyclin",
+        "riociguat"
+      ],
+      "sections": [
+        { "id": "what-is-ph", "title": "What Is Pulmonary Hypertension?" },
+        { "id": "classification", "title": "WHO Classification" },
+        { "id": "pathophysiology", "title": "PAH Pathophysiology" },
+        { "id": "group-1-management", "title": "Group 1 PAH Management" },
+        { "id": "group-specific-management", "title": "Group-Specific Management" },
+        { "id": "right-heart-failure-management", "title": "Right Heart Failure Management" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "pulmonary-embolism",
+      "title": "Pulmonary Embolism (PE)",
+      "category": "Respiratory Disorders",
+      "summary": "Respiratory-first PE approach with risk stratification, anticoagulation pathways, thrombolysis criteria, and duration strategy.",
+      "level": "core",
+      "notePath": "pulmonary-embolism.html",
+      "tags": [
+        "pe",
+        "pulmonary-embolism",
+        "dvt",
+        "doac",
+        "heparin",
+        "thrombolysis",
+        "ivc-filter"
+      ],
+      "sections": [
+        { "id": "definition", "title": "Definition" },
+        { "id": "clinical-presentation", "title": "Clinical Presentation" },
+        { "id": "risk-stratification", "title": "Risk Stratification" },
+        { "id": "initial-anticoagulation", "title": "Initial Anticoagulation" },
+        { "id": "doacs", "title": "Direct Oral Anticoagulants (DOACs)" },
+        { "id": "thrombolysis", "title": "Thrombolysis (Massive PE)" },
+        { "id": "duration", "title": "Duration of Anticoagulation" },
+        { "id": "ivc-filter", "title": "Inferior Vena Cava (IVC) Filter" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "guidelines", "title": "Guideline References" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" },
+        { "id": "practice-questions", "title": "Practice Questions" }
+      ]
+    },
+    {
+      "slug": "pericardial-diseases",
+      "title": "Pericardial Diseases",
+      "category": "Cardiovascular Disorders",
+      "summary": "Acute pericarditis treatment, effusion/tamponade emergency handling, and constrictive pericarditis strategy.",
+      "level": "core",
+      "notePath": "pericardial-diseases.html",
+      "tags": [
+        "pericarditis",
+        "colchicine",
+        "nsaid",
+        "tamponade",
+        "beck-triad",
+        "pericardiocentesis",
+        "constrictive-pericarditis"
+      ],
+      "sections": [
+        { "id": "what-are-pericardial-diseases", "title": "What Are Pericardial Diseases?" },
+        { "id": "acute-pericarditis", "title": "Acute Pericarditis" },
+        { "id": "pericardial-effusion", "title": "Pericardial Effusion" },
+        { "id": "cardiac-tamponade", "title": "Cardiac Tamponade" },
+        { "id": "constrictive-pericarditis", "title": "Constrictive Pericarditis" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "shock-cardiovascular-focus",
+      "title": "Shock (Cardiovascular Focus)",
+      "category": "Cardiovascular Disorders",
+      "summary": "Cardiogenic and obstructive shock emphasis with vasopressor/inotrope strategy and cause-directed management.",
+      "level": "core",
+      "notePath": "shock-cardiovascular-focus.html",
+      "tags": [
+        "shock",
+        "cardiogenic-shock",
+        "norepinephrine",
+        "dobutamine",
+        "vasopressor",
+        "inotrope",
+        "obstructive-shock"
+      ],
+      "sections": [
+        { "id": "what-is-shock", "title": "What Is Shock?" },
+        { "id": "types-of-shock", "title": "Types of Shock" },
+        { "id": "cardiogenic-shock", "title": "Cardiogenic Shock" },
+        { "id": "vasopressors-and-inotropes", "title": "Vasopressors and Inotropes" },
+        { "id": "cardiogenic-shock-protocol", "title": "Cardiogenic Shock Protocol" },
+        { "id": "hypovolemic-shock", "title": "Hypovolemic Shock" },
+        { "id": "septic-shock", "title": "Septic Shock" },
+        { "id": "obstructive-shock", "title": "Obstructive Shock" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "congenital-heart-disease",
+      "title": "Congenital Heart Disease",
+      "category": "Cardiovascular Disorders",
+      "summary": "Shunt physiology, PDA closure vs ductal maintenance, cyanotic stabilization, and Eisenmenger progression.",
+      "level": "core",
+      "notePath": "congenital-heart-disease.html",
+      "tags": [
+        "chd",
+        "pda",
+        "tetralogy-of-fallot",
+        "cyanotic-defects",
+        "alprostadil",
+        "indomethacin",
+        "eisenmenger"
+      ],
+      "sections": [
+        { "id": "what-is-chd", "title": "What Is Congenital Heart Disease?" },
+        { "id": "left-to-right-shunts", "title": "Left-to-Right Shunts" },
+        { "id": "pda", "title": "Patent Ductus Arteriosus" },
+        { "id": "keep-ductus-open", "title": "Keeping Ductus Open" },
+        { "id": "cyanotic-defects", "title": "Cyanotic Defects" },
+        { "id": "eisenmenger", "title": "Eisenmenger Syndrome" },
+        { "id": "endocarditis-prophylaxis", "title": "Endocarditis Prophylaxis" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "diabetes-mellitus",
+      "title": "Diabetes Mellitus",
+      "category": "Endocrinology",
+      "summary": "T1DM and T2DM diagnosis, insulin and non-insulin drug classes, DKA/HHS management, and complication prevention.",
+      "level": "core",
+      "notePath": "diabetes-mellitus.html",
+      "tags": [
+        "diabetes",
+        "t1dm",
+        "t2dm",
+        "metformin",
+        "sglt2",
+        "glp1",
+        "dka",
+        "hhs"
+      ],
+      "sections": [
+        { "id": "what-is-diabetes", "title": "What Is Diabetes Mellitus?" },
+        { "id": "classification", "title": "Classification" },
+        { "id": "diagnostic-criteria", "title": "Diagnostic Criteria" },
+        { "id": "pathophysiology", "title": "Type 2 Pathophysiology" },
+        { "id": "goals-of-therapy", "title": "Goals of Therapy" },
+        { "id": "type-1-management", "title": "Type 1 Management" },
+        { "id": "type-2-pharmacology", "title": "Type 2 Pharmacologic Therapy" },
+        { "id": "acute-complications", "title": "Acute Complications" },
+        { "id": "chronic-complications", "title": "Chronic Complications" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "thyroid-disorders",
+      "title": "Thyroid Disorders",
+      "category": "Endocrinology",
+      "summary": "Hypothyroidism and hyperthyroidism diagnosis, levothyroxine and antithyroid therapy, and thyroid storm sequence.",
+      "level": "core",
+      "notePath": "thyroid-disorders.html",
+      "tags": [
+        "thyroid",
+        "hypothyroidism",
+        "hyperthyroidism",
+        "levothyroxine",
+        "methimazole",
+        "ptu",
+        "thyroid-storm"
+      ],
+      "sections": [
+        { "id": "thyroid-physiology", "title": "Thyroid Physiology" },
+        { "id": "hypothyroidism", "title": "Hypothyroidism" },
+        { "id": "hypothyroidism-management", "title": "Hypothyroidism Management" },
+        { "id": "myxedema-coma", "title": "Myxedema Coma" },
+        { "id": "hyperthyroidism", "title": "Hyperthyroidism" },
+        { "id": "hyperthyroidism-management", "title": "Hyperthyroidism Management" },
+        { "id": "thyroid-storm", "title": "Thyroid Storm" },
+        { "id": "subclinical-disease", "title": "Subclinical Thyroid Disease" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "adrenal-disorders",
+      "title": "Adrenal Disorders",
+      "category": "Endocrinology",
+      "summary": "Cortisol excess/deficiency patterns, adrenal crisis emergency therapy, and hyperaldosteronism management.",
+      "level": "core",
+      "notePath": "adrenal-disorders.html",
+      "tags": [
+        "adrenal",
+        "cushing",
+        "addison",
+        "adrenal-crisis",
+        "hyperaldosteronism",
+        "spironolactone",
+        "hydrocortisone"
+      ],
+      "sections": [
+        { "id": "adrenal-physiology", "title": "Adrenal Physiology" },
+        { "id": "cushing-syndrome", "title": "Cushing Syndrome" },
+        { "id": "addison-disease", "title": "Addison Disease" },
+        { "id": "adrenal-crisis", "title": "Adrenal Crisis" },
+        { "id": "secondary-adrenal-insufficiency", "title": "Secondary Adrenal Insufficiency" },
+        { "id": "primary-hyperaldosteronism", "title": "Primary Hyperaldosteronism" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "pituitary-disorders",
+      "title": "Pituitary Disorders",
+      "category": "Endocrinology",
+      "summary": "Prolactinoma and acromegaly therapy plus DI and SIADH water-balance management.",
+      "level": "core",
+      "notePath": "pituitary-disorders.html",
+      "tags": [
+        "pituitary",
+        "prolactinoma",
+        "acromegaly",
+        "diabetes-insipidus",
+        "siadh",
+        "desmopressin",
+        "tolvaptan"
+      ],
+      "sections": [
+        { "id": "pituitary-physiology", "title": "Pituitary Physiology" },
+        { "id": "prolactinoma", "title": "Prolactinoma" },
+        { "id": "acromegaly", "title": "Acromegaly" },
+        { "id": "diabetes-insipidus", "title": "Diabetes Insipidus" },
+        { "id": "siadh", "title": "SIADH" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "parathyroid-calcium-disorders",
+      "title": "Parathyroid and Calcium Disorders",
+      "category": "Endocrinology",
+      "summary": "PTH-driven calcium regulation, hyper/hypoparathyroidism, and acute calcium disorder treatment strategies.",
+      "level": "core",
+      "notePath": "parathyroid-calcium-disorders.html",
+      "tags": [
+        "parathyroid",
+        "calcium",
+        "hyperparathyroidism",
+        "hypoparathyroidism",
+        "hypercalcemia",
+        "hypocalcemia",
+        "cinacalcet"
+      ],
+      "sections": [
+        { "id": "calcium-physiology", "title": "Calcium Physiology" },
+        { "id": "hyperparathyroidism", "title": "Hyperparathyroidism" },
+        { "id": "hypoparathyroidism", "title": "Hypoparathyroidism" },
+        { "id": "hypercalcemia", "title": "Hypercalcemia" },
+        { "id": "hypocalcemia", "title": "Hypocalcemia" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "osteoporosis-bone-metabolism",
+      "title": "Osteoporosis and Bone Metabolism",
+      "category": "Endocrinology",
+      "summary": "Fracture-risk treatment strategy with bisphosphonate first-line therapy and anabolic alternatives.",
+      "level": "core",
+      "notePath": "osteoporosis-bone-metabolism.html",
+      "tags": [
+        "osteoporosis",
+        "bisphosphonate",
+        "denosumab",
+        "teriparatide",
+        "romosozumab",
+        "raloxifene",
+        "glucocorticoid-induced"
+      ],
+      "sections": [
+        { "id": "definition", "title": "Definition" },
+        { "id": "risk-factors", "title": "Risk Factors" },
+        { "id": "treatment-overview", "title": "Treatment Overview" },
+        { "id": "calcium-vitamin-d", "title": "Calcium and Vitamin D" },
+        { "id": "bisphosphonates", "title": "Bisphosphonates" },
+        { "id": "denosumab", "title": "Denosumab" },
+        { "id": "teriparatide", "title": "Teriparatide" },
+        { "id": "romosozumab", "title": "Romosozumab" },
+        { "id": "serms", "title": "SERMs" },
+        { "id": "glucocorticoid-induced", "title": "Glucocorticoid-Induced Osteoporosis" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    },
+    {
+      "slug": "reproductive-endocrinology",
+      "title": "Reproductive Endocrinology",
+      "category": "Women's & Men's Health",
+      "summary": "PCOS, HRT, contraceptive pharmacology, male hypogonadism, and erectile dysfunction treatment pathways.",
+      "level": "core",
+      "notePath": "reproductive-endocrinology.html",
+      "tags": [
+        "pcos",
+        "hrt",
+        "contraception",
+        "hypogonadism",
+        "erectile-dysfunction",
+        "sildenafil",
+        "testosterone"
+      ],
+      "sections": [
+        { "id": "pcos", "title": "Polycystic Ovary Syndrome" },
+        { "id": "menopause-hrt", "title": "Menopause and HRT" },
+        { "id": "hormonal-contraceptives", "title": "Hormonal Contraceptives" },
+        { "id": "male-hypogonadism", "title": "Male Hypogonadism" },
+        { "id": "erectile-dysfunction", "title": "Erectile Dysfunction" },
+        { "id": "management-recap-drill", "title": "Management Recap Drill" },
+        { "id": "exam-traps", "title": "Common Exam Traps" },
+        { "id": "quick-revision", "title": "Quick Revision Summary" }
+      ]
+    }
+  ]
+}

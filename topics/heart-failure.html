@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heart Failure - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f6f9ff;
+        --surface: #ffffff;
+        --ink: #11243f;
+        --muted: #52657d;
+        --line: #d7e2f0;
+        --brand: #9f1239;
+        --brand-2: #0f766e;
+        --brand-soft: #ffeef4;
+        --ok-soft: #eaf9f2;
+        --warn-soft: #fff6e7;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 82% 7%, #ffd9e4 0%, transparent 29%),
+          radial-gradient(circle at 7% 20%, #dff7f4 0%, transparent 23%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(14, 32, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: #7d1030;
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #364c67;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff3f7;
+        color: #7d1030;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fffafd 0%, #fff1f6 56%, #eefbf9 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #7d1030;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #4d0f25;
+        font-size: clamp(1.45rem, 2.4vw, 2.1rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .hero-layout .hero-grid {
+        margin-top: 0;
+      }
+
+      .hero-visual {
+        border: 1px solid #edced9;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6b1330;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #566f86;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: 180px;
+        display: block;
+      }
+
+      .metric {
+        border: 1px solid #f2c9d7;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7a4c5a;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.35px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #5c1029;
+        font-weight: 700;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #7d1030;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #21405f;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #2e4661;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff3f7;
+        color: #6f0e2c;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e5f3;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0e7a71;
+        border-radius: 10px;
+        background: #eaf9f7;
+        color: #184d5d;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6e1f1f;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #7d1030;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #4a6788;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram-card svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .pillars-grid .box {
+        border-top: 4px solid #7d1030;
+      }
+
+      .drug-grid .box {
+        border-top: 4px solid #0f766e;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-grid,
+        .grid-4 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .grid-4,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-is-heart-failure">1. What Is Heart Failure?</a>
+        <a href="#classification">2. Classification</a>
+        <a href="#pathophysiology">3. Pathophysiology</a>
+        <a href="#clinical-presentation">4. Clinical Presentation</a>
+        <a href="#hfrEF-four-pillars">5. Guideline-Directed Therapy</a>
+        <a href="#additional-therapies">6. Additional Therapies</a>
+        <a href="#symptom-control">7. Symptom Control</a>
+        <a href="#acute-decompensated-hf">8. Acute Decompensated HF</a>
+        <a href="#exam-traps">9. Common Exam Traps</a>
+        <a href="#quick-revision">10. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Heart Failure</h1>
+          <p class="subtitle">
+            Clinical Overview and Exam Mastery Guide focused on HF
+            classification, HFrEF mortality-reducing therapy, acute
+            decompensation, and high-yield exam traps.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">HFrEF</div>
+                <div class="v">EF at or below 40 percent</div>
+              </div>
+              <div class="metric">
+                <div class="k">Core Framework</div>
+                <div class="v">4 foundational pillars</div>
+              </div>
+              <div class="metric">
+                <div class="k">Symptom Agent</div>
+                <div class="v">Loop diuretics</div>
+              </div>
+              <div class="metric">
+                <div class="k">Exam Focus</div>
+                <div class="v">Mortality vs symptom drugs</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Hemodynamic Snapshot</h3>
+              <svg viewBox="0 0 420 190" aria-label="Heart failure visual">
+                <defs>
+                  <linearGradient id="hfCardBg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#fff7fa"></stop>
+                    <stop offset="100%" stop-color="#eefaf8"></stop>
+                  </linearGradient>
+                </defs>
+                <rect x="1" y="1" width="418" height="188" rx="14" fill="url(#hfCardBg)" stroke="#ead3dc"></rect>
+                <path d="M110 80c0-16 13-29 29-29 10 0 18 4 24 12 6-8 14-12 24-12 16 0 29 13 29 29 0 22-20 34-53 61-33-27-53-39-53-61z" fill="#e11d48" opacity="0.9"></path>
+                <text x="78" y="154" fill="#7d1030" font-size="12" font-weight="700">Cardiac output down</text>
+                <line x1="220" y1="78" x2="332" y2="78" stroke="#b86b80" stroke-width="2"></line>
+                <polygon points="332,78 322,72 322,84" fill="#b86b80"></polygon>
+                <rect x="334" y="56" width="70" height="44" rx="8" fill="#ffffff" stroke="#d8e5f3"></rect>
+                <text x="344" y="73" fill="#1f3f5c" font-size="11" font-weight="700">RAAS</text>
+                <text x="344" y="87" fill="#496782" font-size="10">activation</text>
+                <line x1="334" y1="112" x2="222" y2="112" stroke="#0f766e" stroke-width="2"></line>
+                <polygon points="222,112 232,106 232,118" fill="#0f766e"></polygon>
+                <text x="248" y="130" fill="#0f766e" font-size="11" font-weight="700">fluid retention</text>
+              </svg>
+              <p>Simple visual map: reduced output drives neurohormonal activation and congestion.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-is-heart-failure">
+          <h2>1. What Is Heart Failure?</h2>
+          <p>
+            Heart failure is a clinical syndrome where the heart cannot pump
+            sufficient blood to meet the body's metabolic needs. It results
+            from structural or functional impairment of ventricular filling or
+            ejection.
+          </p>
+        </section>
+
+        <section class="section" id="classification">
+          <h2>2. Classification</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>By Ejection Fraction</th>
+                <th>Definition</th>
+                <th>Exam Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>HFrEF</td>
+                <td>EF at or below 40 percent</td>
+                <td>Most mortality therapy questions focus here</td>
+              </tr>
+              <tr>
+                <td>HFmrEF</td>
+                <td>EF 41 to 49 percent</td>
+                <td>Intermediate EF phenotype</td>
+              </tr>
+              <tr>
+                <td>HFpEF</td>
+                <td>EF at or above 50 percent</td>
+                <td>Different evidence profile vs HFrEF</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>NYHA Functional Classes</h3>
+              <ul>
+                <li>Class I: no symptoms</li>
+                <li>Class II: symptoms with moderate exertion</li>
+                <li>Class III: symptoms with minimal exertion</li>
+                <li>Class IV: symptoms at rest</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>ACC/AHA Stages</h3>
+              <ul>
+                <li>Stage A: at risk</li>
+                <li>Stage B: structural disease, no symptoms</li>
+                <li>Stage C: structural disease plus symptoms</li>
+                <li>Stage D: advanced refractory heart failure</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>3. Pathophysiology</h2>
+          <div class="flow">
+            <div class="step">
+              <strong>Step 1:</strong> Reduced cardiac output
+            </div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step">
+              <strong>Step 2:</strong> RAAS and sympathetic activation
+            </div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step">
+              <strong>Step 3:</strong> Ventricular remodeling
+            </div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step">
+              <strong>Step 4:</strong> Sodium and water retention
+            </div>
+          </div>
+          <div class="diagram-card">
+            <p class="diagram-title">Neurohormonal Cycle Diagram</p>
+            <svg viewBox="0 0 900 240" aria-label="Heart failure pathophysiology diagram">
+              <rect x="24" y="88" width="188" height="62" rx="12" fill="#ffffff" stroke="#d8e5f2"></rect>
+              <text x="42" y="113" fill="#1f3f5f" font-size="15" font-weight="700">Reduced output</text>
+              <text x="42" y="133" fill="#4f6883" font-size="13">Low forward flow</text>
+
+              <rect x="246" y="30" width="196" height="62" rx="12" fill="#fff5f8" stroke="#f0c8d7"></rect>
+              <text x="266" y="56" fill="#7d1030" font-size="15" font-weight="700">RAAS activation</text>
+              <text x="266" y="76" fill="#875367" font-size="13">Vasoconstriction / aldosterone</text>
+
+              <rect x="246" y="152" width="196" height="62" rx="12" fill="#f0fbf9" stroke="#c6e8e1"></rect>
+              <text x="266" y="178" fill="#0f766e" font-size="15" font-weight="700">SNS activation</text>
+              <text x="266" y="198" fill="#3d6f6b" font-size="13">Tachycardia / stress response</text>
+
+              <rect x="478" y="88" width="190" height="62" rx="12" fill="#ffffff" stroke="#d8e5f2"></rect>
+              <text x="498" y="113" fill="#1f3f5f" font-size="15" font-weight="700">Remodeling</text>
+              <text x="498" y="133" fill="#4f6883" font-size="13">Progressive dysfunction</text>
+
+              <rect x="702" y="88" width="176" height="62" rx="12" fill="#fffaf0" stroke="#f4ddbd"></rect>
+              <text x="720" y="113" fill="#985c05" font-size="15" font-weight="700">Congestion</text>
+              <text x="720" y="133" fill="#7b663f" font-size="13">Na/H2O retention</text>
+
+              <line x1="212" y1="118" x2="246" y2="61" stroke="#c0788f" stroke-width="2"></line>
+              <polygon points="246,61 237,58 242,68" fill="#c0788f"></polygon>
+              <line x1="212" y1="118" x2="246" y2="183" stroke="#0f766e" stroke-width="2"></line>
+              <polygon points="246,183 242,176 237,186" fill="#0f766e"></polygon>
+
+              <line x1="442" y1="61" x2="478" y2="110" stroke="#b07288" stroke-width="2"></line>
+              <polygon points="478,110 468,106 474,114" fill="#b07288"></polygon>
+              <line x1="442" y1="183" x2="478" y2="126" stroke="#2a7f76" stroke-width="2"></line>
+              <polygon points="478,126 472,133 468,124" fill="#2a7f76"></polygon>
+
+              <line x1="668" y1="118" x2="702" y2="118" stroke="#a66c1f" stroke-width="2"></line>
+              <polygon points="702,118 692,112 692,124" fill="#a66c1f"></polygon>
+            </svg>
+          </div>
+          <div class="callout">
+            Modern heart failure therapy targets neurohormonal overactivation.
+          </div>
+        </section>
+
+        <section class="section" id="clinical-presentation">
+          <h2>4. Clinical Presentation</h2>
+          <div class="chips">
+            <span class="chip">Dyspnea</span>
+            <span class="chip">Orthopnea</span>
+            <span class="chip">PND</span>
+            <span class="chip">Peripheral edema</span>
+            <span class="chip">Fatigue</span>
+            <span class="chip">Weight gain</span>
+          </div>
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>Diagnostic Support</h3>
+              <ul>
+                <li>Elevated BNP or NT-proBNP</li>
+                <li>Clinical congestion and volume status findings</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Key Confirmatory Test</h3>
+              <ul>
+                <li>Echocardiogram confirms ejection fraction phenotype</li>
+                <li>Used to separate HFrEF vs HFpEF pattern</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="hfrEF-four-pillars">
+          <h2>5. Guideline-Directed Medical Therapy (HFrEF)</h2>
+          <p>
+            All symptomatic HFrEF patients should receive four foundational
+            therapies to reduce mortality and hospitalizations.
+          </p>
+
+          <div class="grid-4 stack pillars-grid">
+            <div class="box">
+              <h3>1) ARNI or ACEI/ARB</h3>
+              <p>ARNI preferred when appropriate.</p>
+            </div>
+            <div class="box">
+              <h3>2) Evidence-Based Beta Blocker</h3>
+              <p>Carvedilol, metoprolol succinate, bisoprolol.</p>
+            </div>
+            <div class="box">
+              <h3>3) MRA</h3>
+              <p>Spironolactone or eplerenone.</p>
+            </div>
+            <div class="box">
+              <h3>4) SGLT2 Inhibitor</h3>
+              <p>Dapagliflozin or empagliflozin.</p>
+            </div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">4-Pillar GDMT Diagram (HFrEF)</p>
+            <svg viewBox="0 0 940 220" aria-label="HFrEF GDMT diagram">
+              <rect x="20" y="82" width="150" height="56" rx="11" fill="#ffffff" stroke="#d8e5f2"></rect>
+              <text x="40" y="107" fill="#1f3f5f" font-size="14" font-weight="700">HFrEF</text>
+              <text x="40" y="124" fill="#5b7591" font-size="12">EF at or below 40%</text>
+
+              <rect x="208" y="22" width="158" height="54" rx="11" fill="#fff3f8" stroke="#efc8d8"></rect>
+              <text x="225" y="52" fill="#7d1030" font-size="13" font-weight="700">ARNI/ACEI/ARB</text>
+
+              <rect x="208" y="146" width="158" height="54" rx="11" fill="#fff3f8" stroke="#efc8d8"></rect>
+              <text x="228" y="176" fill="#7d1030" font-size="13" font-weight="700">Beta blocker</text>
+
+              <rect x="410" y="22" width="158" height="54" rx="11" fill="#f0fbf9" stroke="#c5e8e1"></rect>
+              <text x="450" y="52" fill="#0f766e" font-size="13" font-weight="700">MRA</text>
+
+              <rect x="410" y="146" width="158" height="54" rx="11" fill="#f0fbf9" stroke="#c5e8e1"></rect>
+              <text x="437" y="176" fill="#0f766e" font-size="13" font-weight="700">SGLT2 inhibitor</text>
+
+              <rect x="610" y="82" width="310" height="56" rx="11" fill="#ffffff" stroke="#d8e5f2"></rect>
+              <text x="630" y="106" fill="#1f3f5f" font-size="13" font-weight="700">Outcomes</text>
+              <text x="630" y="124" fill="#5b7591" font-size="12">Lower mortality and HF hospitalizations</text>
+
+              <line x1="170" y1="108" x2="208" y2="49" stroke="#b86a82" stroke-width="2"></line>
+              <polygon points="208,49 198,47 203,56" fill="#b86a82"></polygon>
+
+              <line x1="170" y1="108" x2="208" y2="173" stroke="#b86a82" stroke-width="2"></line>
+              <polygon points="208,173 203,166 198,176" fill="#b86a82"></polygon>
+
+              <line x1="366" y1="49" x2="410" y2="49" stroke="#2b7e75" stroke-width="2"></line>
+              <polygon points="410,49 400,43 400,55" fill="#2b7e75"></polygon>
+
+              <line x1="366" y1="173" x2="410" y2="173" stroke="#2b7e75" stroke-width="2"></line>
+              <polygon points="410,173 400,167 400,179" fill="#2b7e75"></polygon>
+
+              <line x1="568" y1="49" x2="610" y2="102" stroke="#4a6f95" stroke-width="2"></line>
+              <polygon points="610,102 599,98 606,107" fill="#4a6f95"></polygon>
+
+              <line x1="568" y1="173" x2="610" y2="118" stroke="#4a6f95" stroke-width="2"></line>
+              <polygon points="610,118 606,127 599,120" fill="#4a6f95"></polygon>
+            </svg>
+          </div>
+
+          <div class="stack drug-grid">
+            <div class="box">
+              <h3>A. ARNI (Sacubitril/Valsartan)</h3>
+              <div class="grid-2">
+                <div>
+                  <p><strong>MOA</strong></p>
+                  <ul>
+                    <li>Sacubitril inhibits neprilysin</li>
+                    <li>Valsartan blocks angiotensin II receptor</li>
+                    <li>Net: less RAAS drive, more natriuretic signaling</li>
+                  </ul>
+                </div>
+                <div>
+                  <p><strong>Benefits and Risks</strong></p>
+                  <ul>
+                    <li>Reduces mortality and hospitalization</li>
+                    <li>Hypotension, hyperkalemia, renal impairment</li>
+                    <li>Contra: ACEI overlap (36-hour washout), pregnancy, angioedema history</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="box">
+              <h3>B. ACE Inhibitors</h3>
+              <p>Examples: lisinopril, enalapril.</p>
+              <ul>
+                <li>MOA: reduce angiotensin II and aldosterone activity</li>
+                <li>Benefits: mortality reduction and slower progression</li>
+                <li>Side effects: dry cough, hyperkalemia, renal dysfunction, angioedema</li>
+                <li>Contraindications: pregnancy, bilateral renal artery stenosis, prior angioedema</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>C. ARBs</h3>
+              <p>Examples: losartan, valsartan.</p>
+              <ul>
+                <li>MOA: block AT1 receptor and reduce vasoconstriction</li>
+                <li>Benefit: mortality reduction, no ACEI cough</li>
+                <li>Risks: hyperkalemia and renal dysfunction</li>
+                <li>Contraindications: pregnancy, bilateral renal artery stenosis</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>D. Evidence-Based Beta Blockers</h3>
+              <ul>
+                <li>Only carvedilol, metoprolol succinate, bisoprolol reduce mortality</li>
+                <li>MOA: reduce sympathetic stress and reverse remodeling over time</li>
+                <li>Side effects: bradycardia, hypotension, fatigue</li>
+                <li>Do not initiate during acute decompensated instability</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>E. Mineralocorticoid Receptor Antagonists (MRA)</h3>
+              <p>Spironolactone, eplerenone.</p>
+              <ul>
+                <li>Reduce sodium retention and fibrosis/remodeling</li>
+                <li>Benefits: lower mortality and hospitalization</li>
+                <li>Risks: hyperkalemia, renal dysfunction, gynecomastia (spironolactone)</li>
+                <li>Avoid with potassium above 5.0 mEq/L or severe renal impairment</li>
+              </ul>
+            </div>
+
+            <div class="box">
+              <h3>F. SGLT2 Inhibitors</h3>
+              <p>Dapagliflozin, empagliflozin.</p>
+              <ul>
+                <li>Promote glucosuria and natriuresis</li>
+                <li>Benefits: lower HF hospitalization and mortality, even without diabetes</li>
+                <li>Risks: genital infections, volume depletion, rare euglycemic DKA</li>
+                <li>Contra: type 1 diabetes and severe renal impairment by agent</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="flow">
+            <div class="step"><strong>HFrEF Flow:</strong> Confirm EF at or below 40 percent</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Start:</strong> ARNI (or ACEI/ARB)</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Add:</strong> evidence-based beta blocker, MRA, SGLT2 inhibitor</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Then:</strong> use diuretics for congestion and monitor potassium/renal function</div>
+          </div>
+        </section>
+
+        <section class="section" id="additional-therapies">
+          <h2>6. Additional Therapies</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Hydralazine + Isosorbide Dinitrate</h3>
+              <ul>
+                <li>Hydralazine: arterial vasodilation</li>
+                <li>ISDN: venous vasodilation</li>
+                <li>Reduces preload and afterload</li>
+                <li>Mortality benefit, especially in Black patients</li>
+                <li>Side effects: headache, hypotension, reflex tachycardia</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Ivabradine</h3>
+              <ul>
+                <li>MOA: inhibits If current in SA node</li>
+                <li>Lowers heart rate without reducing blood pressure</li>
+                <li>Side effects: bradycardia, visual disturbances</li>
+                <li>Contraindications: AFib, severe bradycardia</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="symptom-control">
+          <h2>7. Symptom Control</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Loop Diuretics</h3>
+              <p>Examples: furosemide, bumetanide.</p>
+              <ul>
+                <li>MOA: block Na-K-2Cl transporter in loop of Henle</li>
+                <li>Improve congestion symptoms through diuresis</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>High-Yield Caveat</h3>
+              <ul>
+                <li>Improves symptoms and volume control</li>
+                <li>Does not reduce mortality by itself</li>
+                <li>Watch for hypokalemia, dehydration, hypotension</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="acute-decompensated-hf">
+          <h2>8. Acute Decompensated Heart Failure</h2>
+          <div class="flow">
+            <div class="step"><strong>Initial:</strong> IV loop diuretics and oxygen support</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>If low output:</strong> consider inotropes (dobutamine, milrinone)</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>If hypertensive:</strong> consider vasodilator support</div>
+          </div>
+          <div class="callout alert">
+            Avoid aggressive beta blocker initiation during acute unstable
+            decompensation.
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>AHA/ACC/HFSA Guideline for Heart Failure</h3>
+              <a
+                href="https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.ahajournals.org/doi/10.1161/CIR.0000000000001063
+              </a>
+            </div>
+            <div class="box">
+              <h3>ACC Guideline Hub</h3>
+              <a
+                href="https://www.acc.org/guidelines/hubs/heart-failure"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.acc.org/guidelines/hubs/heart-failure
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>9. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Digoxin improves symptoms but does not reduce mortality.</div>
+            <div class="callout alert">Non-DHP calcium channel blockers are contraindicated in HFrEF.</div>
+            <div class="callout alert">Only carvedilol, metoprolol succinate, and bisoprolol reduce mortality.</div>
+            <div class="callout alert">Diuretics improve symptoms, not survival.</div>
+            <div class="callout alert">ACE inhibitor plus ARB combination is not routinely recommended.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>10. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>EF at or below 40 percent defines HFrEF</li>
+                <li>Four-pillar therapy is the treatment core</li>
+                <li>Differentiate mortality-reducing drugs from symptom-only drugs</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Monitoring Focus</h3>
+              <ul>
+                <li>Track potassium and renal function</li>
+                <li>Avoid non-DHP CCB in HFrEF</li>
+                <li>Reassess congestion, blood pressure, and heart rate regularly</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Heart Failure</li>
+                <li>Subtopics: HFrEF, HFpEF, GDMT, acute decompensation, monitoring</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

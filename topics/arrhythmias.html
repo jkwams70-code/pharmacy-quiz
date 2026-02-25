@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arrhythmias - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #12243c;
+        --muted: #54677d;
+        --line: #d7e3f0;
+        --brand: #7a1f1f;
+        --brand-soft: #fff0ef;
+        --teal-soft: #eefbf8;
+        --warn-soft: #fff6e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 6%, #ffd8d4 0%, transparent 30%),
+          radial-gradient(circle at 7% 22%, #dff6ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #354a64;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff4f3;
+        color: #6b1f1f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(
+          160deg,
+          #fffdfd 0%,
+          #fff3f1 58%,
+          #eefbf8 100%
+        );
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #7a1f1f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #5f1b1b;
+        font-size: clamp(1.45rem, 2.4vw, 2.08rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f0cfcc;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7c5959;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #5f1d1d;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #efd0cd;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #6f1f1f;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual img {
+        width: 100%;
+        height: 185px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid #e2ecf7;
+        background: #f8fbff;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #6d1f1f;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff4f3;
+        color: #6f1f1f;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #6d1f1f;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .diagram-card svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .image-grid {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .image-card {
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fff;
+        padding: 8px;
+      }
+
+      .image-card img {
+        width: 100%;
+        height: 175px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #e4edf7;
+        background: #f9fcff;
+      }
+
+      .image-card .cap {
+        margin-top: 7px;
+        font-size: 12px;
+        color: #435b74;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .image-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid,
+        .image-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#what-are-arrhythmias">1. What Are Arrhythmias?</a>
+        <a href="#electrophysiology-refresher"
+          >2. Electrophysiology Refresher</a
+        >
+        <a href="#major-arrhythmias-tested">3. Major Arrhythmias Tested</a>
+        <a href="#atrial-fibrillation">4. Atrial Fibrillation (AF)</a>
+        <a href="#stroke-prevention-in-af">5. Stroke Prevention in AF</a>
+        <a href="#ventricular-arrhythmias">6. Ventricular Arrhythmias</a>
+        <a href="#bradyarrhythmias">7. Bradyarrhythmias</a>
+        <a href="#vaughan-williams-summary">8. Vaughan-Williams Summary</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">9. Common Exam Traps</a>
+        <a href="#quick-revision">10. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Disorders</span>
+          <h1>Arrhythmias</h1>
+          <p class="subtitle">
+            Clinical Overview and Exam Mastery Guide for atrial fibrillation,
+            antiarrhythmic classes, ventricular arrhythmias, stroke prevention,
+            and bradyarrhythmia management.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Rhythm Types</div>
+                <div class="v">Tachy, brady, irregular</div>
+              </div>
+              <div class="metric">
+                <div class="k">AF Core Plan</div>
+                <div class="v">Rate + rhythm + anticoagulation</div>
+              </div>
+              <div class="metric">
+                <div class="k">VT Priority</div>
+                <div class="v">Urgent rhythm stabilization</div>
+              </div>
+              <div class="metric">
+                <div class="k">Drug Class System</div>
+                <div class="v">Vaughan-Williams I to IV</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Real ECG and Conduction Visual</h3>
+              <img
+                src="images/ecg-conduction.png"
+                alt="ECG and Cardiac Conduction System"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
+              <p>
+                Conduction pathway anatomy anchors rate/rhythm pharmacology
+                decisions.
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="what-are-arrhythmias">
+          <h2>1. What Are Arrhythmias?</h2>
+          <p>
+            Arrhythmias are disorders of heart rhythm caused by abnormalities in
+            impulse generation, impulse conduction, or both.
+          </p>
+          <div class="chips">
+            <span class="chip">Tachyarrhythmias</span>
+            <span class="chip">Bradyarrhythmias</span>
+            <span class="chip">Irregular rhythms</span>
+            <span class="chip">Benign to life-threatening spectrum</span>
+          </div>
+        </section>
+
+        <section class="section" id="electrophysiology-refresher">
+          <h2>2. Basic Electrophysiology Refresher</h2>
+          <p>
+            Conduction pathway: SA node -> AV node -> Bundle of His -> Purkinje
+            fibers.
+          </p>
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>Drug Targets</h3>
+              <ul>
+                <li>Sodium channels</li>
+                <li>Potassium channels</li>
+                <li>Calcium channels</li>
+                <li>Beta receptors</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Exam Logic</h3>
+              <ul>
+                <li>
+                  Node-focused drugs affect AV conduction and rate control
+                </li>
+                <li>Channel blockers alter depolarization/repolarization</li>
+                <li>Misapplied class choice can be proarrhythmic</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="major-arrhythmias-tested">
+          <h2>3. Major Arrhythmias Tested</h2>
+          <div class="chips">
+            <span class="chip">Atrial fibrillation (AF)</span>
+            <span class="chip">Atrial flutter</span>
+            <span class="chip">SVT</span>
+            <span class="chip">Ventricular tachycardia (VT)</span>
+            <span class="chip">Ventricular fibrillation (VF)</span>
+            <span class="chip">Bradyarrhythmias</span>
+          </div>
+
+          <div class="image-grid">
+            <figure class="image-card">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/3/32/ECG_Atrial_Fibrillation.jpg"
+                alt="ECG strip showing atrial fibrillation"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
+              <figcaption class="cap">
+                Atrial fibrillation ECG example
+              </figcaption>
+            </figure>
+            <figure class="image-card">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/4/4b/ECG-atrial_flutter.jpg"
+                alt="ECG strip showing atrial flutter"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
+              <figcaption class="cap">Atrial flutter ECG example</figcaption>
+            </figure>
+            <figure class="image-card">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Electrocardiogram_of_Ventricular_Tachycardia.png"
+                alt="ECG strip showing ventricular tachycardia"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
+              <figcaption class="cap">
+                Ventricular tachycardia ECG example
+              </figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="section" id="atrial-fibrillation">
+          <h2>4. Atrial Fibrillation (AF)</h2>
+          <p>
+            AF is the most common arrhythmia, classically irregularly irregular,
+            with no distinct P waves. Core risks include stroke and heart
+            failure.
+          </p>
+
+          <div class="callout">
+            Management goals: rate control, rhythm control, and stroke
+            prevention.
+          </div>
+
+          <div class="stack">
+            <div class="box">
+              <h3>A. Rate Control</h3>
+              <div class="grid-2">
+                <div>
+                  <p><strong>Beta Blockers</strong></p>
+                  <p>Examples: metoprolol, atenolol.</p>
+                  <ul>
+                    <li>
+                      MOA: beta1 blockade slows AV nodal conduction and HR
+                    </li>
+                    <li>Side effects: bradycardia, hypotension, fatigue</li>
+                    <li>Contra: severe bradycardia, cardiogenic shock</li>
+                  </ul>
+                </div>
+                <div>
+                  <p><strong>Non-DHP CCB</strong></p>
+                  <p>Diltiazem, verapamil.</p>
+                  <ul>
+                    <li>MOA: L-type calcium channel block at AV node</li>
+                    <li>
+                      Side effects: bradycardia, hypotension, constipation
+                      (verapamil)
+                    </li>
+                    <li>Contra: HFrEF, severe hypotension</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="stack">
+                <div class="box">
+                  <h3>Digoxin</h3>
+                  <ul>
+                    <li>
+                      MOA: Na/K ATPase inhibition with increased vagal tone and
+                      slower AV conduction
+                    </li>
+                    <li>Role: rate control; does not improve survival</li>
+                    <li>
+                      Side effects: nausea, visual disturbances, arrhythmias
+                    </li>
+                    <li>Toxicity worsens with hypokalemia</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="box">
+              <h3>B. Rhythm Control</h3>
+              <p>Used when symptoms persist or rate-control strategy fails.</p>
+              <div class="grid-2 stack">
+                <div class="box">
+                  <h3>Amiodarone (Class III)</h3>
+                  <ul>
+                    <li>
+                      MOA: potassium channel block plus sodium, calcium, and
+                      beta receptor effects
+                    </li>
+                    <li>Benefit: effective in AF and VT</li>
+                    <li>
+                      Major side effects: pulmonary fibrosis, thyroid
+                      dysfunction, liver toxicity, photosensitivity, corneal
+                      deposits
+                    </li>
+                    <li>
+                      Contra: severe sinus-node dysfunction, relative caution in
+                      pregnancy
+                    </li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <h3>Class IC (Flecainide, Propafenone)</h3>
+                  <ul>
+                    <li>
+                      MOA: sodium channel blockade slows conduction velocity
+                    </li>
+                    <li>Proarrhythmic risk in structural disease</li>
+                    <li>Contra: structural heart disease and post-MI state</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="stroke-prevention-in-af">
+          <h2>5. Stroke Prevention in AF</h2>
+          <p>
+            Use CHA2DS2-VASc risk scoring. Elevated risk supports
+            anticoagulation.
+          </p>
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>DOACs</h3>
+              <p>Apixaban, rivaroxaban, dabigatran, edoxaban.</p>
+              <ul>
+                <li>MOA: direct factor Xa or thrombin inhibition</li>
+                <li>Side effects: bleeding</li>
+                <li>
+                  Contra: active bleeding, severe renal impairment (agent
+                  dependent)
+                </li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Warfarin</h3>
+              <ul>
+                <li>
+                  MOA: inhibits vitamin K-dependent factors II, VII, IX, X
+                </li>
+                <li>Monitoring: INR target usually 2 to 3</li>
+                <li>Side effects: bleeding, rare skin necrosis</li>
+                <li>Contra: pregnancy</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="ventricular-arrhythmias">
+          <h2>6. Ventricular Arrhythmias</h2>
+          <p>
+            Ventricular tachycardia is potentially life-threatening and requires
+            urgent management.
+          </p>
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>Amiodarone</h3>
+              <p>Common first-line option in stable VT.</p>
+            </div>
+            <div class="box">
+              <h3>Lidocaine (Class IB)</h3>
+              <ul>
+                <li>
+                  MOA: sodium-channel block with shortened action potential
+                </li>
+                <li>Use: ischemic VT contexts</li>
+                <li>Side effects: CNS toxicity, seizures at high doses</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="bradyarrhythmias">
+          <h2>7. Bradyarrhythmias</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Atropine First-Line</h3>
+              <ul>
+                <li>MOA: muscarinic blockade increases heart rate</li>
+                <li>Side effects: dry mouth, urinary retention</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Escalation</h3>
+              <ul>
+                <li>
+                  Persistent severe symptomatic bradycardia may require
+                  pacemaker
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="vaughan-williams-summary">
+          <h2>8. Vaughan-Williams Classification Summary</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Class</th>
+                <th>Target</th>
+                <th>Examples</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Class I</td>
+                <td>Sodium channel blockers</td>
+                <td>Flecainide, propafenone, lidocaine</td>
+              </tr>
+              <tr>
+                <td>Class II</td>
+                <td>Beta blockers</td>
+                <td>Metoprolol, atenolol</td>
+              </tr>
+              <tr>
+                <td>Class III</td>
+                <td>Potassium channel blockers</td>
+                <td>Amiodarone</td>
+              </tr>
+              <tr>
+                <td>Class IV</td>
+                <td>Calcium channel blockers</td>
+                <td>Diltiazem, verapamil</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step">
+              <strong>AF Step 1:</strong> Determine hemodynamic stability
+            </div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step">
+              <strong>AF Step 2:</strong> Rate control with beta blocker or
+              non-DHP CCB
+            </div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step">
+              <strong>AF Step 3:</strong> Consider rhythm control if
+              symptomatic/persistent
+            </div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step">
+              <strong>AF Step 4:</strong> Assess stroke risk and anticoagulate
+              when indicated
+            </div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step">
+              <strong>VT/Brady add-on:</strong> VT uses amiodarone/lidocaine;
+              symptomatic bradycardia uses atropine first
+            </div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Atrial Fibrillation and Antiarrhythmic Classification
+              Flowchart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>ACC/AHA/HRS Guideline for Atrial Fibrillation</h3>
+              <a
+                href="https://www.acc.org/guidelines"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+            <div class="box">
+              <h3>ACC/AHA Guideline for Ventricular Arrhythmias</h3>
+              <a
+                href="https://www.acc.org/guidelines"
+                target="_blank"
+                rel="noopener"
+              >
+                https://www.acc.org/guidelines
+              </a>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="box">
+              <h3>Image Attributions (Wikimedia Commons)</h3>
+              <ul>
+                <li>Cardiac Conduction System - Cypressvine, CC BY-SA 4.0</li>
+                <li>ECG Atrial Fibrillation - Ewingdo, CC BY-SA 4.0</li>
+                <li>ECG-atrial flutter - Ciernik M, CC BY-SA 4.0</li>
+                <li>
+                  Electrocardiogram of Ventricular Tachycardia - Karthik Sheka,
+                  CC BY-SA 2.5
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="exam-traps">
+          <h2>9. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">
+              Non-DHP calcium channel blockers are contraindicated in HFrEF.
+            </div>
+            <div class="callout alert">
+              Amiodarone can cause multi-organ toxicity.
+            </div>
+            <div class="callout alert">
+              Class IC agents are contraindicated in structural heart disease.
+            </div>
+            <div class="callout alert">Digoxin does not reduce mortality.</div>
+            <div class="callout alert">
+              AF management always includes stroke-risk assessment.
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>10. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>
+                  AF = rate control + rhythm strategy + anticoagulation decision
+                </li>
+                <li>Amiodarone is a broad multi-channel blocker</li>
+                <li>DOACs are preferred over warfarin in many AF scenarios</li>
+                <li>VT needs urgent rhythm-focused treatment</li>
+                <li>Symptomatic bradycardia -> atropine first</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Arrhythmias</li>
+                <li>
+                  Subtopics: atrial fibrillation, anticoagulation,
+                  antiarrhythmic classes, ventricular tachycardia,
+                  bradyarrhythmias
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </article>
+    </div>
+  </body>
+</html>

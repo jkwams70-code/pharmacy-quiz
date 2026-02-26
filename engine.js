@@ -1230,7 +1230,7 @@ async function handleAiExplainClick() {
     const message = String(error?.message || "AI request failed");
     setAiExplainMeta(message, true);
     setAiExplainOutput(
-      "AI explanation failed. Check your backend AI settings or quota.",
+      "Couldn't load AI explanation right now. Please try again.",
       true,
     );
   } finally {

@@ -2,10 +2,12 @@ const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const inferredApiBase = isLocalHost
   ? "http://localhost:4000/api"
-  : "https://api.139.84.233.243.sslip.io/api";
+  : "https://api.ajixpharmacy.online/api";
 const hasStaleStoredApiBase =
   !!storedApiBase &&
-  (/trycloudflare\.com/i.test(storedApiBase) || /your-new-tunnel/i.test(storedApiBase));
+  (/trycloudflare\.com/i.test(storedApiBase) ||
+    /your-new-tunnel/i.test(storedApiBase) ||
+    /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase));
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }

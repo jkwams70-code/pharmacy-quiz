@@ -80,6 +80,29 @@ function extractGeminiText(data) {
   return parts.join("\n\n").trim();
 }
 
+function extractOpenRouterText(data) {
+  const choices = Array.isArray(data?.choices) ? data.choices : [];
+  const first = choices[0];
+  const content = first?.message?.content;
+  if (typeof content === "string") {
+    return content.trim();
+  }
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) =>
+        typeof part?.text === "string"
+          ? part.text
+          : typeof part === "string"
+            ? part
+            : "",
+      )
+      .filter(Boolean)
+      .join("\n\n");
+    return text.trim();
+  }
+  return "";
+}
+
 async function fetchWithTimeout(url, options, timeoutMs = 25000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -195,6 +218,58 @@ async function callOpenAi({
   };
 }
 
+async function callOpenRouter({
+  apiKey,
+  model,
+  prompt,
+  maxOutputTokens,
+  timeoutMs,
+}) {
+  const response = await fetchWithTimeout(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a strict pharmacy tutor. Be accurate, concise, and practical.",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: maxOutputTokens,
+        temperature: 0.2,
+      }),
+    },
+    timeoutMs,
+  );
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = String(
+      data?.error?.message || data?.message || "OpenRouter request failed",
+    );
+    throw new Error(message);
+  }
+
+  const answer = extractOpenRouterText(data);
+  if (!answer) {
+    throw new Error("OpenRouter returned an empty response");
+  }
+
+  return {
+    provider: "openrouter",
+    model,
+    answer,
+  };
+}
+
 export async function generateAiExplanation({
   provider,
   apiKey,
@@ -221,6 +296,16 @@ export async function generateAiExplanation({
 
   if (provider === "openai") {
     return callOpenAi({
+      apiKey,
+      model,
+      prompt,
+      maxOutputTokens,
+      timeoutMs,
+    });
+  }
+
+  if (provider === "openrouter") {
+    return callOpenRouter({
       apiKey,
       model,
       prompt,

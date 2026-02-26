@@ -22,7 +22,7 @@ const httpsPfxPath = process.env.HTTPS_PFX_PATH || "";
 const httpsPfxPassphrase = process.env.HTTPS_PFX_PASSPHRASE || "";
 const exposeResetCode = process.env.EXPOSE_RESET_CODE === "true";
 const aiEnabled = String(process.env.AI_ENABLED || "true").toLowerCase() !== "false";
-const aiFreeProvider = String(process.env.AI_FREE_PROVIDER || "gemini")
+const aiFreeProvider = String(process.env.AI_FREE_PROVIDER || "openrouter")
   .trim()
   .toLowerCase();
 const aiPremiumProvider = String(process.env.AI_PREMIUM_PROVIDER || "openai")
@@ -31,6 +31,10 @@ const aiPremiumProvider = String(process.env.AI_PREMIUM_PROVIDER || "openai")
 const geminiApiKey = String(process.env.GEMINI_API_KEY || "").trim();
 const geminiModelFree = String(process.env.GEMINI_MODEL_FREE || "gemini-2.0-flash")
   .trim();
+const openRouterApiKey = String(process.env.OPENROUTER_API_KEY || "").trim();
+const openRouterModelFree = String(
+  process.env.OPENROUTER_MODEL_FREE || "meta-llama/llama-3.1-8b-instruct:free",
+).trim();
 const openAiApiKey = String(process.env.OPENAI_API_KEY || "").trim();
 const openAiModelPremium = String(process.env.OPENAI_MODEL_PREMIUM || "gpt-5-mini")
   .trim();
@@ -102,12 +106,16 @@ if (!["debug", "info", "silent"].includes(logLevel)) {
   throw new Error("Invalid LOG_LEVEL. Use one of: debug, info, silent.");
 }
 
-if (!["gemini", "openai"].includes(aiFreeProvider)) {
-  throw new Error("Invalid AI_FREE_PROVIDER. Use 'gemini' or 'openai'.");
+if (!["gemini", "openai", "openrouter"].includes(aiFreeProvider)) {
+  throw new Error(
+    "Invalid AI_FREE_PROVIDER. Use 'gemini', 'openrouter', or 'openai'.",
+  );
 }
 
-if (!["gemini", "openai"].includes(aiPremiumProvider)) {
-  throw new Error("Invalid AI_PREMIUM_PROVIDER. Use 'gemini' or 'openai'.");
+if (!["gemini", "openai", "openrouter"].includes(aiPremiumProvider)) {
+  throw new Error(
+    "Invalid AI_PREMIUM_PROVIDER. Use 'gemini', 'openrouter', or 'openai'.",
+  );
 }
 
 if (isProduction && corsOrigin === "*") {
@@ -162,6 +170,8 @@ export const config = {
   aiPremiumProvider,
   geminiApiKey,
   geminiModelFree,
+  openRouterApiKey,
+  openRouterModelFree,
   openAiApiKey,
   openAiModelPremium,
   aiRequestTimeoutMs,

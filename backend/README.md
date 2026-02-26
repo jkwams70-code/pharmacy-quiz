@@ -24,6 +24,8 @@ JWT_SECRET=replace-with-a-random-secret
 ENABLE_GZIP=true
 HTTPS_ENABLED=false
 EXPOSE_RESET_CODE=false
+AI_FREE_PROVIDER=openrouter
+OPENROUTER_API_KEY=replace-with-openrouter-key
 ```
 
 `EXPOSE_RESET_CODE` should stay `false` for internet deployments.
@@ -61,6 +63,8 @@ npm run cleanup         # Remove old runtime logs/backups
 npm run cleanup:users   # Remove inactive users with no activity history
 npm run validate:data   # Validate user/question/sync data references
 npm run repair:data     # Repair orphaned user/question references in stored data
+npm run renumber:questions        # Dry-run one-time question ID remap plan
+npm run renumber:questions:apply  # Apply one-time ID remap (with automatic backup + id-map file)
 npm run preflight:prod  # Strict production env readiness checks
 npm run secrets:generate # Print secure JWT_SECRET and ADMIN_KEY values
 npm run smoke           # API smoke tests

@@ -2,8 +2,14 @@ const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const inferredApiBase = isLocalHost
   ? "http://localhost:4000/api"
-  : "https://appeals-artist-val-render.trycloudflare.com/api";
-const API_BASE = storedApiBase || inferredApiBase;
+  : "https://api.139.84.233.243.sslip.io/api";
+const hasStaleStoredApiBase =
+  !!storedApiBase &&
+  (/trycloudflare\.com/i.test(storedApiBase) || /your-new-tunnel/i.test(storedApiBase));
+if (hasStaleStoredApiBase) {
+  localStorage.removeItem("quizApiBase");
+}
+const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || inferredApiBase;
       const ADMIN_KEY_STORAGE = "adminKey";
       let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
       let editingQuestionId = null;

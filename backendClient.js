@@ -2,7 +2,7 @@ const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const inferredApiBase = isLocalHost
   ? "http://localhost:4000/api"
-  : `${window.location.origin}/api`;
+  : "https://appeals-artist-val-render.trycloudflare.com/api";
 const API_BASE = storedApiBase || inferredApiBase;
 
 const CLIENT_ID_KEY = "quizClientId";
@@ -237,3 +237,4 @@ export const backendClient = {
     return get(`/sync/history${query}`);
   },
 };
+

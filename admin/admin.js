@@ -2,7 +2,7 @@ const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const inferredApiBase = isLocalHost
   ? "http://localhost:4000/api"
-  : `${window.location.origin}/api`;
+  : "https://appeals-artist-val-render.trycloudflare.com/api";
 const API_BASE = storedApiBase || inferredApiBase;
       const ADMIN_KEY_STORAGE = "adminKey";
       let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
@@ -768,3 +768,4 @@ const API_BASE = storedApiBase || inferredApiBase;
         document.getElementById("dashboard").classList.add("active");
         refreshData();
       }
+

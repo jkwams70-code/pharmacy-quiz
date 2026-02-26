@@ -50,6 +50,31 @@ const API_BASE = storedApiBase || inferredApiBase;
         return next;
       }
 
+      function displayValue(value) {
+        const next = String(value ?? "").trim();
+        return next || "--";
+      }
+
+      function formatDate(value) {
+        if (!value) return "--";
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return "--";
+        return parsed.toLocaleString();
+      }
+
+      function getCorrectDisplay(question) {
+        const options = Array.isArray(question?.options) ? question.options : [];
+        if (!options.length) {
+          return { index: null, text: String(question?.correct || "").trim() || "--" };
+        }
+
+        const byIndex = toCorrectOptionIndex(question);
+        const text = options[byIndex] || String(question?.correct || "").trim() || "--";
+        const index = options[byIndex] ? byIndex : null;
+
+        return { index, text };
+      }
+
       function getHeaders() {
         return {
           "Content-Type": "application/json",
@@ -128,10 +153,35 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       async function refreshData() {
-        await loadStats();
-        await loadUsers();
-        await loadQuestions();
-        await loadExportData();
+        const refreshBtn = document.getElementById("refresh-data-btn");
+        const originalText = refreshBtn?.textContent || "Refresh";
+
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.textContent = "Refreshing...";
+        }
+
+        const [statsOk, usersOk, questionsOk, exportOk] = await Promise.all([
+          loadStats(),
+          loadUsers(),
+          loadQuestions(),
+          loadExportData(),
+        ]);
+
+        if (statsOk && usersOk && questionsOk && exportOk) {
+          showAlert("stats-alerts", "Dashboard refreshed successfully", "success");
+        } else {
+          showAlert(
+            "stats-alerts",
+            "Refresh completed with some errors. Check active tab alerts.",
+            "info",
+          );
+        }
+
+        if (refreshBtn) {
+          refreshBtn.disabled = false;
+          refreshBtn.textContent = originalText;
+        }
       }
 
       async function loadStats() {
@@ -139,6 +189,10 @@ const API_BASE = storedApiBase || inferredApiBase;
           const res = await fetch(`${API_BASE}/admin/stats`, {
             headers: getHeaders(),
           });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `Failed to load stats (${res.status})`);
+          }
           const data = await res.json();
 
           document.getElementById("stat-users").textContent = data.totalUsers;
@@ -211,9 +265,11 @@ const API_BASE = storedApiBase || inferredApiBase;
               catPerf.appendChild(div);
             });
           }
+          return true;
         } catch (err) {
           console.error("Failed to load stats:", err);
           showAlert("stats-alerts", "Failed to load statistics", "error");
+          return false;
         }
       }
 
@@ -232,21 +288,34 @@ const API_BASE = storedApiBase || inferredApiBase;
 
           if (data.users.length === 0) {
             tbody.innerHTML =
-              '<tr><td colspan="5" style="text-align: center; color: #ccc;">No users yet</td></tr>';
-            return;
+              '<tr><td colspan="11" style="text-align: center; color: #ccc;">No users yet</td></tr>';
+            return true;
           }
 
           data.users.forEach((user) => {
             const tr = document.createElement("tr");
-            const createdDate = new Date(user.createdAt).toLocaleDateString();
-            const safeId = escapeHtml(user.id);
-            const safeName = escapeHtml(user.name);
-            const safeContact = escapeHtml(user.contact || user.email || "");
-            const safeCreatedDate = escapeHtml(createdDate);
+            const safeId = escapeHtml(displayValue(user.id));
+            const safeName = escapeHtml(displayValue(user.name));
+            const safeUsername = escapeHtml(displayValue(user.username));
+            const safeContact = escapeHtml(displayValue(user.contact));
+            const safeEmail = escapeHtml(displayValue(user.email));
+            const safeRole = escapeHtml(displayValue(user.role));
+            const safeProfessionalType = escapeHtml(
+              displayValue(user.professionalType),
+            );
+            const safeCountry = escapeHtml(displayValue(user.country));
+            const safeInstitution = escapeHtml(displayValue(user.institution));
+            const safeCreatedDate = escapeHtml(formatDate(user.createdAt));
             tr.innerHTML = `
-                        <td>${safeId.substring(0, 8)}...</td>
-                        <td>${safeName}</td>
+                        <td>${safeId}</td>
+                        <td class="cell-wrap">${safeName}</td>
+                        <td>${safeUsername}</td>
                         <td>${safeContact}</td>
+                        <td>${safeEmail}</td>
+                        <td>${safeRole}</td>
+                        <td>${safeProfessionalType}</td>
+                        <td>${safeCountry}</td>
+                        <td class="cell-wrap">${safeInstitution}</td>
                         <td>${safeCreatedDate}</td>
                         <td>
                             <div class="actions">
@@ -256,9 +325,11 @@ const API_BASE = storedApiBase || inferredApiBase;
                     `;
             tbody.appendChild(tr);
           });
+          return true;
         } catch (err) {
           console.error("Failed to load users:", err);
           showAlert("users-alerts", "Failed to load users", "error");
+          return false;
         }
       }
 
@@ -278,31 +349,42 @@ const API_BASE = storedApiBase || inferredApiBase;
 
           if (data.questions.length === 0) {
             tbody.innerHTML =
-              '<tr><td colspan="5" style="text-align: center; color: #ccc;">No questions yet</td></tr>';
-            return;
+              '<tr><td colspan="6" style="text-align: center; color: #ccc;">No questions yet</td></tr>';
+            return true;
           }
 
-          data.questions.slice(0, 20).forEach((q) => {
+          data.questions.forEach((q) => {
             const tr = document.createElement("tr");
-            const textValue = String(q.text || "");
-            const text =
-              textValue.length > 50
-                ? `${textValue.substring(0, 50)}...`
-                : textValue;
-            const options = Array.isArray(q.options) ? q.options.length : 0;
+            const options = Array.isArray(q.options) ? q.options : [];
+            const { index: correctIndex, text: correctText } = getCorrectDisplay(q);
             const safeId = escapeHtml(q.id);
-            const safeText = escapeHtml(text);
-            const safeCategory = escapeHtml(q.category);
+            const safeText = escapeHtml(String(q.text || ""));
+            const safeCategory = escapeHtml(displayValue(q.category));
             const safeTopic = escapeHtml(q.topicSlug || "");
             const safeSection = escapeHtml(q.sectionId || "");
+            const safeCorrectText = escapeHtml(correctText);
+            const safeCorrectIndex =
+              Number.isInteger(correctIndex) ? String(correctIndex) : null;
+            const optionsMarkup = options.length
+              ? options
+                  .map((opt, idx) => {
+                    const line = `${idx}. ${escapeHtml(String(opt || ""))}`;
+                    const isCorrect =
+                      safeCorrectIndex !== null && String(idx) === safeCorrectIndex;
+                    return `<div class="${isCorrect ? "is-correct" : ""}">${line}</div>`;
+                  })
+                  .join("")
+              : "<div>--</div>";
+
             tr.innerHTML = `
                         <td>${safeId}</td>
-                        <td>${safeText}</td>
+                        <td class="cell-wrap">${safeText}</td>
                         <td>
                           <span class="category-chip">${safeCategory}</span>
                           ${safeTopic ? `<div style="font-size:12px;color:#64748b;margin-top:6px;">topic: ${safeTopic}${safeSection ? `#${safeSection}` : ""}</div>` : ""}
                         </td>
-                        <td>${options} options</td>
+                        <td><div class="question-options-list">${optionsMarkup}</div></td>
+                        <td class="cell-wrap">${safeCorrectIndex !== null ? `${safeCorrectIndex}. ${safeCorrectText}` : safeCorrectText}</td>
                         <td>
                             <div class="actions">
                                 <button class="btn-small" data-action="edit-question" data-question-id="${safeId}">Edit</button>
@@ -312,15 +394,11 @@ const API_BASE = storedApiBase || inferredApiBase;
                     `;
             tbody.appendChild(tr);
           });
-
-          if (data.questions.length > 20) {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `<td colspan="5" style="text-align: center; color: #999;">... and ${data.questions.length - 20} more</td>`;
-            tbody.appendChild(tr);
-          }
+          return true;
         } catch (err) {
           console.error("Failed to load questions:", err);
           showAlert("questions-alerts", "Failed to load questions", "error");
+          return false;
         }
       }
 
@@ -329,6 +407,10 @@ const API_BASE = storedApiBase || inferredApiBase;
           const res = await fetch(`${API_BASE}/admin/stats`, {
             headers: getHeaders(),
           });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `Failed to load export stats (${res.status})`);
+          }
           const data = await res.json();
 
           document.getElementById("export-users").textContent = data.totalUsers;
@@ -338,8 +420,11 @@ const API_BASE = storedApiBase || inferredApiBase;
             data.totalAttempts;
           document.getElementById("export-sync").textContent =
             data.totalSyncEvents;
+          return true;
         } catch (err) {
           console.error("Failed to load export data:", err);
+          showAlert("export-alerts", "Failed to load export summary", "error");
+          return false;
         }
       }
 
@@ -616,30 +701,35 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       async function seedQuestions() {
-        if (
-          !confirm(
-            "Reload questions from frontend data? This will replace existing questions.",
-          )
-        )
-          return;
+        const force = confirm(
+          "Use FORCE reseed?\nOK = replace all existing questions from Quiz/data.js\nCancel = seed only if questions table is empty",
+        );
 
         try {
           const res = await fetch(`${API_BASE}/admin/seed-questions`, {
             method: "POST",
             headers: getHeaders(),
+            body: JSON.stringify({ force }),
           });
 
           const data = await res.json();
           if (data.seeded) {
+            const detail = data.replaced
+              ? `Replaced ${data.previousCount || 0} existing questions with ${data.count} fresh questions`
+              : `Seeded ${data.count} questions`;
             showAlert(
               "settings-alerts",
-              `Seeded ${data.count} questions`,
+              detail,
               "success",
             );
             loadQuestions();
             loadStats();
           } else {
-            showAlert("settings-alerts", "Questions already seeded", "info");
+            showAlert(
+              "settings-alerts",
+              "Questions already exist. Run force reseed to replace them.",
+              "info",
+            );
           }
         } catch (err) {
           showAlert("settings-alerts", "Error: " + err.message, "error");

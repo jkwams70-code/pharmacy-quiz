@@ -16,6 +16,7 @@ const defaults = {
   attempts: [],
   syncSessions: [],
   syncPerformance: [],
+  aiUsage: [],
 };
 
 function pathFor(collection) {

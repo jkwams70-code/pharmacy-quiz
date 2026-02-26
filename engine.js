@@ -297,6 +297,10 @@ const timerEl = document.getElementById("timer");
 const explanationEl = document.getElementById("explanation");
 const topicLinkWrapEl = document.getElementById("question-topic-link-wrap");
 const topicLinkBtnEl = document.getElementById("topic-link-btn");
+const aiExplainWrapEl = document.getElementById("ai-explain-wrap");
+const aiExplainBtn = document.getElementById("ai-explain-btn");
+const aiExplainMetaEl = document.getElementById("ai-explain-meta");
+const aiExplainOutputEl = document.getElementById("ai-explain-output");
 const quizArea = document.getElementById("quiz-area");
 const progressEl = document.getElementById("progress");
 const liveScore = document.getElementById("live-score");
@@ -325,7 +329,16 @@ const authLastNameInput = document.getElementById("auth-last-name");
 const authUsernameWrap = document.getElementById("auth-username-wrap");
 const authUsernameInput = document.getElementById("auth-username");
 const authContactWrap = document.getElementById("auth-contact-wrap");
-const authContactInput = document.getElementById("auth-contact");
+const authContactTypeInput = document.getElementById("auth-contact-type");
+const authContactEmailWrap = document.getElementById("auth-contact-email-wrap");
+const authContactEmailInput = document.getElementById("auth-contact-email");
+const authContactPhoneWrap = document.getElementById("auth-contact-phone-wrap");
+const authContactCountryCodeInput = document.getElementById(
+  "auth-contact-country-code",
+);
+const authContactPhoneLocalInput = document.getElementById(
+  "auth-contact-phone-local",
+);
 const authRoleWrap = document.getElementById("auth-role-wrap");
 const authProfTypeWrap = document.getElementById("auth-prof-type-wrap");
 const authProfessionalTypeInput = document.getElementById("auth-professional-type");
@@ -351,12 +364,26 @@ const profileBtnIcon = profileBtn?.querySelector(".menu-profile-icon");
 const logoutBtn = document.getElementById("quiz-logout-btn");
 const profileBackBtn = document.getElementById("profile-back-btn");
 const profileSaveBtn = document.getElementById("profile-save-btn");
+const profilePasswordToggleBtn = document.getElementById(
+  "profile-password-toggle-btn",
+);
+const profilePasswordPanel = document.getElementById("profile-password-panel");
 const profileChangePasswordBtn = document.getElementById("profile-change-password-btn");
+const profileDangerToggleBtn = document.getElementById("profile-danger-toggle-btn");
+const profileDangerPanel = document.getElementById("profile-danger-panel");
 const profileDeactivateBtn = document.getElementById("profile-deactivate-btn");
 const profileDeleteBtn = document.getElementById("profile-delete-btn");
 const profileFeedbackEl = document.getElementById("profile-feedback");
 const profileAvatarPreviewEl = document.getElementById("profile-avatar-preview");
-const profilePhotoFileInput = document.getElementById("profile-photo-file");
+const profilePhotoCameraBtn = document.getElementById("profile-photo-camera-btn");
+const profilePhotoGalleryBtn = document.getElementById("profile-photo-gallery-btn");
+const profilePhotoDeleteBtn = document.getElementById("profile-photo-delete-btn");
+const profilePhotoFileCameraInput = document.getElementById(
+  "profile-photo-file-camera",
+);
+const profilePhotoFileGalleryInput = document.getElementById(
+  "profile-photo-file-gallery",
+);
 const profilePhotoUrlInput = document.getElementById("profile-photo-url");
 const profileTitleInput = document.getElementById("profile-title");
 const profileFirstNameInput = document.getElementById("profile-first-name");
@@ -672,7 +699,121 @@ function setSelectedRadioValue(name, value) {
   });
 }
 
+const EMAIL_INPUT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_INPUT_REGEX = /^[a-z0-9][a-z0-9_.-]{2,29}$/;
+const CONTACT_RULES_BY_COUNTRY = {
+  "United States": { code: "+1", min: 10, max: 10, label: "10 digits" },
+  Canada: { code: "+1", min: 10, max: 10, label: "10 digits" },
+  "United Kingdom": { code: "+44", min: 10, max: 10, label: "10 digits" },
+  Nigeria: { code: "+234", min: 10, max: 10, label: "10 digits" },
+  Ghana: { code: "+233", min: 9, max: 9, label: "9 digits" },
+  Kenya: { code: "+254", min: 9, max: 9, label: "9 digits" },
+  India: { code: "+91", min: 10, max: 10, label: "10 digits" },
+  Pakistan: { code: "+92", min: 10, max: 10, label: "10 digits" },
+  Philippines: { code: "+63", min: 10, max: 10, label: "10 digits" },
+  Australia: { code: "+61", min: 9, max: 9, label: "9 digits" },
+  "South Africa": { code: "+27", min: 9, max: 9, label: "9 digits" },
+  Other: { code: "", min: 6, max: 14, label: "6-14 digits" },
+};
+
+function normalizeDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function getContactRule(country) {
+  return CONTACT_RULES_BY_COUNTRY[String(country || "").trim()] || null;
+}
+
+function clearFieldValidation(fieldWrap) {
+  if (!fieldWrap) return;
+  fieldWrap.classList.remove("field-invalid");
+  const hint = fieldWrap.querySelector(".field-error-text");
+  if (hint) hint.remove();
+}
+
+function setFieldValidation(fieldWrap, message = "Required") {
+  if (!fieldWrap) return;
+  clearFieldValidation(fieldWrap);
+  fieldWrap.classList.add("field-invalid");
+  const hint = document.createElement("div");
+  hint.className = "field-error-text";
+  hint.textContent = message;
+  fieldWrap.appendChild(hint);
+}
+
+function clearAuthFieldValidations() {
+  [
+    authTitleWrap,
+    authFirstNameWrap,
+    authLastNameWrap,
+    authUsernameWrap,
+    authContactWrap,
+    authContactEmailWrap,
+    authContactPhoneWrap,
+    authProfTypeWrap,
+    authCountryWrap,
+    authInstitutionWrap,
+    authPasswordWrap,
+  ].forEach(clearFieldValidation);
+}
+
+function toggleAuthContactFields() {
+  const isRegister = authMode === "register";
+  const contactType = String(authContactTypeInput?.value || "email")
+    .trim()
+    .toLowerCase();
+
+  if (authContactEmailWrap) {
+    authContactEmailWrap.classList.toggle(
+      "hidden",
+      !isRegister || contactType !== "email",
+    );
+  }
+  if (authContactPhoneWrap) {
+    authContactPhoneWrap.classList.toggle(
+      "hidden",
+      !isRegister || contactType !== "phone",
+    );
+  }
+}
+
+function syncCountryCodeWithCountry() {
+  const country = String(authCountryInput?.value || "").trim();
+  const rule = getContactRule(country);
+  if (!rule || !authContactCountryCodeInput) return;
+  if (!rule.code) return;
+  authContactCountryCodeInput.value = rule.code;
+}
+
+function bindValidationClear(inputEl, fieldWrap, eventName = "input") {
+  if (!inputEl || !fieldWrap) return;
+  inputEl.addEventListener(eventName, () => clearFieldValidation(fieldWrap));
+}
+
+function isValidContactValue(value) {
+  const contact = String(value || "").trim();
+  if (!contact) return false;
+  if (EMAIL_INPUT_REGEX.test(contact)) return true;
+  return /^\+[1-9]\d{5,15}$/.test(contact);
+}
+
 let pendingProfileImage = "";
+let profileImageMarkedForDeletion = false;
+
+function getCurrentProfileImage() {
+  if (profileImageMarkedForDeletion) return "";
+  const typed = String(profilePhotoUrlInput?.value || "").trim();
+  if (typed) return typed;
+  const pending = String(pendingProfileImage || "").trim();
+  if (pending) return pending;
+  return String(currentUser?.profileImage || "").trim();
+}
+
+function refreshProfilePhotoDeleteVisibility() {
+  if (!profilePhotoDeleteBtn) return;
+  const hasImage = Boolean(getCurrentProfileImage());
+  profilePhotoDeleteBtn.classList.toggle("hidden", !hasImage);
+}
 
 function defaultProfileAvatarDataUri() {
   const label = String(
@@ -713,15 +854,42 @@ function updateProfileButtonAvatar(src = "") {
   if (profileBtnIcon) profileBtnIcon.classList.remove("hidden");
 }
 
+let profileFeedbackTimer = null;
+
 function setProfileFeedback(message = "", isError = false) {
   if (!profileFeedbackEl) return;
   const text = String(message || "").trim();
+  if (profileFeedbackTimer) {
+    clearTimeout(profileFeedbackTimer);
+    profileFeedbackTimer = null;
+  }
   profileFeedbackEl.textContent = text;
   profileFeedbackEl.classList.toggle("hidden", !text);
-  profileFeedbackEl.classList.remove("auth-error", "auth-info");
+  profileFeedbackEl.classList.remove("auth-error", "auth-info", "profile-toast");
   if (text) {
-    profileFeedbackEl.classList.add(isError ? "auth-error" : "auth-info");
+    profileFeedbackEl.classList.add(
+      isError ? "auth-error" : "auth-info",
+      "profile-toast",
+    );
+    profileFeedbackTimer = setTimeout(() => {
+      if (!profileFeedbackEl) return;
+      profileFeedbackEl.classList.add("hidden");
+      profileFeedbackEl.classList.remove(
+        "auth-error",
+        "auth-info",
+        "profile-toast",
+      );
+      profileFeedbackEl.textContent = "";
+      profileFeedbackTimer = null;
+    }, isError ? 6500 : 4200);
   }
+}
+
+function setProfilePanelOpen(panelEl, toggleBtnEl, open, openLabel, closeLabel) {
+  if (!panelEl || !toggleBtnEl) return;
+  panelEl.classList.toggle("hidden", !open);
+  toggleBtnEl.setAttribute("aria-expanded", open ? "true" : "false");
+  toggleBtnEl.textContent = open ? closeLabel : openLabel;
 }
 
 function fillProfileForm() {
@@ -738,10 +906,16 @@ function fillProfileForm() {
   if (profileInstitutionInput) profileInstitutionInput.value = currentUser.institution || "";
   setSelectedRadioValue("profile-role", currentUser.role || "student");
 
+  profileImageMarkedForDeletion = false;
   pendingProfileImage = String(currentUser.profileImage || "").trim();
-  if (profilePhotoUrlInput) profilePhotoUrlInput.value = pendingProfileImage;
+  if (profilePhotoUrlInput) {
+    profilePhotoUrlInput.value = /^https?:\/\//i.test(pendingProfileImage)
+      ? pendingProfileImage
+      : "";
+  }
   setProfileAvatarPreview(pendingProfileImage);
   updateProfileButtonAvatar(pendingProfileImage);
+  refreshProfilePhotoDeleteVisibility();
 }
 
 function renderAuthState() {
@@ -757,6 +931,7 @@ function renderAuthState() {
     profileBtn.classList.remove("hidden");
     updateProfileButtonAvatar(currentUser.profileImage || "");
     fillProfileForm();
+    refreshProfilePhotoDeleteVisibility();
     return;
   }
 
@@ -765,6 +940,7 @@ function renderAuthState() {
   logoutBtn.classList.add("hidden");
   profileBtn.classList.add("hidden");
   updateProfileButtonAvatar("");
+  refreshProfilePhotoDeleteVisibility();
 }
 
 function setAuthMode(nextMode = "login") {
@@ -789,6 +965,7 @@ function setAuthMode(nextMode = "login") {
   if (authLastNameWrap) authLastNameWrap.classList.toggle("hidden", !isRegister);
   if (authUsernameWrap) authUsernameWrap.classList.toggle("hidden", !isRegister);
   if (authContactWrap) authContactWrap.classList.toggle("hidden", !isRegister);
+  toggleAuthContactFields();
   if (authRoleWrap) authRoleWrap.classList.toggle("hidden", !isRegister);
   if (authProfTypeWrap) authProfTypeWrap.classList.toggle("hidden", !isRegister);
   if (authCountryWrap) authCountryWrap.classList.toggle("hidden", !isRegister);
@@ -814,8 +991,17 @@ function setAuthMode(nextMode = "login") {
   }
 
   setAuthPasswordVisibility(false);
+  clearAuthFieldValidations();
   setAuthError("");
   setAuthInfo("");
+
+  if (isRegister) {
+    if (authContactTypeInput && !authContactTypeInput.value) {
+      authContactTypeInput.value = "email";
+    }
+    syncCountryCodeWithCountry();
+    toggleAuthContactFields();
+  }
 }
 
 function openAuthModal(nextMode = "login") {
@@ -856,6 +1042,126 @@ function authErrorMessage(error) {
   if (message.includes("(409)")) return message.replace(/\s+\(\d+\)\s*$/, "");
   if (message.includes("(400)")) return message.replace(/\s+\(\d+\)\s*$/, "");
   return "Unable to sign in right now. Please try again.";
+}
+
+let aiExplainInFlight = false;
+
+function canUseAiForCurrentQuestion() {
+  if (!currentUser) return false;
+  if ((mode === "exam" || mode === "smart") && !inReview && !inDetailedReview) {
+    return false;
+  }
+  return true;
+}
+
+function setAiExplainMeta(message = "", isError = false) {
+  if (!aiExplainMetaEl) return;
+  const text = String(message || "").trim();
+  aiExplainMetaEl.textContent = text;
+  aiExplainMetaEl.classList.toggle("hidden", !text);
+  aiExplainMetaEl.style.color = isError ? "#b91c1c" : "#475569";
+}
+
+function setAiExplainOutput(message = "", isError = false) {
+  if (!aiExplainOutputEl) return;
+  const text = String(message || "").trim();
+  aiExplainOutputEl.textContent = text;
+  aiExplainOutputEl.classList.toggle("hidden", !text);
+  aiExplainOutputEl.style.borderLeftColor = isError ? "#dc2626" : "#0f766e";
+  aiExplainOutputEl.style.background = isError ? "#fef2f2" : "#ecfeff";
+  aiExplainOutputEl.style.color = isError ? "#7f1d1d" : "#155e75";
+}
+
+function resetAiExplainPanel() {
+  setAiExplainMeta("");
+  setAiExplainOutput("");
+  const allowed = canUseAiForCurrentQuestion();
+  if (aiExplainWrapEl) {
+    aiExplainWrapEl.classList.toggle("hidden", !allowed);
+  }
+  if (!aiExplainBtn) return;
+  aiExplainInFlight = false;
+  aiExplainBtn.disabled = !allowed;
+  aiExplainBtn.textContent = "Explain With AI";
+}
+
+function getOptionListForAi(question) {
+  if (Array.isArray(question?.options) && question.options.length > 0) {
+    return question.options;
+  }
+
+  if (Array.isArray(question?.statements) && question.statements.length > 0) {
+    return question.statements;
+  }
+
+  return [];
+}
+
+function buildAiPayloadForQuestion(question) {
+  const options = getOptionListForAi(question);
+  return {
+    question: String(question?.question || question?.text || "").trim(),
+    options,
+    selectedAnswer: String(userAnswers?.[question?.id] || "").trim(),
+    correctAnswer: String(question?.correct || "").trim(),
+    category: String(question?.category || "").trim(),
+    mode: String(mode || "").trim(),
+    topicSlug: String(question?.topicSlug || "").trim(),
+    existingExplanation: String(question?.explanation || "").trim(),
+  };
+}
+
+async function handleAiExplainClick() {
+  if (!aiExplainBtn || aiExplainInFlight) return;
+  if (!canUseAiForCurrentQuestion()) {
+    setAiExplainMeta("AI explanation is available in Study or Review mode only.", true);
+    return;
+  }
+
+  const question = Array.isArray(active) ? active[current] : null;
+  if (!question) {
+    setAiExplainMeta("No active question to explain.", true);
+    return;
+  }
+
+  const payload = buildAiPayloadForQuestion(question);
+  if (!payload.question) {
+    setAiExplainMeta("Question text is missing; AI explain skipped.", true);
+    return;
+  }
+
+  aiExplainInFlight = true;
+  aiExplainBtn.disabled = true;
+  aiExplainBtn.textContent = "Thinking...";
+  setAiExplainMeta("Requesting explanation...");
+  setAiExplainOutput("");
+
+  try {
+    const data = await backendClient.explainQuestion(payload);
+    setAiExplainOutput(String(data?.answer || "").trim());
+    const remaining = Number(data?.usage?.remaining);
+    const limit = Number(data?.usage?.limit);
+    const tier = String(data?.tier || "").trim() || "free";
+    const provider = String(data?.provider || "").trim();
+    if (Number.isFinite(remaining) && Number.isFinite(limit)) {
+      setAiExplainMeta(
+        `AI: ${provider} (${tier}) | Daily remaining: ${remaining}/${limit}`,
+      );
+    } else {
+      setAiExplainMeta(`AI: ${provider} (${tier})`);
+    }
+  } catch (error) {
+    const message = String(error?.message || "AI request failed");
+    setAiExplainMeta(message, true);
+    setAiExplainOutput(
+      "AI explanation failed. Check your backend AI settings or quota.",
+      true,
+    );
+  } finally {
+    aiExplainInFlight = false;
+    aiExplainBtn.disabled = !canUseAiForCurrentQuestion();
+    aiExplainBtn.textContent = "Explain With AI";
+  }
 }
 
 async function restoreAuthSession() {
@@ -899,13 +1205,19 @@ async function handleAuthSubmit(event) {
   const firstName = String(authFirstNameInput?.value || "").trim();
   const lastName = String(authLastNameInput?.value || "").trim();
   const username = String(authUsernameInput?.value || "").trim().toLowerCase();
-  const contact = String(authContactInput?.value || "").trim();
+  const contactType = String(authContactTypeInput?.value || "email")
+    .trim()
+    .toLowerCase();
+  const contactEmail = String(authContactEmailInput?.value || "").trim().toLowerCase();
+  const contactCountryCode = String(authContactCountryCodeInput?.value || "").trim();
+  const contactLocalNumberRaw = String(authContactPhoneLocalInput?.value || "").trim();
   const role = readSelectedRadioValue("auth-role", "student");
   const professionalType = String(authProfessionalTypeInput?.value || "").trim();
   const country = String(authCountryInput?.value || "").trim();
   const institution = String(authInstitutionInput?.value || "").trim();
   const code = String(authResetCodeInput?.value || "").trim();
   const password = String(authPasswordInput?.value || "");
+  let contact = "";
 
   if (authMode === "login") {
     if (!identifier) {
@@ -919,24 +1231,97 @@ async function handleAuthSubmit(event) {
   }
 
   if (authMode === "register") {
-    if (!title || !firstName || !lastName) {
-      setAuthError("Title, first name and surname are required.");
-      return;
+    clearAuthFieldValidations();
+    let hasInvalidRequired = false;
+
+    if (!title) {
+      setFieldValidation(authTitleWrap, "Required");
+      hasInvalidRequired = true;
     }
-    if (!username || username.length < 3) {
-      setAuthError("Username must be at least 3 characters.");
-      return;
+    if (!firstName) {
+      setFieldValidation(authFirstNameWrap, "Required");
+      hasInvalidRequired = true;
     }
-    if (!contact) {
-      setAuthError("Contact is required.");
-      return;
+    if (!lastName) {
+      setFieldValidation(authLastNameWrap, "Required");
+      hasInvalidRequired = true;
     }
-    if (!professionalType || !country || !institution) {
-      setAuthError("Professional type, country and institution are required.");
-      return;
+    if (!username) {
+      setFieldValidation(authUsernameWrap, "Required");
+      hasInvalidRequired = true;
+    } else if (!USERNAME_INPUT_REGEX.test(username)) {
+      setFieldValidation(
+        authUsernameWrap,
+        "3-30 chars: lowercase letters, numbers, ., _, -",
+      );
+      hasInvalidRequired = true;
+    }
+    if (!professionalType) {
+      setFieldValidation(authProfTypeWrap, "Required");
+      hasInvalidRequired = true;
+    }
+    if (!country) {
+      setFieldValidation(authCountryWrap, "Required");
+      hasInvalidRequired = true;
+    }
+    if (!institution) {
+      setFieldValidation(authInstitutionWrap, "Required");
+      hasInvalidRequired = true;
     }
     if (!password || password.length < 6) {
-      setAuthError("Password must be at least 6 characters.");
+      setFieldValidation(authPasswordWrap, "Minimum 6 characters");
+      hasInvalidRequired = true;
+    }
+
+    if (contactType === "phone") {
+      const localRule = getContactRule(country);
+      let localDigits = normalizeDigits(contactLocalNumberRaw);
+      if (
+        localRule &&
+        localDigits.length === localRule.max + 1 &&
+        localDigits.startsWith("0")
+      ) {
+        localDigits = localDigits.slice(1);
+      }
+
+      if (!contactCountryCode) {
+        setFieldValidation(authContactPhoneWrap, "Country code is required");
+        hasInvalidRequired = true;
+      } else if (localRule?.code && contactCountryCode !== localRule.code) {
+        setFieldValidation(
+          authContactPhoneWrap,
+          `Use ${localRule.code} for ${country}`,
+        );
+        hasInvalidRequired = true;
+      }
+      if (!contactLocalNumberRaw) {
+        setFieldValidation(authContactPhoneWrap, "Personal number is required");
+        hasInvalidRequired = true;
+      } else if (localRule && (localDigits.length < localRule.min || localDigits.length > localRule.max)) {
+        setFieldValidation(
+          authContactPhoneWrap,
+          `${country}: enter ${localRule.label}`,
+        );
+        hasInvalidRequired = true;
+      } else if (!localRule && (localDigits.length < 6 || localDigits.length > 14)) {
+        setFieldValidation(authContactPhoneWrap, "Enter 6-14 digits");
+        hasInvalidRequired = true;
+      }
+
+      contact = `${contactCountryCode}${localDigits}`;
+    } else {
+      if (!contactEmail) {
+        setFieldValidation(authContactEmailWrap, "Required");
+        hasInvalidRequired = true;
+      } else if (!EMAIL_INPUT_REGEX.test(contactEmail)) {
+        setFieldValidation(authContactEmailWrap, "Enter a valid email address");
+        hasInvalidRequired = true;
+      }
+      contact = contactEmail;
+    }
+
+    if (hasInvalidRequired) {
+      setAuthError("Complete all required fields correctly.");
       return;
     }
   }
@@ -995,7 +1380,7 @@ async function handleAuthSubmit(event) {
 
     if (authMode === "forgot") {
       const response = await backendClient.forgotPassword({ identifier });
-      const codePreview = String(response?.code || "").trim();
+      const codePreview = String(response?.devResetCode || response?.code || "").trim();
       setAuthMode("reset");
       setAuthInfo(
         codePreview
@@ -1056,6 +1441,44 @@ if (authBackLoginLinkBtn) {
   authBackLoginLinkBtn.onclick = () => setAuthMode("login");
 }
 
+bindValidationClear(authTitleInput, authTitleWrap, "change");
+bindValidationClear(authFirstNameInput, authFirstNameWrap);
+bindValidationClear(authLastNameInput, authLastNameWrap);
+bindValidationClear(authUsernameInput, authUsernameWrap);
+bindValidationClear(authContactTypeInput, authContactWrap, "change");
+bindValidationClear(authContactEmailInput, authContactEmailWrap);
+bindValidationClear(authContactCountryCodeInput, authContactPhoneWrap, "change");
+bindValidationClear(authProfessionalTypeInput, authProfTypeWrap, "change");
+bindValidationClear(authCountryInput, authCountryWrap, "change");
+bindValidationClear(authInstitutionInput, authInstitutionWrap);
+bindValidationClear(authPasswordInput, authPasswordWrap);
+
+if (authContactTypeInput) {
+  authContactTypeInput.addEventListener("change", () => {
+    clearFieldValidation(authContactEmailWrap);
+    clearFieldValidation(authContactPhoneWrap);
+    if (String(authContactTypeInput.value || "").toLowerCase() === "phone") {
+      syncCountryCodeWithCountry();
+    }
+    toggleAuthContactFields();
+  });
+}
+
+if (authCountryInput) {
+  authCountryInput.addEventListener("change", () => {
+    clearFieldValidation(authCountryWrap);
+    syncCountryCodeWithCountry();
+  });
+}
+
+if (authContactPhoneLocalInput) {
+  authContactPhoneLocalInput.addEventListener("input", () => {
+    const digits = normalizeDigits(authContactPhoneLocalInput.value);
+    authContactPhoneLocalInput.value = digits;
+    clearFieldValidation(authContactPhoneWrap);
+  });
+}
+
 if (authCancelBtn) {
   authCancelBtn.onclick = () => {
     closeAuthModal();
@@ -1066,7 +1489,10 @@ if (authCancelBtn) {
 if (logoutBtn) {
   logoutBtn.onclick = () => {
     backendClient.clearToken();
+    profileImageMarkedForDeletion = false;
     pendingProfileImage = "";
+    if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
+    refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     renderAuthState();
     closeAuthModal();
@@ -1162,10 +1588,12 @@ async function loadProfilePhotoFromFile(file) {
     return;
   }
 
+  profileImageMarkedForDeletion = false;
   pendingProfileImage = dataUrl;
   if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
   setProfileAvatarPreview(dataUrl);
   updateProfileButtonAvatar(dataUrl);
+  refreshProfilePhotoDeleteVisibility();
   setProfileFeedback("Profile picture ready. Click Save Profile to apply.");
 }
 
@@ -1174,7 +1602,9 @@ async function saveProfile() {
 
   const currentImage = String(currentUser.profileImage || "").trim();
   const typedImageUrl = String(profilePhotoUrlInput?.value || "").trim();
-  const resolvedImage = typedImageUrl || pendingProfileImage || currentImage;
+  const resolvedImage = profileImageMarkedForDeletion
+    ? ""
+    : typedImageUrl || pendingProfileImage || currentImage;
   const payload = {
     title: String(profileTitleInput?.value || "").trim() || String(currentUser.title || "").trim() || "Mr",
     firstName:
@@ -1217,14 +1647,25 @@ async function saveProfile() {
     );
     return;
   }
+  if (!isValidContactValue(payload.contact)) {
+    setProfileFeedback(
+      "Contact must be a valid email or phone in international format (e.g., +233XXXXXXXXX).",
+      true,
+    );
+    return;
+  }
 
   try {
     const response = await backendClient.updateProfile(payload);
     currentUser = response?.user || (await backendClient.fetchMe());
+    profileImageMarkedForDeletion = false;
     pendingProfileImage = String(currentUser.profileImage || "").trim();
     if (profilePhotoUrlInput) {
-      profilePhotoUrlInput.value = pendingProfileImage;
+      profilePhotoUrlInput.value = /^https?:\/\//i.test(pendingProfileImage)
+        ? pendingProfileImage
+        : "";
     }
+    refreshProfilePhotoDeleteVisibility();
     renderAuthState();
     setProfileFeedback("Profile updated successfully.");
   } catch (error) {
@@ -1271,7 +1712,10 @@ async function deactivateProfileAccount() {
   try {
     await backendClient.deactivateAccount(days);
     backendClient.clearToken();
+    profileImageMarkedForDeletion = false;
     pendingProfileImage = "";
+    if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
+    refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     renderAuthState();
     showScreen("home-screen");
@@ -1288,7 +1732,10 @@ async function deleteProfileAccount() {
   try {
     await backendClient.deleteAccount();
     backendClient.clearToken();
+    profileImageMarkedForDeletion = false;
     pendingProfileImage = "";
+    if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
+    refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     renderAuthState();
     showScreen("home-screen");
@@ -1303,6 +1750,20 @@ async function openProfileScreen() {
   if (!ok || !currentUser) return;
   setProfileFeedback("");
   fillProfileForm();
+  setProfilePanelOpen(
+    profilePasswordPanel,
+    profilePasswordToggleBtn,
+    false,
+    "Open Password Section",
+    "Close Password Section",
+  );
+  setProfilePanelOpen(
+    profileDangerPanel,
+    profileDangerToggleBtn,
+    false,
+    "Open Account Controls",
+    "Close Account Controls",
+  );
   showScreen("profile-screen");
 }
 
@@ -1320,8 +1781,34 @@ if (profileSaveBtn) {
   profileSaveBtn.onclick = saveProfile;
 }
 
+if (profilePasswordToggleBtn) {
+  profilePasswordToggleBtn.onclick = () => {
+    const shouldOpen = profilePasswordPanel?.classList.contains("hidden");
+    setProfilePanelOpen(
+      profilePasswordPanel,
+      profilePasswordToggleBtn,
+      Boolean(shouldOpen),
+      "Open Password Section",
+      "Close Password Section",
+    );
+  };
+}
+
 if (profileChangePasswordBtn) {
   profileChangePasswordBtn.onclick = changeProfilePassword;
+}
+
+if (profileDangerToggleBtn) {
+  profileDangerToggleBtn.onclick = () => {
+    const shouldOpen = profileDangerPanel?.classList.contains("hidden");
+    setProfilePanelOpen(
+      profileDangerPanel,
+      profileDangerToggleBtn,
+      Boolean(shouldOpen),
+      "Open Account Controls",
+      "Close Account Controls",
+    );
+  };
 }
 
 if (profileDeactivateBtn) {
@@ -1335,18 +1822,70 @@ if (profileDeleteBtn) {
 if (profilePhotoUrlInput) {
   profilePhotoUrlInput.addEventListener("input", () => {
     const next = String(profilePhotoUrlInput.value || "").trim();
-    pendingProfileImage = next;
-    setProfileAvatarPreview(next);
-    updateProfileButtonAvatar(next);
+    profileImageMarkedForDeletion = false;
+    if (next) {
+      pendingProfileImage = next;
+      setProfileAvatarPreview(next);
+      updateProfileButtonAvatar(next);
+      refreshProfilePhotoDeleteVisibility();
+      return;
+    }
+
+    pendingProfileImage = String(currentUser?.profileImage || "").trim();
+    const fallback = getCurrentProfileImage();
+    setProfileAvatarPreview(fallback);
+    updateProfileButtonAvatar(fallback);
+    refreshProfilePhotoDeleteVisibility();
   });
 }
 
-if (profilePhotoFileInput) {
-  profilePhotoFileInput.addEventListener("change", () => {
-    const file = profilePhotoFileInput.files?.[0];
+if (profilePhotoCameraBtn && profilePhotoFileCameraInput) {
+  profilePhotoCameraBtn.addEventListener("click", () => {
+    profilePhotoFileCameraInput.click();
+  });
+}
+
+if (profilePhotoGalleryBtn && profilePhotoFileGalleryInput) {
+  profilePhotoGalleryBtn.addEventListener("click", () => {
+    profilePhotoFileGalleryInput.click();
+  });
+}
+
+if (profilePhotoFileCameraInput) {
+  profilePhotoFileCameraInput.addEventListener("change", () => {
+    const file = profilePhotoFileCameraInput.files?.[0];
     loadProfilePhotoFromFile(file).catch(() => {
       setProfileFeedback("Failed to read selected image.", true);
     });
+    profilePhotoFileCameraInput.value = "";
+  });
+}
+
+if (profilePhotoFileGalleryInput) {
+  profilePhotoFileGalleryInput.addEventListener("change", () => {
+    const file = profilePhotoFileGalleryInput.files?.[0];
+    loadProfilePhotoFromFile(file).catch(() => {
+      setProfileFeedback("Failed to read selected image.", true);
+    });
+    profilePhotoFileGalleryInput.value = "";
+  });
+}
+
+if (profilePhotoDeleteBtn) {
+  profilePhotoDeleteBtn.addEventListener("click", () => {
+    profileImageMarkedForDeletion = true;
+    pendingProfileImage = "";
+    if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
+    setProfileAvatarPreview("");
+    updateProfileButtonAvatar("");
+    refreshProfilePhotoDeleteVisibility();
+    setProfileFeedback("Profile picture removed. Click Save Profile to apply.");
+  });
+}
+
+if (aiExplainBtn) {
+  aiExplainBtn.addEventListener("click", () => {
+    handleAiExplainClick();
   });
 }
 
@@ -2163,6 +2702,7 @@ function showQuestion() {
   if (topicLinkWrapEl) {
     topicLinkWrapEl.classList.add("hidden");
   }
+  resetAiExplainPanel();
   answersEl.innerHTML = "";
 
   const q = active[current];
@@ -3019,6 +3559,7 @@ function returnToExamDetailedReview() {
 function renderDetailedQuestion() {
   const q = active[current];
   answersEl.innerHTML = "";
+  resetAiExplainPanel();
 
   // Question title
   let caseText = "";
@@ -3256,8 +3797,10 @@ function saveStudyProgress() {
 
 window.addEventListener("load", function () {
   setAuthMode("login");
+  profileImageMarkedForDeletion = false;
   setProfileAvatarPreview("");
   updateProfileButtonAvatar("");
+  refreshProfilePhotoDeleteVisibility();
   renderAuthState();
   restoreAuthSession();
 

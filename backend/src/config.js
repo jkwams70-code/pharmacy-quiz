@@ -20,6 +20,35 @@ const httpsEnforce = process.env.HTTPS_ENFORCE === "true";
 const httpsPort = Number(process.env.HTTPS_PORT || 4443);
 const httpsPfxPath = process.env.HTTPS_PFX_PATH || "";
 const httpsPfxPassphrase = process.env.HTTPS_PFX_PASSPHRASE || "";
+const exposeResetCode = process.env.EXPOSE_RESET_CODE === "true";
+const aiEnabled = String(process.env.AI_ENABLED || "true").toLowerCase() !== "false";
+const aiFreeProvider = String(process.env.AI_FREE_PROVIDER || "gemini")
+  .trim()
+  .toLowerCase();
+const aiPremiumProvider = String(process.env.AI_PREMIUM_PROVIDER || "openai")
+  .trim()
+  .toLowerCase();
+const geminiApiKey = String(process.env.GEMINI_API_KEY || "").trim();
+const geminiModelFree = String(process.env.GEMINI_MODEL_FREE || "gemini-2.0-flash")
+  .trim();
+const openAiApiKey = String(process.env.OPENAI_API_KEY || "").trim();
+const openAiModelPremium = String(process.env.OPENAI_MODEL_PREMIUM || "gpt-5-mini")
+  .trim();
+const aiRequestTimeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS || 25000);
+const aiFreeDailyRequests = Number(process.env.AI_FREE_DAILY_REQUESTS || 25);
+const aiPremiumDailyRequests = Number(process.env.AI_PREMIUM_DAILY_REQUESTS || 300);
+const aiFreeInputCharLimit = Number(process.env.AI_FREE_INPUT_CHAR_LIMIT || 4000);
+const aiPremiumInputCharLimit = Number(
+  process.env.AI_PREMIUM_INPUT_CHAR_LIMIT || 12000,
+);
+const aiFreeMaxOutputTokens = Number(process.env.AI_FREE_MAX_OUTPUT_TOKENS || 450);
+const aiPremiumMaxOutputTokens = Number(
+  process.env.AI_PREMIUM_MAX_OUTPUT_TOKENS || 900,
+);
+const aiPremiumUserIds = String(process.env.AI_PREMIUM_USER_IDS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 if (!Number.isFinite(port) || port <= 0) {
   throw new Error("Invalid PORT. Set a positive numeric PORT value.");
@@ -41,8 +70,44 @@ if (!Number.isFinite(logRetentionDays) || logRetentionDays <= 0) {
   throw new Error("Invalid LOG_RETENTION_DAYS. Use a positive number.");
 }
 
+if (!Number.isFinite(aiRequestTimeoutMs) || aiRequestTimeoutMs < 3000) {
+  throw new Error("Invalid AI_REQUEST_TIMEOUT_MS. Use a number >= 3000.");
+}
+
+if (!Number.isFinite(aiFreeDailyRequests) || aiFreeDailyRequests < 1) {
+  throw new Error("Invalid AI_FREE_DAILY_REQUESTS. Use a positive number.");
+}
+
+if (!Number.isFinite(aiPremiumDailyRequests) || aiPremiumDailyRequests < 1) {
+  throw new Error("Invalid AI_PREMIUM_DAILY_REQUESTS. Use a positive number.");
+}
+
+if (!Number.isFinite(aiFreeInputCharLimit) || aiFreeInputCharLimit < 300) {
+  throw new Error("Invalid AI_FREE_INPUT_CHAR_LIMIT. Use a number >= 300.");
+}
+
+if (!Number.isFinite(aiPremiumInputCharLimit) || aiPremiumInputCharLimit < 300) {
+  throw new Error("Invalid AI_PREMIUM_INPUT_CHAR_LIMIT. Use a number >= 300.");
+}
+
+if (!Number.isFinite(aiFreeMaxOutputTokens) || aiFreeMaxOutputTokens < 64) {
+  throw new Error("Invalid AI_FREE_MAX_OUTPUT_TOKENS. Use a number >= 64.");
+}
+
+if (!Number.isFinite(aiPremiumMaxOutputTokens) || aiPremiumMaxOutputTokens < 64) {
+  throw new Error("Invalid AI_PREMIUM_MAX_OUTPUT_TOKENS. Use a number >= 64.");
+}
+
 if (!["debug", "info", "silent"].includes(logLevel)) {
   throw new Error("Invalid LOG_LEVEL. Use one of: debug, info, silent.");
+}
+
+if (!["gemini", "openai"].includes(aiFreeProvider)) {
+  throw new Error("Invalid AI_FREE_PROVIDER. Use 'gemini' or 'openai'.");
+}
+
+if (!["gemini", "openai"].includes(aiPremiumProvider)) {
+  throw new Error("Invalid AI_PREMIUM_PROVIDER. Use 'gemini' or 'openai'.");
 }
 
 if (isProduction && corsOrigin === "*") {
@@ -91,5 +156,21 @@ export const config = {
   httpsPort,
   httpsPfxPath,
   httpsPfxPassphrase,
+  exposeResetCode,
+  aiEnabled,
+  aiFreeProvider,
+  aiPremiumProvider,
+  geminiApiKey,
+  geminiModelFree,
+  openAiApiKey,
+  openAiModelPremium,
+  aiRequestTimeoutMs,
+  aiFreeDailyRequests,
+  aiPremiumDailyRequests,
+  aiFreeInputCharLimit,
+  aiPremiumInputCharLimit,
+  aiFreeMaxOutputTokens,
+  aiPremiumMaxOutputTokens,
+  aiPremiumUserIds,
   tokenTtl: "7d",
 };

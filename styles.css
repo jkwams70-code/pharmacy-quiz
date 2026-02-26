@@ -234,6 +234,31 @@ input {
   border-color: #60a5fa;
 }
 
+.auth-phone-grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  gap: 8px;
+}
+
+.auth-field.field-invalid input,
+.auth-field.field-invalid select {
+  border-color: #dc2626;
+  background: #fff7f7;
+}
+
+.auth-field.field-invalid input:focus,
+.auth-field.field-invalid select:focus {
+  outline-color: #fca5a5;
+  border-color: #dc2626;
+}
+
+.field-error-text {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
 .auth-password-wrap {
   position: relative;
   display: flex;
@@ -330,6 +355,21 @@ input {
   border: 1px solid #bfdbfe;
   border-radius: var(--radius-sm);
   padding: 8px 10px;
+}
+
+.profile-collapsible {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  width: min(680px, calc(100vw - 22px));
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
 }
 
 /* Home */
@@ -564,6 +604,18 @@ input {
 .profile-avatar-controls {
   display: grid;
   gap: 10px;
+}
+
+.profile-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-photo-actions .modal-btn {
+  width: auto;
+  min-height: 38px;
+  padding: 8px 12px;
 }
 
 .profile-divider {
@@ -1397,6 +1449,27 @@ input {
   margin-top: 10px;
 }
 
+.ai-explain-wrap {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.ai-explain-meta {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.ai-explain-wrap .topic-link-btn {
+  justify-self: start;
+}
+
+.ai-explain-wrap .topic-link-btn[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .topic-link-btn {
   display: inline-flex;
   align-items: center;
@@ -1971,6 +2044,24 @@ input {
 
   .profile-avatar-row {
     grid-template-columns: 1fr;
+  }
+
+  .profile-photo-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .profile-photo-actions .modal-btn {
+    width: 100%;
+  }
+
+  .auth-phone-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-toast {
+    top: 10px;
+    width: min(96vw, 640px);
   }
 
   .menu-title {

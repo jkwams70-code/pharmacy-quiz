@@ -293,6 +293,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on:
 - Production monitoring
 
 Additional operational docs:
+- [DEPLOYMENT_COMPLETION_CHECKLIST.md](DEPLOYMENT_COMPLETION_CHECKLIST.md)
 - [ADMIN_GUIDE.md](ADMIN_GUIDE.md)
 - [USER_GUIDE.md](USER_GUIDE.md)
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md)

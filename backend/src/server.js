@@ -21,6 +21,7 @@ import {
   ensureQuestionsSeeded,
   normalizeStoredQuestionCategories,
 } from "./services/questions.js";
+import { generateAiExplanation } from "./services/ai.js";
 import {
   ensureStore,
   readCollection,
@@ -65,6 +66,7 @@ const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const USERNAME_REGEX = /^[a-z0-9][a-z0-9_.-]{2,29}$/;
 const PHONE_CONTACT_REGEX = /^\+?[0-9][0-9()\-\s]{5,19}$/;
 const USER_ROLE_VALUES = new Set(["student", "worker"]);
+const SUBSCRIPTION_TIER_VALUES = new Set(["free", "premium"]);
 const PROFESSIONAL_TYPE_VALUES = new Set([
   "Doctor of Pharmacy",
   "Pharmacy Technician",
@@ -143,6 +145,11 @@ function buildDisplayName(title, firstName, lastName, fallback = "User") {
   return normalizeWhitespace(fallback) || "User";
 }
 
+function normalizeSubscriptionTierValue(value) {
+  const tier = String(value || "").trim().toLowerCase();
+  return SUBSCRIPTION_TIER_VALUES.has(tier) ? tier : null;
+}
+
 function normalizeExistingUser(rawUser = {}) {
   const legacy = splitLegacyName(rawUser.name);
   const title = normalizeWhitespace(rawUser.title);
@@ -170,6 +177,8 @@ function normalizeExistingUser(rawUser = {}) {
   const role = USER_ROLE_VALUES.has(String(rawUser.role || "").toLowerCase())
     ? String(rawUser.role).toLowerCase()
     : "student";
+  const subscriptionTier =
+    normalizeSubscriptionTierValue(rawUser.subscriptionTier) || "free";
   const professionalType = PROFESSIONAL_TYPE_VALUES.has(rawUser.professionalType)
     ? rawUser.professionalType
     : "Other";
@@ -192,6 +201,7 @@ function normalizeExistingUser(rawUser = {}) {
     contactType: contact ? detectContactType(contact) : "",
     email: email || "",
     role,
+    subscriptionTier,
     professionalType,
     country: normalizeWhitespace(rawUser.country),
     institution: normalizeWhitespace(rawUser.institution),
@@ -222,6 +232,7 @@ function toPublicUser(user) {
     contactType: normalized.contactType,
     email: normalized.email,
     role: normalized.role,
+    subscriptionTier: normalized.subscriptionTier,
     professionalType: normalized.professionalType,
     country: normalized.country,
     institution: normalized.institution,
@@ -270,27 +281,140 @@ function createResetCode() {
   return String(crypto.randomInt(0, 1000000)).padStart(6, "0");
 }
 
-function maskContactForMessage(contact) {
-  if (!contact) return "your registered contact";
-  if (isValidEmail(contact)) {
-    const [local, domain] = contact.split("@");
-    const visible = local.slice(0, 2);
-    return `${visible}${"*".repeat(Math.max(1, local.length - 2))}@${domain}`;
-  }
-  const digits = normalizePhoneComparable(contact);
-  if (!digits) return "your registered contact";
-  const tail = digits.slice(-3);
-  return `${"*".repeat(Math.max(3, digits.length - 3))}${tail}`;
-}
-
 function normalizeRoleValue(value) {
   const role = String(value || "").trim().toLowerCase();
   return USER_ROLE_VALUES.has(role) ? role : null;
 }
 
+function resolveSubscriptionTier(user) {
+  const normalized = normalizeSubscriptionTierValue(user?.subscriptionTier);
+  if (normalized) return normalized;
+  if (user?.id && config.aiPremiumUserIds.includes(String(user.id))) {
+    return "premium";
+  }
+  return "free";
+}
+
 function normalizeProfessionalTypeValue(value) {
   const clean = normalizeWhitespace(value);
   return PROFESSIONAL_TYPE_VALUES.has(clean) ? clean : null;
+}
+
+function getAiCapsForTier(tier) {
+  const isPremium = tier === "premium";
+  return {
+    dailyRequests: isPremium
+      ? config.aiPremiumDailyRequests
+      : config.aiFreeDailyRequests,
+    inputCharLimit: isPremium
+      ? config.aiPremiumInputCharLimit
+      : config.aiFreeInputCharLimit,
+    maxOutputTokens: isPremium
+      ? config.aiPremiumMaxOutputTokens
+      : config.aiFreeMaxOutputTokens,
+  };
+}
+
+function resolveAiProviderConfig(tier) {
+  const provider =
+    tier === "premium" ? config.aiPremiumProvider : config.aiFreeProvider;
+  if (provider === "openai") {
+    return {
+      provider,
+      apiKey: config.openAiApiKey,
+      model: config.openAiModelPremium,
+    };
+  }
+  return {
+    provider: "gemini",
+    apiKey: config.geminiApiKey,
+    model: config.geminiModelFree,
+  };
+}
+
+function aiUsageDateKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function trimAiInput(value, maxLength = 4000) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+async function reserveAiQuota({ actorId, tier, inputChars }) {
+  const today = aiUsageDateKey();
+  const { dailyRequests } = getAiCapsForTier(tier);
+  let blocked = false;
+  let remaining = 0;
+  let used = 0;
+
+  await updateCollection("aiUsage", async (rows) => {
+    const usageRows = Array.isArray(rows) ? rows : [];
+    let row = usageRows.find(
+      (entry) => entry.actorId === actorId && entry.date === today,
+    );
+    if (!row) {
+      row = {
+        actorId,
+        date: today,
+        tier,
+        requests: 0,
+        inputChars: 0,
+        outputChars: 0,
+        lastRequestAt: null,
+        lastResponseAt: null,
+        provider: "",
+        model: "",
+      };
+      usageRows.push(row);
+    }
+
+    row.tier = tier;
+    if (row.requests >= dailyRequests) {
+      blocked = true;
+      used = row.requests;
+      remaining = 0;
+      return usageRows;
+    }
+
+    row.requests += 1;
+    row.inputChars += Math.max(0, Number(inputChars) || 0);
+    row.lastRequestAt = new Date().toISOString();
+    used = row.requests;
+    remaining = Math.max(0, dailyRequests - row.requests);
+    return usageRows;
+  });
+
+  return {
+    blocked,
+    usageDate: today,
+    used,
+    remaining,
+    limit: dailyRequests,
+  };
+}
+
+async function recordAiResponse({
+  actorId,
+  usageDate,
+  outputChars,
+  provider,
+  model,
+}) {
+  await updateCollection("aiUsage", async (rows) => {
+    const usageRows = Array.isArray(rows) ? rows : [];
+    const row = usageRows.find(
+      (entry) => entry.actorId === actorId && entry.date === usageDate,
+    );
+    if (!row) return usageRows;
+    row.outputChars += Math.max(0, Number(outputChars) || 0);
+    row.lastResponseAt = new Date().toISOString();
+    row.provider = String(provider || row.provider || "");
+    row.model = String(model || row.model || "");
+    return usageRows;
+  });
 }
 
 function validateProfileImageValue(value) {
@@ -764,6 +888,7 @@ app.post(
       contactType: detectContactType(contact),
       email: isValidEmail(contact) ? contact : "",
       role,
+      subscriptionTier: "free",
       professionalType,
       country,
       institution,
@@ -867,6 +992,8 @@ app.post(
   "/api/auth/forgot-password",
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
+    const genericResetMessage =
+      "If the account exists, a reset code has been sent to the registered contact.";
     const identifier = String(
       req.body?.identifier ||
         req.body?.contact ||
@@ -884,11 +1011,7 @@ app.post(
     const user = findUserByIdentifier(users, identifier);
 
     if (!user) {
-      res.json({
-        ok: true,
-        message:
-          "If the account exists, a reset code has been sent to the registered contact.",
-      });
+      res.json({ ok: true, message: genericResetMessage });
       return;
     }
 
@@ -909,15 +1032,20 @@ app.post(
     await writeCollection("users", nextUsers);
 
     errorLogStream.write(
-      `${new Date().toISOString()} password-reset-code userId=${user.id} contact=${user.contact} code=${resetCode} expiresAt=${expiresAt}\n`,
+      `${new Date().toISOString()} password-reset-request userId=${user.id} expiresAt=${expiresAt}\n`,
     );
 
-    res.json({
+    const response = {
       ok: true,
-      message: `Reset code sent to ${maskContactForMessage(user.contact)}.`,
-      code: resetCode,
-      expiresAt,
-    });
+      message: genericResetMessage,
+    };
+
+    if (config.exposeResetCode) {
+      response.devResetCode = resetCode;
+      response.expiresAt = expiresAt;
+    }
+
+    res.json(response);
   }),
 );
 
@@ -1676,6 +1804,174 @@ app.get(
   }),
 );
 
+app.get(
+  "/api/ai/quota",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+    if (isUserCurrentlyDeactivated(user)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    const tier = resolveSubscriptionTier(user);
+    const caps = getAiCapsForTier(tier);
+    const providerConfig = resolveAiProviderConfig(tier);
+    const actorId = getActorId(req);
+    const today = aiUsageDateKey();
+    const usageRows = await readCollection("aiUsage");
+    const row = usageRows.find(
+      (entry) => entry.actorId === actorId && entry.date === today,
+    );
+    const used = Math.max(0, Number(row?.requests) || 0);
+
+    res.json({
+      ok: true,
+      enabled: config.aiEnabled,
+      tier,
+      usage: {
+        date: today,
+        limit: caps.dailyRequests,
+        used,
+        remaining: Math.max(0, caps.dailyRequests - used),
+      },
+      provider: providerConfig.provider,
+      model: providerConfig.model,
+    });
+  }),
+);
+
+app.post(
+  "/api/ai/explain",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    if (!config.aiEnabled) {
+      res.status(503).json({ error: "AI feature is currently disabled." });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+    if (isUserCurrentlyDeactivated(user)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    const tier = resolveSubscriptionTier(user);
+    const caps = getAiCapsForTier(tier);
+    const providerConfig = resolveAiProviderConfig(tier);
+
+    const question = trimAiInput(req.body?.question, 4500);
+    if (!question) {
+      res.status(400).json({ error: "question is required" });
+      return;
+    }
+
+    const options = Array.isArray(req.body?.options)
+      ? req.body.options.map((opt) => trimAiInput(opt, 400)).filter(Boolean).slice(0, 8)
+      : [];
+    const selectedAnswer = trimAiInput(req.body?.selectedAnswer, 500);
+    const correctAnswer = trimAiInput(req.body?.correctAnswer, 500);
+    const category = trimAiInput(req.body?.category, 200);
+    const mode = trimAiInput(req.body?.mode, 80);
+    const topicSlug = trimAiInput(req.body?.topicSlug, 120);
+    const existingExplanation = trimAiInput(req.body?.existingExplanation, 2500);
+
+    const inputChars =
+      question.length +
+      options.join("").length +
+      selectedAnswer.length +
+      correctAnswer.length +
+      category.length +
+      mode.length +
+      topicSlug.length +
+      existingExplanation.length;
+
+    if (inputChars > caps.inputCharLimit) {
+      res.status(400).json({
+        error: `AI input is too large for your tier. Limit: ${caps.inputCharLimit} characters.`,
+      });
+      return;
+    }
+
+    if (!providerConfig.apiKey) {
+      res.status(503).json({
+        error: `AI provider is not configured for ${providerConfig.provider}.`,
+      });
+      return;
+    }
+
+    const actorId = getActorId(req);
+    const quota = await reserveAiQuota({
+      actorId,
+      tier,
+      inputChars,
+    });
+
+    if (quota.blocked) {
+      res.status(429).json({
+        error: `Daily AI limit reached (${quota.limit}). Try again tomorrow or upgrade to premium.`,
+      });
+      return;
+    }
+
+    try {
+      const result = await generateAiExplanation({
+        provider: providerConfig.provider,
+        apiKey: providerConfig.apiKey,
+        model: providerConfig.model,
+        maxOutputTokens: caps.maxOutputTokens,
+        timeoutMs: config.aiRequestTimeoutMs,
+        payload: {
+          question,
+          options,
+          selectedAnswer,
+          correctAnswer,
+          category,
+          mode,
+          topicSlug,
+          existingExplanation,
+        },
+      });
+
+      await recordAiResponse({
+        actorId,
+        usageDate: quota.usageDate,
+        outputChars: String(result.answer || "").length,
+        provider: result.provider,
+        model: result.model,
+      });
+
+      res.json({
+        ok: true,
+        answer: result.answer,
+        tier,
+        provider: result.provider,
+        model: result.model,
+        usage: {
+          limit: quota.limit,
+          used: quota.used,
+          remaining: quota.remaining,
+        },
+      });
+    } catch (error) {
+      const message = String(error?.message || "AI request failed");
+      res.status(502).json({
+        error: `AI provider error: ${message}`,
+      });
+    }
+  }),
+);
+
 app.post(
   "/api/admin/seed-questions",
   asyncHandler(async (req, res) => {
@@ -1684,7 +1980,8 @@ app.post(
       return;
     }
 
-    const result = await ensureQuestionsSeeded();
+    const force = Boolean(req.body?.force);
+    const result = await ensureQuestionsSeeded({ force });
     res.json(result);
   }),
 );
@@ -1701,14 +1998,22 @@ app.get(
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const sanitized = users.map((u) => ({
       id: u.id,
+      title: u.title,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      surname: u.surname,
       name: u.name,
       username: u.username,
       contact: u.contact,
+      contactType: u.contactType,
       email: u.email,
       role: u.role,
+      subscriptionTier: u.subscriptionTier,
       professionalType: u.professionalType,
       country: u.country,
       institution: u.institution,
+      profileImage: u.profileImage,
+      deactivatedAt: u.deactivatedAt,
       deactivatedUntil: u.deactivatedUntil,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
@@ -1741,6 +2046,42 @@ app.delete(
 
     await writeCollection("users", filtered);
     res.json({ ok: true, message: "User deleted" });
+  }),
+);
+
+app.put(
+  "/api/admin/users/:userId/subscription",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const userId = String(req.params.userId || "");
+    const nextTier = normalizeSubscriptionTierValue(req.body?.subscriptionTier);
+    if (!nextTier) {
+      res.status(400).json({ error: "subscriptionTier must be 'free' or 'premium'" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const idx = users.findIndex((entry) => entry.id === userId);
+    if (idx < 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    users[idx] = {
+      ...users[idx],
+      subscriptionTier: nextTier,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeCollection("users", users);
+
+    res.json({
+      ok: true,
+      user: toPublicUser(users[idx]),
+    });
   }),
 );
 
@@ -1983,18 +2324,42 @@ app.get(
     const attempts = await readCollection("attempts");
     const syncPerformance = await readCollection("syncPerformance");
     const syncSessions = await readCollection("syncSessions");
+    const aiUsage = await readCollection("aiUsage");
 
-    const categories = [...MAJOR_CATEGORIES];
-
-    const totalAttempts = attempts.filter((a) => a.finishedAt).length;
+    const normalizedQuestions = questions.map(normalizeQuestionForApi);
+    const finishedAttempts = attempts.filter((a) => a.finishedAt);
+    const totalAttempts = finishedAttempts.length;
     const avgScore =
       totalAttempts === 0
         ? 0
         : Math.round(
-            attempts
-              .filter((a) => a.finishedAt)
-              .reduce((sum, a) => sum + (a.percent || 0), 0) / totalAttempts,
+            finishedAttempts.reduce((sum, a) => sum + (a.percent || 0), 0) /
+              totalAttempts,
           );
+    const dashboard = buildDashboardFromAttempts(
+      finishedAttempts,
+      normalizedQuestions,
+    );
+    const categoryStatsByName = new Map(
+      dashboard.categories.map((row) => [row.category, row]),
+    );
+    const categories = [...MAJOR_CATEGORIES].map((category) => {
+      const row = categoryStatsByName.get(category);
+      if (!row) {
+        return {
+          category,
+          attempts: 0,
+          correct: 0,
+          accuracy: null,
+        };
+      }
+      return {
+        category,
+        attempts: row.attempts,
+        correct: row.correct,
+        accuracy: row.accuracy,
+      };
+    });
 
     res.json({
       totalUsers: users.length,
@@ -2004,6 +2369,11 @@ app.get(
       totalAttempts,
       totalSyncEvents: syncPerformance.length,
       totalSessions: syncSessions.length,
+      totalAiUsageDays: aiUsage.length,
+      totalAiRequests: aiUsage.reduce(
+        (sum, row) => sum + (Number(row?.requests) || 0),
+        0,
+      ),
       averageScore: avgScore,
       storageUsage: {
         users: users.length,
@@ -2011,6 +2381,7 @@ app.get(
         attempts: attempts.length,
         syncEvents: syncPerformance.length,
         syncSessions: syncSessions.length,
+        aiUsage: aiUsage.length,
       },
     });
   }),
@@ -2045,6 +2416,7 @@ app.get(
         attempts: attempts.length,
         syncEvents: syncPerformance.length,
         syncSessions: syncSessions.length,
+        aiUsage: aiUsage.length,
       },
       data: {
         users,
@@ -2052,6 +2424,7 @@ app.get(
         attempts,
         syncPerformance,
         syncSessions,
+        aiUsage,
       },
     };
 
@@ -2129,6 +2502,7 @@ app.post(
     await writeCollection("attempts", []);
     await writeCollection("syncPerformance", []);
     await writeCollection("syncSessions", []);
+    await writeCollection("aiUsage", []);
 
     const result = await ensureQuestionsSeeded();
 

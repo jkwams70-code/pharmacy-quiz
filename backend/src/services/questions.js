@@ -38,10 +38,10 @@ export async function importQuestionsFromFrontend() {
   return source.map(normalizeQuestion);
 }
 
-export async function ensureQuestionsSeeded() {
+export async function ensureQuestionsSeeded({ force = false } = {}) {
   const existing = await readCollection("questions");
-  if (existing.length > 0) {
-    return { seeded: false, count: existing.length };
+  if (existing.length > 0 && !force) {
+    return { seeded: false, count: existing.length, replaced: false };
   }
 
   const seededQuestions = await importQuestionsFromFrontend();
@@ -50,6 +50,8 @@ export async function ensureQuestionsSeeded() {
   return {
     seeded: true,
     count: seededQuestions.length,
+    replaced: existing.length > 0,
+    previousCount: existing.length,
   };
 }
 

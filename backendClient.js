@@ -236,5 +236,13 @@ export const backendClient = {
     const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
     return get(`/sync/history${query}`);
   },
+
+  fetchAiQuota() {
+    return get("/ai/quota");
+  },
+
+  explainQuestion(payload = {}) {
+    return post("/ai/explain", payload);
+  },
 };
 

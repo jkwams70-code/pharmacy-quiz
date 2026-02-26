@@ -161,6 +161,10 @@
         font-size: 14px;
       }
 
+      .header-actions .header-btn {
+        width: auto;
+      }
+
       .tabs {
         display: flex;
         gap: 10px;
@@ -296,6 +300,32 @@
 
       .btn-small.danger:hover {
         background: #fecaca;
+      }
+
+      .user-table th,
+      .user-table td,
+      .question-table th,
+      .question-table td {
+        white-space: nowrap;
+        vertical-align: top;
+      }
+
+      .user-table .cell-wrap,
+      .question-table .cell-wrap {
+        max-width: 280px;
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      .question-options-list {
+        display: grid;
+        gap: 4px;
+        color: #334155;
+      }
+
+      .question-options-list .is-correct {
+        color: #166534;
+        font-weight: 600;
       }
 
       .modal {
@@ -501,7 +531,7 @@
         input[type="number"],
         select,
         textarea,
-        button,
+        button:not(.header-btn):not(.btn-small),
         label,
         td,
         th,
@@ -516,18 +546,34 @@
         input[type="number"],
         select,
         textarea,
-        button {
+        button:not(.header-btn):not(.btn-small) {
           min-height: 44px;
         }
 
-        /* Keep key user columns visible on narrow screens. */
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .header-actions {
+          width: 100%;
+          justify-content: flex-end;
+        }
+
+        .header-actions .header-btn {
+          min-height: 34px !important;
+          font-size: 13px !important;
+          padding: 6px 10px !important;
+        }
+
         #users .table-container {
           overflow-x: auto;
         }
 
         #users table {
-          table-layout: fixed;
-          width: 100%;
+          table-layout: auto;
+          min-width: 1200px;
         }
 
         #users th,
@@ -537,38 +583,17 @@
           vertical-align: middle;
         }
 
-        #users th:nth-child(1),
-        #users td:nth-child(1) {
-          display: none;
+        #questions .table-container {
+          overflow-x: auto;
         }
 
-        #users th:nth-child(2),
-        #users td:nth-child(2) {
-          width: 22%;
+        #questions table {
+          table-layout: auto;
+          min-width: 1250px;
         }
 
-        #users th:nth-child(3),
-        #users td:nth-child(3) {
-          display: none;
-        }
-
-        #users th:nth-child(4),
-        #users td:nth-child(4) {
-          width: 30%;
-          white-space: nowrap;
-        }
-
-        #users th:nth-child(5),
-        #users td:nth-child(5) {
-          width: 24%;
-          text-align: right;
-        }
-
-        #users .actions {
-          justify-content: flex-end;
-        }
-
-        #users .btn-small {
+        #users .btn-small,
+        #questions .btn-small {
           min-height: 34px;
           font-size: 12px;
           padding: 6px 8px;
@@ -618,8 +643,10 @@
           <h1>Admin Dashboard</h1>
         </div>
         <div class="header-actions">
-          <button id="refresh-data-btn" class="secondary">Refresh</button>
-          <button id="logout-btn" class="danger">Logout</button>
+          <button id="refresh-data-btn" class="secondary header-btn">
+            Refresh
+          </button>
+          <button id="logout-btn" class="danger header-btn">Logout</button>
         </div>
       </div>
 
@@ -681,19 +708,25 @@
         </div>
         <div id="users-alerts"></div>
         <div class="table-container">
-          <table>
+          <table class="user-table">
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Name</th>
+                <th>Full Name</th>
+                <th>Username</th>
                 <th>Contact</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Professional Type</th>
+                <th>Country</th>
+                <th>Institution</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="users-table">
               <tr>
-                <td colspan="5" style="text-align: center; color: #ccc">
+                <td colspan="11" style="text-align: center; color: #ccc">
                   Loading...
                 </td>
               </tr>
@@ -709,19 +742,20 @@
         </div>
         <div id="questions-alerts"></div>
         <div class="table-container">
-          <table>
+          <table class="question-table">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Text</th>
                 <th>Category</th>
                 <th>Options</th>
+                <th>Correct Answer</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="questions-table">
               <tr>
-                <td colspan="5" style="text-align: center; color: #ccc">
+                <td colspan="6" style="text-align: center; color: #ccc">
                   Loading...
                 </td>
               </tr>
@@ -799,10 +833,11 @@
           >
             <h4 style="margin-bottom: 15px; color: #666">Seed Questions</h4>
             <p style="color: #999; margin-bottom: 15px; font-size: 14px">
-              Reload questions from the Quiz/data.js file
+              Import questions from <code>Quiz/data.js</code>. You can run safe
+              seed (only if empty) or force replace all existing questions.
             </p>
             <button id="seed-questions-btn">
-              Seed Questions from Frontend Data
+              Seed / Reseed Questions from Frontend Data
             </button>
           </div>
 
@@ -918,8 +953,8 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Correct Answer (0-3)</label>
-          <input type="number" id="q-correct" placeholder="0" min="0" max="3" />
+          <label>Correct Answer Index (0 = Option A, 1 = Option B, ...)</label>
+          <input type="number" id="q-correct" placeholder="0" min="0" />
         </div>
         <div class="modal-actions">
           <button id="question-cancel-btn">Cancel</button>

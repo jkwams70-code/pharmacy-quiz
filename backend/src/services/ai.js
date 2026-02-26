@@ -92,6 +92,8 @@ function extractOpenRouterText(data) {
       .map((part) =>
         typeof part?.text === "string"
           ? part.text
+          : typeof part?.content === "string"
+            ? part.content
           : typeof part === "string"
             ? part
             : "",
@@ -99,6 +101,9 @@ function extractOpenRouterText(data) {
       .filter(Boolean)
       .join("\n\n");
     return text.trim();
+  }
+  if (typeof first?.text === "string") {
+    return first.text.trim();
   }
   return "";
 }
@@ -225,49 +230,80 @@ async function callOpenRouter({
   maxOutputTokens,
   timeoutMs,
 }) {
-  const response = await fetchWithTimeout(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a strict pharmacy tutor. Be accurate, concise, and practical.",
-          },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: maxOutputTokens,
-        temperature: 0.2,
-      }),
-    },
-    timeoutMs,
-  );
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = String(
-      data?.error?.message || data?.message || "OpenRouter request failed",
-    );
-    throw new Error(message);
-  }
-
-  const answer = extractOpenRouterText(data);
-  if (!answer) {
-    throw new Error("OpenRouter returned an empty response");
-  }
-
-  return {
-    provider: "openrouter",
-    model,
-    answer,
+  const endpoint = "https://openrouter.ai/api/v1/chat/completions";
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
   };
+  const systemMessage =
+    "You are a strict pharmacy tutor. Be accurate, concise, and practical.";
+
+  async function callModel(targetModel) {
+    const response = await fetchWithTimeout(
+      endpoint,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: targetModel,
+          messages: [
+            {
+              role: "system",
+              content: systemMessage,
+            },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: maxOutputTokens,
+          temperature: 0.2,
+        }),
+      },
+      timeoutMs,
+    );
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = String(
+        data?.error?.message || data?.message || "OpenRouter request failed",
+      );
+      throw new Error(message);
+    }
+
+    const answer = extractOpenRouterText(data);
+    return {
+      answer,
+      data,
+    };
+  }
+
+  const modelsToTry = [
+    model,
+    "stepfun/step-3.5-flash:free",
+    "openai/gpt-oss-120b:free",
+    "z-ai/glm-4.5-air:free",
+  ].filter((value, index, all) => value && all.indexOf(value) === index);
+
+  let lastMeta = {};
+  for (const candidateModel of modelsToTry) {
+    const result = await callModel(candidateModel);
+    if (result.answer) {
+      return {
+        provider: "openrouter",
+        model: candidateModel,
+        answer: result.answer,
+      };
+    }
+    const firstChoice = Array.isArray(result.data?.choices)
+      ? result.data.choices[0]
+      : null;
+    lastMeta = {
+      model: candidateModel,
+      finishReason: firstChoice?.finish_reason || "",
+    };
+  }
+
+  throw new Error(
+    `OpenRouter returned an empty response (model=${lastMeta.model || model}, finish_reason=${lastMeta.finishReason || "unknown"})`,
+  );
 }
 
 export async function generateAiExplanation({

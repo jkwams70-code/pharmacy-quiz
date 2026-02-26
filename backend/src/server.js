@@ -325,6 +325,13 @@ function resolveAiProviderConfig(tier) {
       model: config.openAiModelPremium,
     };
   }
+  if (provider === "openrouter") {
+    return {
+      provider,
+      apiKey: config.openRouterApiKey,
+      model: config.openRouterModelFree,
+    };
+  }
   return {
     provider: "gemini",
     apiKey: config.geminiApiKey,
@@ -1421,6 +1428,8 @@ app.get(
 
       const questionById = new Map(questions.map((q) => [Number(q.id), q]));
       questions = ids.map((id) => questionById.get(id)).filter(Boolean);
+    } else {
+      questions = questions.sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
     }
 
     if (shouldShuffle) {

@@ -133,7 +133,11 @@ let bestStreak = parseInt(localStorage.getItem("quizBestStreak")) || 0;
 let sessionHistory =
   JSON.parse(localStorage.getItem("quizSessionHistory")) || [];
 
-let questionBank = baseQuestions.map(withMajorCategory);
+function byQuestionIdAscending(a, b) {
+  return Number(a?.id || 0) - Number(b?.id || 0);
+}
+
+let questionBank = baseQuestions.map(withMajorCategory).sort(byQuestionIdAscending);
 const caseMap = {};
 let backendReady = false;
 let backendAttemptId = null;
@@ -150,22 +154,25 @@ async function loadQuestionsFromBackend() {
     const questions = await backendClient.fetchQuestions({ limit: 1000 });
     if (Array.isArray(questions) && questions.length > 0) {
       // Map backend format to local format for compatibility
-      questionBank = questions.map((q) => ({
-        id: q.id,
-        text: q.text || q.question || "",
-        question: q.question || q.text || "",
-        category: normalizeMajorCategory(
-          q.category,
-          `${String(q.question || q.text || "")} ${String(q.explanation || "")}`,
-        ),
-        options: q.options,
-        correct: q.correct,
-        explanation: q.explanation || "",
-        type: q.type || "single",
-        topicSlug: q.topicSlug || "",
-        sectionId: q.sectionId || "",
-      }));
+      questionBank = questions
+        .map((q) => ({
+          id: q.id,
+          text: q.text || q.question || "",
+          question: q.question || q.text || "",
+          category: normalizeMajorCategory(
+            q.category,
+            `${String(q.question || q.text || "")} ${String(q.explanation || "")}`,
+          ),
+          options: q.options,
+          correct: q.correct,
+          explanation: q.explanation || "",
+          type: q.type || "single",
+          topicSlug: q.topicSlug || "",
+          sectionId: q.sectionId || "",
+        }))
+        .sort(byQuestionIdAscending);
       backendReady = true;
+      reconcileLocalQuestionStats();
       console.info(`Loaded ${questionBank.length} questions from backend`);
     }
   } catch (error) {
@@ -197,6 +204,51 @@ let performanceData = JSON.parse(localStorage.getItem("quizPerformance")) || {};
 function savePerformance() {
   localStorage.setItem("quizPerformance", JSON.stringify(performanceData));
 }
+
+function normalizeQuestionIdKey(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? String(id) : "";
+}
+
+function reconcileLocalQuestionStats() {
+  const validIds = new Set(
+    (Array.isArray(questionBank) ? questionBank : [])
+      .map((q) => normalizeQuestionIdKey(q?.id))
+      .filter(Boolean),
+  );
+
+  let weakChanged = false;
+  const nextWeak = {};
+  Object.entries(weakTracker || {}).forEach(([rawId, row]) => {
+    const key = normalizeQuestionIdKey(rawId);
+    if (!key || !validIds.has(key)) {
+      weakChanged = true;
+      return;
+    }
+    nextWeak[key] = row;
+  });
+  if (weakChanged) {
+    weakTracker = nextWeak;
+    saveWeakTracker();
+  }
+
+  let perfChanged = false;
+  const nextPerf = {};
+  Object.entries(performanceData || {}).forEach(([rawId, row]) => {
+    const key = normalizeQuestionIdKey(rawId);
+    if (!key || !validIds.has(key)) {
+      perfChanged = true;
+      return;
+    }
+    nextPerf[key] = row;
+  });
+  if (perfChanged) {
+    performanceData = nextPerf;
+    savePerformance();
+  }
+}
+
+reconcileLocalQuestionStats();
 
 function updatePerformance(questionId, isCorrect) {
   if (!performanceData[questionId]) {
@@ -299,6 +351,7 @@ const topicLinkWrapEl = document.getElementById("question-topic-link-wrap");
 const topicLinkBtnEl = document.getElementById("topic-link-btn");
 const aiExplainWrapEl = document.getElementById("ai-explain-wrap");
 const aiExplainBtn = document.getElementById("ai-explain-btn");
+const aiExplainCloseBtn = document.getElementById("ai-explain-close-btn");
 const aiExplainMetaEl = document.getElementById("ai-explain-meta");
 const aiExplainOutputEl = document.getElementById("ai-explain-output");
 const quizArea = document.getElementById("quiz-area");
@@ -1060,6 +1113,7 @@ function setAiExplainMeta(message = "", isError = false) {
   aiExplainMetaEl.textContent = text;
   aiExplainMetaEl.classList.toggle("hidden", !text);
   aiExplainMetaEl.style.color = isError ? "#b91c1c" : "#475569";
+  updateAiExplainCloseVisibility();
 }
 
 function setAiExplainOutput(message = "", isError = false) {
@@ -1070,6 +1124,23 @@ function setAiExplainOutput(message = "", isError = false) {
   aiExplainOutputEl.style.borderLeftColor = isError ? "#dc2626" : "#0f766e";
   aiExplainOutputEl.style.background = isError ? "#fef2f2" : "#ecfeff";
   aiExplainOutputEl.style.color = isError ? "#7f1d1d" : "#155e75";
+  updateAiExplainCloseVisibility();
+}
+
+function updateAiExplainCloseVisibility() {
+  if (!aiExplainCloseBtn) return;
+  const hasMeta = Boolean(String(aiExplainMetaEl?.textContent || "").trim());
+  const hasOutput = Boolean(String(aiExplainOutputEl?.textContent || "").trim());
+  const visible = hasMeta || hasOutput;
+  aiExplainCloseBtn.classList.toggle("hidden", !visible);
+  aiExplainCloseBtn.disabled = aiExplainInFlight;
+}
+
+function closeAiExplainPanel() {
+  if (aiExplainInFlight) return;
+  setAiExplainMeta("");
+  setAiExplainOutput("");
+  updateAiExplainCloseVisibility();
 }
 
 function resetAiExplainPanel() {
@@ -1083,6 +1154,7 @@ function resetAiExplainPanel() {
   aiExplainInFlight = false;
   aiExplainBtn.disabled = !allowed;
   aiExplainBtn.textContent = "Explain With AI";
+  updateAiExplainCloseVisibility();
 }
 
 function getOptionListForAi(question) {
@@ -1133,6 +1205,7 @@ async function handleAiExplainClick() {
   aiExplainInFlight = true;
   aiExplainBtn.disabled = true;
   aiExplainBtn.textContent = "Thinking...";
+  updateAiExplainCloseVisibility();
   setAiExplainMeta("Requesting explanation...");
   setAiExplainOutput("");
 
@@ -1161,6 +1234,7 @@ async function handleAiExplainClick() {
     aiExplainInFlight = false;
     aiExplainBtn.disabled = !canUseAiForCurrentQuestion();
     aiExplainBtn.textContent = "Explain With AI";
+    updateAiExplainCloseVisibility();
   }
 }
 
@@ -1886,6 +1960,12 @@ if (profilePhotoDeleteBtn) {
 if (aiExplainBtn) {
   aiExplainBtn.addEventListener("click", () => {
     handleAiExplainClick();
+  });
+}
+
+if (aiExplainCloseBtn) {
+  aiExplainCloseBtn.addEventListener("click", () => {
+    closeAiExplainPanel();
   });
 }
 
@@ -3959,6 +4039,8 @@ function showStudyReviewQuestion() {
   const q = active[current];
 
   answersEl.innerHTML = "";
+  comboBlock.innerHTML = "";
+  resetAiExplainPanel();
   questionEl.innerHTML = q.question;
 
   const saved = userAnswers[q.id];
@@ -4009,6 +4091,12 @@ function showStudyReviewQuestion() {
       answersEl.appendChild(btn);
     });
   }
+
+  if (explanationEl) {
+    explanationEl.innerText = q.explanation || "No explanation provided.";
+    explanationEl.classList.remove("hidden");
+  }
+  renderQuestionTopicLink(q);
 }
 
 function updateStudyBestStreakDisplay() {

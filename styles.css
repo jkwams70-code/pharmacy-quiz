@@ -1455,6 +1455,12 @@ input {
   gap: 8px;
 }
 
+.ai-explain-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .ai-explain-meta {
   font-size: 12px;
   font-weight: 700;
@@ -1463,6 +1469,16 @@ input {
 
 .ai-explain-wrap .topic-link-btn {
   justify-self: start;
+}
+
+.ai-explain-close-btn {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.ai-explain-close-btn:hover {
+  background: #ffedd5;
 }
 
 .ai-explain-wrap .topic-link-btn[disabled] {

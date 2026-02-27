@@ -480,6 +480,7 @@ const appReduceMotionCheckbox = document.getElementById("app-reduce-motion");
 const appClearLocalBtn = document.getElementById("app-clear-local-btn");
 const settingsFeedbackEl = document.getElementById("settings-feedback");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
+const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const themeMediaQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
     ? window.matchMedia("(prefers-color-scheme: dark)")
@@ -490,6 +491,7 @@ let uiPrefs = {
   textSize: "default",
   reduceMotion: false,
 };
+let headersCollapsed = false;
 
 function setSettingsFeedback(message = "", isError = false) {
   if (!settingsFeedbackEl) return;
@@ -539,6 +541,51 @@ function applyUiPrefs() {
   document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
 }
 
+function setHeadersCollapsed(nextCollapsed) {
+  headersCollapsed = Boolean(nextCollapsed);
+  document.body.classList.toggle("headers-collapsed", headersCollapsed);
+  document.querySelectorAll(".header-collapse-toggle").forEach((button) => {
+    const collapsedText = headersCollapsed ? "v" : "^";
+    const actionText = headersCollapsed ? "Expand header bars" : "Collapse header bars";
+    button.textContent = collapsedText;
+    button.setAttribute("aria-label", actionText);
+    button.setAttribute("title", actionText);
+    button.setAttribute("aria-pressed", headersCollapsed ? "true" : "false");
+  });
+  try {
+    localStorage.setItem(HEADER_COLLAPSE_STORAGE_KEY, headersCollapsed ? "1" : "0");
+  } catch {
+    // Ignore storage errors silently.
+  }
+}
+
+function toggleHeadersCollapsed() {
+  setHeadersCollapsed(!headersCollapsed);
+}
+
+function ensureHeaderCollapseControls() {
+  document
+    .querySelectorAll(".menu-fixed-header, .study-fixed-header, .app-header")
+    .forEach((header) => {
+      if (header.querySelector(".header-collapse-toggle")) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "header-collapse-toggle";
+      button.addEventListener("click", toggleHeadersCollapsed);
+      header.appendChild(button);
+    });
+}
+
+function initHeaderCollapseState() {
+  try {
+    headersCollapsed = localStorage.getItem(HEADER_COLLAPSE_STORAGE_KEY) === "1";
+  } catch {
+    headersCollapsed = false;
+  }
+  ensureHeaderCollapseControls();
+  setHeadersCollapsed(headersCollapsed);
+}
+
 function syncSettingsControls() {
   if (appThemeSelect) appThemeSelect.value = uiPrefs.theme;
   if (appTextSizeSelect) appTextSizeSelect.value = uiPrefs.textSize;
@@ -571,6 +618,7 @@ function clearDeviceLocalCache() {
 
 loadUiPrefs();
 applyUiPrefs();
+initHeaderCollapseState();
 
 if (themeMediaQuery) {
   const onThemeChange = () => {

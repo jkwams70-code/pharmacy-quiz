@@ -508,7 +508,9 @@ function normalizeUiPrefs(raw = {}) {
   const theme = String(raw?.theme || "light").toLowerCase();
   const textSize = String(raw?.textSize || "default").toLowerCase();
   return {
-    theme: ["system", "light", "dark"].includes(theme) ? theme : "light",
+    theme: ["system", "light", "dark", "teal", "sunset"].includes(theme)
+      ? theme
+      : "light",
     textSize: ["default", "large"].includes(textSize) ? textSize : "default",
     reduceMotion: Boolean(raw?.reduceMotion),
   };
@@ -530,13 +532,17 @@ function saveUiPrefs() {
 function resolveEffectiveTheme() {
   if (uiPrefs.theme === "light") return "light";
   if (uiPrefs.theme === "dark") return "dark";
+  if (uiPrefs.theme === "teal") return "teal";
+  if (uiPrefs.theme === "sunset") return "sunset";
   return themeMediaQuery?.matches ? "dark" : "light";
 }
 
 function applyUiPrefs() {
   const effectiveTheme = resolveEffectiveTheme();
   document.body.classList.toggle("theme-dark", effectiveTheme === "dark");
-  document.body.classList.toggle("theme-light", effectiveTheme === "light");
+  document.body.classList.toggle("theme-light", effectiveTheme !== "dark");
+  document.body.classList.toggle("theme-teal", effectiveTheme === "teal");
+  document.body.classList.toggle("theme-sunset", effectiveTheme === "sunset");
   document.body.classList.toggle("text-size-large", uiPrefs.textSize === "large");
   document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
 }

@@ -351,6 +351,12 @@
         color: #334155;
       }
 
+      .question-preview {
+        font-weight: 600;
+        color: #1f2937;
+        line-height: 1.4;
+      }
+
       .question-options-list .is-correct {
         color: #166534;
         font-weight: 600;
@@ -612,12 +618,75 @@
         }
 
         #questions .table-container {
-          overflow-x: auto;
+          overflow-x: hidden;
         }
 
         #questions table {
-          table-layout: auto;
-          min-width: 1250px;
+          table-layout: fixed;
+          min-width: 0;
+          width: 100%;
+        }
+
+        #questions thead {
+          display: none;
+        }
+
+        #questions tbody,
+        #questions tr,
+        #questions td {
+          display: block;
+          width: 100%;
+        }
+
+        #questions tr {
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          margin-bottom: 10px;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        #questions td {
+          border-bottom: none;
+          padding: 8px 10px;
+          white-space: normal;
+        }
+
+        #questions td.question-id-cell,
+        #questions td.question-category-cell,
+        #questions td.question-options-cell {
+          display: none;
+        }
+
+        #questions td.question-text-cell {
+          padding-bottom: 4px;
+        }
+
+        #questions td.question-correct-cell {
+          padding-top: 0;
+          color: #14532d;
+          font-weight: 600;
+        }
+
+        #questions td.question-correct-cell::before {
+          content: "Correct: ";
+          color: #374151;
+          font-weight: 600;
+        }
+
+        #questions td.question-actions-cell {
+          padding-top: 6px;
+        }
+
+        #questions td.question-actions-cell .actions {
+          width: 100%;
+          justify-content: flex-start;
+          gap: 8px;
+        }
+
+        #questions td.question-actions-cell .btn-small {
+          flex: 0 0 auto;
+          min-width: 82px;
         }
 
         #users .btn-small,
@@ -994,7 +1063,7 @@
       </div>
     </div>
 
-        <script src="admin.js"></script>
+    <script src="admin.js?v=20260227-qmobile1"></script>
   </body>
 </html>
 

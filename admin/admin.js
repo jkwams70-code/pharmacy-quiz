@@ -16,6 +16,13 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
       let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
       let editingQuestionId = null;
       let cachedQuestions = [];
+      const COMBO_OPTIONS = [
+        { letter: "A", text: "1, 2 and 3" },
+        { letter: "B", text: "1 and 2 only" },
+        { letter: "C", text: "2 and 3 only" },
+        { letter: "D", text: "1 only" },
+        { letter: "E", text: "3 only" },
+      ];
 
       function escapeHtml(value) {
         return String(value ?? "")
@@ -26,9 +33,34 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
           .replaceAll("'", "&#39;");
       }
 
+      function getEffectiveOptions(question) {
+        const options = Array.isArray(question?.options)
+          ? question.options
+              .map((opt) => String(opt || "").trim())
+              .filter(Boolean)
+          : [];
+        if (options.length) return options;
+
+        if (String(question?.type || "").toLowerCase() === "combo") {
+          return COMBO_OPTIONS.map((opt) => `${opt.letter}: ${opt.text}`);
+        }
+
+        return [];
+      }
+
       function toCorrectOptionIndex(question) {
-        const options = Array.isArray(question?.options) ? question.options : [];
+        const options = getEffectiveOptions(question);
         const rawCorrect = question?.correct;
+
+        if (
+          String(question?.type || "").toLowerCase() === "combo" &&
+          typeof rawCorrect === "string"
+        ) {
+          const comboIndex = COMBO_OPTIONS.findIndex(
+            (opt) => opt.letter === rawCorrect.trim().toUpperCase(),
+          );
+          if (comboIndex >= 0) return comboIndex;
+        }
 
         if (Number.isInteger(rawCorrect) && rawCorrect >= 0 && rawCorrect < options.length) {
           return rawCorrect;
@@ -71,7 +103,7 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
       }
 
       function getCorrectDisplay(question) {
-        const options = Array.isArray(question?.options) ? question.options : [];
+        const options = getEffectiveOptions(question);
         if (!options.length) {
           return { index: null, text: String(question?.correct || "").trim() || "--" };
         }
@@ -81,6 +113,19 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
         const index = options[byIndex] ? byIndex : null;
 
         return { index, text };
+      }
+
+      function questionOrderValue(question) {
+        const rawText = String(question?.text || question?.question || "").trim();
+        const match = rawText.match(/\bQ\s*\.?\s*(\d+)\b/i);
+        if (match) return Number(match[1]);
+        return Number(question?.id) || Number.MAX_SAFE_INTEGER;
+      }
+
+      function buildQuestionPreview(questionText, maxLen = 84) {
+        const text = String(questionText || "").replace(/\s+/g, " ").trim();
+        if (!text) return "--";
+        return text.length > maxLen ? `${text.slice(0, maxLen).trimEnd()}...` : text;
       }
 
       function getHeaders() {
@@ -361,27 +406,36 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
           if (!res.ok || !Array.isArray(data.questions)) {
             throw new Error(data.error || "Failed to load questions");
           }
-          cachedQuestions = data.questions;
+          const sortedQuestions = [...data.questions].sort((a, b) => {
+            const aOrder = questionOrderValue(a);
+            const bOrder = questionOrderValue(b);
+            if (aOrder !== bOrder) return aOrder - bOrder;
+            return (Number(a?.id) || 0) - (Number(b?.id) || 0);
+          });
+          cachedQuestions = sortedQuestions;
 
           const tbody = document.getElementById("questions-table");
           tbody.innerHTML = "";
 
-          if (data.questions.length === 0) {
+          if (sortedQuestions.length === 0) {
             tbody.innerHTML =
               '<tr><td colspan="6" style="text-align: center; color: #ccc;">No questions yet</td></tr>';
             return true;
           }
 
-          data.questions.forEach((q) => {
+          sortedQuestions.forEach((q) => {
             const tr = document.createElement("tr");
-            const options = Array.isArray(q.options) ? q.options : [];
+            const options = getEffectiveOptions(q);
             const { index: correctIndex, text: correctText } = getCorrectDisplay(q);
             const safeId = escapeHtml(q.id);
-            const safeText = escapeHtml(String(q.text || ""));
+            const fullText = String(q.text || "").trim();
+            const safeText = escapeHtml(fullText);
+            const safePreview = escapeHtml(buildQuestionPreview(fullText));
             const safeCategory = escapeHtml(displayValue(q.category));
             const safeTopic = escapeHtml(q.topicSlug || "");
             const safeSection = escapeHtml(q.sectionId || "");
             const safeCorrectText = escapeHtml(correctText);
+            const safeOrder = questionOrderValue(q);
             const safeCorrectIndex =
               Number.isInteger(correctIndex) ? String(correctIndex) : null;
             const optionsMarkup = options.length
@@ -396,15 +450,17 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
               : "<div>--</div>";
 
             tr.innerHTML = `
-                        <td>${safeId}</td>
-                        <td class="cell-wrap">${safeText}</td>
-                        <td>
+                        <td class="question-id-cell">${safeOrder || safeId}</td>
+                        <td class="cell-wrap question-text-cell" title="${safeText}">
+                          <div class="question-preview">${safePreview}</div>
+                        </td>
+                        <td class="question-category-cell">
                           <span class="category-chip">${safeCategory}</span>
                           ${safeTopic ? `<div style="font-size:12px;color:#64748b;margin-top:6px;">topic: ${safeTopic}${safeSection ? `#${safeSection}` : ""}</div>` : ""}
                         </td>
-                        <td><div class="question-options-list">${optionsMarkup}</div></td>
-                        <td class="cell-wrap">${safeCorrectIndex !== null ? `${safeCorrectIndex}. ${safeCorrectText}` : safeCorrectText}</td>
-                        <td>
+                        <td class="question-options-cell"><div class="question-options-list">${optionsMarkup}</div></td>
+                        <td class="cell-wrap question-correct-cell">${safeCorrectIndex !== null ? `${safeCorrectIndex}. ${safeCorrectText}` : safeCorrectText}</td>
+                        <td class="question-actions-cell">
                             <div class="actions">
                                 <button class="btn-small" data-action="edit-question" data-question-id="${safeId}">Edit</button>
                                 <button class="btn-small danger" data-action="delete-question" data-question-id="${safeId}">Delete</button>
@@ -599,7 +655,12 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
             alert(data.error || "Failed to load questions");
             return;
           }
-          cachedQuestions = data.questions;
+          cachedQuestions = [...data.questions].sort((a, b) => {
+            const aOrder = questionOrderValue(a);
+            const bOrder = questionOrderValue(b);
+            if (aOrder !== bOrder) return aOrder - bOrder;
+            return (Number(a?.id) || 0) - (Number(b?.id) || 0);
+          });
           question = cachedQuestions.find((q) => String(q.id) === String(questionId));
         }
 
@@ -621,9 +682,10 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
         document.getElementById("q-section-id").value = question.sectionId || "";
         document.getElementById("q-correct").value = toCorrectOptionIndex(question);
 
+        const effectiveOptions = getEffectiveOptions(question);
         const optionEls = document.querySelectorAll(".q-option");
         optionEls.forEach((el, index) => {
-          el.value = Array.isArray(question.options) ? question.options[index] || "" : "";
+          el.value = effectiveOptions[index] || "";
         });
       }
 

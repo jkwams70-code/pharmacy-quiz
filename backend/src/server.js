@@ -507,6 +507,13 @@ function normalizeQuestionForApi(rawQuestion) {
   };
 }
 
+function extractQuestionOrderValue(question) {
+  const text = String(question?.text || question?.question || "").trim();
+  const match = text.match(/\bQ\s*\.?\s*(\d+)\b/i);
+  if (match) return Number(match[1]);
+  return Number(question?.id) || Number.MAX_SAFE_INTEGER;
+}
+
 function resolveCorrectAnswerValue(rawCorrect, options) {
   if (!Array.isArray(options) || options.length === 0) {
     return null;
@@ -2103,9 +2110,14 @@ app.get(
       return;
     }
 
-    const questions = (await readCollection("questions")).map(
-      normalizeQuestionForApi,
-    );
+    const questions = (await readCollection("questions"))
+      .map(normalizeQuestionForApi)
+      .sort((a, b) => {
+        const aOrder = extractQuestionOrderValue(a);
+        const bOrder = extractQuestionOrderValue(b);
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return Number(a.id || 0) - Number(b.id || 0);
+      });
     res.json({
       total: questions.length,
       questions,

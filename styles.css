@@ -1442,27 +1442,29 @@ input {
 .header-collapse-toggle {
   position: absolute;
   left: 50%;
-  bottom: -11px;
+  bottom: 2px;
   transform: translateX(-50%);
-  width: 34px;
-  height: 22px;
-  border: 1px solid #bfdbfe;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #0f3f7f;
+  width: 20px;
+  height: 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(15, 63, 127, 0.42);
   font-weight: 900;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 20;
-  box-shadow: 0 5px 12px rgba(15, 63, 127, 0.2);
+  box-shadow: none;
+  opacity: 0.78;
 }
 
 .header-collapse-toggle:hover {
-  background: #dbeafe;
+  color: rgba(15, 63, 127, 0.86);
+  opacity: 1;
 }
 
 body.headers-collapsed .menu-fixed-header .exam-identity-bar,
@@ -1477,10 +1479,10 @@ body.headers-collapsed .app-header .header-meta {
 body.headers-collapsed .menu-fixed-header,
 body.headers-collapsed .study-fixed-header,
 body.headers-collapsed .app-header {
-  min-height: 12px;
+  min-height: 18px;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
-  border-bottom: none !important;
+  border-bottom: var(--border) !important;
   backdrop-filter: none;
   box-shadow: none;
 }
@@ -2627,11 +2629,11 @@ body.headers-collapsed .app-header {
   }
 
   .header-collapse-toggle {
-    width: 34px !important;
-    height: 22px !important;
-    min-width: 34px !important;
-    min-height: 22px !important;
-    font-size: 13px !important;
+    width: 20px !important;
+    height: 14px !important;
+    min-width: 20px !important;
+    min-height: 14px !important;
+    font-size: 12px !important;
     line-height: 1 !important;
   }
 
@@ -2723,6 +2725,10 @@ body.theme-dark .menu-auth-user {
   color: #e5e7eb !important;
 }
 
+body.theme-dark #question {
+  color: #f1f5f9 !important;
+}
+
 body.theme-dark .stats-box {
   background: #0f172a !important;
   border-color: #334155 !important;
@@ -2755,14 +2761,81 @@ body.theme-dark #timer {
 }
 
 body.theme-dark .header-collapse-toggle {
-  background: #1e293b;
-  color: #e2e8f0;
-  border-color: #334155;
-  box-shadow: 0 5px 14px rgba(2, 6, 23, 0.6);
+  background: transparent;
+  color: rgba(226, 232, 240, 0.46);
+  border: none;
+  box-shadow: none;
 }
 
 body.theme-dark .header-collapse-toggle:hover {
-  background: #334155;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+body.theme-teal {
+  background:
+    radial-gradient(circle at 20% 0%, #bdeff1 0%, transparent 35%),
+    radial-gradient(circle at 100% 100%, #c8f8ee 0%, transparent 30%), var(--bg);
+}
+
+body.theme-teal .exam-identity-bar,
+body.theme-teal .study-identity-bar {
+  background: linear-gradient(160deg, #0e7490, #0f766e);
+}
+
+body.theme-teal .menu-section-title,
+body.theme-teal .setup-page-title,
+body.theme-teal #mode-indicator {
+  color: #0f766e;
+}
+
+body.theme-teal .menu-portal-btn,
+body.theme-teal .study-menu-btn,
+body.theme-teal .menu-user-hub-btn,
+body.theme-teal .header-btn {
+  background: #dcf4f4;
+  color: #0f5f68;
+  border-color: #99dede;
+}
+
+body.theme-teal .menu-portal-btn:hover,
+body.theme-teal .study-menu-btn:hover,
+body.theme-teal .menu-user-hub-btn:hover,
+body.theme-teal .header-btn:hover {
+  background: #c7ecec;
+}
+
+body.theme-sunset {
+  background:
+    radial-gradient(circle at 20% 0%, #ffd8c7 0%, transparent 34%),
+    radial-gradient(circle at 100% 100%, #ffe5cf 0%, transparent 30%), var(--bg);
+}
+
+body.theme-sunset .exam-identity-bar,
+body.theme-sunset .study-identity-bar {
+  background: linear-gradient(160deg, #c2410c, #be185d);
+}
+
+body.theme-sunset .menu-section-title,
+body.theme-sunset .setup-page-title,
+body.theme-sunset #mode-indicator {
+  color: #9a3412;
+}
+
+body.theme-sunset .menu-portal-btn,
+body.theme-sunset .study-menu-btn,
+body.theme-sunset .menu-user-hub-btn,
+body.theme-sunset .header-btn {
+  background: #ffe9dc;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+body.theme-sunset .menu-portal-btn:hover,
+body.theme-sunset .study-menu-btn:hover,
+body.theme-sunset .menu-user-hub-btn:hover,
+body.theme-sunset .header-btn:hover {
+  background: #ffdcca;
 }
 
 body.theme-dark #answers button,

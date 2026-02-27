@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-quiz-v3-iconf1force";
+const CACHE_VERSION = "ajix-quiz-v4-iconpng";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -9,9 +9,9 @@ const STATIC_ASSETS = [
   "/engine.js?v=20260227-pwa1",
   "/data.js",
   "/backendClient.js",
-  "/manifest.webmanifest?v=20260227-iconf1force",
-  "/icons/icon-192-f1.svg?v=20260227-iconf1force",
-  "/icons/icon-512-f1.svg?v=20260227-iconf1force",
+  "/manifest.webmanifest?v=20260227-iconpng1",
+  "/icons/icon-192-f1.png?v=20260227-iconpng1",
+  "/icons/icon-512-f1.png?v=20260227-iconpng1",
 ];
 
 self.addEventListener("install", (event) => {

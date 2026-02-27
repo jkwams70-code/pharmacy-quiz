@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pharmacy Quiz</title>
 
-    <link rel="stylesheet" href="styles.css?v=20260227-settings2" />
+    <link rel="stylesheet" href="styles.css?v=20260227-uiicons1" />
   </head>
 
   <body>
@@ -268,8 +268,10 @@
               examination conditions with accuracy, discipline, and integrity.
             </p>
             <div class="portal-contact-line">
-              Corporate Contact:
-              <a href="mailto:ajixpharmacy@gmail.com">ajixpharmacy@gmail.com</a>
+              <span class="contact-email-row">
+                <span class="contact-email-icon" aria-hidden="true">&#9993;</span>
+                <a href="mailto:ajixpharmacy@gmail.com">ajixpharmacy@gmail.com</a>
+              </span>
             </div>
           </div>
 
@@ -296,8 +298,14 @@
               <div class="menu-subtitle">Select a module to begin</div>
             </div>
             <div class="menu-header-actions">
-              <button id="back-home-btn" class="portal-button menu-portal-btn">
-                &#8962; HOME
+              <button
+                id="back-home-btn"
+                class="portal-button menu-portal-btn"
+                type="button"
+                aria-label="Back to home"
+                title="Home"
+              >
+                &#8962;
               </button>
               <button
                 id="menu-user-hub-btn"
@@ -307,7 +315,7 @@
                 aria-expanded="false"
                 title="User dashboard"
               >
-                &#9881;
+                &#9776;
               </button>
             </div>
             <div id="menu-user-hub-panel" class="menu-user-hub-panel hidden">
@@ -415,8 +423,10 @@
                 <div class="tile-arrow">&rarr;</div>
               </button>
               <div class="menu-contact-card">
-                <span class="menu-contact-label">Corporate Contact</span>
-                <a href="mailto:ajixpharmacy@gmail.com">ajixpharmacy@gmail.com</a>
+                <span class="menu-contact-row">
+                  <span class="menu-contact-icon" aria-hidden="true">&#9993;</span>
+                  <a href="mailto:ajixpharmacy@gmail.com">ajixpharmacy@gmail.com</a>
+                </span>
               </div>
             </div>
           </div>
@@ -1101,7 +1111,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260227-settings2"></script>
+    <script type="module" src="engine.js?v=20260227-uiicons1"></script>
   </body>
 </html>
 

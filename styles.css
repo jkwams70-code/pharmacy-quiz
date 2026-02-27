@@ -465,6 +465,17 @@ input {
   color: #334155;
 }
 
+.contact-email-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-email-icon {
+  color: #0f3f7f;
+  font-size: 0.95rem;
+}
+
 .portal-contact-line a {
   color: #0f3f7f;
   font-weight: 700;
@@ -830,8 +841,21 @@ input {
 }
 
 #back-home-btn.menu-portal-btn {
-  min-width: 96px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
   text-align: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #0f3f7f;
+  background: #eff6ff;
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-scroll-content {
@@ -921,8 +945,8 @@ input {
   border-radius: var(--radius-md);
   background: #f8fbff;
   padding: 10px 12px;
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
 }
 
 .menu-contact-label {
@@ -936,6 +960,17 @@ input {
   color: #0f3f7f;
   font-weight: 700;
   text-decoration: none;
+}
+
+.menu-contact-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-contact-icon {
+  color: #0f3f7f;
+  font-size: 0.95rem;
 }
 
 .menu-contact-card a:hover {
@@ -2327,9 +2362,13 @@ input {
 
   #back-home-btn.menu-portal-btn {
     margin-left: auto;
-    padding: 10px 14px;
-    font-size: 1rem;
-    border-radius: var(--radius-md);
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
+    font-size: 15px;
+    border-radius: 999px;
   }
 
   .menu-card {
@@ -2480,8 +2519,12 @@ input {
   }
 
   #back-home-btn.menu-portal-btn {
-    width: auto;
-    max-width: 100%;
+    width: 30px;
+    max-width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
   }
 
   .modal-actions {
@@ -2518,6 +2561,14 @@ input {
 
   .menu-user-hub-btn,
   .menu-user-hub-close-btn {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+  }
+
+  #back-home-btn.menu-portal-btn {
     width: 30px !important;
     height: 30px !important;
     min-width: 30px !important;

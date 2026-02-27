@@ -72,6 +72,18 @@ input {
   overflow: hidden;
 }
 
+body.font-modern {
+  font-family: "Segoe UI", "Trebuchet MS", Verdana, sans-serif;
+}
+
+body.font-classic {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+body.font-rounded {
+  font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
+}
+
 #home-screen,
 #quiz-menu,
 #profile-screen,

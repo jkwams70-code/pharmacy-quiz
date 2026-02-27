@@ -476,6 +476,7 @@ const settingsBackBtn = document.getElementById("settings-back-btn");
 const settingsMenuBtn = document.getElementById("settings-menu-btn");
 const appThemeSelect = document.getElementById("app-theme-select");
 const appTextSizeSelect = document.getElementById("app-text-size-select");
+const appFontSelect = document.getElementById("app-font-select");
 const appReduceMotionCheckbox = document.getElementById("app-reduce-motion");
 const appClearLocalBtn = document.getElementById("app-clear-local-btn");
 const settingsFeedbackEl = document.getElementById("settings-feedback");
@@ -489,6 +490,7 @@ const themeMediaQuery =
 let uiPrefs = {
   theme: "light",
   textSize: "default",
+  fontFamily: "default",
   reduceMotion: false,
 };
 let headersCollapsed = false;
@@ -507,11 +509,15 @@ function setSettingsFeedback(message = "", isError = false) {
 function normalizeUiPrefs(raw = {}) {
   const theme = String(raw?.theme || "light").toLowerCase();
   const textSize = String(raw?.textSize || "default").toLowerCase();
+  const fontFamily = String(raw?.fontFamily || raw?.font || "default").toLowerCase();
   return {
     theme: ["system", "light", "dark", "teal", "sunset"].includes(theme)
       ? theme
       : "light",
     textSize: ["default", "large"].includes(textSize) ? textSize : "default",
+    fontFamily: ["default", "modern", "classic", "rounded"].includes(fontFamily)
+      ? fontFamily
+      : "default",
     reduceMotion: Boolean(raw?.reduceMotion),
   };
 }
@@ -544,6 +550,9 @@ function applyUiPrefs() {
   document.body.classList.toggle("theme-teal", effectiveTheme === "teal");
   document.body.classList.toggle("theme-sunset", effectiveTheme === "sunset");
   document.body.classList.toggle("text-size-large", uiPrefs.textSize === "large");
+  document.body.classList.toggle("font-modern", uiPrefs.fontFamily === "modern");
+  document.body.classList.toggle("font-classic", uiPrefs.fontFamily === "classic");
+  document.body.classList.toggle("font-rounded", uiPrefs.fontFamily === "rounded");
   document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
 }
 
@@ -595,6 +604,7 @@ function initHeaderCollapseState() {
 function syncSettingsControls() {
   if (appThemeSelect) appThemeSelect.value = uiPrefs.theme;
   if (appTextSizeSelect) appTextSizeSelect.value = uiPrefs.textSize;
+  if (appFontSelect) appFontSelect.value = uiPrefs.fontFamily;
   if (appReduceMotionCheckbox) appReduceMotionCheckbox.checked = Boolean(uiPrefs.reduceMotion);
 }
 
@@ -755,6 +765,15 @@ if (appTextSizeSelect) {
     saveUiPrefs();
     applyUiPrefs();
     setSettingsFeedback("Text size updated.");
+  });
+}
+
+if (appFontSelect) {
+  appFontSelect.addEventListener("change", () => {
+    uiPrefs.fontFamily = String(appFontSelect.value || "default");
+    saveUiPrefs();
+    applyUiPrefs();
+    setSettingsFeedback("Font updated.");
   });
 }
 

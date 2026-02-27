@@ -1121,6 +1121,24 @@ function canExplainCurrentQuestionWithAi() {
   return canUseAiForCurrentQuestion() && hasAnsweredCurrentQuestionForAi();
 }
 
+function isExplanationVisibleForCurrentQuestion() {
+  return Boolean(explanationEl) && !explanationEl.classList.contains("hidden");
+}
+
+function refreshAiExplainAvailability() {
+  const modeAllowed = canUseAiForCurrentQuestion();
+  const answerAllowed = hasAnsweredCurrentQuestionForAi();
+  const explanationReady = isExplanationVisibleForCurrentQuestion();
+  const showControls = modeAllowed && explanationReady;
+
+  if (aiExplainWrapEl) {
+    aiExplainWrapEl.classList.toggle("hidden", !showControls);
+  }
+
+  if (!aiExplainBtn) return;
+  aiExplainBtn.disabled = !(showControls && answerAllowed) || aiExplainInFlight;
+}
+
 function setAiExplainMeta(message = "", isError = false) {
   if (!aiExplainMetaEl) return;
   const text = String(message || "").trim();
@@ -1160,15 +1178,10 @@ function closeAiExplainPanel() {
 function resetAiExplainPanel() {
   setAiExplainMeta("");
   setAiExplainOutput("");
-  const allowed = canUseAiForCurrentQuestion();
-  const unlocked = canExplainCurrentQuestionWithAi();
-  if (aiExplainWrapEl) {
-    aiExplainWrapEl.classList.toggle("hidden", !allowed);
-  }
   if (!aiExplainBtn) return;
   aiExplainInFlight = false;
-  aiExplainBtn.disabled = !unlocked;
   aiExplainBtn.textContent = "Explain With AI";
+  refreshAiExplainAvailability();
   updateAiExplainCloseVisibility();
 }
 
@@ -1251,8 +1264,8 @@ async function handleAiExplainClick() {
     );
   } finally {
     aiExplainInFlight = false;
-    aiExplainBtn.disabled = !canExplainCurrentQuestionWithAi();
     aiExplainBtn.textContent = "Explain With AI";
+    refreshAiExplainAvailability();
     updateAiExplainCloseVisibility();
   }
 }
@@ -3021,6 +3034,7 @@ function selectAnswer(value, q) {
     explanationEl.classList.remove("hidden");
   }
   renderQuestionTopicLink(q);
+  refreshAiExplainAvailability();
   answeredCurrent = true;
   nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
 }
@@ -3080,6 +3094,7 @@ function nextQuestion() {
         explanationEl.classList.remove("hidden");
       }
       renderQuestionTopicLink(q);
+      refreshAiExplainAvailability();
 
       answeredCurrent = true;
       nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
@@ -3146,6 +3161,7 @@ function restoreSelection(q) {
       explanationEl.classList.remove("hidden");
     }
     renderQuestionTopicLink(q);
+    refreshAiExplainAvailability();
   }
 
   if (mode === "study") {
@@ -3773,6 +3789,7 @@ function renderDetailedQuestion() {
     explanationEl.classList.remove("hidden");
   }
   renderQuestionTopicLink(q);
+  refreshAiExplainAvailability();
 }
 
 function showQuestionDetailedMode() {
@@ -4122,6 +4139,7 @@ function showStudyReviewQuestion() {
     explanationEl.classList.remove("hidden");
   }
   renderQuestionTopicLink(q);
+  refreshAiExplainAvailability();
 }
 
 function updateStudyBestStreakDisplay() {

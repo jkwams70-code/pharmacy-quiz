@@ -1,30 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
   <defs>
-    <linearGradient id="bg1" x1="9" y1="9" x2="183" y2="183" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0A1E3D" />
-      <stop offset="1" stop-color="#1A3A78" />
+    <linearGradient id="bg" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#184EA8" />
+      <stop offset="1" stop-color="#16A6D8" />
     </linearGradient>
-    <linearGradient id="pulse1" x1="53" y1="96" x2="139" y2="96" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#C8FBFF" />
-      <stop offset="1" stop-color="#5DCBFF" />
-    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(96 79) rotate(90) scale(64 64)">
+      <stop offset="0" stop-color="#9EE8FF" stop-opacity=".35" />
+      <stop offset="1" stop-color="#9EE8FF" stop-opacity="0" />
+    </radialGradient>
   </defs>
-  <rect x="8" y="8" width="176" height="176" rx="40" fill="url(#bg1)" />
-  <path
-    d="M96 46C84 55 69 61 59 65V99C59 126 76 147 96 156C116 147 133 126 133 99V65C123 61 108 55 96 46Z"
-    fill="#B7F4FF"
-    fill-opacity=".12"
-    stroke="#D5FCFF"
-    stroke-opacity=".62"
-    stroke-width="2"
-  />
-  <path
-    d="M53 96H76L85 84L94 109L104 88L111 96H139"
-    stroke="url(#pulse1)"
-    stroke-width="4"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <circle cx="53" cy="96" r="3" fill="#E6FFFF" />
-  <circle cx="139" cy="96" r="3" fill="#E6FFFF" />
+  <rect x="0" y="0" width="192" height="192" rx="42" fill="url(#bg)" />
+  <circle cx="96" cy="79" r="64" fill="url(#glow)" />
+  <rect x="7" y="7" width="178" height="178" rx="39" fill="none" stroke="#D7F6FF" stroke-opacity=".2" stroke-width="1" />
+  <path d="M96 47C84 55 68 61 58 65V98C58 125 75 145 96 154C117 145 134 125 134 98V65C124 61 108 55 96 47Z"
+        fill="#D3F5FF" fill-opacity=".16" stroke="#DDF8FF" stroke-opacity=".72" stroke-width="2" />
+  <path d="M53 96H76L85 85L94 109L105 89L112 96H139"
+        stroke="#8FE2FF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="53" cy="96" r="3" fill="#E9FDFF" />
+  <circle cx="139" cy="96" r="3" fill="#E9FDFF" />
 </svg>

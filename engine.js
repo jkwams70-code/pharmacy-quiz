@@ -1110,6 +1110,17 @@ function canUseAiForCurrentQuestion() {
   return true;
 }
 
+function hasAnsweredCurrentQuestionForAi() {
+  const question = Array.isArray(active) ? active[current] : null;
+  if (!question?.id) return false;
+  const answer = String(userAnswers?.[question.id] || "").trim();
+  return Boolean(answer) && answer.toLowerCase() !== "skipped";
+}
+
+function canExplainCurrentQuestionWithAi() {
+  return canUseAiForCurrentQuestion() && hasAnsweredCurrentQuestionForAi();
+}
+
 function setAiExplainMeta(message = "", isError = false) {
   if (!aiExplainMetaEl) return;
   const text = String(message || "").trim();
@@ -1150,12 +1161,13 @@ function resetAiExplainPanel() {
   setAiExplainMeta("");
   setAiExplainOutput("");
   const allowed = canUseAiForCurrentQuestion();
+  const unlocked = canExplainCurrentQuestionWithAi();
   if (aiExplainWrapEl) {
     aiExplainWrapEl.classList.toggle("hidden", !allowed);
   }
   if (!aiExplainBtn) return;
   aiExplainInFlight = false;
-  aiExplainBtn.disabled = !allowed;
+  aiExplainBtn.disabled = !unlocked;
   aiExplainBtn.textContent = "Explain With AI";
   updateAiExplainCloseVisibility();
 }
@@ -1190,6 +1202,10 @@ async function handleAiExplainClick() {
   if (!aiExplainBtn || aiExplainInFlight) return;
   if (!canUseAiForCurrentQuestion()) {
     setAiExplainMeta("AI explanation is available in Study or Review mode only.", true);
+    return;
+  }
+  if (!hasAnsweredCurrentQuestionForAi()) {
+    setAiExplainMeta("Select an answer first before using AI explanation.", true);
     return;
   }
 
@@ -1235,7 +1251,7 @@ async function handleAiExplainClick() {
     );
   } finally {
     aiExplainInFlight = false;
-    aiExplainBtn.disabled = !canUseAiForCurrentQuestion();
+    aiExplainBtn.disabled = !canExplainCurrentQuestionWithAi();
     aiExplainBtn.textContent = "Explain With AI";
     updateAiExplainCloseVisibility();
   }
@@ -2905,6 +2921,9 @@ function showQuestion() {
 function selectAnswer(value, q) {
   if (inDetailedReview) return;
   userAnswers[q.id] = value;
+  if (aiExplainBtn) {
+    aiExplainBtn.disabled = !canExplainCurrentQuestionWithAi();
+  }
 
   // Sync answer to backend if available
   if (backendReady && backendAttemptId) {

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-quiz-v1";
+const CACHE_VERSION = "ajix-quiz-v2-iconf1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 

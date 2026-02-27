@@ -465,6 +465,12 @@ const topicViewerBackBtn = document.getElementById("topic-viewer-back-btn");
 const topicViewerMenuBtn = document.getElementById("topic-viewer-menu-btn");
 const topicViewerTitleEl = document.getElementById("topic-viewer-title");
 const topicViewerFrameEl = document.getElementById("topic-viewer-frame");
+const menuUserHubBtn = document.getElementById("menu-user-hub-btn");
+const menuUserHubPanel = document.getElementById("menu-user-hub-panel");
+const menuUserHubCloseBtn = document.getElementById("menu-user-hub-close-btn");
+const menuTourBtn = document.getElementById("menu-tour-btn");
+const tourBackBtn = document.getElementById("tour-back-btn");
+const tourMenuBtn = document.getElementById("tour-menu-btn");
 
 if (studyHistoryToggle && studyHistoryBox) {
   studyHistoryToggle.addEventListener("click", () => {
@@ -514,6 +520,48 @@ if (topicViewerMenuBtn) {
     showScreen("quiz-menu");
   });
 }
+
+if (tourBackBtn) {
+  tourBackBtn.addEventListener("click", () => {
+    showScreen("quiz-menu");
+  });
+}
+
+if (tourMenuBtn) {
+  tourMenuBtn.addEventListener("click", () => {
+    showScreen("quiz-menu");
+  });
+}
+
+if (menuUserHubBtn) {
+  menuUserHubBtn.addEventListener("click", async () => {
+    const ok = await ensureAuthenticated();
+    if (!ok) return;
+    toggleMenuUserHub();
+  });
+}
+
+if (menuUserHubCloseBtn) {
+  menuUserHubCloseBtn.addEventListener("click", () => {
+    closeMenuUserHub();
+  });
+}
+
+if (menuTourBtn) {
+  menuTourBtn.addEventListener("click", () => {
+    closeMenuUserHub();
+    showScreen("tour-screen");
+  });
+}
+
+document.addEventListener("click", (event) => {
+  if (!menuUserHubPanel || menuUserHubPanel.classList.contains("hidden")) return;
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+  if (menuUserHubPanel.contains(target)) return;
+  if (menuUserHubBtn && menuUserHubBtn.contains(target)) return;
+  closeMenuUserHub();
+});
 
 function setAuthPasswordVisibility(visible) {
   if (!authPasswordInput || !authPasswordToggleBtn) return;
@@ -975,6 +1023,22 @@ function fillProfileForm() {
   refreshProfilePhotoDeleteVisibility();
 }
 
+function closeMenuUserHub() {
+  if (menuUserHubPanel) {
+    menuUserHubPanel.classList.add("hidden");
+  }
+  if (menuUserHubBtn) {
+    menuUserHubBtn.setAttribute("aria-expanded", "false");
+  }
+}
+
+function toggleMenuUserHub() {
+  if (!menuUserHubPanel || !menuUserHubBtn) return;
+  const opening = menuUserHubPanel.classList.contains("hidden");
+  menuUserHubPanel.classList.toggle("hidden", !opening);
+  menuUserHubBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+}
+
 function renderAuthState() {
   if (!authUserLabel || !logoutBtn || !profileBtn) return;
 
@@ -986,6 +1050,7 @@ function renderAuthState() {
     authUserLabel.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
     profileBtn.classList.remove("hidden");
+    if (menuUserHubBtn) menuUserHubBtn.classList.remove("hidden");
     updateProfileButtonAvatar(currentUser.profileImage || "");
     fillProfileForm();
     refreshProfilePhotoDeleteVisibility();
@@ -996,6 +1061,8 @@ function renderAuthState() {
   authUserLabel.classList.add("hidden");
   logoutBtn.classList.add("hidden");
   profileBtn.classList.add("hidden");
+  if (menuUserHubBtn) menuUserHubBtn.classList.add("hidden");
+  closeMenuUserHub();
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
 }
@@ -1732,6 +1799,7 @@ if (authCancelBtn) {
 
 if (logoutBtn) {
   logoutBtn.onclick = () => {
+    closeMenuUserHub();
     backendClient.clearToken();
     profileImageMarkedForDeletion = false;
     pendingProfileImage = "";
@@ -2013,6 +2081,7 @@ async function openProfileScreen() {
 
 if (profileBtn) {
   profileBtn.onclick = () => {
+    closeMenuUserHub();
     openProfileScreen();
   };
 }
@@ -2230,6 +2299,7 @@ if (menuBtnQuiz) {
 
 if (backHomeBtn) {
   backHomeBtn.onclick = () => {
+    closeMenuUserHub();
     closeAuthModal();
     showScreen("home-screen");
   };
@@ -4325,6 +4395,7 @@ function showScreen(id) {
     "exam-setup",
     "topic-library",
     "topic-viewer",
+    "tour-screen",
     "quiz-area",
     "review-screen",
     "dashboard",
@@ -4339,6 +4410,10 @@ function showScreen(id) {
   const target = document.getElementById(id);
   if (target) {
     target.classList.add("screen-active");
+  }
+
+  if (id !== "quiz-menu") {
+    closeMenuUserHub();
   }
 
   if (id !== "quiz-area") {
@@ -4396,6 +4471,10 @@ function shuffle(array) {
 document.addEventListener("keydown", function (e) {
   if (authModal && !authModal.classList.contains("hidden") && e.key === "Escape") {
     closeAuthModal();
+    return;
+  }
+  if (menuUserHubPanel && !menuUserHubPanel.classList.contains("hidden") && e.key === "Escape") {
+    closeMenuUserHub();
     return;
   }
   if (!examExitModal.classList.contains("hidden") && e.key === "Escape") {
@@ -4476,6 +4555,11 @@ window.addEventListener("popstate", function () {
 
   if (activeId === "topic-library") {
     showScreen(topicLibraryReturnScreen || "quiz-menu");
+    return;
+  }
+
+  if (activeId === "tour-screen") {
+    showScreen("quiz-menu");
     return;
   }
 

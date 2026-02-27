@@ -509,13 +509,21 @@ function setSettingsFeedback(message = "", isError = false) {
 function normalizeUiPrefs(raw = {}) {
   const theme = String(raw?.theme || "light").toLowerCase();
   const textSize = String(raw?.textSize || "default").toLowerCase();
-  const fontFamily = String(raw?.fontFamily || raw?.font || "default").toLowerCase();
+  const rawFontFamily = String(raw?.fontFamily || raw?.font || "default").toLowerCase();
+  const fontFamily =
+    rawFontFamily === "modern"
+      ? "neo"
+      : rawFontFamily === "rounded"
+        ? "condensed"
+        : rawFontFamily;
   return {
     theme: ["system", "light", "dark", "teal", "sunset"].includes(theme)
       ? theme
       : "light",
     textSize: ["default", "large"].includes(textSize) ? textSize : "default",
-    fontFamily: ["default", "modern", "classic", "rounded"].includes(fontFamily)
+    fontFamily: ["default", "neo", "classic", "editorial", "mono", "condensed", "hand"].includes(
+      fontFamily,
+    )
       ? fontFamily
       : "default",
     reduceMotion: Boolean(raw?.reduceMotion),
@@ -550,9 +558,12 @@ function applyUiPrefs() {
   document.body.classList.toggle("theme-teal", effectiveTheme === "teal");
   document.body.classList.toggle("theme-sunset", effectiveTheme === "sunset");
   document.body.classList.toggle("text-size-large", uiPrefs.textSize === "large");
-  document.body.classList.toggle("font-modern", uiPrefs.fontFamily === "modern");
+  document.body.classList.toggle("font-neo", uiPrefs.fontFamily === "neo");
   document.body.classList.toggle("font-classic", uiPrefs.fontFamily === "classic");
-  document.body.classList.toggle("font-rounded", uiPrefs.fontFamily === "rounded");
+  document.body.classList.toggle("font-editorial", uiPrefs.fontFamily === "editorial");
+  document.body.classList.toggle("font-mono", uiPrefs.fontFamily === "mono");
+  document.body.classList.toggle("font-condensed", uiPrefs.fontFamily === "condensed");
+  document.body.classList.toggle("font-hand", uiPrefs.fontFamily === "hand");
   document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
 }
 

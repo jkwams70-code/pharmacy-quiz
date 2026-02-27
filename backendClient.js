@@ -52,11 +52,20 @@ function buildHeaders(includeJson = false) {
 
 async function request(method, path, payload = undefined) {
   const useJson = payload !== undefined;
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: buildHeaders(useJson),
-    body: useJson ? JSON.stringify(payload) : undefined,
-  });
+  const send = () =>
+    fetch(`${API_BASE}${path}`, {
+      method,
+      headers: buildHeaders(useJson),
+      body: useJson ? JSON.stringify(payload) : undefined,
+    });
+
+  let response = await send();
+
+  // OpenRouter free endpoints can return transient 502s. Retry once for AI explain.
+  if (path === "/ai/explain" && response.status === 502) {
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    response = await send();
+  }
 
   if (!response.ok) {
     let message = `API request failed (${response.status})`;

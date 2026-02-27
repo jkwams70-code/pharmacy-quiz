@@ -2778,6 +2778,21 @@ body.theme-teal {
     radial-gradient(circle at 100% 100%, #c8f8ee 0%, transparent 30%), var(--bg);
 }
 
+body.theme-teal #home-screen {
+  background:
+    linear-gradient(140deg, rgba(6, 95, 108, 0.92), rgba(15, 118, 110, 0.86)),
+    linear-gradient(180deg, #0b2d33, #134e4a);
+}
+
+body.theme-teal .emblem-shield {
+  background: linear-gradient(180deg, #0e7490, #115e59);
+  box-shadow: 0 12px 20px rgba(14, 116, 144, 0.3);
+}
+
+body.theme-teal .portal-button {
+  background: linear-gradient(160deg, #0e7490, #0f766e);
+}
+
 body.theme-teal .exam-identity-bar,
 body.theme-teal .study-identity-bar {
   background: linear-gradient(160deg, #0e7490, #0f766e);
@@ -2809,6 +2824,21 @@ body.theme-sunset {
   background:
     radial-gradient(circle at 20% 0%, #ffd8c7 0%, transparent 34%),
     radial-gradient(circle at 100% 100%, #ffe5cf 0%, transparent 30%), var(--bg);
+}
+
+body.theme-sunset #home-screen {
+  background:
+    linear-gradient(140deg, rgba(154, 52, 18, 0.9), rgba(190, 24, 93, 0.84)),
+    linear-gradient(180deg, #3b1f1a, #4c1d36);
+}
+
+body.theme-sunset .emblem-shield {
+  background: linear-gradient(180deg, #c2410c, #9a3412);
+  box-shadow: 0 12px 20px rgba(194, 65, 12, 0.32);
+}
+
+body.theme-sunset .portal-button {
+  background: linear-gradient(160deg, #c2410c, #be185d);
 }
 
 body.theme-sunset .exam-identity-bar,

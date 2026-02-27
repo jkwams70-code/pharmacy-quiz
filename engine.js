@@ -486,7 +486,7 @@ const themeMediaQuery =
     : null;
 
 let uiPrefs = {
-  theme: "system",
+  theme: "light",
   textSize: "default",
   reduceMotion: false,
 };
@@ -503,10 +503,10 @@ function setSettingsFeedback(message = "", isError = false) {
 }
 
 function normalizeUiPrefs(raw = {}) {
-  const theme = String(raw?.theme || "system").toLowerCase();
+  const theme = String(raw?.theme || "light").toLowerCase();
   const textSize = String(raw?.textSize || "default").toLowerCase();
   return {
-    theme: ["system", "light", "dark"].includes(theme) ? theme : "system",
+    theme: ["system", "light", "dark"].includes(theme) ? theme : "light",
     textSize: ["default", "large"].includes(textSize) ? textSize : "default",
     reduceMotion: Boolean(raw?.reduceMotion),
   };

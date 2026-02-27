@@ -573,3 +573,29 @@ nvm use 18
 ---
 
 **Save this file for quick reference during deployment and maintenance!**
+
+---
+
+## Easy Deploy Shortcuts
+
+### One command from laptop (push + VPS deploy)
+
+```powershell
+cd C:\Users\John_Israel\Desktop\HTML\Quiz
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-all.ps1 -Message "your update message"
+```
+
+### Push only
+
+```powershell
+cd C:\Users\John_Israel\Desktop\HTML\Quiz
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-push.ps1 -Message "your update message"
+```
+
+### VPS only
+
+```bash
+cd /opt/pharmacy-quiz
+chmod +x scripts/vps-deploy.sh
+./scripts/vps-deploy.sh
+```

@@ -79,6 +79,8 @@ input {
 #exam-setup,
 #topic-library,
 #topic-viewer,
+#tour-screen,
+#settings-screen,
 #quiz-area,
 #review-screen,
 #dashboard,
@@ -1143,6 +1145,14 @@ input {
 
 .tour-scroll-content {
   width: 100%;
+}
+
+#tour-screen .study-scroll-content,
+#settings-screen .study-scroll-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .tour-card {

@@ -1114,7 +1114,7 @@ function hasAnsweredCurrentQuestionForAi() {
   const question = Array.isArray(active) ? active[current] : null;
   if (!question?.id) return false;
   const answer = String(userAnswers?.[question.id] || "").trim();
-  return Boolean(answer) && answer.toLowerCase() !== "skipped";
+  return Boolean(answer);
 }
 
 function canExplainCurrentQuestionWithAi() {
@@ -3083,6 +3083,9 @@ function nextQuestion() {
 
       answeredCurrent = true;
       nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
+      if (aiExplainBtn) {
+        aiExplainBtn.disabled = !canExplainCurrentQuestionWithAi();
+      }
 
       return; // stay on same question
     }

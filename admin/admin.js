@@ -135,6 +135,11 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
         };
       }
 
+      function withNoCache(url) {
+        const sep = url.includes("?") ? "&" : "?";
+        return `${url}${sep}_ts=${Date.now()}`;
+      }
+
       function showAlert(containerId, message, type = "info") {
         const container = document.getElementById(containerId);
         if (!container) {
@@ -181,6 +186,7 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
           // Validate the key against a protected admin endpoint.
           const res = await fetch(`${API_BASE}/admin/stats`, {
             headers: getHeaders(),
+            cache: "no-store",
           });
 
           if (res.ok) {
@@ -239,8 +245,9 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
 
       async function loadStats() {
         try {
-          const res = await fetch(`${API_BASE}/admin/stats`, {
+          const res = await fetch(withNoCache(`${API_BASE}/admin/stats`), {
             headers: getHeaders(),
+            cache: "no-store",
           });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -328,8 +335,9 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
 
       async function loadUsers() {
         try {
-          const res = await fetch(`${API_BASE}/admin/users`, {
+          const res = await fetch(withNoCache(`${API_BASE}/admin/users`), {
             headers: getHeaders(),
+            cache: "no-store",
           });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data.users)) {
@@ -399,8 +407,9 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
 
       async function loadQuestions() {
         try {
-          const res = await fetch(`${API_BASE}/admin/questions`, {
+          const res = await fetch(withNoCache(`${API_BASE}/admin/questions`), {
             headers: getHeaders(),
+            cache: "no-store",
           });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data.questions)) {
@@ -419,13 +428,12 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
 
           if (sortedQuestions.length === 0) {
             tbody.innerHTML =
-              '<tr><td colspan="6" style="text-align: center; color: #ccc;">No questions yet</td></tr>';
+              '<tr><td colspan="5" style="text-align: center; color: #ccc;">No questions yet</td></tr>';
             return true;
           }
 
           sortedQuestions.forEach((q) => {
             const tr = document.createElement("tr");
-            const options = getEffectiveOptions(q);
             const { index: correctIndex, text: correctText } = getCorrectDisplay(q);
             const safeId = escapeHtml(q.id);
             const fullText = String(q.text || "").trim();
@@ -438,17 +446,6 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
             const safeOrder = questionOrderValue(q);
             const safeCorrectIndex =
               Number.isInteger(correctIndex) ? String(correctIndex) : null;
-            const optionsMarkup = options.length
-              ? options
-                  .map((opt, idx) => {
-                    const line = `${idx}. ${escapeHtml(String(opt || ""))}`;
-                    const isCorrect =
-                      safeCorrectIndex !== null && String(idx) === safeCorrectIndex;
-                    return `<div class="${isCorrect ? "is-correct" : ""}">${line}</div>`;
-                  })
-                  .join("")
-              : "<div>--</div>";
-
             tr.innerHTML = `
                         <td class="question-id-cell">${safeOrder || safeId}</td>
                         <td class="cell-wrap question-text-cell" title="${safeText}">
@@ -458,7 +455,6 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
                           <span class="category-chip">${safeCategory}</span>
                           ${safeTopic ? `<div style="font-size:12px;color:#64748b;margin-top:6px;">topic: ${safeTopic}${safeSection ? `#${safeSection}` : ""}</div>` : ""}
                         </td>
-                        <td class="question-options-cell"><div class="question-options-list">${optionsMarkup}</div></td>
                         <td class="cell-wrap question-correct-cell">${safeCorrectIndex !== null ? `${safeCorrectIndex}. ${safeCorrectText}` : safeCorrectText}</td>
                         <td class="question-actions-cell">
                             <div class="actions">
@@ -479,8 +475,9 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
 
       async function loadExportData() {
         try {
-          const res = await fetch(`${API_BASE}/admin/stats`, {
+          const res = await fetch(withNoCache(`${API_BASE}/admin/stats`), {
             headers: getHeaders(),
+            cache: "no-store",
           });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -647,8 +644,9 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
         let question = cachedQuestions.find((q) => String(q.id) === String(questionId));
 
         if (!question) {
-          const res = await fetch(`${API_BASE}/admin/questions`, {
+          const res = await fetch(withNoCache(`${API_BASE}/admin/questions`), {
             headers: getHeaders(),
+            cache: "no-store",
           });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data.questions)) {

@@ -310,6 +310,11 @@
         vertical-align: top;
       }
 
+      .question-table th,
+      .question-table td {
+        white-space: normal;
+      }
+
       .user-table .cell-wrap,
       .question-table .cell-wrap {
         max-width: 280px;
@@ -355,6 +360,9 @@
         font-weight: 600;
         color: #1f2937;
         line-height: 1.4;
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: anywhere;
       }
 
       .question-options-list .is-correct {
@@ -653,13 +661,20 @@
         }
 
         #questions td.question-id-cell,
-        #questions td.question-category-cell,
-        #questions td.question-options-cell {
+        #questions td.question-category-cell {
           display: none;
         }
 
         #questions td.question-text-cell {
           padding-bottom: 4px;
+        }
+
+        #questions td.question-text-cell .question-preview {
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         #questions td.question-correct-cell {
@@ -846,14 +861,13 @@
                 <th>ID</th>
                 <th>Text</th>
                 <th>Category</th>
-                <th>Options</th>
                 <th>Correct Answer</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="questions-table">
               <tr>
-                <td colspan="6" style="text-align: center; color: #ccc">
+                <td colspan="5" style="text-align: center; color: #ccc">
                   Loading...
                 </td>
               </tr>
@@ -1063,7 +1077,7 @@
       </div>
     </div>
 
-    <script src="admin.js?v=20260227-qmobile1"></script>
+        <script src="admin.js?v=20260227-qmobile2"></script>
   </body>
 </html>
 

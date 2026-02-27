@@ -296,7 +296,7 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
 
           if (data.users.length === 0) {
             tbody.innerHTML =
-              '<tr><td colspan="11" style="text-align: center; color: #ccc;">No users yet</td></tr>';
+              '<tr><td colspan="12" style="text-align: center; color: #ccc;">No users yet</td></tr>';
             return true;
           }
 
@@ -314,8 +314,19 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
             const safeCountry = escapeHtml(displayValue(user.country));
             const safeInstitution = escapeHtml(displayValue(user.institution));
             const safeCreatedDate = escapeHtml(formatDate(user.createdAt));
+            const safeProfileImage = escapeHtml(String(user.profileImage || "").trim());
+            const initials = escapeHtml(
+              String(user.name || user.username || "U")
+                .trim()
+                .slice(0, 2)
+                .toUpperCase() || "U",
+            );
+            const avatarMarkup = safeProfileImage
+              ? `<img class="user-avatar" src="${safeProfileImage}" alt="Avatar of ${safeUsername}" loading="lazy" referrerpolicy="no-referrer" />`
+              : `<span class="user-avatar-fallback">${initials}</span>`;
             tr.innerHTML = `
                         <td>${safeId}</td>
+                        <td class="user-avatar-cell">${avatarMarkup}</td>
                         <td class="cell-wrap">${safeName}</td>
                         <td>${safeUsername}</td>
                         <td>${safeContact}</td>

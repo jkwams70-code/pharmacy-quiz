@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pharmacy Quiz</title>
 
-    <link rel="stylesheet" href="styles.css?v=20260227-userhubtour1" />
+    <link rel="stylesheet" href="styles.css?v=20260227-settings1" />
   </head>
 
   <body>
@@ -340,14 +340,8 @@
                 <button id="menu-tour-btn" class="menu-hub-link-btn" type="button">
                   &#129517; Tour / Help
                 </button>
-                <button
-                  id="menu-settings-btn"
-                  class="menu-hub-link-btn menu-hub-link-btn-muted"
-                  type="button"
-                  disabled
-                  title="Settings coming soon"
-                >
-                  &#9881; Settings (Soon)
+                <button id="menu-settings-btn" class="menu-hub-link-btn" type="button">
+                  &#9881; Settings
                 </button>
                 <button id="quiz-logout-btn" class="menu-logout-btn hidden" type="button">
                   Logout
@@ -859,6 +853,57 @@
         </div>
       </div>
 
+      <div id="settings-screen" class="setup-page">
+        <div class="study-fixed-header">
+          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+          <div class="study-main-header exam-header-layout">
+            <h2 class="setup-page-title">&#9881; App Settings</h2>
+            <div class="topic-screen-actions">
+              <button id="settings-back-btn" class="study-menu-btn">&#8592; Back</button>
+              <button id="settings-menu-btn" class="study-menu-btn">&#9776; Menu</button>
+            </div>
+          </div>
+        </div>
+        <div class="study-scroll-content">
+          <div class="setup-card settings-card">
+            <h3>Display</h3>
+            <div class="settings-grid">
+              <label class="auth-field">
+                <span>Theme</span>
+                <select id="app-theme-select">
+                  <option value="system">System Default</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <label class="auth-field">
+                <span>Text Size</span>
+                <select id="app-text-size-select">
+                  <option value="default">Default</option>
+                  <option value="large">Large</option>
+                </select>
+              </label>
+            </div>
+            <label class="settings-check-row">
+              <input id="app-reduce-motion" type="checkbox" />
+              <span>Reduce animations</span>
+            </label>
+
+            <h3>Device</h3>
+            <p class="settings-help">
+              Clear local practice cache on this device only (this does not delete your backend account data).
+            </p>
+            <div class="settings-actions">
+              <button id="app-clear-local-btn" type="button" class="modal-btn secondary">
+                Clear Local Cache
+              </button>
+            </div>
+
+            <div id="settings-feedback" class="auth-info hidden"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ================= QUIZ AREA ================= -->
       <div id="quiz-area" class="quiz-layout">
         <!-- HEADER -->
@@ -1056,7 +1101,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260227-userhubtour1"></script>
+    <script type="module" src="engine.js?v=20260227-settings1"></script>
   </body>
 </html>
 

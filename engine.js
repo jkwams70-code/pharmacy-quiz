@@ -469,8 +469,121 @@ const menuUserHubBtn = document.getElementById("menu-user-hub-btn");
 const menuUserHubPanel = document.getElementById("menu-user-hub-panel");
 const menuUserHubCloseBtn = document.getElementById("menu-user-hub-close-btn");
 const menuTourBtn = document.getElementById("menu-tour-btn");
+const menuSettingsBtn = document.getElementById("menu-settings-btn");
 const tourBackBtn = document.getElementById("tour-back-btn");
 const tourMenuBtn = document.getElementById("tour-menu-btn");
+const settingsBackBtn = document.getElementById("settings-back-btn");
+const settingsMenuBtn = document.getElementById("settings-menu-btn");
+const appThemeSelect = document.getElementById("app-theme-select");
+const appTextSizeSelect = document.getElementById("app-text-size-select");
+const appReduceMotionCheckbox = document.getElementById("app-reduce-motion");
+const appClearLocalBtn = document.getElementById("app-clear-local-btn");
+const settingsFeedbackEl = document.getElementById("settings-feedback");
+const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
+const themeMediaQuery =
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
+
+let uiPrefs = {
+  theme: "system",
+  textSize: "default",
+  reduceMotion: false,
+};
+
+function setSettingsFeedback(message = "", isError = false) {
+  if (!settingsFeedbackEl) return;
+  const text = String(message || "").trim();
+  settingsFeedbackEl.textContent = text;
+  settingsFeedbackEl.classList.toggle("hidden", !text);
+  settingsFeedbackEl.classList.remove("auth-error", "auth-info");
+  if (text) {
+    settingsFeedbackEl.classList.add(isError ? "auth-error" : "auth-info");
+  }
+}
+
+function normalizeUiPrefs(raw = {}) {
+  const theme = String(raw?.theme || "system").toLowerCase();
+  const textSize = String(raw?.textSize || "default").toLowerCase();
+  return {
+    theme: ["system", "light", "dark"].includes(theme) ? theme : "system",
+    textSize: ["default", "large"].includes(textSize) ? textSize : "default",
+    reduceMotion: Boolean(raw?.reduceMotion),
+  };
+}
+
+function loadUiPrefs() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(UI_PREFS_STORAGE_KEY) || "{}");
+    uiPrefs = normalizeUiPrefs(parsed);
+  } catch {
+    uiPrefs = normalizeUiPrefs({});
+  }
+}
+
+function saveUiPrefs() {
+  localStorage.setItem(UI_PREFS_STORAGE_KEY, JSON.stringify(uiPrefs));
+}
+
+function resolveEffectiveTheme() {
+  if (uiPrefs.theme === "light") return "light";
+  if (uiPrefs.theme === "dark") return "dark";
+  return themeMediaQuery?.matches ? "dark" : "light";
+}
+
+function applyUiPrefs() {
+  const effectiveTheme = resolveEffectiveTheme();
+  document.body.classList.toggle("theme-dark", effectiveTheme === "dark");
+  document.body.classList.toggle("theme-light", effectiveTheme === "light");
+  document.body.classList.toggle("text-size-large", uiPrefs.textSize === "large");
+  document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
+}
+
+function syncSettingsControls() {
+  if (appThemeSelect) appThemeSelect.value = uiPrefs.theme;
+  if (appTextSizeSelect) appTextSizeSelect.value = uiPrefs.textSize;
+  if (appReduceMotionCheckbox) appReduceMotionCheckbox.checked = Boolean(uiPrefs.reduceMotion);
+}
+
+function openSettingsScreen() {
+  syncSettingsControls();
+  setSettingsFeedback("");
+  showScreen("settings-screen");
+}
+
+function clearDeviceLocalCache() {
+  const keysToClear = [
+    "studySession",
+    "practiceSession",
+    "quizExamSession",
+    "examAbandoned",
+    "quizSessionHistory",
+    "weakTracker",
+    "quizBestStreak",
+    "performanceData",
+    "categoryPerformance",
+    "currentStreak",
+    "activeStudySessionId",
+    "activeExamSessionId",
+  ];
+  keysToClear.forEach((key) => localStorage.removeItem(key));
+}
+
+loadUiPrefs();
+applyUiPrefs();
+
+if (themeMediaQuery) {
+  const onThemeChange = () => {
+    if (uiPrefs.theme === "system") {
+      applyUiPrefs();
+    }
+  };
+  if (typeof themeMediaQuery.addEventListener === "function") {
+    themeMediaQuery.addEventListener("change", onThemeChange);
+  } else if (typeof themeMediaQuery.addListener === "function") {
+    themeMediaQuery.addListener(onThemeChange);
+  }
+}
 
 if (studyHistoryToggle && studyHistoryBox) {
   studyHistoryToggle.addEventListener("click", () => {
@@ -551,6 +664,60 @@ if (menuTourBtn) {
   menuTourBtn.addEventListener("click", () => {
     closeMenuUserHub();
     showScreen("tour-screen");
+  });
+}
+
+if (menuSettingsBtn) {
+  menuSettingsBtn.addEventListener("click", () => {
+    closeMenuUserHub();
+    openSettingsScreen();
+  });
+}
+
+if (settingsBackBtn) {
+  settingsBackBtn.addEventListener("click", () => {
+    showScreen("quiz-menu");
+  });
+}
+
+if (settingsMenuBtn) {
+  settingsMenuBtn.addEventListener("click", () => {
+    showScreen("quiz-menu");
+  });
+}
+
+if (appThemeSelect) {
+  appThemeSelect.addEventListener("change", () => {
+    uiPrefs.theme = String(appThemeSelect.value || "system");
+    saveUiPrefs();
+    applyUiPrefs();
+    setSettingsFeedback("Theme updated.");
+  });
+}
+
+if (appTextSizeSelect) {
+  appTextSizeSelect.addEventListener("change", () => {
+    uiPrefs.textSize = String(appTextSizeSelect.value || "default");
+    saveUiPrefs();
+    applyUiPrefs();
+    setSettingsFeedback("Text size updated.");
+  });
+}
+
+if (appReduceMotionCheckbox) {
+  appReduceMotionCheckbox.addEventListener("change", () => {
+    uiPrefs.reduceMotion = Boolean(appReduceMotionCheckbox.checked);
+    saveUiPrefs();
+    applyUiPrefs();
+    setSettingsFeedback("Motion preference updated.");
+  });
+}
+
+if (appClearLocalBtn) {
+  appClearLocalBtn.addEventListener("click", () => {
+    if (!confirm("Clear local practice cache on this device?")) return;
+    clearDeviceLocalCache();
+    setSettingsFeedback("Local cache cleared on this device.");
   });
 }
 
@@ -4396,6 +4563,7 @@ function showScreen(id) {
     "topic-library",
     "topic-viewer",
     "tour-screen",
+    "settings-screen",
     "quiz-area",
     "review-screen",
     "dashboard",
@@ -4559,6 +4727,11 @@ window.addEventListener("popstate", function () {
   }
 
   if (activeId === "tour-screen") {
+    showScreen("quiz-menu");
+    return;
+  }
+
+  if (activeId === "settings-screen") {
     showScreen("quiz-menu");
     return;
   }

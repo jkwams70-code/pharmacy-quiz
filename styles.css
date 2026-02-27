@@ -959,6 +959,7 @@ input {
   margin-top: 12px;
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .topic-library-item {
@@ -974,6 +975,7 @@ input {
   gap: 10px;
   cursor: pointer;
   transition: var(--trans);
+  min-width: 0;
 }
 
 .topic-library-item:hover {
@@ -986,6 +988,8 @@ input {
   font-weight: 700;
   color: #0f172a;
   min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .topic-library-item-meta {
@@ -998,6 +1002,7 @@ input {
   text-overflow: ellipsis;
   overflow: hidden;
   max-width: 42%;
+  overflow-wrap: anywhere;
 }
 
 .topic-viewer-scroll {
@@ -2043,6 +2048,16 @@ input {
 }
 
 @media (max-width: 760px) {
+  #topic-library .study-scroll-content {
+    overflow-x: hidden;
+  }
+
+  #topic-library .setup-card {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   #study-setup .study-scroll-content,
   #exam-setup .study-scroll-content {
     flex: 1;
@@ -2216,6 +2231,20 @@ input {
 
   .topic-library-controls {
     grid-template-columns: 1fr;
+  }
+
+  .topic-library-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .topic-library-item-meta {
+    margin-left: 0;
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+    opacity: 0.62;
   }
 
   .bottom-navigation {

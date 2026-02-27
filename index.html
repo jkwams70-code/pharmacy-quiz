@@ -814,21 +814,32 @@
             <div id="answers" class="answers-grid-modern"></div>
 
             <div id="explanation" class="explanation-modern hidden"></div>
-            <div id="ai-explain-wrap" class="ai-explain-wrap">
+            <div id="ai-explain-wrap" class="ai-explain-wrap hidden">
               <div class="ai-explain-actions">
-                <button id="ai-explain-btn" class="topic-link-btn" type="button">
+                <button
+                  id="ai-explain-btn"
+                  class="topic-link-btn ai-explain-generate-btn"
+                  type="button"
+                >
                   Explain With AI
                 </button>
                 <button
-                  id="ai-explain-close-btn"
-                  class="topic-link-btn ai-explain-close-btn hidden"
+                  id="ai-explain-toggle-btn"
+                  class="topic-link-btn ai-explain-icon-btn hidden"
                   type="button"
+                  aria-label="Close AI explanation"
+                  title="Close AI explanation"
                 >
-                  Close AI
+                  x
                 </button>
               </div>
-              <div id="ai-explain-meta" class="ai-explain-meta hidden"></div>
-              <div id="ai-explain-output" class="explanation-modern hidden"></div>
+              <div id="ai-explain-panel" class="ai-explain-panel hidden">
+                <div id="ai-explain-meta" class="ai-explain-meta hidden"></div>
+                <div
+                  id="ai-explain-output"
+                  class="explanation-modern ai-explain-output hidden"
+                ></div>
+              </div>
             </div>
             <div id="question-topic-link-wrap" class="question-topic-link-wrap hidden">
               <a
@@ -948,7 +959,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260227-aianswerlock2"></script>
+    <script type="module" src="engine.js?v=20260227-aipanelux1"></script>
   </body>
 </html>
 

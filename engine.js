@@ -354,7 +354,8 @@ const topicLinkWrapEl = document.getElementById("question-topic-link-wrap");
 const topicLinkBtnEl = document.getElementById("topic-link-btn");
 const aiExplainWrapEl = document.getElementById("ai-explain-wrap");
 const aiExplainBtn = document.getElementById("ai-explain-btn");
-const aiExplainCloseBtn = document.getElementById("ai-explain-close-btn");
+const aiExplainToggleBtn = document.getElementById("ai-explain-toggle-btn");
+const aiExplainPanelEl = document.getElementById("ai-explain-panel");
 const aiExplainMetaEl = document.getElementById("ai-explain-meta");
 const aiExplainOutputEl = document.getElementById("ai-explain-output");
 const quizArea = document.getElementById("quiz-area");
@@ -1100,7 +1101,46 @@ function authErrorMessage(error) {
   return "Unable to sign in right now. Please try again.";
 }
 
-let aiExplainInFlight = false;
+let aiExplainInFlightQuestionKey = "";
+let aiExplainStateByQuestion = Object.create(null);
+
+function getCurrentQuestionForAi() {
+  return Array.isArray(active) ? active[current] : null;
+}
+
+function getAiQuestionKey(question = getCurrentQuestionForAi()) {
+  if (!question) return "";
+  const id = String(question.id || "").trim();
+  if (id) return id;
+
+  const questionText = String(question.question || question.text || "").trim();
+  if (questionText) return `${mode || "mode"}:${questionText}`;
+
+  return `${mode || "mode"}:${current}`;
+}
+
+function getAiState(question = getCurrentQuestionForAi(), createIfMissing = false) {
+  const key = getAiQuestionKey(question);
+  if (!key) return null;
+
+  if (!aiExplainStateByQuestion[key] && createIfMissing) {
+    aiExplainStateByQuestion[key] = {
+      meta: "",
+      metaIsError: false,
+      output: "",
+      outputIsError: false,
+      generated: false,
+      collapsed: false,
+    };
+  }
+
+  return aiExplainStateByQuestion[key] || null;
+}
+
+function clearAiExplainStateSession() {
+  aiExplainInFlightQuestionKey = "";
+  aiExplainStateByQuestion = Object.create(null);
+}
 
 function canUseAiForCurrentQuestion() {
   if (!currentUser) return false;
@@ -1111,78 +1151,155 @@ function canUseAiForCurrentQuestion() {
 }
 
 function hasAnsweredCurrentQuestionForAi() {
-  const question = Array.isArray(active) ? active[current] : null;
+  const question = getCurrentQuestionForAi();
   if (!question?.id) return false;
   const answer = String(userAnswers?.[question.id] || "").trim();
   return Boolean(answer);
-}
-
-function canExplainCurrentQuestionWithAi() {
-  return canUseAiForCurrentQuestion() && hasAnsweredCurrentQuestionForAi();
 }
 
 function isExplanationVisibleForCurrentQuestion() {
   return Boolean(explanationEl) && !explanationEl.classList.contains("hidden");
 }
 
-function refreshAiExplainAvailability() {
+function isAiExplainInFlightForCurrentQuestion() {
+  if (!aiExplainInFlightQuestionKey) return false;
+  return aiExplainInFlightQuestionKey === getAiQuestionKey();
+}
+
+function syncAiExplainPanelForCurrentQuestion() {
+  const question = getCurrentQuestionForAi();
+  const state = getAiState(question, false);
   const modeAllowed = canUseAiForCurrentQuestion();
   const answerAllowed = hasAnsweredCurrentQuestionForAi();
   const explanationReady = isExplanationVisibleForCurrentQuestion();
   const showControls = modeAllowed && explanationReady;
+  const inFlightAny = Boolean(aiExplainInFlightQuestionKey);
+
+  const hasMeta = Boolean(String(state?.meta || "").trim());
+  const hasOutput = Boolean(String(state?.output || "").trim());
+  const hasContent = hasMeta || hasOutput;
+  const hasGenerated = Boolean(state?.generated && hasOutput);
+  const isCollapsed = Boolean(state?.collapsed);
+  const showPanel = showControls && hasContent && (!hasGenerated || !isCollapsed);
 
   if (aiExplainWrapEl) {
     aiExplainWrapEl.classList.toggle("hidden", !showControls);
   }
 
-  if (!aiExplainBtn) return;
-  aiExplainBtn.disabled = !(showControls && answerAllowed) || aiExplainInFlight;
+  if (aiExplainPanelEl) {
+    aiExplainPanelEl.classList.toggle("hidden", !showPanel);
+  }
+
+  if (aiExplainMetaEl) {
+    const showMeta = showPanel && hasMeta;
+    aiExplainMetaEl.textContent = showMeta ? String(state?.meta || "").trim() : "";
+    aiExplainMetaEl.classList.toggle("hidden", !showMeta);
+    aiExplainMetaEl.style.color = state?.metaIsError ? "#b91c1c" : "#475569";
+  }
+
+  if (aiExplainOutputEl) {
+    const showOutput = showPanel && hasOutput;
+    aiExplainOutputEl.textContent = showOutput ? String(state?.output || "").trim() : "";
+    aiExplainOutputEl.classList.toggle("hidden", !showOutput);
+    aiExplainOutputEl.style.borderLeftColor = state?.outputIsError ? "#dc2626" : "#7c3aed";
+    aiExplainOutputEl.style.background = state?.outputIsError ? "#fef2f2" : "#ede9fe";
+    aiExplainOutputEl.style.color = state?.outputIsError ? "#7f1d1d" : "#4c1d95";
+  }
+
+  if (aiExplainBtn) {
+    if (isAiExplainInFlightForCurrentQuestion()) {
+      aiExplainBtn.textContent = "Thinking...";
+    } else if (hasGenerated) {
+      aiExplainBtn.textContent = "AI Generated";
+    } else {
+      aiExplainBtn.textContent = "Explain With AI";
+    }
+
+    aiExplainBtn.disabled =
+      !(showControls && answerAllowed) || hasGenerated || inFlightAny;
+  }
+
+  if (aiExplainToggleBtn) {
+    const showToggle = showControls && hasGenerated;
+    aiExplainToggleBtn.classList.toggle("hidden", !showToggle);
+    aiExplainToggleBtn.disabled = inFlightAny;
+
+    if (showToggle) {
+      const isClosed = Boolean(state?.collapsed);
+      aiExplainToggleBtn.textContent = isClosed ? "+" : "x";
+      aiExplainToggleBtn.setAttribute(
+        "title",
+        isClosed ? "Show AI explanation" : "Close AI explanation",
+      );
+      aiExplainToggleBtn.setAttribute(
+        "aria-label",
+        isClosed ? "Show AI explanation" : "Close AI explanation",
+      );
+    }
+  }
+}
+
+function refreshAiExplainAvailability() {
+  syncAiExplainPanelForCurrentQuestion();
+}
+
+function setAiExplainMetaForQuestion(question, message = "", isError = false) {
+  const state = getAiState(question, true);
+  if (!state) return;
+  state.meta = String(message || "").trim();
+  state.metaIsError = Boolean(isError);
+}
+
+function setAiExplainOutputForQuestion(question, message = "", isError = false) {
+  const state = getAiState(question, true);
+  if (!state) return;
+  state.output = String(message || "").trim();
+  state.outputIsError = Boolean(isError);
 }
 
 function setAiExplainMeta(message = "", isError = false) {
-  if (!aiExplainMetaEl) return;
-  const text = String(message || "").trim();
-  aiExplainMetaEl.textContent = text;
-  aiExplainMetaEl.classList.toggle("hidden", !text);
-  aiExplainMetaEl.style.color = isError ? "#b91c1c" : "#475569";
-  updateAiExplainCloseVisibility();
+  const question = getCurrentQuestionForAi();
+  setAiExplainMetaForQuestion(question, message, isError);
+  syncAiExplainPanelForCurrentQuestion();
 }
 
 function setAiExplainOutput(message = "", isError = false) {
-  if (!aiExplainOutputEl) return;
-  const text = String(message || "").trim();
-  aiExplainOutputEl.textContent = text;
-  aiExplainOutputEl.classList.toggle("hidden", !text);
-  aiExplainOutputEl.style.borderLeftColor = isError ? "#dc2626" : "#0f766e";
-  aiExplainOutputEl.style.background = isError ? "#fef2f2" : "#ecfeff";
-  aiExplainOutputEl.style.color = isError ? "#7f1d1d" : "#155e75";
-  updateAiExplainCloseVisibility();
-}
-
-function updateAiExplainCloseVisibility() {
-  if (!aiExplainCloseBtn) return;
-  const hasMeta = Boolean(String(aiExplainMetaEl?.textContent || "").trim());
-  const hasOutput = Boolean(String(aiExplainOutputEl?.textContent || "").trim());
-  const visible = hasMeta || hasOutput;
-  aiExplainCloseBtn.classList.toggle("hidden", !visible);
-  aiExplainCloseBtn.disabled = aiExplainInFlight;
+  const question = getCurrentQuestionForAi();
+  setAiExplainOutputForQuestion(question, message, isError);
+  syncAiExplainPanelForCurrentQuestion();
 }
 
 function closeAiExplainPanel() {
-  if (aiExplainInFlight) return;
-  setAiExplainMeta("");
-  setAiExplainOutput("");
-  updateAiExplainCloseVisibility();
+  if (Boolean(aiExplainInFlightQuestionKey)) return;
+  const question = getCurrentQuestionForAi();
+  const state = getAiState(question, false);
+  if (!state?.generated) return;
+  state.collapsed = true;
+  syncAiExplainPanelForCurrentQuestion();
+}
+
+function reopenAiExplainPanel() {
+  if (Boolean(aiExplainInFlightQuestionKey)) return;
+  const question = getCurrentQuestionForAi();
+  const state = getAiState(question, false);
+  if (!state?.generated) return;
+  state.collapsed = false;
+  syncAiExplainPanelForCurrentQuestion();
+}
+
+function toggleAiExplainPanel() {
+  const question = getCurrentQuestionForAi();
+  const state = getAiState(question, false);
+  if (!state?.generated) return;
+  if (state.collapsed) {
+    reopenAiExplainPanel();
+    return;
+  }
+  closeAiExplainPanel();
 }
 
 function resetAiExplainPanel() {
-  setAiExplainMeta("");
-  setAiExplainOutput("");
-  if (!aiExplainBtn) return;
-  aiExplainInFlight = false;
-  aiExplainBtn.textContent = "Explain With AI";
-  refreshAiExplainAvailability();
-  updateAiExplainCloseVisibility();
+  syncAiExplainPanelForCurrentQuestion();
 }
 
 function getOptionListForAi(question) {
@@ -1212,7 +1329,7 @@ function buildAiPayloadForQuestion(question) {
 }
 
 async function handleAiExplainClick() {
-  if (!aiExplainBtn || aiExplainInFlight) return;
+  if (!aiExplainBtn || aiExplainInFlightQuestionKey) return;
   if (!canUseAiForCurrentQuestion()) {
     setAiExplainMeta("AI explanation is available in Study or Review mode only.", true);
     return;
@@ -1234,39 +1351,60 @@ async function handleAiExplainClick() {
     return;
   }
 
-  aiExplainInFlight = true;
-  aiExplainBtn.disabled = true;
-  aiExplainBtn.textContent = "Thinking...";
-  updateAiExplainCloseVisibility();
-  setAiExplainMeta("Requesting explanation...");
-  setAiExplainOutput("");
+  const questionKey = getAiQuestionKey(question);
+  if (!questionKey) {
+    setAiExplainMeta("Question key is missing; AI explain skipped.", true);
+    return;
+  }
+
+  aiExplainInFlightQuestionKey = questionKey;
+  setAiExplainMetaForQuestion(question, "Requesting explanation...");
+  setAiExplainOutputForQuestion(question, "");
+  const preState = getAiState(question, true);
+  if (preState) {
+    preState.generated = false;
+    preState.collapsed = false;
+  }
+  syncAiExplainPanelForCurrentQuestion();
 
   try {
     const data = await backendClient.explainQuestion(payload);
-    setAiExplainOutput(String(data?.answer || "").trim());
+    const answerText = String(data?.answer || "").trim();
+    setAiExplainOutputForQuestion(question, answerText);
     const remaining = Number(data?.usage?.remaining);
     const limit = Number(data?.usage?.limit);
     const tier = String(data?.tier || "").trim() || "free";
     const provider = String(data?.provider || "").trim();
     if (Number.isFinite(remaining) && Number.isFinite(limit)) {
-      setAiExplainMeta(
+      setAiExplainMetaForQuestion(
+        question,
         `AI: ${provider} (${tier}) | Daily remaining: ${remaining}/${limit}`,
       );
     } else {
-      setAiExplainMeta(`AI: ${provider} (${tier})`);
+      setAiExplainMetaForQuestion(question, `AI: ${provider} (${tier})`);
+    }
+
+    const state = getAiState(question, true);
+    if (state) {
+      state.generated = Boolean(answerText);
+      state.collapsed = false;
     }
   } catch (error) {
     const message = String(error?.message || "AI request failed");
-    setAiExplainMeta(message, true);
-    setAiExplainOutput(
+    setAiExplainMetaForQuestion(question, message, true);
+    setAiExplainOutputForQuestion(
+      question,
       "Couldn't load AI explanation right now. Please try again.",
       true,
     );
+    const state = getAiState(question, true);
+    if (state) {
+      state.generated = false;
+      state.collapsed = false;
+    }
   } finally {
-    aiExplainInFlight = false;
-    aiExplainBtn.textContent = "Explain With AI";
-    refreshAiExplainAvailability();
-    updateAiExplainCloseVisibility();
+    aiExplainInFlightQuestionKey = "";
+    syncAiExplainPanelForCurrentQuestion();
   }
 }
 
@@ -1995,9 +2133,9 @@ if (aiExplainBtn) {
   });
 }
 
-if (aiExplainCloseBtn) {
-  aiExplainCloseBtn.addEventListener("click", () => {
-    closeAiExplainPanel();
+if (aiExplainToggleBtn) {
+  aiExplainToggleBtn.addEventListener("click", () => {
+    toggleAiExplainPanel();
   });
 }
 
@@ -2593,6 +2731,7 @@ function updateModeIndicator(studyType = null) {
 
 function startStudy() {
   studySessionEnded = false;
+  clearAiExplainStateSession();
 
   clearInterval(examTimer);
   examTimer = null;
@@ -2723,6 +2862,7 @@ function startStudy() {
 
 function startExam(count) {
   mode = "exam";
+  clearAiExplainStateSession();
 
   clearInterval(examTimer);
   examTimer = null;
@@ -2934,9 +3074,6 @@ function showQuestion() {
 function selectAnswer(value, q) {
   if (inDetailedReview) return;
   userAnswers[q.id] = value;
-  if (aiExplainBtn) {
-    aiExplainBtn.disabled = !canExplainCurrentQuestionWithAi();
-  }
 
   // Sync answer to backend if available
   if (backendReady && backendAttemptId) {
@@ -3098,9 +3235,6 @@ function nextQuestion() {
 
       answeredCurrent = true;
       nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
-      if (aiExplainBtn) {
-        aiExplainBtn.disabled = !canExplainCurrentQuestionWithAi();
-      }
 
       return; // stay on same question
     }
@@ -3863,6 +3997,7 @@ function saveExamSession() {
 function loadExamSession() {
   const saved = JSON.parse(localStorage.getItem("quizExamSession"));
   if (!saved) return false;
+  clearAiExplainStateSession();
 
   active = saved.active;
   current = saved.current;

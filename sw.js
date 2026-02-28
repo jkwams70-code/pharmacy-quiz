@@ -1,16 +1,16 @@
-const CACHE_VERSION = "ajix-quiz-v6-pwasplit";
+const CACHE_VERSION = "ajix-quiz-v7-darkfix-adminsplit";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/styles.css?v=20260227-pwa1",
-  "/engine.js?v=20260227-pwa1",
+  "/styles.css?v=20260228-darkfix2",
+  "/engine.js?v=20260228-darkfix2",
   "/data.js",
   "/backendClient.js",
   "/manifest.webmanifest?v=20260228-pwasplit1",
-  "/admin/manifest.webmanifest?v=20260228-adminpwa1",
+  "/admin-manifest.webmanifest?v=20260228-adminpwa2",
   "/icons/icon-192-f1.png?v=20260227-favicon1",
   "/icons/icon-512-f1.png?v=20260227-favicon1",
   "/icons/favicon-48.png?v=20260227-favicon1",

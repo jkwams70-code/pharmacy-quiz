@@ -2952,6 +2952,24 @@ body.theme-dark .menu-user-hub-btn:hover {
   background: linear-gradient(160deg, #1f2937, #4b5563) !important;
 }
 
+/* Keep study answer states clearly visible in dark mode. */
+body.theme-dark #answers button.correct {
+  background: linear-gradient(160deg, #14532d, #166534) !important;
+  color: #ecfdf5 !important;
+  border: 1px solid #86efac !important;
+}
+
+body.theme-dark #answers button.wrong {
+  background: linear-gradient(160deg, #7f1d1d, #991b1b) !important;
+  color: #fef2f2 !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+body.theme-dark #answers button.correct:hover,
+body.theme-dark #answers button.wrong:hover {
+  filter: brightness(1.05);
+}
+
 body.text-size-large {
   font-size: 17px;
 }

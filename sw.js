@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-quiz-v5-favicon";
+const CACHE_VERSION = "ajix-quiz-v6-pwasplit";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -9,7 +9,8 @@ const STATIC_ASSETS = [
   "/engine.js?v=20260227-pwa1",
   "/data.js",
   "/backendClient.js",
-  "/manifest.webmanifest?v=20260227-favicon1",
+  "/manifest.webmanifest?v=20260228-pwasplit1",
+  "/admin/manifest.webmanifest?v=20260228-adminpwa1",
   "/icons/icon-192-f1.png?v=20260227-favicon1",
   "/icons/icon-512-f1.png?v=20260227-favicon1",
   "/icons/favicon-48.png?v=20260227-favicon1",

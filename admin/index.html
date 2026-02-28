@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f3f7f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Ajix Admin" />
     <title>Pharmacy Quiz - Admin Dashboard</title>
+    <link rel="manifest" href="/admin/manifest.webmanifest?v=20260228-adminpwa1" />
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=20260227-favicon1" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260227-favicon1" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260227-favicon1" />
@@ -1081,7 +1086,16 @@
       </div>
     </div>
 
-        <script src="admin.js?v=20260227-qmobile2"></script>
+    <script src="admin.js?v=20260227-qmobile2"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js").catch((error) => {
+            console.warn("Service worker registration failed:", error);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
 

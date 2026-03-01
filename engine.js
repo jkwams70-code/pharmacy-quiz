@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260301-dailyfix2";
+import { backendClient } from "./backendClient.js?v=20260301-dailyfix3";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -504,6 +504,7 @@ const submitExamBtn = document.getElementById("submit-exam");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
+const LIVE_ANSWER_ADVANCE_DELAY_MS = 650;
 const themeMediaQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
     ? window.matchMedia("(prefers-color-scheme: dark)")
@@ -844,7 +845,7 @@ function renderDailyQuizUi() {
 
   if (dailyWindowLineEl) {
     if (season.start && season.end) {
-      dailyWindowLineEl.textContent = `Season window: ${formatDateKey(season.start)} - ${formatDateKey(season.end)} (${season.timezone || "UTC"})`;
+      dailyWindowLineEl.textContent = `Season window: ${formatDateKey(season.start)} - ${formatDateKey(season.end)}`;
     } else {
       dailyWindowLineEl.textContent = "Daily challenge window is loading...";
     }
@@ -4018,15 +4019,32 @@ function selectAnswer(value, q) {
   }
 
   if ((mode === "exam" || mode === "smart" || mode === "daily") && !inReview) {
+    const buttons = document.querySelectorAll("#answers button");
+    buttons.forEach((btn) => {
+      btn.disabled = true;
+      btn.classList.remove("selected-live");
+      if (btn.dataset.value === String(value)) {
+        btn.classList.add("selected-live");
+      }
+    });
+
     if (mode === "exam" || mode === "smart") {
       saveExamSession();
     }
-    if (current < active.length - 1) {
-      current++;
-      showQuestion();
-    } else {
-      goToReview();
-    }
+    const isLastQuestion = current >= active.length - 1;
+    const expectedQuestionId = q.id;
+    setTimeout(() => {
+      // Avoid stale navigation if screen/question changed during delay.
+      if (!Array.isArray(active) || !active[current]) return;
+      if (active[current].id !== expectedQuestionId) return;
+
+      if (!isLastQuestion) {
+        current++;
+        showQuestion();
+      } else {
+        goToReview();
+      }
+    }, LIVE_ANSWER_ADVANCE_DELAY_MS);
     return;
   }
 
@@ -4177,10 +4195,10 @@ function restoreSelection(q) {
       }
     }
 
-    if (mode === "exam" || mode === "daily") {
+    if (mode === "exam" || mode === "daily" || mode === "smart") {
       // During exam, just highlight selected option visually (neutral)
       if (btnValue === saved) {
-        btn.style.background = "#dbe7ff";
+        btn.classList.add("selected-live");
       }
     }
   });

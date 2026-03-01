@@ -1019,13 +1019,24 @@ body.font-hand {
 }
 
 .daily-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
 .daily-actions .start-btn {
-  flex: 1 1 240px;
+  min-width: 0;
+  font-size: 0.9rem;
+  padding: 9px 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.daily-actions .study-menu-btn {
+  white-space: nowrap;
+  padding: 9px 12px;
+  min-height: 40px;
 }
 
 .daily-quiz-alert {
@@ -1854,6 +1865,12 @@ body.headers-collapsed .app-header {
   color: #7f1d1d;
 }
 
+#answers button.selected-live {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #0b2d59;
+}
+
 .no-options-fallback {
   border: 1px solid #f59e0b;
   background: #fff7ed;
@@ -2661,7 +2678,8 @@ body.headers-collapsed .app-header {
   }
 
   .daily-actions {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
   }
 
   .settings-grid {
@@ -2875,7 +2893,7 @@ body.theme-dark .menu-tile.topic-library-btn {
 }
 
 body.theme-dark .daily-quiz-meta {
-  color: #d8b4fe;
+  color: #6d28d9;
 }
 
 body.theme-dark #daily-setup .setup-card {
@@ -2885,7 +2903,17 @@ body.theme-dark #daily-setup .setup-card {
 body.theme-dark .daily-window-line,
 body.theme-dark .daily-status-line,
 body.theme-dark .daily-reward-line {
-  color: #cbd5e1;
+  color: #1f2937;
+}
+
+body.theme-dark .setup-card h3,
+body.theme-dark .setup-card label,
+body.theme-dark .topic-library-count,
+body.theme-dark .topic-library-item-title,
+body.theme-dark .topic-library-item-meta,
+body.theme-dark .daily-status-line,
+body.theme-dark .daily-reward-line {
+  color: #1f2937 !important;
 }
 
 body.theme-dark .daily-metric {
@@ -3124,6 +3152,12 @@ body.theme-dark #answers button.wrong {
   background: linear-gradient(160deg, #7f1d1d, #991b1b) !important;
   color: #fef2f2 !important;
   border: 1px solid #fca5a5 !important;
+}
+
+body.theme-dark #answers button.selected-live {
+  background: linear-gradient(160deg, #1d4ed8, #1e40af) !important;
+  color: #eff6ff !important;
+  border: 1px solid #93c5fd !important;
 }
 
 body.theme-dark #answers button.correct:hover,

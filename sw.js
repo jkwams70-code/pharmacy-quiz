@@ -1,4 +1,4 @@
-﻿const CACHE_VERSION = "ajix-quiz-v8-logoexact";
+const CACHE_VERSION = "ajix-quiz-v9-logoexact2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -9,14 +9,14 @@ const STATIC_ASSETS = [
   "/engine.js?v=20260228-darkfix2",
   "/data.js",
   "/backendClient.js",
-  "/manifest.webmanifest?v=20260228-pwasplit1",
-  "/admin-manifest.webmanifest?v=20260228-adminpwa2",
-  "/icons/icon-192-f1.png?v=20260301-logoexact1",
-  "/icons/icon-512-f1.png?v=20260301-logoexact1",
-  "/icons/favicon-48.png?v=20260301-logoexact1",
-  "/icons/favicon-32.png?v=20260301-logoexact1",
-  "/icons/favicon-16.png?v=20260301-logoexact1",
-  "/icons/favicon-180.png?v=20260301-logoexact1",
+  "/manifest.webmanifest?v=20260301-pwasplit2",
+  "/admin-manifest.webmanifest?v=20260301-adminpwa3",
+  "/icons/icon-192-f1.png?v=20260301-logoexact2",
+  "/icons/icon-512-f1.png?v=20260301-logoexact2",
+  "/icons/favicon-48.png?v=20260301-logoexact2",
+  "/icons/favicon-32.png?v=20260301-logoexact2",
+  "/icons/favicon-16.png?v=20260301-logoexact2",
+  "/icons/favicon-180.png?v=20260301-logoexact2",
 ];
 
 self.addEventListener("install", (event) => {
@@ -85,3 +85,4 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+

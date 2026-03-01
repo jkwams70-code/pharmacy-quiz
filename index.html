@@ -61,7 +61,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260301-iconsource3" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180.png?v=20260301-iconsource3" />
-    <link rel="stylesheet" href="styles.css?v=20260301-dailyfix3" />
+    <link rel="stylesheet" href="styles.css?v=20260301-dailyfix5" />
   </head>
 
   <body>
@@ -644,18 +644,23 @@
             <div id="daily-status-line" class="daily-status-line">Checking status...</div>
 
             <div class="daily-metrics-grid">
-              <div class="daily-metric">
+              <div class="daily-metric daily-metric-streak">
                 <div class="daily-metric-label">Streak</div>
                 <div id="daily-streak-value" class="daily-metric-value">0</div>
               </div>
-              <div class="daily-metric">
+              <div class="daily-metric daily-metric-gems">
                 <div class="daily-metric-label">Gems</div>
                 <div id="daily-gems-value" class="daily-metric-value">0</div>
               </div>
-              <div class="daily-metric">
+              <div class="daily-metric daily-metric-completed">
                 <div class="daily-metric-label">Completed Days</div>
                 <div id="daily-completed-value" class="daily-metric-value">0</div>
               </div>
+            </div>
+
+            <div id="daily-celebration" class="daily-celebration hidden" aria-live="polite">
+              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">✓</span>
+              <span id="daily-gems-ribbon" class="daily-gems-ribbon">+0 Gems</span>
             </div>
 
             <div id="daily-reward-line" class="daily-reward-line"></div>
@@ -1246,7 +1251,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260301-dailyfix3"></script>
+    <script type="module" src="engine.js?v=20260301-dailyfix5"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

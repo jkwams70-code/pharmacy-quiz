@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260301-dailyfix3";
+import { backendClient } from "./backendClient.js?v=20260301-dailyfix5";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -171,6 +171,13 @@ let topicViewerReturnScreen = "topic-library";
 let dailyQuizState = null;
 let dailyQuizSessionMeta = null;
 let dailyQuizPopupShownDate = "";
+let dailyCelebrationShownDate = "";
+let dailyPendingCelebration = null;
+let dailyGemsAnimationHandle = null;
+let dailyGemsAnimationActive = false;
+let dailyCelebrationHideTimer = null;
+let dailyCelebrationResetTimer = null;
+let dailyMidnightRefreshTimer = null;
 
 // Load questions from backend if available
 async function loadQuestionsFromBackend() {
@@ -498,12 +505,16 @@ const dailyAlertEl = document.getElementById("daily-quiz-alert");
 const dailyStreakValueEl = document.getElementById("daily-streak-value");
 const dailyGemsValueEl = document.getElementById("daily-gems-value");
 const dailyCompletedValueEl = document.getElementById("daily-completed-value");
+const dailyCelebrationEl = document.getElementById("daily-celebration");
+const dailyCompleteCheckEl = document.getElementById("daily-complete-check");
+const dailyGemsRibbonEl = document.getElementById("daily-gems-ribbon");
 const reviewTitleEl = document.querySelector("#review-screen .review-title");
 const reviewTimerStatusEl = document.getElementById("review-timer");
 const submitExamBtn = document.getElementById("submit-exam");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
+const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
 const LIVE_ANSWER_ADVANCE_DELAY_MS = 650;
 const themeMediaQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
@@ -741,6 +752,151 @@ function markDailyPopupSeen(dateKey = "") {
   localStorage.setItem(DAILY_QUIZ_POPUP_STORAGE_KEY, value);
 }
 
+function markDailyCelebrationSeen(dateKey = "") {
+  const value = String(dateKey || "").trim();
+  if (!value) return;
+  dailyCelebrationShownDate = value;
+  localStorage.setItem(DAILY_CELEBRATION_SHOWN_STORAGE_KEY, value);
+}
+
+function setDailyGemsValue(value) {
+  if (!dailyGemsValueEl) return;
+  const safe = Math.max(0, Math.round(Number(value) || 0));
+  dailyGemsValueEl.textContent = String(safe);
+}
+
+function stopDailyGemsAnimation() {
+  if (dailyGemsAnimationHandle) {
+    cancelAnimationFrame(dailyGemsAnimationHandle);
+    dailyGemsAnimationHandle = null;
+  }
+  dailyGemsAnimationActive = false;
+}
+
+function animateDailyGemsValue(fromValue, toValue, durationMs = 950) {
+  const from = Math.max(0, Math.round(Number(fromValue) || 0));
+  const to = Math.max(0, Math.round(Number(toValue) || 0));
+  if (!dailyGemsValueEl) return;
+
+  if (from === to || durationMs <= 0 || uiPrefs.reduceMotion) {
+    stopDailyGemsAnimation();
+    setDailyGemsValue(to);
+    return;
+  }
+
+  stopDailyGemsAnimation();
+  dailyGemsAnimationActive = true;
+  const start = performance.now();
+  const delta = to - from;
+
+  const tick = (now) => {
+    const progress = Math.min(1, (now - start) / durationMs);
+    const eased = 1 - (1 - progress) * (1 - progress);
+    setDailyGemsValue(from + delta * eased);
+    if (progress < 1) {
+      dailyGemsAnimationHandle = requestAnimationFrame(tick);
+      return;
+    }
+    dailyGemsAnimationHandle = null;
+    dailyGemsAnimationActive = false;
+    setDailyGemsValue(to);
+  };
+
+  dailyGemsAnimationHandle = requestAnimationFrame(tick);
+}
+
+function playDailyCompletionCelebration(payload = {}) {
+  const date = String(payload?.date || "").trim();
+  const gemsAwarded = Math.max(0, Math.round(Number(payload?.gemsAwarded) || 0));
+  const fromGems = Math.max(0, Math.round(Number(payload?.fromGems) || 0));
+  const toGems = Math.max(fromGems, Math.round(Number(payload?.toGems) || 0));
+
+  if (date && dailyCelebrationShownDate === date) {
+    setDailyGemsValue(toGems);
+    return;
+  }
+
+  animateDailyGemsValue(fromGems, toGems);
+
+  if (!dailyCelebrationEl || !dailyCompleteCheckEl || !dailyGemsRibbonEl || gemsAwarded <= 0) {
+    if (date) markDailyCelebrationSeen(date);
+    return;
+  }
+
+  dailyCompleteCheckEl.textContent = "\u2713";
+  dailyGemsRibbonEl.textContent = `+${gemsAwarded} Gems`;
+
+  if (dailyCelebrationHideTimer) {
+    clearTimeout(dailyCelebrationHideTimer);
+    dailyCelebrationHideTimer = null;
+  }
+  if (dailyCelebrationResetTimer) {
+    clearTimeout(dailyCelebrationResetTimer);
+    dailyCelebrationResetTimer = null;
+  }
+
+  dailyCelebrationEl.classList.remove("hidden", "play", "fade-out");
+  void dailyCelebrationEl.offsetWidth;
+  dailyCelebrationEl.classList.add("play");
+
+  const holdDuration = uiPrefs.reduceMotion ? 900 : 2200;
+  dailyCelebrationHideTimer = setTimeout(() => {
+    dailyCelebrationEl.classList.add("fade-out");
+    dailyCelebrationResetTimer = setTimeout(() => {
+      dailyCelebrationEl.classList.remove("play", "fade-out");
+      dailyCelebrationEl.classList.add("hidden");
+      dailyCelebrationResetTimer = null;
+    }, 300);
+    dailyCelebrationHideTimer = null;
+  }, holdDuration);
+
+  if (date) markDailyCelebrationSeen(date);
+}
+
+function maybePlayDailyCompletionCelebration() {
+  if (!dailyPendingCelebration) return;
+
+  const date = String(dailyPendingCelebration?.date || "").trim();
+  if (date && dailyCelebrationShownDate === date) {
+    dailyPendingCelebration = null;
+    return;
+  }
+
+  const dailySetupEl = document.getElementById("daily-setup");
+  if (!dailySetupEl || !dailySetupEl.classList.contains("screen-active")) return;
+
+  const payload = dailyPendingCelebration;
+  dailyPendingCelebration = null;
+  playDailyCompletionCelebration(payload);
+}
+
+function clearDailyMidnightRefreshTimer() {
+  if (!dailyMidnightRefreshTimer) return;
+  clearTimeout(dailyMidnightRefreshTimer);
+  dailyMidnightRefreshTimer = null;
+}
+
+function scheduleDailyMidnightRefresh() {
+  clearDailyMidnightRefreshTimer();
+  if (!currentUser) return;
+  const now = new Date();
+  const nextMidnight = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0,
+    0,
+    0,
+    150,
+  );
+  const delay = Math.max(1000, nextMidnight.getTime() - now.getTime());
+  dailyMidnightRefreshTimer = setTimeout(async () => {
+    dailyMidnightRefreshTimer = null;
+    await refreshDailyQuizState({ force: true, silent: true });
+    scheduleDailyMidnightRefresh();
+  }, delay);
+}
+
 function markQuestionAsWeak(questionId) {
   const key = normalizeQuestionIdKey(questionId);
   if (!key) return false;
@@ -769,6 +925,9 @@ function addWrongQuestionsToWeakTracker(questionIds = []) {
 function resetDailyQuizRuntimeState() {
   dailyQuizState = null;
   dailyQuizSessionMeta = null;
+  dailyPendingCelebration = null;
+  clearDailyMidnightRefreshTimer();
+  stopDailyGemsAnimation();
   if (mode === "daily") {
     mode = "";
     active = [];
@@ -806,6 +965,12 @@ function renderDailyQuizUi() {
       dailyAlertEl.classList.add("hidden");
       dailyAlertEl.textContent = "";
     }
+    if (dailyCelebrationEl) {
+      dailyCelebrationEl.classList.remove("play", "fade-out");
+      dailyCelebrationEl.classList.add("hidden");
+    }
+    dailyPendingCelebration = null;
+    stopDailyGemsAnimation();
     if (startDailyBtn) {
       startDailyBtn.disabled = true;
       startDailyBtn.textContent = "Sign In Required";
@@ -844,10 +1009,10 @@ function renderDailyQuizUi() {
   }
 
   if (dailyWindowLineEl) {
-    if (season.start && season.end) {
-      dailyWindowLineEl.textContent = `Season window: ${formatDateKey(season.start)} - ${formatDateKey(season.end)}`;
+    if (todayDate) {
+      dailyWindowLineEl.textContent = `Date: ${formatDateKey(todayDate)} | Renews daily at 12:00 AM`;
     } else {
-      dailyWindowLineEl.textContent = "Daily challenge window is loading...";
+      dailyWindowLineEl.textContent = "Date: loading today's challenge...";
     }
   }
 
@@ -865,22 +1030,34 @@ function renderDailyQuizUi() {
   }
 
   if (dailyStreakValueEl) dailyStreakValueEl.textContent = String(streak);
-  if (dailyGemsValueEl) dailyGemsValueEl.textContent = String(gems);
+  if (!dailyGemsAnimationActive) setDailyGemsValue(gems);
   if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedDays);
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =
-      `Rewards: +${rules.completion || 0} completion, +${rules.perCorrect || 0} per correct, +${rules.perfect || 0} perfect bonus, streak +${rules.streakStep || 0} up to ${rules.streakCap || 0} days.`;
+      `Rewards: +${rules.completion || 0} completion, +${rules.perCorrect || 0} per correct, +${rules.perfect || 0} perfect bonus, streak +${rules.streakStep || 0} from day 2 (cap ${rules.streakCap || 0} days).`;
   }
 
   if (dailyResultLineEl) {
     if (todayCompleted && today.rewards) {
       const rewardTotal = Number(today.rewards.total) || 0;
+      if (!dailyPendingCelebration && todayDate && rewardTotal > 0 && dailyCelebrationShownDate !== todayDate) {
+        dailyPendingCelebration = {
+          date: todayDate,
+          gemsAwarded: rewardTotal,
+          fromGems: Math.max(0, gems - rewardTotal),
+          toGems: gems,
+        };
+      }
       dailyResultLineEl.classList.remove("hidden");
       dailyResultLineEl.textContent = `Today result: ${today.score ?? 0}/${today.total ?? season.questionsPerDay ?? 10} (${today.percent ?? 0}%). Gems earned: +${rewardTotal}.`;
     } else {
       dailyResultLineEl.classList.add("hidden");
       dailyResultLineEl.textContent = "";
+      if (dailyCelebrationEl) {
+        dailyCelebrationEl.classList.remove("play", "fade-out");
+        dailyCelebrationEl.classList.add("hidden");
+      }
     }
   }
 
@@ -898,6 +1075,8 @@ function renderDailyQuizUi() {
   if (refreshDailyBtn) {
     refreshDailyBtn.disabled = false;
   }
+
+  maybePlayDailyCompletionCelebration();
 
   if (startDailyBtn) {
     const resumeAvailable =
@@ -988,8 +1167,12 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
 
 async function openDailySetup() {
   const allowed = await ensureAuthenticated();
-  if (!allowed) return;
+  if (!allowed) {
+    clearDailyMidnightRefreshTimer();
+    return;
+  }
   showScreen("daily-setup");
+  scheduleDailyMidnightRefresh();
   await refreshDailyQuizState({ force: true });
   if (dailyQuizState?.today?.date) {
     markDailyPopupSeen(dailyQuizState.today.date);
@@ -1096,6 +1279,9 @@ loadUiPrefs();
 applyUiPrefs();
 initHeaderCollapseState();
 dailyQuizPopupShownDate = String(localStorage.getItem(DAILY_QUIZ_POPUP_STORAGE_KEY) || "");
+dailyCelebrationShownDate = String(
+  localStorage.getItem(DAILY_CELEBRATION_SHOWN_STORAGE_KEY) || "",
+);
 renderDailyQuizUi();
 
 if (themeMediaQuery) {
@@ -4386,6 +4572,8 @@ async function finishDailyQuizSession() {
   });
 
   try {
+    const previousGems =
+      Number(dailyQuizState?.stats?.gems ?? currentUser?.dailyQuiz?.gems) || 0;
     const response = await backendClient.submitDailyQuiz({ answers });
     dailyQuizState = normalizeDailyQuizPayload(response);
 
@@ -4400,7 +4588,18 @@ async function finishDailyQuizSession() {
       ? Number(result.percent)
       : Math.round((finalScore / Math.max(1, totalQuestions)) * 100);
     const gemsAwarded = Number(result.gemsAwarded || result?.rewards?.total) || 0;
+    const totalGemsAfter =
+      Number(result.gems ?? dailyQuizState?.stats?.gems) || previousGems + gemsAwarded;
     const streak = Number(result.streak ?? dailyQuizState?.stats?.streak) || 0;
+
+    if (dailyQuizState?.today?.date && gemsAwarded > 0) {
+      dailyPendingCelebration = {
+        date: String(dailyQuizState.today.date),
+        gemsAwarded,
+        fromGems: previousGems,
+        toGems: totalGemsAfter,
+      };
+    }
 
     addWrongQuestionsToWeakTracker(
       Array.isArray(result.wrongQuestionIds) ? result.wrongQuestionIds : [],
@@ -5366,6 +5565,13 @@ function showScreen(id) {
   const target = document.getElementById(id);
   if (target) {
     target.classList.add("screen-active");
+  }
+
+  if (id === "daily-setup") {
+    scheduleDailyMidnightRefresh();
+    maybePlayDailyCompletionCelebration();
+  } else {
+    clearDailyMidnightRefreshTimer();
   }
 
   if (id !== "quiz-menu") {

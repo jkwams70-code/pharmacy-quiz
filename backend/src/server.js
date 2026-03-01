@@ -1814,11 +1814,15 @@ app.post(
         : 0;
     const streak = previousStreak + 1;
 
-    let streakBonus =
-      DAILY_REWARD_RULES.streakStep *
-      Math.min(streak, DAILY_REWARD_RULES.streakCap);
-    if (isWeekendInTimeZone(new Date(), DAILY_QUIZ_SEASON.timezone)) {
-      streakBonus *= DAILY_REWARD_RULES.weekendStreakMultiplier;
+    const isStreakBonusEligible = previousStreak > 0;
+    let streakBonus = 0;
+    if (isStreakBonusEligible) {
+      streakBonus =
+        DAILY_REWARD_RULES.streakStep *
+        Math.min(streak, DAILY_REWARD_RULES.streakCap);
+      if (isWeekendInTimeZone(new Date(), DAILY_QUIZ_SEASON.timezone)) {
+        streakBonus *= DAILY_REWARD_RULES.weekendStreakMultiplier;
+      }
     }
 
     const rewards = {

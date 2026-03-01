@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js";
+import { backendClient } from "./backendClient.js?v=20260301-dailyfix2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -940,7 +940,19 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
   }
 
   try {
-    const payload = await backendClient.fetchDailyQuizToday();
+    const fetchToday =
+      backendClient.fetchDailyQuizToday ||
+      backendClient.fetchDailyQuiz ||
+      backendClient.fetchQuizToday ||
+      backendClient.fetchquiztoday ||
+      backendClient.fecthQuizToday ||
+      backendClient.fecthquiztoday;
+
+    if (typeof fetchToday !== "function") {
+      throw new Error("Daily API method unavailable in backendClient.");
+    }
+
+    const payload = await fetchToday.call(backendClient);
     dailyQuizState = normalizeDailyQuizPayload(payload);
     if (dailyQuizState.today?.completed) {
       markDailyPopupSeen(dailyQuizState.today.date);

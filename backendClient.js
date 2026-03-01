@@ -210,6 +210,27 @@ export const backendClient = {
     return get("/daily-quiz/today");
   },
 
+  // Backward-compatible aliases for older engine bundles.
+  fetchDailyQuiz() {
+    return get("/daily-quiz/today");
+  },
+
+  fetchQuizToday() {
+    return get("/daily-quiz/today");
+  },
+
+  fetchquiztoday() {
+    return get("/daily-quiz/today");
+  },
+
+  fecthQuizToday() {
+    return get("/daily-quiz/today");
+  },
+
+  fecthquiztoday() {
+    return get("/daily-quiz/today");
+  },
+
   submitDailyQuiz(payload = {}) {
     return post("/daily-quiz/submit", payload);
   },

@@ -1,14 +1,14 @@
-const CACHE_VERSION = "ajix-quiz-v15-dailyfix1";
+const CACHE_VERSION = "ajix-quiz-v16-dailyfix2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/styles.css?v=20260301-dailyfix1",
-  "/engine.js?v=20260301-dailyfix1",
+  "/styles.css?v=20260301-dailyfix2",
+  "/engine.js?v=20260301-dailyfix2",
   "/data.js",
-  "/backendClient.js",
+  "/backendClient.js?v=20260301-dailyfix2",
   "/manifest.webmanifest?v=20260301-pwasplit6",
   "/admin-manifest.webmanifest?v=20260301-adminpwa7",
   "/icons/icon-192-f1.png?v=20260301-iconsource3",

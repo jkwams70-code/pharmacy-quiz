@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Allow: /topics/
 Disallow: /admin/
+Disallow: /backend/
 
 Sitemap: https://ajixpharmacy.online/sitemap.xml

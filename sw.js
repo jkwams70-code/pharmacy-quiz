@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-quiz-v12-exactsource2";
+const CACHE_VERSION = "ajix-quiz-v14-iconsource3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -9,14 +9,14 @@ const STATIC_ASSETS = [
   "/engine.js?v=20260228-darkfix2",
   "/data.js",
   "/backendClient.js",
-  "/manifest.webmanifest?v=20260301-pwasplit4",
-  "/admin-manifest.webmanifest?v=20260301-adminpwa5",
-  "/icons/icon-192-f1.png?v=20260301-exactsource2",
-  "/icons/icon-512-f1.png?v=20260301-exactsource2",
-  "/icons/favicon-48.png?v=20260301-exactsource2",
-  "/icons/favicon-32.png?v=20260301-exactsource2",
-  "/icons/favicon-16.png?v=20260301-exactsource2",
-  "/icons/favicon-180.png?v=20260301-exactsource2",
+  "/manifest.webmanifest?v=20260301-pwasplit6",
+  "/admin-manifest.webmanifest?v=20260301-adminpwa7",
+  "/icons/icon-192-f1.png?v=20260301-iconsource3",
+  "/icons/icon-512-f1.png?v=20260301-iconsource3",
+  "/icons/favicon-48.png?v=20260301-iconsource3",
+  "/icons/favicon-32.png?v=20260301-iconsource3",
+  "/icons/favicon-16.png?v=20260301-iconsource3",
+  "/icons/favicon-180.png?v=20260301-iconsource3",
 ];
 
 self.addEventListener("install", (event) => {

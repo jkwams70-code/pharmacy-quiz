@@ -448,6 +448,24 @@
                 <div class="tile-arrow">&rarr;</div>
               </div>
 
+              <button
+                id="daily-quiz-btn"
+                type="button"
+                class="menu-tile daily-quiz-mode mode-btn"
+                data-tooltip="10 random questions daily. Earn gems, keep streaks, and sharpen exam readiness."
+              >
+                <div class="tile-content">
+                  <div class="tile-title">
+                    <span class="tile-icon" aria-hidden="true">&#127919;</span>
+                    <span>Daily Quiz</span>
+                  </div>
+                  <div id="daily-quiz-meta" class="daily-quiz-meta">
+                    Loading today's challenge...
+                  </div>
+                </div>
+                <div class="tile-arrow">&rarr;</div>
+              </button>
+
               <div class="menu-divider"></div>
 
               <h3 class="menu-section-title analytics-heading">Analytics</h3>
@@ -603,6 +621,53 @@
                 Exam History &#9660;
               </div>
               <div id="exam-history" class="history-content hidden"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="daily-setup" class="setup-page">
+        <div class="study-fixed-header">
+          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+          <div class="study-main-header exam-header-layout">
+            <h2 class="setup-page-title">&#127919; Daily Quiz Challenge</h2>
+            <button id="daily-back-btn" class="study-menu-btn">&#9776; Menu</button>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="setup-card daily-setup-card">
+            <div id="daily-quiz-alert" class="daily-quiz-alert hidden">
+              Today's challenge is ready. Complete it before midnight to keep your streak.
+            </div>
+            <div id="daily-window-line" class="daily-window-line"></div>
+            <div id="daily-status-line" class="daily-status-line">Checking status...</div>
+
+            <div class="daily-metrics-grid">
+              <div class="daily-metric">
+                <div class="daily-metric-label">Streak</div>
+                <div id="daily-streak-value" class="daily-metric-value">0</div>
+              </div>
+              <div class="daily-metric">
+                <div class="daily-metric-label">Gems</div>
+                <div id="daily-gems-value" class="daily-metric-value">0</div>
+              </div>
+              <div class="daily-metric">
+                <div class="daily-metric-label">Completed Days</div>
+                <div id="daily-completed-value" class="daily-metric-value">0</div>
+              </div>
+            </div>
+
+            <div id="daily-reward-line" class="daily-reward-line"></div>
+            <div id="daily-result-line" class="daily-result-line hidden"></div>
+
+            <div class="daily-actions">
+              <button id="start-daily-btn" type="button" class="start-btn">
+                Start Today's 10 Questions
+              </button>
+              <button id="refresh-daily-btn" type="button" class="study-menu-btn">
+                Refresh
+              </button>
             </div>
           </div>
         </div>

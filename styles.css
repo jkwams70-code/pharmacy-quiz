@@ -949,6 +949,95 @@ body.font-hand {
   margin-bottom: auto;
 }
 
+#daily-setup .setup-card {
+  border-top: 5px solid #7c3aed;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.daily-setup-card {
+  display: grid;
+  gap: 14px;
+}
+
+.daily-window-line {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 700;
+}
+
+.daily-status-line {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.daily-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.daily-metric {
+  border: 1px solid #ddd6fe;
+  border-radius: 12px;
+  background: #faf5ff;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.daily-metric-label {
+  font-size: 11px;
+  color: #6b21a8;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.daily-metric-value {
+  font-size: 1.18rem;
+  color: #4c1d95;
+  font-weight: 900;
+}
+
+.daily-reward-line {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.daily-result-line {
+  font-size: 13px;
+  color: #0f766e;
+  line-height: 1.5;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-weight: 700;
+}
+
+.daily-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.daily-actions .start-btn {
+  flex: 1 1 240px;
+}
+
+.daily-quiz-alert {
+  border: 1px solid #f5d0fe;
+  background: #fdf4ff;
+  border-radius: 10px;
+  color: #86198f;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
 .menu-section-title {
   color: #0f3f7f;
   font-size: 1.05rem;
@@ -1037,6 +1126,15 @@ body.font-hand {
   background: linear-gradient(160deg, #fffaf3, #fff5e7);
 }
 
+.menu-tile.daily-quiz-mode {
+  width: 100%;
+  text-decoration: none;
+  text-align: left;
+  color: inherit;
+  border-left: 6px solid #7c3aed;
+  background: linear-gradient(160deg, #f8f4ff, #efe8ff);
+}
+
 .menu-tile.topic-library-btn {
   width: 100%;
   text-decoration: none;
@@ -1049,6 +1147,18 @@ body.font-hand {
 .menu-tile.topic-library-btn:hover {
   background: #fff3e6;
   border-color: #f3cda6;
+}
+
+.menu-tile.daily-quiz-mode:hover {
+  background: #f2ebff;
+  border-color: #d6bcfa;
+}
+
+.daily-quiz-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #5b21b6;
+  font-weight: 700;
 }
 
 .menu-tile:hover {
@@ -2371,13 +2481,15 @@ body.headers-collapsed .app-header {
   }
 
   #study-setup .study-scroll-content,
-  #exam-setup .study-scroll-content {
+  #exam-setup .study-scroll-content,
+  #daily-setup .study-scroll-content {
     flex: 1;
     min-height: 0;
   }
 
   #study-setup .setup-card,
-  #exam-setup .setup-card {
+  #exam-setup .setup-card,
+  #daily-setup .setup-card {
     margin-top: auto;
     margin-bottom: auto;
   }
@@ -2541,6 +2653,14 @@ body.headers-collapsed .app-header {
 
   .topic-library-controls {
     grid-template-columns: 1fr;
+  }
+
+  .daily-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-actions {
+    flex-direction: column;
   }
 
   .settings-grid {
@@ -2747,9 +2867,49 @@ body.theme-dark .menu-tile {
 body.theme-dark .menu-tile.study-mode,
 body.theme-dark .menu-tile.exam-mode,
 body.theme-dark .menu-tile.dashboard-mode,
+body.theme-dark .menu-tile.daily-quiz-mode,
 body.theme-dark .menu-tile.topic-library-btn {
   border-left-color: #4b5563 !important;
   background: linear-gradient(160deg, #d6dde6, #c8d0da) !important;
+}
+
+body.theme-dark .daily-quiz-meta {
+  color: #d8b4fe;
+}
+
+body.theme-dark #daily-setup .setup-card {
+  border-top-color: #a78bfa;
+}
+
+body.theme-dark .daily-window-line,
+body.theme-dark .daily-status-line,
+body.theme-dark .daily-reward-line {
+  color: #cbd5e1;
+}
+
+body.theme-dark .daily-metric {
+  border-color: #4c1d95;
+  background: rgba(76, 29, 149, 0.28);
+}
+
+body.theme-dark .daily-metric-label {
+  color: #ddd6fe;
+}
+
+body.theme-dark .daily-metric-value {
+  color: #f5f3ff;
+}
+
+body.theme-dark .daily-result-line {
+  color: #99f6e4;
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(13, 148, 136, 0.18);
+}
+
+body.theme-dark .daily-quiz-alert {
+  color: #f0abfc;
+  border-color: rgba(217, 70, 239, 0.42);
+  background: rgba(134, 25, 143, 0.2);
 }
 
 body.theme-dark .exam-identity-bar,

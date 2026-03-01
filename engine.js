@@ -137,6 +137,27 @@ function byQuestionIdAscending(a, b) {
   return Number(a?.id || 0) - Number(b?.id || 0);
 }
 
+function mapBackendQuestionToLocal(q = {}) {
+  return {
+    id: q.id,
+    text: q.text || q.question || "",
+    question: q.question || q.text || "",
+    category: normalizeMajorCategory(
+      q.category,
+      `${String(q.question || q.text || "")} ${String(q.explanation || "")}`,
+    ),
+    options: Array.isArray(q.options) ? q.options : [],
+    statements: Array.isArray(q.statements) ? q.statements : [],
+    caseId: q.caseId || "",
+    caseBlock: q.caseBlock || "",
+    correct: q.correct,
+    explanation: q.explanation || "",
+    type: q.type || "single",
+    topicSlug: q.topicSlug || "",
+    sectionId: q.sectionId || "",
+  };
+}
+
 let questionBank = baseQuestions.map(withMajorCategory).sort(byQuestionIdAscending);
 const caseMap = {};
 let backendReady = false;
@@ -147,6 +168,9 @@ let topicCatalog = { topics: [], categories: [] };
 let topicCatalogLoaded = false;
 let topicLibraryReturnScreen = "quiz-menu";
 let topicViewerReturnScreen = "topic-library";
+let dailyQuizState = null;
+let dailyQuizSessionMeta = null;
+let dailyQuizPopupShownDate = "";
 
 // Load questions from backend if available
 async function loadQuestionsFromBackend() {
@@ -154,26 +178,7 @@ async function loadQuestionsFromBackend() {
     const questions = await backendClient.fetchQuestions({ limit: 1000 });
     if (Array.isArray(questions) && questions.length > 0) {
       // Map backend format to local format for compatibility
-      questionBank = questions
-        .map((q) => ({
-          id: q.id,
-          text: q.text || q.question || "",
-          question: q.question || q.text || "",
-          category: normalizeMajorCategory(
-            q.category,
-            `${String(q.question || q.text || "")} ${String(q.explanation || "")}`,
-          ),
-          options: q.options,
-          statements: Array.isArray(q.statements) ? q.statements : [],
-          caseId: q.caseId || "",
-          caseBlock: q.caseBlock || "",
-          correct: q.correct,
-          explanation: q.explanation || "",
-          type: q.type || "single",
-          topicSlug: q.topicSlug || "",
-          sectionId: q.sectionId || "",
-        }))
-        .sort(byQuestionIdAscending);
+      questionBank = questions.map(mapBackendQuestionToLocal).sort(byQuestionIdAscending);
       backendReady = true;
       reconcileLocalQuestionStats();
       console.info(`Loaded ${questionBank.length} questions from backend`);
@@ -337,6 +342,8 @@ function getWeakCategories(threshold = 80) {
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");
 const dashboardBtn = document.querySelector(".dashboard-mode");
+const dailyQuizBtn = document.getElementById("daily-quiz-btn");
+const dailyQuizMetaEl = document.getElementById("daily-quiz-meta");
 const topicLibraryBtn = document.getElementById("open-topic-library-btn");
 const historyBtn = document.querySelector(".history-mode");
 if (historyBtn) {
@@ -480,8 +487,23 @@ const appFontSelect = document.getElementById("app-font-select");
 const appReduceMotionCheckbox = document.getElementById("app-reduce-motion");
 const appClearLocalBtn = document.getElementById("app-clear-local-btn");
 const settingsFeedbackEl = document.getElementById("settings-feedback");
+const dailyBackBtn = document.getElementById("daily-back-btn");
+const startDailyBtn = document.getElementById("start-daily-btn");
+const refreshDailyBtn = document.getElementById("refresh-daily-btn");
+const dailyWindowLineEl = document.getElementById("daily-window-line");
+const dailyStatusLineEl = document.getElementById("daily-status-line");
+const dailyRewardLineEl = document.getElementById("daily-reward-line");
+const dailyResultLineEl = document.getElementById("daily-result-line");
+const dailyAlertEl = document.getElementById("daily-quiz-alert");
+const dailyStreakValueEl = document.getElementById("daily-streak-value");
+const dailyGemsValueEl = document.getElementById("daily-gems-value");
+const dailyCompletedValueEl = document.getElementById("daily-completed-value");
+const reviewTitleEl = document.querySelector("#review-screen .review-title");
+const reviewTimerStatusEl = document.getElementById("review-timer");
+const submitExamBtn = document.getElementById("submit-exam");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
+const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
 const themeMediaQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
     ? window.matchMedia("(prefers-color-scheme: dark)")
@@ -639,13 +661,429 @@ function clearDeviceLocalCache() {
     "currentStreak",
     "activeStudySessionId",
     "activeExamSessionId",
+    DAILY_QUIZ_POPUP_STORAGE_KEY,
   ];
   keysToClear.forEach((key) => localStorage.removeItem(key));
+}
+
+function formatDateKey(dateKey = "") {
+  const value = String(dateKey || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value || "N/A";
+  const [year, month, day] = value.split("-").map((part) => Number(part));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function normalizeDailyQuizPayload(raw = {}) {
+  const season =
+    raw?.season && typeof raw.season === "object" ? raw.season : {};
+  const rewardRules =
+    raw?.rewardRules && typeof raw.rewardRules === "object"
+      ? raw.rewardRules
+      : {};
+  const today = raw?.today && typeof raw.today === "object" ? raw.today : {};
+  const stats = raw?.stats && typeof raw.stats === "object" ? raw.stats : {};
+  const result = raw?.result && typeof raw.result === "object" ? raw.result : null;
+
+  return {
+    season: {
+      key: String(season.key || ""),
+      start: String(season.start || ""),
+      end: String(season.end || ""),
+      timezone: String(season.timezone || "UTC"),
+      active: Boolean(season.active),
+      questionsPerDay: Number(season.questionsPerDay) || 10,
+    },
+    rewardRules: {
+      completion: Number(rewardRules.completion) || 0,
+      perCorrect: Number(rewardRules.perCorrect) || 0,
+      perfect: Number(rewardRules.perfect) || 0,
+      streakStep: Number(rewardRules.streakStep) || 0,
+      streakCap: Number(rewardRules.streakCap) || 0,
+      weekendStreakMultiplier: Number(rewardRules.weekendStreakMultiplier) || 1,
+    },
+    today: {
+      date: String(today.date || ""),
+      completed: Boolean(today.completed),
+      questionIds: Array.isArray(today.questionIds)
+        ? today.questionIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+        : [],
+      score: Number.isFinite(Number(today.score)) ? Number(today.score) : null,
+      total: Number.isFinite(Number(today.total)) ? Number(today.total) : null,
+      percent: Number.isFinite(Number(today.percent)) ? Number(today.percent) : null,
+      submittedAt: today.submittedAt ? String(today.submittedAt) : null,
+      rewards: today.rewards && typeof today.rewards === "object" ? today.rewards : null,
+    },
+    stats: {
+      seasonKey: String(stats.seasonKey || ""),
+      gems: Number(stats.gems) || 0,
+      streak: Number(stats.streak) || 0,
+      lastCompletedDate: stats.lastCompletedDate ? String(stats.lastCompletedDate) : null,
+      totalCompleted: Number(stats.totalCompleted) || 0,
+      completedDays: Number(stats.completedDays) || 0,
+      totalSeasonDays: Number(stats.totalSeasonDays) || 0,
+      progressPercent: Number(stats.progressPercent) || 0,
+    },
+    result,
+  };
+}
+
+function markDailyPopupSeen(dateKey = "") {
+  const value = String(dateKey || "").trim();
+  if (!value) return;
+  dailyQuizPopupShownDate = value;
+  localStorage.setItem(DAILY_QUIZ_POPUP_STORAGE_KEY, value);
+}
+
+function markQuestionAsWeak(questionId) {
+  const key = normalizeQuestionIdKey(questionId);
+  if (!key) return false;
+  const row = weakTracker[key];
+  if (row && typeof row === "object") {
+    const hadProgress = Number(row.roundsPassed) > 0;
+    row.roundsPassed = 0;
+    return hadProgress;
+  }
+  weakTracker[key] = { roundsPassed: 0 };
+  return true;
+}
+
+function addWrongQuestionsToWeakTracker(questionIds = []) {
+  let changed = false;
+  questionIds.forEach((questionId) => {
+    if (markQuestionAsWeak(questionId)) {
+      changed = true;
+    }
+  });
+  if (changed) {
+    saveWeakTracker();
+  }
+}
+
+function resetDailyQuizRuntimeState() {
+  dailyQuizState = null;
+  dailyQuizSessionMeta = null;
+  if (mode === "daily") {
+    mode = "";
+    active = [];
+    userAnswers = {};
+    inReview = false;
+  }
+}
+
+function renderDailyQuizUi() {
+  const userSummary = currentUser?.dailyQuiz || {};
+  const state = dailyQuizState;
+
+  if (!currentUser) {
+    if (dailyQuizMetaEl) {
+      dailyQuizMetaEl.textContent = "Sign in to unlock Daily Quiz rewards.";
+    }
+    if (dailyWindowLineEl) {
+      dailyWindowLineEl.textContent = "Sign in to view today's challenge window.";
+    }
+    if (dailyStatusLineEl) {
+      dailyStatusLineEl.textContent = "Authentication required.";
+    }
+    if (dailyRewardLineEl) {
+      dailyRewardLineEl.textContent =
+        "Complete daily challenges to earn gems and build your streak.";
+    }
+    if (dailyStreakValueEl) dailyStreakValueEl.textContent = "0";
+    if (dailyGemsValueEl) dailyGemsValueEl.textContent = "0";
+    if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = "0";
+    if (dailyResultLineEl) {
+      dailyResultLineEl.classList.add("hidden");
+      dailyResultLineEl.textContent = "";
+    }
+    if (dailyAlertEl) {
+      dailyAlertEl.classList.add("hidden");
+      dailyAlertEl.textContent = "";
+    }
+    if (startDailyBtn) {
+      startDailyBtn.disabled = true;
+      startDailyBtn.textContent = "Sign In Required";
+    }
+    if (refreshDailyBtn) {
+      refreshDailyBtn.disabled = true;
+    }
+    return;
+  }
+
+  const streak = Number(state?.stats?.streak ?? userSummary.streak) || 0;
+  const gems = Number(state?.stats?.gems ?? userSummary.gems) || 0;
+  const completedDays =
+    Number(state?.stats?.completedDays ?? userSummary.completedDays) || 0;
+  const season = state?.season || {};
+  const today = state?.today || {};
+  const rules = state?.rewardRules || {};
+  const seasonActive = Boolean(season.active);
+  const todayCompleted = Boolean(today.completed);
+  const todayDate = String(today.date || "");
+  const hasUnseenDailyPrompt =
+    seasonActive &&
+    !todayCompleted &&
+    todayDate &&
+    dailyQuizPopupShownDate !== todayDate;
+
+  if (dailyQuizMetaEl) {
+    const status = hasUnseenDailyPrompt
+      ? "New challenge"
+      : !seasonActive
+      ? "Season closed"
+      : todayCompleted
+        ? "Completed today"
+        : "Ready today";
+    dailyQuizMetaEl.textContent = `Streak ${streak} | Gems ${gems} | ${status}`;
+  }
+
+  if (dailyWindowLineEl) {
+    if (season.start && season.end) {
+      dailyWindowLineEl.textContent = `Season window: ${formatDateKey(season.start)} - ${formatDateKey(season.end)} (${season.timezone || "UTC"})`;
+    } else {
+      dailyWindowLineEl.textContent = "Daily challenge window is loading...";
+    }
+  }
+
+  if (dailyStatusLineEl) {
+    if (!season.start) {
+      dailyStatusLineEl.textContent = "Checking status...";
+    } else if (!seasonActive) {
+      dailyStatusLineEl.textContent = "The current Daily Quiz season is closed.";
+    } else if (todayCompleted) {
+      dailyStatusLineEl.textContent = `Completed ${today.score ?? 0}/${today.total ?? season.questionsPerDay ?? 10} today.`;
+    } else {
+      const count = Number(today.total) || Number(season.questionsPerDay) || 10;
+      dailyStatusLineEl.textContent = `Today's challenge is ready: ${count} questions.`;
+    }
+  }
+
+  if (dailyStreakValueEl) dailyStreakValueEl.textContent = String(streak);
+  if (dailyGemsValueEl) dailyGemsValueEl.textContent = String(gems);
+  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedDays);
+
+  if (dailyRewardLineEl) {
+    dailyRewardLineEl.textContent =
+      `Rewards: +${rules.completion || 0} completion, +${rules.perCorrect || 0} per correct, +${rules.perfect || 0} perfect bonus, streak +${rules.streakStep || 0} up to ${rules.streakCap || 0} days.`;
+  }
+
+  if (dailyResultLineEl) {
+    if (todayCompleted && today.rewards) {
+      const rewardTotal = Number(today.rewards.total) || 0;
+      dailyResultLineEl.classList.remove("hidden");
+      dailyResultLineEl.textContent = `Today result: ${today.score ?? 0}/${today.total ?? season.questionsPerDay ?? 10} (${today.percent ?? 0}%). Gems earned: +${rewardTotal}.`;
+    } else {
+      dailyResultLineEl.classList.add("hidden");
+      dailyResultLineEl.textContent = "";
+    }
+  }
+
+  if (dailyAlertEl) {
+    if (seasonActive && !todayCompleted) {
+      dailyAlertEl.classList.remove("hidden");
+      dailyAlertEl.textContent =
+        "Today's challenge is ready. Complete it before midnight to protect your streak.";
+    } else {
+      dailyAlertEl.classList.add("hidden");
+      dailyAlertEl.textContent = "";
+    }
+  }
+
+  if (refreshDailyBtn) {
+    refreshDailyBtn.disabled = false;
+  }
+
+  if (startDailyBtn) {
+    const resumeAvailable =
+      mode === "daily" &&
+      dailyQuizSessionMeta?.date &&
+      dailyQuizSessionMeta.date === todayDate &&
+      Array.isArray(active) &&
+      active.length > 0;
+
+    if (!seasonActive) {
+      startDailyBtn.disabled = true;
+      startDailyBtn.textContent = "Season Closed";
+    } else if (todayCompleted) {
+      startDailyBtn.disabled = true;
+      startDailyBtn.textContent = "Completed for Today";
+    } else if (resumeAvailable) {
+      startDailyBtn.disabled = false;
+      startDailyBtn.textContent = "Resume Today's Quiz";
+    } else {
+      const count = Number(today.total) || Number(season.questionsPerDay) || 10;
+      startDailyBtn.disabled = false;
+      startDailyBtn.textContent = `Start Today's ${count} Questions`;
+    }
+  }
+}
+
+async function refreshDailyQuizState({ force = false, silent = false } = {}) {
+  if (!currentUser) {
+    dailyQuizState = null;
+    renderDailyQuizUi();
+    return null;
+  }
+
+  if (!force && dailyQuizState) {
+    renderDailyQuizUi();
+    return dailyQuizState;
+  }
+
+  if (!silent && dailyStatusLineEl) {
+    dailyStatusLineEl.textContent = "Checking today's challenge...";
+  }
+
+  try {
+    const payload = await backendClient.fetchDailyQuizToday();
+    dailyQuizState = normalizeDailyQuizPayload(payload);
+    if (dailyQuizState.today?.completed) {
+      markDailyPopupSeen(dailyQuizState.today.date);
+    }
+    renderDailyQuizUi();
+    return dailyQuizState;
+  } catch (error) {
+    dailyQuizState = null;
+    const message = String(error?.message || "Daily challenge unavailable.");
+    const safeMessage = message.replace(/\s+\(\d+\)\s*$/, "");
+    if (dailyQuizMetaEl) {
+      dailyQuizMetaEl.textContent = message.includes("(401)")
+        ? "Sign in to unlock Daily Quiz rewards."
+        : safeMessage;
+    }
+    if (dailyStatusLineEl) dailyStatusLineEl.textContent = safeMessage;
+    if (dailyRewardLineEl) {
+      dailyRewardLineEl.textContent =
+        "Could not load Daily Quiz details right now. Try Refresh.";
+    }
+    if (dailyResultLineEl) {
+      dailyResultLineEl.classList.add("hidden");
+      dailyResultLineEl.textContent = "";
+    }
+    if (startDailyBtn) {
+      startDailyBtn.disabled = true;
+      startDailyBtn.textContent = "Start Unavailable";
+    }
+    return null;
+  }
+}
+
+async function openDailySetup() {
+  const allowed = await ensureAuthenticated();
+  if (!allowed) return;
+  showScreen("daily-setup");
+  await refreshDailyQuizState({ force: true });
+  if (dailyQuizState?.today?.date) {
+    markDailyPopupSeen(dailyQuizState.today.date);
+  }
+}
+
+async function startDailyQuizSession() {
+  const allowed = await ensureAuthenticated();
+  if (!allowed) return;
+
+  const state = await refreshDailyQuizState({ force: true });
+  if (!state) return;
+
+  const today = state.today || {};
+  const season = state.season || {};
+  if (!season.active) {
+    renderDailyQuizUi();
+    return;
+  }
+  if (today.completed) {
+    renderDailyQuizUi();
+    return;
+  }
+
+  const todayDate = String(today.date || "");
+  const resumeAvailable =
+    mode === "daily" &&
+    dailyQuizSessionMeta?.date &&
+    dailyQuizSessionMeta.date === todayDate &&
+    Array.isArray(active) &&
+    active.length > 0;
+
+  if (resumeAvailable) {
+    showScreen("quiz-area");
+    showQuestion();
+    return;
+  }
+
+  const questionIds = Array.isArray(today.questionIds)
+    ? today.questionIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+    : [];
+
+  if (questionIds.length === 0) {
+    alert("Daily questions are not ready yet. Tap Refresh and try again.");
+    return;
+  }
+
+  let backendQuestions = [];
+  try {
+    backendQuestions = await backendClient.fetchQuestionsByIds(questionIds);
+  } catch {
+    backendQuestions = [];
+  }
+
+  const mappedQuestions = backendQuestions.map(mapBackendQuestionToLocal);
+  const questionById = new Map(mappedQuestions.map((q) => [Number(q.id), q]));
+
+  if (questionById.size < questionIds.length) {
+    questionBank.forEach((q) => {
+      const id = Number(q.id);
+      if (!questionById.has(id)) {
+        questionById.set(id, q);
+      }
+    });
+  }
+
+  const orderedQuestions = questionIds
+    .map((id) => questionById.get(id))
+    .filter(Boolean)
+    .map((q) => ({ ...q }));
+
+  if (orderedQuestions.length !== questionIds.length) {
+    alert("Some daily questions are unavailable right now. Please refresh and retry.");
+    return;
+  }
+
+  mode = "daily";
+  clearAiExplainStateSession();
+  clearInterval(examTimer);
+  clearInterval(reviewTimer);
+  examTimer = null;
+  current = 0;
+  score = 0;
+  userAnswers = {};
+  inReview = false;
+  inDetailedReview = false;
+  inStudyReview = false;
+  answeredCurrent = false;
+  studySessionEnded = false;
+  active = orderedQuestions;
+  dailyQuizSessionMeta = {
+    date: todayDate,
+    questionIds: [...questionIds],
+  };
+  markDailyPopupSeen(todayDate);
+  updateModeIndicator("daily");
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
+  showScreen("quiz-area");
+  showQuestion();
 }
 
 loadUiPrefs();
 applyUiPrefs();
 initHeaderCollapseState();
+dailyQuizPopupShownDate = String(localStorage.getItem(DAILY_QUIZ_POPUP_STORAGE_KEY) || "");
+renderDailyQuizUi();
 
 if (themeMediaQuery) {
   const onThemeChange = () => {
@@ -1358,6 +1796,7 @@ function renderAuthState() {
     updateProfileButtonAvatar(currentUser.profileImage || "");
     fillProfileForm();
     refreshProfilePhotoDeleteVisibility();
+    renderDailyQuizUi();
     return;
   }
 
@@ -1369,6 +1808,7 @@ function renderAuthState() {
   closeMenuUserHub();
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
+  renderDailyQuizUi();
 }
 
 function setAuthMode(nextMode = "login") {
@@ -1515,7 +1955,11 @@ function clearAiExplainStateSession() {
 
 function canUseAiForCurrentQuestion() {
   if (!currentUser) return false;
-  if ((mode === "exam" || mode === "smart") && !inReview && !inDetailedReview) {
+  if (
+    (mode === "exam" || mode === "smart" || mode === "daily") &&
+    !inReview &&
+    !inDetailedReview
+  ) {
     return false;
   }
   return true;
@@ -1782,6 +2226,7 @@ async function handleAiExplainClick() {
 async function restoreAuthSession() {
   if (!backendClient.isAuthenticated()) {
     currentUser = null;
+    resetDailyQuizRuntimeState();
     renderAuthState();
     return false;
   }
@@ -1789,10 +2234,12 @@ async function restoreAuthSession() {
   try {
     currentUser = await backendClient.fetchMe();
     renderAuthState();
+    await refreshDailyQuizState({ force: true, silent: true });
     return true;
   } catch {
     backendClient.clearToken();
     currentUser = null;
+    resetDailyQuizRuntimeState();
     renderAuthState();
     return false;
   }
@@ -1968,6 +2415,7 @@ async function handleAuthSubmit(event) {
       const response = await backendClient.login({ identifier, password });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
+      await refreshDailyQuizState({ force: true, silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -1988,6 +2436,7 @@ async function handleAuthSubmit(event) {
       });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
+      await refreshDailyQuizState({ force: true, silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -2110,6 +2559,7 @@ if (logoutBtn) {
     if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
+    resetDailyQuizRuntimeState();
     renderAuthState();
     closeAuthModal();
     showScreen("home-screen");
@@ -2333,6 +2783,7 @@ async function deactivateProfileAccount() {
     if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
+    resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
     alert("Account deactivated. It will be deleted automatically after the selected period.");
@@ -2353,6 +2804,7 @@ async function deleteProfileAccount() {
     if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
+    resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
     alert("Account deleted.");
@@ -2584,6 +3036,14 @@ backBtnQuiz.onclick = function () {
 
   if (mode === "exam" || mode === "smart") {
     openExamExitModal();
+    return;
+  }
+
+  if (mode === "daily") {
+    const leave = confirm("Leave Daily Quiz and return to setup?");
+    if (!leave) return;
+    showScreen("daily-setup");
+    renderDailyQuizUi();
   }
 };
 
@@ -2597,6 +3057,14 @@ if (menuBtnQuiz) {
 
     if (mode === "exam" || mode === "smart") {
       openExamExitModal();
+      return;
+    }
+
+    if (mode === "daily") {
+      const leave = confirm("Leave Daily Quiz and return to setup?");
+      if (!leave) return;
+      showScreen("daily-setup");
+      renderDailyQuizUi();
     }
   };
 }
@@ -2674,6 +3142,30 @@ if (studyBtn) {
 if (examBtn) {
   examBtn.onclick = () => {
     showScreen("exam-setup");
+  };
+}
+
+if (dailyQuizBtn) {
+  dailyQuizBtn.onclick = () => {
+    openDailySetup();
+  };
+}
+
+if (dailyBackBtn) {
+  dailyBackBtn.onclick = () => {
+    showScreen("quiz-menu");
+  };
+}
+
+if (refreshDailyBtn) {
+  refreshDailyBtn.onclick = () => {
+    refreshDailyQuizState({ force: true });
+  };
+}
+
+if (startDailyBtn) {
+  startDailyBtn.onclick = () => {
+    startDailyQuizSession();
   };
 }
 
@@ -3072,7 +3564,7 @@ function updateModeIndicator(studyType = null) {
 
   if (!indicator) return;
   if (quizArea) {
-    quizArea.classList.remove("mode-study", "mode-exam", "mode-smart");
+    quizArea.classList.remove("mode-study", "mode-exam", "mode-smart", "mode-daily");
   }
 
   if (mode === "study") {
@@ -3097,6 +3589,12 @@ function updateModeIndicator(studyType = null) {
     if (headerStats) headerStats.style.display = "none";
     if (timerEl) timerEl.classList.remove("hidden");
     if (quizArea) quizArea.classList.add("mode-smart");
+  } else if (mode === "daily") {
+    indicator.innerText = "Daily Quiz";
+
+    if (headerStats) headerStats.style.display = "none";
+    if (timerEl) timerEl.classList.add("hidden");
+    if (quizArea) quizArea.classList.add("mode-daily");
   }
 }
 /* ==============================
@@ -3136,6 +3634,8 @@ function startStudy() {
       currentStreak = state.currentStreak || 0;
 
       updateModeIndicator(state.studyType);
+      nextBtn.onclick = nextQuestion;
+      prevBtn.onclick = previousQuestion;
 
       showScreen("quiz-area");
 
@@ -3230,6 +3730,8 @@ function startStudy() {
     current = 0;
   }
   showScreen("quiz-area");
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
 
   showQuestion();
 }
@@ -3298,6 +3800,8 @@ function startExam(count) {
 
   updateModeIndicator();
   showScreen("quiz-area");
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
   startExamTimer();
   showQuestion();
 }
@@ -3341,6 +3845,9 @@ function showQuestion() {
     const answered = Object.keys(userAnswers).length;
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
+  } else if (mode === "daily") {
+    progressEl.innerText = `Question ${current + 1} of ${active.length}`;
+    liveScore.innerText = "";
   } else {
     progressEl.innerText = "";
     liveScore.innerText = "";
@@ -3365,7 +3872,7 @@ function showQuestion() {
 
   let displayText = q.question;
 
-  if (mode === "exam" || mode === "smart") {
+  if (mode === "exam" || mode === "smart" || mode === "daily") {
     const chronologicalNumber = current + 1;
     displayText =
       `Question ${chronologicalNumber}<br><br>` +
@@ -3460,8 +3967,7 @@ function selectAnswer(value, q) {
 
     if (mode === "study" && studyType === "normal") {
       if (value !== q.correct) {
-        if (!weakTracker[q.id]) {
-          weakTracker[q.id] = { roundsPassed: 0 };
+        if (markQuestionAsWeak(q.id)) {
           saveWeakTracker();
         }
       }
@@ -3499,8 +4005,10 @@ function selectAnswer(value, q) {
     saveStudyProgress();
   }
 
-  if ((mode === "exam" || mode === "smart") && !inReview) {
-    saveExamSession();
+  if ((mode === "exam" || mode === "smart" || mode === "daily") && !inReview) {
+    if (mode === "exam" || mode === "smart") {
+      saveExamSession();
+    }
     if (current < active.length - 1) {
       current++;
       showQuestion();
@@ -3556,11 +4064,13 @@ function selectAnswer(value, q) {
 
 function nextQuestion() {
   if (inStudyReview) return;
-  if (mode === "exam" || mode === "smart") {
+  if (mode === "exam" || mode === "smart" || mode === "daily") {
     nextBtn.innerText = "Skip";
 
     // That will count as wrong later
-    saveExamSession();
+    if (mode === "exam" || mode === "smart") {
+      saveExamSession();
+    }
     if (current < active.length - 1) {
       current++;
       showQuestion();
@@ -3655,7 +4165,7 @@ function restoreSelection(q) {
       }
     }
 
-    if (mode === "exam") {
+    if (mode === "exam" || mode === "daily") {
       // During exam, just highlight selected option visually (neutral)
       if (btnValue === saved) {
         btn.style.background = "#dbe7ff";
@@ -3781,9 +4291,23 @@ function goToReview() {
 
   buildReviewPalette();
 
-  const submitBtn = document.getElementById("submit-exam");
-  submitBtn.classList.remove("hidden");
-  submitBtn.onclick = finishExam;
+  if (reviewTitleEl) {
+    reviewTitleEl.innerText = mode === "daily" ? "Daily Quiz Review" : "Exam Review";
+  }
+  if (submitExamBtn) {
+    submitExamBtn.classList.remove("hidden");
+    submitExamBtn.textContent =
+      mode === "daily" ? "Submit Daily Quiz" : "Submit Exam";
+    submitExamBtn.onclick = finishExam;
+  }
+
+  if (mode === "daily") {
+    clearInterval(reviewTimer);
+    if (reviewTimerStatusEl) {
+      reviewTimerStatusEl.innerText = "Review and submit when ready.";
+    }
+    return;
+  }
 
   startReviewTimer();
 }
@@ -3811,7 +4335,103 @@ function startReviewTimer() {
                            FINISH EXAM
                         ================================= */
 
-function finishExam() {
+async function finishDailyQuizSession() {
+  if (!dailyQuizSessionMeta?.date) {
+    alert("Daily session is missing. Refresh Daily Quiz and try again.");
+    return;
+  }
+
+  clearInterval(examTimer);
+  clearInterval(reviewTimer);
+  examTimer = null;
+  inReview = false;
+  backReviewBtn.classList.add("hidden");
+
+  const answers = {};
+  const sessionIds = Array.isArray(dailyQuizSessionMeta.questionIds)
+    ? dailyQuizSessionMeta.questionIds
+    : [];
+  sessionIds.forEach((id) => {
+    answers[String(id)] = String(userAnswers?.[id] || userAnswers?.[String(id)] || "").trim();
+  });
+
+  try {
+    const response = await backendClient.submitDailyQuiz({ answers });
+    dailyQuizState = normalizeDailyQuizPayload(response);
+
+    const result = dailyQuizState.result || {};
+    const finalScore = Number.isFinite(Number(result.score))
+      ? Number(result.score)
+      : calculateScore();
+    const totalQuestions = Number.isFinite(Number(result.total))
+      ? Number(result.total)
+      : active.length;
+    const percent = Number.isFinite(Number(result.percent))
+      ? Number(result.percent)
+      : Math.round((finalScore / Math.max(1, totalQuestions)) * 100);
+    const gemsAwarded = Number(result.gemsAwarded || result?.rewards?.total) || 0;
+    const streak = Number(result.streak ?? dailyQuizState?.stats?.streak) || 0;
+
+    addWrongQuestionsToWeakTracker(
+      Array.isArray(result.wrongQuestionIds) ? result.wrongQuestionIds : [],
+    );
+
+    active.forEach((q) => {
+      const selected = String(userAnswers?.[q.id] || "").trim();
+      const isCorrect = selected === String(q.correct || "");
+      updatePerformance(q.id, isCorrect);
+    });
+
+    saveSession(`Daily (${totalQuestions})`, finalScore, totalQuestions);
+
+    const resultTitle = document.getElementById("result-title");
+    const percentEl = document.getElementById("result-percentage");
+    const scoreEl = document.getElementById("result-score");
+    const feedbackEl = document.getElementById("result-feedback");
+
+    resultTitle.innerText = "Daily Quiz Complete";
+    percentEl.innerText = `${percent}%`;
+    scoreEl.innerText = `${finalScore} / ${totalQuestions} Correct`;
+    feedbackEl.innerText =
+      `Rewards: +${gemsAwarded} gems. Current streak: ${streak} day${streak === 1 ? "" : "s"}.`;
+
+    if (percent >= 80) {
+      percentEl.style.color = "#15803d";
+    } else if (percent >= 60) {
+      percentEl.style.color = "#f9a825";
+    } else {
+      percentEl.style.color = "#dc2626";
+    }
+
+    showScreen("study-result-screen");
+    document.getElementById("result-review-btn").onclick = showDetailedReview;
+    document.getElementById("result-menu-btn").onclick = goToMenu;
+
+    mode = "";
+    dailyQuizSessionMeta = null;
+    if (dailyQuizState?.today?.date) {
+      markDailyPopupSeen(dailyQuizState.today.date);
+    }
+    renderDailyQuizUi();
+    await refreshDailyQuizState({ force: true, silent: true });
+  } catch (error) {
+    const message = String(error?.message || "Failed to submit Daily Quiz.");
+    if (message.includes("(409)")) {
+      await refreshDailyQuizState({ force: true });
+      alert("Today's Daily Quiz has already been submitted.");
+      showScreen("daily-setup");
+      return;
+    }
+    alert(message.replace(/\s+\(\d+\)\s*$/, ""));
+  }
+}
+
+async function finishExam() {
+  if (mode === "daily") {
+    await finishDailyQuizSession();
+    return;
+  }
+
   clearInterval(examTimer);
   examTimer = null;
 
@@ -4697,6 +5317,7 @@ function showScreen(id) {
     "profile-screen",
     "study-setup",
     "exam-setup",
+    "daily-setup",
     "topic-library",
     "topic-viewer",
     "tour-screen",
@@ -4841,9 +5462,15 @@ window.addEventListener("popstate", function () {
       openExamExitModal();
       return;
     }
+
+    if (mode === "daily") {
+      showScreen("daily-setup");
+      renderDailyQuizUi();
+      return;
+    }
   }
 
-  if (activeId === "study-setup" || activeId === "exam-setup") {
+  if (activeId === "study-setup" || activeId === "exam-setup" || activeId === "daily-setup") {
     showScreen("quiz-menu");
     return;
   }

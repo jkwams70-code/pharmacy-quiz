@@ -206,6 +206,14 @@ export const backendClient = {
     return Array.isArray(data?.categories) ? data.categories : [];
   },
 
+  fetchDailyQuizToday() {
+    return get("/daily-quiz/today");
+  },
+
+  submitDailyQuiz(payload = {}) {
+    return post("/daily-quiz/submit", payload);
+  },
+
   startAttempt(payload) {
     return post("/attempts/start", payload);
   },

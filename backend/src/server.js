@@ -76,6 +76,21 @@ const PROFESSIONAL_TYPE_VALUES = new Set([
 const RESET_CODE_TTL_MINUTES = 15;
 const DEACTIVATE_MAX_DAYS = 30;
 const DELETE_ACCOUNT_CONFIRM_TOKEN = "DELETE_MY_ACCOUNT_CONFIRMED";
+const DAILY_QUIZ_SEASON = {
+  key: "2026-03",
+  start: "2026-03-01",
+  end: "2026-03-31",
+  timezone: "Africa/Accra",
+  questionsPerDay: 10,
+};
+const DAILY_REWARD_RULES = {
+  completion: 20,
+  perCorrect: 1,
+  perfect: 10,
+  streakStep: 5,
+  streakCap: 5,
+  weekendStreakMultiplier: 2,
+};
 
 function isValidEmail(value) {
   return EMAIL_REGEX.test(String(value || "").trim());
@@ -215,6 +230,7 @@ function normalizeExistingUser(rawUser = {}) {
     deactivatedUntil,
     resetCodeHash: rawUser.resetCodeHash || null,
     resetCodeExpiresAt: rawUser.resetCodeExpiresAt || null,
+    dailyQuiz: normalizeDailyQuizState(rawUser.dailyQuiz),
   };
 }
 
@@ -241,6 +257,7 @@ function toPublicUser(user) {
     updatedAt: normalized.updatedAt,
     deactivatedAt: normalized.deactivatedAt,
     deactivatedUntil: normalized.deactivatedUntil,
+    dailyQuiz: summarizeDailyQuizState(normalized.dailyQuiz),
   };
 }
 
@@ -298,6 +315,173 @@ function resolveSubscriptionTier(user) {
 function normalizeProfessionalTypeValue(value) {
   const clean = normalizeWhitespace(value);
   return PROFESSIONAL_TYPE_VALUES.has(clean) ? clean : null;
+}
+
+function dateKeyInTimeZone(dateInput = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  return date.toLocaleDateString("en-CA", { timeZone });
+}
+
+function shiftDateKey(dateKey, days = 0) {
+  const [year, month, day] = String(dateKey || "")
+    .split("-")
+    .map((part) => Number(part));
+  if (!year || !month || !day) return "";
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  utc.setUTCDate(utc.getUTCDate() + Number(days || 0));
+  return utc.toISOString().slice(0, 10);
+}
+
+function isDateWithinDailySeason(dateKey) {
+  const value = String(dateKey || "");
+  return value >= DAILY_QUIZ_SEASON.start && value <= DAILY_QUIZ_SEASON.end;
+}
+
+function isWeekendInTimeZone(dateInput = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone,
+  }).format(dateInput instanceof Date ? dateInput : new Date(dateInput));
+  return weekday === "Sat" || weekday === "Sun";
+}
+
+function hashString32(text) {
+  let hash = 2166136261;
+  const value = String(text || "");
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededShuffle(array, seedText) {
+  let seed = hashString32(seedText);
+  const nextRand = () => {
+    seed = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    seed ^= seed + Math.imul(seed ^ (seed >>> 7), 61 | seed);
+    return ((seed ^ (seed >>> 14)) >>> 0) / 4294967296;
+  };
+  const copy = [...array];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(nextRand() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function normalizeDailyQuizState(rawState = {}) {
+  const days = rawState?.days && typeof rawState.days === "object" ? rawState.days : {};
+  const normalizedDays = {};
+
+  Object.entries(days).forEach(([dateKey, value]) => {
+    if (!isDateWithinDailySeason(dateKey)) return;
+    if (!value || typeof value !== "object") return;
+    const questionIds = Array.isArray(value.questionIds)
+      ? value.questionIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
+      : [];
+    normalizedDays[dateKey] = {
+      questionIds,
+      submittedAt: value.submittedAt ? String(value.submittedAt) : null,
+      score: Number.isFinite(Number(value.score)) ? Number(value.score) : null,
+      total: Number.isFinite(Number(value.total)) ? Number(value.total) : null,
+      percent: Number.isFinite(Number(value.percent)) ? Number(value.percent) : null,
+      rewards: value.rewards && typeof value.rewards === "object" ? value.rewards : null,
+    };
+  });
+
+  return {
+    seasonKey: String(rawState?.seasonKey || DAILY_QUIZ_SEASON.key),
+    gems: Number.isFinite(Number(rawState?.gems)) ? Number(rawState.gems) : 0,
+    streak: Number.isFinite(Number(rawState?.streak)) ? Number(rawState.streak) : 0,
+    lastCompletedDate: rawState?.lastCompletedDate
+      ? String(rawState.lastCompletedDate)
+      : null,
+    totalCompleted: Number.isFinite(Number(rawState?.totalCompleted))
+      ? Number(rawState.totalCompleted)
+      : 0,
+    days: normalizedDays,
+  };
+}
+
+function summarizeDailyQuizState(rawState = {}) {
+  const state = normalizeDailyQuizState(rawState);
+  const completedDays = Object.values(state.days).filter((row) => Boolean(row?.submittedAt)).length;
+  const totalSeasonDays = 31;
+  return {
+    seasonKey: state.seasonKey,
+    gems: state.gems,
+    streak: state.streak,
+    lastCompletedDate: state.lastCompletedDate,
+    totalCompleted: state.totalCompleted,
+    completedDays,
+    totalSeasonDays,
+    progressPercent: Math.round((completedDays / totalSeasonDays) * 100),
+  };
+}
+
+function ensureDailyQuizQuestionsForDate(state, userId, dateKey, allQuestions = []) {
+  const perDay = DAILY_QUIZ_SEASON.questionsPerDay;
+  const existingDay = state.days[dateKey];
+  if (existingDay?.questionIds?.length === perDay) {
+    return existingDay.questionIds;
+  }
+
+  const questionIds = allQuestions
+    .map((q) => Number(q.id))
+    .filter((id) => Number.isFinite(id));
+  const seed = `${DAILY_QUIZ_SEASON.key}:${userId}:${dateKey}`;
+  const shuffled = seededShuffle(questionIds, seed);
+  const picked = shuffled.slice(0, perDay);
+  state.days[dateKey] = {
+    ...(existingDay || {}),
+    questionIds: picked,
+    submittedAt: existingDay?.submittedAt || null,
+    score: existingDay?.score ?? null,
+    total: existingDay?.total ?? null,
+    percent: existingDay?.percent ?? null,
+    rewards: existingDay?.rewards || null,
+  };
+  return picked;
+}
+
+function buildDailyQuizResponse(state, dateKey) {
+  const summary = summarizeDailyQuizState(state);
+  const day = state.days[dateKey] || {
+    questionIds: [],
+    submittedAt: null,
+    score: null,
+    total: DAILY_QUIZ_SEASON.questionsPerDay,
+    percent: null,
+    rewards: null,
+  };
+  const nowKey = dateKeyInTimeZone();
+  const seasonActive = isDateWithinDailySeason(nowKey);
+  return {
+    ok: true,
+    season: {
+      key: DAILY_QUIZ_SEASON.key,
+      start: DAILY_QUIZ_SEASON.start,
+      end: DAILY_QUIZ_SEASON.end,
+      timezone: DAILY_QUIZ_SEASON.timezone,
+      active: seasonActive,
+      questionsPerDay: DAILY_QUIZ_SEASON.questionsPerDay,
+    },
+    rewardRules: DAILY_REWARD_RULES,
+    today: {
+      date: dateKey,
+      completed: Boolean(day.submittedAt),
+      questionIds: day.questionIds || [],
+      score: day.score,
+      total: day.total ?? DAILY_QUIZ_SEASON.questionsPerDay,
+      percent: day.percent,
+      rewards: day.rewards || null,
+      submittedAt: day.submittedAt || null,
+    },
+    stats: summary,
+  };
 }
 
 function getAiCapsForTier(tier) {
@@ -914,6 +1098,7 @@ app.post(
       deactivatedUntil: null,
       resetCodeHash: null,
       resetCodeExpiresAt: null,
+      dailyQuiz: normalizeDailyQuizState({}),
     };
 
     users.push(user);
@@ -1462,6 +1647,224 @@ app.get(
   "/api/categories",
   asyncHandler(async (_req, res) => {
     res.json({ categories: [...MAJOR_CATEGORIES] });
+  }),
+);
+
+app.get(
+  "/api/daily-quiz/today",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await purgeExpiredDeactivatedUsers();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
+
+    if (userIndex === -1) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const currentUser = users[userIndex];
+    if (isUserCurrentlyDeactivated(currentUser)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    const todayKey = dateKeyInTimeZone();
+    const seasonActive = isDateWithinDailySeason(todayKey);
+
+    let dailyState = normalizeDailyQuizState(currentUser.dailyQuiz);
+    let changed = false;
+
+    if (dailyState.seasonKey !== DAILY_QUIZ_SEASON.key) {
+      dailyState = {
+        ...dailyState,
+        seasonKey: DAILY_QUIZ_SEASON.key,
+        streak: 0,
+        lastCompletedDate: null,
+        totalCompleted: 0,
+        days: {},
+      };
+      changed = true;
+    }
+
+    if (seasonActive) {
+      const allQuestions = await readCollection("questions");
+      if (allQuestions.length < DAILY_QUIZ_SEASON.questionsPerDay) {
+        res.status(503).json({
+          error: `Daily quiz needs at least ${DAILY_QUIZ_SEASON.questionsPerDay} questions.`,
+        });
+        return;
+      }
+      const before = JSON.stringify(dailyState.days[todayKey] || null);
+      ensureDailyQuizQuestionsForDate(
+        dailyState,
+        currentUser.id,
+        todayKey,
+        allQuestions,
+      );
+      const after = JSON.stringify(dailyState.days[todayKey] || null);
+      if (before !== after) changed = true;
+    }
+
+    if (changed) {
+      users[userIndex] = {
+        ...currentUser,
+        dailyQuiz: dailyState,
+        updatedAt: new Date().toISOString(),
+      };
+      await writeCollection("users", users);
+    }
+
+    res.json(buildDailyQuizResponse(dailyState, todayKey));
+  }),
+);
+
+app.post(
+  "/api/daily-quiz/submit",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await purgeExpiredDeactivatedUsers();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
+
+    if (userIndex === -1) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const currentUser = users[userIndex];
+    if (isUserCurrentlyDeactivated(currentUser)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    const todayKey = dateKeyInTimeZone();
+    if (!isDateWithinDailySeason(todayKey)) {
+      res.status(400).json({ error: "Daily quiz season is not active." });
+      return;
+    }
+
+    let dailyState = normalizeDailyQuizState(currentUser.dailyQuiz);
+    if (dailyState.seasonKey !== DAILY_QUIZ_SEASON.key) {
+      dailyState = {
+        ...dailyState,
+        seasonKey: DAILY_QUIZ_SEASON.key,
+        streak: 0,
+        lastCompletedDate: null,
+        totalCompleted: 0,
+        days: {},
+      };
+    }
+
+    const allQuestions = await readCollection("questions");
+    if (allQuestions.length < DAILY_QUIZ_SEASON.questionsPerDay) {
+      res.status(503).json({
+        error: `Daily quiz needs at least ${DAILY_QUIZ_SEASON.questionsPerDay} questions.`,
+      });
+      return;
+    }
+    const questionById = new Map(
+      allQuestions.map((q) => [Number(q.id), normalizeQuestionForApi(q)]),
+    );
+
+    const questionIds = ensureDailyQuizQuestionsForDate(
+      dailyState,
+      currentUser.id,
+      todayKey,
+      allQuestions,
+    );
+    const day = dailyState.days[todayKey];
+
+    if (day?.submittedAt) {
+      res.status(409).json({
+        error: "Daily quiz already submitted for today.",
+        ...buildDailyQuizResponse(dailyState, todayKey),
+      });
+      return;
+    }
+
+    const answers =
+      req.body?.answers && typeof req.body.answers === "object" ? req.body.answers : {};
+
+    let score = 0;
+    const wrongQuestionIds = [];
+
+    for (const rawId of questionIds) {
+      const id = Number(rawId);
+      const question = questionById.get(id);
+      if (!question) {
+        wrongQuestionIds.push(id);
+        continue;
+      }
+      const selected = String(answers[String(id)] || "").trim();
+      const correct = String(question.correct || "").trim();
+      if (selected && selected === correct) {
+        score += 1;
+      } else {
+        wrongQuestionIds.push(id);
+      }
+    }
+
+    const total = questionIds.length;
+    const percent = total ? Math.round((score / total) * 100) : 0;
+    const yesterdayKey = shiftDateKey(todayKey, -1);
+    const previousStreak =
+      dailyState.lastCompletedDate && dailyState.lastCompletedDate === yesterdayKey
+        ? Number(dailyState.streak || 0)
+        : 0;
+    const streak = previousStreak + 1;
+
+    let streakBonus =
+      DAILY_REWARD_RULES.streakStep *
+      Math.min(streak, DAILY_REWARD_RULES.streakCap);
+    if (isWeekendInTimeZone(new Date(), DAILY_QUIZ_SEASON.timezone)) {
+      streakBonus *= DAILY_REWARD_RULES.weekendStreakMultiplier;
+    }
+
+    const rewards = {
+      completion: DAILY_REWARD_RULES.completion,
+      correctBonus: score * DAILY_REWARD_RULES.perCorrect,
+      perfectBonus: score === total ? DAILY_REWARD_RULES.perfect : 0,
+      streakBonus,
+    };
+    rewards.total =
+      rewards.completion +
+      rewards.correctBonus +
+      rewards.perfectBonus +
+      rewards.streakBonus;
+
+    dailyState.gems = Number(dailyState.gems || 0) + rewards.total;
+    dailyState.streak = streak;
+    dailyState.lastCompletedDate = todayKey;
+    dailyState.totalCompleted = Number(dailyState.totalCompleted || 0) + 1;
+    dailyState.days[todayKey] = {
+      questionIds,
+      submittedAt: new Date().toISOString(),
+      score,
+      total,
+      percent,
+      rewards,
+    };
+
+    users[userIndex] = {
+      ...currentUser,
+      dailyQuiz: dailyState,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeCollection("users", users);
+
+    res.json({
+      ...buildDailyQuizResponse(dailyState, todayKey),
+      result: {
+        score,
+        total,
+        percent,
+        streak,
+        gemsAwarded: rewards.total,
+        wrongQuestionIds,
+        rewards,
+      },
+    });
   }),
 );
 

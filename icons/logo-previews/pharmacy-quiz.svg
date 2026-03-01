@@ -1,0 +1,9 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#00B894"/>
+  <polygon points="110,348 210,108 286,108 386,348 322,348 300,292 196,292 174,348" fill="#FFFFFF"/>
+  <rect x="216" y="242" width="64" height="34" fill="#00B894"/>
+  <rect x="332" y="128" width="64" height="162" fill="#FFD400"/>
+  <path d="M396 290C396 338 358 370 306 370H268V320H304C320 320 332 310 332 294V278H396V290Z" fill="#FFD400"/>
+  <rect x="36" y="372" width="440" height="96" rx="24" fill="#0047FF"/>
+  <text x="256" y="420" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="800" fill="#FFFFFF" letter-spacing="1">PHARMACY QUIZ</text>
+</svg>

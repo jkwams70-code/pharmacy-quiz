@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-quiz-v7-darkfix-adminsplit";
+﻿const CACHE_VERSION = "ajix-quiz-v8-logoexact";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -11,12 +11,12 @@ const STATIC_ASSETS = [
   "/backendClient.js",
   "/manifest.webmanifest?v=20260228-pwasplit1",
   "/admin-manifest.webmanifest?v=20260228-adminpwa2",
-  "/icons/icon-192-f1.png?v=20260227-favicon1",
-  "/icons/icon-512-f1.png?v=20260227-favicon1",
-  "/icons/favicon-48.png?v=20260227-favicon1",
-  "/icons/favicon-32.png?v=20260227-favicon1",
-  "/icons/favicon-16.png?v=20260227-favicon1",
-  "/icons/favicon-180.png?v=20260227-favicon1",
+  "/icons/icon-192-f1.png?v=20260301-logoexact1",
+  "/icons/icon-512-f1.png?v=20260301-logoexact1",
+  "/icons/favicon-48.png?v=20260301-logoexact1",
+  "/icons/favicon-32.png?v=20260301-logoexact1",
+  "/icons/favicon-16.png?v=20260301-logoexact1",
+  "/icons/favicon-180.png?v=20260301-logoexact1",
 ];
 
 self.addEventListener("install", (event) => {

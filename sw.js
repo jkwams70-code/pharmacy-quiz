@@ -1,12 +1,12 @@
-const CACHE_VERSION = "ajix-quiz-v14-iconsource3";
+const CACHE_VERSION = "ajix-quiz-v15-dailyfix1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/styles.css?v=20260228-darkfix2",
-  "/engine.js?v=20260228-darkfix2",
+  "/styles.css?v=20260301-dailyfix1",
+  "/engine.js?v=20260301-dailyfix1",
   "/data.js",
   "/backendClient.js",
   "/manifest.webmanifest?v=20260301-pwasplit6",

@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260302-engage1";
+import { backendClient } from "./backendClient.js?v=20260302-engage2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -378,6 +378,9 @@ const dashboardBtn = document.querySelector(".dashboard-mode");
 const dailyQuizBtn = document.getElementById("daily-quiz-btn");
 const dailyQuizMetaEl = document.getElementById("daily-quiz-meta");
 const topicLibraryBtn = document.getElementById("open-topic-library-btn");
+const rapidDrillBtn = document.getElementById("rapid-drill-btn");
+const suddenDrillBtn = document.getElementById("sudden-drill-btn");
+const clinicalDrillBtn = document.getElementById("clinical-drill-btn");
 const historyBtn = document.querySelector(".history-mode");
 if (historyBtn) {
   historyBtn.onclick = () => {
@@ -631,30 +634,116 @@ function showAnswerCheckmark() {
 function playCorrectAnswerSound() {
   if (uiPrefs?.reduceMotion) return;
   try {
-    const Context = window.AudioContext || window.webkitAudioContext;
-    if (!Context) return;
-    if (!correctAudioContext) {
-      correctAudioContext = new Context();
-    }
-    if (correctAudioContext.state === "suspended") {
-      correctAudioContext.resume().catch(() => {});
-    }
-    const now = correctAudioContext.currentTime;
-    const osc = correctAudioContext.createOscillator();
-    const gain = correctAudioContext.createGain();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(820, now);
-    osc.frequency.exponentialRampToValueAtTime(1160, now + 0.08);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.032, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-    osc.connect(gain);
-    gain.connect(correctAudioContext.destination);
-    osc.start(now);
-    osc.stop(now + 0.16);
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+    playToneSequence(
+      [
+        { frequency: 820, duration: 0.08, type: "triangle", gain: 0.022 },
+        { frequency: 1160, duration: 0.1, type: "triangle", gain: 0.028 },
+      ],
+      ctx,
+    );
   } catch {
     // Keep quiz flow uninterrupted if audio is not available.
   }
+}
+
+function ensureAudioContext() {
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return null;
+  if (!correctAudioContext) {
+    correctAudioContext = new Context();
+  }
+  if (correctAudioContext.state === "suspended") {
+    correctAudioContext.resume().catch(() => {});
+  }
+  return correctAudioContext;
+}
+
+function playToneSequence(sequence = [], ctx = null) {
+  const audioCtx = ctx || ensureAudioContext();
+  if (!audioCtx || !Array.isArray(sequence) || sequence.length === 0) return;
+
+  let cursor = audioCtx.currentTime;
+  sequence.forEach((tone) => {
+    const duration = Math.max(0.04, Number(tone?.duration) || 0.08);
+    const frequency = Math.max(120, Number(tone?.frequency) || 440);
+    const gainPeak = Math.min(0.07, Math.max(0.004, Number(tone?.gain) || 0.02));
+    const type = String(tone?.type || "sine");
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = ["sine", "triangle", "square", "sawtooth"].includes(type) ? type : "sine";
+    osc.frequency.setValueAtTime(frequency, cursor);
+    gain.gain.setValueAtTime(0.0001, cursor);
+    gain.gain.exponentialRampToValueAtTime(gainPeak, cursor + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, cursor + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(cursor);
+    osc.stop(cursor + duration + 0.01);
+    cursor += duration + 0.01;
+  });
+}
+
+function playModeCue(variant = "normal", phase = "start", isGoodResult = false) {
+  if (uiPrefs?.reduceMotion) return;
+  const drill = String(variant || "normal").toLowerCase();
+  if (!["rapid", "sudden", "clinical"].includes(drill)) return;
+
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+
+  if (phase === "start") {
+    if (drill === "rapid") {
+      playToneSequence(
+        [
+          { frequency: 980, duration: 0.06, type: "triangle", gain: 0.024 },
+          { frequency: 1220, duration: 0.07, type: "triangle", gain: 0.028 },
+        ],
+        ctx,
+      );
+      return;
+    }
+    if (drill === "sudden") {
+      playToneSequence(
+        [
+          { frequency: 510, duration: 0.09, type: "square", gain: 0.022 },
+          { frequency: 420, duration: 0.08, type: "square", gain: 0.018 },
+        ],
+        ctx,
+      );
+      return;
+    }
+    playToneSequence(
+      [
+        { frequency: 620, duration: 0.08, type: "sine", gain: 0.02 },
+        { frequency: 760, duration: 0.08, type: "triangle", gain: 0.022 },
+      ],
+      ctx,
+    );
+    return;
+  }
+
+  if (isGoodResult) {
+    playToneSequence(
+      [
+        { frequency: 720, duration: 0.08, type: "triangle", gain: 0.02 },
+        { frequency: 910, duration: 0.08, type: "triangle", gain: 0.024 },
+        { frequency: 1120, duration: 0.1, type: "triangle", gain: 0.026 },
+      ],
+      ctx,
+    );
+    return;
+  }
+
+  playToneSequence(
+    [
+      { frequency: 430, duration: 0.08, type: "sine", gain: 0.016 },
+      { frequency: 340, duration: 0.08, type: "sine", gain: 0.014 },
+    ],
+    ctx,
+  );
 }
 
 function applyQuestionCategoryShift(question) {
@@ -3482,6 +3571,34 @@ document.getElementById("start-exam-btn").onclick = async function () {
   await startExam(count || "5", variant);
 };
 
+function startMenuDrill(variant = "rapid") {
+  const drill = String(variant || "").toLowerCase();
+  if (drill === "rapid") {
+    startExam("5", "rapid");
+    return;
+  }
+  if (drill === "sudden") {
+    startExam("25", "sudden");
+    return;
+  }
+  if (drill === "clinical") {
+    startExam("30", "clinical");
+    return;
+  }
+}
+
+if (rapidDrillBtn) {
+  rapidDrillBtn.onclick = () => startMenuDrill("rapid");
+}
+
+if (suddenDrillBtn) {
+  suddenDrillBtn.onclick = () => startMenuDrill("sudden");
+}
+
+if (clinicalDrillBtn) {
+  clinicalDrillBtn.onclick = () => startMenuDrill("clinical");
+}
+
 function showCountTooltip() {
   const select = document.getElementById("exam-count-select");
 
@@ -3946,7 +4063,15 @@ function updateModeIndicator(studyType = null) {
 
   if (!indicator) return;
   if (quizArea) {
-    quizArea.classList.remove("mode-study", "mode-exam", "mode-smart", "mode-daily");
+    quizArea.classList.remove(
+      "mode-study",
+      "mode-exam",
+      "mode-smart",
+      "mode-daily",
+      "mode-rapid",
+      "mode-sudden",
+      "mode-clinical",
+    );
   }
 
   if (mode === "study") {
@@ -3964,7 +4089,12 @@ function updateModeIndicator(studyType = null) {
 
     if (headerStats) headerStats.style.display = "none";
     if (timerEl) timerEl.classList.remove("hidden");
-    if (quizArea) quizArea.classList.add("mode-exam");
+    if (quizArea) {
+      quizArea.classList.add("mode-exam");
+      if (examVariant === "rapid") quizArea.classList.add("mode-rapid");
+      if (examVariant === "sudden") quizArea.classList.add("mode-sudden");
+      if (examVariant === "clinical") quizArea.classList.add("mode-clinical");
+    }
   } else if (mode === "smart") {
     indicator.innerText = "Smart Exam";
 
@@ -4196,6 +4326,7 @@ function startExam(count, requestedVariant = null) {
 
   examTimeBudget = isRapidFire ? 60 : active.length * 40;
   examTimeLeft = examTimeBudget;
+  playModeCue(variant, "start");
 
   updateModeIndicator();
   showScreen("quiz-area");
@@ -4947,6 +5078,7 @@ async function finishExam() {
   }
 
   let percent = Math.round((finalScore / active.length) * 100);
+  playModeCue(finishedVariant, "end", percent >= 80);
 
   const sessionLabel =
     finishedMode === "smart"

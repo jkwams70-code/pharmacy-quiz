@@ -61,7 +61,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260301-iconsource3" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180.png?v=20260301-iconsource3" />
-    <link rel="stylesheet" href="styles.css?v=20260302-engage1" />
+    <link rel="stylesheet" href="styles.css?v=20260302-engage2" />
   </head>
 
   <body>
@@ -448,6 +448,43 @@
                 <div class="tile-arrow">&rarr;</div>
               </div>
 
+              <div class="drill-orbit-wrap" aria-label="Special drills">
+                <div class="drill-orbit-title">Drill Arena</div>
+                <div class="drill-orbit-subtitle">Quick, focused challenge modes</div>
+                <div class="drill-orbit">
+                  <button
+                    id="rapid-drill-btn"
+                    type="button"
+                    class="drill-orb drill-rapid"
+                    title="Rapid Fire: 60 seconds, 5 questions"
+                    aria-label="Start Rapid Fire drill"
+                  >
+                    <span class="drill-orb-icon" aria-hidden="true">&#9889;</span>
+                    <span class="drill-orb-text">Rapid</span>
+                  </button>
+                  <button
+                    id="sudden-drill-btn"
+                    type="button"
+                    class="drill-orb drill-sudden"
+                    title="Sudden Death: one wrong answer ends the run"
+                    aria-label="Start Sudden Death drill"
+                  >
+                    <span class="drill-orb-icon" aria-hidden="true">&#128165;</span>
+                    <span class="drill-orb-text">Sudden</span>
+                  </button>
+                  <button
+                    id="clinical-drill-btn"
+                    type="button"
+                    class="drill-orb drill-clinical"
+                    title="Clinical Judgement: harder question set"
+                    aria-label="Start Clinical Judgement drill"
+                  >
+                    <span class="drill-orb-icon" aria-hidden="true">&#129504;</span>
+                    <span class="drill-orb-text">Clinical</span>
+                  </button>
+                </div>
+              </div>
+
               <button
                 id="daily-quiz-btn"
                 type="button"
@@ -592,9 +629,6 @@
             <select id="exam-type-select" class="setup-select">
               <option value="normal">Normal Exam</option>
               <option value="smart">Smart Exam (Adaptive)</option>
-              <option value="rapid">Rapid Fire (60s / 5 Questions)</option>
-              <option value="sudden">Sudden Death (1 Mistake Ends)</option>
-              <option value="clinical">Clinical Judgement (Hard)</option>
             </select>
 
             <h3>Select Category</h3>
@@ -1259,7 +1293,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260302-engage1"></script>
+    <script type="module" src="engine.js?v=20260302-engage2"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

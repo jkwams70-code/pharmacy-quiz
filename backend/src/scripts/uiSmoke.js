@@ -181,6 +181,27 @@ async function waitForDebugger(port, timeoutMs = 20000) {
   throw new Error("Edge DevTools endpoint did not become ready in time");
 }
 
+async function waitForHostReady(timeoutMs = 20000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const response = await fetch(`${HOST}/api/health`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      if (response.ok) {
+        return true;
+      }
+    } catch {
+      // Keep retrying until timeout.
+    }
+    await sleep(250);
+  }
+  throw new Error(
+    `UI smoke host not reachable at ${HOST}. Start backend first (npm --prefix Quiz/backend run start).`,
+  );
+}
+
 async function stopProcessTree(pid) {
   await new Promise((resolve) => {
     const killer = spawn("cmd", ["/c", "taskkill", "/PID", String(pid), "/T", "/F"], {
@@ -210,6 +231,7 @@ async function main() {
     throw new Error("UI smoke test requires ADMIN_KEY in environment.");
   }
 
+  await waitForHostReady();
   await fs.access(EDGE_PATH);
 
   const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), "quiz-ui-smoke-"));
@@ -275,7 +297,19 @@ async function main() {
     const enterVisible = await cdp.waitForCondition(
       "!!document.querySelector('#enter-platform-btn')",
     );
-    if (!enterVisible) throw new Error("Quiz home button not found.");
+    if (!enterVisible) {
+      const context = await cdp.evaluate(`
+        (() => ({
+          href: location.href,
+          title: document.title,
+          readyState: document.readyState,
+          hasAuthModal: Boolean(document.getElementById('auth-modal')),
+          hasQuizMenu: Boolean(document.getElementById('quiz-menu')),
+          bodyText: (document.body?.innerText || '').slice(0, 180)
+        }))();
+      `);
+      throw new Error(`Quiz home button not found. Context: ${JSON.stringify(context)}`);
+    }
 
     await cdp.evaluate(
       "document.querySelector('#enter-platform-btn')?.click(); true;",

@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260302-engage2";
+import { backendClient } from "./backendClient.js?v=20260302-engage3";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -130,6 +130,9 @@ let reviewTimer;
 let examTimeLeft = 0;
 let examTimeBudget = 0;
 let examVariant = "normal";
+let suddenMilestoneLevel = 0;
+let clinicalLives = 3;
+let clinicalTotalQuestions = 10;
 let userAnswers = {};
 let activeCase = "";
 let reviewTimeLeft = 0;
@@ -141,6 +144,7 @@ let xpTotal = Number(localStorage.getItem(XP_STORAGE_KEY) || 0) || 0;
 let feedbackRotationIndex = 0;
 let answerFeedbackHideTimer = null;
 let answerCheckHideTimer = null;
+let drillEventHideTimer = null;
 let correctAudioContext = null;
 let studySessionEnded = false;
 let inDetailedReview = false;
@@ -397,6 +401,7 @@ const xpChipEl = document.getElementById("xp-chip");
 const explanationEl = document.getElementById("explanation");
 const answerCheckmarkEl = document.getElementById("answer-checkmark");
 const answerFeedbackEl = document.getElementById("answer-feedback");
+const drillEventBannerEl = document.getElementById("drill-event-banner");
 const topicLinkWrapEl = document.getElementById("question-topic-link-wrap");
 const topicLinkBtnEl = document.getElementById("topic-link-btn");
 const aiExplainWrapEl = document.getElementById("ai-explain-wrap");
@@ -616,6 +621,61 @@ function showAnswerFeedback(message = "") {
   }, 520);
 }
 
+function showDrillEventBanner(message = "", tone = "good") {
+  if (!drillEventBannerEl) return;
+  const text = String(message || "").trim();
+  if (!text) {
+    drillEventBannerEl.classList.add("hidden");
+    drillEventBannerEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
+    drillEventBannerEl.textContent = "";
+    return;
+  }
+
+  drillEventBannerEl.textContent = text;
+  drillEventBannerEl.classList.remove("hidden", "show", "tone-good", "tone-bad", "tone-info");
+  drillEventBannerEl.classList.add(
+    tone === "bad" ? "tone-bad" : tone === "info" ? "tone-info" : "tone-good",
+  );
+  void drillEventBannerEl.offsetWidth;
+  drillEventBannerEl.classList.add("show");
+
+  if (drillEventHideTimer) {
+    clearTimeout(drillEventHideTimer);
+  }
+  drillEventHideTimer = setTimeout(() => {
+    drillEventBannerEl.classList.add("hidden");
+    drillEventBannerEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
+    drillEventHideTimer = null;
+  }, 1050);
+}
+
+function getSuddenMilestoneMessage(level = 0) {
+  if (level <= 1) return "Good";
+  if (level === 2) return "Bravo";
+  if (level === 3) return "Excellent";
+  if (level === 4) return "Savage";
+  if (level === 5) return "Unstoppable";
+  return "Legend";
+}
+
+function getSuddenBand(score = 0) {
+  const value = Number(score) || 0;
+  if (value < 5) return "tier-1";
+  if (value < 10) return "tier-2";
+  if (value < 15) return "tier-3";
+  if (value < 20) return "tier-4";
+  return "tier-5";
+}
+
+function getSuddenBandColor(score = 0) {
+  const band = getSuddenBand(score);
+  if (band === "tier-1") return "#ea580c";
+  if (band === "tier-2") return "#ca8a04";
+  if (band === "tier-3") return "#16a34a";
+  if (band === "tier-4") return "#0284c7";
+  return "#7c3aed";
+}
+
 function showAnswerCheckmark() {
   if (!answerCheckmarkEl) return;
   answerCheckmarkEl.classList.remove("hidden", "pop");
@@ -719,6 +779,18 @@ function playModeCue(variant = "normal", phase = "start", isGoodResult = false) 
       [
         { frequency: 620, duration: 0.08, type: "sine", gain: 0.02 },
         { frequency: 760, duration: 0.08, type: "triangle", gain: 0.022 },
+      ],
+      ctx,
+    );
+    return;
+  }
+
+  if (phase === "death") {
+    playToneSequence(
+      [
+        { frequency: 360, duration: 0.08, type: "square", gain: 0.02 },
+        { frequency: 240, duration: 0.1, type: "square", gain: 0.018 },
+        { frequency: 180, duration: 0.12, type: "sine", gain: 0.015 },
       ],
       ctx,
     );
@@ -3578,11 +3650,11 @@ function startMenuDrill(variant = "rapid") {
     return;
   }
   if (drill === "sudden") {
-    startExam("25", "sudden");
+    startExam("all", "sudden");
     return;
   }
   if (drill === "clinical") {
-    startExam("30", "clinical");
+    startExam(String(clinicalTotalQuestions), "clinical");
     return;
   }
 }
@@ -4088,7 +4160,13 @@ function updateModeIndicator(studyType = null) {
     indicator.innerText = `Exam: ${getExamVariantLabel(examVariant)}`;
 
     if (headerStats) headerStats.style.display = "none";
-    if (timerEl) timerEl.classList.remove("hidden");
+    if (timerEl) {
+      if (examVariant === "sudden" || examVariant === "clinical") {
+        timerEl.classList.add("hidden");
+      } else {
+        timerEl.classList.remove("hidden");
+      }
+    }
     if (quizArea) {
       quizArea.classList.add("mode-exam");
       if (examVariant === "rapid") quizArea.classList.add("mode-rapid");
@@ -4268,12 +4346,15 @@ function startExam(count, requestedVariant = null) {
 
   const selectedCategory = document.getElementById("category-select").value;
   const isRapidFire = variant === "rapid";
+  const isSuddenDeath = variant === "sudden";
   const isClinical = variant === "clinical";
-  const targetCount = isRapidFire
+  let targetCount = isRapidFire
     ? 5
-    : count === "all"
-      ? questionBank.length
-      : Math.max(1, parseInt(count, 10) || 30);
+    : isClinical
+      ? clinicalTotalQuestions
+      : count === "all"
+        ? questionBank.length
+        : Math.max(1, parseInt(count, 10) || 30);
 
   let questionPool = [];
 
@@ -4289,8 +4370,21 @@ function startExam(count, requestedVariant = null) {
       return;
     }
 
-    questionPool = isClinical ? buildClinicalQuestionPool(basePool) : basePool;
+    if (isClinical) {
+      const caseOnly = basePool.filter((q) => String(q.caseId || "").trim());
+      if (caseOnly.length < clinicalTotalQuestions) {
+        alert("Clinical Judgement requires at least 10 case-based questions.");
+        return;
+      }
+      questionPool = buildClinicalQuestionPool(caseOnly);
+    } else {
+      questionPool = basePool;
+    }
     questionPool = shuffle([...questionPool]);
+  }
+
+  if (isSuddenDeath) {
+    targetCount = questionPool.length;
   }
 
   active = questionPool.slice(0, targetCount);
@@ -4324,7 +4418,13 @@ function startExam(count, requestedVariant = null) {
       });
   }
 
-  examTimeBudget = isRapidFire ? 60 : active.length * 40;
+  suddenMilestoneLevel = 0;
+  clinicalLives = 3;
+  examTimeBudget = isRapidFire
+    ? 60
+    : isSuddenDeath || isClinical
+      ? 0
+      : active.length * 40;
   examTimeLeft = examTimeBudget;
   playModeCue(variant, "start");
 
@@ -4332,7 +4432,16 @@ function startExam(count, requestedVariant = null) {
   showScreen("quiz-area");
   nextBtn.onclick = nextQuestion;
   prevBtn.onclick = previousQuestion;
-  startExamTimer();
+  if (examTimeBudget > 0) {
+    startExamTimer();
+  } else {
+    clearInterval(examTimer);
+    examTimer = null;
+    if (timerEl) {
+      timerEl.classList.add("hidden");
+      timerEl.innerText = "";
+    }
+  }
   showQuestion();
 }
 
@@ -4381,11 +4490,24 @@ function showQuestion() {
     const answered = Object.keys(userAnswers).length;
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
+  } else if (mode === "exam" && examVariant === "sudden") {
+    const suddenScore = calculateScore();
+    progressEl.innerText = `Sudden Score: ${suddenScore}`;
+    progressEl.style.color = getSuddenBandColor(suddenScore);
+    liveScore.innerText = "";
+  } else if (mode === "exam" && examVariant === "clinical") {
+    const correctSoFar = calculateScore();
+    progressEl.innerText =
+      `Clinical: ${current + 1}/${active.length} | Lives: ${clinicalLives} | Correct: ${correctSoFar}`;
+    progressEl.style.color = clinicalLives <= 1 ? "#dc2626" : "#0e7490";
+    liveScore.innerText = "";
   } else if (mode === "daily") {
     progressEl.innerText = `Question ${current + 1} of ${active.length}`;
+    progressEl.style.color = "";
     liveScore.innerText = "";
   } else {
     progressEl.innerText = "";
+    progressEl.style.color = "";
     liveScore.innerText = "";
   }
 
@@ -4551,6 +4673,33 @@ function selectAnswer(value, q) {
   }
 
   if ((mode === "exam" || mode === "smart" || mode === "daily") && !inReview) {
+    if (mode === "exam" && examVariant === "sudden") {
+      if (isCorrect) {
+        const suddenScore = calculateScore();
+        const milestone = Math.floor(suddenScore / 5);
+        if (milestone > suddenMilestoneLevel) {
+          suddenMilestoneLevel = milestone;
+          const praise = getSuddenMilestoneMessage(milestone);
+          showDrillEventBanner(`${praise}! Score ${suddenScore}`, "good");
+          playModeCue("sudden", "end", true);
+        }
+      } else {
+        showDrillEventBanner("Death. Run ended.", "bad");
+        playModeCue("sudden", "death");
+      }
+    }
+
+    if (mode === "exam" && examVariant === "clinical" && !isCorrect) {
+      clinicalLives = Math.max(0, clinicalLives - 1);
+      if (clinicalLives > 0) {
+        showDrillEventBanner(`Life lost. ${clinicalLives} left`, "info");
+        playModeCue("clinical", "end", false);
+      } else {
+        showDrillEventBanner("No lives left.", "bad");
+        playModeCue("clinical", "death");
+      }
+    }
+
     const buttons = document.querySelectorAll("#answers button");
     buttons.forEach((btn) => {
       btn.disabled = true;
@@ -4565,7 +4714,7 @@ function selectAnswer(value, q) {
       }
       if (
         mode === "exam" &&
-        examVariant === "sudden" &&
+        (examVariant === "sudden" || examVariant === "clinical") &&
         !isCorrect &&
         btn.dataset.value === String(q.correct || "")
       ) {
@@ -4578,8 +4727,12 @@ function selectAnswer(value, q) {
     }
     const suddenDeathFail =
       mode === "exam" && examVariant === "sudden" && !isCorrect;
+    const clinicalOutOfLives =
+      mode === "exam" && examVariant === "clinical" && clinicalLives <= 0;
     if (suddenDeathFail) {
       showAnswerFeedback("Sudden Death ended.");
+    } else if (clinicalOutOfLives) {
+      showAnswerFeedback("Clinical round ended.");
     }
     const isLastQuestion = current >= active.length - 1;
     const expectedQuestionId = q.id;
@@ -4588,7 +4741,10 @@ function selectAnswer(value, q) {
       if (!Array.isArray(active) || !active[current]) return;
       if (active[current].id !== expectedQuestionId) return;
 
-      if (suddenDeathFail) {
+      if (suddenDeathFail || clinicalOutOfLives) {
+        if (suddenDeathFail && Array.isArray(active)) {
+          active = active.slice(0, current + 1);
+        }
         goToReview();
         return;
       }
@@ -4652,6 +4808,10 @@ function nextQuestion() {
   if (mode === "exam" || mode === "smart" || mode === "daily") {
     if (mode === "exam" && examVariant === "sudden") {
       showAnswerFeedback("No skips in Sudden Death.");
+      return;
+    }
+    if (mode === "exam" && examVariant === "clinical") {
+      showAnswerFeedback("No skips in Clinical drill.");
       return;
     }
     nextBtn.innerText = "Skip";
@@ -5077,8 +5237,24 @@ async function finishExam() {
     backendAttemptId = null;
   }
 
-  let percent = Math.round((finalScore / active.length) * 100);
-  playModeCue(finishedVariant, "end", percent >= 80);
+  const attemptedCount = Object.values(answers).filter(
+    (value) => String(value || "").trim().length > 0,
+  ).length;
+  const sessionTotal =
+    finishedVariant === "sudden"
+      ? Math.max(1, attemptedCount)
+      : finishedVariant === "clinical"
+        ? clinicalTotalQuestions
+        : active.length;
+  let percent =
+    finishedVariant === "sudden"
+      ? 0
+      : Math.round((finalScore / Math.max(1, sessionTotal)) * 100);
+  playModeCue(
+    finishedVariant,
+    "end",
+    finishedVariant === "sudden" ? finalScore >= 10 : percent >= 80,
+  );
 
   const sessionLabel =
     finishedMode === "smart"
@@ -5095,7 +5271,7 @@ async function finishExam() {
     sessionLabel,
 
     finalScore,
-    active.length,
+    sessionTotal,
     "Time Used: " + timeUsedSeconds + "s",
   );
 
@@ -5109,7 +5285,11 @@ async function finishExam() {
           : finishedVariant === "clinical"
             ? 18
             : 10;
-  awardXp(xpBonusBase + Math.round(percent / 20));
+  const xpVariance =
+    finishedVariant === "sudden"
+      ? Math.min(40, Math.floor(finalScore / 2))
+      : Math.round(percent / 20);
+  awardXp(xpBonusBase + xpVariance);
 
   const resultScreen = document.getElementById("study-result-screen");
   const resultTitle = document.getElementById("result-title");
@@ -5127,18 +5307,50 @@ async function finishExam() {
           : finishedVariant === "clinical"
             ? "Clinical Judgement Complete"
             : "Exam Complete";
-  percentEl.innerText = percent + "%";
-  scoreEl.innerText = finalScore + " / " + active.length + " Correct";
-
-  if (percent >= 80) {
-    feedbackEl.innerText = "Excellent performance. You're exam ready.";
-    percentEl.style.color = "#15803d";
-  } else if (percent >= 60) {
-    feedbackEl.innerText = "Good effort. Review weak areas.";
-    percentEl.style.color = "#f9a825";
+  if (finishedVariant === "sudden") {
+    percentEl.innerText = `Score ${finalScore}`;
+    percentEl.style.color = getSuddenBandColor(finalScore);
+    scoreEl.innerText = `Answered: ${attemptedCount}`;
+    if (finalScore < 5) {
+      feedbackEl.innerText = "Keep pushing. Target 5+ next run.";
+    } else if (finalScore < 10) {
+      feedbackEl.innerText = "Good run. You're warming up.";
+    } else if (finalScore < 15) {
+      feedbackEl.innerText = "Bravo. Strong survival streak.";
+    } else if (finalScore < 20) {
+      feedbackEl.innerText = "Excellent. Elite control.";
+    } else {
+      feedbackEl.innerText = "Legendary run. Sudden Death mastered.";
+    }
   } else {
-    feedbackEl.innerText = "Needs improvement. Focus and repeat.";
-    percentEl.style.color = "#dc2626";
+    if (finishedVariant === "clinical") {
+      percent = Math.round((finalScore / clinicalTotalQuestions) * 100);
+      percentEl.innerText = percent + "%";
+      scoreEl.innerText =
+        `${finalScore} / ${clinicalTotalQuestions} Correct | Lives Left: ${clinicalLives}`;
+      feedbackEl.innerText =
+        clinicalLives > 0
+          ? "Clinical round complete."
+          : "Round ended by zero lives.";
+    } else {
+      percentEl.innerText = percent + "%";
+      scoreEl.innerText = finalScore + " / " + active.length + " Correct";
+      if (percent >= 80) {
+        feedbackEl.innerText = "Excellent performance. You're exam ready.";
+      } else if (percent >= 60) {
+        feedbackEl.innerText = "Good effort. Review weak areas.";
+      } else {
+        feedbackEl.innerText = "Needs improvement. Focus and repeat.";
+      }
+    }
+
+    if (percent >= 80) {
+      percentEl.style.color = "#15803d";
+    } else if (percent >= 60) {
+      percentEl.style.color = "#f9a825";
+    } else {
+      percentEl.style.color = "#dc2626";
+    }
   }
 
   showScreen("study-result-screen");
@@ -5626,6 +5838,8 @@ function saveExamSession() {
     mode,
     examVariant,
     examTimeBudget,
+    suddenMilestoneLevel,
+    clinicalLives,
     active,
     current,
     userAnswers,
@@ -5646,20 +5860,24 @@ function loadExamSession() {
   userAnswers = saved.userAnswers;
   examVariant = String(saved.examVariant || "normal");
   examTimeBudget = Math.max(
-    1,
+    0,
     Number(saved.examTimeBudget) ||
       (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
   );
+  suddenMilestoneLevel = Math.max(0, Number(saved.suddenMilestoneLevel) || 0);
+  clinicalLives = Math.max(0, Number(saved.clinicalLives) || 3);
 
   const now = Date.now();
   const timePassed = Math.floor((now - saved.timestamp) / 1000);
-
-  examTimeLeft = saved.examTimeLeft - timePassed;
-
-  if (examTimeLeft <= 0) {
-    localStorage.removeItem("quizExamSession");
-    finishExam();
-    return true;
+  if (examTimeBudget > 0) {
+    examTimeLeft = saved.examTimeLeft - timePassed;
+    if (examTimeLeft <= 0) {
+      localStorage.removeItem("quizExamSession");
+      finishExam();
+      return true;
+    }
+  } else {
+    examTimeLeft = 0;
   }
 
   mode = String(saved.mode || "exam");
@@ -5748,10 +5966,12 @@ window.addEventListener("load", function () {
           ? "smart"
           : String(saved.examVariant || "normal").toLowerCase();
       examTimeBudget = Math.max(
-        1,
+        0,
         Number(saved.examTimeBudget) ||
           (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
       );
+      suddenMilestoneLevel = Math.max(0, Number(saved.suddenMilestoneLevel) || 0);
+      clinicalLives = Math.max(0, Number(saved.clinicalLives) || 3);
 
       // Finish immediately
       finishExam();

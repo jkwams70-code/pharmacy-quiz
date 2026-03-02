@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260301-dailyfix5";
+import { backendClient } from "./backendClient.js?v=20260302-engage1";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -34,6 +34,25 @@ const LEGACY_CATEGORY_MAP = {
   "Allergy and Immunology": "Respiratory Disorders",
   "Infectious Diseases": "Infectious Diseases",
 };
+
+const CATEGORY_COLOR_SHIFTS = {
+  "Cardiovascular Disorders": "rgba(220, 38, 38, 0.16)",
+  "Infectious Diseases": "rgba(22, 163, 74, 0.16)",
+  Endocrinology: "rgba(217, 119, 6, 0.16)",
+  "Respiratory Disorders": "rgba(8, 145, 178, 0.16)",
+  "Renal & Electrolyte Disorders": "rgba(37, 99, 235, 0.16)",
+  "Gastrointestinal Disorders": "rgba(234, 88, 12, 0.16)",
+  "Neurology & Psychiatry": "rgba(124, 58, 237, 0.16)",
+  Hematology: "rgba(190, 24, 93, 0.16)",
+  Oncology: "rgba(219, 39, 119, 0.16)",
+  "Rheumatology & Pain": "rgba(245, 158, 11, 0.16)",
+  "Women's & Men's Health": "rgba(225, 29, 72, 0.16)",
+  Immunizations: "rgba(20, 184, 166, 0.16)",
+  "Pharmacy Law & Ethics": "rgba(15, 63, 127, 0.16)",
+};
+
+const POSITIVE_ANSWER_FEEDBACK = ["Excellent.", "Sharp.", "Good recall."];
+const XP_STORAGE_KEY = "quizXpTotalV1";
 
 function normalizeMajorCategory(category, context = "") {
   const raw = String(category || "").trim();
@@ -109,6 +128,8 @@ let active = [];
 let examTimer;
 let reviewTimer;
 let examTimeLeft = 0;
+let examTimeBudget = 0;
+let examVariant = "normal";
 let userAnswers = {};
 let activeCase = "";
 let reviewTimeLeft = 0;
@@ -116,6 +137,11 @@ let inReview = false;
 let answeredCurrent = false;
 let inStudyReview = false;
 let currentStreak = 0;
+let xpTotal = Number(localStorage.getItem(XP_STORAGE_KEY) || 0) || 0;
+let feedbackRotationIndex = 0;
+let answerFeedbackHideTimer = null;
+let answerCheckHideTimer = null;
+let correctAudioContext = null;
 let studySessionEnded = false;
 let inDetailedReview = false;
 // ==============================
@@ -363,7 +389,11 @@ const answersEl = document.getElementById("answers");
 const nextBtn = document.getElementById("next-btn");
 const prevBtn = document.getElementById("prev-btn");
 const timerEl = document.getElementById("timer");
+const xpValueEl = document.getElementById("xp-value");
+const xpChipEl = document.getElementById("xp-chip");
 const explanationEl = document.getElementById("explanation");
+const answerCheckmarkEl = document.getElementById("answer-checkmark");
+const answerFeedbackEl = document.getElementById("answer-feedback");
 const topicLinkWrapEl = document.getElementById("question-topic-link-wrap");
 const topicLinkBtnEl = document.getElementById("topic-link-btn");
 const aiExplainWrapEl = document.getElementById("ai-explain-wrap");
@@ -511,6 +541,7 @@ const dailyGemsRibbonEl = document.getElementById("daily-gems-ribbon");
 const reviewTitleEl = document.querySelector("#review-screen .review-title");
 const reviewTimerStatusEl = document.getElementById("review-timer");
 const submitExamBtn = document.getElementById("submit-exam");
+const examTypeSelect = document.getElementById("exam-type-select");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
@@ -538,6 +569,150 @@ function setSettingsFeedback(message = "", isError = false) {
   if (text) {
     settingsFeedbackEl.classList.add(isError ? "auth-error" : "auth-info");
   }
+}
+
+function renderXp() {
+  if (!xpValueEl) return;
+  xpValueEl.textContent = String(Math.max(0, Math.round(Number(xpTotal) || 0)));
+}
+
+function awardXp(amount = 0) {
+  const gain = Math.max(0, Math.round(Number(amount) || 0));
+  if (!gain) return;
+  xpTotal += gain;
+  localStorage.setItem(XP_STORAGE_KEY, String(xpTotal));
+  renderXp();
+}
+
+function getNextPositiveFeedback() {
+  const index = feedbackRotationIndex % POSITIVE_ANSWER_FEEDBACK.length;
+  feedbackRotationIndex += 1;
+  return POSITIVE_ANSWER_FEEDBACK[index];
+}
+
+function showAnswerFeedback(message = "") {
+  if (!answerFeedbackEl) return;
+  const text = String(message || "").trim();
+  if (!text) {
+    answerFeedbackEl.classList.add("hidden");
+    answerFeedbackEl.classList.remove("show");
+    answerFeedbackEl.textContent = "";
+    return;
+  }
+  answerFeedbackEl.textContent = text;
+  answerFeedbackEl.classList.remove("hidden", "show");
+  void answerFeedbackEl.offsetWidth;
+  answerFeedbackEl.classList.add("show");
+  if (answerFeedbackHideTimer) {
+    clearTimeout(answerFeedbackHideTimer);
+  }
+  answerFeedbackHideTimer = setTimeout(() => {
+    answerFeedbackEl.classList.add("hidden");
+    answerFeedbackEl.classList.remove("show");
+    answerFeedbackHideTimer = null;
+  }, 520);
+}
+
+function showAnswerCheckmark() {
+  if (!answerCheckmarkEl) return;
+  answerCheckmarkEl.classList.remove("hidden", "pop");
+  void answerCheckmarkEl.offsetWidth;
+  answerCheckmarkEl.classList.add("pop");
+  if (answerCheckHideTimer) {
+    clearTimeout(answerCheckHideTimer);
+  }
+  answerCheckHideTimer = setTimeout(() => {
+    answerCheckmarkEl.classList.add("hidden");
+    answerCheckmarkEl.classList.remove("pop");
+    answerCheckHideTimer = null;
+  }, 220);
+}
+
+function playCorrectAnswerSound() {
+  if (uiPrefs?.reduceMotion) return;
+  try {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return;
+    if (!correctAudioContext) {
+      correctAudioContext = new Context();
+    }
+    if (correctAudioContext.state === "suspended") {
+      correctAudioContext.resume().catch(() => {});
+    }
+    const now = correctAudioContext.currentTime;
+    const osc = correctAudioContext.createOscillator();
+    const gain = correctAudioContext.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(820, now);
+    osc.frequency.exponentialRampToValueAtTime(1160, now + 0.08);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.032, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+    osc.connect(gain);
+    gain.connect(correctAudioContext.destination);
+    osc.start(now);
+    osc.stop(now + 0.16);
+  } catch {
+    // Keep quiz flow uninterrupted if audio is not available.
+  }
+}
+
+function applyQuestionCategoryShift(question) {
+  if (!quizArea) return;
+  const category = normalizeMajorCategory(question?.category, question?.question || "");
+  const tint = CATEGORY_COLOR_SHIFTS[category] || CATEGORY_COLOR_SHIFTS["Pharmacy Law & Ethics"];
+  quizArea.style.setProperty("--category-shift", tint);
+}
+
+function getQuestionDifficultyScore(question = {}) {
+  const stats = performanceData?.[question.id];
+  const attempts = Number(stats?.attempts) || 0;
+  const correct = Number(stats?.correct) || 0;
+  const accuracy = attempts > 0 ? Math.round((correct / attempts) * 100) : 100;
+  let score = 100 - accuracy;
+
+  if (attempts < 2) score += 12;
+  if (question.type === "combo") score += 16;
+  if (question.caseId) score += 10;
+
+  const text = String(question.question || "").toLowerCase();
+  if (
+    text.includes("most appropriate") ||
+    text.includes("best option") ||
+    text.includes("except") ||
+    text.includes("contraindicated")
+  ) {
+    score += 8;
+  }
+
+  return score;
+}
+
+function buildClinicalQuestionPool(pool = []) {
+  const ranked = [...pool]
+    .map((question) => ({
+      question,
+      score: getQuestionDifficultyScore(question),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const hardQuestions = ranked
+    .filter((entry) => entry.score >= 55)
+    .map((entry) => entry.question);
+  if (hardQuestions.length >= 20) {
+    return hardQuestions;
+  }
+
+  const topCut = Math.max(20, Math.ceil(ranked.length * 0.6));
+  return ranked.slice(0, topCut).map((entry) => entry.question);
+}
+
+function getExamVariantLabel(variant = examVariant) {
+  if (variant === "rapid") return "Rapid Fire";
+  if (variant === "sudden") return "Sudden Death";
+  if (variant === "clinical") return "Clinical Judgement";
+  if (variant === "smart") return "Smart Exam";
+  return "Exam Mode";
 }
 
 function normalizeUiPrefs(raw = {}) {
@@ -674,8 +849,12 @@ function clearDeviceLocalCache() {
     "activeStudySessionId",
     "activeExamSessionId",
     DAILY_QUIZ_POPUP_STORAGE_KEY,
+    DAILY_CELEBRATION_SHOWN_STORAGE_KEY,
+    XP_STORAGE_KEY,
   ];
   keysToClear.forEach((key) => localStorage.removeItem(key));
+  xpTotal = 0;
+  renderXp();
 }
 
 function formatDateKey(dateKey = "") {
@@ -1182,6 +1361,8 @@ async function openDailySetup() {
 async function startDailyQuizSession() {
   const allowed = await ensureAuthenticated();
   if (!allowed) return;
+  examVariant = "normal";
+  examTimeBudget = 0;
 
   const state = await refreshDailyQuizState({ force: true });
   if (!state) return;
@@ -1278,6 +1459,7 @@ async function startDailyQuizSession() {
 loadUiPrefs();
 applyUiPrefs();
 initHeaderCollapseState();
+renderXp();
 dailyQuizPopupShownDate = String(localStorage.getItem(DAILY_QUIZ_POPUP_STORAGE_KEY) || "");
 dailyCelebrationShownDate = String(
   localStorage.getItem(DAILY_CELEBRATION_SHOWN_STORAGE_KEY) || "",
@@ -3290,13 +3472,14 @@ if (enterBtn) {
 
 document.getElementById("start-exam-btn").onclick = async function () {
   const count = document.getElementById("exam-count-select").value;
+  const variant = String(examTypeSelect?.value || "normal").toLowerCase();
 
-  if (!count) {
+  if (!count && variant !== "rapid") {
     showCountTooltip();
     return;
   }
 
-  await startExam(count);
+  await startExam(count || "5", variant);
 };
 
 function showCountTooltip() {
@@ -3777,7 +3960,7 @@ function updateModeIndicator(studyType = null) {
     if (timerEl) timerEl.classList.add("hidden");
     if (quizArea) quizArea.classList.add("mode-study");
   } else if (mode === "exam") {
-    indicator.innerText = "📝 Exam Mode";
+    indicator.innerText = `Exam: ${getExamVariantLabel(examVariant)}`;
 
     if (headerStats) headerStats.style.display = "none";
     if (timerEl) timerEl.classList.remove("hidden");
@@ -3803,6 +3986,8 @@ function updateModeIndicator(studyType = null) {
 function startStudy() {
   studySessionEnded = false;
   clearAiExplainStateSession();
+  examVariant = "normal";
+  examTimeBudget = 0;
 
   clearInterval(examTimer);
   examTimer = null;
@@ -3935,8 +4120,12 @@ function startStudy() {
   showQuestion();
 }
 
-function startExam(count) {
-  mode = "exam";
+function startExam(count, requestedVariant = null) {
+  const variant = String(requestedVariant || examTypeSelect?.value || "normal")
+    .trim()
+    .toLowerCase();
+  examVariant = variant;
+  mode = variant === "smart" ? "smart" : "exam";
   clearAiExplainStateSession();
 
   clearInterval(examTimer);
@@ -3947,43 +4136,53 @@ function startExam(count) {
   userAnswers = {};
   inReview = false;
 
-  count = count === "all" ? questionBank.length : parseInt(count);
+  const selectedCategory = document.getElementById("category-select").value;
+  const isRapidFire = variant === "rapid";
+  const isClinical = variant === "clinical";
+  const targetCount = isRapidFire
+    ? 5
+    : count === "all"
+      ? questionBank.length
+      : Math.max(1, parseInt(count, 10) || 30);
 
-  let questionPool;
+  let questionPool = [];
 
-  if (mode === "smart") {
-    questionPool = getAdaptiveQuestions(count);
+  if (variant === "smart") {
+    questionPool = getAdaptiveQuestions(targetCount);
   } else {
-    const selectedCategory = document.getElementById("category-select").value;
+    const basePool = selectedCategory
+      ? questionBank.filter((q) => q.category === selectedCategory)
+      : [...questionBank];
 
-    if (selectedCategory) {
-      questionPool = questionBank.filter(
-        (q) => q.category === selectedCategory,
-      );
-
-      if (questionPool.length === 0) {
-        alert("No questions available in this category yet.");
-        return;
-      }
-
-      questionPool = shuffle([...questionPool]);
-    } else {
-      questionPool = shuffle([...questionBank]);
+    if (basePool.length === 0) {
+      alert("No questions available in this category yet.");
+      return;
     }
+
+    questionPool = isClinical ? buildClinicalQuestionPool(basePool) : basePool;
+    questionPool = shuffle([...questionPool]);
   }
 
-  active = questionPool.slice(0, count);
+  active = questionPool.slice(0, targetCount);
 
-  if (mode === "smart") {
-    active.forEach((q) => (q.smartFlag = true));
+  if (!Array.isArray(active) || active.length === 0) {
+    alert("No questions available for this exam mode right now.");
+    return;
+  }
+
+  if (variant === "smart") {
+    active.forEach((q) => {
+      q.smartFlag = true;
+    });
   }
 
   // Start attempt on backend if ready
   if (backendReady) {
     backendClient
       .startAttempt({
-        mode: "exam",
-        category: document.getElementById("category-select")?.value || "all",
+        mode: variant === "smart" ? "smart" : "exam",
+        variant,
+        category: selectedCategory || "all",
         questionIds: active.map((q) => Number(q.id)),
       })
       .then((result) => {
@@ -3995,7 +4194,8 @@ function startExam(count) {
       });
   }
 
-  examTimeLeft = active.length * 40;
+  examTimeBudget = isRapidFire ? 60 : active.length * 40;
+  examTimeLeft = examTimeBudget;
 
   updateModeIndicator();
   showScreen("quiz-area");
@@ -4035,8 +4235,14 @@ function showQuestion() {
   answersEl.innerHTML = "";
 
   const q = active[current];
+  applyQuestionCategoryShift(q);
 
   answeredCurrent = false;
+  showAnswerFeedback("");
+  if (answerCheckmarkEl) {
+    answerCheckmarkEl.classList.add("hidden");
+    answerCheckmarkEl.classList.remove("pop");
+  }
 
   // Study Mode Progress
   if (mode === "study") {
@@ -4154,6 +4360,7 @@ function showQuestion() {
 function selectAnswer(value, q) {
   if (inDetailedReview) return;
   userAnswers[q.id] = value;
+  const isCorrect = String(value) === String(q.correct || "");
 
   // Sync answer to backend if available
   if (backendReady && backendAttemptId) {
@@ -4161,11 +4368,11 @@ function selectAnswer(value, q) {
   }
 
   if (mode === "study") {
-    updatePerformance(q.id, value === q.correct);
+    updatePerformance(q.id, isCorrect);
     const studyType = document.getElementById("study-type-select").value;
 
     if (mode === "study" && studyType === "normal") {
-      if (value !== q.correct) {
+      if (!isCorrect) {
         if (markQuestionAsWeak(q.id)) {
           saveWeakTracker();
         }
@@ -4178,8 +4385,6 @@ function selectAnswer(value, q) {
   const studyType = document.getElementById("study-type-select").value;
 
   if (mode === "study" && studyType === "weak") {
-    const isCorrect = value === q.correct;
-
     if (isCorrect) {
       weakTracker[q.id].roundsPassed++;
 
@@ -4199,7 +4404,17 @@ function selectAnswer(value, q) {
     const studyType = document.getElementById("study-type-select").value;
   }
 
-  updateStreak(value === q.correct);
+  if (isCorrect) {
+    playCorrectAnswerSound();
+    showAnswerCheckmark();
+    showAnswerFeedback(getNextPositiveFeedback());
+    awardXp(5);
+  } else {
+    showAnswerFeedback("Not quite.");
+    awardXp(1);
+  }
+
+  updateStreak(isCorrect);
   if (!studySessionEnded) {
     saveStudyProgress();
   }
@@ -4208,14 +4423,32 @@ function selectAnswer(value, q) {
     const buttons = document.querySelectorAll("#answers button");
     buttons.forEach((btn) => {
       btn.disabled = true;
-      btn.classList.remove("selected-live");
+      btn.classList.remove("selected-live", "correct", "wrong");
       if (btn.dataset.value === String(value)) {
         btn.classList.add("selected-live");
+        if (isCorrect) {
+          btn.classList.add("correct");
+        } else {
+          btn.classList.add("wrong");
+        }
+      }
+      if (
+        mode === "exam" &&
+        examVariant === "sudden" &&
+        !isCorrect &&
+        btn.dataset.value === String(q.correct || "")
+      ) {
+        btn.classList.add("correct");
       }
     });
 
     if (mode === "exam" || mode === "smart") {
       saveExamSession();
+    }
+    const suddenDeathFail =
+      mode === "exam" && examVariant === "sudden" && !isCorrect;
+    if (suddenDeathFail) {
+      showAnswerFeedback("Sudden Death ended.");
     }
     const isLastQuestion = current >= active.length - 1;
     const expectedQuestionId = q.id;
@@ -4223,6 +4456,11 @@ function selectAnswer(value, q) {
       // Avoid stale navigation if screen/question changed during delay.
       if (!Array.isArray(active) || !active[current]) return;
       if (active[current].id !== expectedQuestionId) return;
+
+      if (suddenDeathFail) {
+        goToReview();
+        return;
+      }
 
       if (!isLastQuestion) {
         current++;
@@ -4256,7 +4494,7 @@ function selectAnswer(value, q) {
       btn.classList.add("correct");
     }
 
-    if (btnValue === value && value !== q.correct) {
+    if (btnValue === value && !isCorrect) {
       btn.classList.add("wrong");
     }
   });
@@ -4281,6 +4519,10 @@ function selectAnswer(value, q) {
 function nextQuestion() {
   if (inStudyReview) return;
   if (mode === "exam" || mode === "smart" || mode === "daily") {
+    if (mode === "exam" && examVariant === "sudden") {
+      showAnswerFeedback("No skips in Sudden Death.");
+      return;
+    }
     nextBtn.innerText = "Skip";
 
     // That will count as wrong later
@@ -4451,6 +4693,9 @@ function startExamTimer() {
   if (examTimer) {
     clearInterval(examTimer);
   }
+  if (!examTimeBudget) {
+    examTimeBudget = Math.max(1, active.length * 40);
+  }
 
   timerEl.classList.remove("hidden");
   updateTimerDisplay();
@@ -4479,7 +4724,8 @@ function updateTimerDisplay() {
 }
 
 function updateTimerColor() {
-  const percentLeft = examTimeLeft / (active.length * 40);
+  const budget = Math.max(1, Number(examTimeBudget) || active.length * 40);
+  const percentLeft = examTimeLeft / budget;
 
   timerEl.classList.remove("timer-safe", "timer-warning", "timer-danger");
 
@@ -4508,7 +4754,8 @@ function goToReview() {
   buildReviewPalette();
 
   if (reviewTitleEl) {
-    reviewTitleEl.innerText = mode === "daily" ? "Daily Quiz Review" : "Exam Review";
+    reviewTitleEl.innerText =
+      mode === "daily" ? "Daily Quiz Review" : `${getExamVariantLabel(examVariant)} Review`;
   }
   if (submitExamBtn) {
     submitExamBtn.classList.remove("hidden");
@@ -4632,6 +4879,8 @@ async function finishDailyQuizSession() {
       percentEl.style.color = "#dc2626";
     }
 
+    awardXp(12 + Math.round(percent / 25));
+
     showScreen("study-result-screen");
     document.getElementById("result-review-btn").onclick = showDetailedReview;
     document.getElementById("result-menu-btn").onclick = goToMenu;
@@ -4668,8 +4917,13 @@ async function finishExam() {
 
   inReview = false;
   backReviewBtn.classList.add("hidden");
-  const finishedMode = mode; // 🔥 SAVE IT FIRST
-  mode = ""; // then reset
+  const finishedMode = mode;
+  const finishedVariant = examVariant;
+  const timeBudget = Math.max(1, Number(examTimeBudget) || active.length * 40);
+  const timeUsedSeconds = Math.max(0, timeBudget - (examTimeLeft || 0));
+  mode = "";
+  examVariant = "normal";
+  examTimeBudget = 0;
 
   localStorage.removeItem("quizExamSession");
   localStorage.removeItem("examAbandoned");
@@ -4687,10 +4941,7 @@ async function finishExam() {
 
   // Finish attempt on backend if available
   if (backendReady && backendAttemptId) {
-    const durationSeconds = Math.max(
-      0,
-      active.length * 40 - (examTimeLeft || 0),
-    );
+    const durationSeconds = timeUsedSeconds;
     backendClient.finishAttempt(backendAttemptId, answers, durationSeconds);
     backendAttemptId = null;
   }
@@ -4700,15 +4951,33 @@ async function finishExam() {
   const sessionLabel =
     finishedMode === "smart"
       ? "Smart (" + active.length + ")"
-      : "Exam (" + active.length + ")";
+      : finishedVariant === "rapid"
+        ? "Rapid Fire (" + active.length + ")"
+        : finishedVariant === "sudden"
+          ? "Sudden Death (" + active.length + ")"
+          : finishedVariant === "clinical"
+            ? "Clinical Judgement (" + active.length + ")"
+            : "Exam (" + active.length + ")";
 
   saveSession(
     sessionLabel,
 
     finalScore,
     active.length,
-    "Time Used: " + (active.length * 40 - examTimeLeft) + "s",
+    "Time Used: " + timeUsedSeconds + "s",
   );
+
+  const xpBonusBase =
+    finishedMode === "smart"
+      ? 16
+      : finishedVariant === "rapid"
+        ? 12
+        : finishedVariant === "sudden"
+          ? 15
+          : finishedVariant === "clinical"
+            ? 18
+            : 10;
+  awardXp(xpBonusBase + Math.round(percent / 20));
 
   const resultScreen = document.getElementById("study-result-screen");
   const resultTitle = document.getElementById("result-title");
@@ -4716,7 +4985,16 @@ async function finishExam() {
   const scoreEl = document.getElementById("result-score");
   const feedbackEl = document.getElementById("result-feedback");
 
-  resultTitle.innerText = "Exam Complete";
+  resultTitle.innerText =
+    finishedMode === "smart"
+      ? "Smart Exam Complete"
+      : finishedVariant === "rapid"
+        ? "Rapid Fire Complete"
+        : finishedVariant === "sudden"
+          ? "Sudden Death Complete"
+          : finishedVariant === "clinical"
+            ? "Clinical Judgement Complete"
+            : "Exam Complete";
   percentEl.innerText = percent + "%";
   scoreEl.innerText = finalScore + " / " + active.length + " Correct";
 
@@ -4789,6 +5067,8 @@ function finishStudy() {
     percentEl.style.color = "#dc2626";
   }
 
+  awardXp(8 + Math.round(percent / 25));
+
   showScreen("study-result-screen");
 
   document.getElementById("result-review-btn").onclick = showStudyReviewPalette;
@@ -4839,6 +5119,8 @@ function endStudySession() {
     feedbackEl.innerText = "More reinforcement needed.";
     percentEl.style.color = "#dc2626";
   }
+
+  awardXp(6 + Math.round(percent / 30));
 
   showScreen("study-result-screen");
 
@@ -5036,6 +5318,7 @@ function returnToExamDetailedReview() {
 
 function renderDetailedQuestion() {
   const q = active[current];
+  applyQuestionCategoryShift(q);
   answersEl.innerHTML = "";
   resetAiExplainPanel();
 
@@ -5153,6 +5436,7 @@ function showQuestionDetailedMode() {
   answersEl.innerHTML = "";
 
   const q = active[current];
+  applyQuestionCategoryShift(q);
 
   questionEl.innerHTML =
     `<strong>Question ${current + 1}</strong><br><br>` +
@@ -5207,6 +5491,9 @@ function showQuestionDetailedMode() {
 
 function saveExamSession() {
   const session = {
+    mode,
+    examVariant,
+    examTimeBudget,
     active,
     current,
     userAnswers,
@@ -5225,6 +5512,12 @@ function loadExamSession() {
   active = saved.active;
   current = saved.current;
   userAnswers = saved.userAnswers;
+  examVariant = String(saved.examVariant || "normal");
+  examTimeBudget = Math.max(
+    1,
+    Number(saved.examTimeBudget) ||
+      (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
+  );
 
   const now = Date.now();
   const timePassed = Math.floor((now - saved.timestamp) / 1000);
@@ -5237,11 +5530,15 @@ function loadExamSession() {
     return true;
   }
 
-  mode = "exam"; // or smart (see next line)
+  mode = String(saved.mode || "exam");
+  if (mode !== "exam" && mode !== "smart") {
+    mode = "exam";
+  }
 
   // 🔥 Detect if smart exam
-  if (saved.active && saved.active.length && saved.active[0].smartFlag) {
+  if (mode === "smart" || (saved.active && saved.active.length && saved.active[0].smartFlag)) {
     mode = "smart";
+    examVariant = "smart";
   }
 
   updateModeIndicator();
@@ -5310,7 +5607,19 @@ window.addEventListener("load", function () {
     if (saved) {
       active = saved.active;
       userAnswers = saved.userAnswers || {};
-      mode = "exam";
+      mode = String(saved.mode || "exam");
+      if (mode !== "exam" && mode !== "smart") {
+        mode = "exam";
+      }
+      examVariant =
+        mode === "smart"
+          ? "smart"
+          : String(saved.examVariant || "normal").toLowerCase();
+      examTimeBudget = Math.max(
+        1,
+        Number(saved.examTimeBudget) ||
+          (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
+      );
 
       // Finish immediately
       finishExam();
@@ -5741,4 +6050,6 @@ window.addEventListener("popstate", function () {
     return;
   }
 });
+
+
 

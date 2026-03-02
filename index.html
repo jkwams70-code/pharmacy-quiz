@@ -61,7 +61,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260301-iconsource3" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180.png?v=20260301-iconsource3" />
-    <link rel="stylesheet" href="styles.css?v=20260301-dailyfix5" />
+    <link rel="stylesheet" href="styles.css?v=20260302-engage1" />
   </head>
 
   <body>
@@ -592,6 +592,9 @@
             <select id="exam-type-select" class="setup-select">
               <option value="normal">Normal Exam</option>
               <option value="smart">Smart Exam (Adaptive)</option>
+              <option value="rapid">Rapid Fire (60s / 5 Questions)</option>
+              <option value="sudden">Sudden Death (1 Mistake Ends)</option>
+              <option value="clinical">Clinical Judgement (Hard)</option>
             </select>
 
             <h3>Select Category</h3>
@@ -1092,6 +1095,7 @@
 
           <div class="header-meta">
             <div id="progress"></div>
+            <div id="xp-chip" class="xp-chip">XP <span id="xp-value">0</span></div>
             <div id="timer"></div>
           </div>
         </div>
@@ -1099,6 +1103,10 @@
         <!-- MAIN CONTENT -->
         <div class="quiz-content">
           <div class="question-card-modern">
+            <div id="answer-checkmark" class="answer-checkmark hidden" aria-hidden="true">
+              &#10003;
+            </div>
+            <div id="answer-feedback" class="answer-feedback hidden" aria-live="polite"></div>
             <h2 id="question"></h2>
 
             <div id="combo-block"></div>
@@ -1251,7 +1259,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260301-dailyfix5"></script>
+    <script type="module" src="engine.js?v=20260302-engage1"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

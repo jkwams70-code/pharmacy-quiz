@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260302-engage4";
+import { backendClient } from "./backendClient.js?v=20260302-engage5";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -409,6 +409,11 @@ const comboBlock = document.getElementById("combo-block");
 const examExitModal = document.getElementById("exam-exit-modal");
 const cancelExitBtn = document.getElementById("cancel-exit-btn");
 const confirmExitBtn = document.getElementById("confirm-exit-btn");
+const sessionResumeModal = document.getElementById("session-resume-modal");
+const sessionResumeTitleEl = document.getElementById("session-resume-title");
+const sessionResumeTextEl = document.getElementById("session-resume-text");
+const sessionResumeNewBtn = document.getElementById("session-resume-new-btn");
+const sessionResumeContinueBtn = document.getElementById("session-resume-continue-btn");
 const authModal = document.getElementById("auth-modal");
 const authForm = document.getElementById("auth-form");
 const authTabLoginBtn = document.getElementById("auth-tab-login");
@@ -553,6 +558,7 @@ let uiPrefs = {
   reduceMotion: false,
 };
 let headersCollapsed = false;
+let sessionResumeHandlers = null;
 
 function setSettingsFeedback(message = "", isError = false) {
   if (!settingsFeedbackEl) return;
@@ -657,6 +663,18 @@ function getSuddenBandColor(score = 0) {
   if (band === "tier-3") return "#16a34a";
   if (band === "tier-4") return "#0284c7";
   return "#7c3aed";
+}
+
+function buildClinicalLivesMarkup(lives = 3, maxLives = 3) {
+  const total = Math.max(1, Number(maxLives) || 3);
+  const currentLives = Math.max(0, Math.min(total, Number(lives) || 0));
+  let html = '<span class="clinical-hearts" aria-label="Lives">';
+  for (let i = 0; i < total; i++) {
+    const isAlive = i < currentLives;
+    html += `<span class="clinical-heart ${isAlive ? "is-on" : "is-off"}">❤</span>`;
+  }
+  html += "</span>";
+  return html;
 }
 
 function showAnswerCheckmark() {
@@ -3550,10 +3568,105 @@ confirmStudyExitBtn.onclick = function () {
   endStudySession();
 };
 
+function openSessionResumeModal({
+  title = "Resume Session?",
+  text = "You have a paused session. Resume where you stopped or start new.",
+  onResume = null,
+  onStartNew = null,
+} = {}) {
+  if (!sessionResumeModal) return;
+  sessionResumeHandlers = {
+    onResume: typeof onResume === "function" ? onResume : null,
+    onStartNew: typeof onStartNew === "function" ? onStartNew : null,
+  };
+  if (sessionResumeTitleEl) sessionResumeTitleEl.textContent = String(title || "Resume Session?");
+  if (sessionResumeTextEl) {
+    sessionResumeTextEl.textContent = String(
+      text || "You have a paused session. Resume where you stopped or start new.",
+    );
+  }
+  if (sessionResumeContinueBtn) sessionResumeContinueBtn.disabled = false;
+  if (sessionResumeNewBtn) sessionResumeNewBtn.disabled = false;
+  sessionResumeModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeSessionResumeModal(resetHandlers = true) {
+  if (!sessionResumeModal) return;
+  sessionResumeModal.classList.add("hidden");
+  document.body.style.overflow = "";
+  if (resetHandlers) {
+    sessionResumeHandlers = null;
+  }
+}
+
+function getSavedExamSession() {
+  try {
+    const raw = localStorage.getItem("quizExamSession");
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
+function getSavedDrillSession(variant = "") {
+  const drill = String(variant || "").toLowerCase();
+  if (!["sudden", "clinical"].includes(drill)) return null;
+  const saved = getSavedExamSession();
+  if (!saved) return null;
+
+  const savedMode = String(saved.mode || "exam");
+  const savedVariant = String(saved.examVariant || "normal").toLowerCase();
+  if (savedMode !== "exam" || savedVariant !== drill) return null;
+  if (!Array.isArray(saved.active) || saved.active.length === 0) return null;
+  return saved;
+}
+
+function isPausableDrillSession() {
+  return mode === "exam" && (examVariant === "sudden" || examVariant === "clinical");
+}
+
+function pauseDrillSessionAndReturnToMenu() {
+  if (!isPausableDrillSession()) return false;
+  saveExamSession();
+  localStorage.removeItem("examAbandoned");
+  showScreen("quiz-menu");
+  return true;
+}
+
+if (sessionResumeContinueBtn) {
+  sessionResumeContinueBtn.onclick = () => {
+    const resumeHandler = sessionResumeHandlers?.onResume;
+    closeSessionResumeModal(false);
+    sessionResumeHandlers = null;
+    if (typeof resumeHandler === "function") {
+      resumeHandler();
+    }
+  };
+}
+
+if (sessionResumeNewBtn) {
+  sessionResumeNewBtn.onclick = () => {
+    const startNewHandler = sessionResumeHandlers?.onStartNew;
+    closeSessionResumeModal(false);
+    sessionResumeHandlers = null;
+    if (typeof startNewHandler === "function") {
+      startNewHandler();
+    }
+  };
+}
+
 backBtnQuiz.onclick = function () {
   if (mode === "study") {
     saveStudyProgress();
     showScreen("study-setup");
+    return;
+  }
+
+  if (pauseDrillSessionAndReturnToMenu()) {
     return;
   }
 
@@ -3575,6 +3688,10 @@ if (menuBtnQuiz) {
     if (mode === "study") {
       saveStudyProgress();
       showScreen("quiz-menu");
+      return;
+    }
+
+    if (pauseDrillSessionAndReturnToMenu()) {
       return;
     }
 
@@ -3631,10 +3748,42 @@ function startMenuDrill(variant = "rapid") {
     return;
   }
   if (drill === "sudden") {
+    const pausedSudden = getSavedDrillSession("sudden");
+    if (pausedSudden) {
+      openSessionResumeModal({
+        title: "Resume Sudden Death?",
+        text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
+        onResume: () => {
+          loadExamSession();
+        },
+        onStartNew: () => {
+          localStorage.removeItem("quizExamSession");
+          localStorage.removeItem("examAbandoned");
+          startMenuDrill("sudden");
+        },
+      });
+      return;
+    }
     startExam("all", "sudden");
     return;
   }
   if (drill === "clinical") {
+    const pausedClinical = getSavedDrillSession("clinical");
+    if (pausedClinical) {
+      openSessionResumeModal({
+        title: "Resume Clinical Judgement?",
+        text: "You have a paused Clinical Judgement round. Resume it or start a new round.",
+        onResume: () => {
+          loadExamSession();
+        },
+        onStartNew: () => {
+          localStorage.removeItem("quizExamSession");
+          localStorage.removeItem("examAbandoned");
+          startMenuDrill("clinical");
+        },
+      });
+      return;
+    }
     startExam(String(clinicalTotalQuestions), "clinical");
     return;
   }
@@ -4266,31 +4415,31 @@ function startStudy() {
 
   if (savedSession) {
     const state = JSON.parse(savedSession);
-    const resume = confirm("Resume previous session?");
+    openSessionResumeModal({
+      title: "Resume Study Session?",
+      text: "You have a paused study session. Resume where you stopped or start a new one.",
+      onResume: () => {
+        mode = "study";
+        activeCase = "";
+        active = state.active;
+        current = state.current;
+        userAnswers = state.userAnswers;
+        currentStreak = state.currentStreak || 0;
 
-    if (resume) {
-      mode = "study";
-      const studyType = document.getElementById("study-type-select").value;
-      activeCase = "";
-      active = state.active;
-      current = state.current;
-      userAnswers = state.userAnswers;
-      currentStreak = state.currentStreak || 0;
+        updateModeIndicator(state.studyType);
+        nextBtn.onclick = nextQuestion;
+        prevBtn.onclick = previousQuestion;
 
-      updateModeIndicator(state.studyType);
-      nextBtn.onclick = nextQuestion;
-      prevBtn.onclick = previousQuestion;
-
-      showScreen("quiz-area");
-
-      showQuestion();
-
-      restoreStreakUI();
-
-      return;
-    } else {
-      localStorage.removeItem(sessionKey);
-    }
+        showScreen("quiz-area");
+        showQuestion();
+        restoreStreakUI();
+      },
+      onStartNew: () => {
+        localStorage.removeItem(sessionKey);
+        startStudy();
+      },
+    });
+    return;
   }
 
   // ===============================
@@ -4549,8 +4698,8 @@ function showQuestion() {
     liveScore.innerText = "";
   } else if (mode === "exam" && examVariant === "clinical") {
     const correctSoFar = calculateScore();
-    progressEl.innerText =
-      `Clinical: ${current + 1}/${active.length} | Lives: ${clinicalLives} | Correct: ${correctSoFar}`;
+    progressEl.innerHTML =
+      `Clinical: ${current + 1}/${active.length} | Lives: ${buildClinicalLivesMarkup(clinicalLives, 3)} | Correct: ${correctSoFar}`;
     progressEl.style.color = clinicalLives <= 1 ? "#dc2626" : "#0e7490";
     liveScore.innerText = "";
   } else if (mode === "daily") {
@@ -5081,11 +5230,39 @@ function updateTimerColor() {
   }
 }
 
+function clampSuddenReviewToSeenQuestions() {
+  if (!(mode === "exam" && examVariant === "sudden")) return;
+  if (!Array.isArray(active) || active.length === 0) return;
+
+  let seenCount = Math.max(1, Math.min(active.length, Number(current) + 1 || 1));
+  let maxAnsweredIndex = -1;
+
+  active.forEach((question, index) => {
+    if (
+      Object.prototype.hasOwnProperty.call(userAnswers || {}, question.id) &&
+      String(userAnswers[question.id] || "").trim().length > 0
+    ) {
+      maxAnsweredIndex = Math.max(maxAnsweredIndex, index);
+    }
+  });
+
+  if (maxAnsweredIndex >= 0) {
+    seenCount = Math.max(seenCount, maxAnsweredIndex + 1);
+  }
+
+  active = active.slice(0, seenCount);
+  const allowedIds = new Set(active.map((q) => String(q.id)));
+  userAnswers = Object.fromEntries(
+    Object.entries(userAnswers || {}).filter(([id]) => allowedIds.has(String(id))),
+  );
+}
+
 /* ==============================
                            REVIEW SCREEN
                         ================================= */
 
 function goToReview() {
+  clampSuddenReviewToSeenQuestions();
   clearInterval(examTimer);
   examTimer = null;
 
@@ -5946,8 +6123,18 @@ function loadExamSession() {
   updateModeIndicator();
 
   showScreen("quiz-area");
-
-  startExamTimer();
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
+  if (examTimeBudget > 0) {
+    startExamTimer();
+  } else {
+    clearInterval(examTimer);
+    examTimer = null;
+    if (timerEl) {
+      timerEl.classList.add("hidden");
+      timerEl.innerText = "";
+    }
+  }
   showQuestion();
 
   return true;
@@ -6007,27 +6194,34 @@ window.addEventListener("load", function () {
     const saved = JSON.parse(localStorage.getItem("quizExamSession"));
 
     if (saved) {
-      active = saved.active;
-      userAnswers = saved.userAnswers || {};
-      mode = String(saved.mode || "exam");
-      if (mode !== "exam" && mode !== "smart") {
-        mode = "exam";
-      }
-      examVariant =
-        mode === "smart"
+      const savedMode = String(saved.mode || "exam");
+      const savedVariant =
+        savedMode === "smart"
           ? "smart"
           : String(saved.examVariant || "normal").toLowerCase();
-      examTimeBudget = Math.max(
-        0,
-        Number(saved.examTimeBudget) ||
-          (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
-      );
-      suddenMilestoneLevel = Math.max(0, Number(saved.suddenMilestoneLevel) || 0);
-      clinicalLives = Math.max(0, Number(saved.clinicalLives) || 3);
+      const resumableDrill =
+        savedMode === "exam" && (savedVariant === "sudden" || savedVariant === "clinical");
 
-      // Finish immediately
-      finishExam();
-      return;
+      if (!resumableDrill) {
+        active = saved.active;
+        userAnswers = saved.userAnswers || {};
+        mode = savedMode;
+        if (mode !== "exam" && mode !== "smart") {
+          mode = "exam";
+        }
+        examVariant = savedVariant;
+        examTimeBudget = Math.max(
+          0,
+          Number(saved.examTimeBudget) ||
+            (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
+        );
+        suddenMilestoneLevel = Math.max(0, Number(saved.suddenMilestoneLevel) || 0);
+        clinicalLives = Math.max(0, Number(saved.clinicalLives) || 3);
+
+        // Non-drill abandoned exams still auto-finish on reload.
+        finishExam();
+        return;
+      }
     }
 
     const homeTotalQuestions = document.getElementById("home-total-questions");
@@ -6148,69 +6342,7 @@ function showStudyReviewQuestion() {
   // 🔥 Hide quiz header buttons during review
   document.getElementById("back-btn-quiz").classList.add("hidden");
   if (menuBtnQuiz) menuBtnQuiz.classList.add("hidden");
-
-  const q = active[current];
-
-  answersEl.innerHTML = "";
-  comboBlock.innerHTML = "";
-  resetAiExplainPanel();
-  questionEl.innerHTML = q.question;
-
-  const saved = userAnswers[q.id];
-
-  if (q.type === "match" || q.type === "single") {
-    q.options.forEach((opt) => {
-      const btn = document.createElement("button");
-      btn.innerText = opt;
-      btn.disabled = true;
-
-      if (opt === q.correct) btn.classList.add("correct");
-      if (saved === opt && opt !== q.correct) btn.classList.add("wrong");
-
-      answersEl.appendChild(btn);
-    });
-  } else if (q.type === "combo") {
-    comboBlock.innerHTML = "";
-    answersEl.innerHTML = "";
-
-    q.statements.forEach((s, index) => {
-      const p = document.createElement("p");
-      p.innerText = /^\d+\./.test(s.trim()) ? s : `${index + 1}. ${s}`;
-      comboBlock.appendChild(p);
-    });
-
-    const comboOptions = [
-      { letter: "A", text: "A: 1, 2 and 3" },
-      { letter: "B", text: "B: 1 and 2 only" },
-      { letter: "C", text: "C: 2 and 3 only" },
-      { letter: "D", text: "D: 1 only" },
-      { letter: "E", text: "E: 3 only" },
-    ];
-
-    comboOptions.forEach((option) => {
-      const btn = document.createElement("button");
-      btn.innerText = option.text;
-      btn.dataset.value = option.letter;
-      btn.disabled = true;
-
-      if (option.letter === q.correct) {
-        btn.classList.add("correct");
-      }
-
-      if (saved === option.letter && option.letter !== q.correct) {
-        btn.classList.add("wrong");
-      }
-
-      answersEl.appendChild(btn);
-    });
-  }
-
-  if (explanationEl) {
-    explanationEl.innerText = q.explanation || "No explanation provided.";
-    explanationEl.classList.remove("hidden");
-  }
-  renderQuestionTopicLink(q);
-  refreshAiExplainAvailability();
+  renderDetailedQuestion();
 }
 
 function updateStudyBestStreakDisplay() {
@@ -6358,6 +6490,9 @@ document.addEventListener("keydown", function (e) {
   if (!studyExitModal.classList.contains("hidden") && e.key === "Escape") {
     closeStudyExitModal();
   }
+  if (sessionResumeModal && !sessionResumeModal.classList.contains("hidden") && e.key === "Escape") {
+    closeSessionResumeModal();
+  }
 });
 
 // ==============================
@@ -6366,8 +6501,12 @@ document.addEventListener("keydown", function (e) {
 
 window.addEventListener("beforeunload", function () {
   if ((mode === "exam" || mode === "smart") && active.length > 0) {
-    localStorage.setItem("examAbandoned", "true");
     saveExamSession();
+    if (isPausableDrillSession()) {
+      localStorage.removeItem("examAbandoned");
+    } else {
+      localStorage.setItem("examAbandoned", "true");
+    }
   }
 });
 
@@ -6392,6 +6531,11 @@ window.addEventListener("popstate", function () {
     return;
   }
 
+  if (sessionResumeModal && !sessionResumeModal.classList.contains("hidden")) {
+    closeSessionResumeModal();
+    return;
+  }
+
   // 2️⃣ If Exam exit modal is open → close it
   if (!examExitModal.classList.contains("hidden")) {
     closeExamExitModal();
@@ -6408,6 +6552,9 @@ window.addEventListener("popstate", function () {
     }
 
     if (mode === "exam" || mode === "smart") {
+      if (pauseDrillSessionAndReturnToMenu()) {
+        return;
+      }
       openExamExitModal();
       return;
     }

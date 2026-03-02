@@ -214,6 +214,15 @@ body.font-hand {
   filter: brightness(0.95);
 }
 
+.modal-btn.resume-primary {
+  background: linear-gradient(160deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+}
+
+.modal-btn.resume-primary:hover {
+  filter: brightness(0.95);
+}
+
 .auth-modal-card {
   width: min(94vw, 460px);
   max-height: calc(100dvh - 40px);
@@ -2027,6 +2036,28 @@ body.headers-collapsed .app-header {
   background: #e2e8f0;
 }
 
+.clinical-hearts {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.clinical-heart {
+  font-size: 0.98em;
+  line-height: 1;
+}
+
+.clinical-heart.is-on {
+  color: #dc2626;
+  text-shadow: 0 0 6px rgba(220, 38, 38, 0.32);
+}
+
+.clinical-heart.is-off {
+  color: #94a3b8;
+  opacity: 0.5;
+}
+
 .xp-chip {
   padding: 6px 10px;
   border-radius: 999px;
@@ -3696,6 +3727,14 @@ body.theme-dark .header-meta,
 body.theme-dark #progress,
 body.theme-dark .menu-auth-user {
   color: #e5e7eb !important;
+}
+
+body.theme-dark .clinical-heart.is-on {
+  color: #f87171;
+}
+
+body.theme-dark .clinical-heart.is-off {
+  color: #64748b;
 }
 
 body.theme-dark #question {

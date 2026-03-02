@@ -61,7 +61,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260301-iconsource3" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180.png?v=20260301-iconsource3" />
-    <link rel="stylesheet" href="styles.css?v=20260302-engage4" />
+    <link rel="stylesheet" href="styles.css?v=20260302-engage5" />
   </head>
 
   <body>
@@ -99,6 +99,22 @@
 
           <button id="confirm-study-exit-btn" class="modal-btn primary">
             End Session
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="session-resume-modal" class="modal hidden">
+      <div class="modal-card">
+        <div id="session-resume-title" class="modal-title">Resume Session?</div>
+        <div id="session-resume-text" class="modal-text">
+          You have a paused session. Resume where you stopped or start new.
+        </div>
+        <div class="modal-actions">
+          <button id="session-resume-new-btn" class="modal-btn secondary">
+            Start New
+          </button>
+          <button id="session-resume-continue-btn" class="modal-btn resume-primary">
+            Resume
           </button>
         </div>
       </div>
@@ -1293,7 +1309,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260302-engage4"></script>
+    <script type="module" src="engine.js?v=20260302-engage5"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

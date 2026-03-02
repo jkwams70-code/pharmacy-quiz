@@ -2000,23 +2000,19 @@ body.headers-collapsed .app-header {
 
 #quiz-area.mode-exam #back-btn-quiz,
 #quiz-area.mode-smart #back-btn-quiz {
-  background: #dc2626;
-  color: transparent;
-  font-size: 0;
+  background: #dbeafe;
+  color: #0f3f7f;
+  font-size: 1.02rem;
 }
 
 #quiz-area.mode-exam #back-btn-quiz::before,
 #quiz-area.mode-smart #back-btn-quiz::before {
-  content: "✕";
-  color: #fff;
-  font-size: 1.02rem;
-  font-weight: 900;
-  line-height: 1;
+  content: none;
 }
 
 #quiz-area.mode-exam #back-btn-quiz:hover,
 #quiz-area.mode-smart #back-btn-quiz:hover {
-  background: #b91c1c;
+  background: #bfdbfe;
 }
 
 .header-meta {
@@ -4299,3 +4295,4 @@ body.reduce-motion *::after {
     transform: translateY(-4px);
   }
 }
+

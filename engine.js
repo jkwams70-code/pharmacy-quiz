@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260302-engage5";
+import { backendClient } from "./backendClient.js?v=20260302-engage6";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -3759,7 +3759,12 @@ function startMenuDrill(variant = "rapid") {
         onStartNew: () => {
           localStorage.removeItem("quizExamSession");
           localStorage.removeItem("examAbandoned");
-          startMenuDrill("sudden");
+          mode = "exam";
+          examVariant = "sudden";
+          active = [];
+          userAnswers = {};
+          current = 0;
+          startExam("all", "sudden");
         },
       });
       return;
@@ -3779,7 +3784,12 @@ function startMenuDrill(variant = "rapid") {
         onStartNew: () => {
           localStorage.removeItem("quizExamSession");
           localStorage.removeItem("examAbandoned");
-          startMenuDrill("clinical");
+          mode = "exam";
+          examVariant = "clinical";
+          active = [];
+          userAnswers = {};
+          current = 0;
+          startExam(String(clinicalTotalQuestions), "clinical");
         },
       });
       return;
@@ -6084,21 +6094,38 @@ function loadExamSession() {
   if (!saved) return false;
   clearAiExplainStateSession();
 
-  active = saved.active;
-  current = saved.current;
-  userAnswers = saved.userAnswers;
-  examVariant = String(saved.examVariant || "normal");
-  examTimeBudget = Math.max(
-    0,
-    Number(saved.examTimeBudget) ||
-      (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
-  );
+  active = Array.isArray(saved.active) ? saved.active : [];
+  current = Math.max(0, Number(saved.current) || 0);
+  userAnswers = saved.userAnswers && typeof saved.userAnswers === "object" ? saved.userAnswers : {};
+  examVariant = String(saved.examVariant || "normal").toLowerCase();
+  mode = String(saved.mode || "exam");
+  if (mode !== "exam" && mode !== "smart") {
+    mode = "exam";
+  }
+
+  // Detect smart exam from flag, but keep drill variants strictly under exam mode.
+  if (mode === "smart" || (saved.active && saved.active.length && saved.active[0].smartFlag)) {
+    mode = "smart";
+    examVariant = "smart";
+  }
+
+  const noTimerDrill =
+    mode === "exam" && (examVariant === "sudden" || examVariant === "clinical");
+  examTimeBudget = noTimerDrill
+    ? 0
+    : Math.max(
+        0,
+        Number(saved.examTimeBudget) ||
+          (Array.isArray(saved.active) ? saved.active.length * 40 : 40),
+      );
   suddenMilestoneLevel = Math.max(0, Number(saved.suddenMilestoneLevel) || 0);
   clinicalLives = Math.max(0, Number(saved.clinicalLives) || 3);
 
-  const now = Date.now();
-  const timePassed = Math.floor((now - saved.timestamp) / 1000);
-  if (examTimeBudget > 0) {
+  if (noTimerDrill) {
+    examTimeLeft = 0;
+  } else if (examTimeBudget > 0) {
+    const now = Date.now();
+    const timePassed = Math.floor((now - saved.timestamp) / 1000);
     examTimeLeft = saved.examTimeLeft - timePassed;
     if (examTimeLeft <= 0) {
       localStorage.removeItem("quizExamSession");
@@ -6107,17 +6134,6 @@ function loadExamSession() {
     }
   } else {
     examTimeLeft = 0;
-  }
-
-  mode = String(saved.mode || "exam");
-  if (mode !== "exam" && mode !== "smart") {
-    mode = "exam";
-  }
-
-  // 🔥 Detect if smart exam
-  if (mode === "smart" || (saved.active && saved.active.length && saved.active[0].smartFlag)) {
-    mode = "smart";
-    examVariant = "smart";
   }
 
   updateModeIndicator();

@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260302-engage3";
+import { backendClient } from "./backendClient.js?v=20260302-engage4";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -52,7 +52,6 @@ const CATEGORY_COLOR_SHIFTS = {
 };
 
 const POSITIVE_ANSWER_FEEDBACK = ["Excellent.", "Sharp.", "Good recall."];
-const XP_STORAGE_KEY = "quizXpTotalV1";
 
 function normalizeMajorCategory(category, context = "") {
   const raw = String(category || "").trim();
@@ -140,7 +139,6 @@ let inReview = false;
 let answeredCurrent = false;
 let inStudyReview = false;
 let currentStreak = 0;
-let xpTotal = Number(localStorage.getItem(XP_STORAGE_KEY) || 0) || 0;
 let feedbackRotationIndex = 0;
 let answerFeedbackHideTimer = null;
 let answerCheckHideTimer = null;
@@ -277,20 +275,8 @@ function reconcileLocalQuestionStats() {
     saveWeakTracker();
   }
 
-  let perfChanged = false;
-  const nextPerf = {};
-  Object.entries(performanceData || {}).forEach(([rawId, row]) => {
-    const key = normalizeQuestionIdKey(rawId);
-    if (!key || !validIds.has(key)) {
-      perfChanged = true;
-      return;
-    }
-    nextPerf[key] = row;
-  });
-  if (perfChanged) {
-    performanceData = nextPerf;
-    savePerformance();
-  }
+  // Keep historical performance data intact even when question bank changes.
+  // Dashboard should remain cumulative and never shrink from ID filtering.
 }
 
 reconcileLocalQuestionStats();
@@ -580,16 +566,13 @@ function setSettingsFeedback(message = "", isError = false) {
 }
 
 function renderXp() {
-  if (!xpValueEl) return;
-  xpValueEl.textContent = String(Math.max(0, Math.round(Number(xpTotal) || 0)));
+  if (xpChipEl) {
+    xpChipEl.classList.add("hidden");
+  }
 }
 
 function awardXp(amount = 0) {
-  const gain = Math.max(0, Math.round(Number(amount) || 0));
-  if (!gain) return;
-  xpTotal += gain;
-  localStorage.setItem(XP_STORAGE_KEY, String(xpTotal));
-  renderXp();
+  return;
 }
 
 function getNextPositiveFeedback() {
@@ -1011,10 +994,8 @@ function clearDeviceLocalCache() {
     "activeExamSessionId",
     DAILY_QUIZ_POPUP_STORAGE_KEY,
     DAILY_CELEBRATION_SHOWN_STORAGE_KEY,
-    XP_STORAGE_KEY,
   ];
   keysToClear.forEach((key) => localStorage.removeItem(key));
-  xpTotal = 0;
   renderXp();
 }
 
@@ -3791,48 +3772,119 @@ function renderDashboardValues({
   });
 }
 
-function showDashboard() {
-  showScreen("dashboard");
-
+function getLocalDashboardSnapshot() {
   let totalAttempts = 0;
   let totalCorrect = 0;
   let weakCount = 0;
 
-  questionBank.forEach((q) => {
-    const data = performanceData[q.id];
-    if (data) {
-      totalAttempts += data.attempts;
-      totalCorrect += data.correct;
-      if (isWeak(q.id)) weakCount++;
-    }
+  Object.values(performanceData || {}).forEach((row) => {
+    const attempts = Math.max(0, Number(row?.attempts) || 0);
+    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
+    if (attempts <= 0) return;
+    totalAttempts += attempts;
+    totalCorrect += correct;
+    const accuracy = Math.round((correct / attempts) * 100);
+    if (accuracy < 60) weakCount += 1;
   });
 
   const overallAccuracy =
     totalAttempts === 0 ? 0 : Math.round((totalCorrect / totalAttempts) * 100);
 
-  renderDashboardValues({
+  const categories = Object.keys(categoryPerformance || {})
+    .map((cat) => ({
+      category: cat,
+      attempts: Math.max(0, Number(categoryPerformance?.[cat]?.attempts) || 0),
+      accuracy: getCategoryAccuracy(cat),
+    }))
+    .sort((a, b) => String(a.category).localeCompare(String(b.category)));
+
+  return {
     totalAttempts,
     overallAccuracy,
     weakCount,
-    categories: Object.keys(categoryPerformance).map((cat) => ({
-      category: cat,
-      attempts: categoryPerformance[cat].attempts,
-      accuracy: getCategoryAccuracy(cat),
-    })),
+    categories,
+  };
+}
+
+function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
+  const local = localSnapshot || {
+    totalAttempts: 0,
+    overallAccuracy: 0,
+    weakCount: 0,
+    categories: [],
+  };
+  const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
+
+  const remoteAttempts = Math.max(
+    0,
+    Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
+  );
+  const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
+  const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
+
+  const mergedTotalAttempts = Math.max(
+    Math.max(0, Number(local.totalAttempts) || 0),
+    remoteAttempts,
+  );
+  const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
+  const mergedOverallAccuracy =
+    remoteAttempts > (Number(local.totalAttempts) || 0)
+      ? remoteAccuracy
+      : Math.max(0, Number(local.overallAccuracy) || 0);
+
+  const mergedCategoryMap = new Map();
+  (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
+    const name = String(row?.category || "").trim() || "General";
+    mergedCategoryMap.set(name, {
+      category: name,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
+    });
   });
+
+  (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
+    const name = String(row?.category || "").trim() || "General";
+    const remoteRow = {
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
+    };
+    const existing = mergedCategoryMap.get(name);
+    if (!existing) {
+      mergedCategoryMap.set(name, { category: name, ...remoteRow });
+      return;
+    }
+    if (remoteRow.attempts > existing.attempts) {
+      mergedCategoryMap.set(name, { category: name, ...remoteRow });
+      return;
+    }
+    mergedCategoryMap.set(name, {
+      category: name,
+      attempts: existing.attempts,
+      accuracy: existing.accuracy,
+    });
+  });
+
+  return {
+    totalAttempts: mergedTotalAttempts,
+    overallAccuracy: mergedOverallAccuracy,
+    weakCount: mergedWeakCount,
+    categories: [...mergedCategoryMap.values()].sort((a, b) =>
+      String(a.category).localeCompare(String(b.category)),
+    ),
+  };
+}
+
+function showDashboard() {
+  showScreen("dashboard");
+
+  const localSnapshot = getLocalDashboardSnapshot();
+  renderDashboardValues(localSnapshot);
 
   backendClient
     .fetchSyncedDashboard()
     .then((remote) => {
-      if (!remote || typeof remote !== "object") return;
-
-      renderDashboardValues({
-        totalAttempts:
-          Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
-        overallAccuracy: Number(remote.overallAccuracy) || 0,
-        weakCount: Number(remote.weakQuestions) || 0,
-        categories: Array.isArray(remote.categories) ? remote.categories : [],
-      });
+      const mergedSnapshot = mergeDashboardSnapshots(localSnapshot, remote);
+      renderDashboardValues(mergedSnapshot);
     })
     .catch(() => {
       // Keep local dashboard when backend is not reachable.

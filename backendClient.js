@@ -283,6 +283,25 @@ export const backendClient = {
     return get(`/sync/history${query}`);
   },
 
+  fetchDailyLeaderboard(limit = 10, date = "") {
+    const query = toQuery({ limit, date });
+    return get(`/sync/leaderboard${query}`);
+  },
+
+  fetchQuestionInsights(questionId) {
+    const id = Number(questionId);
+    if (!Number.isFinite(id) || id <= 0) {
+      return Promise.resolve({
+        ok: false,
+        questionId: 0,
+        sampleSize: 0,
+        distribution: [],
+        wrongOptionNotes: [],
+      });
+    }
+    return get(`/questions/${encodeURIComponent(id)}/insights`);
+  },
+
   fetchAiQuota() {
     return get("/ai/quota");
   },

@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260302-engage6";
+import { backendClient } from "./backendClient.js?v=20260303-social1";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -206,6 +206,9 @@ let dailyGemsAnimationActive = false;
 let dailyCelebrationHideTimer = null;
 let dailyCelebrationResetTimer = null;
 let dailyMidnightRefreshTimer = null;
+let dailyLeaderboardSnapshot = null;
+let questionInsightCache = Object.create(null);
+let questionInsightInFlightKey = "";
 
 // Load questions from backend if available
 async function loadQuestionsFromBackend() {
@@ -281,7 +284,7 @@ function reconcileLocalQuestionStats() {
 
 reconcileLocalQuestionStats();
 
-function updatePerformance(questionId, isCorrect) {
+function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (!performanceData[questionId]) {
     performanceData[questionId] = {
       attempts: 0,
@@ -306,6 +309,7 @@ function updatePerformance(questionId, isCorrect) {
     questionId,
     isCorrect,
     category: question?.category || "General",
+    selectedAnswer: String(selectedAnswer || "").trim(),
   });
 
   savePerformance();
@@ -385,6 +389,11 @@ const timerEl = document.getElementById("timer");
 const xpValueEl = document.getElementById("xp-value");
 const xpChipEl = document.getElementById("xp-chip");
 const explanationEl = document.getElementById("explanation");
+const answerInsightPanelEl = document.getElementById("answer-insight-panel");
+const answerInsightMostEl = document.getElementById("answer-insight-most");
+const answerInsightTrapEl = document.getElementById("answer-insight-trap");
+const answerInsightMemoryEl = document.getElementById("answer-insight-memory");
+const answerInsightWrongEl = document.getElementById("answer-insight-wrong");
 const answerCheckmarkEl = document.getElementById("answer-checkmark");
 const answerFeedbackEl = document.getElementById("answer-feedback");
 const drillEventBannerEl = document.getElementById("drill-event-banner");
@@ -541,6 +550,8 @@ const reviewTitleEl = document.querySelector("#review-screen .review-title");
 const reviewTimerStatusEl = document.getElementById("review-timer");
 const submitExamBtn = document.getElementById("submit-exam");
 const examTypeSelect = document.getElementById("exam-type-select");
+const dailySocialCardEl = document.getElementById("daily-social-card");
+const resultShareBtn = document.getElementById("result-share-btn");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
@@ -1265,14 +1276,121 @@ function resetDailyQuizRuntimeState() {
   dailyQuizState = null;
   dailyQuizSessionMeta = null;
   dailyPendingCelebration = null;
+  dailyLeaderboardSnapshot = null;
+  questionInsightCache = Object.create(null);
+  questionInsightInFlightKey = "";
   clearDailyMidnightRefreshTimer();
   stopDailyGemsAnimation();
+  clearDailyResultEnhancements();
   if (mode === "daily") {
     mode = "";
     active = [];
     userAnswers = {};
     inReview = false;
   }
+}
+
+function clearDailyResultEnhancements() {
+  if (dailySocialCardEl) {
+    dailySocialCardEl.classList.add("hidden");
+    dailySocialCardEl.innerHTML = "";
+  }
+  if (resultShareBtn) {
+    resultShareBtn.classList.add("hidden");
+    resultShareBtn.onclick = null;
+  }
+}
+
+function renderDailySocialCard(snapshot) {
+  if (!dailySocialCardEl) return;
+  dailySocialCardEl.innerHTML = "";
+  if (!snapshot || typeof snapshot !== "object") {
+    dailySocialCardEl.classList.add("hidden");
+    return;
+  }
+
+  const yourBest = snapshot.yourBest || null;
+  const leaderboard = Array.isArray(snapshot.leaderboard) ? snapshot.leaderboard : [];
+  const headline = document.createElement("div");
+  headline.className = "daily-social-headline";
+  headline.textContent = yourBest
+    ? `You're in the top ${yourBest.topPercentile}% today.`
+    : "Complete today's challenge to enter today's leaderboard.";
+  dailySocialCardEl.appendChild(headline);
+
+  if (yourBest) {
+    const sub = document.createElement("div");
+    sub.className = "daily-social-subline";
+    sub.textContent = `Rank ${yourBest.rank}/${snapshot.totalPlayers || 0} | ${yourBest.score}/${yourBest.total} (${yourBest.percent}%)`;
+    dailySocialCardEl.appendChild(sub);
+  }
+
+  if (leaderboard.length > 0) {
+    const list = document.createElement("div");
+    list.className = "daily-leaderboard-list";
+    leaderboard.slice(0, 5).forEach((row) => {
+      const line = document.createElement("div");
+      line.className = "daily-leaderboard-item";
+
+      const left = document.createElement("span");
+      left.textContent = `#${row.rank} ${row.displayName || "Learner"}`;
+      const right = document.createElement("span");
+      right.textContent = `${row.percent || 0}%`;
+
+      line.appendChild(left);
+      line.appendChild(right);
+      list.appendChild(line);
+    });
+    dailySocialCardEl.appendChild(list);
+  }
+
+  dailySocialCardEl.classList.remove("hidden");
+}
+
+function buildDailyShareText({
+  date = "",
+  score = 0,
+  total = 10,
+  percent = 0,
+  streak = 0,
+  gemsAwarded = 0,
+  social = null,
+} = {}) {
+  const dateText = date ? formatDateKey(String(date)) : "Today";
+  const topLine =
+    social?.yourBest && social?.totalPlayers
+      ? `Top ${social.yourBest.topPercentile}% today (Rank ${social.yourBest.rank}/${social.totalPlayers})`
+      : "Daily challenge completed";
+  return [
+    `AJIX Pharmacy Quiz | ${dateText}`,
+    `${score}/${total} (${percent}%)`,
+    `Streak: ${streak} day${streak === 1 ? "" : "s"}`,
+    `Gems earned: +${gemsAwarded}`,
+    topLine,
+  ].join(" | ");
+}
+
+function configureDailyShareButton(context = {}) {
+  if (!resultShareBtn) return;
+  resultShareBtn.classList.remove("hidden");
+  resultShareBtn.onclick = async () => {
+    const text = buildDailyShareText(context);
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "AJIX Daily Quiz",
+          text,
+        });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        alert("Daily summary copied to clipboard.");
+      } else {
+        alert(text);
+      }
+    } catch {
+      // User canceled share sheet or clipboard failed.
+    }
+  };
 }
 
 function renderDailyQuizUi() {
@@ -1851,6 +1969,108 @@ function renderQuestionTopicLink(question) {
 
   topicLinkBtnEl.href = url;
   topicLinkWrapEl.classList.remove("hidden");
+}
+
+function resetAnswerInsightPanel() {
+  if (!answerInsightPanelEl) return;
+  answerInsightPanelEl.classList.add("hidden");
+  if (answerInsightMostEl) answerInsightMostEl.textContent = "";
+  if (answerInsightTrapEl) answerInsightTrapEl.textContent = "";
+  if (answerInsightMemoryEl) answerInsightMemoryEl.textContent = "";
+  if (answerInsightWrongEl) answerInsightWrongEl.innerHTML = "";
+}
+
+function setAnswerInsightLoading() {
+  if (!answerInsightPanelEl || !answerInsightMostEl) return;
+  answerInsightPanelEl.classList.remove("hidden");
+  answerInsightMostEl.textContent = "Loading peer insight...";
+  if (answerInsightTrapEl) answerInsightTrapEl.textContent = "";
+  if (answerInsightMemoryEl) answerInsightMemoryEl.textContent = "";
+  if (answerInsightWrongEl) answerInsightWrongEl.innerHTML = "";
+}
+
+function canShowAnswerInsight() {
+  if (!answerInsightPanelEl || !currentUser) return false;
+  return mode === "study" || inReview || inDetailedReview;
+}
+
+function renderAnswerInsightData(data) {
+  if (!answerInsightPanelEl) return;
+  const payload = data && typeof data === "object" ? data : {};
+  const sampleSize = Number(payload.sampleSize || 0);
+  const mostChosen = payload?.mostChosen?.option
+    ? `Most chosen: ${payload.mostChosen.option} (${payload.mostChosen.percent || 0}%)`
+    : sampleSize > 0
+      ? "Most chosen option data is still stabilizing."
+      : "No crowd answer data yet for this question.";
+
+  answerInsightPanelEl.classList.remove("hidden");
+  if (answerInsightMostEl) {
+    answerInsightMostEl.textContent = `${payload.compareLine || mostChosen}`;
+  }
+  if (answerInsightTrapEl) {
+    answerInsightTrapEl.textContent = payload.keyTrap
+      ? `${payload.keyTrap}`
+      : "Key trap: overthinking distractors.";
+  }
+  if (answerInsightMemoryEl) {
+    answerInsightMemoryEl.textContent = payload.memoryTrick || "";
+  }
+
+  if (answerInsightWrongEl) {
+    answerInsightWrongEl.innerHTML = "";
+    const notes = Array.isArray(payload.wrongOptionNotes) ? payload.wrongOptionNotes : [];
+    notes.forEach((note) => {
+      const row = document.createElement("div");
+      const option = String(note?.option || "").trim();
+      const reason = String(note?.reason || "").trim();
+      row.textContent = option ? `${option}: ${reason}` : reason;
+      answerInsightWrongEl.appendChild(row);
+    });
+  }
+}
+
+async function loadAnswerInsightForQuestion(question) {
+  if (!canShowAnswerInsight()) {
+    resetAnswerInsightPanel();
+    return;
+  }
+
+  const key = normalizeQuestionIdKey(question?.id);
+  if (!key) {
+    resetAnswerInsightPanel();
+    return;
+  }
+
+  if (questionInsightCache[key]) {
+    renderAnswerInsightData(questionInsightCache[key]);
+    return;
+  }
+
+  if (questionInsightInFlightKey === key) {
+    return;
+  }
+
+  questionInsightInFlightKey = key;
+  setAnswerInsightLoading();
+
+  try {
+    const data = await backendClient.fetchQuestionInsights(Number(key));
+    questionInsightCache[key] = data;
+    if (
+      Array.isArray(active) &&
+      active[current] &&
+      normalizeQuestionIdKey(active[current].id) === key
+    ) {
+      renderAnswerInsightData(data);
+    }
+  } catch {
+    resetAnswerInsightPanel();
+  } finally {
+    if (questionInsightInFlightKey === key) {
+      questionInsightInFlightKey = "";
+    }
+  }
 }
 
 function prettifyTopicSlug(slug) {
@@ -4679,6 +4899,7 @@ function showQuestion() {
     explanationEl.classList.add("hidden");
     explanationEl.innerText = "";
   }
+  resetAnswerInsightPanel();
   if (topicLinkWrapEl) {
     topicLinkWrapEl.classList.add("hidden");
   }
@@ -4832,7 +5053,7 @@ function selectAnswer(value, q) {
   }
 
   if (mode === "study") {
-    updatePerformance(q.id, isCorrect);
+    updatePerformance(q.id, isCorrect, value);
     const studyType = document.getElementById("study-type-select").value;
 
     if (mode === "study" && studyType === "normal") {
@@ -5005,6 +5226,7 @@ function selectAnswer(value, q) {
     explanationEl.classList.remove("hidden");
   }
   renderQuestionTopicLink(q);
+  loadAnswerInsightForQuestion(q);
   refreshAiExplainAvailability();
   answeredCurrent = true;
   nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
@@ -5048,7 +5270,7 @@ function nextQuestion() {
     // If user skipped without answering
     if (!answeredCurrent && !userAnswers[q.id]) {
       userAnswers[q.id] = "Skipped";
-      updatePerformance(q.id, false);
+      updatePerformance(q.id, false, "Skipped");
       updateStreak(false);
 
       const buttons = document.querySelectorAll("#answers button");
@@ -5075,6 +5297,7 @@ function nextQuestion() {
         explanationEl.classList.remove("hidden");
       }
       renderQuestionTopicLink(q);
+      loadAnswerInsightForQuestion(q);
       refreshAiExplainAvailability();
 
       answeredCurrent = true;
@@ -5139,6 +5362,7 @@ function restoreSelection(q) {
       explanationEl.classList.remove("hidden");
     }
     renderQuestionTopicLink(q);
+    loadAnswerInsightForQuestion(q);
     refreshAiExplainAvailability();
   }
 
@@ -5385,7 +5609,7 @@ async function finishDailyQuizSession() {
     active.forEach((q) => {
       const selected = String(userAnswers?.[q.id] || "").trim();
       const isCorrect = selected === String(q.correct || "");
-      updatePerformance(q.id, isCorrect);
+      updatePerformance(q.id, isCorrect, selected || "Skipped");
     });
 
     saveSession(`Daily (${totalQuestions})`, finalScore, totalQuestions);
@@ -5408,6 +5632,25 @@ async function finishDailyQuizSession() {
     } else {
       percentEl.style.color = "#dc2626";
     }
+
+    clearDailyResultEnhancements();
+    let socialSnapshot = null;
+    try {
+      socialSnapshot = await backendClient.fetchDailyLeaderboard(10);
+    } catch {
+      socialSnapshot = null;
+    }
+    dailyLeaderboardSnapshot = socialSnapshot;
+    renderDailySocialCard(socialSnapshot);
+    configureDailyShareButton({
+      date: dailyQuizState?.today?.date || "",
+      score: finalScore,
+      total: totalQuestions,
+      percent,
+      streak,
+      gemsAwarded,
+      social: socialSnapshot,
+    });
 
     awardXp(12 + Math.round(percent / 25));
 
@@ -5460,13 +5703,14 @@ async function finishExam() {
 
   let finalScore = 0;
   const answers = {};
+  clearDailyResultEnhancements();
 
   active.forEach((q) => {
     const isCorrect = userAnswers[q.id] === q.correct;
     if (isCorrect) finalScore++;
 
     answers[q.id] = userAnswers[q.id];
-    updatePerformance(q.id, isCorrect);
+    updatePerformance(q.id, isCorrect, userAnswers[q.id] || "Skipped");
   });
 
   // Finish attempt on backend if available
@@ -5592,6 +5836,7 @@ async function finishExam() {
     }
   }
 
+  clearDailyResultEnhancements();
   showScreen("study-result-screen");
 
   document.getElementById("result-review-btn").onclick = showDetailedReview;
@@ -5652,6 +5897,7 @@ function finishStudy() {
 
   awardXp(8 + Math.round(percent / 25));
 
+  clearDailyResultEnhancements();
   showScreen("study-result-screen");
 
   document.getElementById("result-review-btn").onclick = showStudyReviewPalette;
@@ -5705,6 +5951,7 @@ function endStudySession() {
 
   awardXp(6 + Math.round(percent / 30));
 
+  clearDailyResultEnhancements();
   showScreen("study-result-screen");
 
   document.getElementById("result-review-btn").onclick = showStudyReviewPalette;
@@ -6012,6 +6259,7 @@ function renderDetailedQuestion() {
     explanationEl.classList.remove("hidden");
   }
   renderQuestionTopicLink(q);
+  loadAnswerInsightForQuestion(q);
   refreshAiExplainAvailability();
 }
 

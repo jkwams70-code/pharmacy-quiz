@@ -2470,6 +2470,40 @@ body.headers-collapsed .app-header {
   margin-top: 10px;
 }
 
+.answer-insight-panel {
+  margin-top: 10px;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #4f46e5;
+  border-radius: var(--radius-md);
+  background: #eef2ff;
+  color: #312e81;
+  padding: 10px 11px;
+  display: grid;
+  gap: 7px;
+}
+
+.answer-insight-title {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.25px;
+  color: #3730a3;
+}
+
+.answer-insight-line {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #312e81;
+  font-weight: 700;
+}
+
+.answer-insight-list {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #3730a3;
+  line-height: 1.4;
+}
+
 .ai-explain-wrap {
   margin-top: 10px;
   display: grid;
@@ -2926,6 +2960,48 @@ body.headers-collapsed .app-header {
   margin-top: 10px;
   color: #475569;
   font-weight: 700;
+}
+
+.daily-social-card {
+  margin-top: 12px;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #312e81;
+  padding: 10px 11px;
+  display: grid;
+  gap: 8px;
+}
+
+.daily-social-headline {
+  font-size: 0.93rem;
+  font-weight: 900;
+  color: #3730a3;
+}
+
+.daily-social-subline {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #4338ca;
+}
+
+.daily-leaderboard-list {
+  display: grid;
+  gap: 6px;
+}
+
+.daily-leaderboard-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 9px;
+  background: #ffffff;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #312e81;
 }
 
 .review-section-title {
@@ -3984,6 +4060,36 @@ body.theme-dark .menu-hub-link-btn:hover,
 body.theme-dark .menu-portal-btn:hover,
 body.theme-dark .menu-user-hub-btn:hover {
   background: linear-gradient(160deg, #1f2937, #4b5563) !important;
+}
+
+body.theme-dark .answer-insight-panel {
+  border-color: #6366f1;
+  border-left-color: #818cf8;
+  background: rgba(49, 46, 129, 0.22);
+  color: #e0e7ff;
+}
+
+body.theme-dark .answer-insight-title,
+body.theme-dark .answer-insight-line,
+body.theme-dark .answer-insight-list {
+  color: #e0e7ff;
+}
+
+body.theme-dark .daily-social-card {
+  border-color: #6366f1;
+  background: rgba(49, 46, 129, 0.2);
+  color: #e0e7ff;
+}
+
+body.theme-dark .daily-social-headline,
+body.theme-dark .daily-social-subline {
+  color: #c7d2fe;
+}
+
+body.theme-dark .daily-leaderboard-item {
+  border-color: #6366f1;
+  background: rgba(30, 41, 59, 0.6);
+  color: #e0e7ff;
 }
 
 /* Keep study answer states clearly visible in dark mode. */

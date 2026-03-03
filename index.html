@@ -61,7 +61,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260301-iconsource3" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180.png?v=20260301-iconsource3" />
-    <link rel="stylesheet" href="styles.css?v=20260302-engage6" />
+    <link rel="stylesheet" href="styles.css?v=20260303-social1" />
   </head>
 
   <body>
@@ -1164,6 +1164,13 @@
             <div id="answers" class="answers-grid-modern"></div>
 
             <div id="explanation" class="explanation-modern hidden"></div>
+            <div id="answer-insight-panel" class="answer-insight-panel hidden" aria-live="polite">
+              <div class="answer-insight-title">Peer Insight</div>
+              <div id="answer-insight-most" class="answer-insight-line"></div>
+              <div id="answer-insight-trap" class="answer-insight-line"></div>
+              <div id="answer-insight-memory" class="answer-insight-line"></div>
+              <div id="answer-insight-wrong" class="answer-insight-list"></div>
+            </div>
             <div id="ai-explain-wrap" class="ai-explain-wrap hidden">
               <div class="ai-explain-actions">
                 <button
@@ -1286,6 +1293,7 @@
               </div>
 
               <div class="result-feedback" id="result-feedback"></div>
+              <div id="daily-social-card" class="daily-social-card hidden"></div>
 
               <div id="result-review-section" class="hidden">
                 <div class="review-section-title">Detailed Review</div>
@@ -1300,6 +1308,9 @@
               <button id="result-review-btn" class="result-btn primary-btn">
                 Review
               </button>
+              <button id="result-share-btn" class="result-btn secondary-btn hidden">
+                Share Streak
+              </button>
               <button id="result-menu-btn" class="result-btn secondary-btn">
                 Back to Menu
               </button>
@@ -1309,7 +1320,7 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260302-engage6"></script>
+    <script type="module" src="engine.js?v=20260303-social1"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

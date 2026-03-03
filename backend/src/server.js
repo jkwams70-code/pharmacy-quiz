@@ -882,6 +882,264 @@ function buildDashboardFromSync(events, sessions) {
   };
 }
 
+function normalizeChoiceText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function extractOptionLetter(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^[A-E]$/i.test(text)) return text.toUpperCase();
+  const match = text.match(/^([A-E])(?:[\).:\-\s]|$)/i);
+  return match ? match[1].toUpperCase() : "";
+}
+
+function trimLeadingOptionLetter(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^[A-E](?:[\).:\-\s])+/i, "")
+    .trim();
+}
+
+function buildChoiceCatalog(question = {}) {
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const rows = options.map((option, index) => {
+    const letter = String.fromCharCode(65 + index);
+    return {
+      letter,
+      text: String(option || "").trim(),
+      normalized: normalizeChoiceText(option),
+      normalizedNoPrefix: normalizeChoiceText(trimLeadingOptionLetter(option)),
+    };
+  });
+
+  let correctLetter = extractOptionLetter(question?.correct);
+
+  if (!correctLetter && rows.length > 0) {
+    const correctNorm = normalizeChoiceText(question?.correct);
+    const match = rows.find(
+      (row) =>
+        row.normalized === correctNorm || row.normalizedNoPrefix === correctNorm,
+    );
+    if (match) {
+      correctLetter = match.letter;
+    }
+  }
+
+  if (!correctLetter && rows.length > 0) {
+    const correctIndex = safeNumber(question?.correct);
+    if (Number.isInteger(correctIndex) && correctIndex >= 0 && correctIndex < rows.length) {
+      correctLetter = rows[correctIndex].letter;
+    }
+  }
+
+  if (correctLetter && !rows.some((row) => row.letter === correctLetter)) {
+    correctLetter = "";
+  }
+
+  return { rows, correctLetter };
+}
+
+function resolveSelectionLetter(selection, catalog) {
+  const rows = Array.isArray(catalog?.rows) ? catalog.rows : [];
+  if (rows.length === 0) return "";
+
+  const direct = extractOptionLetter(selection);
+  if (direct && rows.some((row) => row.letter === direct)) {
+    return direct;
+  }
+
+  const normalized = normalizeChoiceText(selection);
+  if (!normalized) return "";
+
+  const match = rows.find(
+    (row) =>
+      row.normalized === normalized || row.normalizedNoPrefix === normalized,
+  );
+  return match ? match.letter : "";
+}
+
+function buildWrongOptionNotes(rows, correctLetter, mostChosenLetter) {
+  return rows
+    .filter((row) => row.letter !== correctLetter)
+    .map((row) => {
+      if (row.letter === mostChosenLetter && row.letter !== correctLetter) {
+        return {
+          option: row.letter,
+          reason:
+            "Common trap: it sounds familiar, but it does not satisfy the key clue in the stem.",
+        };
+      }
+      return {
+        option: row.letter,
+        reason:
+          "Plausible distractor, but less aligned with the main clinical cue than the best answer.",
+      };
+    })
+    .slice(0, 4);
+}
+
+function parseDurationSeconds(value) {
+  if (value === null || value === undefined) return null;
+  const numeric = safeNumber(value);
+  if (Number.isFinite(numeric) && numeric >= 0) return Math.round(numeric);
+  const match = String(value).match(/(\d+)\s*s/i);
+  if (match) return Number(match[1]);
+  return null;
+}
+
+function compareRowsByDuration(a, b) {
+  const aHas = Number.isFinite(a?.durationSeconds);
+  const bHas = Number.isFinite(b?.durationSeconds);
+  if (aHas && bHas) {
+    return a.durationSeconds - b.durationSeconds;
+  }
+  if (aHas) return -1;
+  if (bHas) return 1;
+  return 0;
+}
+
+function isBetterDailyLeaderboardRow(nextRow, currentRow) {
+  if (!currentRow) return true;
+  if (nextRow.percent !== currentRow.percent) {
+    return nextRow.percent > currentRow.percent;
+  }
+  if (nextRow.score !== currentRow.score) {
+    return nextRow.score > currentRow.score;
+  }
+  if (nextRow.total !== currentRow.total) {
+    return nextRow.total > currentRow.total;
+  }
+  const durationCompare = compareRowsByDuration(nextRow, currentRow);
+  if (durationCompare !== 0) {
+    return durationCompare < 0;
+  }
+  return new Date(nextRow.createdAt).getTime() < new Date(currentRow.createdAt).getTime();
+}
+
+function displayNameForActor(actorId, usersById, requestActorId) {
+  if (actorId === requestActorId) {
+    return "You";
+  }
+
+  const actor = String(actorId || "");
+  if (actor.startsWith("user:")) {
+    const userId = actor.slice("user:".length);
+    const user = usersById.get(userId);
+    const preferred = normalizeWhitespace(user?.username);
+    if (preferred) return preferred;
+    return `Learner ${userId.slice(0, 4)}`;
+  }
+
+  if (actor.startsWith("client:")) {
+    const suffix = actor.slice("client:".length).replace(/[^a-z0-9]/gi, "");
+    const short = suffix.slice(-4).toUpperCase() || "GUEST";
+    return `Guest ${short}`;
+  }
+
+  return "Learner";
+}
+
+function buildDailyLeaderboardSnapshot({
+  sessions = [],
+  usersById = new Map(),
+  requestActorId = "",
+  dateKey = dateKeyInTimeZone(),
+  limit = 10,
+}) {
+  const perActorBest = new Map();
+
+  sessions.forEach((session) => {
+    const actorId = String(session?.actorId || "").trim();
+    if (!actorId) return;
+
+    const mode = String(session?.mode || "")
+      .trim()
+      .toLowerCase();
+    if (!mode.startsWith("daily")) return;
+
+    const createdAt = new Date(session?.createdAt || "");
+    if (Number.isNaN(createdAt.getTime())) return;
+    if (dateKeyInTimeZone(createdAt) !== dateKey) return;
+
+    const score = Math.max(0, Number(session?.score) || 0);
+    const total = Math.max(0, Number(session?.total) || 0);
+    if (total <= 0) return;
+    const percent = Math.max(
+      0,
+      Math.min(
+        100,
+        Number.isFinite(Number(session?.percent))
+          ? Number(session.percent)
+          : Math.round((score / total) * 100),
+      ),
+    );
+
+    const row = {
+      actorId,
+      score,
+      total,
+      percent,
+      durationSeconds: parseDurationSeconds(session?.duration),
+      createdAt: String(session?.createdAt || new Date().toISOString()),
+    };
+
+    const currentBest = perActorBest.get(actorId);
+    if (isBetterDailyLeaderboardRow(row, currentBest)) {
+      perActorBest.set(actorId, row);
+    }
+  });
+
+  const sorted = [...perActorBest.values()].sort((a, b) => {
+    if (b.percent !== a.percent) return b.percent - a.percent;
+    if (b.score !== a.score) return b.score - a.score;
+    if (b.total !== a.total) return b.total - a.total;
+    const durationCompare = compareRowsByDuration(a, b);
+    if (durationCompare !== 0) return durationCompare;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  const totalPlayers = sorted.length;
+  const topRows = sorted.slice(0, Math.max(1, limit)).map((row, index) => {
+    const rank = index + 1;
+    return {
+      rank,
+      displayName: displayNameForActor(row.actorId, usersById, requestActorId),
+      score: row.score,
+      total: row.total,
+      percent: row.percent,
+      durationSeconds: row.durationSeconds,
+      isYou: row.actorId === requestActorId,
+      topPercentile: Math.max(1, Math.round((rank / Math.max(1, totalPlayers)) * 100)),
+    };
+  });
+
+  const yourIndex = sorted.findIndex((row) => row.actorId === requestActorId);
+  const yourBest =
+    yourIndex === -1
+      ? null
+      : {
+          rank: yourIndex + 1,
+          score: sorted[yourIndex].score,
+          total: sorted[yourIndex].total,
+          percent: sorted[yourIndex].percent,
+          durationSeconds: sorted[yourIndex].durationSeconds,
+          topPercentile: Math.max(
+            1,
+            Math.round(((yourIndex + 1) / Math.max(1, totalPlayers)) * 100),
+          ),
+        };
+
+  return {
+    totalPlayers,
+    leaderboard: topRows,
+    yourBest,
+  };
+}
+
 function createCorsOptions() {
   if (config.corsOrigins.includes("*")) {
     return { origin: true };
@@ -1644,6 +1902,104 @@ app.get(
 );
 
 app.get(
+  "/api/questions/:questionId/insights",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const questionId = safeNumber(req.params.questionId);
+    if (!Number.isInteger(questionId) || questionId <= 0) {
+      res.status(400).json({ error: "questionId must be a positive integer" });
+      return;
+    }
+
+    const questions = await readCollection("questions");
+    const questionRaw = questions.find((entry) => Number(entry?.id) === questionId);
+    if (!questionRaw) {
+      res.status(404).json({ error: "question not found" });
+      return;
+    }
+
+    const question = normalizeQuestionForApi(questionRaw);
+    const catalog = buildChoiceCatalog(question);
+    const rows = Array.isArray(catalog.rows) ? catalog.rows : [];
+    const correctLetter = String(catalog.correctLetter || "");
+
+    const events = (await readCollection("syncPerformance")).filter(
+      (event) => Number(event?.questionId) === questionId,
+    );
+
+    const counts = new Map(rows.map((row) => [row.letter, 0]));
+    events.forEach((event) => {
+      const selectedAnswer = String(event?.selectedAnswer || "").trim();
+      if (!selectedAnswer || /^skipped$/i.test(selectedAnswer)) return;
+      const letter = resolveSelectionLetter(selectedAnswer, catalog);
+      if (!letter) return;
+      counts.set(letter, (counts.get(letter) || 0) + 1);
+    });
+
+    const sampleSize = [...counts.values()].reduce((sum, value) => sum + value, 0);
+    const distribution = rows.map((row) => {
+      const count = counts.get(row.letter) || 0;
+      return {
+        option: row.letter,
+        text: row.text,
+        count,
+        percent: sampleSize > 0 ? Math.round((count / sampleSize) * 100) : 0,
+        isCorrect: row.letter === correctLetter,
+      };
+    });
+
+    const mostChosen =
+      distribution
+        .filter((row) => row.count > 0)
+        .sort((a, b) => b.count - a.count || a.option.localeCompare(b.option))[0] ||
+      null;
+
+    const compareLine =
+      sampleSize < 3
+        ? "Crowd pattern is still building. Answer more questions to unlock stronger peer insight."
+        : mostChosen && correctLetter && mostChosen.option !== correctLetter
+          ? `Why did most people choose ${mostChosen.option}? It sounds plausible, but misses the decisive stem clue.`
+          : mostChosen
+            ? `Most learners chose ${mostChosen.option}, which aligns with the best-supported clue.`
+            : "Not enough answer data yet for option-level peer insight.";
+
+    const keyTrap =
+      mostChosen && correctLetter && mostChosen.option !== correctLetter
+        ? `Key trap: confusing familiarity for fit. Option ${mostChosen.option} is attractive but incomplete.`
+        : "Key trap: overthinking and switching away from the strongest clue.";
+
+    const memoryTrick = correctLetter
+      ? `Memory trick: lock ${correctLetter} first, then verify with the stem's primary clue.`
+      : "Memory trick: anchor on the stem's primary clue before judging distractors.";
+
+    const wrongOptionNotes = buildWrongOptionNotes(
+      rows,
+      correctLetter,
+      mostChosen?.option || "",
+    );
+
+    res.json({
+      ok: true,
+      questionId,
+      sampleSize,
+      correctOption: correctLetter,
+      mostChosen: mostChosen
+        ? {
+            option: mostChosen.option,
+            count: mostChosen.count,
+            percent: mostChosen.percent,
+          }
+        : null,
+      distribution,
+      compareLine,
+      keyTrap,
+      memoryTrick,
+      wrongOptionNotes,
+    });
+  }),
+);
+
+app.get(
   "/api/categories",
   asyncHandler(async (_req, res) => {
     res.json({ categories: [...MAJOR_CATEGORIES] });
@@ -2125,6 +2481,9 @@ app.post(
     const questionId = safeNumber(req.body?.questionId);
     const isCorrect = Boolean(req.body?.isCorrect);
     const category = normalizeMajorCategory(req.body?.category, "");
+    const selectedAnswer = String(req.body?.selectedAnswer || "")
+      .trim()
+      .slice(0, 220);
 
     if (!questionId) {
       res.status(400).json({ error: "questionId is required" });
@@ -2137,6 +2496,7 @@ app.post(
       questionId,
       isCorrect,
       category,
+      selectedAnswer,
       createdAt: new Date().toISOString(),
     };
 
@@ -2224,6 +2584,44 @@ app.get(
     );
 
     res.json(buildDashboardFromSync(events, sessions));
+  }),
+);
+
+app.get(
+  "/api/sync/leaderboard",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+    const rawLimit = safeNumber(req.query.limit);
+    const limit = Math.min(50, Math.max(3, Number(rawLimit) || 10));
+    const requestedDate = String(req.query.date || "").trim();
+    const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+      ? requestedDate
+      : dateKeyInTimeZone();
+
+    const sessions = await readCollection("syncSessions");
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersById = new Map(users.map((user) => [String(user.id), user]));
+
+    const snapshot = buildDailyLeaderboardSnapshot({
+      sessions,
+      usersById,
+      requestActorId: actorId,
+      dateKey,
+      limit,
+    });
+
+    res.json({
+      ok: true,
+      scope: "daily",
+      date: dateKey,
+      totalPlayers: snapshot.totalPlayers,
+      leaderboard: snapshot.leaderboard,
+      yourBest: snapshot.yourBest,
+      topMessage: snapshot.yourBest
+        ? `You're in the top ${snapshot.yourBest.topPercentile}% today.`
+        : "Complete today's Daily Quiz to enter today's leaderboard.",
+    });
   }),
 );
 

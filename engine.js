@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260304-motivate3";
+import { backendClient } from "./backendClient.js?v=20260304-motivate5";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -155,6 +155,7 @@ let currentStreak = 0;
 let positiveFeedbackRotationIndex = 0;
 let negativeFeedbackRotationIndex = 0;
 let answerFeedbackHideTimer = null;
+let answerChoiceMotivationHideTimer = null;
 let answerCheckHideTimer = null;
 let drillEventHideTimer = null;
 let correctAudioContext = null;
@@ -590,8 +591,9 @@ const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
 const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
-const LIVE_ANSWER_ADVANCE_DELAY_MS = 1300;
-const ANSWER_FEEDBACK_VISIBLE_MS = 1400;
+const LIVE_ANSWER_ADVANCE_DELAY_MS = 1800;
+const ANSWER_FEEDBACK_VISIBLE_MS = 1600;
+const ANSWER_CHOICE_MOTIVATION_VISIBLE_MS = 1800;
 const themeMediaQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
     ? window.matchMedia("(prefers-color-scheme: dark)")
@@ -663,6 +665,46 @@ function showAnswerFeedback(message = "", tone = "good") {
     answerFeedbackEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
     answerFeedbackHideTimer = null;
   }, ANSWER_FEEDBACK_VISIBLE_MS);
+}
+
+function clearAnswerChoiceMotivation() {
+  if (!answersEl) return;
+  answersEl.querySelectorAll(".answer-choice-motivation").forEach((node) => node.remove());
+  answersEl.querySelectorAll("button.has-answer-choice-motivation").forEach((btn) => {
+    btn.classList.remove("has-answer-choice-motivation");
+  });
+  if (answerChoiceMotivationHideTimer) {
+    clearTimeout(answerChoiceMotivationHideTimer);
+    answerChoiceMotivationHideTimer = null;
+  }
+}
+
+function showAnswerChoiceMotivation(choiceValue, isCorrect) {
+  if (!answersEl) return;
+  const value = String(choiceValue || "").trim();
+  if (!value) return;
+
+  const selectedButton = Array.from(answersEl.querySelectorAll("button")).find(
+    (btn) => String(btn?.dataset?.value || "").trim() === value,
+  );
+  if (!selectedButton) return;
+
+  clearAnswerChoiceMotivation();
+
+  const text = isCorrect ? getNextPositiveFeedback() : getNextNegativeFeedback();
+  if (!text) return;
+
+  const badge = document.createElement("span");
+  badge.className = `answer-choice-motivation ${isCorrect ? "tone-good" : "tone-bad"}`;
+  badge.textContent = text;
+  badge.setAttribute("aria-label", text);
+
+  selectedButton.classList.add("has-answer-choice-motivation");
+  selectedButton.appendChild(badge);
+
+  answerChoiceMotivationHideTimer = setTimeout(() => {
+    clearAnswerChoiceMotivation();
+  }, ANSWER_CHOICE_MOTIVATION_VISIBLE_MS);
 }
 
 function showDrillEventBanner(message = "", tone = "good") {
@@ -2152,6 +2194,7 @@ function clearOptionPeerBadges() {
   answersEl.querySelectorAll("button.has-peer-badge").forEach((btn) => {
     btn.classList.remove("has-peer-badge");
   });
+  clearAnswerChoiceMotivation();
 }
 
 function renderPeerChoiceBadges(data) {
@@ -5240,10 +5283,12 @@ function selectAnswer(value, q) {
   if (isCorrect) {
     playCorrectAnswerSound();
     showAnswerCheckmark();
-    showAnswerFeedback(getNextPositiveFeedback(), "good");
+    showAnswerFeedback("");
+    showAnswerChoiceMotivation(value, true);
     awardXp(5);
   } else {
-    showAnswerFeedback(getNextNegativeFeedback(), "bad");
+    showAnswerFeedback("");
+    showAnswerChoiceMotivation(value, false);
     awardXp(1);
   }
 

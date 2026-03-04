@@ -2578,6 +2578,40 @@ body.headers-collapsed .app-header {
   pointer-events: none;
 }
 
+.has-answer-choice-motivation {
+  position: relative;
+}
+
+.answer-choice-motivation {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  max-width: calc(100% - 14px);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.26);
+}
+
+.answer-choice-motivation.tone-good {
+  border-color: #6ee7b7;
+  background: linear-gradient(160deg, #10b981, #0f766e);
+  color: #ecfdf5;
+}
+
+.answer-choice-motivation.tone-bad {
+  border-color: #fda4af;
+  background: linear-gradient(160deg, #f43f5e, #be123c);
+  color: #fff1f2;
+}
+
 .ai-explain-wrap {
   margin-top: 10px;
   display: grid;
@@ -4180,6 +4214,18 @@ body.theme-dark .peer-choice-badge {
   border-color: #38bdf8;
   background: linear-gradient(160deg, #0284c7, #0369a1);
   color: #e0f2fe;
+}
+
+body.theme-dark .answer-choice-motivation.tone-good {
+  border-color: #5eead4;
+  background: linear-gradient(160deg, #0f766e, #134e4a);
+  color: #ccfbf1;
+}
+
+body.theme-dark .answer-choice-motivation.tone-bad {
+  border-color: #fda4af;
+  background: linear-gradient(160deg, #be123c, #881337);
+  color: #ffe4e6;
 }
 
 body.theme-dark .daily-social-card {

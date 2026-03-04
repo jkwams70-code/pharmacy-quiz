@@ -2470,38 +2470,40 @@ body.headers-collapsed .app-header {
   margin-top: 10px;
 }
 
-.answer-insight-panel {
+.memory-trick-box {
   margin-top: 10px;
-  border: 1px solid #c7d2fe;
-  border-left: 4px solid #4f46e5;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
   border-radius: var(--radius-md);
-  background: #eef2ff;
-  color: #312e81;
+  background: #eff6ff;
+  color: #1e3a8a;
   padding: 10px 11px;
-  display: grid;
-  gap: 7px;
-}
-
-.answer-insight-title {
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.25px;
-  color: #3730a3;
-}
-
-.answer-insight-line {
   font-size: 13px;
-  line-height: 1.45;
-  color: #312e81;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
-.answer-insight-list {
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
-  color: #3730a3;
-  line-height: 1.4;
+.has-peer-badge {
+  position: relative;
+}
+
+.peer-choice-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 1px solid #7dd3fc;
+  background: linear-gradient(160deg, #0ea5e9, #0284c7);
+  color: #f0f9ff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 20px;
+  text-align: center;
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.34);
+  pointer-events: none;
 }
 
 .ai-explain-wrap {
@@ -4062,17 +4064,17 @@ body.theme-dark .menu-user-hub-btn:hover {
   background: linear-gradient(160deg, #1f2937, #4b5563) !important;
 }
 
-body.theme-dark .answer-insight-panel {
-  border-color: #6366f1;
-  border-left-color: #818cf8;
-  background: rgba(49, 46, 129, 0.22);
-  color: #e0e7ff;
+body.theme-dark .memory-trick-box {
+  border-color: #60a5fa;
+  border-left-color: #93c5fd;
+  background: rgba(30, 58, 138, 0.28);
+  color: #dbeafe;
 }
 
-body.theme-dark .answer-insight-title,
-body.theme-dark .answer-insight-line,
-body.theme-dark .answer-insight-list {
-  color: #e0e7ff;
+body.theme-dark .peer-choice-badge {
+  border-color: #38bdf8;
+  background: linear-gradient(160deg, #0284c7, #0369a1);
+  color: #e0f2fe;
 }
 
 body.theme-dark .daily-social-card {

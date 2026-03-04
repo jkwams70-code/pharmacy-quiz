@@ -906,7 +906,7 @@ function trimLeadingOptionLetter(value) {
 
 function buildChoiceCatalog(question = {}) {
   const options = Array.isArray(question?.options) ? question.options : [];
-  const rows = options.map((option, index) => {
+  let rows = options.map((option, index) => {
     const letter = String.fromCharCode(65 + index);
     return {
       letter,
@@ -915,6 +915,15 @@ function buildChoiceCatalog(question = {}) {
       normalizedNoPrefix: normalizeChoiceText(trimLeadingOptionLetter(option)),
     };
   });
+
+  if (rows.length === 0 && String(question?.type || "").trim().toLowerCase() === "combo") {
+    rows = ["A", "B", "C", "D", "E"].map((letter) => ({
+      letter,
+      text: `Option ${letter}`,
+      normalized: normalizeChoiceText(letter),
+      normalizedNoPrefix: normalizeChoiceText(letter),
+    }));
+  }
 
   let correctLetter = extractOptionLetter(question?.correct);
 
@@ -962,24 +971,23 @@ function resolveSelectionLetter(selection, catalog) {
   return match ? match.letter : "";
 }
 
-function buildWrongOptionNotes(rows, correctLetter, mostChosenLetter) {
-  return rows
-    .filter((row) => row.letter !== correctLetter)
-    .map((row) => {
-      if (row.letter === mostChosenLetter && row.letter !== correctLetter) {
-        return {
-          option: row.letter,
-          reason:
-            "Common trap: it sounds familiar, but it does not satisfy the key clue in the stem.",
-        };
-      }
-      return {
-        option: row.letter,
-        reason:
-          "Plausible distractor, but less aligned with the main clinical cue than the best answer.",
-      };
-    })
-    .slice(0, 4);
+function buildQuestionMemoryTrick(question, correctLetter, mostChosenLetter) {
+  const explicit = normalizeWhitespace(question?.memoryTrick);
+  if (explicit) return explicit;
+
+  const stem = String(question?.question || question?.text || "")
+    .replace(/^Q\s*\d+\.?\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const clue = stem.split(" ").slice(0, 8).join(" ");
+
+  if (correctLetter && mostChosenLetter && mostChosenLetter !== correctLetter) {
+    return `Anchor on "${clue}". When two options look close, eliminate ${mostChosenLetter} first, then confirm ${correctLetter}.`;
+  }
+  if (correctLetter) {
+    return `Anchor on "${clue}" and verify ${correctLetter} using the stem's strongest clue.`;
+  }
+  return `Anchor on "${clue}" and eliminate options that do not directly satisfy the stem cue.`;
 }
 
 function parseDurationSeconds(value) {
@@ -1954,26 +1962,8 @@ app.get(
         .sort((a, b) => b.count - a.count || a.option.localeCompare(b.option))[0] ||
       null;
 
-    const compareLine =
-      sampleSize < 3
-        ? "Crowd pattern is still building. Answer more questions to unlock stronger peer insight."
-        : mostChosen && correctLetter && mostChosen.option !== correctLetter
-          ? `Why did most people choose ${mostChosen.option}? It sounds plausible, but misses the decisive stem clue.`
-          : mostChosen
-            ? `Most learners chose ${mostChosen.option}, which aligns with the best-supported clue.`
-            : "Not enough answer data yet for option-level peer insight.";
-
-    const keyTrap =
-      mostChosen && correctLetter && mostChosen.option !== correctLetter
-        ? `Key trap: confusing familiarity for fit. Option ${mostChosen.option} is attractive but incomplete.`
-        : "Key trap: overthinking and switching away from the strongest clue.";
-
-    const memoryTrick = correctLetter
-      ? `Memory trick: lock ${correctLetter} first, then verify with the stem's primary clue.`
-      : "Memory trick: anchor on the stem's primary clue before judging distractors.";
-
-    const wrongOptionNotes = buildWrongOptionNotes(
-      rows,
+    const memoryTrick = buildQuestionMemoryTrick(
+      question,
       correctLetter,
       mostChosen?.option || "",
     );
@@ -1991,10 +1981,7 @@ app.get(
           }
         : null,
       distribution,
-      compareLine,
-      keyTrap,
       memoryTrick,
-      wrongOptionNotes,
     });
   }),
 );

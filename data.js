@@ -12,7 +12,15 @@ export const baseQuestions = [
       "thrombocytes"
     ],
     "correct": "MCHC",
-    "explanation": "Mean corpuscular haemoglobin concentration (MCHC) decreases in iron deficiency anaemia."
+    "explanation": "Mean corpuscular haemoglobin concentration (MCHC) decreases in iron deficiency anaemia.",
+    "explainCorrect": "MCHC reflects haemoglobin concentration in packed red cells. In iron deficiency, haemoglobin synthesis falls, so MCHC drops.",
+    "wrongOptionExplanations": {
+      "lymphocytes": "Lymphocyte count is a white-cell parameter and is not the classic marker for iron-deficiency red-cell hypochromia.",
+      "HbA1c": "HbA1c reflects glycaemic exposure over time, not direct iron-deficiency morphology.",
+      "INR": "INR evaluates extrinsic coagulation pathway, not red-cell indices.",
+      "thrombocytes": "Platelet count may vary, but decreased MCHC is the stronger and more direct laboratory feature."
+    },
+    "memoryTrick": "Iron deficiency makes red cells paler, so think low haemoglobin density inside RBCs: low MCHC."
   },
   {
     "id": 81,
@@ -27,7 +35,15 @@ export const baseQuestions = [
       "thrombocytes"
     ],
     "correct": "lymphocytes",
-    "explanation": "Lymphocyte count increases in viral infections."
+    "explanation": "Lymphocyte count increases in viral infections.",
+    "explainCorrect": "Viral infections commonly produce relative or absolute lymphocytosis as part of adaptive immune activation.",
+    "wrongOptionExplanations": {
+      "MCHC": "MCHC is an RBC index and is not expected to rise because of a typical viral syndrome.",
+      "HbA1c": "HbA1c tracks chronic glucose control and does not acutely rise from viral infection.",
+      "INR": "INR measures coagulation pathway effect and is not a routine marker of uncomplicated viral infection.",
+      "thrombocytes": "Platelets may change in specific viral illnesses, but lymphocyte rise is the standard expected finding."
+    },
+    "memoryTrick": "Virus = adaptive immunity spotlight. Adaptive cells are lymphocytes, so think lymphocytosis."
   },
   {
     "id": 83,
@@ -42,7 +58,15 @@ export const baseQuestions = [
       "thrombocytes"
     ],
     "correct": "thrombocytes",
-    "explanation": "Idiopathic thrombocytopenia purpura results in reduced platelet count."
+    "explanation": "Idiopathic thrombocytopenia purpura results in reduced platelet count.",
+    "explainCorrect": "ITP is defined by immune-mediated platelet destruction, so thrombocyte count falls.",
+    "wrongOptionExplanations": {
+      "MCHC": "MCHC is a red-cell concentration index and is not the defining reduced parameter in ITP.",
+      "lymphocytes": "ITP is primarily a platelet disorder, not a lymphocyte-count disorder.",
+      "HbA1c": "HbA1c is unrelated to acute platelet immune destruction.",
+      "INR": "INR assesses clotting factors; ITP affects platelet number rather than coagulation factor pathways."
+    },
+    "memoryTrick": "ITP starts with T for thrombocytes and thrombocytopenia: platelets are the count that drops."
   },
   {
     "id": 200,
@@ -57,7 +81,15 @@ export const baseQuestions = [
       "dysphasia"
     ],
     "correct": "myopathy",
-    "explanation": "Myopathy is characterised by muscle weakness and wasting."
+    "explanation": "Myopathy is characterised by muscle weakness and wasting.",
+    "explainCorrect": "Myopathy directly refers to disease of muscle tissue, classically presenting with weakness and possible wasting.",
+    "wrongOptionExplanations": {
+      "tachypnoea": "Tachypnoea means fast breathing, not muscle disease.",
+      "hypoxia": "Hypoxia is low tissue oxygen status, not a diagnostic term for muscle wasting.",
+      "afterload": "Afterload is a cardiovascular haemodynamic concept.",
+      "dysphasia": "Dysphasia concerns language function, not primary muscle pathology."
+    },
+    "memoryTrick": "Myo = muscle. Myopathy means muscle problem, so weakness/wasting points to myopathy."
   },
   {
     "id": 138,
@@ -72,7 +104,15 @@ export const baseQuestions = [
       "dysphasia"
     ],
     "correct": "tachypnoea",
-    "explanation": "Tachypnoea refers to an abnormally rapid respiratory rate."
+    "explanation": "Tachypnoea refers to an abnormally rapid respiratory rate.",
+    "explainCorrect": "Tachypnoea is the formal term for increased respiratory rate.",
+    "wrongOptionExplanations": {
+      "hypoxia": "Hypoxia describes low oxygen state, not breathing rate itself.",
+      "afterload": "Afterload relates to cardiac ventricular ejection resistance.",
+      "myopathy": "Myopathy is a muscle disorder term.",
+      "dysphasia": "Dysphasia is language impairment."
+    },
+    "memoryTrick": "Tachy means fast, pnoea relates to breathing: fast breathing equals tachypnoea."
   },
   {
     "id": 285,
@@ -87,7 +127,15 @@ export const baseQuestions = [
       "dysphasia"
     ],
     "correct": "dysphasia",
-    "explanation": "Dysphasia (aphasia) refers to language impairment."
+    "explanation": "Dysphasia (aphasia) refers to language impairment.",
+    "explainCorrect": "Dysphasia is impairment in language production and/or comprehension.",
+    "wrongOptionExplanations": {
+      "tachypnoea": "Respiratory-rate term, not language function.",
+      "hypoxia": "Physiological oxygen deficit, not specific language impairment terminology.",
+      "afterload": "Cardiovascular haemodynamic term.",
+      "myopathy": "Muscle pathology term."
+    },
+    "memoryTrick": "Phasia relates to speech/language. Dys-phasia means disordered language."
   },
   {
     "id": 90,
@@ -100,7 +148,15 @@ export const baseQuestions = [
       " Salbutamol",
       " Propranolol"
     ],
-    "explanation": "Only statement 1 is correct. Prednisolone may cause sodium and water retention; salbutamol and propranolol do not cause plasma sodium disturbance in this context."
+    "explanation": "Only statement 1 is correct. Prednisolone may cause sodium and water retention; salbutamol and propranolol do not cause plasma sodium disturbance in this context.",
+    "explainCorrect": "Option D (1 only) is correct because corticosteroid mineralocorticoid effects can alter sodium and fluid balance, while statements 2 and 3 are not reliable sodium-disturbance causes here.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, which are not accepted causes in this context.",
+      "B": "Statement 2 is the error; including it makes this option incorrect.",
+      "C": "Omits statement 1, which is the only correct statement.",
+      "E": "Statement 3 alone is not correct and misses statement 1."
+    },
+    "memoryTrick": "For sodium disturbance in this set, think steroid salt retention first: only statement 1 survives."
   },
   {
     "id": 119,
@@ -113,7 +169,15 @@ export const baseQuestions = [
       " Neuropathy",
       " Haemophilia"
     ],
-    "explanation": "All three conditions may cause musculoskeletal pain."
+    "explanation": "All three conditions may cause musculoskeletal pain.",
+    "explainCorrect": "Option A is correct because each listed condition can present with pain affecting muscles or joints in clinical practice.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, which can still contribute to painful musculoskeletal episodes.",
+      "C": "Excludes statement 1, which is a known painful bone disorder.",
+      "D": "Contains only statement 1 and misses statements 2 and 3.",
+      "E": "Contains only statement 3 and misses statements 1 and 2."
+    },
+    "memoryTrick": "If each statement can cause pain, choose all-three (A)."
   },
   {
     "id": 146,
@@ -126,7 +190,15 @@ export const baseQuestions = [
       " Unexplained fractures",
       " General debility"
     ],
-    "explanation": "All are potential red-flag signs of malignancy."
+    "explanation": "All are potential red-flag signs of malignancy.",
+    "explainCorrect": "Option A is correct because persistent ulceration, unexplained fractures, and constitutional decline can all be warning signs of underlying neoplastic disease.",
+    "wrongOptionExplanations": {
+      "B": "Drops statement 3, but general debility is a relevant red flag.",
+      "C": "Drops statement 1, though persistent ulceration can indicate malignancy.",
+      "D": "Only statement 1 is insufficient because statements 2 and 3 are also valid.",
+      "E": "Only statement 3 is incomplete since statements 1 and 2 are also concerning."
+    },
+    "memoryTrick": "Cancer red flags are broad. If all listed signs are suspicious, choose all-three."
   },
   {
     "id": 28,
@@ -139,7 +211,15 @@ export const baseQuestions = [
       " Increased repair of DNA damage",
       " Poor penetration into tumour tissue"
     ],
-    "explanation": "Increased DNA repair and poor tumour penetration contribute to resistance."
+    "explanation": "Increased DNA repair and poor tumour penetration contribute to resistance.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because enhanced DNA repair and poor tumour drug penetration reduce cytotoxic effect, while increased uptake would usually increase response rather than resistance.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, but increased uptake is not a resistance mechanism here.",
+      "B": "Includes statement 1 and omits statement 3, so mechanism set is wrong.",
+      "D": "Only statement 1 is incorrect in this context.",
+      "E": "Only statement 3 misses statement 2, which is also a resistance cause."
+    },
+    "memoryTrick": "Resistance in this item is repair plus reach: DNA repair and poor penetration (2 + 3)."
   },
   {
     "id": 154,
@@ -152,7 +232,15 @@ export const baseQuestions = [
       " Physiotherapy department",
       " Pain management team"
     ],
-    "explanation": "Speech therapy and physiotherapy are appropriate referrals."
+    "explanation": "Speech therapy and physiotherapy are appropriate referrals.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because Parkinson's commonly needs speech and movement rehabilitation; statement 3 is not the core referral pair in this question.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not the expected primary referral in this item.",
+      "C": "Misses statement 1, yet speech therapy is appropriate.",
+      "D": "Only statement 1 is incomplete because statement 2 is also appropriate.",
+      "E": "Only statement 3 is not the expected answer focus."
+    },
+    "memoryTrick": "Parkinson's rehab pair in this set is speech plus physio: 1 and 2."
   },
   {
     "id": 4,
@@ -165,7 +253,15 @@ export const baseQuestions = [
       " It may be used to define organ size and shape",
       " It can detect arterial blood flow to the organ"
     ],
-    "explanation": "Statements 1 and 2 are correct in this context; ultrasound is non-ionising and is used to assess organ size and shape."
+    "explanation": "Statements 1 and 2 are correct in this context; ultrasound is non-ionising and is used to assess organ size and shape.",
+    "explainCorrect": "Option B (1 and 2 only) is correct for this question framing: non-ionising imaging and structural assessment are core facts being tested.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not accepted in this question's keyed context.",
+      "C": "Omits statement 1, which is a core true point.",
+      "D": "Only statement 1 misses statement 2, which is also correct.",
+      "E": "Only statement 3 does not match the keyed answer here."
+    },
+    "memoryTrick": "Ultrasound basics here: no ionising radiation plus organ shape assessment (1 and 2)."
   },
   {
     "id": 64,
@@ -178,7 +274,15 @@ export const baseQuestions = [
       " Measurement involves a 24-hour urine collection",
       " Measurement requires 24-hour monitoring of plasma creatinine"
     ],
-    "explanation": "Statements 1 and 2 are correct."
+    "explanation": "Statements 1 and 2 are correct.",
+    "explainCorrect": "Option B (1 and 2 only) is correct: creatinine clearance estimates GFR and classic measurement uses timed urine collection; statement 3 is not required as written.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is the incorrect part.",
+      "C": "Misses statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also correct.",
+      "E": "Only statement 3 is the incorrect statement."
+    },
+    "memoryTrick": "Creatinine clearance pattern: GFR estimate plus 24-hour urine (1 and 2)."
   },
   {
     "id": 107,
@@ -191,7 +295,15 @@ export const baseQuestions = [
       " Tablets should be discarded 8 weeks after opening the container",
       " Tablets should be stored in glass containers"
     ],
-    "explanation": "Only statement 1 is correct. Headache commonly occurs early with nitrates and usually lessens with continued therapy."
+    "explanation": "Only statement 1 is correct. Headache commonly occurs early with nitrates and usually lessens with continued therapy.",
+    "explainCorrect": "Option D (1 only) is correct because nitrate headache tolerance commonly develops; statements 2 and 3 are not the keyed counselling points in this item.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, both not accepted as correct here.",
+      "B": "Includes statement 2, which is not the keyed truth.",
+      "C": "Omits statement 1, the only correct statement.",
+      "E": "Only statement 3 is not correct in this context."
+    },
+    "memoryTrick": "Nitrate counselling here: headache improves over time, so choose 1 only."
   },
   {
     "id": 122,
@@ -204,7 +316,15 @@ export const baseQuestions = [
       " Administration requires monitoring of blood pressure",
       " It results in a fall in blood pressure"
     ],
-    "explanation": "Statements 1 and 2 are correct."
+    "explanation": "Statements 1 and 2 are correct.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because adrenaline is used in cardiac arrest and requires haemodynamic monitoring; statement 3 is incorrect.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is false in this setting.",
+      "C": "Omits statement 1 and keeps statement 3, making it incorrect.",
+      "D": "Only statement 1 is incomplete because statement 2 is also true.",
+      "E": "Only statement 3 is the false statement."
+    },
+    "memoryTrick": "Adrenaline in this item is arrest use plus monitor BP; ignore the 'falls BP' distractor."
   },
   {
     "id": 282,
@@ -217,7 +337,15 @@ export const baseQuestions = [
       " It is addictive",
       " It is an opioid agonist"
     ],
-    "explanation": "Statements 2 and 3 are correct."
+    "explanation": "Statements 2 and 3 are correct.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because methadone is an opioid agonist with dependence potential; statement 1 is not generally true for standard maintenance schedules.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is the incorrect component.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is not correct for this question.",
+      "E": "Only statement 3 misses statement 2, which is also true."
+    },
+    "memoryTrick": "Methadone key pair here: addictive plus opioid agonist (2 and 3)."
   },
   {
     "id": 115,
@@ -230,7 +358,15 @@ export const baseQuestions = [
       " That menstrual irregularities may occur",
       " To report sudden breathlessness and any pain in the calf"
     ],
-    "explanation": "All three statements are correct."
+    "explanation": "All three statements are correct.",
+    "explainCorrect": "Option A is correct because tamoxifen counselling includes vasomotor effects, possible menstrual changes, and urgent reporting of thromboembolic warning signs.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, but thromboembolism warning symptoms are essential counselling.",
+      "C": "Excludes statement 1, yet hot flushes are common with tamoxifen.",
+      "D": "Only statement 1 is incomplete because statements 2 and 3 are also important.",
+      "E": "Only statement 3 misses other routine counselling points in statements 1 and 2."
+    },
+    "memoryTrick": "Tamoxifen counselling triad here is flushes, cycle changes, and clot-red-flag reporting: all three."
   },
   {
     "id": 143,
@@ -243,7 +379,15 @@ export const baseQuestions = [
       " It is indicated in metabolic acidosis",
       " It may be used in hypomagnesaemia"
     ],
-    "explanation": "Statements 1 and 2 are correct."
+    "explanation": "Statements 1 and 2 are correct.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because sodium bicarbonate raises systemic pH and is used in selected metabolic acidosis; statement 3 is not an indication.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a standard indication here.",
+      "C": "Misses statement 1 and includes statement 3, making it incorrect.",
+      "D": "Only statement 1 is incomplete because statement 2 is also correct.",
+      "E": "Only statement 3 is incorrect in this context."
+    },
+    "memoryTrick": "Bicarbonate question pattern: think buffer and acidosis, not magnesium."
   },
   {
     "id": 267,
@@ -256,7 +400,15 @@ export const baseQuestions = [
       " It promotes hepatic synthesis of active prothrombin",
       " It is indicated in babies at birth to prevent vitamin K deficiency bleeding"
     ],
-    "explanation": "All statements are correct."
+    "explanation": "All statements are correct.",
+    "explainCorrect": "Option A is correct because phytomenadione is vitamin K1, supports synthesis of vitamin K-dependent clotting factors, and is given at birth to prevent VKDB.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, but neonatal prophylaxis is a key use.",
+      "C": "Excludes statement 1, which correctly identifies phytomenadione as vitamin K analogue.",
+      "D": "Only statement 1 is incomplete; statements 2 and 3 are also true.",
+      "E": "Only statement 3 omits true core pharmacology points in statements 1 and 2."
+    },
+    "memoryTrick": "Phytomenadione = vitamin K1 from mechanism to newborn prophylaxis, so all three are true."
   },
   {
     "id": 169,
@@ -269,7 +421,15 @@ export const baseQuestions = [
       " Thrombocytopenia may occur with its use",
       " Agents that affect haemostasis should be used with care"
     ],
-    "explanation": "All statements are correct."
+    "explanation": "All statements are correct.",
+    "explainCorrect": "Option A is correct because enoxaparin uses different dosing from unfractionated heparin, can cause thrombocytopenia, and requires caution with other haemostasis-affecting drugs.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, yet bleeding-risk interactions are an important caution.",
+      "C": "Excludes statement 1, but LMWH and UFH dosing are not interchangeable.",
+      "D": "Only statement 1 is incomplete because statements 2 and 3 are also true.",
+      "E": "Only statement 3 misses true statements 1 and 2."
+    },
+    "memoryTrick": "For enoxaparin here: dosing differs, platelets can drop, bleeding risk rises with interacting drugs."
   },
   {
     "id": 283,
@@ -282,7 +442,15 @@ export const baseQuestions = [
       " To avoid wax epilation during treatment",
       " To use a lip balm regularly"
     ],
-    "explanation": "All statements are correct."
+    "explanation": "All statements are correct.",
+    "explainCorrect": "Option A is correct because isotretinoin is highly teratogenic, increases skin fragility (avoid wax epilation), and commonly causes cheilitis needing lip moisturiser.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, but lip care is standard isotretinoin advice.",
+      "C": "Excludes statement 1, which is critical due to teratogenicity.",
+      "D": "Only statement 1 is incomplete because statements 2 and 3 are also standard advice.",
+      "E": "Only statement 3 omits critical counselling in statements 1 and 2."
+    },
+    "memoryTrick": "Isotretinoin counselling in this item is pregnancy prevention, fragile skin care, and lip protection: all three."
   },
   {
     "id": 223,
@@ -295,7 +463,15 @@ export const baseQuestions = [
       " Take a bowel cleansing preparation",
       " Avoid solid food on the previous day"
     ],
-    "explanation": "Statements 2 and 3 are correct."
+    "explanation": "Statements 2 and 3 are correct.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because bowel prep and dietary restriction are standard pre-colonoscopy preparation; statement 1 is not a routine requirement.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is not part of standard preparation in this question.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is not correct in this context.",
+      "E": "Only statement 3 misses statement 2, which is also necessary."
+    },
+    "memoryTrick": "Colonoscopy prep here is cleanse plus no solids: statements 2 and 3."
   },
   {
     "id": 82,
@@ -308,7 +484,15 @@ export const baseQuestions = [
       " A patient receiving diuretics presenting with symptoms of heat stroke",
       " A tourist presenting with acute diarrhoea"
     ],
-    "explanation": "Statements 1 and 2 warrant referral."
+    "explanation": "Statements 1 and 2 warrant referral.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because paediatric chest infection with asthma history and suspected heat-stroke symptoms on diuretics both need escalation; statement 3 is not the key referral trigger here.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not the keyed referral case in this item.",
+      "C": "Misses statement 1, which does warrant referral.",
+      "D": "Only statement 1 is incomplete because statement 2 also warrants referral.",
+      "E": "Only statement 3 is not the selected referral case in this question."
+    },
+    "memoryTrick": "Referral in this set is child chest risk plus heat-stroke red flags: 1 and 2."
   },
   {
     "id": 168,
@@ -321,7 +505,15 @@ export const baseQuestions = [
       " Clarithromycin",
       " Telithromycin"
     ],
-    "explanation": "Statements 1 and 2 are correct."
+    "explanation": "Statements 1 and 2 are correct.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because metronidazole and clarithromycin are established H. pylori regimen agents; telithromycin is not standard here.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not part of the standard regimen in this question.",
+      "C": "Misses statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also correct.",
+      "E": "Only statement 3 is not correct in this treatment context."
+    },
+    "memoryTrick": "For this H. pylori item, think metro plus clarithro; telithro is the distractor."
   },
   {
     "id": 319,
@@ -334,7 +526,15 @@ export const baseQuestions = [
       " Drug resistance testing is not possible",
       " Monotherapy is preferred"
     ],
-    "explanation": "Statement 1 only is correct."
+    "explanation": "Statement 1 only is correct.",
+    "explainCorrect": "Option D (1 only) is correct because resistance mutations can accumulate; statements 2 and 3 are false since resistance testing is possible and monotherapy is not preferred.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, both incorrect.",
+      "B": "Includes statement 2, which is false because resistance testing can be done.",
+      "C": "Omits statement 1 and keeps statement 3, so it is incorrect.",
+      "E": "Only statement 3 is false and misses true statement 1."
+    },
+    "memoryTrick": "HIV therapy logic here: resistance can evolve, testing exists, and monotherapy is not preferred."
   },
   {
     "id": 89,
@@ -347,7 +547,15 @@ export const baseQuestions = [
       " May be precipitated by a severe infection",
       " Causes retinopathy"
     ],
-    "explanation": "Statements 1 and 2 are correct."
+    "explanation": "Statements 1 and 2 are correct.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because diabetic ketoacidosis is linked to insulin deficiency and can be precipitated by severe infection; retinopathy is a chronic complication, not an acute DKA feature.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not an acute defining feature of DKA.",
+      "C": "Misses statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also true.",
+      "E": "Only statement 3 is incorrect in this acute DKA context."
+    },
+    "memoryTrick": "DKA in this item is deficiency plus trigger (infection): statements 1 and 2."
   },
   {
     "id": 131,
@@ -362,7 +570,15 @@ export const baseQuestions = [
       "2. Dyspnoea",
       "3. Cough"
     ],
-    "explanation": "Pulmonary oedema presents with dyspnoea and cough."
+    "explanation": "Pulmonary oedema presents with dyspnoea and cough.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because acute pulmonary oedema classically presents with breathlessness and cough; weight loss is not a typical acute sign.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is not an expected acute pulmonary oedema sign in this context.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is not the correct clinical feature set here.",
+      "E": "Only statement 3 misses statement 2, which is also a key symptom."
+    },
+    "memoryTrick": "Pulmonary oedema in this case is breath and cough, not weight loss."
   },
   {
     "id": 42,
@@ -376,7 +592,15 @@ export const baseQuestions = [
       "2. Excessive infusion rate",
       "3. Heart failure"
     ],
-    "explanation": "Excessive IV fluids and heart failure can precipitate pulmonary oedema."
+    "explanation": "Excessive IV fluids and heart failure can precipitate pulmonary oedema.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because fluid overload and heart failure are common precipitants of pulmonary oedema; hypothyroidism is not the direct precipitant in this item.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is not the keyed precipitant in this case.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is incorrect for this question.",
+      "E": "Only statement 3 misses statement 2, another major precipitant."
+    },
+    "memoryTrick": "For acute pulmonary oedema triggers here: fluid excess plus failing pump."
   },
   {
     "id": 252,
@@ -390,7 +614,15 @@ export const baseQuestions = [
       "2. Electrolytes",
       "3. Liver function tests"
     ],
-    "explanation": "Weight and electrolytes must be monitored with diuretics."
+    "explanation": "Weight and electrolytes must be monitored with diuretics.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because diuretic therapy monitoring focuses on volume status and electrolytes; routine liver tests are not the core monitoring target here.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not the key routine monitoring parameter in this question.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also essential.",
+      "E": "Only statement 3 is not the keyed monitoring item."
+    },
+    "memoryTrick": "Diuretics: monitor water and salts first, so body weight plus electrolytes."
   },
   {
     "id": 102,
@@ -420,7 +652,15 @@ export const baseQuestions = [
       "2. Changing bumetanide to an oral formulation",
       "3. Starting co-amoxiclav"
     ],
-    "explanation": "After stabilisation, step-down therapy and conversion to oral diuretics may be considered."
+    "explanation": "After stabilisation, step-down therapy and conversion to oral diuretics may be considered.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because stabilisation planning includes stepping down acute diuretic strategy and converting IV loop diuretic to oral; starting co-amoxiclav is not automatically indicated.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a default stabilisation step here.",
+      "C": "Omits statement 1 while including statement 3, so the plan is incorrect.",
+      "D": "Only statement 1 misses statement 2, which is also part of step-down planning.",
+      "E": "Only statement 3 is not a routine next step in this context."
+    },
+    "memoryTrick": "After acute pulmonary oedema stabilises, think de-escalate and go oral, not new antibiotics by default."
   },
   {
     "id": 47,
@@ -435,7 +675,15 @@ export const baseQuestions = [
       "2. Control of hyperglycaemia",
       "3. Management of hypertension"
     ],
-    "explanation": "Management should focus on rehydration and control of hyperglycaemia. Blood pressure is normal and does not require intervention."
+    "explanation": "Management should focus on rehydration and control of hyperglycaemia. Blood pressure is normal and does not require intervention.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because this patient needs fluid resuscitation and glycaemic control; hypertension management is not the priority given normal blood pressure.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not indicated from the provided blood pressure.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also required.",
+      "E": "Only statement 3 is not a current management target."
+    },
+    "memoryTrick": "In dehydrated hyperglycaemic cases, treat fluids and glucose first."
   },
   {
     "id": 303,
@@ -449,7 +697,15 @@ export const baseQuestions = [
       "2. Blood glucose monitoring",
       "3. Thyroid function tests"
     ],
-    "explanation": "Urine output and blood glucose are essential for monitoring. Thyroid function tests are not indicated in this case."
+    "explanation": "Urine output and blood glucose are essential for monitoring. Thyroid function tests are not indicated in this case.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because response assessment in this case depends on hydration/renal output and glycaemic trend; thyroid tests are unrelated here.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not relevant to the current problem.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also essential.",
+      "E": "Only statement 3 is not a required monitoring parameter here."
+    },
+    "memoryTrick": "Track what is changing now: urine output and glucose, not thyroid."
   },
   {
     "id": 275,
@@ -463,7 +719,15 @@ export const baseQuestions = [
       "2. Reduced skin turgor",
       "3. Tremor"
     ],
-    "explanation": "Statements 1 and 2 are correct. Uncontrolled diabetes increases infection risk and can present with dehydration signs such as reduced skin turgor."
+    "explanation": "Statements 1 and 2 are correct. Uncontrolled diabetes increases infection risk and can present with dehydration signs such as reduced skin turgor.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because infection susceptibility and dehydration signs both support poor glycaemic control in this case; tremor is non-specific.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a specific marker of uncontrolled diabetes here.",
+      "C": "Misses statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also a key clue.",
+      "E": "Only statement 3 is not the specific indicator targeted in this question."
+    },
+    "memoryTrick": "Uncontrolled diabetes clues in this case are infection plus dehydration signs."
   },
   {
     "id": 130,
@@ -477,7 +741,15 @@ export const baseQuestions = [
       "2. Review sodium chloride infusion",
       "3. Rationale for haloperidol treatment"
     ],
-    "explanation": "The IV fluids should be reviewed carefully and the indication for haloperidol assessed. Increasing ciprofloxacin dose is not required."
+    "explanation": "The IV fluids should be reviewed carefully and the indication for haloperidol assessed. Increasing ciprofloxacin dose is not required.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because pharmacist review should focus on fluid plan and rationale for antipsychotic use; empiric ciprofloxacin dose increase is not indicated.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is not justified from the provided information.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is not the appropriate intervention in this scenario.",
+      "E": "Only statement 3 misses statement 2, which also needs review."
+    },
+    "memoryTrick": "Pharmacist check here is appropriateness and safety review, not automatic antibiotic escalation."
   },
   {
     "id": 299,
@@ -507,7 +779,15 @@ export const baseQuestions = [
       "2. Taking glibenclamide regularly",
       "3. Using fusidic acid cream daily"
     ],
-    "explanation": "Regular meals and adherence to glibenclamide are essential. Topical antibiotics should be reviewed before continued use."
+    "explanation": "Regular meals and adherence to glibenclamide are essential. Topical antibiotics should be reviewed before continued use.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because structured meals and adherence to antidiabetic therapy are core discharge advice; routine daily fusidic acid use is not automatic without review.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not universal discharge advice in this scenario.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also essential.",
+      "E": "Only statement 3 is not the key discharge instruction here."
+    },
+    "memoryTrick": "Discharge in this case: regular meals plus regular glucose medicine."
   },
   {
     "id": 224,
@@ -521,7 +801,15 @@ export const baseQuestions = [
       "2. Excess dietary intake",
       "3. Skipped meals"
     ],
-    "explanation": "Hypoglycaemia with sulfonylureas is commonly precipitated by skipped meals."
+    "explanation": "Hypoglycaemia with sulfonylureas is commonly precipitated by skipped meals.",
+    "explainCorrect": "Option E (3 only) is correct because sulfonylurea-related hypoglycaemia is often triggered by missed food intake, not by missed drug doses or excess dietary intake.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, which do not precipitate hypoglycaemia in this question framing.",
+      "B": "Includes statement 2, but excess dietary intake does not trigger sulfonylurea hypoglycaemia.",
+      "C": "Omits statement 3 and includes statement 2, so it is incorrect.",
+      "D": "Only statement 1 is not the precipitating factor here."
+    },
+    "memoryTrick": "Sulfonylurea + no meal = low sugar risk. In this item, skipped meals is the key trigger."
   },
   {
     "id": 287,
@@ -536,7 +824,15 @@ export const baseQuestions = [
       "2. Headache",
       "3. Blurred vision"
     ],
-    "explanation": "Promethazine overdose commonly causes CNS depression (drowsiness), anticholinergic effects such as blurred vision, and headache."
+    "explanation": "Promethazine overdose commonly causes CNS depression (drowsiness), anticholinergic effects such as blurred vision, and headache.",
+    "explainCorrect": "Option A is correct because all three listed symptoms are compatible with promethazine overdose effects.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, yet blurred vision is a recognised anticholinergic effect.",
+      "C": "Excludes statement 1, but drowsiness is a common overdose sign.",
+      "D": "Only statement 1 is incomplete because statements 2 and 3 may also occur.",
+      "E": "Only statement 3 omits other typical overdose symptoms in statements 1 and 2."
+    },
+    "memoryTrick": "Promethazine overdose can make patients sleepy, blurry, and headachy: all three."
   },
   {
     "id": 57,
@@ -583,7 +879,15 @@ export const baseQuestions = [
       "2. To take simvastatin at night",
       "3. To stop taking atenolol"
     ],
-    "explanation": "Patients on simvastatin should report unexplained muscle pain due to risk of myopathy. Simvastatin is best taken at night. Atenolol should not be stopped abruptly."
+    "explanation": "Patients on simvastatin should report unexplained muscle pain due to risk of myopathy. Simvastatin is best taken at night. Atenolol should not be stopped abruptly.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because statin counselling includes myopathy vigilance and night dosing for simvastatin; stopping atenolol is unsafe advice.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is incorrect because atenolol should not be stopped abruptly.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also correct.",
+      "E": "Only statement 3 is inappropriate advice here."
+    },
+    "memoryTrick": "Simvastatin counselling here: muscle-warning plus night dose; never stop beta-blocker suddenly."
   },
   {
     "id": 209,
@@ -597,7 +901,15 @@ export const baseQuestions = [
       "2. Nausea",
       "3. Abdominal pain"
     ],
-    "explanation": "Common adverse effects of simvastatin include headache, gastrointestinal disturbances such as nausea, and abdominal pain."
+    "explanation": "Common adverse effects of simvastatin include headache, gastrointestinal disturbances such as nausea, and abdominal pain.",
+    "explainCorrect": "Option A is correct because headache and gastrointestinal discomfort including nausea and abdominal pain are all recognised simvastatin adverse effects.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, though abdominal pain can occur.",
+      "C": "Excludes statement 1, yet headache is listed among common effects.",
+      "D": "Only statement 1 is incomplete because statements 2 and 3 may also occur.",
+      "E": "Only statement 3 omits other expected side effects in statements 1 and 2."
+    },
+    "memoryTrick": "For this item, statin side effects are head plus stomach (all three listed)."
   },
   {
     "id": 27,
@@ -611,7 +923,15 @@ export const baseQuestions = [
       "2. Adopt a low-fat diet",
       "3. Take atenolol 2 hours before simvastatin"
     ],
-    "explanation": "Lifestyle modification including moderate exercise and a low-fat diet is recommended. There is no need to separate atenolol and simvastatin by 2 hours."
+    "explanation": "Lifestyle modification including moderate exercise and a low-fat diet is recommended. There is no need to separate atenolol and simvastatin by 2 hours.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because lifestyle optimisation is recommended post-MI; statement 3 is unnecessary.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not required.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because statement 2 is also recommended.",
+      "E": "Only statement 3 is not part of standard advice in this case."
+    },
+    "memoryTrick": "Post-MI counselling here is move and diet; no timing separation rule between these two drugs."
   },
   {
     "id": 84,
@@ -626,7 +946,15 @@ export const baseQuestions = [
       "2. It is used for prophylaxis of thromboembolism",
       "3. It may cause increased bleeding during or after surgery"
     ],
-    "explanation": "Dipyridamole is commonly combined with low-dose aspirin for antiplatelet therapy. It is used for thromboembolic prophylaxis and may increase bleeding risk."
+    "explanation": "Dipyridamole is commonly combined with low-dose aspirin for antiplatelet therapy. It is used for thromboembolic prophylaxis and may increase bleeding risk.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because statements 2 and 3 are true, while statement 1 is false since dipyridamole can be combined with low-dose aspirin.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is false in this context.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is incorrect in this item.",
+      "E": "Only statement 3 misses statement 2, which is also true."
+    },
+    "memoryTrick": "For dipyridamole here: combo with aspirin is allowed, so keep 2 and 3 only."
   },
   {
     "id": 32,
@@ -640,7 +968,15 @@ export const baseQuestions = [
       "2. It should not be used for more than 5 days",
       "3. It is used to maintain bowel evacuation"
     ],
-    "explanation": "Lactulose doses are often much higher than 5 mL daily. It can be used long term if needed. It is used to treat constipation and maintain bowel evacuation."
+    "explanation": "Lactulose doses are often much higher than 5 mL daily. It can be used long term if needed. It is used to treat constipation and maintain bowel evacuation.",
+    "explainCorrect": "Option E (3 only) is correct because statement 3 is true, while statements 1 and 2 are false.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, both of which are incorrect in this context.",
+      "B": "Includes statement 2, which is false because lactulose may be used longer when needed.",
+      "C": "Omits statement 3 and includes statement 2.",
+      "D": "Only statement 1 is false for this item."
+    },
+    "memoryTrick": "Lactulose in this question: not tiny-dose-limited, not five-day-limited; it maintains bowel movement."
   },
   {
     "id": 316,
@@ -654,7 +990,15 @@ export const baseQuestions = [
       "2. Diarrhoea",
       "3. Osteoporosis"
     ],
-    "explanation": "Timolol eye drops are used for glaucoma. Lactulose is for constipation, not diarrhoea. No medication listed is for osteoporosis."
+    "explanation": "Timolol eye drops are used for glaucoma. Lactulose is for constipation, not diarrhoea. No medication listed is for osteoporosis.",
+    "explainCorrect": "Option D (1 only) is correct because only glaucoma treatment is clearly represented in the listed medicines.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, which are not supported by the medication list.",
+      "B": "Includes statement 2 and omits the correct focus on statement 1 only.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "E": "Only statement 3 is not supported by the listed therapy."
+    },
+    "memoryTrick": "Map each medicine to condition: timolol eye drops point to glaucoma only."
   },
   {
     "id": 88,
@@ -669,7 +1013,15 @@ export const baseQuestions = [
       "2. To control oedema",
       "3. To control diabetes"
     ],
-    "explanation": "Management aims focus on heart failure symptom control and oedema reduction. There is no indication of diabetes."
+    "explanation": "Management aims focus on heart failure symptom control and oedema reduction. There is no indication of diabetes.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because this case target is heart failure symptom relief and fluid control; diabetes control is not the stated therapeutic aim.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a treatment aim from this case data.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because oedema control is also an aim.",
+      "E": "Only statement 3 is not a supported aim in this scenario."
+    },
+    "memoryTrick": "CHF case goals here are breath and fluid control, not diabetes management."
   },
   {
     "id": 149,
@@ -683,7 +1035,15 @@ export const baseQuestions = [
       "2. The dose may be increased to 25 mg daily",
       "3. It is an aldosterone antagonist"
     ],
-    "explanation": "Spironolactone reduces mortality in heart failure, can be titrated to 25 mg daily, and is an aldosterone antagonist."
+    "explanation": "Spironolactone reduces mortality in heart failure, can be titrated to 25 mg daily, and is an aldosterone antagonist.",
+    "explainCorrect": "Option A is correct because all three statements reflect standard spironolactone use in heart failure management.",
+    "wrongOptionExplanations": {
+      "B": "Excludes statement 3, but aldosterone antagonism is a core property.",
+      "C": "Excludes statement 1, though mortality/symptom benefit is key in selected HF patients.",
+      "D": "Only statement 1 is incomplete because statements 2 and 3 are also true.",
+      "E": "Only statement 3 omits true points in statements 1 and 2."
+    },
+    "memoryTrick": "Spironolactone in HF: blocker of aldosterone, can titrate, and supports outcome benefit."
   },
   {
     "id": 284,
@@ -697,7 +1057,15 @@ export const baseQuestions = [
       "2. Serum potassium",
       "3. Thyroid function"
     ],
-    "explanation": "Renal function and potassium must be monitored due to hyperkalaemia risk. Thyroid monitoring is not required."
+    "explanation": "Renal function and potassium must be monitored due to hyperkalaemia risk. Thyroid monitoring is not required.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because spironolactone monitoring requires renal function and potassium checks; thyroid tests are not routine for this purpose.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a routine spironolactone monitoring requirement.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because potassium is also critical.",
+      "E": "Only statement 3 is not the relevant monitoring parameter."
+    },
+    "memoryTrick": "Spironolactone monitoring in this item is kidney plus potassium."
   },
   {
     "id": 292,
@@ -725,7 +1093,15 @@ export const baseQuestions = [
       "2. When there is atrial fibrillation",
       "3. Because it exerts a positive inotropic effect"
     ],
-    "explanation": "Digoxin increases intracellular calcium (not decreases), is useful in atrial fibrillation, and has a positive inotropic effect."
+    "explanation": "Digoxin increases intracellular calcium (not decreases), is useful in atrial fibrillation, and has a positive inotropic effect.",
+    "explainCorrect": "Option C (2 and 3 only) is correct because statement 1 is false while statements 2 and 3 reflect valid clinical use and mechanism.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is incorrect because digoxin increases intracellular calcium.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is incorrect in this context.",
+      "E": "Only statement 3 misses statement 2, which is also correct."
+    },
+    "memoryTrick": "Digoxin in this item is AF utility plus positive inotropy; calcium goes up, not down."
   },
   {
     "id": 76,
@@ -739,7 +1115,15 @@ export const baseQuestions = [
       "2. Plasma potassium measurement",
       "3. Plasma sodium measurement"
     ],
-    "explanation": "Digoxin levels and potassium must be monitored. Sodium monitoring is not routinely required for digoxin initiation."
+    "explanation": "Digoxin levels and potassium must be monitored. Sodium monitoring is not routinely required for digoxin initiation.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because therapeutic drug monitoring and potassium are key for digoxin safety; sodium is not the principal routine parameter here.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a key routine parameter for digoxin initiation.",
+      "C": "Omits statement 1 and includes statement 3.",
+      "D": "Only statement 1 is incomplete because potassium also needs close monitoring.",
+      "E": "Only statement 3 is not the keyed monitoring requirement."
+    },
+    "memoryTrick": "Digoxin start-up safety: check drug level and potassium first."
   },
   {
     "id": 302,
@@ -1219,7 +1603,15 @@ export const baseQuestions = [
       "MCV"
     ],
     "correct": "HbA1c",
-    "explanation": "HbA1c is used to monitor long-term glycaemic control in diabetes."
+    "explanation": "HbA1c is used to monitor long-term glycaemic control in diabetes.",
+    "explainCorrect": "HbA1c is correct because it reflects average glycaemia over weeks to months and is the standard long-term diabetes monitoring test.",
+    "wrongOptionExplanations": {
+      "BUN": "BUN primarily reflects renal function and protein metabolism, not long-term glucose control.",
+      "TSH": "TSH assesses thyroid function, not diabetes control.",
+      "LFT": "LFTs assess hepatic status and are not the primary glycaemic monitoring marker.",
+      "MCV": "MCV is a red-cell index and does not track glycaemic control."
+    },
+    "memoryTrick": "A1c equals average sugar memory, so diabetes follow-up points to HbA1c."
   },
   {
     "id": 12,
@@ -2514,7 +2906,15 @@ export const baseQuestions = [
       "3. is produced by the adrenal cortex"
     ],
     "correct": "E",
-    "explanation": "Aldosterone is a mineralcorticoid hormone which is produced by the adrenal cortex with action in the renal tubule resulting in sodium and water retention and potassium secretion in urine."
+    "explanation": "Aldosterone is a mineralcorticoid hormone which is produced by the adrenal cortex with action in the renal tubule resulting in sodium and water retention and potassium secretion in urine.",
+    "explainCorrect": "Option E (3 only) is correct because aldosterone is produced by the adrenal cortex. Its secretion is not primarily controlled by the liver, and low-sodium intake tends to stimulate rather than suppress aldosterone release.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, both incorrect in this context.",
+      "B": "Statements 1 and 2 are both false for aldosterone physiology.",
+      "C": "Includes statement 2, which is false because low sodium usually raises aldosterone.",
+      "D": "Statement 1 alone is false; the liver is not the primary regulator."
+    },
+    "memoryTrick": "Aldosterone is adrenal and answers low sodium with more salt-retaining drive."
   },
   {
     "id": 194,
@@ -2719,6 +3119,14 @@ export const baseQuestions = [
       "3. nebulised amoxicillin"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because escalation in non-improving acute asthma may include nebulized ipratropium and intravenous aminophylline, while nebulized amoxicillin has no role.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not an inhaled rescue strategy.",
+      "C": "Includes statement 3 and misses ipratropium from statement 1.",
+      "D": "Only statement 1 is incomplete if escalation requires additional bronchodilator support.",
+      "E": "Only statement 3 is inappropriate in this acute airway setting."
+    },
+    "memoryTrick": "Asthma rescue add-ons are bronchodilators, not nebulized antibiotics.",
     "explanation": "SN has been administered hydrocortisone by intravenous injection which, together with the oxygen and the nebulised salbutamol, is aimed to improve respiration and pulse within 30 minutes."
   },
   {
@@ -2733,6 +3141,14 @@ export const baseQuestions = [
       "3. highly effective against Gram-negative bacteria"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because cefuroxime has oral formulations and is active against Haemophilus influenzae, but it is not best described as highly effective broad Gram-negative coverage.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which overstates cefuroxime Gram-negative potency.",
+      "C": "Includes statement 3 and omits oral availability.",
+      "D": "Only statement 1 is incomplete because H. influenzae activity is also relevant.",
+      "E": "Only statement 3 is not the best descriptor here."
+    },
+    "memoryTrick": "Cefuroxime is a middle-spectrum cephalosporin: oral option with H. influenzae cover.",
     "explanation": "Cefuroxime is a second-generation cephalosporin that is active against Grampositive cocci and against beta-lactamase-producing strains of Haemophilus inﬂuenzae and Neisseria gonorrhoeae."
   },
   {
@@ -2747,6 +3163,14 @@ export const baseQuestions = [
       "3. has poor activity against Haemophilus influenzae"
     ],
     "correct": "D",
+    "explainCorrect": "Option D (1 only) is correct because clarithromycin is a macrolide; it generally achieves better tissue levels than erythromycin and has useful activity against Haemophilus influenzae.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, both opposite to typical clarithromycin properties.",
+      "B": "Includes statement 2, which is incorrect because tissue concentrations are not lower.",
+      "C": "Includes statements 2 and 3 and misses the single true statement format.",
+      "E": "Statement 3 alone is incorrect in this context."
+    },
+    "memoryTrick": "Clarithromycin is the upgraded erythromycin: better levels and better H. influenzae coverage.",
     "explanation": "Clarithromycin is a macrolide that is derived from erythromycin. Compared with erythromycin, clarithromycin is better absorbed from the gastrointestinal tract, it achieves higher tissue concentrations and has enhanced activity against Haemophilus inﬂuenzae."
   },
   {
@@ -2761,7 +3185,15 @@ export const baseQuestions = [
       "3. to inhibit the production and release of pro-inflammatory agents"
     ],
     "correct": "E",
-    "explanation": "Hydrocortisone is a glucocorticoid drug. It stimulates the synthesis of lipocortin, which inhibits the production and release of intrinsic agents that are associated with inflammation such as phospholipase A2, prostaglandins and leukotrienes."
+    "explanation": "Hydrocortisone is a glucocorticoid drug. It stimulates the synthesis of lipocortin, which inhibits the production and release of intrinsic agents that are associated with inflammation such as phospholipase A2, prostaglandins and leukotrienes.",
+    "explainCorrect": "Option E (3 only) is correct because intravenous hydrocortisone is used for its anti-inflammatory glucocorticoid action, including suppression of inflammatory mediator production.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, both not the main rationale in this scenario.",
+      "B": "Statements 1 and 2 do not represent the core indication here.",
+      "C": "Includes statement 2, but mineralocorticoid effect is not the target benefit.",
+      "D": "Statement 1 alone is not the keyed reason for use in this setting."
+    },
+    "memoryTrick": "In acute airway inflammation, hydrocortisone is for inflammation control, not salt effects."
   },
   {
     "id": 80,
@@ -2775,6 +3207,14 @@ export const baseQuestions = [
       "3. has predominantly glucocorticoid activity"
     ],
     "correct": "C",
+    "explainCorrect": "Option C (2 and 3 only) is correct because systemic prednisolone suppresses endogenous cortisol feedback and has predominantly glucocorticoid activity; it should not replace maintenance inhaled beclometasone long term.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is not correct as a routine substitution principle.",
+      "B": "Includes statement 1 and omits statement 3.",
+      "D": "Only statement 1 is not the correct therapeutic message.",
+      "E": "Only statement 3 is incomplete because systemic steroids also suppress cortisol secretion."
+    },
+    "memoryTrick": "Oral prednisolone is systemic and glucocorticoid-dominant, not a routine inhaler replacement.",
     "explanation": "Prednisolone is an oral glucocortioid that is given instead of intravenous hydrocortisone. It has predominantly glucocorticoid activity."
   },
   {
@@ -2789,6 +3229,14 @@ export const baseQuestions = [
       "3. dose should be divided into twice daily administration"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because prednisolone is better tolerated after food and enteric-coated forms can reduce upper GI irritation; routine divided twice-daily dosing is usually unnecessary.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not standard for routine prednisolone courses.",
+      "C": "Includes statement 3 and omits statement 1.",
+      "D": "Only statement 1 is incomplete because formulation choice can also improve GI tolerability.",
+      "E": "Only statement 3 is not the key administration advice."
+    },
+    "memoryTrick": "Prednisolone stomach protection: take after food and prefer gentler GI formulation.",
     "explanation": "Oral prednisolone may cause dyspepsia and oesophageal and peptic ulceration. Occurrence of these side-effects is reduced by administering the drug after food and by using an enteric-coated formulation."
   },
   {
@@ -2803,6 +3251,14 @@ export const baseQuestions = [
       "3. salbutamol injection solution is used to administer salbutamol by nebulisation"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because nebulizers convert liquid solution to aerosol and require cleaning to reduce contamination risk; salbutamol injection solution is not the routine preparation for nebulization.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not standard nebulized drug sourcing practice.",
+      "C": "Includes statement 3 and misses device hygiene considerations.",
+      "D": "Only statement 1 is incomplete without maintenance cleaning advice.",
+      "E": "Only statement 3 is not the correct practical guidance."
+    },
+    "memoryTrick": "Nebulizer basics are aerosol plus hygiene; use the right inhalation formulation.",
     "explanation": "Nebulisers are medical devices that are used to convert a solution to an aerosol. They can deliver higher doses compared with a metered-dose inhaler."
   },
   {
@@ -2817,6 +3273,14 @@ export const baseQuestions = [
       "3. may cause oral candidiasis"
     ],
     "correct": "E",
+    "explainCorrect": "Option E (3 only) is correct because inhaled beclometasone may cause oral candidiasis; it is not more effective than budesonide and is not used to terminate an acute attack.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, both incorrect in this inhaled corticosteroid context.",
+      "B": "Statements 1 and 2 are not accurate for beclometasone use.",
+      "C": "Includes statement 2, but inhaled corticosteroids are controllers, not rescue therapy.",
+      "D": "Statement 1 alone is incorrect because efficacy versus budesonide is generally comparable."
+    },
+    "memoryTrick": "Beclometasone prevents attacks; rinse mouth to avoid thrush.",
     "explanation": "Beclometasone is a corticosteroid that is being administered to SN as a metered-dose inhaler. Beclometasone and budesonide are equally effective in the management of asthma and they are used as prophylactic therapy to reduce airway inﬂammation."
   },
   {
@@ -3028,7 +3492,15 @@ export const baseQuestions = [
       "3. to avoid use of non-steroidal anti-inflammatory drugs"
     ],
     "correct": "D",
-    "explanation": "Simvastatin is a statin that is used as a lipid-lowering agent. Use of statins is recommended in patients with ischaemic heart disease to decrease morbidity and mortality."
+    "explanation": "Simvastatin is a statin that is used as a lipid-lowering agent. Use of statins is recommended in patients with ischaemic heart disease to decrease morbidity and mortality.",
+    "explainCorrect": "Option D (1 only) is correct because routine liver function monitoring and follow-up safety checks are appropriate with statins, while statin therapy is generally long-term and not stopped once LDL temporarily normalizes.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, which are not correct counseling points in this item.",
+      "B": "Includes statement 2, but simvastatin is not short-term-only treatment.",
+      "C": "Includes statement 2 and misses statement 1, which is the key advice.",
+      "E": "Statement 3 alone is not the primary counseling point here."
+    },
+    "memoryTrick": "Statin rule: monitor safety, but treatment is usually long-term risk reduction."
   },
   {
     "id": 293,
@@ -3042,6 +3514,14 @@ export const baseQuestions = [
       "3. to remove at night"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because nitrate patch counseling includes correct placement, daily replacement, and a nitrate-free interval overnight to limit tolerance.",
+    "wrongOptionExplanations": {
+      "B": "Misses statement 3, which is important to reduce nitrate tolerance.",
+      "C": "Misses statement 1, so application-site advice is incomplete.",
+      "D": "Only statement 1 is incomplete because daily change and night removal are also needed.",
+      "E": "Only statement 3 is not enough without placement and replacement guidance."
+    },
+    "memoryTrick": "Patch routine is place, replace daily, and remove overnight for nitrate break.",
     "explanation": "Glyceryl trinitrate patches should be applied on chest wall, upper arm or shoulder and replaced daily."
   },
   {
@@ -3056,6 +3536,14 @@ export const baseQuestions = [
       "3. vasopressin"
     ],
     "correct": "D",
+    "explainCorrect": "Option D (1 only) is correct because glyceryl trinitrate spray is appropriate for angina symptom relief, while digoxin and vasopressin are not routine add-ons for this long-term angina context.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, which are not standard angina add-ons in this stem.",
+      "B": "Includes statement 2; digoxin is not the keyed long-term suggestion here.",
+      "C": "Includes statements 2 and 3 and misses the single correct option pattern.",
+      "E": "Statement 3 alone is not an angina management add-on."
+    },
+    "memoryTrick": "For angina rescue, think nitrate spray first, not inotrope or vasopressor.",
     "explanation": "GL may be prescribed glyceryl trinitrate spray which can be used for the prophylaxis of angina when onset of symptoms occur."
   },
   {
@@ -3071,6 +3559,14 @@ export const baseQuestions = [
       "3. not to be given with aspirin"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because dipyridamole can be given before food and should be used cautiously in hypotension, while combining with aspirin may be clinically appropriate in stroke prevention regimens.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not correct in this clinical context.",
+      "C": "Includes statement 3 and misses statement 1.",
+      "D": "Only statement 1 is incomplete because caution in hypotension is also relevant.",
+      "E": "Only statement 3 is incorrect as a blanket counseling rule."
+    },
+    "memoryTrick": "Dipyridamole clue set: before food, watch pressure, aspirin can still be used when indicated.",
     "explanation": "Dipyridamole is an adenosine reuptake inhibitor and a phosphodiesterase inhibitor which has antiplatelet and vasodilating properties."
   },
   {
@@ -3085,6 +3581,14 @@ export const baseQuestions = [
       "3. hot flushes"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because headache, gastrointestinal discomfort, and flushing are all recognized adverse effects of dipyridamole.",
+    "wrongOptionExplanations": {
+      "B": "Misses flushing, which is a known dipyridamole adverse effect.",
+      "C": "Misses headache while selecting only 2 and 3.",
+      "D": "Only headache is incomplete because abdominal discomfort and flushing can also occur.",
+      "E": "Only flushing is insufficient; this drug has a broader side-effect profile."
+    },
+    "memoryTrick": "Dipyridamole adverse effects often read as head-gut-flush.",
     "explanation": "The most common side-effects to be expected from dipyridamole are gastrointestinal effects such as nausea, abdominal pain, constipation, dizziness, throbbing headache, hypotension, hot ﬂushes and tachycardia."
   },
   {
@@ -3127,6 +3631,14 @@ export const baseQuestions = [
       "3. signs and symptoms of heart failure"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because blood pressure, pulse, and heart-failure symptom surveillance are all relevant safety and outcome parameters in this cardiovascular-neurology overlap case.",
+    "wrongOptionExplanations": {
+      "B": "Misses signs of heart failure, which remain clinically relevant.",
+      "C": "Misses blood pressure monitoring, which is central in stroke-related care.",
+      "D": "Only blood pressure is incomplete without heart rate and heart-failure review.",
+      "E": "Only statement 3 is too narrow for routine monitoring."
+    },
+    "memoryTrick": "Post-stroke cardio checks are pressure, pulse, and pump-failure symptoms.",
     "explanation": "Blood pressure should be monitored in MG. Hypertension should be controlled and development of hypotension avoided."
   },
   {
@@ -3144,6 +3656,14 @@ export const baseQuestions = [
       "calcium"
     ],
     "correct": "glibenclamide",
+    "explainCorrect": "Glibenclamide is correct because in older adults it has higher risk of prolonged hypoglycaemia than safer shorter-acting alternatives.",
+    "wrongOptionExplanations": {
+      "isosorbide mononitrate": "This remains appropriate for ischemic symptom prevention in the presented history.",
+      "aspirin": "Low-dose aspirin is commonly used for secondary cardiovascular prevention when indicated.",
+      "perindopril": "ACE inhibitors are often appropriate for hypertension and cardiovascular risk reduction in diabetes.",
+      "calcium": "Supplementation is not the primary high-risk medication issue highlighted by this case."
+    },
+    "memoryTrick": "In older diabetics, long-acting sulfonylurea means prolonged low sugar risk.",
     "explanation": "Glibenclamide may be less suitable in this older patient because of prolonged hypoglycaemia risk compared with shorter-acting alternatives."
   },
   {
@@ -3158,6 +3678,14 @@ export const baseQuestions = [
       "3. treatment warrants routine renal function tests to be undertaken"
     ],
     "correct": "E",
+    "explainCorrect": "Option E (3 only) is correct because ACE inhibitor therapy should include renal function and electrolyte monitoring, while it does not typically worsen glucose tolerance and this stem does not support under-dosing as the key issue.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, neither of which is the key correct point here.",
+      "B": "Statements 1 and 2 are not the best interpretation for perindopril in this case.",
+      "C": "Includes statement 2, which is not established as the correct issue in this stem.",
+      "D": "Statement 1 is not accurate because ACE inhibitors are generally neutral or favorable for glucose handling."
+    },
+    "memoryTrick": "Perindopril follow-up means kidney and potassium checks, not glucose deterioration.",
     "explanation": "An advantage of angiotensin-converting enzyme (ACE) inhibitors such as perindopril is that they do not interfere with glucose tolerance and they can be used as antihypertensive agents or for the management of heart failure in diabetic patients."
   },
   {
@@ -3172,6 +3700,14 @@ export const baseQuestions = [
       "3. is used in hypertension"
     ],
     "correct": "D",
+    "explainCorrect": "Option D (1 only) is correct because isosorbide mononitrate has a longer half-life than the dinitrate and good oral bioavailability; it is used for angina prophylaxis rather than hypertension treatment.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, both incorrect in this context.",
+      "B": "Includes statement 2, which is false because oral bioavailability is relatively good.",
+      "C": "Statements 2 and 3 are both not correct for isosorbide mononitrate.",
+      "E": "Statement 3 alone is false; this nitrate is for angina, not routine BP control."
+    },
+    "memoryTrick": "Mononitrate means cleaner oral profile and angina prevention, not hypertension therapy.",
     "explanation": "Isosorbide mononitrate is an active metabolite of isosorbide dinitrate. Advantages over isosorbide dinitrate include a higher bioavailability after oral administration as it does not undergo ﬁrst-pass hepatic metabolism and a longer halﬂife."
   },
   {
@@ -3187,6 +3723,14 @@ export const baseQuestions = [
       "3. affects synovial joints"
     ],
     "correct": "E",
+    "explainCorrect": "Option E (3 only) is correct because rheumatoid arthritis is a systemic autoimmune disease that characteristically targets synovial joints rather than being localized or trauma-induced.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, both inconsistent with rheumatoid arthritis pathophysiology.",
+      "B": "Statements 1 and 2 are not correct defining features of rheumatoid arthritis.",
+      "C": "Includes statement 2, which is not a defining cause of rheumatoid arthritis.",
+      "D": "Statement 1 alone is false because rheumatoid arthritis is not simply localized."
+    },
+    "memoryTrick": "RA equals autoimmune synovial inflammation, not local trauma disease.",
     "explanation": "Rheumatoid arthritis is associated with inﬂammation of the synovial membrane of different joints."
   },
   {
@@ -3201,6 +3745,14 @@ export const baseQuestions = [
       "3. is polyarticular"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because rheumatoid arthritis commonly has insidious onset and often presents as a symmetric, polyarticular inflammatory joint disease.",
+    "wrongOptionExplanations": {
+      "B": "Omits statement 3, but polyarticular involvement is a classic RA feature.",
+      "C": "Misses statement 1, and insidious onset is typical for RA.",
+      "D": "Only statement 1 is incomplete because symmetry and polyarticular pattern also matter.",
+      "E": "Only statement 3 is too narrow; RA onset pattern includes more than joint count."
+    },
+    "memoryTrick": "RA tends to creep in slowly and hit many joints on both sides.",
     "explanation": "There is great inter-patient variation in the course of the disease. Onset is insidious and the disease usually presents initially with non-speciﬁc symptoms such as fatigue, malaise, diffuse musculoskeletal pain and stiffness."
   },
   {
@@ -3215,6 +3767,14 @@ export const baseQuestions = [
       "3. grip strength"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because morning stiffness duration, ability to perform daily tasks, and grip strength are all practical functional outcomes for rheumatoid arthritis monitoring.",
+    "wrongOptionExplanations": {
+      "B": "Excludes grip strength, which is a useful functional marker in hand disease.",
+      "C": "Misses morning stiffness, a major clinical activity indicator in RA.",
+      "D": "Only morning stiffness is incomplete without functional and strength assessment.",
+      "E": "Only grip strength alone does not reflect full functional response."
+    },
+    "memoryTrick": "RA follow-up asks three function questions: stiffness time, self-care ability, and hand power.",
     "explanation": "As rheumatoid arthritis progresses, morning stiffness becomes prolonged and more disabling, interfering with patient’s daily activities."
   },
   {
@@ -3229,6 +3789,14 @@ export const baseQuestions = [
       "3. elevated creatine kinase"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because chronic inflammatory disease can contribute to anaemia, and gastrointestinal ulceration risk is relevant from associated therapies; elevated creatine kinase is not a typical RA monitoring target.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a routine RA progression marker.",
+      "C": "Includes statement 3 and omits anaemia surveillance.",
+      "D": "Only statement 1 is incomplete because treatment-related GI complications should also be monitored.",
+      "E": "Only statement 3 does not match core RA monitoring concerns."
+    },
+    "memoryTrick": "RA monitoring often tracks blood and gut complications, not muscle enzyme rise.",
     "explanation": "As rheumatoid arthritis is a chronic inﬂammatory disease, patients may develop anaemia. This occurs because of reduced erythropoiesis during inﬂammatory disease."
   },
   {
@@ -4033,6 +4601,14 @@ export const baseQuestions = [
       "3. carrying out an ECG"
     ],
     "correct": "C",
+    "explainCorrect": "Option C (2 and 3 only) is correct because retinal examination and ECG help detect hypertensive end-organ effects, while prostatic hypertrophy is not a classic hypertension-mediated target-organ marker.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 1, which is not a standard end-organ damage assessment item for hypertension.",
+      "B": "Includes statement 1 and misses statement 3, so the cardiac assessment component is incomplete.",
+      "D": "Only statement 1 is not the correct end-organ assessment focus here.",
+      "E": "Only statement 3 is incomplete because optic fundus assessment is also relevant."
+    },
+    "memoryTrick": "HTN target organs are eye, heart, kidney, brain, not prostate.",
     "explanation": "Long-standing hypertension may cause complications associated with cardiovascular dysfunction, such as myocardial infarction, stroke and peripheral vascular disease in the retina, kidneys and extremities."
   },
   {
@@ -4048,6 +4624,14 @@ export const baseQuestions = [
       "3. co-amoxiclav intravenous therapy"
     ],
     "correct": "E",
+    "explainCorrect": "Option E (3 only) is correct because intravenous co-amoxiclav targets likely soft-tissue bacterial infection in this case context, whereas oral vancomycin is not for this indication and diclofenac is not the key priority intervention.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, both not appropriate as core management choices here.",
+      "B": "Statements 1 and 2 are not the indicated management pair in this case.",
+      "C": "Includes statement 2, which is not appropriate for this infection focus.",
+      "D": "Statement 1 alone does not address the likely infectious component."
+    },
+    "memoryTrick": "In infected ischemic digits, prioritize appropriate systemic antibiotic coverage first.",
     "explanation": "During an attack of Raynaud’s disease, ﬁnger discoloration is common. Pain is not usually a prominent symptom."
   },
   {
@@ -4062,6 +4646,14 @@ export const baseQuestions = [
       "3. should not be used for longer than 6 weeks"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because pentoxifylline improves microcirculatory flow and can contribute to hypotensive effects, while a strict 6-week maximum duration is not a universal rule.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a standard absolute duration restriction.",
+      "C": "Includes statement 3 and misses statement 1, which is a key property.",
+      "D": "Only statement 1 is incomplete because hypotension risk may also occur.",
+      "E": "Only statement 3 is not the correct pharmacotherapy statement here."
+    },
+    "memoryTrick": "Pentoxifylline improves flow and can lower pressure; no fixed 6-week stop rule.",
     "explanation": "Pentoxifylline is a xanthine derivative that has vasodilating properties. It increases blood ﬂow to ischaemic tissues and results in an improvement of tissue oxygenation in the affected areas."
   },
   {
@@ -4076,6 +4668,14 @@ export const baseQuestions = [
       "3. that the condition is precipitated by exercise"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because avoiding cold exposure and stopping smoking both reduce vasospastic attacks in Raynaud's phenomenon, while exercise is not the precipitating factor stated here.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a standard trigger in this question stem.",
+      "C": "Includes statement 3 and misses statement 1; cold avoidance remains core advice.",
+      "D": "Only statement 1 is incomplete because smoking cessation should also be advised.",
+      "E": "Only statement 3 is incorrect as the key patient counseling point."
+    },
+    "memoryTrick": "Raynaud counseling is cold and cigarettes: keep warm and quit smoking.",
     "explanation": "Factors that reduce blood ﬂow in the ﬁngers increase the risk of an acute attack. RB should be advised to avoid exposure to cold temperatures and to use lined gloves when handling food in freezers."
   },
   {
@@ -4090,10 +4690,26 @@ export const baseQuestions = [
       "3. promethazine"
     ],
     "correct": "D",
+    "explainCorrect": "Option D (1 only) is correct because beta-blockade with atenolol can worsen peripheral vasoconstriction and aggravate Raynaud attacks, while the other listed drugs are not the key caution point in this item.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 2 and 3, which are not the primary avoid-with-Raynaud choices here.",
+      "B": "Includes statement 2; the core caution signal in this question is atenolol.",
+      "C": "Includes statements 2 and 3 and misses the single keyed statement format.",
+      "E": "Statement 3 alone is not the principal cautioned drug in this stem."
+    },
+    "memoryTrick": "Raynaud and beta-blocker pairing is risky: cold extremities can get worse.",
     "explanation": "Atenolol is a beta-adrenoceptor blocking drug. These drugs result in a reduced peripheral circulation leading to coldness of extremities and may exacerbate an acute attack of Raynaud’s disease."
   },
   {
     "id": 112,
+    "explainCorrect": "Option E (3 only) is correct because nifedipine mainly relaxes peripheral vascular smooth muscle and is used to reduce vasospastic episodes in Raynaud phenomenon.",
+    "wrongOptionExplanations": {
+      "A": "Includes statements 1 and 2, both inconsistent with nifedipine pharmacology and use.",
+      "B": "Statements 1 and 2 are not correct in this context.",
+      "C": "Includes statement 2, which is not the keyed counseling point.",
+      "D": "Statement 1 alone is incorrect because nifedipine is more vessel-selective than verapamil."
+    },
+    "memoryTrick": "Nifedipine favors vessels over myocardium, so it helps vasospasm in Raynaud.",
     "type": "combo",
     "category": "Rheumatology",
     "caseId": "t4_case4",
@@ -4119,6 +4735,14 @@ export const baseQuestions = [
       "3. aspirin 75 mg po"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because this admission plan addresses glycaemic control, ischemic symptom management, and antiplatelet protection in a high-risk acute cardiopulmonary presentation.",
+    "wrongOptionExplanations": {
+      "B": "Misses statement 3, so antiplatelet protection is omitted.",
+      "C": "Omits insulin and includes only 2 and 3, which does not fully address metabolic control.",
+      "D": "Only statement 1 is incomplete in this acute multi-problem presentation.",
+      "E": "Only statement 3 is insufficient as sole initial therapy."
+    },
+    "memoryTrick": "Acute cardio case triad: control sugar, relieve ischemia, and protect platelets.",
     "explanation": "On admission aims of treatment for FG are to control blood glucose levels, to treat infection, to reduce pulmonary oedema and to provide prophylaxis against ischaemic events."
   },
   {
@@ -4288,7 +4912,15 @@ export const baseQuestions = [
       "3. a complete blood count should be carried out before starting treatment"
     ],
     "correct": "B",
-    "explanation": "Fluvastatin is a statin that acts as a 3-hydroxyl-3-methylglutaryl coenzyme A (HMG CoA) reductase inhibitor."
+    "explanation": "Fluvastatin is a statin that acts as a 3-hydroxyl-3-methylglutaryl coenzyme A (HMG CoA) reductase inhibitor.",
+    "explainCorrect": "Option B (1 and 2 only) is correct because patients should report muscle symptoms promptly on statins, and switching to another statin can be a therapeutic alternative; routine baseline complete blood count is not the key required test.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not a standard statin pre-treatment requirement.",
+      "C": "Includes statement 3 and omits statement 1, missing core myopathy counseling.",
+      "D": "Only statement 1 is incomplete because a therapeutic statin alternative can also be considered.",
+      "E": "Only statement 3 is incorrect in this counseling set."
+    },
+    "memoryTrick": "Statin safety cue: muscle pain report early; CBC is not the routine statin baseline focus."
   },
   {
     "id": 290,
@@ -4302,6 +4934,14 @@ export const baseQuestions = [
       "3. complete bed rest"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because antiplatelet therapy, anticoagulation, and strict early rest are all part of initial unstable angina management in hospital.",
+    "wrongOptionExplanations": {
+      "B": "Misses statement 3, which is part of early in-hospital stabilization in this item.",
+      "C": "Omits clopidogrel while including 2 and 3 only.",
+      "D": "Only statement 1 is incomplete because anticoagulation and rest are also needed initially.",
+      "E": "Only statement 3 alone is insufficient for unstable angina treatment."
+    },
+    "memoryTrick": "Unstable angina start set: antiplatelet plus anticoagulant plus rest.",
     "explanation": "Unstable angina may present with negative outcomes and requires immediate hospitalisation. Complete bed rest is recommended for a few days."
   },
   {
@@ -4317,6 +4957,14 @@ export const baseQuestions = [
       "3. vulvovaginitis"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because dysuria, urgency, and frequency strongly suggest lower UTI or ascending upper UTI, making cystitis and pyelonephritis primary differentials.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not the keyed primary differential pair in this stem.",
+      "C": "Includes statement 3 and omits statement 1, reducing focus on core urinary infection differentials.",
+      "D": "Only statement 1 is incomplete because pyelonephritis must also be considered.",
+      "E": "Only statement 3 is not the principal differential in this presentation."
+    },
+    "memoryTrick": "Dysuria with urgency and frequency: think cystitis first, then rule out pyelonephritis.",
     "explanation": "Cystitis and acute pyelonephritis are key differentials in this urinary symptom presentation."
   },
   {
@@ -4331,6 +4979,14 @@ export const baseQuestions = [
       "3. to present mid-stream sampling for culturing"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because fever history and urinalysis are immediate key steps to differentiate uncomplicated cystitis from possible upper tract involvement.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not always the immediate first request in this stem.",
+      "C": "Includes statement 3 and omits urinalysis from statement 2.",
+      "D": "Only statement 1 is incomplete because urinalysis is also needed.",
+      "E": "Only statement 3 is insufficient as the initial assessment step."
+    },
+    "memoryTrick": "UTI triage starts with fever check and urine dip/analysis first.",
     "explanation": "Patient should be asked about occurrence of fever. This helps to differentiate between cystitis and acute pyelonephritis."
   },
   {
@@ -4345,6 +5001,14 @@ export const baseQuestions = [
       "3. use a high dose of ibuprofen"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because hydration and urinary alkalinization can relieve lower UTI symptoms, while high-dose ibuprofen is not routine first-line advice due to adverse-effect risk.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not preferred counseling for uncomplicated symptom care.",
+      "C": "Includes statement 3 and misses hydration advice from statement 1.",
+      "D": "Only statement 1 is incomplete because potassium citrate can also be considered for symptom relief.",
+      "E": "Only statement 3 is not the recommended advice set here."
+    },
+    "memoryTrick": "UTI comfort pair: flush with fluids and alkalinize urine, avoid unnecessary high-dose NSAIDs.",
     "explanation": "KB is advised to drink lots of water to ﬂush out the urinary system and dilute the microorganisms. Alkalinisation of urine may be used to relieve the discomfort caused by the urinary tract infection."
   },
   {
@@ -4359,6 +5023,14 @@ export const baseQuestions = [
       "3. flucloxacillin"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because co-amoxiclav and cefuroxime provide urinary pathogen coverage consistent with E. coli-focused treatment, while flucloxacillin is mainly anti-staphylococcal.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which has poor relevance for typical E. coli UTI coverage.",
+      "C": "Includes statement 3 and omits co-amoxiclav from statement 1.",
+      "D": "Only statement 1 is incomplete because cefuroxime is also a valid option.",
+      "E": "Only statement 3 is not the suitable choice for this organism focus."
+    },
+    "memoryTrick": "E. coli UTI therapy points to broad urinary Gram-negative cover, not flucloxacillin.",
     "explanation": "Antibacterial agents that are active against E. coli are recommended for the management of cystitis and acute pyelonephritis."
   },
   {
@@ -4374,6 +5046,14 @@ export const baseQuestions = [
       "3. that hypertension is due to secondary causes"
     ],
     "correct": "B",
+    "explainCorrect": "Option B (1 and 2 only) is correct because hypertension identified before 20 weeks suggests chronic pre-existing hypertension and carries increased risk of superimposed pre-eclampsia.",
+    "wrongOptionExplanations": {
+      "A": "Includes statement 3, which is not implied as the diagnosis in this stem.",
+      "C": "Includes statement 3 and omits statement 1, which is an important inference.",
+      "D": "Only statement 1 is incomplete because risk of pre-eclampsia is also increased.",
+      "E": "Only statement 3 is not supported by the case details."
+    },
+    "memoryTrick": "Before 20 weeks, think chronic HTN first and pre-eclampsia risk next.",
     "explanation": "As there is hypertension before the ﬁrst 20–24 weeks of pregnancy, there is a probability that hypertension was pre-existing before conception."
   },
   {
@@ -4388,6 +5068,14 @@ export const baseQuestions = [
       "3. fetal growth"
     ],
     "correct": "A",
+    "explainCorrect": "Option A (1, 2 and 3) is correct because blood pressure, urine protein surveillance, and fetal growth checks are all central in monitoring hypertensive pregnancy.",
+    "wrongOptionExplanations": {
+      "B": "Misses fetal growth surveillance, which is required in this context.",
+      "C": "Misses blood pressure monitoring, a core parameter.",
+      "D": "Only blood pressure is incomplete without urine and fetal assessment.",
+      "E": "Only fetal growth is insufficient as a stand-alone monitor."
+    },
+    "memoryTrick": "Pregnancy HTN follow-up is a triad: pressure, protein, and baby growth.",
     "explanation": "During pregnancy, SC should be monitored to assess the development of the symptoms of pre-eclampsia, namely hypertension, proteinuria and changes in fetal growth."
   },
   {

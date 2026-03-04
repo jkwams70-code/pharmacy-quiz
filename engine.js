@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260303-social1";
+import { backendClient } from "./backendClient.js?v=20260303-social2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -165,24 +165,48 @@ function byQuestionIdAscending(a, b) {
   return Number(a?.id || 0) - Number(b?.id || 0);
 }
 
+const localQuestionFallbackById = new Map(
+  (Array.isArray(baseQuestions) ? baseQuestions : [])
+    .map((q) => [Number(q?.id), q])
+    .filter(([id]) => Number.isFinite(id)),
+);
+
 function mapBackendQuestionToLocal(q = {}) {
+  const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
   return {
     id: q.id,
-    text: q.text || q.question || "",
-    question: q.question || q.text || "",
+    text: q.text || q.question || fallback.text || fallback.question || "",
+    question: q.question || q.text || fallback.question || fallback.text || "",
     category: normalizeMajorCategory(
       q.category,
       `${String(q.question || q.text || "")} ${String(q.explanation || "")}`,
     ),
-    options: Array.isArray(q.options) ? q.options : [],
-    statements: Array.isArray(q.statements) ? q.statements : [],
-    caseId: q.caseId || "",
-    caseBlock: q.caseBlock || "",
-    correct: q.correct,
-    explanation: q.explanation || "",
-    type: q.type || "single",
-    topicSlug: q.topicSlug || "",
-    sectionId: q.sectionId || "",
+    options: Array.isArray(q.options)
+      ? q.options
+      : Array.isArray(fallback.options)
+        ? fallback.options
+        : [],
+    statements: Array.isArray(q.statements)
+      ? q.statements
+      : Array.isArray(fallback.statements)
+        ? fallback.statements
+        : [],
+    caseId: q.caseId || fallback.caseId || "",
+    caseBlock: q.caseBlock || fallback.caseBlock || "",
+    correct: q.correct || fallback.correct,
+    explanation: q.explanation || fallback.explanation || "",
+    explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
+    wrongOptionExplanations:
+      q.wrongOptionExplanations && typeof q.wrongOptionExplanations === "object"
+        ? q.wrongOptionExplanations
+        : fallback.wrongOptionExplanations &&
+            typeof fallback.wrongOptionExplanations === "object"
+          ? fallback.wrongOptionExplanations
+          : {},
+    memoryTrick: q.memoryTrick || fallback.memoryTrick || "",
+    type: q.type || fallback.type || "single",
+    topicSlug: q.topicSlug || fallback.topicSlug || "",
+    sectionId: q.sectionId || fallback.sectionId || "",
   };
 }
 
@@ -389,11 +413,7 @@ const timerEl = document.getElementById("timer");
 const xpValueEl = document.getElementById("xp-value");
 const xpChipEl = document.getElementById("xp-chip");
 const explanationEl = document.getElementById("explanation");
-const answerInsightPanelEl = document.getElementById("answer-insight-panel");
-const answerInsightMostEl = document.getElementById("answer-insight-most");
-const answerInsightTrapEl = document.getElementById("answer-insight-trap");
-const answerInsightMemoryEl = document.getElementById("answer-insight-memory");
-const answerInsightWrongEl = document.getElementById("answer-insight-wrong");
+const memoryTrickBoxEl = document.getElementById("memory-trick-box");
 const answerCheckmarkEl = document.getElementById("answer-checkmark");
 const answerFeedbackEl = document.getElementById("answer-feedback");
 const drillEventBannerEl = document.getElementById("drill-event-banner");
@@ -1971,88 +1991,168 @@ function renderQuestionTopicLink(question) {
   topicLinkWrapEl.classList.remove("hidden");
 }
 
-function resetAnswerInsightPanel() {
-  if (!answerInsightPanelEl) return;
-  answerInsightPanelEl.classList.add("hidden");
-  if (answerInsightMostEl) answerInsightMostEl.textContent = "";
-  if (answerInsightTrapEl) answerInsightTrapEl.textContent = "";
-  if (answerInsightMemoryEl) answerInsightMemoryEl.textContent = "";
-  if (answerInsightWrongEl) answerInsightWrongEl.innerHTML = "";
+function getQuestionOptionKeys(question) {
+  if (question?.type === "combo") {
+    return ["A", "B", "C", "D", "E"];
+  }
+  if (Array.isArray(question?.options)) {
+    return question.options.map((option) => String(option || "").trim()).filter(Boolean);
+  }
+  return [];
 }
 
-function setAnswerInsightLoading() {
-  if (!answerInsightPanelEl || !answerInsightMostEl) return;
-  answerInsightPanelEl.classList.remove("hidden");
-  answerInsightMostEl.textContent = "Loading peer insight...";
-  if (answerInsightTrapEl) answerInsightTrapEl.textContent = "";
-  if (answerInsightMemoryEl) answerInsightMemoryEl.textContent = "";
-  if (answerInsightWrongEl) answerInsightWrongEl.innerHTML = "";
+function getWrongOptionReason(question, optionKey) {
+  const option = String(optionKey || "").trim();
+  if (!option) return "";
+  const map =
+    question?.wrongOptionExplanations &&
+    typeof question.wrongOptionExplanations === "object"
+      ? question.wrongOptionExplanations
+      : {};
+  const explicit = String(map[option] || "").trim();
+  if (explicit) return explicit;
+  return "This option is plausible, but it does not satisfy the key clue required by the stem.";
 }
 
-function canShowAnswerInsight() {
-  if (!answerInsightPanelEl || !currentUser) return false;
+function buildQuestionExplanationText(question) {
+  const q = question && typeof question === "object" ? question : {};
+  const blocks = [];
+  const base = String(q.explanation || "").trim();
+  if (base) {
+    blocks.push(base);
+  }
+
+  const explainCorrect = String(q.explainCorrect || "").trim();
+  if (explainCorrect) {
+    blocks.push(`Why correct: ${explainCorrect}`);
+  } else if (String(q.correct || "").trim()) {
+    blocks.push(
+      `Why correct: ${String(q.correct).trim()} best matches the decisive clue in the question stem.`,
+    );
+  }
+
+  const optionKeys = getQuestionOptionKeys(q);
+  const correct = String(q.correct || "").trim();
+  const wrongLines = optionKeys
+    .filter((optionKey) => String(optionKey || "").trim() !== correct)
+    .map((optionKey) => `${optionKey}: ${getWrongOptionReason(q, optionKey)}`);
+  if (wrongLines.length > 0) {
+    blocks.push(`Why others are wrong:\n${wrongLines.join("\n")}`);
+  }
+
+  return blocks.join("\n\n").trim();
+}
+
+function renderQuestionExplanation(question) {
+  if (!explanationEl) return;
+  const text = buildQuestionExplanationText(question);
+  if (!text) {
+    explanationEl.classList.add("hidden");
+    explanationEl.innerText = "";
+    return;
+  }
+  explanationEl.innerText = text;
+  explanationEl.classList.remove("hidden");
+}
+
+function resetMemoryTrickBox() {
+  if (!memoryTrickBoxEl) return;
+  memoryTrickBoxEl.classList.add("hidden");
+  memoryTrickBoxEl.textContent = "";
+}
+
+function setMemoryTrickLoading() {
+  if (!memoryTrickBoxEl) return;
+  memoryTrickBoxEl.classList.remove("hidden");
+  memoryTrickBoxEl.textContent = "Memory trick: loading...";
+}
+
+function canShowPeerInsight() {
   return mode === "study" || inReview || inDetailedReview;
 }
 
-function renderAnswerInsightData(data) {
-  if (!answerInsightPanelEl) return;
-  const payload = data && typeof data === "object" ? data : {};
-  const sampleSize = Number(payload.sampleSize || 0);
-  const mostChosen = payload?.mostChosen?.option
-    ? `Most chosen: ${payload.mostChosen.option} (${payload.mostChosen.percent || 0}%)`
-    : sampleSize > 0
-      ? "Most chosen option data is still stabilizing."
-      : "No crowd answer data yet for this question.";
+function clearOptionPeerBadges() {
+  if (!answersEl) return;
+  answersEl.querySelectorAll(".peer-choice-badge").forEach((node) => node.remove());
+  answersEl.querySelectorAll("button.has-peer-badge").forEach((btn) => {
+    btn.classList.remove("has-peer-badge");
+  });
+}
 
-  answerInsightPanelEl.classList.remove("hidden");
-  if (answerInsightMostEl) {
-    answerInsightMostEl.textContent = `${payload.compareLine || mostChosen}`;
-  }
-  if (answerInsightTrapEl) {
-    answerInsightTrapEl.textContent = payload.keyTrap
-      ? `${payload.keyTrap}`
-      : "Key trap: overthinking distractors.";
-  }
-  if (answerInsightMemoryEl) {
-    answerInsightMemoryEl.textContent = payload.memoryTrick || "";
+function renderPeerChoiceBadges(data) {
+  clearOptionPeerBadges();
+  if (!canShowPeerInsight()) return;
+
+  const distribution = Array.isArray(data?.distribution) ? data.distribution : [];
+  if (distribution.length === 0) return;
+
+  const topPercent = distribution.reduce(
+    (best, row) => Math.max(best, Math.max(0, Number(row?.percent) || 0)),
+    0,
+  );
+  if (topPercent <= 0) return;
+
+  const topRows = distribution.filter((row) => Number(row?.percent) === topPercent);
+  const topByLetter = new Map(
+    topRows.map((row) => [String(row?.option || "").trim().toUpperCase(), topPercent]),
+  );
+  if (topByLetter.size === 0) return;
+
+  const buttons = Array.from(answersEl.querySelectorAll("button"));
+  buttons.forEach((btn, index) => {
+    const letter = String.fromCharCode(65 + index);
+    if (!topByLetter.has(letter)) return;
+    const percent = topByLetter.get(letter);
+    const badge = document.createElement("span");
+    badge.className = "peer-choice-badge";
+    badge.textContent = `${percent}%`;
+    badge.title = `${percent}% of learners picked this option`;
+    badge.setAttribute("aria-label", `${percent} percent of learners picked this option`);
+    btn.classList.add("has-peer-badge");
+    btn.appendChild(badge);
+  });
+}
+
+function renderMemoryTrickForQuestion(question, data) {
+  if (!memoryTrickBoxEl) return;
+  const serverText = String(data?.memoryTrick || "").trim();
+  const localText = String(question?.memoryTrick || "").trim();
+  const fallback = String(question?.explanation || "").trim();
+  const text = localText || serverText || (fallback ? `Anchor the key clue in this explanation: ${fallback}` : "");
+
+  if (!text) {
+    resetMemoryTrickBox();
+    return;
   }
 
-  if (answerInsightWrongEl) {
-    answerInsightWrongEl.innerHTML = "";
-    const notes = Array.isArray(payload.wrongOptionNotes) ? payload.wrongOptionNotes : [];
-    notes.forEach((note) => {
-      const row = document.createElement("div");
-      const option = String(note?.option || "").trim();
-      const reason = String(note?.reason || "").trim();
-      row.textContent = option ? `${option}: ${reason}` : reason;
-      answerInsightWrongEl.appendChild(row);
-    });
-  }
+  memoryTrickBoxEl.classList.remove("hidden");
+  memoryTrickBoxEl.textContent = `Memory trick: ${text}`;
 }
 
 async function loadAnswerInsightForQuestion(question) {
-  if (!canShowAnswerInsight()) {
-    resetAnswerInsightPanel();
+  if (!canShowPeerInsight()) {
+    clearOptionPeerBadges();
+    resetMemoryTrickBox();
     return;
   }
 
   const key = normalizeQuestionIdKey(question?.id);
   if (!key) {
-    resetAnswerInsightPanel();
+    clearOptionPeerBadges();
+    resetMemoryTrickBox();
     return;
   }
 
   if (questionInsightCache[key]) {
-    renderAnswerInsightData(questionInsightCache[key]);
+    renderPeerChoiceBadges(questionInsightCache[key]);
+    renderMemoryTrickForQuestion(question, questionInsightCache[key]);
     return;
   }
 
-  if (questionInsightInFlightKey === key) {
-    return;
-  }
+  if (questionInsightInFlightKey === key) return;
 
   questionInsightInFlightKey = key;
-  setAnswerInsightLoading();
+  setMemoryTrickLoading();
 
   try {
     const data = await backendClient.fetchQuestionInsights(Number(key));
@@ -2062,10 +2162,12 @@ async function loadAnswerInsightForQuestion(question) {
       active[current] &&
       normalizeQuestionIdKey(active[current].id) === key
     ) {
-      renderAnswerInsightData(data);
+      renderPeerChoiceBadges(data);
+      renderMemoryTrickForQuestion(question, data);
     }
   } catch {
-    resetAnswerInsightPanel();
+    clearOptionPeerBadges();
+    renderMemoryTrickForQuestion(question, null);
   } finally {
     if (questionInsightInFlightKey === key) {
       questionInsightInFlightKey = "";
@@ -4899,7 +5001,8 @@ function showQuestion() {
     explanationEl.classList.add("hidden");
     explanationEl.innerText = "";
   }
-  resetAnswerInsightPanel();
+  resetMemoryTrickBox();
+  clearOptionPeerBadges();
   if (topicLinkWrapEl) {
     topicLinkWrapEl.classList.add("hidden");
   }
@@ -5221,10 +5324,7 @@ function selectAnswer(value, q) {
   const answered = Object.keys(userAnswers).length;
   const correctNow = calculateScore();
   liveScore.innerText = `${correctNow}/${answered}`;
-  if (explanationEl) {
-    explanationEl.innerText = q.explanation;
-    explanationEl.classList.remove("hidden");
-  }
+  renderQuestionExplanation(q);
   renderQuestionTopicLink(q);
   loadAnswerInsightForQuestion(q);
   refreshAiExplainAvailability();
@@ -5292,10 +5392,7 @@ function nextQuestion() {
         }
       });
 
-      if (explanationEl) {
-        explanationEl.innerText = q.explanation;
-        explanationEl.classList.remove("hidden");
-      }
+      renderQuestionExplanation(q);
       renderQuestionTopicLink(q);
       loadAnswerInsightForQuestion(q);
       refreshAiExplainAvailability();
@@ -5357,10 +5454,7 @@ function restoreSelection(q) {
   });
   // Show explanation again in study mode
   if (mode === "study") {
-    if (explanationEl) {
-      explanationEl.innerText = q.explanation;
-      explanationEl.classList.remove("hidden");
-    }
+    renderQuestionExplanation(q);
     renderQuestionTopicLink(q);
     loadAnswerInsightForQuestion(q);
     refreshAiExplainAvailability();
@@ -6254,10 +6348,7 @@ function renderDetailedQuestion() {
   }
 
   // Always show explanation
-  if (explanationEl) {
-    explanationEl.innerText = q.explanation || "No explanation provided.";
-    explanationEl.classList.remove("hidden");
-  }
+  renderQuestionExplanation(q);
   renderQuestionTopicLink(q);
   loadAnswerInsightForQuestion(q);
   refreshAiExplainAvailability();

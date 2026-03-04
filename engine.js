@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260304-motivate2";
+import { backendClient } from "./backendClient.js?v=20260304-motivate3";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -590,8 +590,8 @@ const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
 const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
-const LIVE_ANSWER_ADVANCE_DELAY_MS = 1000;
-const ANSWER_FEEDBACK_VISIBLE_MS = 1200;
+const LIVE_ANSWER_ADVANCE_DELAY_MS = 1300;
+const ANSWER_FEEDBACK_VISIBLE_MS = 1400;
 const themeMediaQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
     ? window.matchMedia("(prefers-color-scheme: dark)")

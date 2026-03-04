@@ -4401,13 +4401,8 @@ body.reduce-motion *::after {
     transform: translateY(-3px);
   }
 
-  35% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
   100% {
-    opacity: 0;
+    opacity: 1;
     transform: translateY(0);
   }
 }

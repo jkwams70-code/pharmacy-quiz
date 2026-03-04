@@ -2332,25 +2332,32 @@ body.headers-collapsed .app-header {
 }
 
 .answer-feedback {
-  min-height: 18px;
+  min-height: 24px;
   margin-bottom: 8px;
   color: #0f766e;
-  font-size: 0.84rem;
+  font-size: 0.94rem;
   font-weight: 800;
   letter-spacing: 0.2px;
   opacity: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .answer-feedback.tone-good {
   color: #0f766e;
+  background: rgba(20, 184, 166, 0.12);
 }
 
 .answer-feedback.tone-bad {
   color: #9f1239;
+  background: rgba(244, 63, 94, 0.12);
 }
 
 .answer-feedback.tone-info {
   color: #0c4a6e;
+  background: rgba(14, 165, 233, 0.12);
 }
 
 .answer-feedback.show {
@@ -3924,14 +3931,17 @@ body.theme-dark .answer-feedback {
 
 body.theme-dark .answer-feedback.tone-good {
   color: #5eead4;
+  background: rgba(20, 184, 166, 0.22);
 }
 
 body.theme-dark .answer-feedback.tone-bad {
   color: #fda4af;
+  background: rgba(244, 63, 94, 0.24);
 }
 
 body.theme-dark .answer-feedback.tone-info {
   color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.24);
 }
 
 body.theme-dark .drill-event-banner.tone-good {

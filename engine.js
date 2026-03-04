@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260304-motivate1";
+import { backendClient } from "./backendClient.js?v=20260304-motivate2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -590,7 +590,8 @@ const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
 const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
-const LIVE_ANSWER_ADVANCE_DELAY_MS = 650;
+const LIVE_ANSWER_ADVANCE_DELAY_MS = 1000;
+const ANSWER_FEEDBACK_VISIBLE_MS = 1200;
 const themeMediaQuery =
   typeof window !== "undefined" && typeof window.matchMedia === "function"
     ? window.matchMedia("(prefers-color-scheme: dark)")
@@ -661,7 +662,7 @@ function showAnswerFeedback(message = "", tone = "good") {
     answerFeedbackEl.classList.add("hidden");
     answerFeedbackEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
     answerFeedbackHideTimer = null;
-  }, 520);
+  }, ANSWER_FEEDBACK_VISIBLE_MS);
 }
 
 function showDrillEventBanner(message = "", tone = "good") {

@@ -974,20 +974,7 @@ function resolveSelectionLetter(selection, catalog) {
 function buildQuestionMemoryTrick(question, correctLetter, mostChosenLetter) {
   const explicit = normalizeWhitespace(question?.memoryTrick);
   if (explicit) return explicit;
-
-  const stem = String(question?.question || question?.text || "")
-    .replace(/^Q\s*\d+\.?\s*/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  const clue = stem.split(" ").slice(0, 8).join(" ");
-
-  if (correctLetter && mostChosenLetter && mostChosenLetter !== correctLetter) {
-    return `Anchor on "${clue}". When two options look close, eliminate ${mostChosenLetter} first, then confirm ${correctLetter}.`;
-  }
-  if (correctLetter) {
-    return `Anchor on "${clue}" and verify ${correctLetter} using the stem's strongest clue.`;
-  }
-  return `Anchor on "${clue}" and eliminate options that do not directly satisfy the stem cue.`;
+  return "";
 }
 
 function parseDurationSeconds(value) {

@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260303-social2";
+import { backendClient } from "./backendClient.js?v=20260304-explainfix1";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -2010,8 +2010,7 @@ function getWrongOptionReason(question, optionKey) {
       ? question.wrongOptionExplanations
       : {};
   const explicit = String(map[option] || "").trim();
-  if (explicit) return explicit;
-  return "This option is plausible, but it does not satisfy the key clue required by the stem.";
+  return explicit;
 }
 
 function buildQuestionExplanationText(question) {
@@ -2025,17 +2024,18 @@ function buildQuestionExplanationText(question) {
   const explainCorrect = String(q.explainCorrect || "").trim();
   if (explainCorrect) {
     blocks.push(`Why correct: ${explainCorrect}`);
-  } else if (String(q.correct || "").trim()) {
-    blocks.push(
-      `Why correct: ${String(q.correct).trim()} best matches the decisive clue in the question stem.`,
-    );
   }
 
   const optionKeys = getQuestionOptionKeys(q);
   const correct = String(q.correct || "").trim();
   const wrongLines = optionKeys
     .filter((optionKey) => String(optionKey || "").trim() !== correct)
-    .map((optionKey) => `${optionKey}: ${getWrongOptionReason(q, optionKey)}`);
+    .map((optionKey) => {
+      const reason = getWrongOptionReason(q, optionKey);
+      if (!reason) return "";
+      return `${optionKey}: ${reason}`;
+    })
+    .filter(Boolean);
   if (wrongLines.length > 0) {
     blocks.push(`Why others are wrong:\n${wrongLines.join("\n")}`);
   }
@@ -2117,8 +2117,7 @@ function renderMemoryTrickForQuestion(question, data) {
   if (!memoryTrickBoxEl) return;
   const serverText = String(data?.memoryTrick || "").trim();
   const localText = String(question?.memoryTrick || "").trim();
-  const fallback = String(question?.explanation || "").trim();
-  const text = localText || serverText || (fallback ? `Anchor the key clue in this explanation: ${fallback}` : "");
+  const text = localText || serverText;
 
   if (!text) {
     resetMemoryTrickBox();

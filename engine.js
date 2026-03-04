@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js";
-import { backendClient } from "./backendClient.js?v=20260304-explainfix1";
+import { backendClient } from "./backendClient.js?v=20260304-motivate1";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -51,7 +51,20 @@ const CATEGORY_COLOR_SHIFTS = {
   "Pharmacy Law & Ethics": "rgba(15, 63, 127, 0.16)",
 };
 
-const POSITIVE_ANSWER_FEEDBACK = ["Excellent.", "Sharp.", "Good recall."];
+const POSITIVE_ANSWER_FEEDBACK = [
+  "Bravo!",
+  "Excellent!",
+  "Well done!",
+  "Very good!",
+  "Great job!",
+];
+const NEGATIVE_ANSWER_FEEDBACK = [
+  "Oh no.",
+  "Nice try.",
+  "Almost there.",
+  "Keep going.",
+  "You'll get the next one.",
+];
 
 function normalizeMajorCategory(category, context = "") {
   const raw = String(category || "").trim();
@@ -139,7 +152,8 @@ let inReview = false;
 let answeredCurrent = false;
 let inStudyReview = false;
 let currentStreak = 0;
-let feedbackRotationIndex = 0;
+let positiveFeedbackRotationIndex = 0;
+let negativeFeedbackRotationIndex = 0;
 let answerFeedbackHideTimer = null;
 let answerCheckHideTimer = null;
 let drillEventHideTimer = null;
@@ -613,22 +627,31 @@ function awardXp(amount = 0) {
 }
 
 function getNextPositiveFeedback() {
-  const index = feedbackRotationIndex % POSITIVE_ANSWER_FEEDBACK.length;
-  feedbackRotationIndex += 1;
+  const index = positiveFeedbackRotationIndex % POSITIVE_ANSWER_FEEDBACK.length;
+  positiveFeedbackRotationIndex += 1;
   return POSITIVE_ANSWER_FEEDBACK[index];
 }
 
-function showAnswerFeedback(message = "") {
+function getNextNegativeFeedback() {
+  const index = negativeFeedbackRotationIndex % NEGATIVE_ANSWER_FEEDBACK.length;
+  negativeFeedbackRotationIndex += 1;
+  return NEGATIVE_ANSWER_FEEDBACK[index];
+}
+
+function showAnswerFeedback(message = "", tone = "good") {
   if (!answerFeedbackEl) return;
   const text = String(message || "").trim();
   if (!text) {
     answerFeedbackEl.classList.add("hidden");
-    answerFeedbackEl.classList.remove("show");
+    answerFeedbackEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
     answerFeedbackEl.textContent = "";
     return;
   }
   answerFeedbackEl.textContent = text;
-  answerFeedbackEl.classList.remove("hidden", "show");
+  answerFeedbackEl.classList.remove("hidden", "show", "tone-good", "tone-bad", "tone-info");
+  answerFeedbackEl.classList.add(
+    tone === "bad" ? "tone-bad" : tone === "info" ? "tone-info" : "tone-good",
+  );
   void answerFeedbackEl.offsetWidth;
   answerFeedbackEl.classList.add("show");
   if (answerFeedbackHideTimer) {
@@ -636,7 +659,7 @@ function showAnswerFeedback(message = "") {
   }
   answerFeedbackHideTimer = setTimeout(() => {
     answerFeedbackEl.classList.add("hidden");
-    answerFeedbackEl.classList.remove("show");
+    answerFeedbackEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
     answerFeedbackHideTimer = null;
   }, 520);
 }
@@ -2013,22 +2036,40 @@ function getWrongOptionReason(question, optionKey) {
   return explicit;
 }
 
-function buildQuestionExplanationText(question) {
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatExplanationTextForHtml(value) {
+  return escapeHtml(value).replace(/\n/g, "<br>");
+}
+
+function getQuestionExplanationSections(question) {
   const q = question && typeof question === "object" ? question : {};
-  const blocks = [];
+  const sections = {
+    base: "",
+    explainCorrect: "",
+    wrongLines: [],
+  };
+
   const base = String(q.explanation || "").trim();
   if (base) {
-    blocks.push(base);
+    sections.base = base;
   }
 
   const explainCorrect = String(q.explainCorrect || "").trim();
   if (explainCorrect) {
-    blocks.push(`Why correct: ${explainCorrect}`);
+    sections.explainCorrect = explainCorrect;
   }
 
   const optionKeys = getQuestionOptionKeys(q);
   const correct = String(q.correct || "").trim();
-  const wrongLines = optionKeys
+  sections.wrongLines = optionKeys
     .filter((optionKey) => String(optionKey || "").trim() !== correct)
     .map((optionKey) => {
       const reason = getWrongOptionReason(q, optionKey);
@@ -2036,22 +2077,55 @@ function buildQuestionExplanationText(question) {
       return `${optionKey}: ${reason}`;
     })
     .filter(Boolean);
-  if (wrongLines.length > 0) {
-    blocks.push(`Why others are wrong:\n${wrongLines.join("\n")}`);
-  }
 
-  return blocks.join("\n\n").trim();
+  return sections;
 }
 
 function renderQuestionExplanation(question) {
   if (!explanationEl) return;
-  const text = buildQuestionExplanationText(question);
-  if (!text) {
+  const sections = getQuestionExplanationSections(question);
+  const hasContent =
+    Boolean(sections.base) ||
+    Boolean(sections.explainCorrect) ||
+    (Array.isArray(sections.wrongLines) && sections.wrongLines.length > 0);
+
+  if (!hasContent) {
     explanationEl.classList.add("hidden");
-    explanationEl.innerText = "";
+    explanationEl.innerHTML = "";
     return;
   }
-  explanationEl.innerText = text;
+
+  const blocks = [];
+  if (sections.base) {
+    blocks.push(
+      `<section class="explain-section explain-main"><h4 class="explain-label">Explanation</h4><div class="explain-body">${formatExplanationTextForHtml(sections.base)}</div></section>`,
+    );
+  }
+
+  if (sections.explainCorrect) {
+    blocks.push(
+      `<section class="explain-section explain-correct"><h4 class="explain-label">Why Correct</h4><div class="explain-body">${formatExplanationTextForHtml(sections.explainCorrect)}</div></section>`,
+    );
+  }
+
+  if (Array.isArray(sections.wrongLines) && sections.wrongLines.length > 0) {
+    const items = sections.wrongLines
+      .map((line) => {
+        const splitAt = line.indexOf(":");
+        if (splitAt <= 0) {
+          return `<li class="explain-item">${formatExplanationTextForHtml(line)}</li>`;
+        }
+        const option = line.slice(0, splitAt).trim();
+        const reason = line.slice(splitAt + 1).trim();
+        return `<li class="explain-item"><span class="explain-option">${escapeHtml(option)}:</span> ${formatExplanationTextForHtml(reason)}</li>`;
+      })
+      .join("");
+    blocks.push(
+      `<section class="explain-section explain-wrong"><h4 class="explain-label">Why Others Are Wrong</h4><ul class="explain-list">${items}</ul></section>`,
+    );
+  }
+
+  explanationEl.innerHTML = blocks.join("");
   explanationEl.classList.remove("hidden");
 }
 
@@ -2081,36 +2155,7 @@ function clearOptionPeerBadges() {
 
 function renderPeerChoiceBadges(data) {
   clearOptionPeerBadges();
-  if (!canShowPeerInsight()) return;
-
-  const distribution = Array.isArray(data?.distribution) ? data.distribution : [];
-  if (distribution.length === 0) return;
-
-  const topPercent = distribution.reduce(
-    (best, row) => Math.max(best, Math.max(0, Number(row?.percent) || 0)),
-    0,
-  );
-  if (topPercent <= 0) return;
-
-  const topRows = distribution.filter((row) => Number(row?.percent) === topPercent);
-  const topByLetter = new Map(
-    topRows.map((row) => [String(row?.option || "").trim().toUpperCase(), topPercent]),
-  );
-  if (topByLetter.size === 0) return;
-
-  const buttons = Array.from(answersEl.querySelectorAll("button"));
-  buttons.forEach((btn, index) => {
-    const letter = String.fromCharCode(65 + index);
-    if (!topByLetter.has(letter)) return;
-    const percent = topByLetter.get(letter);
-    const badge = document.createElement("span");
-    badge.className = "peer-choice-badge";
-    badge.textContent = `${percent}%`;
-    badge.title = `${percent}% of learners picked this option`;
-    badge.setAttribute("aria-label", `${percent} percent of learners picked this option`);
-    btn.classList.add("has-peer-badge");
-    btn.appendChild(badge);
-  });
+  return;
 }
 
 function renderMemoryTrickForQuestion(question, data) {
@@ -4998,7 +5043,7 @@ function showQuestion() {
 
   if (explanationEl) {
     explanationEl.classList.add("hidden");
-    explanationEl.innerText = "";
+    explanationEl.innerHTML = "";
   }
   resetMemoryTrickBox();
   clearOptionPeerBadges();
@@ -5194,10 +5239,10 @@ function selectAnswer(value, q) {
   if (isCorrect) {
     playCorrectAnswerSound();
     showAnswerCheckmark();
-    showAnswerFeedback(getNextPositiveFeedback());
+    showAnswerFeedback(getNextPositiveFeedback(), "good");
     awardXp(5);
   } else {
-    showAnswerFeedback("Not quite.");
+    showAnswerFeedback(getNextNegativeFeedback(), "bad");
     awardXp(1);
   }
 
@@ -5264,9 +5309,9 @@ function selectAnswer(value, q) {
     const clinicalOutOfLives =
       mode === "exam" && examVariant === "clinical" && clinicalLives <= 0;
     if (suddenDeathFail) {
-      showAnswerFeedback("Sudden Death ended.");
+      showAnswerFeedback("Sudden Death ended.", "bad");
     } else if (clinicalOutOfLives) {
-      showAnswerFeedback("Clinical round ended.");
+      showAnswerFeedback("Clinical round ended.", "bad");
     }
     const isLastQuestion = current >= active.length - 1;
     const expectedQuestionId = q.id;
@@ -5339,11 +5384,11 @@ function nextQuestion() {
   if (inStudyReview) return;
   if (mode === "exam" || mode === "smart" || mode === "daily") {
     if (mode === "exam" && examVariant === "sudden") {
-      showAnswerFeedback("No skips in Sudden Death.");
+      showAnswerFeedback("No skips in Sudden Death.", "info");
       return;
     }
     if (mode === "exam" && examVariant === "clinical") {
-      showAnswerFeedback("No skips in Clinical drill.");
+      showAnswerFeedback("No skips in Clinical drill.", "info");
       return;
     }
     nextBtn.innerText = "Skip";

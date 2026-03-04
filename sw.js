@@ -1,14 +1,14 @@
-const CACHE_VERSION = "ajix-quiz-v27-explainfix1";
+const CACHE_VERSION = "ajix-quiz-v29-motivate1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/styles.css?v=20260304-explainfix1",
-  "/engine.js?v=20260304-explainfix1",
+  "/styles.css?v=20260304-motivate1",
+  "/engine.js?v=20260304-motivate1",
   "/data.js",
-  "/backendClient.js?v=20260304-explainfix1",
+  "/backendClient.js?v=20260304-motivate1",
   "/manifest.webmanifest?v=20260301-pwasplit6",
   "/admin-manifest.webmanifest?v=20260301-adminpwa7",
   "/icons/icon-192-f1.png?v=20260301-iconsource3",

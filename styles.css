@@ -2341,6 +2341,18 @@ body.headers-collapsed .app-header {
   opacity: 0;
 }
 
+.answer-feedback.tone-good {
+  color: #0f766e;
+}
+
+.answer-feedback.tone-bad {
+  color: #9f1239;
+}
+
+.answer-feedback.tone-info {
+  color: #0c4a6e;
+}
+
 .answer-feedback.show {
   animation: answer-feedback-fade 440ms ease forwards;
 }
@@ -2464,6 +2476,59 @@ body.headers-collapsed .app-header {
   color: #155e75;
   padding: 11px 12px;
   line-height: 1.5;
+}
+
+.explanation-modern .explain-section + .explain-section {
+  margin-top: 10px;
+}
+
+.explanation-modern .explain-section {
+  border-radius: 10px;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+}
+
+.explanation-modern .explain-label {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+.explanation-modern .explain-body {
+  margin: 0;
+  line-height: 1.52;
+}
+
+.explanation-modern .explain-main {
+  border-color: #67e8f9;
+  background: #ecfeff;
+  color: #155e75;
+}
+
+.explanation-modern .explain-correct {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.explanation-modern .explain-wrong {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.explanation-modern .explain-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.explanation-modern .explain-item + .explain-item {
+  margin-top: 6px;
+}
+
+.explanation-modern .explain-option {
+  font-weight: 900;
 }
 
 .question-topic-link-wrap {
@@ -3857,6 +3922,18 @@ body.theme-dark .answer-feedback {
   color: #5eead4;
 }
 
+body.theme-dark .answer-feedback.tone-good {
+  color: #5eead4;
+}
+
+body.theme-dark .answer-feedback.tone-bad {
+  color: #fda4af;
+}
+
+body.theme-dark .answer-feedback.tone-info {
+  color: #7dd3fc;
+}
+
 body.theme-dark .drill-event-banner.tone-good {
   color: #ecfdf5;
 }
@@ -4069,6 +4146,24 @@ body.theme-dark .memory-trick-box {
   border-left-color: #93c5fd;
   background: rgba(30, 58, 138, 0.28);
   color: #dbeafe;
+}
+
+body.theme-dark .explanation-modern .explain-main {
+  border-color: #06b6d4;
+  background: rgba(8, 145, 178, 0.2);
+  color: #cffafe;
+}
+
+body.theme-dark .explanation-modern .explain-correct {
+  border-color: #22c55e;
+  background: rgba(22, 101, 52, 0.28);
+  color: #dcfce7;
+}
+
+body.theme-dark .explanation-modern .explain-wrong {
+  border-color: #f59e0b;
+  background: rgba(146, 64, 14, 0.26);
+  color: #ffedd5;
 }
 
 body.theme-dark .peer-choice-badge {

@@ -6377,6 +6377,7 @@ function renderDetailedQuestion() {
   const q = active[current];
   applyQuestionCategoryShift(q);
   answersEl.innerHTML = "";
+  if (comboBlock) comboBlock.innerHTML = "";
   resetAiExplainPanel();
 
   // Question title
@@ -6489,6 +6490,7 @@ function renderDetailedQuestion() {
 
 function showQuestionDetailedMode() {
   answersEl.innerHTML = "";
+  if (comboBlock) comboBlock.innerHTML = "";
 
   const q = active[current];
   applyQuestionCategoryShift(q);

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-quiz-v33-fixpack1";
+const CACHE_VERSION = "ajix-quiz-v34-combofix1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -6,7 +6,7 @@ const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/styles.css?v=20260305-fixpack1",
-  "/engine.js?v=20260305-fixpack1",
+  "/engine.js?v=20260305-combofix1",
   "/data.js?v=20260305-fixpack1",
   "/backendClient.js?v=20260305-fixpack1",
   "/manifest.webmanifest?v=20260301-pwasplit6",

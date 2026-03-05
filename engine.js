@@ -707,6 +707,21 @@ function showAnswerChoiceMotivation(choiceValue, isCorrect) {
   }, ANSWER_CHOICE_MOTIVATION_VISIBLE_MS);
 }
 
+function shouldShowAnswerChoiceMotivation() {
+  if (mode === "daily" || mode === "smart") return false;
+  if (mode === "exam") {
+    const variant = String(examVariant || "normal").toLowerCase();
+    return variant === "rapid" || variant === "sudden" || variant === "clinical";
+  }
+  return mode === "study";
+}
+
+function isDirectSubmitDrillMode() {
+  if (mode !== "exam") return false;
+  const variant = String(examVariant || "normal").toLowerCase();
+  return variant === "rapid" || variant === "sudden" || variant === "clinical";
+}
+
 function showDrillEventBanner(message = "", tone = "good") {
   if (!drillEventBannerEl) return;
   const text = String(message || "").trim();
@@ -2905,14 +2920,15 @@ function clearAiExplainStateSession() {
 }
 
 function canUseAiForCurrentQuestion() {
-  if (!currentUser) return false;
-  if (
-    (mode === "exam" || mode === "smart" || mode === "daily") &&
-    !inReview &&
-    !inDetailedReview
-  ) {
+  const hasAuthSession = Boolean(currentUser) || backendClient.isAuthenticated();
+  if (!hasAuthSession) return false;
+
+  // Keep AI explanations out of live and pre-submit quiz flows.
+  // Allow in Study and post-result detailed review only.
+  if ((mode === "exam" || mode === "smart" || mode === "daily") && !inDetailedReview) {
     return false;
   }
+
   return true;
 }
 
@@ -2937,8 +2953,7 @@ function syncAiExplainPanelForCurrentQuestion() {
   const state = getAiState(question, false);
   const modeAllowed = canUseAiForCurrentQuestion();
   const answerAllowed = hasAnsweredCurrentQuestionForAi();
-  const explanationReady = isExplanationVisibleForCurrentQuestion();
-  const showControls = modeAllowed && explanationReady;
+  const showControls = modeAllowed && Boolean(question);
   const inFlightAny = Boolean(aiExplainInFlightQuestionKey);
 
   const hasMeta = Boolean(String(state?.meta || "").trim());
@@ -3097,7 +3112,10 @@ function buildAiPayloadForQuestion(question) {
 async function handleAiExplainClick() {
   if (!aiExplainBtn || aiExplainInFlightQuestionKey) return;
   if (!canUseAiForCurrentQuestion()) {
-    setAiExplainMeta("AI explanation is available in Study or Review mode only.", true);
+    setAiExplainMeta(
+      "AI explanation is available in Study mode and post-result Detailed Review.",
+      true,
+    );
     return;
   }
   if (!hasAnsweredCurrentQuestionForAi()) {
@@ -5284,11 +5302,19 @@ function selectAnswer(value, q) {
     playCorrectAnswerSound();
     showAnswerCheckmark();
     showAnswerFeedback("");
-    showAnswerChoiceMotivation(value, true);
+    if (shouldShowAnswerChoiceMotivation()) {
+      showAnswerChoiceMotivation(value, true);
+    } else {
+      clearAnswerChoiceMotivation();
+    }
     awardXp(5);
   } else {
     showAnswerFeedback("");
-    showAnswerChoiceMotivation(value, false);
+    if (shouldShowAnswerChoiceMotivation()) {
+      showAnswerChoiceMotivation(value, false);
+    } else {
+      clearAnswerChoiceMotivation();
+    }
     awardXp(1);
   }
 
@@ -5370,7 +5396,11 @@ function selectAnswer(value, q) {
         if (suddenDeathFail && Array.isArray(active)) {
           active = active.slice(0, current + 1);
         }
-        goToReview();
+        if (isDirectSubmitDrillMode()) {
+          void finishExam();
+        } else {
+          goToReview();
+        }
         return;
       }
 
@@ -5378,7 +5408,11 @@ function selectAnswer(value, q) {
         current++;
         showQuestion();
       } else {
-        goToReview();
+        if (isDirectSubmitDrillMode()) {
+          void finishExam();
+        } else {
+          goToReview();
+        }
       }
     }, LIVE_ANSWER_ADVANCE_DELAY_MS);
     return;
@@ -5616,7 +5650,11 @@ function startExamTimer() {
       updateTimerDisplay();
     } else {
       clearInterval(examTimer);
-      goToReview();
+      if (isDirectSubmitDrillMode()) {
+        void finishExam();
+      } else {
+        goToReview();
+      }
     }
   }, 1000);
 }
@@ -5680,6 +5718,11 @@ function clampSuddenReviewToSeenQuestions() {
                         ================================= */
 
 function goToReview() {
+  if (isDirectSubmitDrillMode()) {
+    void finishExam();
+    return;
+  }
+
   clampSuddenReviewToSeenQuestions();
   clearInterval(examTimer);
   examTimer = null;

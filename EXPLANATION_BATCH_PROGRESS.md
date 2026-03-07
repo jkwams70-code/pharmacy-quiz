@@ -167,9 +167,52 @@ Do not deploy until all questions are covered.
 - IDs: `387, 388, 389, 390, 391, 392, 393, 394, 395, 396`
 - Category focus: gastroenterology, clinical pharmacy, and immunology mechanism, indication, and safety counselling questions.
 
-## Next Batch (Planned)
+## Batch 041 (Completed)
 - IDs: `397, 398, 399, 400, 401, 402, 403, 404, 405, 406`
-- Category focus: mixed clinical pharmacology mechanism, indication, and safety counselling questions.
+- Category focus: infectious diseases, clinical pharmacology, and endocrinology mechanism, indication, and safety counselling questions.
+
+## Batch 042 (Completed)
+- IDs: `407, 408, 409, 410, 411, 412, 413, 414, 415, 416`
+- Category focus: endocrinology mechanism, indication, and safety counselling questions.
+
+## Batch 043 (Completed)
+- IDs: `417, 418, 419, 420, 421, 422, 423, 424, 425, 426`
+- Category focus: endocrinology and clinical pharmacology mechanism, indication, and safety counselling questions.
+
+## Batch 044 (Completed)
+- IDs: `427, 428, 429, 430, 431, 432, 433, 434, 435, 436`
+- Category focus: clinical pharmacology, rheumatology, and psychiatry mechanism, indication, and safety counselling questions.
+
+## Batch 045 (Completed)
+- IDs: `437, 438, 439, 440, 441, 442, 443, 444, 445, 446`
+- Category focus: psychiatry mechanism, indication, and safety counselling questions.
+
+## Batch 046 (Completed)
+- IDs: `447, 448, 449, 450, 451, 452, 453, 454, 455, 456`
+- Category focus: neurology mechanism, indication, and safety counselling questions.
+
+## Batch 047 (Completed)
+- IDs: `457, 458, 459, 460, 461, 462, 463, 464, 465, 466`
+- Category focus: neurology, gastroenterology, and oncology mechanism, indication, and safety counselling questions.
+
+## Batch 048 (Completed)
+- IDs: `467, 468, 469, 470, 471, 472, 473, 474, 475, 476`
+- Category focus: gastroenterology, palliative care, clinical assessment, and geriatric medicine mechanism, indication, and safety counselling questions.
+
+## Batch 049 (Completed)
+- IDs: `477, 478, 479, 480, 481, 482, 483, 484, 485, 486`
+- Category focus: electrolytes and nephrology mechanism, indication, and safety counselling questions.
+
+## Batch 050 (Completed)
+- IDs: `487, 488, 489, 490, 491, 492, 493, 494, 495, 496`
+- Category focus: nephrology, clinical nutrition, and rheumatology mechanism, indication, and safety counselling questions.
+
+## Batch 051 (Completed)
+- IDs: `497, 498, 499, 500`
+- Category focus: final rheumatology and ophthalmology mechanism, indication, and safety counselling questions.
+
+## Status
+- Coverage complete: all `500/500` questions now include `explainCorrect`, `wrongOptionExplanations`, and `memoryTrick`.
 
 ## Notes
 - Frontend now renders richer explanation blocks even when a question does not yet have full manual detail.

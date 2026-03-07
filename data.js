@@ -9999,6 +9999,16 @@ export const baseQuestions = [
     correct: "Core component of multidrug tuberculosis treatment.",
     explanation:
       "Rifampicin: Core component of multidrug tuberculosis treatment.",
+    explainCorrect:
+      "Option E is correct because rifampicin is a foundational drug in combination tuberculosis regimens and is also used in latent TB protocols with other structured approaches.",
+    wrongOptionExplanations: {
+      "Symptomatic treatment of mild-to-moderate Alzheimer disease.": "This indication fits cholinesterase inhibitors or memantine, not rifampicin.",
+      "Acute gout flare treatment and flare prophylaxis when starting ULT.": "Gout management uses anti-inflammatory and urate-lowering strategies, not rifampicin.",
+      "Rapid symptomatic relief in fluid overload and pulmonary edema.": "Pulmonary edema relief is typically with diuretics/vasodilators, not rifampicin.",
+      "Treatment of iron deficiency anemia during pregnancy.": "Iron deficiency anemia is treated with iron replacement, not antitubercular therapy.",
+    },
+    memoryTrick:
+      "Rifampicin is a TB backbone, not a stand-alone cure for unrelated conditions.",
   },
   {
     id: 398,
@@ -10017,6 +10027,16 @@ export const baseQuestions = [
       "Potent enzyme induction causes many interactions; medication review is essential.",
     explanation:
       "Rifampicin: Potent enzyme induction causes many interactions; medication review is essential.",
+    explainCorrect:
+      "Option D is correct because rifampicin is a strong enzyme inducer (including CYP pathways), which can lower exposure of many co-medications and create major interaction risks.",
+    wrongOptionExplanations: {
+      "Monitor for hepatotoxicity and significant CYP-mediated interactions.": "This is broadly true, but the key counseling emphasis in routine practice is rifampicin's potent enzyme induction and mandatory full medication review.",
+      "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.": "Liver monitoring matters, but interaction burden from enzyme induction is the hallmark high-impact daily safety issue.",
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "That profile aligns with lithium therapy, not rifampicin.",
+      "Take with food to reduce gastrointestinal intolerance.": "Food timing is secondary to major interaction screening.",
+    },
+    memoryTrick:
+      "Rifampicin 'revs up' liver enzymes, so always review all other medicines.",
   },
   {
     id: 399,
@@ -10034,6 +10054,16 @@ export const baseQuestions = [
     correct: "Inhibits mycolic acid synthesis in mycobacterial cell walls.",
     explanation:
       "Isoniazid: Inhibits mycolic acid synthesis in mycobacterial cell walls.",
+    explainCorrect:
+      "Option E is correct because isoniazid targets mycolic acid synthesis, a critical structural component of the mycobacterial cell wall.",
+    wrongOptionExplanations: {
+      "Reduces hepatic glucose output and improves insulin sensitivity.": "This is metformin's mechanism.",
+      "Systemic glucocorticoid that suppresses inflammatory gene transcription.": "This describes corticosteroid mechanism.",
+      "Enhances GABAergic transmission and modulates neuronal firing.": "This reflects CNS anticonvulsant/anxiolytic actions, not isoniazid.",
+      "Osmotically retains water in the bowel and reduces ammonia absorption.": "This is lactulose mechanism.",
+    },
+    memoryTrick:
+      "INH hits Mycolic acids: no mycolic wall, weak mycobacteria.",
   },
   {
     id: 400,
@@ -10051,6 +10081,16 @@ export const baseQuestions = [
     correct: "Tuberculosis treatment and latent TB therapy protocols.",
     explanation:
       "Isoniazid: Tuberculosis treatment and latent TB therapy protocols.",
+    explainCorrect:
+      "Option D is correct because isoniazid is used in active TB regimens (with companion drugs) and in latent TB preventive therapy protocols.",
+    wrongOptionExplanations: {
+      "Resistant hypertension and mortality reduction in HFrEF.": "These are cardiovascular treatment goals, not isoniazid indications.",
+      "Treatment and prophylaxis of venous thromboembolism.": "VTE management uses anticoagulants, not antitubercular drugs.",
+      "Susceptible upper respiratory and skin infections.": "Typical URTI/skin infections are managed with different antibacterial choices, not isoniazid.",
+      "Long-term urate-lowering therapy in recurrent gout.": "Urate-lowering drugs, not isoniazid, are used for recurrent gout control.",
+    },
+    memoryTrick:
+      "Isoniazid belongs to TB pathways: active TB combo and latent TB prevention.",
   },
   {
     id: 401,
@@ -10068,6 +10108,16 @@ export const baseQuestions = [
     correct: "Pyridoxine supplementation helps prevent peripheral neuropathy.",
     explanation:
       "Isoniazid: Pyridoxine supplementation helps prevent peripheral neuropathy.",
+    explainCorrect:
+      "Option C is correct because isoniazid can cause pyridoxine deficiency-related neuropathy, so vitamin B6 supplementation is a standard preventive measure in at-risk or routinely managed patients.",
+    wrongOptionExplanations: {
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "This monitoring set is characteristic of lithium, not isoniazid.",
+      "Extrapyramidal effects limit long-term use.": "EPS is associated with dopamine antagonists, not isoniazid.",
+      "Monitor for hepatotoxicity and significant CYP-mediated interactions.": "Liver monitoring is important, but the specific classic counseling point tested here is B6 to prevent neuropathy.",
+      "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.": "Hepatotoxicity matters, but pyridoxine prophylaxis is the signature preventive counseling item for isoniazid.",
+    },
+    memoryTrick:
+      "INH needs B6: protect nerves while treating TB.",
   },
   {
     id: 402,
@@ -10086,6 +10136,16 @@ export const baseQuestions = [
       "Inhibits fungal lanosterol 14-alpha-demethylase, reducing ergosterol synthesis.",
     explanation:
       "Fluconazole: Inhibits fungal lanosterol 14-alpha-demethylase, reducing ergosterol synthesis.",
+    explainCorrect:
+      "Option D is correct because fluconazole is an azole antifungal that inhibits fungal 14-alpha-demethylase, reducing ergosterol synthesis and compromising fungal cell membrane integrity.",
+    wrongOptionExplanations: {
+      "Antagonizes dopamine D2 and serotonin 5-HT2A receptors.": "This is antipsychotic receptor pharmacology.",
+      "Blocks serotonin 5-HT3 receptors in the gut and chemoreceptor trigger zone.": "This is ondansetron-like antiemetic mechanism.",
+      "Synthetic vasopressin analog that increases water reabsorption via V2 receptors.": "This is desmopressin mechanism.",
+      "Replaces deficient thyroxine (T4) hormone.": "This is levothyroxine replacement therapy.",
+    },
+    memoryTrick:
+      "Fluconazole blocks fungal sterol building, so membranes weaken.",
   },
   {
     id: 403,
@@ -10103,6 +10163,16 @@ export const baseQuestions = [
     correct: "Mucosal candidiasis and selected systemic fungal infections.",
     explanation:
       "Fluconazole: Mucosal candidiasis and selected systemic fungal infections.",
+    explainCorrect:
+      "Option C is correct because fluconazole is commonly used for mucosal candidiasis and for selected susceptible systemic fungal infections.",
+    wrongOptionExplanations: {
+      "Add-on control of allergic asthma and exercise-induced symptoms.": "This is a montelukast-type respiratory indication, not antifungal therapy.",
+      "Annual prevention of influenza and severe complications.": "Influenza prevention is via vaccination, not fluconazole.",
+      "First-line blood pressure control in uncomplicated hypertension.": "Hypertension first-line management uses antihypertensives, not antifungals.",
+      "Long-term anticoagulation for atrial fibrillation or venous thromboembolism.": "AF/VTE anticoagulation uses antithrombotic drugs, not fluconazole.",
+    },
+    memoryTrick:
+      "Fluconazole is for fungal disease, especially candidiasis patterns.",
   },
   {
     id: 404,
@@ -10121,6 +10191,16 @@ export const baseQuestions = [
       "Monitor for hepatotoxicity and significant CYP-mediated interactions.",
     explanation:
       "Fluconazole: Monitor for hepatotoxicity and significant CYP-mediated interactions.",
+    explainCorrect:
+      "Option B is correct because fluconazole can affect liver function and interacts with multiple drugs via CYP pathways, so monitoring and medication review are important.",
+    wrongOptionExplanations: {
+      "Should be taken with meals for maximal phosphate binding.": "This counseling applies to phosphate binders, not fluconazole.",
+      "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.": "This can occur, but the broader, most practical monitoring point includes both hepatotoxicity and interaction surveillance.",
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "This reflects lithium monitoring, not fluconazole monitoring.",
+      "Extrapyramidal effects limit long-term use.": "EPS is not the key routine toxicity concern with fluconazole.",
+    },
+    memoryTrick:
+      "Fluconazole: think liver + interactions before and during treatment.",
   },
   {
     id: 405,
@@ -10138,6 +10218,16 @@ export const baseQuestions = [
     correct: "Reduces hepatic glucose output and improves insulin sensitivity.",
     explanation:
       "Metformin: Reduces hepatic glucose output and improves insulin sensitivity.",
+    explainCorrect:
+      "Option C is correct because metformin lowers hepatic gluconeogenesis and improves insulin sensitivity, reducing blood glucose without directly stimulating insulin release.",
+    wrongOptionExplanations: {
+      "Replaces potassium to restore intracellular and extracellular potassium balance.": "This is potassium replacement therapy, not metformin action.",
+      "Topical beta-blockade reduces aqueous humor production.": "This is topical glaucoma pharmacology.",
+      "Inhibits norepinephrine and serotonin reuptake with anticholinergic activity.": "This describes tricyclic antidepressant mechanism.",
+      "Inhibits voltage-sensitive sodium channels and glutamate release.": "This matches certain antiepileptic mechanisms, not metformin.",
+    },
+    memoryTrick:
+      "Metformin mainly mutes liver glucose output and boosts sensitivity.",
   },
   {
     id: 406,
@@ -10154,6 +10244,16 @@ export const baseQuestions = [
     ],
     correct: "First-line pharmacotherapy in type 2 diabetes.",
     explanation: "Metformin: First-line pharmacotherapy in type 2 diabetes.",
+    explainCorrect:
+      "Option B is correct because metformin is standard first-line drug therapy for most patients with type 2 diabetes unless contraindicated or not tolerated.",
+    wrongOptionExplanations: {
+      "Type 2 diabetes with cardiovascular and renal protective benefits.": "Cardio-renal protection is a stronger defining advantage of SGLT2 inhibitors or GLP-1 receptor agonists rather than metformin's primary distinguishing role.",
+      "Prevention of stent thrombosis and recurrent ischemic events after ACS.": "This requires antiplatelet therapy, not metformin.",
+      "Maintenance bronchodilation in COPD.": "COPD bronchodilation uses inhaled bronchodilators, not metformin.",
+      "Serious gram-positive infections including MRSA.": "MRSA treatment requires targeted antibiotics, not antidiabetic therapy.",
+    },
+    memoryTrick:
+      "In T2DM starts, metformin is usually first on the prescription list.",
   },
   {
     id: 407,
@@ -10172,6 +10272,16 @@ export const baseQuestions = [
       "Temporarily withhold around iodinated contrast in patients at renal risk.",
     explanation:
       "Metformin: Temporarily withhold around iodinated contrast in patients at renal risk.",
+    explainCorrect:
+      "Option A is correct because iodinated contrast can acutely worsen renal function in at-risk patients, increasing metformin accumulation risk and potential lactic acidosis, so temporary withholding is recommended in selected cases.",
+    wrongOptionExplanations: {
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "This monitoring profile is for lithium, not metformin.",
+      "Extrapyramidal effects limit long-term use.": "EPS is associated with dopamine-blocking drugs, not metformin.",
+      "Should be taken with meals for maximal phosphate binding.": "Phosphate binding counseling applies to phosphate binders, not metformin.",
+      "May increase serum potassium; monitor renal function and potassium.": "Hyperkalemia monitoring is not the main standard counseling point for metformin.",
+    },
+    memoryTrick:
+      "Metformin + contrast + weak kidneys: pause, then restart safely.",
   },
   {
     id: 408,
@@ -10189,6 +10299,16 @@ export const baseQuestions = [
     correct: "Provides prolonged basal insulin activity with minimal peak.",
     explanation:
       "Insulin glargine: Provides prolonged basal insulin activity with minimal peak.",
+    explainCorrect:
+      "Option B is correct because insulin glargine is a long-acting insulin analog designed for steady basal glucose control over about 24 hours with little pronounced peak.",
+    wrongOptionExplanations: {
+      "Antagonizes aldosterone receptors in the distal nephron.": "This is mineralocorticoid receptor antagonist mechanism.",
+      "Blocks voltage-gated sodium channels in overactive neurons.": "This is an antiepileptic/neurologic mechanism.",
+      "Topical anti-inflammatory action in colonic mucosa via 5-ASA.": "This describes mesalazine mechanism.",
+      "Inhibits xanthine oxidase, lowering uric acid production.": "This is allopurinol/febuxostat mechanism.",
+    },
+    memoryTrick:
+      "Glargine = long, flat basal insulin line.",
   },
   {
     id: 409,
@@ -10206,6 +10326,16 @@ export const baseQuestions = [
     correct: "Basal glucose control in type 1 and type 2 diabetes.",
     explanation:
       "Insulin glargine: Basal glucose control in type 1 and type 2 diabetes.",
+    explainCorrect:
+      "Option A is correct because glargine provides baseline insulin replacement/support in type 1 diabetes and basal supplementation in type 2 diabetes.",
+    wrongOptionExplanations: {
+      "Maintenance controller therapy in persistent asthma.": "Asthma controller therapy uses inhaled anti-inflammatory/bronchodilator regimens, not insulin.",
+      "Anaerobic intra-abdominal infections and protozoal disease.": "This is metronidazole-type indication, not insulin use.",
+      "Type 2 diabetes when metformin alone is insufficient.": "This is a broader add-on diabetes indication often linked to oral agents too, while glargine's defining use here is basal insulin control in both T1DM and T2DM.",
+      "Major depressive disorder and anxiety-spectrum disorders.": "These are psychiatric indications, not insulin therapy.",
+    },
+    memoryTrick:
+      "Glargine handles the baseline sugar load all day.",
   },
   {
     id: 410,
@@ -10224,6 +10354,16 @@ export const baseQuestions = [
       "Hypoglycemia prevention requires consistent dosing time and glucose monitoring.",
     explanation:
       "Insulin glargine: Hypoglycemia prevention requires consistent dosing time and glucose monitoring.",
+    explainCorrect:
+      "Option E is correct because insulin can cause hypoglycemia, so consistent administration timing and regular glucose monitoring are core safety habits.",
+    wrongOptionExplanations: {
+      "Extrapyramidal effects limit long-term use.": "EPS is unrelated to insulin glargine safety.",
+      "Should be taken with meals for maximal phosphate binding.": "This is phosphate-binder counseling, not insulin counseling.",
+      "May increase serum potassium; monitor renal function and potassium.": "Insulin tends to shift potassium into cells rather than being known for causing hyperkalemia.",
+      "Bleeding risk is the main concern; assess for bruising and GI bleeding.": "This is antiplatelet/anticoagulant counseling, not insulin glargine's primary risk.",
+    },
+    memoryTrick:
+      "With basal insulin, same-time dosing + glucose checks prevent lows.",
   },
   {
     id: 411,
@@ -10242,6 +10382,16 @@ export const baseQuestions = [
       "Stimulates pancreatic beta-cell insulin release via KATP channel closure.",
     explanation:
       "Gliclazide: Stimulates pancreatic beta-cell insulin release via KATP channel closure.",
+    explainCorrect:
+      "Option A is correct because gliclazide is a sulfonylurea that closes pancreatic beta-cell KATP channels, triggering insulin secretion.",
+    wrongOptionExplanations: {
+      "Dopamine D2 antagonism with prokinetic effects on upper GI tract.": "This is metoclopramide-like mechanism.",
+      "Binds dietary phosphate in the gut to reduce phosphate absorption.": "This is phosphate-binder mechanism.",
+      "Blocks angiotensin II type-1 receptors to reduce vasoconstriction and aldosterone effects.": "This is ARB mechanism.",
+      "Irreversibly inhibits platelet P2Y12 receptors to reduce platelet aggregation.": "This is clopidogrel mechanism.",
+    },
+    memoryTrick:
+      "Sulfonylurea shuts KATP, beta cells release insulin.",
   },
   {
     id: 412,
@@ -10259,6 +10409,16 @@ export const baseQuestions = [
     correct: "Type 2 diabetes when metformin alone is insufficient.",
     explanation:
       "Gliclazide: Type 2 diabetes when metformin alone is insufficient.",
+    explainCorrect:
+      "Option E is correct because gliclazide is commonly used as add-on therapy in type 2 diabetes when metformin alone does not achieve glycemic targets.",
+    wrongOptionExplanations: {
+      "Inflammatory acne and selected atypical infections.": "This is doxycycline-type territory, not gliclazide.",
+      "First-line pharmacotherapy in type 2 diabetes.": "Metformin is generally first-line; sulfonylureas are usually add-on or alternative choices.",
+      "Fracture risk reduction in osteoporosis.": "Osteoporosis requires bone-active therapies, not gliclazide.",
+      "Focal seizures and trigeminal neuralgia.": "These are neurologic indications, not gliclazide use.",
+    },
+    memoryTrick:
+      "If metformin is not enough, gliclazide can boost insulin output.",
   },
   {
     id: 413,
@@ -10276,6 +10436,16 @@ export const baseQuestions = [
     correct: "Risk of hypoglycemia is increased with missed meals.",
     explanation:
       "Gliclazide: Risk of hypoglycemia is increased with missed meals.",
+    explainCorrect:
+      "Option D is correct because sulfonylureas can keep driving insulin release even when food intake drops, increasing hypoglycemia risk with missed meals.",
+    wrongOptionExplanations: {
+      "May increase serum potassium; monitor renal function and potassium.": "Hyperkalemia monitoring is not the key gliclazide counseling point.",
+      "Bleeding risk is the main concern; assess for bruising and GI bleeding.": "This is antithrombotic counseling, not sulfonylurea counseling.",
+      "Not for acute symptom relief; provide a rescue inhaler separately.": "This applies to respiratory controller inhalers, not gliclazide.",
+      "Should be taken with meals for maximal phosphate binding.": "This is phosphate-binder counseling, not gliclazide counseling.",
+    },
+    memoryTrick:
+      "Gliclazide + skipped meal = sugar can crash.",
   },
   {
     id: 414,
@@ -10293,6 +10463,16 @@ export const baseQuestions = [
     correct: "Inhibits renal SGLT2 to increase urinary glucose excretion.",
     explanation:
       "Empagliflozin: Inhibits renal SGLT2 to increase urinary glucose excretion.",
+    explainCorrect:
+      "Option E is correct because empagliflozin blocks renal SGLT2, reducing glucose reabsorption and increasing urinary glucose loss.",
+    wrongOptionExplanations: {
+      "Exchanges sodium for potassium in the gut to reduce serum potassium.": "This is potassium-binder mechanism.",
+      "Blocks L-type calcium channels in vascular smooth muscle to reduce peripheral resistance.": "This is calcium-channel blocker mechanism.",
+      "Releases nitric oxide causing venodilation and reduced preload.": "This is nitrate mechanism.",
+      "Stimulates beta-2 receptors causing rapid bronchodilation.": "This is salbutamol mechanism.",
+    },
+    memoryTrick:
+      "SGLT2 block sends glucose out in urine.",
   },
   {
     id: 415,
@@ -10311,6 +10491,16 @@ export const baseQuestions = [
       "Type 2 diabetes with cardiovascular and renal protective benefits.",
     explanation:
       "Empagliflozin: Type 2 diabetes with cardiovascular and renal protective benefits.",
+    explainCorrect:
+      "Option D is correct because empagliflozin treats type 2 diabetes and has important cardiovascular and renal outcome benefits in appropriate patients.",
+    wrongOptionExplanations: {
+      "Short-course treatment of moderate to severe inflammatory flares.": "This is anti-inflammatory therapy territory, not empagliflozin indication.",
+      "Generalized and focal seizure disorders.": "Seizure disorders require antiepileptics, not SGLT2 inhibitors.",
+      "Constipation relief and adjunct treatment in hepatic encephalopathy.": "This is lactulose indication, not empagliflozin.",
+      "Mucosal candidiasis and selected systemic fungal infections.": "This is fluconazole-type antifungal indication.",
+    },
+    memoryTrick:
+      "Empagliflozin helps sugar, heart, and kidneys together.",
   },
   {
     id: 416,
@@ -10328,6 +10518,16 @@ export const baseQuestions = [
     correct: "Counsel on genital mycotic infection risk and hydration.",
     explanation:
       "Empagliflozin: Counsel on genital mycotic infection risk and hydration.",
+    explainCorrect:
+      "Option C is correct because glycosuria with SGLT2 inhibitors can increase genital fungal infection risk and volume depletion risk, so hygiene and hydration counseling are essential.",
+    wrongOptionExplanations: {
+      "Not for acute symptom relief; provide a rescue inhaler separately.": "This is respiratory inhaler counseling, not empagliflozin counseling.",
+      "Therapeutic drug monitoring helps reduce nephrotoxicity while maintaining efficacy.": "Routine TDM nephrotoxicity monitoring is not the standard key counseling for empagliflozin.",
+      "May increase serum potassium; monitor renal function and potassium.": "Hyperkalemia is not the central routine counseling point for empagliflozin.",
+      "Bleeding risk is the main concern; assess for bruising and GI bleeding.": "This is antithrombotic safety counseling, not SGLT2 counseling.",
+    },
+    memoryTrick:
+      "SGLT2 means sugary urine: watch hydration and genital infection symptoms.",
   },
   {
     id: 417,
@@ -10345,6 +10545,16 @@ export const baseQuestions = [
     correct: "Inhibits DPP-4, prolonging endogenous incretin action.",
     explanation:
       "Sitagliptin: Inhibits DPP-4, prolonging endogenous incretin action.",
+    explainCorrect:
+      "Option D is correct because sitagliptin inhibits DPP-4, increasing endogenous incretin activity (GLP-1/GIP), which supports glucose-dependent insulin release and lowers glucagon.",
+    wrongOptionExplanations: {
+      "Inhibits the NKCC2 cotransporter in the thick ascending limb of Henle.": "This is loop diuretic mechanism.",
+      "Supplies elemental iron required for hemoglobin synthesis.": "This is ferrous sulfate mechanism.",
+      "Combines beta-lactam antibacterial activity with beta-lactamase inhibition.": "This is amoxicillin-clavulanate mechanism.",
+      "Disrupts microtubule polymerization, reducing neutrophil-mediated inflammation.": "This is colchicine mechanism.",
+    },
+    memoryTrick:
+      "Sitagliptin stops DPP-4 breakdown, so incretins stay active longer.",
   },
   {
     id: 418,
@@ -10361,6 +10571,16 @@ export const baseQuestions = [
     ],
     correct: "Add-on glycemic control in type 2 diabetes.",
     explanation: "Sitagliptin: Add-on glycemic control in type 2 diabetes.",
+    explainCorrect:
+      "Option C is correct because sitagliptin is commonly used as add-on oral therapy in type 2 diabetes when additional glycemic control is needed.",
+    wrongOptionExplanations: {
+      "Short-term management of gastroparesis-related nausea.": "This is prokinetic/antiemetic territory, not sitagliptin use.",
+      "Hyperphosphatemia control in chronic kidney disease.": "This is managed with phosphate binders and diet, not DPP-4 inhibitors.",
+      "Hyperthyroidism, especially thyroid storm management.": "This is antithyroid drug indication, not sitagliptin indication.",
+      "Maintenance treatment of bipolar disorder.": "Bipolar maintenance uses mood stabilizers/psychiatric regimens, not sitagliptin.",
+    },
+    memoryTrick:
+      "Sitagliptin is a T2DM add-on, not first-line for non-diabetes diseases.",
   },
   {
     id: 419,
@@ -10377,6 +10597,16 @@ export const baseQuestions = [
     ],
     correct: "Dose adjustment is needed in renal impairment.",
     explanation: "Sitagliptin: Dose adjustment is needed in renal impairment.",
+    explainCorrect:
+      "Option B is correct because sitagliptin is renally cleared, so dosing should be adjusted as renal function declines to avoid excess exposure.",
+    wrongOptionExplanations: {
+      "Risk of hypoglycemia is increased with missed meals.": "This is more characteristic of sulfonylureas/insulin than DPP-4 inhibitors alone.",
+      "Bleeding risk is the main concern; assess for bruising and GI bleeding.": "This is antithrombotic counseling, not sitagliptin counseling.",
+      "Not for acute symptom relief; provide a rescue inhaler separately.": "This is respiratory inhaler counseling, not sitagliptin guidance.",
+      "Therapeutic drug monitoring helps reduce nephrotoxicity while maintaining efficacy.": "Routine TDM is not a standard sitagliptin safety approach.",
+    },
+    memoryTrick:
+      "Kidneys clear sitagliptin, so kidney status guides the dose.",
   },
   {
     id: 420,
@@ -10393,6 +10623,16 @@ export const baseQuestions = [
     ],
     correct: "Replaces deficient thyroxine (T4) hormone.",
     explanation: "Levothyroxine: Replaces deficient thyroxine (T4) hormone.",
+    explainCorrect:
+      "Option C is correct because levothyroxine is synthetic T4 used to replace deficient thyroid hormone in hypothyroid states.",
+    wrongOptionExplanations: {
+      "Blocks cysteinyl leukotriene-1 receptors in the airway.": "This is montelukast mechanism.",
+      "Induces adaptive immune response against influenza surface antigens.": "This is vaccine mechanism.",
+      "Inhibits the sodium-chloride cotransporter in the distal convoluted tubule.": "This is thiazide mechanism.",
+      "Inhibits vitamin K epoxide reductase, lowering synthesis of factors II, VII, IX, and X.": "This is warfarin mechanism.",
+    },
+    memoryTrick:
+      "Levo-thyroxine = hormone replacement for low thyroid output.",
   },
   {
     id: 421,
@@ -10409,6 +10649,16 @@ export const baseQuestions = [
     ],
     correct: "Long-term management of hypothyroidism.",
     explanation: "Levothyroxine: Long-term management of hypothyroidism.",
+    explainCorrect:
+      "Option B is correct because levothyroxine is standard long-term replacement therapy in hypothyroidism and usually requires ongoing dose titration by thyroid function tests.",
+    wrongOptionExplanations: {
+      "Rate control and secondary prevention after myocardial infarction.": "These are cardiovascular treatment goals, not levothyroxine indications.",
+      "Schizophrenia and related psychotic disorders.": "Psychosis treatment requires antipsychotics, not thyroid hormone replacement.",
+      "Prevention of chemotherapy-induced nausea and vomiting.": "CINV prevention uses antiemetics, not levothyroxine.",
+      "Central diabetes insipidus and selected nocturnal enuresis cases.": "This is desmopressin indication, not levothyroxine use.",
+    },
+    memoryTrick:
+      "Hypothyroidism management is usually long-term levothyroxine replacement.",
   },
   {
     id: 422,
@@ -10426,6 +10676,16 @@ export const baseQuestions = [
     correct: "Take on an empty stomach consistently to optimize absorption.",
     explanation:
       "Levothyroxine: Take on an empty stomach consistently to optimize absorption.",
+    explainCorrect:
+      "Option A is correct because levothyroxine absorption is sensitive to food and timing; consistent empty-stomach dosing improves stable therapeutic exposure.",
+    wrongOptionExplanations: {
+      "Not for acute symptom relief; provide a rescue inhaler separately.": "This is inhaler counseling, not thyroid hormone counseling.",
+      "Therapeutic drug monitoring helps reduce nephrotoxicity while maintaining efficacy.": "Routine TDM nephrotoxicity monitoring is not levothyroxine guidance.",
+      "Risk of hypoglycemia is increased with missed meals.": "This is diabetes drug counseling, not levothyroxine counseling.",
+      "Sedation and anticholinergic effects can limit tolerability.": "This profile fits certain psychotropic drugs, not levothyroxine.",
+    },
+    memoryTrick:
+      "Levo likes routine: same time, empty stomach, every day.",
   },
   {
     id: 423,
@@ -10444,6 +10704,16 @@ export const baseQuestions = [
       "Inhibits thyroid hormone synthesis and peripheral T4 to T3 conversion.",
     explanation:
       "Propylthiouracil: Inhibits thyroid hormone synthesis and peripheral T4 to T3 conversion.",
+    explainCorrect:
+      "Option B is correct because propylthiouracil inhibits thyroid hormone synthesis and additionally reduces peripheral conversion of T4 to T3.",
+    wrongOptionExplanations: {
+      "Provides prolonged basal insulin activity with minimal peak.": "This is insulin glargine mechanism.",
+      "Inhibits Na+/K+-ATPase to increase intracellular calcium and vagal tone.": "This is digoxin mechanism.",
+      "Reduces airway inflammation by glucocorticoid receptor-mediated gene regulation.": "This is inhaled corticosteroid mechanism.",
+      "Generates free-radical metabolites that damage DNA in anaerobes and protozoa.": "This is metronidazole mechanism.",
+    },
+    memoryTrick:
+      "PTU does two thyroid jobs: block synthesis and block T4-to-T3 conversion.",
   },
   {
     id: 424,
@@ -10461,6 +10731,16 @@ export const baseQuestions = [
     correct: "Hyperthyroidism, especially thyroid storm management.",
     explanation:
       "Propylthiouracil: Hyperthyroidism, especially thyroid storm management.",
+    explainCorrect:
+      "Option A is correct because propylthiouracil is used in hyperthyroidism and is particularly useful in thyroid storm because of its additional peripheral T4-to-T3 inhibition.",
+    wrongOptionExplanations: {
+      "GERD and peptic ulcer disease acid suppression.": "This is PPI/H2 blocker indication.",
+      "Adjunctive management of non-emergent hyperkalemia.": "This is potassium-lowering therapy, not PTU indication.",
+      "Long-term control of hypertension and chronic stable angina.": "These are cardiovascular management roles, not antithyroid roles.",
+      "Immediate relief of acute angina episodes.": "Acute angina relief is nitrate-based, not PTU-based.",
+    },
+    memoryTrick:
+      "In severe thyrotoxicosis, PTU helps by lowering new hormone and T3 conversion.",
   },
   {
     id: 425,
@@ -10479,6 +10759,16 @@ export const baseQuestions = [
       "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.",
     explanation:
       "Propylthiouracil: Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.",
+    explainCorrect:
+      "Option E is correct because propylthiouracil carries a rare but serious hepatotoxicity risk; warning signs should prompt urgent clinical review.",
+    wrongOptionExplanations: {
+      "Therapeutic drug monitoring helps reduce nephrotoxicity while maintaining efficacy.": "Routine TDM nephrotoxicity strategy is not the central PTU safety issue.",
+      "Risk of hypoglycemia is increased with missed meals.": "This is insulin/sulfonylurea counseling, not PTU counseling.",
+      "Sedation and anticholinergic effects can limit tolerability.": "This profile does not represent PTU's key risk.",
+      "Slow titration reduces risk of serious rash including SJS.": "Serious rash counseling is more associated with other drug classes, while PTU's hallmark severe warning is hepatotoxicity.",
+    },
+    memoryTrick:
+      "PTU: remember liver warning, not just thyroid effects.",
   },
   {
     id: 426,
@@ -10497,6 +10787,16 @@ export const baseQuestions = [
       "Systemic glucocorticoid that suppresses inflammatory gene transcription.",
     explanation:
       "Prednisone: Systemic glucocorticoid that suppresses inflammatory gene transcription.",
+    explainCorrect:
+      "Option A is correct because prednisone is a systemic corticosteroid that modulates gene transcription via glucocorticoid receptors, reducing inflammatory and immune activity.",
+    wrongOptionExplanations: {
+      "Stimulates erythroid progenitor cells via erythropoietin receptor activation.": "This is epoetin mechanism.",
+      "Inhibits bacterial DNA gyrase and topoisomerase IV.": "This is fluoroquinolone mechanism.",
+      "Inhibits fungal lanosterol 14-alpha-demethylase, reducing ergosterol synthesis.": "This is azole antifungal mechanism.",
+      "Inhibits thyroid hormone synthesis and peripheral T4 to T3 conversion.": "This is propylthiouracil mechanism.",
+    },
+    memoryTrick:
+      "Prednisone suppresses inflammation at the gene-transcription level.",
   },
   {
     id: 427,
@@ -10515,6 +10815,16 @@ export const baseQuestions = [
       "Short-course treatment of moderate to severe inflammatory flares.",
     explanation:
       "Prednisone: Short-course treatment of moderate to severe inflammatory flares.",
+    explainCorrect:
+      "Option E is correct because prednisone is a systemic corticosteroid used for short courses to rapidly suppress moderate to severe inflammatory disease flares.",
+    wrongOptionExplanations: {
+      "Prevention and treatment of documented hypokalemia.": "Hypokalemia is treated with potassium replacement, not prednisone.",
+      "Reduction of intraocular pressure in open-angle glaucoma.": "Glaucoma pressure control uses ophthalmic pressure-lowering drugs, not systemic prednisone as primary therapy.",
+      "Primary and secondary prevention of atherosclerotic cardiovascular disease.": "ASCVD prevention relies on lipid/risk-factor management, not prednisone.",
+      "Anemia of chronic kidney disease to reduce transfusion need.": "This is an erythropoiesis-stimulating agent indication, not prednisone indication.",
+    },
+    memoryTrick:
+      "Prednisone is for short inflammatory fire control, not long-term disease replacement.",
   },
   {
     id: 428,
@@ -10533,6 +10843,16 @@ export const baseQuestions = [
       "Tapering may be required after prolonged courses to prevent adrenal suppression.",
     explanation:
       "Prednisone: Tapering may be required after prolonged courses to prevent adrenal suppression.",
+    explainCorrect:
+      "Option D is correct because prolonged systemic corticosteroid exposure suppresses the HPA axis, so abrupt discontinuation can trigger adrenal insufficiency and may require tapering.",
+    wrongOptionExplanations: {
+      "Sedation and anticholinergic effects can limit tolerability.": "This profile fits tricyclic antidepressants, not prednisone.",
+      "Slow titration reduces risk of serious rash including SJS.": "SJS-focused titration counseling applies to other drug classes, not prednisone.",
+      "Rapid correction can be dangerous; monitor ECG and serum potassium.": "This is potassium correction counseling, not prednisone taper counseling.",
+      "Risk of hypoglycemia is increased with missed meals.": "This concern is more relevant to insulin/sulfonylureas, while prednisone more often raises glucose.",
+    },
+    memoryTrick:
+      "Long steroid course? Think taper, do not stop suddenly.",
   },
   {
     id: 429,
@@ -10551,6 +10871,16 @@ export const baseQuestions = [
       "Inhibits osteoclast-mediated bone resorption as a bisphosphonate.",
     explanation:
       "Alendronate: Inhibits osteoclast-mediated bone resorption as a bisphosphonate.",
+    explainCorrect:
+      "Option E is correct because alendronate is a bisphosphonate that inhibits osteoclast activity, reducing bone resorption and improving bone strength over time.",
+    wrongOptionExplanations: {
+      "Inhibits bacterial cell wall synthesis by binding penicillin-binding proteins.": "This is beta-lactam antibiotic mechanism.",
+      "Inhibits DNA-dependent RNA polymerase in mycobacteria.": "This is rifampicin mechanism.",
+      "Inhibits DPP-4, prolonging endogenous incretin action.": "This is sitagliptin mechanism.",
+      "Antagonizes dopamine D2 and serotonin 5-HT2A receptors.": "This is antipsychotic receptor pharmacology.",
+    },
+    memoryTrick:
+      "Alendronate slows osteoclasts, so bone loss slows.",
   },
   {
     id: 430,
@@ -10567,6 +10897,16 @@ export const baseQuestions = [
     ],
     correct: "Fracture risk reduction in osteoporosis.",
     explanation: "Alendronate: Fracture risk reduction in osteoporosis.",
+    explainCorrect:
+      "Option D is correct because alendronate is used to reduce vertebral and non-vertebral fracture risk in osteoporosis.",
+    wrongOptionExplanations: {
+      "Rapid symptomatic relief in fluid overload and pulmonary edema.": "This is loop diuretic/nitrate territory, not alendronate.",
+      "Treatment of iron deficiency anemia during pregnancy.": "This requires iron supplementation, not bisphosphonates.",
+      "Bacterial sinusitis or otitis when beta-lactamase producers are suspected.": "This is antibiotic indication, not alendronate indication.",
+      "Acute gout flare treatment and flare prophylaxis when starting ULT.": "This is gout anti-inflammatory prophylaxis indication, not alendronate use.",
+    },
+    memoryTrick:
+      "Alendronate is about fracture prevention, not acute symptom relief.",
   },
   {
     id: 431,
@@ -10585,6 +10925,16 @@ export const baseQuestions = [
       "Take with plain water and remain upright to reduce esophageal irritation.",
     explanation:
       "Alendronate: Take with plain water and remain upright to reduce esophageal irritation.",
+    explainCorrect:
+      "Option C is correct because bisphosphonates can irritate the esophagus; administration with plain water and remaining upright reduces this risk.",
+    wrongOptionExplanations: {
+      "Rapid correction can be dangerous; monitor ECG and serum potassium.": "This is potassium replacement counseling, not alendronate counseling.",
+      "Systemic absorption may cause bradycardia; punctal occlusion reduces exposure.": "This is ophthalmic beta-blocker counseling, not alendronate.",
+      "Sedation and anticholinergic effects can limit tolerability.": "This is tricyclic-like adverse-effect profile, not bisphosphonate profile.",
+      "Slow titration reduces risk of serious rash including SJS.": "This counseling is for other high-risk rash drugs, not alendronate.",
+    },
+    memoryTrick:
+      "Alendronate rule: water, upright, protect the esophagus.",
   },
   {
     id: 432,
@@ -10602,6 +10952,16 @@ export const baseQuestions = [
     correct: "Selectively inhibits serotonin reuptake in the CNS.",
     explanation:
       "Sertraline: Selectively inhibits serotonin reuptake in the CNS.",
+    explainCorrect:
+      "Option D is correct because sertraline is an SSRI that selectively blocks serotonin reuptake, increasing synaptic serotonin signaling.",
+    wrongOptionExplanations: {
+      "Stimulates pancreatic beta-cell insulin release via KATP channel closure.": "This is sulfonylurea mechanism.",
+      "Inhibits norepinephrine and serotonin reuptake with anticholinergic activity.": "This describes tricyclic antidepressants, not SSRIs.",
+      "Inhibits voltage-sensitive sodium channels and glutamate release.": "This is anticonvulsant mechanism.",
+      "Binds D-Ala-D-Ala termini to inhibit peptidoglycan synthesis.": "This is vancomycin mechanism.",
+    },
+    memoryTrick:
+      "Sertraline is selective serotonin reuptake inhibition.",
   },
   {
     id: 433,
@@ -10619,6 +10979,16 @@ export const baseQuestions = [
     correct: "Major depressive disorder and anxiety-spectrum disorders.",
     explanation:
       "Sertraline: Major depressive disorder and anxiety-spectrum disorders.",
+    explainCorrect:
+      "Option C is correct because sertraline is a first-line agent for major depressive disorder and multiple anxiety-spectrum conditions.",
+    wrongOptionExplanations: {
+      "Susceptible upper respiratory and skin infections.": "This is antibiotic indication, not sertraline indication.",
+      "Core component of multidrug tuberculosis treatment.": "This is rifampicin/INH TB regimen indication, not sertraline.",
+      "Resistant hypertension and mortality reduction in HFrEF.": "This is cardiovascular indication, not psychiatric SSRI indication.",
+      "Treatment and prophylaxis of venous thromboembolism.": "This requires anticoagulants, not sertraline.",
+    },
+    memoryTrick:
+      "Sertraline is for mood/anxiety stabilization, not infectious or cardiac targets.",
   },
   {
     id: 434,
@@ -10637,6 +11007,16 @@ export const baseQuestions = [
       "Clinical benefit is delayed; adherence in first weeks is important.",
     explanation:
       "Sertraline: Clinical benefit is delayed; adherence in first weeks is important.",
+    explainCorrect:
+      "Option B is correct because SSRIs often take weeks for full therapeutic effect, so early adherence is essential despite delayed symptom improvement.",
+    wrongOptionExplanations: {
+      "Report unexplained muscle pain due to risk of statin-associated myopathy.": "This is statin counseling, not sertraline counseling.",
+      "Slow titration reduces risk of serious rash including SJS.": "SJS-focused titration is not the key routine counseling point for sertraline.",
+      "Rapid correction can be dangerous; monitor ECG and serum potassium.": "This is potassium correction counseling, not SSRI counseling.",
+      "Systemic absorption may cause bradycardia; punctal occlusion reduces exposure.": "This is ophthalmic beta-blocker counseling, not sertraline counseling.",
+    },
+    memoryTrick:
+      "Sertraline works slowly: stay consistent early for later benefit.",
   },
   {
     id: 435,
@@ -10655,6 +11035,16 @@ export const baseQuestions = [
       "Inhibits norepinephrine and serotonin reuptake with anticholinergic activity.",
     explanation:
       "Amitriptyline: Inhibits norepinephrine and serotonin reuptake with anticholinergic activity.",
+    explainCorrect:
+      "Option C is correct because amitriptyline is a tricyclic antidepressant that inhibits serotonin and norepinephrine reuptake and has notable anticholinergic effects.",
+    wrongOptionExplanations: {
+      "Blocks voltage-gated sodium channels in overactive neurons.": "This is an antiepileptic mechanism pattern.",
+      "Topical anti-inflammatory action in colonic mucosa via 5-ASA.": "This is mesalazine mechanism.",
+      "Reduces hepatic glucose output and improves insulin sensitivity.": "This is metformin mechanism.",
+      "Systemic glucocorticoid that suppresses inflammatory gene transcription.": "This is prednisone mechanism.",
+    },
+    memoryTrick:
+      "Amitriptyline = TCA: two reuptake blocks plus anticholinergic load.",
   },
   {
     id: 436,
@@ -10672,6 +11062,16 @@ export const baseQuestions = [
     correct: "Neuropathic pain and selected depressive disorders.",
     explanation:
       "Amitriptyline: Neuropathic pain and selected depressive disorders.",
+    explainCorrect:
+      "Option B is correct because amitriptyline is used for neuropathic pain and in selected depressive presentations where TCA therapy is appropriate.",
+    wrongOptionExplanations: {
+      "Type 2 diabetes with cardiovascular and renal protective benefits.": "This is SGLT2 inhibitor territory, not amitriptyline.",
+      "Long-term anticoagulation for atrial fibrillation or venous thromboembolism.": "This requires anticoagulants, not amitriptyline.",
+      "Add-on control of allergic asthma and exercise-induced symptoms.": "This is montelukast-related indication, not amitriptyline.",
+      "Annual prevention of influenza and severe complications.": "This is vaccination indication, not amitriptyline indication.",
+    },
+    memoryTrick:
+      "Think amitriptyline for nerve pain and select depressive use, not cardio/respiratory prevention.",
   },
   {
     id: 437,
@@ -10689,6 +11089,16 @@ export const baseQuestions = [
     correct: "Sedation and anticholinergic effects can limit tolerability.",
     explanation:
       "Amitriptyline: Sedation and anticholinergic effects can limit tolerability.",
+    explainCorrect:
+      "Option A is correct because amitriptyline commonly causes sedation and anticholinergic effects (dry mouth, constipation, blurred vision), which can significantly affect tolerability.",
+    wrongOptionExplanations: {
+      "Rapid correction can be dangerous; monitor ECG and serum potassium.": "This is potassium replacement counseling, not amitriptyline counseling.",
+      "Systemic absorption may cause bradycardia; punctal occlusion reduces exposure.": "This is ophthalmic beta-blocker counseling, not tricyclic antidepressant counseling.",
+      "Report unexplained muscle pain due to risk of statin-associated myopathy.": "This is statin counseling, not amitriptyline counseling.",
+      "Hemoglobin should not rise too quickly; monitor Hb to reduce thrombotic risk.": "This is epoetin safety counseling, not amitriptyline counseling.",
+    },
+    memoryTrick:
+      "Amitriptyline often means sleepy + dry: watch anticholinergic burden.",
   },
   {
     id: 438,
@@ -10706,6 +11116,16 @@ export const baseQuestions = [
     correct: "Potent dopamine D2 receptor antagonism in mesolimbic pathways.",
     explanation:
       "Haloperidol: Potent dopamine D2 receptor antagonism in mesolimbic pathways.",
+    explainCorrect:
+      "Option B is correct because haloperidol is a high-potency typical antipsychotic with strong dopamine D2 receptor blockade in mesolimbic circuits.",
+    wrongOptionExplanations: {
+      "Binds dietary phosphate in the gut to reduce phosphate absorption.": "This is phosphate-binder mechanism.",
+      "Replaces deficient thyroxine (T4) hormone.": "This is levothyroxine replacement mechanism.",
+      "Modulates intracellular signaling pathways involved in mood stabilization.": "This is lithium-type mood stabilizer mechanism.",
+      "Dopamine D2 antagonism with prokinetic effects on upper GI tract.": "This describes metoclopramide's prokinetic pattern, not haloperidol's primary psychiatric mechanism focus.",
+    },
+    memoryTrick:
+      "Haloperidol = high-potency D2 block.",
   },
   {
     id: 439,
@@ -10723,6 +11143,16 @@ export const baseQuestions = [
     correct: "Short-term control of acute psychosis or severe agitation.",
     explanation:
       "Haloperidol: Short-term control of acute psychosis or severe agitation.",
+    explainCorrect:
+      "Option A is correct because haloperidol is commonly used for rapid short-term control of acute psychosis and severe agitation.",
+    wrongOptionExplanations: {
+      "Maintenance bronchodilation in COPD.": "This is inhaled bronchodilator indication, not haloperidol indication.",
+      "Serious gram-positive infections including MRSA.": "This is antibiotic indication, not antipsychotic indication.",
+      "Type 2 diabetes when metformin alone is insufficient.": "This is antidiabetic add-on indication, not haloperidol use.",
+      "Major depressive disorder and anxiety-spectrum disorders.": "This is SSRI/SNRI-oriented indication, not haloperidol's primary role.",
+    },
+    memoryTrick:
+      "Haloperidol is a rapid-control option for acute agitation/psychosis.",
   },
   {
     id: 440,
@@ -10741,6 +11171,16 @@ export const baseQuestions = [
       "Monitor for extrapyramidal symptoms and acute dystonic reactions.",
     explanation:
       "Haloperidol: Monitor for extrapyramidal symptoms and acute dystonic reactions.",
+    explainCorrect:
+      "Option E is correct because potent D2 blockade with haloperidol increases risk of EPS, including acute dystonia, akathisia, and parkinsonism.",
+    wrongOptionExplanations: {
+      "Systemic absorption may cause bradycardia; punctal occlusion reduces exposure.": "This is topical ophthalmic beta-blocker counseling, not haloperidol counseling.",
+      "Report unexplained muscle pain due to risk of statin-associated myopathy.": "This is statin counseling, not haloperidol counseling.",
+      "Hemoglobin should not rise too quickly; monitor Hb to reduce thrombotic risk.": "This is epoetin counseling, not antipsychotic safety monitoring.",
+      "Risk of tendon injury increases with age and corticosteroid use.": "This is fluoroquinolone counseling, not haloperidol counseling.",
+    },
+    memoryTrick:
+      "High D2 block means high EPS vigilance with haloperidol.",
   },
   {
     id: 441,
@@ -10758,6 +11198,16 @@ export const baseQuestions = [
     correct: "Antagonizes dopamine D2 and serotonin 5-HT2A receptors.",
     explanation:
       "Risperidone: Antagonizes dopamine D2 and serotonin 5-HT2A receptors.",
+    explainCorrect:
+      "Option A is correct because risperidone is an atypical antipsychotic with combined D2 and 5-HT2A antagonism.",
+    wrongOptionExplanations: {
+      "Inhibits norepinephrine and serotonin reuptake with anticholinergic activity.": "This is tricyclic antidepressant mechanism.",
+      "Irreversibly inhibits the gastric H+/K+-ATPase proton pump.": "This is PPI mechanism.",
+      "Exchanges sodium for potassium in the gut to reduce serum potassium.": "This is potassium-binder mechanism.",
+      "Blocks L-type calcium channels in vascular smooth muscle to reduce peripheral resistance.": "This is calcium-channel blocker mechanism.",
+    },
+    memoryTrick:
+      "Risperidone = D2 + 5HT2A dual antagonism.",
   },
   {
     id: 442,
@@ -10774,6 +11224,16 @@ export const baseQuestions = [
     ],
     correct: "Schizophrenia and related psychotic disorders.",
     explanation: "Risperidone: Schizophrenia and related psychotic disorders.",
+    explainCorrect:
+      "Option E is correct because risperidone is a standard treatment option for schizophrenia and related psychotic disorders.",
+    wrongOptionExplanations: {
+      "Anaerobic intra-abdominal infections and protozoal disease.": "This is metronidazole-type indication, not risperidone indication.",
+      "Basal glucose control in type 1 and type 2 diabetes.": "This is insulin glargine indication, not risperidone use.",
+      "Fracture risk reduction in osteoporosis.": "This is bisphosphonate indication, not antipsychotic indication.",
+      "Adjunct or monotherapy for focal and generalized seizures.": "This is antiepileptic indication, not risperidone indication.",
+    },
+    memoryTrick:
+      "Risperidone is for psychosis management, not metabolic/infectious indications.",
   },
   {
     id: 443,
@@ -10792,6 +11252,16 @@ export const baseQuestions = [
       "Monitor weight, lipids, and glucose for metabolic adverse effects.",
     explanation:
       "Risperidone: Monitor weight, lipids, and glucose for metabolic adverse effects.",
+    explainCorrect:
+      "Option D is correct because atypical antipsychotics can cause metabolic adverse effects, so weight, glucose, and lipid monitoring is important.",
+    wrongOptionExplanations: {
+      "Hemoglobin should not rise too quickly; monitor Hb to reduce thrombotic risk.": "This is epoetin safety monitoring, not risperidone monitoring.",
+      "Risk of tendon injury increases with age and corticosteroid use.": "This is fluoroquinolone counseling, not antipsychotic counseling.",
+      "Monitor for hepatotoxicity and significant CYP-mediated interactions.": "Drug interactions matter generally, but the hallmark routine risperidone safety focus here is metabolic monitoring.",
+      "Report unexplained muscle pain due to risk of statin-associated myopathy.": "This is statin counseling, not risperidone counseling.",
+    },
+    memoryTrick:
+      "Risperidone follow-up: weight, sugar, and lipids.",
   },
   {
     id: 444,
@@ -10810,6 +11280,16 @@ export const baseQuestions = [
       "Modulates intracellular signaling pathways involved in mood stabilization.",
     explanation:
       "Lithium: Modulates intracellular signaling pathways involved in mood stabilization.",
+    explainCorrect:
+      "Option E is correct because lithium's mood-stabilizing effect is linked to modulation of intracellular signaling pathways rather than a single receptor blockade model.",
+    wrongOptionExplanations: {
+      "Binds synaptic vesicle protein SV2A to modulate neurotransmitter release.": "This is levetiracetam mechanism.",
+      "Reversibly inhibits acetylcholinesterase to increase central acetylcholine.": "This is cholinesterase inhibitor mechanism.",
+      "Disrupts microtubule polymerization, reducing neutrophil-mediated inflammation.": "This is colchicine mechanism.",
+      "Inhibits the NKCC2 cotransporter in the thick ascending limb of Henle.": "This is loop diuretic mechanism.",
+    },
+    memoryTrick:
+      "Lithium stabilizes mood through intracellular signaling effects.",
   },
   {
     id: 445,
@@ -10826,6 +11306,16 @@ export const baseQuestions = [
     ],
     correct: "Maintenance treatment of bipolar disorder.",
     explanation: "Lithium: Maintenance treatment of bipolar disorder.",
+    explainCorrect:
+      "Option D is correct because lithium is a core long-term mood stabilizer for bipolar disorder maintenance and relapse prevention.",
+    wrongOptionExplanations: {
+      "Short-course treatment of moderate to severe inflammatory flares.": "This is corticosteroid indication, not lithium indication.",
+      "Focal seizures and trigeminal neuralgia.": "This is antiepileptic indication, not lithium indication.",
+      "Induction and maintenance therapy in ulcerative colitis.": "This is gastroenterology anti-inflammatory indication, not lithium.",
+      "First-line pharmacotherapy in type 2 diabetes.": "This is metformin indication, not lithium indication.",
+    },
+    memoryTrick:
+      "Lithium is classic bipolar maintenance therapy.",
   },
   {
     id: 446,
@@ -10844,6 +11334,16 @@ export const baseQuestions = [
       "Regular serum lithium, renal, and thyroid monitoring is mandatory.",
     explanation:
       "Lithium: Regular serum lithium, renal, and thyroid monitoring is mandatory.",
+    explainCorrect:
+      "Option C is correct because lithium has a narrow therapeutic index and long-term risks to renal and thyroid function, requiring regular level and organ-function monitoring.",
+    wrongOptionExplanations: {
+      "Monitor for hepatotoxicity and significant CYP-mediated interactions.": "Lithium is not primarily managed through CYP interaction pathways and hepatotoxicity monitoring.",
+      "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.": "Liver toxicity is not the hallmark core monitoring domain for lithium.",
+      "Hemoglobin should not rise too quickly; monitor Hb to reduce thrombotic risk.": "This is ESA counseling, not lithium counseling.",
+      "Risk of tendon injury increases with age and corticosteroid use.": "This is fluoroquinolone counseling, not lithium counseling.",
+    },
+    memoryTrick:
+      "Lithium safety triad: level, kidney, thyroid.",
   },
   {
     id: 447,
@@ -10861,6 +11361,16 @@ export const baseQuestions = [
     correct: "Enhances GABAergic transmission and modulates neuronal firing.",
     explanation:
       "Sodium valproate: Enhances GABAergic transmission and modulates neuronal firing.",
+    explainCorrect:
+      "Option D is correct because sodium valproate increases inhibitory GABAergic effects and stabilizes neuronal firing, reducing seizure propagation.",
+    wrongOptionExplanations: {
+      "Active vitamin D analog that increases intestinal calcium absorption.": "This is calcitriol/alfacalcidol mechanism.",
+      "Inhibits the sodium-chloride cotransporter in the distal convoluted tubule.": "This is thiazide diuretic mechanism.",
+      "Inhibits vitamin K epoxide reductase, lowering synthesis of factors II, VII, IX, and X.": "This is warfarin mechanism.",
+      "Osmotically retains water in the bowel and reduces ammonia absorption.": "This is lactulose mechanism.",
+    },
+    memoryTrick:
+      "Valproate boosts inhibitory tone, helping calm overactive neurons.",
   },
   {
     id: 448,
@@ -10877,6 +11387,16 @@ export const baseQuestions = [
     ],
     correct: "Generalized and focal seizure disorders.",
     explanation: "Sodium valproate: Generalized and focal seizure disorders.",
+    explainCorrect:
+      "Option C is correct because sodium valproate is used for broad-spectrum seizure control, including generalized and focal epilepsies.",
+    wrongOptionExplanations: {
+      "Constipation relief and adjunct treatment in hepatic encephalopathy.": "This is lactulose indication.",
+      "Management of secondary hyperparathyroidism in chronic kidney disease.": "This uses CKD mineral-bone disease therapies, not valproate.",
+      "Hyperthyroidism, especially thyroid storm management.": "This is antithyroid therapy indication.",
+      "Maintenance treatment of bipolar disorder.": "Valproate can be used in bipolar disorder, but the most appropriate indication listed here for this neurology context is seizure disorders.",
+    },
+    memoryTrick:
+      "Valproate is a broad seizure agent across generalized and focal types.",
   },
   {
     id: 449,
@@ -10894,6 +11414,16 @@ export const baseQuestions = [
     correct: "Contraindicated in pregnancy unless no safer alternatives exist.",
     explanation:
       "Sodium valproate: Contraindicated in pregnancy unless no safer alternatives exist.",
+    explainCorrect:
+      "Option B is correct because valproate carries major teratogenic and neurodevelopmental fetal risks, so it should be avoided in pregnancy whenever alternatives are available.",
+    wrongOptionExplanations: {
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "This is lithium monitoring guidance, not valproate-specific core counseling.",
+      "Risk of tendon injury increases with age and corticosteroid use.": "This is fluoroquinolone counseling, not valproate counseling.",
+      "Monitor for hepatotoxicity and significant CYP-mediated interactions.": "Liver monitoring is relevant, but pregnancy risk is the highest-yield key safety point here.",
+      "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.": "Hepatotoxicity matters, but the defining major counseling point for valproate is pregnancy contraindication.",
+    },
+    memoryTrick:
+      "Valproate and pregnancy do not mix unless no safer option exists.",
   },
   {
     id: 450,
@@ -10911,6 +11441,16 @@ export const baseQuestions = [
     correct: "Blocks voltage-gated sodium channels in overactive neurons.",
     explanation:
       "Carbamazepine: Blocks voltage-gated sodium channels in overactive neurons.",
+    explainCorrect:
+      "Option C is correct because carbamazepine stabilizes hyperexcitable neuronal membranes by blocking voltage-gated sodium channels.",
+    wrongOptionExplanations: {
+      "Inhibits Na+/K+-ATPase to increase intracellular calcium and vagal tone.": "This is digoxin mechanism.",
+      "Reduces airway inflammation by glucocorticoid receptor-mediated gene regulation.": "This is inhaled corticosteroid mechanism.",
+      "Synthetic vasopressin analog that increases water reabsorption via V2 receptors.": "This is desmopressin mechanism.",
+      "Selectively blocks beta-1 receptors to reduce heart rate and myocardial oxygen demand.": "This is beta-blocker mechanism.",
+    },
+    memoryTrick:
+      "Carbamazepine clamps sodium channels to quiet firing neurons.",
   },
   {
     id: 451,
@@ -10927,6 +11467,16 @@ export const baseQuestions = [
     ],
     correct: "Focal seizures and trigeminal neuralgia.",
     explanation: "Carbamazepine: Focal seizures and trigeminal neuralgia.",
+    explainCorrect:
+      "Option B is correct because carbamazepine is a classic treatment for focal seizures and is first-line for trigeminal neuralgia pain control.",
+    wrongOptionExplanations: {
+      "Hypertension, especially in patients with diabetic kidney disease.": "This is antihypertensive indication, not carbamazepine indication.",
+      "Schizophrenia and related psychotic disorders.": "Psychotic disorders are managed with antipsychotics, not carbamazepine.",
+      "Short-term management of gastroparesis-related nausea.": "This is prokinetic/antiemetic territory, not carbamazepine.",
+      "Hyperphosphatemia control in chronic kidney disease.": "This is phosphate-binder/diet indication, not carbamazepine use.",
+    },
+    memoryTrick:
+      "Carbamazepine: focal fits + trigeminal pain hits.",
   },
   {
     id: 452,
@@ -10944,6 +11494,16 @@ export const baseQuestions = [
     correct: "Can cause hyponatremia and requires periodic blood monitoring.",
     explanation:
       "Carbamazepine: Can cause hyponatremia and requires periodic blood monitoring.",
+    explainCorrect:
+      "Option A is correct because carbamazepine may cause hyponatremia and hematologic/hepatic adverse effects, so periodic laboratory monitoring is needed.",
+    wrongOptionExplanations: {
+      "Monitor for hepatotoxicity and significant CYP-mediated interactions.": "Interactions and liver effects are relevant, but the tested key point here emphasizes hyponatremia plus periodic blood monitoring.",
+      "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.": "Important, but too narrow versus the broader routine monitoring focus stated in option A.",
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "This is lithium-specific monitoring, not carbamazepine-specific.",
+      "Dose should be titrated to avoid severe diarrhea and dehydration.": "This does not represent carbamazepine's primary safety counseling focus.",
+    },
+    memoryTrick:
+      "Carbamazepine checkup: sodium and labs over time.",
   },
   {
     id: 453,
@@ -10962,6 +11522,16 @@ export const baseQuestions = [
       "Binds synaptic vesicle protein SV2A to modulate neurotransmitter release.",
     explanation:
       "Levetiracetam: Binds synaptic vesicle protein SV2A to modulate neurotransmitter release.",
+    explainCorrect:
+      "Option B is correct because levetiracetam acts via SV2A binding, modulating synaptic neurotransmitter release and reducing seizure activity.",
+    wrongOptionExplanations: {
+      "Inhibits bacterial DNA gyrase and topoisomerase IV.": "This is fluoroquinolone mechanism.",
+      "Topical beta-blockade reduces aqueous humor production.": "This is glaucoma drug mechanism.",
+      "Inhibits HMG-CoA reductase to reduce hepatic cholesterol synthesis.": "This is statin mechanism.",
+      "Stimulates erythroid progenitor cells via erythropoietin receptor activation.": "This is epoetin mechanism.",
+    },
+    memoryTrick:
+      "Levetiracetam links to SV2A to steady synaptic release.",
   },
   {
     id: 454,
@@ -10979,6 +11549,16 @@ export const baseQuestions = [
     correct: "Adjunct or monotherapy for focal and generalized seizures.",
     explanation:
       "Levetiracetam: Adjunct or monotherapy for focal and generalized seizures.",
+    explainCorrect:
+      "Option A is correct because levetiracetam is used broadly as monotherapy or adjunct therapy across focal and generalized seizure types.",
+    wrongOptionExplanations: {
+      "Prevention of chemotherapy-induced nausea and vomiting.": "This is antiemetic indication, not levetiracetam indication.",
+      "Central diabetes insipidus and selected nocturnal enuresis cases.": "This is desmopressin indication.",
+      "Rate control and secondary prevention after myocardial infarction.": "This is cardiovascular therapy indication, not antiepileptic therapy.",
+      "Symptomatic HFrEF and ventricular rate control in atrial fibrillation.": "This is digoxin/cardiology indication, not levetiracetam use.",
+    },
+    memoryTrick:
+      "Levetiracetam covers many seizure patterns, alone or add-on.",
   },
   {
     id: 455,
@@ -10996,6 +11576,16 @@ export const baseQuestions = [
     correct: "Behavioral changes such as irritability should be monitored.",
     explanation:
       "Levetiracetam: Behavioral changes such as irritability should be monitored.",
+    explainCorrect:
+      "Option E is correct because levetiracetam can cause mood and behavioral adverse effects, including irritability and agitation, requiring counseling and monitoring.",
+    wrongOptionExplanations: {
+      "Severe hepatotoxicity is a rare but serious risk requiring prompt evaluation.": "This is not the hallmark routine counseling point for levetiracetam.",
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "This is lithium monitoring guidance, not levetiracetam guidance.",
+      "Dose should be titrated to avoid severe diarrhea and dehydration.": "Not a core levetiracetam counseling priority.",
+      "Hypercalcemia risk requires regular calcium and phosphate monitoring.": "This does not reflect levetiracetam's usual safety profile.",
+    },
+    memoryTrick:
+      "Levetiracetam: watch behavior as closely as seizure control.",
   },
   {
     id: 456,
@@ -11014,6 +11604,16 @@ export const baseQuestions = [
       "Inhibits voltage-sensitive sodium channels and glutamate release.",
     explanation:
       "Lamotrigine: Inhibits voltage-sensitive sodium channels and glutamate release.",
+    explainCorrect:
+      "Option A is correct because lamotrigine inhibits voltage-sensitive sodium channels and reduces glutamate release, helping stabilize neuronal excitability.",
+    wrongOptionExplanations: {
+      "Antagonizes aldosterone receptors in the distal nephron.": "This is mineralocorticoid receptor antagonist mechanism.",
+      "Enhances antithrombin activity with predominant inhibition of factor Xa.": "This is enoxaparin mechanism.",
+      "Inhibits bacterial cell wall synthesis by binding penicillin-binding proteins.": "This is beta-lactam antibiotic mechanism.",
+      "Inhibits DNA-dependent RNA polymerase in mycobacteria.": "This is rifampicin mechanism.",
+    },
+    memoryTrick:
+      "Lamotrigine limits sodium-driven firing and glutamate output.",
   },
   {
     id: 457,
@@ -11031,6 +11631,16 @@ export const baseQuestions = [
     correct: "Seizure control and bipolar depression maintenance.",
     explanation:
       "Lamotrigine: Seizure control and bipolar depression maintenance.",
+    explainCorrect:
+      "Option E is correct because lamotrigine is used for seizure control and is an important maintenance option for bipolar depression prevention.",
+    wrongOptionExplanations: {
+      "Adjunctive management of non-emergent hyperkalemia.": "This is potassium-lowering therapy territory, not lamotrigine indication.",
+      "Long-term control of hypertension and chronic stable angina.": "This is cardiovascular indication, not lamotrigine use.",
+      "Immediate relief of acute angina episodes.": "Acute angina relief is nitrate-based, not lamotrigine-based.",
+      "Relief of acute bronchospasm in asthma.": "This is bronchodilator indication, not lamotrigine indication.",
+    },
+    memoryTrick:
+      "Lamotrigine helps seizures and supports bipolar depression maintenance.",
   },
   {
     id: 458,
@@ -11048,6 +11658,16 @@ export const baseQuestions = [
     correct: "Slow titration reduces risk of serious rash including SJS.",
     explanation:
       "Lamotrigine: Slow titration reduces risk of serious rash including SJS.",
+    explainCorrect:
+      "Option D is correct because rapid dose escalation increases serious rash risk with lamotrigine, including Stevens-Johnson syndrome, so slow titration is essential.",
+    wrongOptionExplanations: {
+      "Dose should be titrated to avoid severe diarrhea and dehydration.": "This is not the key lamotrigine titration rationale.",
+      "Hypercalcemia risk requires regular calcium and phosphate monitoring.": "Not a hallmark lamotrigine safety issue.",
+      "Can cause hypokalemia and hyponatremia; monitor electrolytes.": "This is not the core defining safety point for lamotrigine.",
+      "Regular serum lithium, renal, and thyroid monitoring is mandatory.": "This is lithium-specific monitoring.",
+    },
+    memoryTrick:
+      "Lamotrigine: go low, go slow to protect skin.",
   },
   {
     id: 459,
@@ -11065,6 +11685,16 @@ export const baseQuestions = [
     correct: "Irreversibly inhibits the gastric H+/K+-ATPase proton pump.",
     explanation:
       "Omeprazole: Irreversibly inhibits the gastric H+/K+-ATPase proton pump.",
+    explainCorrect:
+      "Option E is correct because omeprazole is a proton pump inhibitor that irreversibly blocks gastric H+/K+-ATPase, suppressing acid secretion.",
+    wrongOptionExplanations: {
+      "Irreversibly inhibits platelet P2Y12 receptors to reduce platelet aggregation.": "This is clopidogrel mechanism.",
+      "Long-acting muscarinic receptor blockade in bronchial smooth muscle.": "This is tiotropium mechanism.",
+      "Binds D-Ala-D-Ala termini to inhibit peptidoglycan synthesis.": "This is vancomycin mechanism.",
+      "Stimulates pancreatic beta-cell insulin release via KATP channel closure.": "This is sulfonylurea mechanism.",
+    },
+    memoryTrick:
+      "Omeprazole turns off the proton pump to lower acid strongly.",
   },
   {
     id: 460,
@@ -11081,6 +11711,16 @@ export const baseQuestions = [
     ],
     correct: "GERD and peptic ulcer disease acid suppression.",
     explanation: "Omeprazole: GERD and peptic ulcer disease acid suppression.",
+    explainCorrect:
+      "Option D is correct because omeprazole is a first-line acid suppression therapy for GERD and peptic ulcer disease.",
+    wrongOptionExplanations: {
+      "Primary and secondary prevention of atherosclerotic cardiovascular disease.": "This is statin/risk-factor indication, not omeprazole indication.",
+      "Anemia of chronic kidney disease to reduce transfusion need.": "This is epoetin indication.",
+      "Complicated urinary tract infections due to susceptible organisms.": "This is antibiotic indication, not PPI indication.",
+      "Reduction of intraocular pressure in open-angle glaucoma.": "This is ophthalmic pressure-lowering indication.",
+    },
+    memoryTrick:
+      "Omeprazole is for acid-related disease, especially GERD and ulcers.",
   },
   {
     id: 461,
@@ -11099,6 +11739,16 @@ export const baseQuestions = [
       "Use the lowest effective duration to limit long-term adverse effects.",
     explanation:
       "Omeprazole: Use the lowest effective duration to limit long-term adverse effects.",
+    explainCorrect:
+      "Option C is correct because prolonged PPI use can be associated with cumulative adverse effects, so therapy should use the lowest effective dose and duration.",
+    wrongOptionExplanations: {
+      "Can cause hypokalemia and hyponatremia; monitor electrolytes.": "This is not the primary routine omeprazole counseling focus.",
+      "INR monitoring and clear documentation of target range are essential.": "This is warfarin monitoring guidance.",
+      "Dose should be titrated to avoid severe diarrhea and dehydration.": "Not the key long-term PPI safety counseling point.",
+      "Hypercalcemia risk requires regular calcium and phosphate monitoring.": "Not the usual omeprazole safety framework.",
+    },
+    memoryTrick:
+      "With PPIs, shortest effective course is safest long term.",
   },
   {
     id: 462,
@@ -11117,6 +11767,16 @@ export const baseQuestions = [
       "Blocks serotonin 5-HT3 receptors in the gut and chemoreceptor trigger zone.",
     explanation:
       "Ondansetron: Blocks serotonin 5-HT3 receptors in the gut and chemoreceptor trigger zone.",
+    explainCorrect:
+      "Option D is correct because ondansetron is a 5-HT3 antagonist that reduces emesis signaling from gut and central trigger zones.",
+    wrongOptionExplanations: {
+      "Binds the 30S ribosomal subunit to inhibit bacterial protein synthesis.": "This is tetracycline mechanism.",
+      "Reduces hepatic glucose output and improves insulin sensitivity.": "This is metformin mechanism.",
+      "Systemic glucocorticoid that suppresses inflammatory gene transcription.": "This is prednisone mechanism.",
+      "Stimulates beta-2 receptors causing rapid bronchodilation.": "This is salbutamol mechanism.",
+    },
+    memoryTrick:
+      "Ondansetron blocks 5-HT3, calming nausea pathways.",
   },
   {
     id: 463,
@@ -11134,6 +11794,16 @@ export const baseQuestions = [
     correct: "Prevention of chemotherapy-induced nausea and vomiting.",
     explanation:
       "Ondansetron: Prevention of chemotherapy-induced nausea and vomiting.",
+    explainCorrect:
+      "Option C is correct because ondansetron is a key antiemetic for prevention and treatment of chemotherapy-induced nausea and vomiting.",
+    wrongOptionExplanations: {
+      "Bacterial sinusitis or otitis when beta-lactamase producers are suspected.": "This is antibiotic indication.",
+      "Tuberculosis treatment and latent TB therapy protocols.": "This is antitubercular indication.",
+      "Rapid symptomatic relief in fluid overload and pulmonary edema.": "This is diuretic/vasodilator context, not antiemetic use.",
+      "Treatment of iron deficiency anemia during pregnancy.": "This is iron therapy indication.",
+    },
+    memoryTrick:
+      "Ondansetron is for chemo-related nausea/vomiting prevention.",
   },
   {
     id: 464,
@@ -11151,6 +11821,16 @@ export const baseQuestions = [
     correct: "QT prolongation risk increases in susceptible patients.",
     explanation:
       "Ondansetron: QT prolongation risk increases in susceptible patients.",
+    explainCorrect:
+      "Option B is correct because ondansetron can prolong QT interval, especially in high-risk patients or with interacting factors.",
+    wrongOptionExplanations: {
+      "Monitor for mood or behavior changes and counsel patients to report them promptly.": "This is more typical montelukast counseling.",
+      "Hypercalcemia risk requires regular calcium and phosphate monitoring.": "Not a key ondansetron safety issue.",
+      "Can cause hypokalemia and hyponatremia; monitor electrolytes.": "Electrolytes can influence QT but this is not the primary standalone counseling point.",
+      "INR monitoring and clear documentation of target range are essential.": "This is warfarin counseling.",
+    },
+    memoryTrick:
+      "Ondansetron: remember QT risk in susceptible patients.",
   },
   {
     id: 465,
@@ -11169,6 +11849,16 @@ export const baseQuestions = [
       "Dopamine D2 antagonism with prokinetic effects on upper GI tract.",
     explanation:
       "Metoclopramide: Dopamine D2 antagonism with prokinetic effects on upper GI tract.",
+    explainCorrect:
+      "Option C is correct because metoclopramide antagonizes D2 receptors and promotes upper GI motility, giving prokinetic antiemetic benefit.",
+    wrongOptionExplanations: {
+      "Replaces deficient thyroxine (T4) hormone.": "This is levothyroxine mechanism.",
+      "Antagonizes dopamine D2 and serotonin 5-HT2A receptors.": "This is antipsychotic receptor profile (for example risperidone-like), not metoclopramide's primary GI mechanism focus.",
+      "Combines beta-lactam antibacterial activity with beta-lactamase inhibition.": "This is amoxicillin-clavulanate mechanism.",
+      "Inhibits mycolic acid synthesis in mycobacterial cell walls.": "This is isoniazid mechanism.",
+    },
+    memoryTrick:
+      "Metoclopramide = D2 block plus prokinetic GI push.",
   },
   {
     id: 466,
@@ -11186,6 +11876,16 @@ export const baseQuestions = [
     correct: "Short-term management of gastroparesis-related nausea.",
     explanation:
       "Metoclopramide: Short-term management of gastroparesis-related nausea.",
+    explainCorrect:
+      "Option B is correct because metoclopramide is used short-term for gastroparesis-associated nausea due to its prokinetic and antiemetic effects.",
+    wrongOptionExplanations: {
+      "Add-on glycemic control in type 2 diabetes.": "This is antidiabetic therapy indication, not metoclopramide indication.",
+      "Treatment and prophylaxis of venous thromboembolism.": "This is anticoagulation indication.",
+      "Susceptible upper respiratory and skin infections.": "This is antibiotic indication.",
+      "Core component of multidrug tuberculosis treatment.": "This is antitubercular regimen indication.",
+    },
+    memoryTrick:
+      "Metoclopramide is short-term for delayed gastric emptying nausea.",
   },
   {
     id: 467,
@@ -11202,6 +11902,16 @@ export const baseQuestions = [
     ],
     correct: "Extrapyramidal effects limit long-term use.",
     explanation: "Metoclopramide: Extrapyramidal effects limit long-term use.",
+    explainCorrect:
+      "Option A is correct because prolonged metoclopramide exposure increases risk of extrapyramidal effects, including tardive dyskinesia, so long-term use should be limited and monitored.",
+    wrongOptionExplanations: {
+      "Can cause hypokalemia and hyponatremia; monitor electrolytes.": "This is not the hallmark metoclopramide long-term safety issue.",
+      "INR monitoring and clear documentation of target range are essential.": "This is warfarin counseling.",
+      "Monitor for mood or behavior changes and counsel patients to report them promptly.": "This is more characteristic of montelukast counseling.",
+      "Mild local soreness is common and not a reason to avoid future doses.": "This is vaccine counseling, not metoclopramide counseling.",
+    },
+    memoryTrick:
+      "Metoclopramide long-term risk: think movement side effects.",
   },
   {
     id: 468,
@@ -11220,6 +11930,16 @@ export const baseQuestions = [
       "Osmotically retains water in the bowel and reduces ammonia absorption.",
     explanation:
       "Lactulose: Osmotically retains water in the bowel and reduces ammonia absorption.",
+    explainCorrect:
+      "Option B is correct because lactulose draws water into the bowel to soften stool and acidifies colonic contents, reducing ammonia absorption in hepatic encephalopathy.",
+    wrongOptionExplanations: {
+      "Inhibits voltage-sensitive sodium channels and glutamate release.": "This is lamotrigine mechanism.",
+      "Induces adaptive immune response against influenza surface antigens.": "This is vaccine mechanism.",
+      "Inhibits renal SGLT2 to increase urinary glucose excretion.": "This is empagliflozin mechanism.",
+      "Inhibits norepinephrine and serotonin reuptake with anticholinergic activity.": "This is tricyclic antidepressant mechanism.",
+    },
+    memoryTrick:
+      "Lactulose loosens stool and lowers ammonia load.",
   },
   {
     id: 469,
@@ -11238,6 +11958,16 @@ export const baseQuestions = [
       "Constipation relief and adjunct treatment in hepatic encephalopathy.",
     explanation:
       "Lactulose: Constipation relief and adjunct treatment in hepatic encephalopathy.",
+    explainCorrect:
+      "Option A is correct because lactulose is used as an osmotic laxative and as adjunct therapy to lower ammonia burden in hepatic encephalopathy.",
+    wrongOptionExplanations: {
+      "Add-on control of allergic asthma and exercise-induced symptoms.": "This is montelukast indication.",
+      "Annual prevention of influenza and severe complications.": "This is influenza vaccine indication.",
+      "Type 2 diabetes with cardiovascular and renal protective benefits.": "This is SGLT2 inhibitor indication.",
+      "Neuropathic pain and selected depressive disorders.": "This is amitriptyline-type indication.",
+    },
+    memoryTrick:
+      "Lactulose: bowel relief plus liver-related ammonia support.",
   },
   {
     id: 470,
@@ -11256,6 +11986,16 @@ export const baseQuestions = [
       "Dose should be titrated to avoid severe diarrhea and dehydration.",
     explanation:
       "Lactulose: Dose should be titrated to avoid severe diarrhea and dehydration.",
+    explainCorrect:
+      "Option E is correct because excessive lactulose can cause over-diarrhea, dehydration, and electrolyte disturbance, so dose should be titrated to response.",
+    wrongOptionExplanations: {
+      "INR monitoring and clear documentation of target range are essential.": "This is warfarin monitoring, not lactulose monitoring.",
+      "Monitor for mood or behavior changes and counsel patients to report them promptly.": "This is not the primary lactulose safety message.",
+      "Mild local soreness is common and not a reason to avoid future doses.": "This is vaccine counseling.",
+      "Counsel on genital mycotic infection risk and hydration.": "This is SGLT2 inhibitor counseling.",
+    },
+    memoryTrick:
+      "Lactulose dose is a balance: enough effect, not too much diarrhea.",
   },
   {
     id: 471,
@@ -11273,6 +12013,16 @@ export const baseQuestions = [
     correct: "Topical anti-inflammatory action in colonic mucosa via 5-ASA.",
     explanation:
       "Mesalazine: Topical anti-inflammatory action in colonic mucosa via 5-ASA.",
+    explainCorrect:
+      "Option A is correct because mesalazine (5-ASA) acts locally in the intestinal mucosa to reduce inflammation in ulcerative colitis.",
+    wrongOptionExplanations: {
+      "Provides prolonged basal insulin activity with minimal peak.": "This is insulin glargine mechanism.",
+      "Inhibits osteoclast-mediated bone resorption as a bisphosphonate.": "This is alendronate mechanism.",
+      "Blocks voltage-gated sodium channels in overactive neurons.": "This is carbamazepine mechanism.",
+      "Reversibly inhibits acetylcholinesterase to increase central acetylcholine.": "This is donepezil mechanism.",
+    },
+    memoryTrick:
+      "Mesalazine works locally on inflamed colonic lining (5-ASA effect).",
   },
   {
     id: 472,
@@ -11290,6 +12040,16 @@ export const baseQuestions = [
     correct: "Induction and maintenance therapy in ulcerative colitis.",
     explanation:
       "Mesalazine: Induction and maintenance therapy in ulcerative colitis.",
+    explainCorrect:
+      "Option E is correct because mesalazine is a core therapy for both inducing remission and maintaining control in ulcerative colitis.",
+    wrongOptionExplanations: {
+      "Serious gram-positive infections including MRSA.": "This is antibiotic indication.",
+      "Type 2 diabetes when metformin alone is insufficient.": "This is antidiabetic add-on indication.",
+      "Major depressive disorder and anxiety-spectrum disorders.": "This is antidepressant indication.",
+      "Adjunct or monotherapy for focal and generalized seizures.": "This is antiepileptic indication.",
+    },
+    memoryTrick:
+      "Mesalazine is UC-focused for both start and stay phases.",
   },
   {
     id: 473,
@@ -11307,6 +12067,16 @@ export const baseQuestions = [
     correct: "Assess renal function periodically during long-term therapy.",
     explanation:
       "Mesalazine: Assess renal function periodically during long-term therapy.",
+    explainCorrect:
+      "Option D is correct because mesalazine can rarely affect kidney function, so periodic renal monitoring is recommended during chronic therapy.",
+    wrongOptionExplanations: {
+      "Mild local soreness is common and not a reason to avoid future doses.": "This is vaccine counseling.",
+      "Counsel on genital mycotic infection risk and hydration.": "This is SGLT2 inhibitor counseling.",
+      "Sedation and anticholinergic effects can limit tolerability.": "This is tricyclic adverse-effect profile, not mesalazine profile.",
+      "Monitor for mood or behavior changes and counsel patients to report them promptly.": "Not the key mesalazine monitoring focus.",
+    },
+    memoryTrick:
+      "On long-term mesalazine, remember periodic kidney checks.",
   },
   {
     id: 474,
@@ -11325,6 +12095,16 @@ export const baseQuestions = [
       "Reversibly inhibits acetylcholinesterase to increase central acetylcholine.",
     explanation:
       "Donepezil: Reversibly inhibits acetylcholinesterase to increase central acetylcholine.",
+    explainCorrect:
+      "Option E is correct because donepezil is a central acetylcholinesterase inhibitor that increases synaptic acetylcholine in Alzheimer disease.",
+    wrongOptionExplanations: {
+      "Inhibits thyroid hormone synthesis and peripheral T4 to T3 conversion.": "This is propylthiouracil mechanism.",
+      "Modulates intracellular signaling pathways involved in mood stabilization.": "This is lithium mechanism.",
+      "Dopamine D2 antagonism with prokinetic effects on upper GI tract.": "This is metoclopramide mechanism.",
+      "Active vitamin D analog that increases intestinal calcium absorption.": "This is calcitriol/alfacalcidol mechanism.",
+    },
+    memoryTrick:
+      "Donepezil preserves acetylcholine by blocking its breakdown.",
   },
   {
     id: 475,
@@ -11342,6 +12122,16 @@ export const baseQuestions = [
     correct: "Symptomatic treatment of mild-to-moderate Alzheimer disease.",
     explanation:
       "Donepezil: Symptomatic treatment of mild-to-moderate Alzheimer disease.",
+    explainCorrect:
+      "Option D is correct because donepezil provides symptomatic cognitive support in mild-to-moderate Alzheimer disease.",
+    wrongOptionExplanations: {
+      "Fracture risk reduction in osteoporosis.": "This is bisphosphonate indication.",
+      "Focal seizures and trigeminal neuralgia.": "This is carbamazepine-type indication.",
+      "Induction and maintenance therapy in ulcerative colitis.": "This is mesalazine indication.",
+      "Basal glucose control in type 1 and type 2 diabetes.": "This is insulin glargine indication.",
+    },
+    memoryTrick:
+      "Donepezil supports symptoms in Alzheimer disease, not curative disease reversal.",
   },
   {
     id: 476,
@@ -11359,6 +12149,16 @@ export const baseQuestions = [
     correct: "Can cause bradycardia and syncope in vulnerable older adults.",
     explanation:
       "Donepezil: Can cause bradycardia and syncope in vulnerable older adults.",
+    explainCorrect:
+      "Option C is correct because cholinesterase enhancement can increase vagal effects, predisposing susceptible older adults to bradycardia and syncope.",
+    wrongOptionExplanations: {
+      "Sedation and anticholinergic effects can limit tolerability.": "This profile is typical of anticholinergic TCAs, not donepezil.",
+      "Slow titration reduces risk of serious rash including SJS.": "This is lamotrigine-specific counseling.",
+      "Mild local soreness is common and not a reason to avoid future doses.": "This is vaccine counseling.",
+      "Counsel on genital mycotic infection risk and hydration.": "This is SGLT2 inhibitor counseling.",
+    },
+    memoryTrick:
+      "Donepezil can slow pulse; monitor dizziness/falls risk.",
   },
   {
     id: 477,
@@ -11377,6 +12177,16 @@ export const baseQuestions = [
       "Replaces potassium to restore intracellular and extracellular potassium balance.",
     explanation:
       "Potassium chloride: Replaces potassium to restore intracellular and extracellular potassium balance.",
+    explainCorrect:
+      "Option D is correct because potassium chloride provides direct potassium replacement to correct depleted potassium stores and normalize physiologic potassium balance.",
+    wrongOptionExplanations: {
+      "Irreversibly inhibits the gastric H+/K+-ATPase proton pump.": "This is PPI mechanism.",
+      "Synthetic vasopressin analog that increases water reabsorption via V2 receptors.": "This is desmopressin mechanism.",
+      "Selectively blocks beta-1 receptors to reduce heart rate and myocardial oxygen demand.": "This is beta-blocker mechanism.",
+      "Potent dopamine D2 receptor antagonism in mesolimbic pathways.": "This is haloperidol mechanism.",
+    },
+    memoryTrick:
+      "KCl is direct potassium replacement, not pathway modulation.",
   },
   {
     id: 478,
@@ -11394,6 +12204,16 @@ export const baseQuestions = [
     correct: "Prevention and treatment of documented hypokalemia.",
     explanation:
       "Potassium chloride: Prevention and treatment of documented hypokalemia.",
+    explainCorrect:
+      "Option C is correct because potassium chloride is used to prevent and correct true potassium deficiency (hypokalemia).",
+    wrongOptionExplanations: {
+      "Constipation relief and adjunct treatment in hepatic encephalopathy.": "This is lactulose indication.",
+      "Long-term urate-lowering therapy in recurrent gout.": "This is allopurinol/febuxostat indication.",
+      "Short-course treatment of moderate to severe inflammatory flares.": "This is prednisone-type indication.",
+      "Generalized and focal seizure disorders.": "This is antiepileptic indication.",
+    },
+    memoryTrick:
+      "Low K? Replace K directly with potassium chloride.",
   },
   {
     id: 479,
@@ -11412,6 +12232,16 @@ export const baseQuestions = [
       "Rapid correction can be dangerous; monitor ECG and serum potassium.",
     explanation:
       "Potassium chloride: Rapid correction can be dangerous; monitor ECG and serum potassium.",
+    explainCorrect:
+      "Option B is correct because overly rapid potassium correction can trigger dangerous arrhythmias, so ECG and serial potassium monitoring are essential.",
+    wrongOptionExplanations: {
+      "Monitor bowel function; rare serious GI complications can occur.": "GI monitoring is important for some potassium binders/resins, but the key KCl correction hazard is cardiac/electrolyte overcorrection.",
+      "Counsel on genital mycotic infection risk and hydration.": "This is SGLT2 inhibitor counseling.",
+      "Sedation and anticholinergic effects can limit tolerability.": "This is tricyclic adverse-effect counseling.",
+      "Slow titration reduces risk of serious rash including SJS.": "This is lamotrigine counseling.",
+    },
+    memoryTrick:
+      "Potassium correction: slow, monitored, and ECG-aware.",
   },
   {
     id: 480,
@@ -11430,6 +12260,16 @@ export const baseQuestions = [
       "Exchanges sodium for potassium in the gut to reduce serum potassium.",
     explanation:
       "Sodium polystyrene sulfonate: Exchanges sodium for potassium in the gut to reduce serum potassium.",
+    explainCorrect:
+      "Option C is correct because sodium polystyrene sulfonate binds potassium in the gut in exchange for sodium, lowering serum potassium over time.",
+    wrongOptionExplanations: {
+      "Topical beta-blockade reduces aqueous humor production.": "This is glaucoma drug mechanism.",
+      "Inhibits HMG-CoA reductase to reduce hepatic cholesterol synthesis.": "This is statin mechanism.",
+      "Binds synaptic vesicle protein SV2A to modulate neurotransmitter release.": "This is levetiracetam mechanism.",
+      "Reversibly inhibits acetylcholinesterase to increase central acetylcholine.": "This is donepezil mechanism.",
+    },
+    memoryTrick:
+      "SPS swaps sodium for potassium in the gut.",
   },
   {
     id: 481,
@@ -11447,6 +12287,16 @@ export const baseQuestions = [
     correct: "Adjunctive management of non-emergent hyperkalemia.",
     explanation:
       "Sodium polystyrene sulfonate: Adjunctive management of non-emergent hyperkalemia.",
+    explainCorrect:
+      "Option B is correct because sodium polystyrene sulfonate is used as adjunctive therapy for non-emergent hyperkalemia reduction.",
+    wrongOptionExplanations: {
+      "First-line blood pressure control in uncomplicated hypertension.": "This is antihypertensive indication.",
+      "Maintenance treatment of bipolar disorder.": "This is lithium/mood stabilizer indication.",
+      "Short-term management of gastroparesis-related nausea.": "This is metoclopramide indication.",
+      "Management of secondary hyperparathyroidism in chronic kidney disease.": "This is vitamin D analog/calcimimetic/phosphate strategy indication.",
+    },
+    memoryTrick:
+      "SPS is a potassium-lowering adjunct, not an emergency monotherapy.",
   },
   {
     id: 482,
@@ -11464,6 +12314,16 @@ export const baseQuestions = [
     correct: "Monitor bowel function; rare serious GI complications can occur.",
     explanation:
       "Sodium polystyrene sulfonate: Monitor bowel function; rare serious GI complications can occur.",
+    explainCorrect:
+      "Option A is correct because sodium polystyrene sulfonate can cause significant GI adverse effects, including rare serious intestinal complications, so bowel monitoring is important.",
+    wrongOptionExplanations: {
+      "Sedation and anticholinergic effects can limit tolerability.": "This is tricyclic counseling.",
+      "Slow titration reduces risk of serious rash including SJS.": "This is lamotrigine counseling.",
+      "Rapid correction can be dangerous; monitor ECG and serum potassium.": "This is the key caution for potassium replacement, not resin GI safety.",
+      "Dose-related ankle edema is common; monitor for peripheral swelling.": "Not the key distinguishing safety issue for SPS.",
+    },
+    memoryTrick:
+      "With SPS, think gut first: monitor bowel tolerance closely.",
   },
   {
     id: 483,
@@ -11482,6 +12342,16 @@ export const baseQuestions = [
       "Synthetic vasopressin analog that increases water reabsorption via V2 receptors.",
     explanation:
       "Desmopressin: Synthetic vasopressin analog that increases water reabsorption via V2 receptors.",
+    explainCorrect:
+      "Option B is correct because desmopressin is a vasopressin analog acting at V2 receptors to increase renal water reabsorption.",
+    wrongOptionExplanations: {
+      "Enhances antithrombin activity with predominant inhibition of factor Xa.": "This is enoxaparin mechanism.",
+      "Osmotically retains water in the bowel and reduces ammonia absorption.": "This is lactulose mechanism.",
+      "Inhibits xanthine oxidase, lowering uric acid production.": "This is allopurinol/febuxostat mechanism.",
+      "Antagonizes aldosterone receptors in the distal nephron.": "This is spironolactone/eplerenone mechanism.",
+    },
+    memoryTrick:
+      "Desmopressin mimics ADH at V2 to retain water.",
   },
   {
     id: 484,
@@ -11500,6 +12370,16 @@ export const baseQuestions = [
       "Central diabetes insipidus and selected nocturnal enuresis cases.",
     explanation:
       "Desmopressin: Central diabetes insipidus and selected nocturnal enuresis cases.",
+    explainCorrect:
+      "Option A is correct because desmopressin replaces deficient ADH effect in central diabetes insipidus and is used in selected enuresis cases.",
+    wrongOptionExplanations: {
+      "Prevention of chemotherapy-induced nausea and vomiting.": "This is ondansetron-type indication.",
+      "Hyperphosphatemia control in chronic kidney disease.": "This is phosphate-binder indication.",
+      "Hypertension, especially in patients with diabetic kidney disease.": "This is antihypertensive indication.",
+      "Prevention of stent thrombosis and recurrent ischemic events after ACS.": "This is antiplatelet indication.",
+    },
+    memoryTrick:
+      "Desmopressin treats ADH-deficit patterns like central DI.",
   },
   {
     id: 485,
@@ -11517,6 +12397,16 @@ export const baseQuestions = [
     correct: "Water intoxication and hyponatremia are key monitoring concerns.",
     explanation:
       "Desmopressin: Water intoxication and hyponatremia are key monitoring concerns.",
+    explainCorrect:
+      "Option E is correct because excessive free-water retention with desmopressin can cause water intoxication and dangerous hyponatremia.",
+    wrongOptionExplanations: {
+      "Slow titration reduces risk of serious rash including SJS.": "This is lamotrigine counseling.",
+      "Rapid correction can be dangerous; monitor ECG and serum potassium.": "This is potassium replacement counseling.",
+      "Dose-related ankle edema is common; monitor for peripheral swelling.": "Not the principal hallmark risk with desmopressin.",
+      "Avoid with phosphodiesterase-5 inhibitors because of profound hypotension risk.": "This is nitrate counseling.",
+    },
+    memoryTrick:
+      "Desmopressin can over-retain water: watch sodium and symptoms.",
   },
   {
     id: 486,
@@ -11535,6 +12425,16 @@ export const baseQuestions = [
       "Binds dietary phosphate in the gut to reduce phosphate absorption.",
     explanation:
       "Sevelamer: Binds dietary phosphate in the gut to reduce phosphate absorption.",
+    explainCorrect:
+      "Option A is correct because sevelamer is a non-absorbed phosphate binder that lowers phosphate absorption from the GI tract.",
+    wrongOptionExplanations: {
+      "Synthetic vasopressin analog that increases water reabsorption via V2 receptors.": "This is desmopressin mechanism.",
+      "Blocks angiotensin II type-1 receptors to reduce vasoconstriction and aldosterone effects.": "This is ARB mechanism.",
+      "Irreversibly inhibits platelet P2Y12 receptors to reduce platelet aggregation.": "This is clopidogrel mechanism.",
+      "Long-acting muscarinic receptor blockade in bronchial smooth muscle.": "This is tiotropium mechanism.",
+    },
+    memoryTrick:
+      "Sevelamer stays in gut and traps phosphate from food.",
   },
   {
     id: 487,
@@ -11552,6 +12452,16 @@ export const baseQuestions = [
     correct: "Hyperphosphatemia control in chronic kidney disease.",
     explanation:
       "Sevelamer: Hyperphosphatemia control in chronic kidney disease.",
+    explainCorrect:
+      "Option E is correct because sevelamer is a phosphate binder used in CKD to reduce dietary phosphate absorption and control hyperphosphatemia.",
+    wrongOptionExplanations: {
+      "Adjunctive management of non-emergent hyperkalemia.": "This is potassium-binder/resin indication, not sevelamer indication.",
+      "Rate control and secondary prevention after myocardial infarction.": "This is cardiovascular therapy indication.",
+      "Symptomatic HFrEF and ventricular rate control in atrial fibrillation.": "This aligns with specific cardiac drugs, not sevelamer.",
+      "Maintenance controller therapy in persistent asthma.": "This is inhaled controller therapy indication.",
+    },
+    memoryTrick:
+      "Sevelamer is for phosphate control in CKD, not potassium or cardiopulmonary use.",
   },
   {
     id: 488,
@@ -11569,6 +12479,16 @@ export const baseQuestions = [
     correct: "Should be taken with meals for maximal phosphate binding.",
     explanation:
       "Sevelamer: Should be taken with meals for maximal phosphate binding.",
+    explainCorrect:
+      "Option D is correct because sevelamer must be present with dietary phosphate in the gut, so taking it with meals maximizes phosphate binding.",
+    wrongOptionExplanations: {
+      "Dose-related ankle edema is common; monitor for peripheral swelling.": "Not the key counseling focus for sevelamer.",
+      "Avoid with phosphodiesterase-5 inhibitors because of profound hypotension risk.": "This is nitrate counseling.",
+      "Excess use may indicate poor control; reassess controller therapy.": "This is rescue-inhaler overuse counseling.",
+      "Rapid correction can be dangerous; monitor ECG and serum potassium.": "This is potassium replacement counseling.",
+    },
+    memoryTrick:
+      "No meal, no phosphate to bind: sevelamer works best with food.",
   },
   {
     id: 489,
@@ -11587,6 +12507,16 @@ export const baseQuestions = [
       "Active vitamin D analog that increases intestinal calcium absorption.",
     explanation:
       "Calcitriol: Active vitamin D analog that increases intestinal calcium absorption.",
+    explainCorrect:
+      "Option E is correct because calcitriol is active vitamin D that increases intestinal calcium (and phosphate) absorption and helps regulate PTH pathways.",
+    wrongOptionExplanations: {
+      "Blocks L-type calcium channels in vascular smooth muscle to reduce peripheral resistance.": "This is calcium-channel blocker mechanism.",
+      "Releases nitric oxide causing venodilation and reduced preload.": "This is nitrate mechanism.",
+      "Stimulates beta-2 receptors causing rapid bronchodilation.": "This is salbutamol mechanism.",
+      "Binds the 30S ribosomal subunit to inhibit bacterial protein synthesis.": "This is tetracycline mechanism.",
+    },
+    memoryTrick:
+      "Calcitriol is active D: it drives gut calcium uptake.",
   },
   {
     id: 490,
@@ -11605,6 +12535,16 @@ export const baseQuestions = [
       "Management of secondary hyperparathyroidism in chronic kidney disease.",
     explanation:
       "Calcitriol: Management of secondary hyperparathyroidism in chronic kidney disease.",
+    explainCorrect:
+      "Option D is correct because calcitriol is used in CKD-related secondary hyperparathyroidism to help suppress elevated PTH in selected patients.",
+    wrongOptionExplanations: {
+      "Immediate relief of acute angina episodes.": "This is nitrate indication.",
+      "Relief of acute bronchospasm in asthma.": "This is bronchodilator indication.",
+      "Inflammatory acne and selected atypical infections.": "This is doxycycline-type indication.",
+      "Long-term control of hypertension and chronic stable angina.": "This is cardiovascular therapy indication.",
+    },
+    memoryTrick:
+      "Calcitriol helps CKD mineral balance by addressing secondary hyperparathyroidism.",
   },
   {
     id: 491,
@@ -11623,6 +12563,16 @@ export const baseQuestions = [
       "Hypercalcemia risk requires regular calcium and phosphate monitoring.",
     explanation:
       "Calcitriol: Hypercalcemia risk requires regular calcium and phosphate monitoring.",
+    explainCorrect:
+      "Option C is correct because calcitriol can increase calcium and phosphate levels, so regular biochemical monitoring is required to avoid overcorrection.",
+    wrongOptionExplanations: {
+      "Excess use may indicate poor control; reassess controller therapy.": "This is rescue-inhaler overuse counseling.",
+      "Photosensitivity is common; advise sun protection.": "This is doxycycline counseling.",
+      "Dose-related ankle edema is common; monitor for peripheral swelling.": "Not the key calcitriol safety focus.",
+      "Avoid with phosphodiesterase-5 inhibitors because of profound hypotension risk.": "This is nitrate counseling.",
+    },
+    memoryTrick:
+      "Calcitriol can push calcium up, so monitor calcium/phosphate routinely.",
   },
   {
     id: 492,
@@ -11640,6 +12590,16 @@ export const baseQuestions = [
     correct: "Inhibits xanthine oxidase, lowering uric acid production.",
     explanation:
       "Allopurinol: Inhibits xanthine oxidase, lowering uric acid production.",
+    explainCorrect:
+      "Option D is correct because allopurinol inhibits xanthine oxidase, reducing uric acid synthesis and lowering serum urate.",
+    wrongOptionExplanations: {
+      "Supplies elemental iron required for hemoglobin synthesis.": "This is iron supplement mechanism.",
+      "Combines beta-lactam antibacterial activity with beta-lactamase inhibition.": "This is amoxicillin-clavulanate mechanism.",
+      "Inhibits mycolic acid synthesis in mycobacterial cell walls.": "This is isoniazid mechanism.",
+      "Inhibits the NKCC2 cotransporter in the thick ascending limb of Henle.": "This is furosemide mechanism.",
+    },
+    memoryTrick:
+      "Allopurinol lowers urate by blocking xanthine oxidase.",
   },
   {
     id: 493,
@@ -11657,6 +12617,16 @@ export const baseQuestions = [
     correct: "Long-term urate-lowering therapy in recurrent gout.",
     explanation:
       "Allopurinol: Long-term urate-lowering therapy in recurrent gout.",
+    explainCorrect:
+      "Option C is correct because allopurinol is used for chronic urate-lowering to prevent recurrent gout flares and urate complications.",
+    wrongOptionExplanations: {
+      "Complicated urinary tract infections due to susceptible organisms.": "This is antibiotic indication.",
+      "Mucosal candidiasis and selected systemic fungal infections.": "This is fluconazole indication.",
+      "Primary and secondary prevention of atherosclerotic cardiovascular disease.": "This is statin/risk-factor indication.",
+      "Anemia of chronic kidney disease to reduce transfusion need.": "This is epoetin indication.",
+    },
+    memoryTrick:
+      "Allopurinol is for long-term urate control, not acute infection or anemia care.",
   },
   {
     id: 494,
@@ -11674,6 +12644,16 @@ export const baseQuestions = [
     correct: "Start low and titrate to reduce hypersensitivity risk.",
     explanation:
       "Allopurinol: Start low and titrate to reduce hypersensitivity risk.",
+    explainCorrect:
+      "Option B is correct because starting low and titrating allopurinol carefully helps reduce severe hypersensitivity risk while achieving target urate safely.",
+    wrongOptionExplanations: {
+      "Temporarily withhold around iodinated contrast in patients at renal risk.": "This is metformin-specific counseling.",
+      "Avoid with phosphodiesterase-5 inhibitors because of profound hypotension risk.": "This is nitrate counseling.",
+      "Excess use may indicate poor control; reassess controller therapy.": "This is rescue-inhaler counseling.",
+      "Photosensitivity is common; advise sun protection.": "This is doxycycline counseling.",
+    },
+    memoryTrick:
+      "Allopurinol strategy: start low, go slow, monitor.",
   },
   {
     id: 495,
@@ -11692,6 +12672,16 @@ export const baseQuestions = [
       "Disrupts microtubule polymerization, reducing neutrophil-mediated inflammation.",
     explanation:
       "Colchicine: Disrupts microtubule polymerization, reducing neutrophil-mediated inflammation.",
+    explainCorrect:
+      "Option C is correct because colchicine inhibits microtubule polymerization and dampens neutrophil-driven inflammation in gout.",
+    wrongOptionExplanations: {
+      "Induces adaptive immune response against influenza surface antigens.": "This is vaccine mechanism.",
+      "Inhibits renal SGLT2 to increase urinary glucose excretion.": "This is empagliflozin mechanism.",
+      "Inhibits vitamin K epoxide reductase, lowering synthesis of factors II, VII, IX, and X.": "This is warfarin mechanism.",
+      "Blocks cysteinyl leukotriene-1 receptors in the airway.": "This is montelukast mechanism.",
+    },
+    memoryTrick:
+      "Colchicine calms gout by blocking microtubule-dependent neutrophil activity.",
   },
   {
     id: 496,
@@ -11710,6 +12700,16 @@ export const baseQuestions = [
       "Acute gout flare treatment and flare prophylaxis when starting ULT.",
     explanation:
       "Colchicine: Acute gout flare treatment and flare prophylaxis when starting ULT.",
+    explainCorrect:
+      "Option B is correct because colchicine is used for acute gout flare control and for flare prophylaxis during urate-lowering therapy initiation.",
+    wrongOptionExplanations: {
+      "Long-term management of hypothyroidism.": "This is levothyroxine indication.",
+      "Treatment of iron deficiency anemia during pregnancy.": "This is iron therapy indication.",
+      "Bacterial sinusitis or otitis when beta-lactamase producers are suspected.": "This is antibiotic indication.",
+      "Tuberculosis treatment and latent TB therapy protocols.": "This is antitubercular indication.",
+    },
+    memoryTrick:
+      "Colchicine is a gout flare tool and ULT-start flare shield.",
   },
   {
     id: 497,
@@ -11728,6 +12728,16 @@ export const baseQuestions = [
       "Dose-related diarrhea is common and signals need for dose review.",
     explanation:
       "Colchicine: Dose-related diarrhea is common and signals need for dose review.",
+    explainCorrect:
+      "Option A is correct because colchicine frequently causes dose-related gastrointestinal intolerance, especially diarrhea, which often signals the need for dose adjustment.",
+    wrongOptionExplanations: {
+      "Excess use may indicate poor control; reassess controller therapy.": "This is rescue-inhaler overuse counseling, not colchicine counseling.",
+      "Photosensitivity is common; advise sun protection.": "This is doxycycline counseling.",
+      "Temporarily withhold around iodinated contrast in patients at renal risk.": "This is metformin contrast-related counseling.",
+      "Tapering may be required after prolonged courses to prevent adrenal suppression.": "This is systemic corticosteroid counseling.",
+    },
+    memoryTrick:
+      "Colchicine GI upset, especially diarrhea, is a classic dose limiter.",
   },
   {
     id: 498,
@@ -11745,6 +12755,16 @@ export const baseQuestions = [
     correct: "Topical beta-blockade reduces aqueous humor production.",
     explanation:
       "Timolol ophthalmic: Topical beta-blockade reduces aqueous humor production.",
+    explainCorrect:
+      "Option B is correct because ophthalmic timolol is a topical beta-blocker that lowers intraocular pressure by reducing aqueous humor production.",
+    wrongOptionExplanations: {
+      "Inhibits osteoclast-mediated bone resorption as a bisphosphonate.": "This is alendronate mechanism.",
+      "Reduces airway inflammation by glucocorticoid receptor-mediated gene regulation.": "This is inhaled corticosteroid mechanism.",
+      "Generates free-radical metabolites that damage DNA in anaerobes and protozoa.": "This is metronidazole mechanism.",
+      "Provides prolonged basal insulin activity with minimal peak.": "This is insulin glargine mechanism.",
+    },
+    memoryTrick:
+      "Timolol eye drops lower eye pressure by reducing aqueous production.",
   },
   {
     id: 499,
@@ -11762,6 +12782,16 @@ export const baseQuestions = [
     correct: "Reduction of intraocular pressure in open-angle glaucoma.",
     explanation:
       "Timolol ophthalmic: Reduction of intraocular pressure in open-angle glaucoma.",
+    explainCorrect:
+      "Option A is correct because timolol ophthalmic is used to reduce elevated intraocular pressure in open-angle glaucoma.",
+    wrongOptionExplanations: {
+      "Susceptible upper respiratory and skin infections.": "This is antibiotic indication.",
+      "Core component of multidrug tuberculosis treatment.": "This is rifampicin/INH regimen indication.",
+      "Add-on glycemic control in type 2 diabetes.": "This is sitagliptin-type indication.",
+      "Short-term control of acute psychosis or severe agitation.": "This is haloperidol indication.",
+    },
+    memoryTrick:
+      "Timolol ophthalmic is for glaucoma pressure control, not systemic infections or psychiatry.",
   },
   {
     id: 500,
@@ -11780,5 +12810,15 @@ export const baseQuestions = [
       "Systemic absorption may cause bradycardia; punctal occlusion reduces exposure.",
     explanation:
       "Timolol ophthalmic: Systemic absorption may cause bradycardia; punctal occlusion reduces exposure.",
+    explainCorrect:
+      "Option E is correct because even topical timolol can be systemically absorbed and cause beta-blocker effects like bradycardia; punctal occlusion helps reduce systemic exposure.",
+    wrongOptionExplanations: {
+      "Photosensitivity is common; advise sun protection.": "This is doxycycline counseling.",
+      "Temporarily withhold around iodinated contrast in patients at renal risk.": "This is metformin-specific counseling.",
+      "Tapering may be required after prolonged courses to prevent adrenal suppression.": "This is corticosteroid counseling.",
+      "Contraindicated in pregnancy unless no safer alternatives exist.": "This is valproate-focused counseling, not the primary ophthalmic timolol safety point tested here.",
+    },
+    memoryTrick:
+      "Eye timolol can still act systemic: press puncta and monitor pulse.",
   },
 ];

@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js?v=20260307-explfull1";
-import { backendClient } from "./backendClient.js?v=20260305-fixpack1";
+import { backendClient } from "./backendClient.js?v=20260321-lanfix2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -442,6 +442,7 @@ const aiExplainMetaEl = document.getElementById("ai-explain-meta");
 const aiExplainOutputEl = document.getElementById("ai-explain-output");
 const quizArea = document.getElementById("quiz-area");
 const progressEl = document.getElementById("progress");
+const headerInlineMeta = document.getElementById("header-inline-meta");
 const liveScore = document.getElementById("live-score");
 const backReviewBtn = document.getElementById("back-review-btn");
 const quizMenu = document.getElementById("quiz-menu");
@@ -451,6 +452,8 @@ const backBtnQuiz = document.getElementById("back-btn-quiz");
 const menuBtnQuiz = document.getElementById("menu-btn-quiz");
 const comboBlock = document.getElementById("combo-block");
 const examExitModal = document.getElementById("exam-exit-modal");
+const examExitTitleEl = document.getElementById("exam-exit-title");
+const examExitTextEl = document.getElementById("exam-exit-text");
 const cancelExitBtn = document.getElementById("cancel-exit-btn");
 const confirmExitBtn = document.getElementById("confirm-exit-btn");
 const sessionResumeModal = document.getElementById("session-resume-modal");
@@ -506,6 +509,9 @@ const authUserLabel = document.getElementById("quiz-auth-user");
 const profileBtn = document.getElementById("quiz-profile-btn");
 const profileBtnIcon = profileBtn?.querySelector(".menu-profile-icon");
 const logoutBtn = document.getElementById("quiz-logout-btn");
+const logoutConfirmBox = document.getElementById("menu-logout-confirm");
+const logoutConfirmBtn = document.getElementById("menu-logout-confirm-btn");
+const logoutCancelBtn = document.getElementById("menu-logout-cancel-btn");
 const profileBackBtn = document.getElementById("profile-back-btn");
 const profileSaveBtn = document.getElementById("profile-save-btn");
 const profilePasswordToggleBtn = document.getElementById(
@@ -548,10 +554,17 @@ const topicLibraryListEl = document.getElementById("topic-library-list");
 const topicLibraryCountEl = document.getElementById("topic-library-count");
 const topicLibraryEmptyEl = document.getElementById("topic-library-empty");
 const topicLibraryBackBtn = document.getElementById("topic-library-back-btn");
+const topicLibraryControls = document.getElementById("topic-library-controls");
+const topicLibraryCategoryField = document.getElementById("topic-library-category-field");
+const topicLibrarySearchField = document.getElementById("topic-library-search-field");
+const topicLibraryCategoryToggle = document.getElementById("topic-library-category-toggle");
+const topicLibrarySearchToggle = document.getElementById("topic-library-search-toggle");
 const topicViewerBackBtn = document.getElementById("topic-viewer-back-btn");
 const topicViewerMenuBtn = document.getElementById("topic-viewer-menu-btn");
 const topicViewerTitleEl = document.getElementById("topic-viewer-title");
+const topicViewerCategoryEl = document.getElementById("topic-viewer-category");
 const topicViewerFrameEl = document.getElementById("topic-viewer-frame");
+const topicViewerFrameWrap = document.querySelector(".topic-viewer-frame-wrap");
 const menuUserHubBtn = document.getElementById("menu-user-hub-btn");
 const menuUserHubPanel = document.getElementById("menu-user-hub-panel");
 const menuUserHubCloseBtn = document.getElementById("menu-user-hub-close-btn");
@@ -559,6 +572,12 @@ const menuTourBtn = document.getElementById("menu-tour-btn");
 const menuSettingsBtn = document.getElementById("menu-settings-btn");
 const tourBackBtn = document.getElementById("tour-back-btn");
 const tourMenuBtn = document.getElementById("tour-menu-btn");
+const tourPrevStepBtn = document.getElementById("tour-prev-step-btn");
+const tourNextStepBtn = document.getElementById("tour-next-step-btn");
+const tourNextStepLabel = document.getElementById("tour-next-step-label");
+const tourStepper = document.querySelector(".tour-stepper");
+const tourStepDots = Array.from(document.querySelectorAll(".tour-step-dot"));
+const tourSlides = Array.from(document.querySelectorAll(".tour-slide"));
 const settingsBackBtn = document.getElementById("settings-back-btn");
 const settingsMenuBtn = document.getElementById("settings-menu-btn");
 const appThemeSelect = document.getElementById("app-theme-select");
@@ -570,6 +589,7 @@ const settingsFeedbackEl = document.getElementById("settings-feedback");
 const dailyBackBtn = document.getElementById("daily-back-btn");
 const startDailyBtn = document.getElementById("start-daily-btn");
 const refreshDailyBtn = document.getElementById("refresh-daily-btn");
+const dailyHistoryPanelEl = document.getElementById("daily-history-panel");
 const dailyWindowLineEl = document.getElementById("daily-window-line");
 const dailyStatusLineEl = document.getElementById("daily-status-line");
 const dailyRewardLineEl = document.getElementById("daily-reward-line");
@@ -607,6 +627,8 @@ let uiPrefs = {
 };
 let headersCollapsed = false;
 let sessionResumeHandlers = null;
+let tourStepIndex = 0;
+let dailyHistoryOpen = false;
 
 function setSettingsFeedback(message = "", isError = false) {
   if (!settingsFeedbackEl) return;
@@ -1037,7 +1059,7 @@ function resolveEffectiveTheme() {
 function applyUiPrefs() {
   const effectiveTheme = resolveEffectiveTheme();
   document.body.classList.toggle("theme-dark", effectiveTheme === "dark");
-  document.body.classList.toggle("theme-light", effectiveTheme !== "dark");
+  document.body.classList.toggle("theme-light", effectiveTheme === "light");
   document.body.classList.toggle("theme-teal", effectiveTheme === "teal");
   document.body.classList.toggle("theme-sunset", effectiveTheme === "sunset");
   document.body.classList.toggle("text-size-large", uiPrefs.textSize === "large");
@@ -1048,6 +1070,183 @@ function applyUiPrefs() {
   document.body.classList.toggle("font-condensed", uiPrefs.fontFamily === "condensed");
   document.body.classList.toggle("font-hand", uiPrefs.fontFamily === "hand");
   document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
+  const activeScreen = document.querySelector(".screen-active");
+  if (activeScreen) {
+    syncViewportBackground(activeScreen);
+  }
+  if (topicViewerFrameEl?.contentDocument) {
+    enforceTopicViewerMobileLayout();
+    enhanceTopicViewerSectionNavigation();
+  }
+}
+
+function getTopicViewerThemePalette() {
+  const theme = resolveEffectiveTheme();
+  if (theme === "dark") {
+    return {
+      pageBg: "#223247",
+      text: "#e8eff7",
+      tocHeading: "#b8d0ea",
+      tocText: "#edf4fb",
+      tocActiveText: "#ffffff",
+      tocActiveBg: "rgba(162, 173, 186, 0.22)",
+      divider: "rgba(206, 221, 237, 0.14)",
+      subtitle: "#c4d3e3",
+      metaLabel: "#a9bdd3",
+      metaValue: "#f3f8fd",
+      sectionHeading: "#93bde6",
+      sectionSubheading: "#d3e1f0",
+      bodyText: "#edf3fa",
+      firstPara: "#f7fbff",
+      marker: "#8db3da",
+      chipBg: "rgba(255, 255, 255, 0.08)",
+      chipBorder: "rgba(214, 226, 239, 0.18)",
+      chipText: "#e8f1fa",
+      calloutBg: "rgba(255, 255, 255, 0.06)",
+      calloutBorder: "rgba(205, 218, 232, 0.14)",
+      calloutAccent: "#7fb0e0",
+      tableBg: "rgba(255, 255, 255, 0.05)",
+      tableBorder: "rgba(205, 218, 232, 0.14)",
+      thBg: "rgba(255, 255, 255, 0.08)",
+      thText: "#cfe3f7",
+      tdText: "#eef4fb",
+      tocButtonBg: "rgba(24, 37, 53, 0.82)",
+      tocButtonBorder: "rgba(109, 138, 170, 0.18)",
+      tocButtonText: "#d7e3ef",
+      tocPanelBg: "rgba(18, 28, 43, 0.95)",
+      tocPanelBorder: "rgba(109, 138, 170, 0.28)",
+    };
+  }
+  if (theme === "teal") {
+    return {
+      pageBg: "#18373a",
+      text: "#ecf9f6",
+      tocHeading: "#9fd8d0",
+      tocText: "#eefaf7",
+      tocActiveText: "#ffffff",
+      tocActiveBg: "rgba(128, 174, 169, 0.22)",
+      divider: "rgba(204, 236, 229, 0.14)",
+      subtitle: "#c0e5df",
+      metaLabel: "#9fc5bf",
+      metaValue: "#f4fcfa",
+      sectionHeading: "#82d0c4",
+      sectionSubheading: "#d7f0eb",
+      bodyText: "#edf9f7",
+      firstPara: "#ffffff",
+      marker: "#77c6b9",
+      chipBg: "rgba(255, 255, 255, 0.08)",
+      chipBorder: "rgba(204, 236, 229, 0.16)",
+      chipText: "#eefaf7",
+      calloutBg: "rgba(255, 255, 255, 0.06)",
+      calloutBorder: "rgba(204, 236, 229, 0.14)",
+      calloutAccent: "#5bc0b0",
+      tableBg: "rgba(255, 255, 255, 0.05)",
+      tableBorder: "rgba(204, 236, 229, 0.14)",
+      thBg: "rgba(255, 255, 255, 0.08)",
+      thText: "#d9f6f1",
+      tdText: "#eefaf7",
+      tocButtonBg: "rgba(233, 246, 244, 0.9)",
+      tocButtonBorder: "rgba(54, 119, 127, 0.16)",
+      tocButtonText: "#215962",
+      tocPanelBg: "rgba(246, 252, 251, 0.98)",
+      tocPanelBorder: "rgba(54, 119, 127, 0.18)",
+    };
+  }
+  if (theme === "sunset") {
+    return {
+      pageBg: "#3a2d25",
+      text: "#f9f1eb",
+      tocHeading: "#f0ceb6",
+      tocText: "#fbf3ed",
+      tocActiveText: "#ffffff",
+      tocActiveBg: "rgba(193, 156, 132, 0.24)",
+      divider: "rgba(245, 220, 203, 0.14)",
+      subtitle: "#eed9cb",
+      metaLabel: "#d8b8a3",
+      metaValue: "#fff8f2",
+      sectionHeading: "#f2bf9e",
+      sectionSubheading: "#f5ddd0",
+      bodyText: "#fcf4ef",
+      firstPara: "#ffffff",
+      marker: "#e2ab87",
+      chipBg: "rgba(255, 255, 255, 0.08)",
+      chipBorder: "rgba(245, 220, 203, 0.18)",
+      chipText: "#fbf3ed",
+      calloutBg: "rgba(255, 255, 255, 0.06)",
+      calloutBorder: "rgba(245, 220, 203, 0.14)",
+      calloutAccent: "#d88958",
+      tableBg: "rgba(255, 255, 255, 0.05)",
+      tableBorder: "rgba(245, 220, 203, 0.14)",
+      thBg: "rgba(255, 255, 255, 0.08)",
+      thText: "#ffe5d7",
+      tdText: "#fcf4ef",
+      tocButtonBg: "rgba(248, 238, 231, 0.9)",
+      tocButtonBorder: "rgba(171, 101, 63, 0.14)",
+      tocButtonText: "#7a3f22",
+      tocPanelBg: "rgba(255, 250, 246, 0.98)",
+      tocPanelBorder: "rgba(171, 101, 63, 0.14)",
+    };
+  }
+  return {
+    pageBg: "#eef3f8",
+    text: "#26384c",
+    tocHeading: "#173757",
+    tocText: "#495d74",
+    tocActiveText: "#173b63",
+    tocActiveBg: "rgba(162, 173, 186, 0.18)",
+    divider: "rgba(36, 58, 85, 0.12)",
+    subtitle: "#53657a",
+    metaLabel: "#617589",
+    metaValue: "#244566",
+    sectionHeading: "#153556",
+    sectionSubheading: "#1c4167",
+    bodyText: "#2f4054",
+    firstPara: "#26384d",
+    marker: "#4e739b",
+    chipBg: "#f7fafc",
+    chipBorder: "rgba(35, 62, 96, 0.12)",
+    chipText: "#29476b",
+    calloutBg: "#f4f8fc",
+    calloutBorder: "rgba(55, 86, 122, 0.12)",
+    calloutAccent: "#2f6fc1",
+    tableBg: "#ffffff",
+    tableBorder: "rgba(33, 63, 102, 0.12)",
+    thBg: "#edf3f8",
+    thText: "#27486f",
+    tdText: "#2f4054",
+    tocButtonBg: "rgba(244, 248, 252, 0.92)",
+    tocButtonBorder: "rgba(55, 90, 130, 0.12)",
+    tocButtonText: "#2a4f77",
+    tocPanelBg: "rgba(255, 255, 255, 0.98)",
+    tocPanelBorder: "rgba(55, 90, 130, 0.14)",
+  };
+}
+
+function syncViewportBackground(screenOrId) {
+  const target =
+    typeof screenOrId === "string" ? document.getElementById(screenOrId) : screenOrId instanceof Element ? screenOrId : null;
+  if (!target) return;
+  const styles = window.getComputedStyle(target);
+  const fallbackBg = window.getComputedStyle(document.body).getPropertyValue("--bg").trim() || "#ffffff";
+  const bgColor =
+    styles.backgroundColor && styles.backgroundColor !== "rgba(0, 0, 0, 0)" ? styles.backgroundColor : fallbackBg;
+  const bgImage = styles.backgroundImage && styles.backgroundImage !== "none" ? styles.backgroundImage : "none";
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty("--viewport-bg", bgColor);
+  rootStyle.setProperty("--viewport-bg-image", bgImage);
+  rootStyle.setProperty("--viewport-bg-repeat", styles.backgroundRepeat || "repeat");
+  rootStyle.setProperty("--viewport-bg-position", styles.backgroundPosition || "0% 0%");
+  rootStyle.setProperty("--viewport-bg-size", styles.backgroundSize || "auto");
+  document.documentElement.style.backgroundColor = bgColor;
+  document.documentElement.style.backgroundImage = bgImage;
+  document.documentElement.style.backgroundRepeat = styles.backgroundRepeat || "repeat";
+  document.documentElement.style.backgroundPosition = styles.backgroundPosition || "0% 0%";
+  document.documentElement.style.backgroundSize = styles.backgroundSize || "auto";
+  document.body.style.backgroundColor = bgColor;
+  document.body.style.backgroundImage = bgImage;
+  document.body.style.backgroundRepeat = styles.backgroundRepeat || "repeat";
+  document.body.style.backgroundPosition = styles.backgroundPosition || "0% 0%";
+  document.body.style.backgroundSize = styles.backgroundSize || "auto";
 }
 
 function setHeadersCollapsed(nextCollapsed) {
@@ -1074,7 +1273,7 @@ function toggleHeadersCollapsed() {
 
 function ensureHeaderCollapseControls() {
   document
-    .querySelectorAll(".menu-fixed-header, .study-fixed-header, .app-header")
+    .querySelectorAll(".app-header")
     .forEach((header) => {
       if (header.querySelector(".header-collapse-toggle")) return;
       const button = document.createElement("button");
@@ -1152,6 +1351,7 @@ function normalizeDailyQuizPayload(raw = {}) {
   const today = raw?.today && typeof raw.today === "object" ? raw.today : {};
   const stats = raw?.stats && typeof raw.stats === "object" ? raw.stats : {};
   const result = raw?.result && typeof raw.result === "object" ? raw.result : null;
+  const history = Array.isArray(raw?.history) ? raw.history : [];
 
   return {
     season: {
@@ -1192,8 +1392,81 @@ function normalizeDailyQuizPayload(raw = {}) {
       totalSeasonDays: Number(stats.totalSeasonDays) || 0,
       progressPercent: Number(stats.progressPercent) || 0,
     },
+    history: history
+      .map((row) => ({
+        date: String(row?.date || ""),
+        score: Number(row?.score) || 0,
+        total: Number(row?.total) || 0,
+        percent: Number(row?.percent) || 0,
+        gems: Number(row?.gems) || 0,
+        submittedAt: row?.submittedAt ? String(row.submittedAt) : "",
+      }))
+      .filter((row) => row.date),
     result,
   };
+}
+
+function renderDailyHistoryPanel() {
+  if (!dailyHistoryPanelEl) return;
+  dailyHistoryPanelEl.innerHTML = "";
+
+  if (!currentUser) {
+    dailyHistoryPanelEl.classList.add("hidden");
+    return;
+  }
+
+  const history = Array.isArray(dailyQuizState?.history) ? dailyQuizState.history : [];
+  if (!dailyHistoryOpen) {
+    dailyHistoryPanelEl.classList.add("hidden");
+    return;
+  }
+
+  if (!history.length) {
+    const empty = document.createElement("div");
+    empty.className = "daily-history-empty";
+    empty.textContent = "No Daily Quiz history yet.";
+    dailyHistoryPanelEl.appendChild(empty);
+    dailyHistoryPanelEl.classList.remove("hidden");
+    return;
+  }
+
+  const title = document.createElement("div");
+  title.className = "daily-history-title";
+  title.textContent = `Recent history (${Math.min(history.length, 20)} days)`;
+  dailyHistoryPanelEl.appendChild(title);
+
+  const list = document.createElement("div");
+  list.className = "daily-history-list";
+
+  history.forEach((row) => {
+    const item = document.createElement("div");
+    item.className = "daily-history-item";
+
+    const left = document.createElement("div");
+    left.className = "daily-history-main";
+
+    const date = document.createElement("div");
+    date.className = "daily-history-date";
+    date.textContent = formatDateKey(row.date);
+
+    const score = document.createElement("div");
+    score.className = "daily-history-score";
+    score.textContent = `${row.score}/${row.total} • ${row.percent}%`;
+
+    left.appendChild(date);
+    left.appendChild(score);
+
+    const right = document.createElement("div");
+    right.className = "daily-history-gems";
+    right.textContent = `+${row.gems} Gems`;
+
+    item.appendChild(left);
+    item.appendChild(right);
+    list.appendChild(item);
+  });
+
+  dailyHistoryPanelEl.appendChild(list);
+  dailyHistoryPanelEl.classList.remove("hidden");
 }
 
 function markDailyPopupSeen(dateKey = "") {
@@ -1503,14 +1776,13 @@ function renderDailyQuizUi() {
       dailyQuizMetaEl.textContent = "Sign in to unlock Daily Quiz rewards.";
     }
     if (dailyWindowLineEl) {
-      dailyWindowLineEl.textContent = "Sign in to view today's challenge window.";
+      dailyWindowLineEl.textContent = "Sign in to view today.";
     }
     if (dailyStatusLineEl) {
-      dailyStatusLineEl.textContent = "Authentication required.";
+      dailyStatusLineEl.textContent = "Sign in required.";
     }
     if (dailyRewardLineEl) {
-      dailyRewardLineEl.textContent =
-        "Complete daily challenges to earn gems and build your streak.";
+      dailyRewardLineEl.textContent = "Daily quiz builds gems and streaks.";
     }
     if (dailyStreakValueEl) dailyStreakValueEl.textContent = "0";
     if (dailyGemsValueEl) dailyGemsValueEl.textContent = "0";
@@ -1531,11 +1803,14 @@ function renderDailyQuizUi() {
     stopDailyGemsAnimation();
     if (startDailyBtn) {
       startDailyBtn.disabled = true;
-      startDailyBtn.textContent = "Sign In Required";
+      startDailyBtn.textContent = "Start";
     }
     if (refreshDailyBtn) {
       refreshDailyBtn.disabled = true;
+      refreshDailyBtn.textContent = "History";
     }
+    dailyHistoryOpen = false;
+    renderDailyHistoryPanel();
     return;
   }
 
@@ -1563,14 +1838,21 @@ function renderDailyQuizUi() {
       : todayCompleted
         ? "Completed today"
         : "Ready today";
-    dailyQuizMetaEl.textContent = `Streak ${streak} | Gems ${gems} | ${status}`;
+    dailyQuizMetaEl.innerHTML =
+      `<span class="daily-quiz-meta-pill daily-quiz-meta-streak">Streak ${streak}</span>` +
+      `<span class="daily-quiz-meta-sep">|</span>` +
+      `<span class="daily-quiz-meta-pill daily-quiz-meta-gems">Gems ${gems}</span>` +
+      `<span class="daily-quiz-meta-sep">|</span>` +
+      `<span class="daily-quiz-meta-pill daily-quiz-meta-status">${
+        status
+      }</span>`;
   }
 
   if (dailyWindowLineEl) {
     if (todayDate) {
-      dailyWindowLineEl.textContent = `Date: ${formatDateKey(todayDate)} | Renews daily at 12:00 AM`;
+      dailyWindowLineEl.textContent = `${formatDateKey(todayDate)} • Renews 12:00 AM`;
     } else {
-      dailyWindowLineEl.textContent = "Date: loading today's challenge...";
+      dailyWindowLineEl.textContent = "Loading today...";
     }
   }
 
@@ -1578,12 +1860,12 @@ function renderDailyQuizUi() {
     if (!season.start) {
       dailyStatusLineEl.textContent = "Checking status...";
     } else if (!seasonActive) {
-      dailyStatusLineEl.textContent = "The current Daily Quiz season is closed.";
+      dailyStatusLineEl.textContent = "Season closed.";
     } else if (todayCompleted) {
-      dailyStatusLineEl.textContent = `Completed ${today.score ?? 0}/${today.total ?? season.questionsPerDay ?? 10} today.`;
+      dailyStatusLineEl.textContent = `${today.score ?? 0}/${today.total ?? season.questionsPerDay ?? 10} completed today.`;
     } else {
       const count = Number(today.total) || Number(season.questionsPerDay) || 10;
-      dailyStatusLineEl.textContent = `Today's challenge is ready: ${count} questions.`;
+      dailyStatusLineEl.textContent = `Ready: ${count} questions.`;
     }
   }
 
@@ -1593,7 +1875,7 @@ function renderDailyQuizUi() {
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =
-      `Rewards: +${rules.completion || 0} completion, +${rules.perCorrect || 0} per correct, +${rules.perfect || 0} perfect bonus, streak +${rules.streakStep || 0} from day 2 (cap ${rules.streakCap || 0} days).`;
+      `+${rules.completion || 0} finish • +${rules.perCorrect || 0}/correct • +${rules.perfect || 0} perfect • streak +${rules.streakStep || 0} (cap ${rules.streakCap || 0})`;
   }
 
   if (dailyResultLineEl) {
@@ -1622,8 +1904,7 @@ function renderDailyQuizUi() {
   if (dailyAlertEl) {
     if (seasonActive && !todayCompleted) {
       dailyAlertEl.classList.remove("hidden");
-      dailyAlertEl.textContent =
-        "Today's challenge is ready. Complete it before midnight to protect your streak.";
+      dailyAlertEl.textContent = "Challenge ready. Finish today to keep your streak.";
     } else {
       dailyAlertEl.classList.add("hidden");
       dailyAlertEl.textContent = "";
@@ -1632,7 +1913,10 @@ function renderDailyQuizUi() {
 
   if (refreshDailyBtn) {
     refreshDailyBtn.disabled = false;
+    refreshDailyBtn.textContent = dailyHistoryOpen ? "Hide History" : "History";
   }
+
+  renderDailyHistoryPanel();
 
   maybePlayDailyCompletionCelebration();
 
@@ -1646,17 +1930,16 @@ function renderDailyQuizUi() {
 
     if (!seasonActive) {
       startDailyBtn.disabled = true;
-      startDailyBtn.textContent = "Season Closed";
+      startDailyBtn.textContent = "Closed";
     } else if (todayCompleted) {
       startDailyBtn.disabled = true;
-      startDailyBtn.textContent = "Completed for Today";
+      startDailyBtn.textContent = "Completed";
     } else if (resumeAvailable) {
       startDailyBtn.disabled = false;
-      startDailyBtn.textContent = "Resume Today's Quiz";
+      startDailyBtn.textContent = "Resume";
     } else {
-      const count = Number(today.total) || Number(season.questionsPerDay) || 10;
       startDailyBtn.disabled = false;
-      startDailyBtn.textContent = `Start Today's ${count} Questions`;
+      startDailyBtn.textContent = "Start";
     }
   }
 }
@@ -1708,8 +1991,7 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
     }
     if (dailyStatusLineEl) dailyStatusLineEl.textContent = safeMessage;
     if (dailyRewardLineEl) {
-      dailyRewardLineEl.textContent =
-        "Could not load Daily Quiz details right now. Try Refresh.";
+      dailyRewardLineEl.textContent = "Could not load details. Try again.";
     }
     if (dailyResultLineEl) {
       dailyResultLineEl.classList.add("hidden");
@@ -1717,7 +1999,7 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
     }
     if (startDailyBtn) {
       startDailyBtn.disabled = true;
-      startDailyBtn.textContent = "Start Unavailable";
+      startDailyBtn.textContent = "Start";
     }
     return null;
   }
@@ -1895,6 +2177,54 @@ if (topicLibraryBackBtn) {
   });
 }
 
+function setTopicLibraryFilterTrayState() {
+  if (!topicLibraryControls) return;
+  const categoryOpen = topicLibraryCategoryField && !topicLibraryCategoryField.classList.contains("hidden");
+  const searchOpen = topicLibrarySearchField && !topicLibrarySearchField.classList.contains("hidden");
+  topicLibraryControls.classList.toggle("hidden", !categoryOpen && !searchOpen);
+  if (topicLibraryCategoryToggle) {
+    topicLibraryCategoryToggle.setAttribute("aria-pressed", categoryOpen ? "true" : "false");
+    topicLibraryCategoryToggle.classList.toggle("is-active", categoryOpen);
+  }
+  if (topicLibrarySearchToggle) {
+    topicLibrarySearchToggle.setAttribute("aria-pressed", searchOpen ? "true" : "false");
+    topicLibrarySearchToggle.classList.toggle("is-active", searchOpen);
+  }
+}
+
+if (topicLibraryCategoryToggle && topicLibraryCategoryField) {
+  topicLibraryCategoryToggle.addEventListener("click", () => {
+    topicLibrarySearchField?.classList.add("hidden");
+    topicLibraryCategoryField.classList.toggle("hidden");
+    setTopicLibraryFilterTrayState();
+  });
+}
+
+if (topicLibrarySearchToggle && topicLibrarySearchField) {
+  topicLibrarySearchToggle.addEventListener("click", () => {
+    topicLibraryCategoryField?.classList.add("hidden");
+    const opening = topicLibrarySearchField.classList.contains("hidden");
+    topicLibrarySearchField.classList.toggle("hidden");
+    setTopicLibraryFilterTrayState();
+    if (opening) {
+      topicLibrarySearchInput?.focus();
+    }
+  });
+}
+
+document.addEventListener("click", (event) => {
+  if (!topicLibraryControls || topicLibraryControls.classList.contains("hidden")) return;
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const insideControls = topicLibraryControls.contains(target);
+  const onCategoryToggle = !!topicLibraryCategoryToggle && topicLibraryCategoryToggle.contains(target);
+  const onSearchToggle = !!topicLibrarySearchToggle && topicLibrarySearchToggle.contains(target);
+  if (insideControls || onCategoryToggle || onSearchToggle) return;
+  topicLibraryCategoryField?.classList.add("hidden");
+  topicLibrarySearchField?.classList.add("hidden");
+  setTopicLibraryFilterTrayState();
+});
+
 if (topicViewerBackBtn) {
   topicViewerBackBtn.addEventListener("click", () => {
     showScreen(topicViewerReturnScreen || "topic-library");
@@ -1919,6 +2249,28 @@ if (tourMenuBtn) {
   });
 }
 
+if (tourPrevStepBtn) {
+  tourPrevStepBtn.addEventListener("click", () => {
+    syncTourStep(tourStepIndex - 1);
+  });
+}
+
+if (tourNextStepBtn) {
+  tourNextStepBtn.addEventListener("click", () => {
+    if (tourStepIndex >= tourSlides.length - 1) {
+      showScreen("quiz-menu");
+      return;
+    }
+    syncTourStep(tourStepIndex + 1);
+  });
+}
+
+tourStepDots.forEach((dot, index) => {
+  dot.addEventListener("click", () => {
+    syncTourStep(index);
+  });
+});
+
 if (menuUserHubBtn) {
   menuUserHubBtn.addEventListener("click", async () => {
     const ok = await ensureAuthenticated();
@@ -1936,7 +2288,7 @@ if (menuUserHubCloseBtn) {
 if (menuTourBtn) {
   menuTourBtn.addEventListener("click", () => {
     closeMenuUserHub();
-    showScreen("tour-screen");
+    openTourScreen();
   });
 }
 
@@ -2345,20 +2697,24 @@ function renderTopicLibrary() {
       normalizeTopicNotePath(`${String(topic.slug || "").toLowerCase()}.html`);
     if (!notePath) return;
 
-    const item = document.createElement("button");
-    item.type = "button";
+    const item = document.createElement("div");
     item.className = "topic-library-item";
     item.innerHTML = `
-      <span class="topic-library-item-title">${topicTitle(topic)}</span>
-      <span class="topic-library-item-meta">${topic.category || "General"}</span>
+      <button type="button" class="topic-library-item-link">
+        <span class="topic-library-item-copy">
+          <span class="topic-library-item-title">${topicTitle(topic)}</span>
+        </span>
+        <span class="topic-library-item-arrow" aria-hidden="true">&#8250;</span>
+      </button>
     `;
-    item.addEventListener("click", () => {
-      openTopicViewer(notePath, topicTitle(topic), "topic-library");
+    const openBtn = item.querySelector(".topic-library-item-link");
+    openBtn?.addEventListener("click", () => {
+      openTopicViewer(notePath, topicTitle(topic), "topic-library", topic.category || "");
     });
     topicLibraryListEl.appendChild(item);
   });
 
-  topicLibraryCountEl.textContent = `${filteredTopics.length} topic(s)`;
+  topicLibraryCountEl.textContent = `${filteredTopics.length} topic${filteredTopics.length === 1 ? "" : "s"} available`;
   topicLibraryEmptyEl.classList.toggle("hidden", filteredTopics.length > 0);
 }
 
@@ -2430,48 +2786,603 @@ function enforceTopicViewerMobileLayout() {
     if (!styleEl) {
       styleEl = doc.createElement("style");
       styleEl.id = "topic-viewer-mobile-layout";
-      styleEl.textContent = `
+      head.appendChild(styleEl);
+    }
+    const palette = getTopicViewerThemePalette();
+    styleEl.textContent = `
         html, body {
+          margin: 0 !important;
           max-width: 100% !important;
           overflow-x: hidden !important;
+          background: ${palette.pageBg} !important;
         }
         body {
+          padding: 0 !important;
+          color: ${palette.text} !important;
+          font-family: "Inter", "Segoe UI", Tahoma, Arial, sans-serif !important;
           word-break: break-word;
           overflow-wrap: anywhere;
+          background: ${palette.pageBg} !important;
         }
         img, video, iframe, svg, canvas {
           max-width: 100% !important;
           height: auto !important;
         }
+        .wrap {
+          width: min(1180px, 100%) !important;
+          margin: 0 auto !important;
+          padding: 0 28px 42px 302px !important;
+          display: block !important;
+          background: transparent !important;
+        }
+        .topic-mobile-toc-toggle {
+          display: none !important;
+        }
+        .toc,
+        aside.toc,
+        .panel.toc {
+          display: block !important;
+          position: fixed !important;
+          top: 24px !important;
+          left: max(22px, calc((100vw - 1180px) / 2 + 28px)) !important;
+          width: 224px !important;
+          align-self: start !important;
+          max-height: calc(100dvh - 48px) !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          margin: 0 !important;
+          padding: 8px 4px 8px 0 !important;
+          background: transparent !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          border-bottom: none !important;
+          scrollbar-width: thin;
+          scrollbar-color: ${palette.tocActiveBg} transparent;
+        }
+        .toc h2 {
+          margin: 0 0 10px !important;
+          color: ${palette.tocHeading} !important;
+          font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
+          font-size: 0.8rem !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.12em !important;
+          text-transform: uppercase !important;
+        }
+        .toc a {
+          display: inline-flex !important;
+          width: fit-content !important;
+          max-width: 100% !important;
+          padding: 4px 10px !important;
+          margin: 0 0 10px 0 !important;
+          color: ${palette.tocText} !important;
+          font-family: "Inter", "Segoe UI", Tahoma, Arial, sans-serif !important;
+          font-size: 0.9rem !important;
+          line-height: 1.45 !important;
+          text-decoration: none !important;
+          border-radius: 10px !important;
+          background: transparent !important;
+        }
+        .toc a:hover,
+        .toc a:focus-visible,
+        .toc a.is-active {
+          color: ${palette.tocActiveText} !important;
+          background: ${palette.tocActiveBg} !important;
+          text-decoration: none !important;
+          outline: none !important;
+        }
+        .panel,
+        .content,
+        .box,
+        .metric,
+        .diagram,
+        .diagram-card,
+        .hero-visual,
+        details.quiz {
+          background: transparent !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+        }
+        .content {
+          padding: 0 !important;
+          min-width: 0 !important;
+        }
+        .hero {
+          padding: 2px 0 14px !important;
+          border-bottom: 1px solid ${palette.divider} !important;
+          background: transparent !important;
+        }
+        .eyebrow {
+          display: none !important;
+        }
+        h1 {
+          display: none !important;
+        }
+        .subtitle {
+          margin: 0 !important;
+          color: ${palette.subtitle} !important;
+          font-size: 0.98rem !important;
+          line-height: 1.76 !important;
+          max-width: 74ch !important;
+        }
+        .hero-grid,
+        .hero-layout,
+        .grid-2,
+        .grid-3,
+        .stack,
+        .flow,
+        .algorithm {
+          gap: 10px !important;
+        }
+        .hero-grid,
+        .hero-layout {
+          display: block !important;
+        }
+        .hero-grid,
+        .hero-layout {
+          margin-top: 12px !important;
+        }
+        .hero-grid,
+        .hero-layout .hero-grid,
+        .hero-visual {
+          display: none !important;
+        }
+        .metric,
+        .box,
+        .diagram,
+        .diagram-card,
+        .hero-visual,
+        details.quiz,
+        .step {
+          padding: 0 !important;
+          margin-top: 14px !important;
+          border: none !important;
+        }
+        .metric:first-child,
+        .box:first-child,
+        .diagram:first-child,
+        .diagram-card:first-child,
+        .hero-visual:first-child,
+        details.quiz:first-child,
+        .step:first-child {
+          margin-top: 0 !important;
+        }
+        .metric .k::after {
+          content: ":" !important;
+          margin-left: 3px;
+        }
+        .metric .k {
+          display: inline !important;
+          margin: 0 !important;
+          color: ${palette.metaLabel} !important;
+          font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
+          font-size: 0.72rem !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.08em !important;
+          text-transform: uppercase !important;
+        }
+        .metric .v {
+          display: inline !important;
+          margin-left: 4px !important;
+          color: ${palette.metaValue} !important;
+          font-family: "Inter", "Segoe UI", Tahoma, Arial, sans-serif !important;
+          font-size: 0.95rem !important;
+          font-weight: 600 !important;
+        }
+        .metric .k,
+        .metric .v,
+        .box h3,
+        .diagram p,
+        .diagram-title {
+          color: ${palette.metaValue} !important;
+        }
+        .section {
+          display: block !important;
+          padding: 30px 0 !important;
+          border-bottom: 1px solid ${palette.divider} !important;
+          scroll-margin-top: 116px !important;
+        }
+        .section + .section {
+          margin-top: 16px !important;
+        }
+        .section h2 {
+          margin: 0 0 14px !important;
+          padding-bottom: 8px !important;
+          color: ${palette.sectionHeading} !important;
+          font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
+          font-size: 1.16rem !important;
+          font-weight: 600 !important;
+          line-height: 1.35 !important;
+          border-bottom: 1px solid ${palette.divider} !important;
+        }
+        .section h3,
+        .section h4 {
+          margin: 18px 0 8px !important;
+          color: ${palette.sectionSubheading} !important;
+          font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
+          font-size: 0.94rem !important;
+          font-weight: 700 !important;
+          line-height: 1.4 !important;
+        }
+        .section p,
+        .box p,
+        .box li,
+        li,
+        td,
+        th,
+        details.quiz p {
+          color: ${palette.bodyText} !important;
+          font-size: 0.98rem !important;
+          line-height: 1.82 !important;
+        }
+        .section > p:first-of-type {
+          color: ${palette.firstPara} !important;
+          font-size: 1rem !important;
+        }
+        ul,
+        ol {
+          margin: 8px 0 0 0 !important;
+          padding-left: 1.35rem !important;
+        }
+        li {
+          margin: 0 0 8px !important;
+        }
+        li::marker {
+          color: ${palette.marker} !important;
+        }
+        .box ul {
+          margin-top: 6px !important;
+        }
+        .box h3,
+        .hero-visual h3,
+        details.quiz summary {
+          font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
+          font-size: 0.82rem !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.04em !important;
+          text-transform: uppercase !important;
+        }
+        .hero-visual p,
+        .diagram p {
+          font-size: 0.84rem !important;
+          line-height: 1.55 !important;
+        }
+        .chips {
+          margin-top: 10px !important;
+        }
+        .chip {
+          min-height: 28px !important;
+          padding: 3px 10px !important;
+          border-radius: 999px !important;
+          border: 1px solid ${palette.chipBorder} !important;
+          background: ${palette.chipBg} !important;
+          color: ${palette.chipText} !important;
+          font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
+          font-size: 0.76rem !important;
+          font-weight: 600 !important;
+        }
+        .callout {
+          margin-top: 14px !important;
+          border: 1px solid ${palette.calloutBorder} !important;
+          border-left: 4px solid ${palette.calloutAccent} !important;
+          border-radius: 14px !important;
+          background: ${palette.calloutBg} !important;
+          color: ${palette.bodyText} !important;
+          padding: 12px 14px !important;
+        }
+        .callout.warn {
+          border-left-color: #9c6a16 !important;
+        }
+        .callout.alert {
+          border-left-color: #9b3535 !important;
+        }
+        .hero-visual svg,
+        .diagram svg,
+        .diagram-card svg {
+          margin-top: 8px !important;
+        }
+        .step {
+          background: transparent !important;
+        }
+        .arrow {
+          width: auto !important;
+          height: auto !important;
+          margin: -2px 0 !important;
+          padding-left: 2px !important;
+          border: none !important;
+          background: transparent !important;
+          color: #7c8ea3 !important;
+          font-size: 0.95rem !important;
+          justify-content: flex-start !important;
+          place-items: unset !important;
+        }
         table {
           width: 100% !important;
           table-layout: fixed !important;
           word-break: break-word;
+          border-radius: 14px !important;
+          border: 1px solid ${palette.tableBorder} !important;
+          background: ${palette.tableBg} !important;
+          overflow: hidden !important;
         }
         th, td {
+          padding: 10px 10px !important;
           word-break: break-word;
           overflow-wrap: anywhere;
           white-space: normal !important;
+          border-color: ${palette.tableBorder} !important;
+        }
+        th {
+          background: ${palette.thBg} !important;
+          color: ${palette.thText} !important;
+          font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
+          font-size: 0.76rem !important;
+          letter-spacing: 0.06em !important;
+          text-transform: uppercase !important;
+        }
+        td {
+          color: ${palette.tdText} !important;
         }
         pre, code {
           white-space: pre-wrap !important;
           word-break: break-word;
           overflow-wrap: anywhere;
         }
+        @media (max-width: 860px) {
+          .wrap {
+            padding: 0 16px 24px !important;
+            display: block !important;
+          }
+          .topic-mobile-toc-toggle {
+            position: fixed !important;
+            top: 6px !important;
+            left: 12px !important;
+            z-index: 32 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 28px !important;
+            height: 22px !important;
+            min-width: 28px !important;
+            min-height: 22px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 1px solid ${palette.tocButtonBorder} !important;
+            border-radius: 0 0 9px 9px !important;
+            background: ${palette.tocButtonBg} !important;
+            color: ${palette.tocButtonText} !important;
+            box-shadow: 0 6px 12px rgba(10, 18, 29, 0.08) !important;
+            opacity: 0.74 !important;
+            backdrop-filter: blur(8px);
+          }
+          .topic-mobile-toc-toggle svg {
+            width: 13px !important;
+            height: 13px !important;
+            stroke: currentColor !important;
+            fill: none !important;
+            stroke-width: 1.9 !important;
+            stroke-linecap: round !important;
+            stroke-linejoin: round !important;
+          }
+          .toc,
+          aside.toc,
+          .panel.toc {
+            position: fixed !important;
+            top: 12px !important;
+            left: 12px !important;
+            z-index: 38 !important;
+            width: min(280px, calc(100vw - 24px)) !important;
+            max-height: calc(100dvh - 24px) !important;
+            margin: 0 !important;
+            padding: 14px 14px 10px !important;
+            border: 1px solid ${palette.tocPanelBorder} !important;
+            border-radius: 16px !important;
+            background: ${palette.tocPanelBg} !important;
+            box-shadow: 0 20px 34px rgba(10, 18, 29, 0.22) !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transform: translateY(-6px) !important;
+            transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease !important;
+          }
+          body.topic-mobile-toc-open .toc,
+          body.topic-mobile-toc-open aside.toc,
+          body.topic-mobile-toc-open .panel.toc {
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+            transform: translateY(0) !important;
+          }
+          .toc h2 {
+            margin-bottom: 8px !important;
+          }
+          .toc a {
+            display: inline-flex !important;
+            margin: 0 0 8px 0 !important;
+          }
+          .hero-grid,
+          .hero-layout,
+          .grid-2,
+          .grid-3 {
+            grid-template-columns: 1fr !important;
+          }
+          .section {
+            padding: 24px 0 !important;
+            scroll-margin-top: 108px !important;
+          }
+          .section h2 {
+            font-size: 1rem !important;
+          }
+          .section p,
+          li,
+          td,
+          th,
+          details.quiz p {
+            font-size: 0.95rem !important;
+          }
+          table {
+            display: block !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            table-layout: auto !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            border-radius: 12px !important;
+            -webkit-overflow-scrolling: touch;
+          }
+          th,
+          td {
+            padding: 8px 7px !important;
+            font-size: 0.82rem !important;
+            line-height: 1.45 !important;
+          }
+          th {
+            font-size: 0.68rem !important;
+            letter-spacing: 0.05em !important;
+          }
+        }
       `;
-      head.appendChild(styleEl);
-    }
   } catch (error) {
     console.debug("Topic viewer style injection skipped:", error);
   }
 }
 
-function openTopicViewer(notePath, title = "Study Note", returnScreen = "topic-library") {
+function enhanceTopicViewerSectionNavigation() {
+  if (!topicViewerFrameEl) return;
+  try {
+    const doc = topicViewerFrameEl.contentDocument;
+    if (!doc) return;
+
+    const tocLinks = [...doc.querySelectorAll('.toc a[href^="#"]')];
+    const sections = [...doc.querySelectorAll(".section[id]")];
+    if (tocLinks.length === 0 || sections.length === 0) return;
+    const wrapEl = doc.querySelector(".wrap");
+    const tocEl = doc.querySelector(".toc, aside.toc, .panel.toc");
+    if (!wrapEl || !tocEl) return;
+
+    let toggleBtn = doc.querySelector(".topic-mobile-toc-toggle");
+    if (!toggleBtn) {
+      toggleBtn = doc.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = "topic-mobile-toc-toggle";
+      toggleBtn.setAttribute("aria-label", "Open table of contents");
+      toggleBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 8h12"></path>
+          <path d="M6 12h12"></path>
+          <path d="M6 16h12"></path>
+        </svg>
+      `;
+      wrapEl.insertBefore(toggleBtn, wrapEl.firstChild);
+    }
+
+    const isMobileView = () =>
+      (doc.defaultView?.innerWidth || 0) <= 860;
+
+    const closeMobileToc = () => {
+      doc.body.classList.remove("topic-mobile-toc-open");
+      toggleBtn?.setAttribute("aria-expanded", "false");
+    };
+
+    const openMobileToc = () => {
+      doc.body.classList.add("topic-mobile-toc-open");
+      toggleBtn?.setAttribute("aria-expanded", "true");
+    };
+
+    if (toggleBtn.dataset.topicViewerBound !== "true") {
+      toggleBtn.dataset.topicViewerBound = "true";
+      toggleBtn.setAttribute("aria-expanded", "false");
+      toggleBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!isMobileView()) return;
+        if (doc.body.classList.contains("topic-mobile-toc-open")) {
+          closeMobileToc();
+          return;
+        }
+        openMobileToc();
+      });
+    }
+
+    const setActiveSection = (targetId = "") => {
+      const nextId =
+        String(targetId || "").replace(/^#/, "").trim() ||
+        tocLinks[0]?.getAttribute("href")?.replace(/^#/, "").trim() ||
+        sections[0]?.id ||
+        "";
+
+      tocLinks.forEach((link) => {
+        const hrefId = String(link.getAttribute("href") || "").replace(/^#/, "").trim();
+        link.classList.toggle("is-active", hrefId === nextId);
+      });
+
+      return sections.find((section) => section.id === nextId) || null;
+    };
+
+    tocLinks.forEach((link) => {
+      if (link.dataset.topicViewerBound === "true") return;
+      link.dataset.topicViewerBound = "true";
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const hrefId = String(link.getAttribute("href") || "").replace(/^#/, "").trim();
+        const targetSection = setActiveSection(hrefId);
+        targetSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (isMobileView()) {
+          closeMobileToc();
+        }
+      });
+    });
+
+    if (doc.body.dataset.topicViewerOutsideBound !== "true") {
+      doc.body.dataset.topicViewerOutsideBound = "true";
+      doc.addEventListener("click", (event) => {
+        if (!isMobileView()) return;
+        if (!doc.body.classList.contains("topic-mobile-toc-open")) return;
+        const target = event.target;
+        if (!(target instanceof doc.defaultView.Element)) return;
+        if (target.closest(".toc, aside.toc, .panel.toc")) return;
+        if (target.closest(".topic-mobile-toc-toggle")) return;
+        closeMobileToc();
+      });
+      doc.addEventListener("touchstart", (event) => {
+        if (!isMobileView()) return;
+        if (!doc.body.classList.contains("topic-mobile-toc-open")) return;
+        const target = event.target;
+        if (!(target instanceof doc.defaultView.Element)) return;
+        if (target.closest(".toc, aside.toc, .panel.toc")) return;
+        if (target.closest(".topic-mobile-toc-toggle")) return;
+        closeMobileToc();
+      }, { passive: true });
+      doc.defaultView?.addEventListener("resize", () => {
+        if (!isMobileView()) {
+          closeMobileToc();
+        }
+      });
+    }
+
+    const initialHash = String(topicViewerFrameEl.src || "")
+      .split("#")[1]
+      ?.trim();
+    setActiveSection(initialHash);
+  } catch (error) {
+    console.debug("Topic viewer section navigation skipped:", error);
+  }
+}
+
+function openTopicViewer(notePath, title = "Study Note", returnScreen = "topic-library", category = "") {
   if (!topicViewerFrameEl) return;
   topicViewerReturnScreen = returnScreen;
+  topicViewerFrameWrap?.classList.add("is-loading");
   topicViewerFrameEl.src = notePath;
   if (topicViewerTitleEl) {
-    topicViewerTitleEl.innerText = `Study Note: ${title}`;
+    topicViewerTitleEl.innerText = title;
+  }
+  if (topicViewerCategoryEl) {
+    const text = String(category || "").trim();
+    topicViewerCategoryEl.innerText = text ? `(${text})` : "";
+    topicViewerCategoryEl.classList.toggle("hidden", !text);
   }
   showScreen("topic-viewer");
 }
@@ -2479,6 +3390,12 @@ function openTopicViewer(notePath, title = "Study Note", returnScreen = "topic-l
 if (topicViewerFrameEl) {
   topicViewerFrameEl.addEventListener("load", () => {
     enforceTopicViewerMobileLayout();
+    enhanceTopicViewerSectionNavigation();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        topicViewerFrameWrap?.classList.remove("is-loading");
+      });
+    });
   });
 }
 
@@ -2735,6 +3652,9 @@ function closeMenuUserHub() {
   if (menuUserHubPanel) {
     menuUserHubPanel.classList.add("hidden");
   }
+  if (logoutConfirmBox) {
+    logoutConfirmBox.classList.add("hidden");
+  }
   if (menuUserHubBtn) {
     menuUserHubBtn.setAttribute("aria-expanded", "false");
   }
@@ -2745,6 +3665,49 @@ function toggleMenuUserHub() {
   const opening = menuUserHubPanel.classList.contains("hidden");
   menuUserHubPanel.classList.toggle("hidden", !opening);
   menuUserHubBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+}
+
+function syncTourStep(step) {
+  const total = tourSlides.length;
+  if (!total) return;
+  const nextStep = Math.max(0, Math.min(total - 1, Number(step) || 0));
+  tourStepIndex = nextStep;
+  const progress = total > 1 ? (nextStep / (total - 1)) * 100 : 0;
+
+  if (tourStepper) {
+    tourStepper.style.setProperty("--tour-progress", `${progress}%`);
+  }
+
+  tourSlides.forEach((slide, index) => {
+    slide.classList.toggle("is-active", index === nextStep);
+  });
+
+  tourStepDots.forEach((dot, index) => {
+    dot.classList.toggle("is-active", index === nextStep);
+    dot.setAttribute("aria-current", index === nextStep ? "step" : "false");
+  });
+
+  if (tourPrevStepBtn) {
+    tourPrevStepBtn.disabled = nextStep === 0;
+    tourPrevStepBtn.setAttribute("aria-label", "Previous step");
+    tourPrevStepBtn.setAttribute("title", "Previous step");
+  }
+
+  if (tourNextStepBtn) {
+    const isLast = nextStep >= total - 1;
+    tourNextStepBtn.dataset.mode = isLast ? "done" : "next";
+    tourNextStepBtn.setAttribute("aria-label", isLast ? "Finish tour" : "Next step");
+    tourNextStepBtn.setAttribute("title", isLast ? "Finish tour" : "Next step");
+  }
+
+  if (tourNextStepLabel) {
+    tourNextStepLabel.textContent = nextStep >= total - 1 ? "Finish" : "Next";
+  }
+}
+
+function openTourScreen() {
+  syncTourStep(0);
+  showScreen("tour-screen");
 }
 
 function renderAuthState() {
@@ -3521,6 +4484,34 @@ if (authCancelBtn) {
 
 if (logoutBtn) {
   logoutBtn.onclick = () => {
+    if (logoutConfirmBox) {
+      logoutConfirmBox.classList.remove("hidden");
+      return;
+    }
+    closeMenuUserHub();
+    backendClient.clearToken();
+    profileImageMarkedForDeletion = false;
+    pendingProfileImage = "";
+    if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
+    refreshProfilePhotoDeleteVisibility();
+    currentUser = null;
+    resetDailyQuizRuntimeState();
+    renderAuthState();
+    closeAuthModal();
+    showScreen("home-screen");
+  };
+}
+
+if (logoutCancelBtn) {
+  logoutCancelBtn.onclick = () => {
+    if (logoutConfirmBox) {
+      logoutConfirmBox.classList.add("hidden");
+    }
+  };
+}
+
+if (logoutConfirmBtn) {
+  logoutConfirmBtn.onclick = () => {
     closeMenuUserHub();
     backendClient.clearToken();
     profileImageMarkedForDeletion = false;
@@ -3791,15 +4782,15 @@ async function openProfileScreen() {
     profilePasswordPanel,
     profilePasswordToggleBtn,
     false,
-    "Open Password Section",
-    "Close Password Section",
+    "Change Password",
+    "Hide Password",
   );
   setProfilePanelOpen(
     profileDangerPanel,
     profileDangerToggleBtn,
     false,
-    "Open Account Controls",
-    "Close Account Controls",
+    "Account Actions",
+    "Hide Actions",
   );
   showScreen("profile-screen");
 }
@@ -3826,8 +4817,8 @@ if (profilePasswordToggleBtn) {
       profilePasswordPanel,
       profilePasswordToggleBtn,
       Boolean(shouldOpen),
-      "Open Password Section",
-      "Close Password Section",
+      "Change Password",
+      "Hide Password",
     );
   };
 }
@@ -3843,8 +4834,8 @@ if (profileDangerToggleBtn) {
       profileDangerPanel,
       profileDangerToggleBtn,
       Boolean(shouldOpen),
-      "Open Account Controls",
-      "Close Account Controls",
+      "Account Actions",
+      "Hide Actions",
     );
   };
 }
@@ -3943,27 +4934,54 @@ if (topicLinkBtnEl) {
     const title = currentQuestion?.topicSlug
       ? prettifyTopicSlug(currentQuestion.topicSlug)
       : "Study Note";
-    openTopicViewer(href, title, "quiz-area");
+    openTopicViewer(href, title, "quiz-area", currentQuestion?.category || "");
   });
 }
 
-function openExamExitModal() {
-  confirmExitBtn.disabled = false; // 🔥 reset button every time modal opens
+let quizExitConfirmAction = null;
+
+function openQuizExitModal({
+  title = "End Exam?",
+  text = "Ending now will submit your exam with current answers.",
+  cancelLabel = "Continue Exam",
+  confirmLabel = "End Exam",
+  onConfirm = null,
+} = {}) {
+  if (examExitTitleEl) examExitTitleEl.textContent = title;
+  if (examExitTextEl) examExitTextEl.textContent = text;
+  if (cancelExitBtn) cancelExitBtn.textContent = cancelLabel;
+  if (confirmExitBtn) confirmExitBtn.textContent = confirmLabel;
+  quizExitConfirmAction = typeof onConfirm === "function" ? onConfirm : null;
+  confirmExitBtn.disabled = false;
   examExitModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
+}
+
+function openExamExitModal() {
+  openQuizExitModal({
+    title: "End Exam?",
+    text: "Ending now will submit your exam with current answers.",
+    cancelLabel: "Continue Exam",
+    confirmLabel: "End Exam",
+    onConfirm: () => finishExam(),
+  });
 }
 
 function closeExamExitModal() {
   examExitModal.classList.add("hidden");
   document.body.style.overflow = ""; // restore scroll
+  quizExitConfirmAction = null;
 }
 
 cancelExitBtn.onclick = closeExamExitModal;
 
 confirmExitBtn.onclick = function () {
   confirmExitBtn.disabled = true; // prevent double tap
+  const runConfirm = quizExitConfirmAction;
   closeExamExitModal();
-  finishExam();
+  if (typeof runConfirm === "function") {
+    runConfirm();
+  }
 };
 
 // ==============================
@@ -4104,10 +5122,16 @@ backBtnQuiz.onclick = function () {
   }
 
   if (mode === "daily") {
-    const leave = confirm("Leave Daily Quiz and return to setup?");
-    if (!leave) return;
-    showScreen("daily-setup");
-    renderDailyQuizUi();
+    openQuizExitModal({
+      title: "Leave Daily Quiz?",
+      text: "Your current daily session will close and you will return to the daily setup page.",
+      cancelLabel: "Stay Here",
+      confirmLabel: "Leave Quiz",
+      onConfirm: () => {
+        showScreen("daily-setup");
+        renderDailyQuizUi();
+      },
+    });
   }
 };
 
@@ -4129,10 +5153,16 @@ if (menuBtnQuiz) {
     }
 
     if (mode === "daily") {
-      const leave = confirm("Leave Daily Quiz and return to setup?");
-      if (!leave) return;
-      showScreen("daily-setup");
-      renderDailyQuizUi();
+      openQuizExitModal({
+        title: "Leave Daily Quiz?",
+        text: "Your current daily session will close and you will return to the daily setup page.",
+        cancelLabel: "Stay Here",
+        confirmLabel: "Leave Quiz",
+        onConfirm: () => {
+          showScreen("daily-setup");
+          renderDailyQuizUi();
+        },
+      });
     }
   };
 }
@@ -4298,7 +5328,11 @@ if (dailyBackBtn) {
 
 if (refreshDailyBtn) {
   refreshDailyBtn.onclick = () => {
-    refreshDailyQuizState({ force: true });
+    dailyHistoryOpen = !dailyHistoryOpen;
+    if (refreshDailyBtn) {
+      refreshDailyBtn.textContent = dailyHistoryOpen ? "Hide History" : "History";
+    }
+    renderDailyHistoryPanel();
   };
 }
 
@@ -4322,41 +5356,47 @@ function renderDashboardValues({
   totalAttempts = 0,
   overallAccuracy = 0,
   weakCount = 0,
+  sessionCount = 0,
   categories = [],
 }) {
   document.getElementById("dash-total").innerText = totalAttempts;
   document.getElementById("dash-accuracy").innerText = overallAccuracy + "%";
   document.getElementById("dash-weak").innerText = weakCount;
+  const sessionsEl = document.getElementById("dash-sessions");
+  if (sessionsEl) sessionsEl.innerText = sessionCount;
 
   const container = document.getElementById("dash-categories");
   container.innerHTML = "";
 
   if (!Array.isArray(categories) || categories.length === 0) {
     container.innerHTML = '<div class="no-data">No category data yet.</div>';
-    return;
+  } else {
+    categories.forEach((rowData) => {
+      const category = rowData.category || "General";
+      const attempts = Number(rowData.attempts) || 0;
+      const accuracy = Number(rowData.accuracy) || 0;
+
+      const row = document.createElement("div");
+      row.className = "category-row";
+
+      row.innerHTML = `
+        <div class="category-info">
+          <div class="category-name">${category}</div>
+          <div class="category-meta">${attempts} attempts</div>
+        </div>
+        <div class="category-bar">
+          <div class="category-fill" style="width:${accuracy}%"></div>
+        </div>
+        <div class="category-percent">${accuracy}%</div>
+      `;
+
+      container.appendChild(row);
+    });
   }
 
-  categories.forEach((rowData) => {
-    const category = rowData.category || "General";
-    const attempts = Number(rowData.attempts) || 0;
-    const accuracy = Number(rowData.accuracy) || 0;
-
-    const row = document.createElement("div");
-    row.className = "category-row";
-
-    row.innerHTML = `
-      <div class="category-info">
-        <div class="category-name">${category}</div>
-        <div class="category-meta">${attempts} attempts</div>
-      </div>
-      <div class="category-bar">
-        <div class="category-fill" style="width:${accuracy}%"></div>
-      </div>
-      <div class="category-percent">${accuracy}%</div>
-    `;
-
-    container.appendChild(row);
-  });
+  renderDashboardTopSubjects(categories);
+  renderDashboardRecentResults();
+  renderDashboardTrend();
 }
 
 function getLocalDashboardSnapshot() {
@@ -4389,6 +5429,7 @@ function getLocalDashboardSnapshot() {
     totalAttempts,
     overallAccuracy,
     weakCount,
+    sessionCount: Array.isArray(sessionHistory) ? sessionHistory.length : 0,
     categories,
   };
 }
@@ -4398,6 +5439,7 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     totalAttempts: 0,
     overallAccuracy: 0,
     weakCount: 0,
+    sessionCount: 0,
     categories: [],
   };
   const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
@@ -4455,10 +5497,153 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     totalAttempts: mergedTotalAttempts,
     overallAccuracy: mergedOverallAccuracy,
     weakCount: mergedWeakCount,
+    sessionCount: Math.max(0, Number(local.sessionCount) || 0),
     categories: [...mergedCategoryMap.values()].sort((a, b) =>
       String(a.category).localeCompare(String(b.category)),
     ),
   };
+}
+
+function getDashboardTrendEntries(limit = 8) {
+  return (Array.isArray(sessionHistory) ? sessionHistory : [])
+    .slice(0, limit)
+    .reverse()
+    .map((entry) => ({
+      label: String(entry?.mode || "Session"),
+      percent: Math.max(0, Math.min(100, Number(entry?.percent) || 0)),
+    }));
+}
+
+function renderDashboardTrend() {
+  const chartEl = document.getElementById("dash-trend-chart");
+  const rateEl = document.getElementById("dash-trend-rate");
+  const copyEl = document.getElementById("dash-trend-copy");
+  if (!chartEl || !rateEl || !copyEl) return;
+
+  const entries = getDashboardTrendEntries(8);
+  if (!entries.length) {
+    rateEl.textContent = "0%";
+    copyEl.textContent = "No recent sessions";
+    chartEl.innerHTML = '<div class="dashboard-empty-state">Complete a session to populate the trend.</div>';
+    return;
+  }
+
+  const latest = entries[entries.length - 1]?.percent || 0;
+  rateEl.textContent = `${latest}%`;
+  copyEl.textContent = `Last ${entries.length} sessions`;
+
+  if (entries.length === 1) {
+    chartEl.innerHTML = `
+      <div class="dashboard-single-point">
+        <div class="dashboard-single-point-value">${latest}%</div>
+      </div>
+    `;
+    return;
+  }
+
+  const width = 520;
+  const height = 220;
+  const left = 18;
+  const right = 16;
+  const top = 16;
+  const bottom = 28;
+  const innerWidth = width - left - right;
+  const innerHeight = height - top - bottom;
+  const maxVal = 100;
+  const stepX = innerWidth / Math.max(1, entries.length - 1);
+  const points = entries.map((entry, index) => {
+    const x = left + index * stepX;
+    const y = top + innerHeight - (entry.percent / maxVal) * innerHeight;
+    return { x, y, label: entry.label, percent: entry.percent };
+  });
+  const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const area = `${left},${top + innerHeight} ${polyline} ${left + innerWidth},${top + innerHeight}`;
+  const circles = points
+    .map(
+      (point) =>
+        `<circle cx="${point.x}" cy="${point.y}" r="4.6"></circle>`,
+    )
+    .join("");
+  const labels = points
+    .map((point, index) => {
+      const shortLabel = index + 1;
+      return `<text x="${point.x}" y="${height - 8}" text-anchor="middle">${shortLabel}</text>`;
+    })
+    .join("");
+
+  chartEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Recent score trend">
+      <defs>
+        <linearGradient id="dashboardTrendFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(79, 133, 196, 0.34)"></stop>
+          <stop offset="100%" stop-color="rgba(79, 133, 196, 0.05)"></stop>
+        </linearGradient>
+      </defs>
+      <line x1="${left}" y1="${top + innerHeight}" x2="${left + innerWidth}" y2="${top + innerHeight}" class="dashboard-trend-axis"></line>
+      <polygon points="${area}" class="dashboard-trend-area"></polygon>
+      <polyline points="${polyline}" class="dashboard-trend-line"></polyline>
+      <g class="dashboard-trend-points">${circles}</g>
+      <g class="dashboard-trend-labels">${labels}</g>
+    </svg>
+  `;
+}
+
+function renderDashboardTopSubjects(categories = []) {
+  const container = document.getElementById("dash-top-subjects");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const rows = [...(Array.isArray(categories) ? categories : [])]
+    .sort((a, b) => {
+      const accuracyDiff = (Number(b?.accuracy) || 0) - (Number(a?.accuracy) || 0);
+      if (accuracyDiff !== 0) return accuracyDiff;
+      return (Number(b?.attempts) || 0) - (Number(a?.attempts) || 0);
+    })
+    .slice(0, 3);
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="dashboard-empty-state">No subject data yet.</div>';
+    return;
+  }
+
+  rows.forEach((row) => {
+    const item = document.createElement("div");
+    item.className = "dashboard-topsubject-row";
+    item.innerHTML = `
+      <div class="dashboard-topsubject-copy">
+        <div class="dashboard-topsubject-name">${row.category || "General"}</div>
+        <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
+      </div>
+      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function renderDashboardRecentResults() {
+  const container = document.getElementById("dash-recent-results");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const entries = (Array.isArray(sessionHistory) ? sessionHistory : []).slice(0, 6);
+  if (!entries.length) {
+    container.innerHTML = '<div class="dashboard-empty-state">No recent results yet.</div>';
+    return;
+  }
+
+  entries.forEach((entry) => {
+    const item = document.createElement("div");
+    item.className = "dashboard-recent-row";
+    const percent = Math.max(0, Number(entry?.percent) || 0);
+    item.innerHTML = `
+      <div class="dashboard-recent-copy">
+        <div class="dashboard-recent-mode">${String(entry?.mode || "Session")}</div>
+        <div class="dashboard-recent-meta">${Number(entry?.score) || 0}/${Number(entry?.total) || 0}</div>
+      </div>
+      <div class="dashboard-recent-percent">${percent}%</div>
+    `;
+    container.appendChild(item);
+  });
 }
 
 function showDashboard() {
@@ -4792,12 +5977,19 @@ function updateModeIndicator(studyType = null) {
       indicator.innerText = "📚 Study Mode";
     }
 
+    indicator.innerText = studyType === "weak" ? "Practice Weak Areas" : "Study Mode";
     if (headerStats) headerStats.style.display = "flex";
     if (timerEl) timerEl.classList.add("hidden");
     if (quizArea) quizArea.classList.add("mode-study");
   } else if (mode === "exam") {
-    indicator.innerText = `Exam: ${getExamVariantLabel(examVariant)}`;
-
+    indicator.innerText =
+      examVariant === "rapid"
+        ? "Rapid Drill"
+        : examVariant === "sudden"
+          ? "Sudden Drill"
+          : examVariant === "clinical"
+            ? "Clinical Drill"
+            : "Exam Mode";
     if (headerStats) headerStats.style.display = "none";
     if (timerEl) {
       if (examVariant === "sudden" || examVariant === "clinical") {
@@ -4824,6 +6016,16 @@ function updateModeIndicator(studyType = null) {
     if (headerStats) headerStats.style.display = "none";
     if (timerEl) timerEl.classList.add("hidden");
     if (quizArea) quizArea.classList.add("mode-daily");
+  }
+
+  if (headerInlineMeta) {
+    const compactHeaderMode =
+      mode === "daily" ||
+      mode === "smart" ||
+      (mode === "exam" &&
+        ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal")));
+    headerInlineMeta.classList.toggle("hidden", !compactHeaderMode);
+    if (!compactHeaderMode) headerInlineMeta.innerHTML = "";
   }
 }
 /* ==============================
@@ -5094,6 +6296,11 @@ function startQuiz() {
                         ================================= */
 
 function showQuestion() {
+  if (inReview && mode !== "study") {
+    renderDetailedQuestion();
+    return;
+  }
+
   // 🔥 HARD RESET NAVIGATION STATE
   prevBtn.classList.remove("hidden");
   nextBtn.classList.remove("hidden");
@@ -5127,23 +6334,33 @@ function showQuestion() {
 
   // Study Mode Progress
   if (mode === "study") {
-    progressEl.innerText = `Question ${current + 1} of ${active.length}`;
+    progressEl.innerText = `Q ${current + 1}/${active.length}`;
     const answered = Object.keys(userAnswers).length;
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
   } else if (mode === "exam" && examVariant === "sudden") {
     const suddenScore = calculateScore();
-    progressEl.innerText = `Sudden Score: ${suddenScore}`;
+    progressEl.innerHTML = `<span class="sudden-score-pill">${suddenScore}</span>`;
     progressEl.style.color = getSuddenBandColor(suddenScore);
     liveScore.innerText = "";
   } else if (mode === "exam" && examVariant === "clinical") {
     const correctSoFar = calculateScore();
     progressEl.innerHTML =
-      `Clinical: ${current + 1}/${active.length} | Lives: ${buildClinicalLivesMarkup(clinicalLives, 3)} | Correct: ${correctSoFar}`;
+      `<span class="clinical-progress-index">${current + 1}/${active.length}</span>` +
+      `<span class="clinical-progress-pill clinical-progress-lives">${buildClinicalLivesMarkup(clinicalLives, 3)}</span>` +
+      `<span class="clinical-progress-pill clinical-progress-score">${correctSoFar}</span>`;
     progressEl.style.color = clinicalLives <= 1 ? "#dc2626" : "#0e7490";
     liveScore.innerText = "";
+  } else if (mode === "exam") {
+    progressEl.innerText = `Q ${current + 1}/${active.length}`;
+    progressEl.style.color = "";
+    liveScore.innerText = "";
+  } else if (mode === "smart") {
+    progressEl.innerText = `Q ${current + 1}/${active.length}`;
+    progressEl.style.color = "";
+    liveScore.innerText = "";
   } else if (mode === "daily") {
-    progressEl.innerText = `Question ${current + 1} of ${active.length}`;
+    progressEl.innerText = "";
     progressEl.style.color = "";
     liveScore.innerText = "";
   } else {
@@ -5151,6 +6368,8 @@ function showQuestion() {
     progressEl.style.color = "";
     liveScore.innerText = "";
   }
+
+  renderCompactHeaderMeta();
 
   const endStudyBtn = document.getElementById("end-study-btn");
 
@@ -5164,9 +6383,7 @@ function showQuestion() {
     const questionAccuracy = getAccuracy(q.id);
     const categoryAccuracy = getCategoryAccuracy(q.category);
 
-    progressEl.innerText +=
-      ` | Q Accuracy: ${questionAccuracy}%` +
-      ` | Category: ${q.category} (${categoryAccuracy}%)`;
+    progressEl.innerText += ` • Accuracy ${questionAccuracy}% • ${q.category} ${categoryAccuracy}%`;
   }
 
   let displayText = q.question;
@@ -5174,7 +6391,7 @@ function showQuestion() {
   if (mode === "exam" || mode === "smart" || mode === "daily") {
     const chronologicalNumber = current + 1;
     displayText =
-      `Question ${chronologicalNumber}<br><br>` +
+      `<span class="question-kicker">Question ${chronologicalNumber}</span><br><br>` +
       q.question.replace(/^Q\d+\.\s*/, "");
   }
 
@@ -5221,11 +6438,11 @@ function showQuestion() {
     });
 
     const comboOptions = [
-      { letter: "A", text: "A: 1, 2 and 3" },
-      { letter: "B", text: "B: 1 and 2 only" },
-      { letter: "C", text: "C: 2 and 3 only" },
-      { letter: "D", text: "D: 1 only" },
-      { letter: "E", text: "E: 3 only" },
+      { letter: "A", text: "1, 2 and 3" },
+      { letter: "B", text: "1 and 2 only" },
+      { letter: "C", text: "2 and 3 only" },
+      { letter: "D", text: "1 only" },
+      { letter: "E", text: "3 only" },
     ];
 
     comboOptions.forEach((option) => {
@@ -5357,19 +6574,6 @@ function selectAnswer(value, q) {
       btn.classList.remove("selected-live", "correct", "wrong");
       if (btn.dataset.value === String(value)) {
         btn.classList.add("selected-live");
-        if (isCorrect) {
-          btn.classList.add("correct");
-        } else {
-          btn.classList.add("wrong");
-        }
-      }
-      if (
-        mode === "exam" &&
-        (examVariant === "sudden" || examVariant === "clinical") &&
-        !isCorrect &&
-        btn.dataset.value === String(q.correct || "")
-      ) {
-        btn.classList.add("correct");
       }
     });
 
@@ -5570,7 +6774,19 @@ function restoreSelection(q) {
     }
 
     if (mode === "exam" || mode === "daily" || mode === "smart") {
-      // During exam, just highlight selected option visually (neutral)
+      if (inReview) {
+        btn.disabled = true;
+
+        if (btnValue === q.correct) {
+          btn.classList.add("correct");
+        }
+
+        if (btnValue === saved && saved !== q.correct) {
+          btn.classList.add("wrong");
+        }
+      }
+
+      // During exam, keep the selected option visible without revealing correctness.
       if (btnValue === saved) {
         btn.classList.add("selected-live");
       }
@@ -5669,6 +6885,7 @@ function updateTimerDisplay() {
   timerEl.innerHTML = `<span class="timer-icon">⏱</span> ${formatted}`;
 
   updateTimerColor();
+  renderCompactHeaderMeta();
 }
 
 function updateTimerColor() {
@@ -5684,6 +6901,51 @@ function updateTimerColor() {
   } else {
     timerEl.classList.add("timer-danger");
   }
+}
+
+function getCompactTimerText() {
+  const minutes = Math.floor(examTimeLeft / 60);
+  const seconds = examTimeLeft % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function renderCompactHeaderMeta() {
+  if (!headerInlineMeta) return;
+
+  const compactHeaderMode =
+    mode === "smart" ||
+    (mode === "exam" &&
+      ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal")));
+
+  if (!compactHeaderMode) {
+    headerInlineMeta.innerHTML = "";
+    return;
+  }
+
+  const parts = [];
+  const timerVisible =
+    timerEl &&
+    !timerEl.classList.contains("hidden") &&
+    (mode === "smart" || mode === "exam");
+
+  if (mode === "exam" && examVariant === "sudden") {
+    parts.push(`<span class="header-inline-progress">${calculateScore()}</span>`);
+  } else if (mode === "exam" && examVariant === "clinical") {
+    const correctSoFar = calculateScore();
+    parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
+    parts.push(`<span class="header-inline-progress">${buildClinicalLivesMarkup(clinicalLives, 3)}</span>`);
+    parts.push(`<span class="header-inline-progress">${correctSoFar}</span>`);
+  } else if (mode === "daily") {
+    parts.push(`<span class="header-inline-progress">Daily Quiz</span>`);
+  } else if (mode === "exam" || mode === "smart") {
+    parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
+  }
+
+  if (timerVisible) {
+    parts.push(`<span class="header-inline-timer">${getCompactTimerText()}</span>`);
+  }
+
+  headerInlineMeta.innerHTML = parts.join("");
 }
 
 function clampSuddenReviewToSeenQuestions() {
@@ -6273,12 +7535,27 @@ function openQuestionFromReview(index) {
   showScreen("quiz-area");
 
   current = index;
-  showQuestion();
+  backReviewBtn.onclick = returnToReview;
+  prevBtn.onclick = () => {
+    if (current > 0) {
+      current--;
+      renderDetailedQuestion();
+    }
+  };
+  nextBtn.onclick = () => {
+    if (current < active.length - 1) {
+      current++;
+      renderDetailedQuestion();
+    }
+  };
+  renderDetailedQuestion();
 }
 
 function returnToReview() {
   inReview = false;
   backReviewBtn.classList.add("hidden");
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
   showScreen("review-screen");
   buildReviewPalette();
 }
@@ -6380,6 +7657,20 @@ function renderDetailedQuestion() {
   if (comboBlock) comboBlock.innerHTML = "";
   resetAiExplainPanel();
 
+  if (progressEl && mode !== "study") {
+    progressEl.innerText = "";
+    progressEl.style.color = "";
+  }
+
+  if (liveScore) {
+    liveScore.innerText = "";
+  }
+
+  if (timerEl) {
+    timerEl.classList.add("hidden");
+    timerEl.innerText = "";
+  }
+
   // Question title
   let caseText = "";
 
@@ -6389,7 +7680,7 @@ function renderDetailedQuestion() {
 
   questionEl.innerHTML =
     caseText +
-    `<strong>Question ${current + 1}</strong><br><br>` +
+    `<span class="question-kicker">Question ${current + 1}</span><br><br>` +
     q.question.replace(/^Q\d+\.\s*/, "");
 
   const savedAnswer = userAnswers[q.id];
@@ -6402,6 +7693,10 @@ function renderDetailedQuestion() {
       const btn = document.createElement("button");
       btn.innerText = opt;
       btn.disabled = true;
+
+      if (savedAnswer === opt) {
+        btn.classList.add("selected-live");
+      }
 
       if (opt === q.correct) {
         btn.classList.add("correct");
@@ -6448,6 +7743,10 @@ function renderDetailedQuestion() {
       btn.innerText = option.text;
       btn.disabled = true;
 
+      if (savedAnswer === option.letter) {
+        btn.classList.add("selected-live");
+      }
+
       if (option.letter === q.correct) {
         btn.classList.add("correct");
       }
@@ -6468,6 +7767,10 @@ function renderDetailedQuestion() {
       const btn = document.createElement("button");
       btn.innerText = opt;
       btn.disabled = true;
+
+      if (savedAnswer === opt) {
+        btn.classList.add("selected-live");
+      }
 
       if (opt === q.correct) {
         btn.classList.add("correct");
@@ -6496,7 +7799,7 @@ function showQuestionDetailedMode() {
   applyQuestionCategoryShift(q);
 
   questionEl.innerHTML =
-    `<strong>Question ${current + 1}</strong><br><br>` +
+    `<span class="question-kicker">Question ${current + 1}</span><br><br>` +
     q.question.replace(/^Q\d+\.\s*/, "");
 
   if (q.type === "match" || q.type === "single") {
@@ -6900,6 +8203,7 @@ function showScreen(id) {
   const target = document.getElementById(id);
   if (target) {
     target.classList.add("screen-active");
+    syncViewportBackground(target);
   }
 
   if (id === "daily-setup") {

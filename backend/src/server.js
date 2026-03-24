@@ -459,6 +459,25 @@ function buildDailyQuizResponse(state, dateKey) {
   };
   const nowKey = dateKeyInTimeZone();
   const seasonActive = isDateWithinDailySeason(nowKey);
+  const history = Object.entries(state.days || {})
+    .filter(([, row]) => row && typeof row === "object" && row.submittedAt)
+    .sort(([leftDate], [rightDate]) => rightDate.localeCompare(leftDate))
+    .slice(0, 20)
+    .map(([historyDate, row]) => {
+      const rewards =
+        row.rewards && typeof row.rewards === "object" ? row.rewards : {};
+      return {
+        date: historyDate,
+        score: Number.isFinite(Number(row.score)) ? Number(row.score) : 0,
+        total:
+          Number.isFinite(Number(row.total)) && Number(row.total) > 0
+            ? Number(row.total)
+            : DAILY_QUIZ_SEASON.questionsPerDay,
+        percent: Number.isFinite(Number(row.percent)) ? Number(row.percent) : 0,
+        gems: Number(rewards.total) || 0,
+        submittedAt: String(row.submittedAt || ""),
+      };
+    });
   return {
     ok: true,
     season: {
@@ -481,6 +500,7 @@ function buildDailyQuizResponse(state, dateKey) {
       submittedAt: day.submittedAt || null,
     },
     stats: summary,
+    history,
   };
 }
 

@@ -61,15 +61,21 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260301-iconsource3" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180.png?v=20260301-iconsource3" />
-    <link rel="stylesheet" href="styles.css?v=20260305-fixpack1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=20260324-topictochandle2" />
   </head>
 
   <body>
     <div id="exam-exit-modal" class="modal hidden">
       <div class="modal-card">
-        <div class="modal-title">End Exam?</div>
+        <div id="exam-exit-title" class="modal-title">End Exam?</div>
 
-        <div class="modal-text">
+        <div id="exam-exit-text" class="modal-text">
           Ending now will submit your exam with current answers.
         </div>
 
@@ -121,9 +127,12 @@
     </div>
     <div id="auth-modal" class="modal hidden">
       <div class="modal-card auth-modal-card">
-        <div class="modal-title">Account Required</div>
-        <div class="modal-text">
-          Sign in or create an account to access quiz modules and save progress.
+        <div class="auth-modal-hero">
+          <div class="auth-modal-kicker">Ajix Pharmacy</div>
+          <div class="modal-title auth-modal-title">Account Access</div>
+          <div class="modal-text auth-modal-text">
+            Sign in or create an account to access quiz modules and save progress.
+          </div>
         </div>
 
         <div class="auth-tabs">
@@ -321,92 +330,142 @@
     <div class="quiz-container">
       <!-- ================= HOME SCREEN ================= -->
       <div id="home-screen" class="screen-active">
-        <div class="portal-wrapper">
-          <div class="portal-top">
-            <div class="portal-emblem">
-              <div class="emblem-shield">
-                <div class="emblem-cross"></div>
+        <div class="home-minimal-scroll">
+          <div class="home-minimal-shape"></div>
+          <div class="home-minimal-bg-image" aria-hidden="true"></div>
+
+          <div class="home-minimal-nav">
+            <img
+              class="home-minimal-logo-image"
+              src="images/ajix-logo.png.png"
+              alt="Ajix Pharmacy"
+            />
+          </div>
+
+          <div class="home-minimal-container">
+            <div class="home-minimal-content">
+              <h1 class="home-minimal-title">
+                Practice Pharmacy
+                <br />
+                <span>With Precision.</span>
+              </h1>
+
+              <div class="home-minimal-subtext">
+                Simulated exams. Real clinical thinking.
+              </div>
+
+              <div class="home-minimal-button-row">
+                <button
+                  id="enter-platform-btn"
+                  class="home-minimal-button"
+                  type="button"
+                >
+                  Enter Portal
+                </button>
               </div>
             </div>
-            <div class="portal-authority">PHARMACY EXAMINATION AUTHORITY</div>
           </div>
 
-          <div class="portal-middle">
-            <h1 class="portal-title">
-              Pharmacy Practice &amp; Assessment Portal
-            </h1>
-            <p class="portal-description">
-              A structured evaluation environment built to reflect real
-              examination conditions with accuracy, discipline, and integrity.
-            </p>
-            <div class="portal-contact-line">
-              <span class="contact-email-row">
-                <span class="contact-email-icon" aria-hidden="true">&#9993;</span>
-                <a href="mailto:ajixpharmacy@gmail.com">ajixpharmacy@gmail.com</a>
-              </span>
+          <div class="home-minimal-footer">
+            <div class="home-minimal-footer-title">For Support</div>
+            <a
+              class="home-minimal-footer-line"
+              href="mailto:ajixpharmacy@gmail.com"
+            >
+              <span class="home-minimal-footer-icon" aria-hidden="true">&#9993;</span>
+              <span>ajixpharmacy@gmail.com</span>
+            </a>
+            <div class="home-minimal-footer-line">
+              <a class="home-minimal-footer-link" href="tel:+233595597218">
+                <span class="home-minimal-footer-icon home-minimal-footer-phone-icon" aria-hidden="true">&#9742;</span>
+                <span>+233 595 597 218</span>
+              </a>
+              <a
+                class="home-minimal-footer-whatsapp"
+                href="https://wa.me/233595597218"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Chat on WhatsApp"
+                title="Chat on WhatsApp"
+              >
+                <span class="home-minimal-footer-whatsapp-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path
+                      d="M20.52 3.48A11.86 11.86 0 0 0 12.06 0C5.52 0 .2 5.32.2 11.86c0 2.1.55 4.14 1.59 5.95L0 24l6.39-1.68a11.8 11.8 0 0 0 5.67 1.45h.01c6.54 0 11.86-5.32 11.86-11.86 0-3.17-1.23-6.15-3.41-8.43Zm-8.46 18.3h-.01a9.84 9.84 0 0 1-5.01-1.37l-.36-.21-3.79 1 1.01-3.69-.24-.38a9.84 9.84 0 0 1-1.51-5.27C2.15 6.4 6.6 1.95 12.06 1.95c2.63 0 5.11 1.03 6.97 2.88a9.8 9.8 0 0 1 2.89 6.98c0 5.45-4.44 9.97-9.86 9.97Zm5.41-7.45c-.3-.15-1.77-.87-2.05-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.21 5.1 4.5.71.31 1.27.49 1.7.63.72.23 1.37.2 1.89.12.58-.09 1.77-.72 2.02-1.41.25-.69.25-1.28.17-1.4-.08-.12-.28-.2-.58-.35Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </span>
+              </a>
+            </div>
+            <div class="home-minimal-copyright">
+              &copy; 2026 Ajix Pharmacy. All rights reserved.
             </div>
           </div>
-
-          <div class="portal-bottom">
-            <button id="enter-platform-btn" class="portal-button">
-              ENTER PORTAL
-            </button>
-          </div>
         </div>
-        <div class="portal-signature">AJIX</div>
       </div>
 
       <!-- ================= QUIZ MENU ================= -->
       <div id="quiz-menu">
-        <!-- ===== FIXED HEADER AREA ===== -->
-        <div class="menu-fixed-header">
-          <div class="exam-identity-bar">
-            Best Pharmacy Examination Simulation Portal
-          </div>
+        <div class="menu-fixed-header menu-dashboard-header">
+          <div class="menu-dashboard-topbar">
+            <button
+              id="back-home-btn"
+              class="menu-dashboard-brand"
+              type="button"
+              aria-label="Back to home"
+              title="Home"
+            >
+              <span class="menu-dashboard-brand-stack">
+                <img
+                  class="menu-dashboard-logo-image"
+                  src="images/ajix-logo.png.png"
+                  alt="Ajix Pharmacy"
+                />
+              </span>
+            </button>
 
-          <div class="menu-header">
-            <div class="menu-header-left">
-              <h2 class="menu-title">QUIZ CONTROL PANEL</h2>
-              <div class="menu-subtitle">Select a module to begin</div>
-            </div>
-            <div class="menu-header-actions">
+            <div class="menu-dashboard-actions">
               <button
-                id="back-home-btn"
-                class="portal-button menu-portal-btn"
+                id="quiz-profile-btn"
+                class="menu-profile-btn menu-dashboard-icon-btn hidden"
                 type="button"
-                aria-label="Back to home"
-                title="Home"
+                aria-label="Open profile"
+                title="Profile"
               >
-                &#8962;
+                <span class="menu-profile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="8" r="4"></circle>
+                    <path d="M4 20a8 8 0 0 1 16 0"></path>
+                  </svg>
+                </span>
               </button>
+
               <button
                 id="menu-user-hub-btn"
-                class="menu-user-hub-btn hidden"
+                class="menu-user-hub-btn menu-dashboard-icon-btn hidden"
                 type="button"
                 aria-label="Open user dashboard"
                 aria-expanded="false"
                 title="User dashboard"
               >
-                &#9776;
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="6.5" cy="6.5" r="1.5"></circle>
+                    <circle cx="17.5" cy="6.5" r="1.5"></circle>
+                    <circle cx="6.5" cy="17.5" r="1.5"></circle>
+                    <circle cx="17.5" cy="17.5" r="1.5"></circle>
+                  </svg>
+                </span>
               </button>
             </div>
+
             <div id="menu-user-hub-panel" class="menu-user-hub-panel hidden">
               <div class="menu-user-hub-head">
-                <button
-                  id="quiz-profile-btn"
-                  class="menu-profile-btn hidden"
-                  type="button"
-                  aria-label="Open profile"
-                  title="Profile"
-                >
-                  <span class="menu-profile-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <circle cx="12" cy="8" r="4"></circle>
-                      <path d="M4 20a8 8 0 0 1 16 0"></path>
-                    </svg>
-                  </span>
-                </button>
-                <div id="quiz-auth-user" class="menu-auth-user hidden"></div>
+                <div class="menu-user-hub-title-wrap">
+                  <div class="menu-user-hub-title">Account</div>
+                  <div id="quiz-auth-user" class="menu-auth-user hidden"></div>
+                </div>
                 <button
                   id="menu-user-hub-close-btn"
                   class="menu-user-hub-close-btn"
@@ -418,285 +477,404 @@
               </div>
               <div class="menu-user-hub-actions">
                 <button id="menu-tour-btn" class="menu-hub-link-btn" type="button">
-                  &#129517; Tour / Help
+                  <span class="menu-hub-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9"></circle>
+                      <path d="M12 16v.01"></path>
+                      <path d="M9.4 9.2a2.8 2.8 0 1 1 4.7 2.1c-.9.7-1.4 1.2-1.4 2.2"></path>
+                    </svg>
+                  </span>
+                  <span class="menu-hub-link-copy">
+                    <span class="menu-hub-link-title">Help</span>
+                    <span class="menu-hub-link-text">Tour and guidance</span>
+                  </span>
                 </button>
                 <button id="menu-settings-btn" class="menu-hub-link-btn" type="button">
-                  &#9881; Settings
+                  <span class="menu-hub-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="3.2"></circle>
+                      <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.5 1.5 0 0 1-2.1 2.1l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V19a1.5 1.5 0 0 1-3 0v-.1a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1.5 1.5 0 0 1-2.1-2.1l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H5a1.5 1.5 0 0 1 0-3h.1a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1.5 1.5 0 1 1 2.1-2.1l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V5a1.5 1.5 0 0 1 3 0v.1a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.5 1.5 0 1 1 2.1 2.1l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H19a1.5 1.5 0 0 1 0 3h-.1a1 1 0 0 0-.9.6z"></path>
+                    </svg>
+                  </span>
+                  <span class="menu-hub-link-copy">
+                    <span class="menu-hub-link-title">Settings</span>
+                    <span class="menu-hub-link-text">Display and device</span>
+                  </span>
                 </button>
                 <button id="quiz-logout-btn" class="menu-logout-btn hidden" type="button">
-                  Logout
+                  <span class="menu-hub-link-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <path d="M16 17l5-5-5-5"></path>
+                      <path d="M21 12H9"></path>
+                    </svg>
+                  </span>
+                  <span class="menu-hub-link-copy">
+                    <span class="menu-hub-link-title">Logout</span>
+                    <span class="menu-hub-link-text">Sign out of this account</span>
+                  </span>
                 </button>
+                <div id="menu-logout-confirm" class="menu-logout-confirm hidden" role="group" aria-label="Confirm logout">
+                  <span class="menu-logout-confirm-text">Confirm logout?</span>
+                  <div class="menu-logout-confirm-actions">
+                    <button id="menu-logout-confirm-btn" class="menu-logout-confirm-btn is-danger" type="button">
+                      Confirm
+                    </button>
+                    <button id="menu-logout-cancel-btn" class="menu-logout-confirm-btn" type="button">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        <!-- ===== END FIXED HEADER AREA ===== -->
 
-        <!-- ===== SCROLLABLE CONTENT ===== -->
-        <div class="menu-scroll-content">
-          <div class="menu-grid-single">
-            <div class="menu-card">
-              <h3 class="menu-section-title">Practice Modes</h3>
-
-              <div
-                class="menu-tile study-mode mode-btn"
-                data-tooltip="Practice with explanations, streak tracking, and mastery focus."
-              >
-                <div class="tile-content">
-                  <div class="tile-title">
-                    <span class="tile-icon" aria-hidden="true">&#128218;</span>
-                    <span>Study Mode</span>
-                  </div>
+        <div class="menu-scroll-content menu-dashboard-scroll">
+          <div class="menu-dashboard-shell">
+            <div class="menu-dashboard-layout">
+              <section class="menu-dashboard-primary">
+                <div class="menu-dashboard-section-head">
+                  <h2 class="menu-dashboard-section-heading">Modules</h2>
                 </div>
-                <div class="tile-arrow">&rarr;</div>
-              </div>
 
-              <div
-                class="menu-tile exam-mode mode-btn"
-                data-tooltip="Timed exam simulation with scoring and adaptive flow."
-              >
-                <div class="tile-content">
-                  <div class="tile-title">
-                    <span class="tile-icon" aria-hidden="true">&#128221;</span>
-                    <span>Exam Mode</span>
-                  </div>
-                </div>
-                <div class="tile-arrow">&rarr;</div>
-              </div>
-
-              <div class="drill-orbit-wrap" aria-label="Special drills">
-                <div class="drill-orbit-title">Drill Arena</div>
-                <div class="drill-orbit-subtitle">Quick, focused challenge modes</div>
-                <div class="drill-orbit">
+                <div class="menu-dashboard-primary-stack">
                   <button
-                    id="rapid-drill-btn"
                     type="button"
-                    class="drill-orb drill-rapid"
-                    title="Rapid Fire: 60 seconds, 5 questions"
-                    aria-label="Start Rapid Fire drill"
+                    class="menu-dashboard-card menu-dashboard-card-primary study-mode mode-btn"
                   >
-                    <span class="drill-orb-icon" aria-hidden="true">&#9889;</span>
-                    <span class="drill-orb-text">Rapid</span>
+                    <span class="menu-dashboard-card-icon is-practice" aria-hidden="true">
+                      <svg class="menu-icon-art" viewBox="0 0 48 48">
+                        <path d="M13 14.5h20a2.5 2.5 0 0 1 2.5 2.5v17.5a1.5 1.5 0 0 1-2.2 1.3L23 30.6l-10.3 5.2a1.5 1.5 0 0 1-2.2-1.3V17a2.5 2.5 0 0 1 2.5-2.5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"></path>
+                        <path d="M17 20h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                        <path d="M17 25h9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                      </svg>
+                    </span>
+                    <span class="menu-dashboard-card-copy">
+                      <span class="menu-dashboard-card-title">Practice Mode</span>
+                      <span class="menu-dashboard-card-text">Study at your pace</span>
+                    </span>
+                    <span class="menu-dashboard-card-arrow" aria-hidden="true">&rarr;</span>
                   </button>
+
                   <button
-                    id="sudden-drill-btn"
                     type="button"
-                    class="drill-orb drill-sudden"
-                    title="Sudden Death: one wrong answer ends the run"
-                    aria-label="Start Sudden Death drill"
+                    class="menu-dashboard-card menu-dashboard-card-primary exam-mode mode-btn"
                   >
-                    <span class="drill-orb-icon" aria-hidden="true">&#128165;</span>
-                    <span class="drill-orb-text">Sudden</span>
+                    <span class="menu-dashboard-card-icon is-exam" aria-hidden="true">
+                      <svg class="menu-icon-art" viewBox="0 0 48 48">
+                        <rect x="12" y="9.5" width="20" height="29" rx="3.5" fill="none" stroke="currentColor" stroke-width="2.2"></rect>
+                        <path d="M18 9.5h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                        <path d="M18 19h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                        <path d="M18 25h8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                        <path d="m18 31 2.6 2.6 8.4-8.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                      </svg>
+                    </span>
+                    <span class="menu-dashboard-card-copy">
+                      <span class="menu-dashboard-card-title">Exam Mode</span>
+                      <span class="menu-dashboard-card-text">Timed assessment</span>
+                    </span>
+                    <span class="menu-dashboard-card-arrow" aria-hidden="true">&rarr;</span>
                   </button>
+
                   <button
-                    id="clinical-drill-btn"
+                    id="daily-quiz-btn"
                     type="button"
-                    class="drill-orb drill-clinical"
-                    title="Clinical Judgement: harder question set"
-                    aria-label="Start Clinical Judgement drill"
+                    class="menu-dashboard-card menu-dashboard-card-primary daily-quiz-mode mode-btn"
                   >
-                    <span class="drill-orb-icon" aria-hidden="true">&#129504;</span>
-                    <span class="drill-orb-text">Clinical</span>
+                    <span class="menu-dashboard-card-icon is-daily" aria-hidden="true">
+                      <svg class="menu-icon-art" viewBox="0 0 48 48">
+                        <circle cx="24" cy="24" r="12.5" fill="none" stroke="currentColor" stroke-width="2.2"></circle>
+                        <path d="M24 16v8l5 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M18.5 9.5 15 13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                        <path d="M29.5 9.5 33 13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                      </svg>
+                    </span>
+                    <span class="menu-dashboard-card-copy">
+                      <span class="menu-dashboard-card-title">Daily Quiz</span>
+                      <span id="daily-quiz-meta" class="menu-dashboard-card-text">
+                        Loading today's challenge...
+                      </span>
+                    </span>
+                    <span class="menu-dashboard-card-arrow" aria-hidden="true">&rarr;</span>
                   </button>
                 </div>
-              </div>
+              </section>
 
-              <button
-                id="daily-quiz-btn"
-                type="button"
-                class="menu-tile daily-quiz-mode mode-btn"
-                data-tooltip="10 random questions daily. Earn gems, keep streaks, and sharpen exam readiness."
-              >
-                <div class="tile-content">
-                  <div class="tile-title">
-                    <span class="tile-icon" aria-hidden="true">&#127919;</span>
-                    <span>Daily Quiz</span>
+              <aside class="menu-dashboard-sidebar">
+                <section class="menu-dashboard-panel">
+                  <div class="menu-dashboard-section-head">
+                    <h2 class="menu-dashboard-section-heading">Quick Drills</h2>
                   </div>
-                  <div id="daily-quiz-meta" class="daily-quiz-meta">
-                    Loading today's challenge...
+                  <div class="menu-dashboard-drills" aria-label="Special drills">
+                    <button id="rapid-drill-btn" type="button" class="menu-drill-pill">
+                      Rapid
+                    </button>
+                    <button id="sudden-drill-btn" type="button" class="menu-drill-pill">
+                      Sudden
+                    </button>
+                    <button id="clinical-drill-btn" type="button" class="menu-drill-pill">
+                      Clinical
+                    </button>
                   </div>
-                </div>
-                <div class="tile-arrow">&rarr;</div>
-              </button>
+                </section>
 
-              <div class="menu-divider"></div>
-
-              <h3 class="menu-section-title analytics-heading">Analytics</h3>
-
-              <div
-                class="menu-tile dashboard-mode analytics-btn"
-                data-tooltip="View performance trends, category accuracy, and insights."
-              >
-                <div class="tile-content">
-                  <div class="tile-title">
-                    <span class="tile-icon" aria-hidden="true">&#128202;</span>
-                    <span>Performance Dashboard</span>
+                <section class="menu-dashboard-panel">
+                  <div class="menu-dashboard-section-head">
+                    <h2 class="menu-dashboard-section-heading">Tools</h2>
                   </div>
-                </div>
-                <div class="tile-arrow">&rarr;</div>
-              </div>
-              <button
-                id="open-topic-library-btn"
-                type="button"
-                class="menu-tile topic-library-btn analytics-btn"
-                data-tooltip="Open structured study notes by category and topic."
-              >
-                <div class="tile-content">
-                  <div class="tile-title">
-                    <span class="tile-icon" aria-hidden="true">&#128193;</span>
-                    <span>Topic Library</span>
+                  <div class="menu-dashboard-secondary-stack">
+                    <button
+                      type="button"
+                      class="menu-dashboard-card menu-dashboard-card-secondary dashboard-mode analytics-btn"
+                    >
+                      <span class="menu-dashboard-card-icon is-dashboard" aria-hidden="true">
+                        <svg class="menu-icon-art" viewBox="0 0 48 48">
+                          <path d="M11 36.5h26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                          <path d="M16 31V21" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                          <path d="M24 31V15" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                          <path d="M32 31V11" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                        </svg>
+                      </span>
+                      <span class="menu-dashboard-card-copy">
+                        <span class="menu-dashboard-card-title">Performance Dashboard</span>
+                        <span class="menu-dashboard-card-text">Results and trends</span>
+                      </span>
+                      <span class="menu-dashboard-card-arrow" aria-hidden="true">&rarr;</span>
+                    </button>
+
+                    <button
+                      id="open-topic-library-btn"
+                      type="button"
+                      class="menu-dashboard-card menu-dashboard-card-secondary topic-library-btn analytics-btn"
+                    >
+                      <span class="menu-dashboard-card-icon is-library" aria-hidden="true">
+                        <svg class="menu-icon-art" viewBox="0 0 48 48">
+                          <path d="M8.5 17a3.5 3.5 0 0 1 3.5-3.5h8.5l3 3.5H36a3.5 3.5 0 0 1 3.5 3.5v13A3.5 3.5 0 0 1 36 37H12a3.5 3.5 0 0 1-3.5-3.5Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"></path>
+                          <path d="M8.5 20h31" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"></path>
+                        </svg>
+                      </span>
+                      <span class="menu-dashboard-card-copy">
+                        <span class="menu-dashboard-card-title">Topic Library</span>
+                        <span class="menu-dashboard-card-text">Browse subjects</span>
+                      </span>
+                      <span class="menu-dashboard-card-arrow" aria-hidden="true">&rarr;</span>
+                    </button>
                   </div>
-                </div>
-                <div class="tile-arrow">&rarr;</div>
-              </button>
-              <div class="menu-contact-card">
-                <span class="menu-contact-row">
-                  <span class="menu-contact-icon" aria-hidden="true">&#9993;</span>
-                  <a href="mailto:ajixpharmacy@gmail.com">ajixpharmacy@gmail.com</a>
-                </span>
-              </div>
+                </section>
+              </aside>
             </div>
           </div>
         </div>
       </div>
       <div id="study-setup" class="setup-page">
         <div class="study-fixed-header">
-          <!-- Identity Bar -->
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
-
-          <!-- Main Header Row -->
-          <div class="study-main-header">
-            <h2 class="setup-page-title">&#128218; Study Mode</h2>
-            <button id="study-back-btn" class="study-menu-btn">&#9776; Menu</button>
+          <div class="study-reference-topbar">
+            <img
+              class="study-reference-logo-image"
+              src="images/ajix-logo.png.png"
+              alt="Ajix Pharmacy"
+            />
+            <button id="study-back-btn" class="study-reference-menu-btn" type="button" aria-label="Menu">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 7h16"></path>
+                <path d="M4 12h16"></path>
+                <path d="M4 17h16"></path>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div class="study-scroll-content">
-          <div class="streak-badge-wrapper">
-            <div id="study-best-streak" class="streak-badge tier-basic">
-              <span class="streak-text">Best Streak</span>
-              <span id="study-badge-number" class="streak-number">0</span>
-            </div>
-          </div>
-          <div class="setup-card">
-            <div class="study-control-block">
-              <label>Study Type</label>
-              <select id="study-type-select" class="setup-select">
-                <option value="normal">Normal Study</option>
-                <option value="weak">Practice Weak Areas</option>
-              </select>
+        <div class="study-scroll-content study-reference-scroll">
+          <div class="study-reference-shell">
+            <section class="study-reference-hero">
+              <div class="study-reference-hero-copy">
+                <h2 class="study-reference-title">Study Mode</h2>
+                <p class="study-reference-subtitle">Start a new practice session</p>
+              </div>
+            </section>
+
+            <div class="study-reference-streak-row">
+              <div id="study-best-streak" class="study-reference-streak streak-badge tier-basic">
+                <span class="study-reference-streak-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M8 4h8"></path>
+                    <path d="M10 4v4l-4 7a4 4 0 0 0 3.5 6h5a4 4 0 0 0 3.5-6l-4-7V4"></path>
+                    <path d="M8 17h8"></path>
+                  </svg>
+                </span>
+                <span class="streak-text">Best Streak:</span>
+                <span id="study-badge-number" class="streak-number">0</span>
+              </div>
             </div>
 
-            <div class="study-control-row">
-              <div class="study-control-block">
-                <label>Category</label>
-                <select id="study-category-select" class="setup-select">
+            <section class="study-reference-card">
+              <label class="study-reference-field">
+                <span class="study-reference-label">Study Type</span>
+                <select id="study-type-select" class="setup-select study-reference-select">
+                  <option value="normal">Normal Study</option>
+                  <option value="weak">Practice Weak Areas</option>
+                </select>
+              </label>
+
+              <label class="study-reference-field">
+                <span class="study-reference-label">Category</span>
+                <select id="study-category-select" class="setup-select study-reference-select">
                   <option value="all">All Categories</option>
                 </select>
-              </div>
+              </label>
 
-              <div class="study-control-block">
-                <label>Start From</label>
+              <label class="study-reference-field">
+                <span class="study-reference-label">Start From</span>
                 <input
                   type="number"
                   id="study-start-number"
-                  class="setup-input"
+                  class="setup-input study-reference-input"
                   placeholder="#"
                   min="1"
                 />
-              </div>
-            </div>
+              </label>
 
-            <div class="start-btn-wrapper">
-              <button id="start-study-btn" class="start-btn">
+              <button id="start-study-btn" class="study-reference-start-btn">
                 Start Session
               </button>
-            </div>
-          </div>
+            </section>
 
-          <div class="study-footer">
-            <div class="history-dropdown">
-              <div class="history-toggle" id="study-history-toggle">
-                Study History &#9660;
-              </div>
+            <section class="study-reference-history-block">
+              <button class="study-reference-history-pill history-toggle" id="study-history-toggle" type="button">
+                <span class="study-reference-history-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M12 7v5l3 2"></path>
+                  </svg>
+                </span>
+                <span>View Study History</span>
+                <span class="study-reference-history-arrow" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m9 6 6 6-6 6"></path>
+                  </svg>
+                </span>
+              </button>
               <div id="study-history" class="history-content hidden"></div>
-            </div>
+            </section>
           </div>
         </div>
       </div>
 
       <div id="exam-setup" class="setup-page">
         <div class="study-fixed-header">
-          <!-- Identity Bar -->
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+          <div class="study-reference-topbar">
+            <img
+              class="study-reference-logo-image"
+              src="images/ajix-logo.png.png"
+              alt="AJIX Pharmacy"
+            />
 
-          <!-- Main Header Row -->
-          <div class="study-main-header exam-header-layout">
-            <h2 class="setup-page-title">&#128221; Exam Mode</h2>
-
-            <button id="exam-back-btn" class="study-menu-btn">&#9776; Menu</button>
+            <button id="exam-back-btn" class="study-reference-menu-btn" type="button" aria-label="Menu">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 7h14"></path>
+                <path d="M5 12h14"></path>
+                <path d="M5 17h14"></path>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div class="study-scroll-content">
-          <div class="setup-card">
-            <h3>Select Exam Type</h3>
-
-            <select id="exam-type-select" class="setup-select">
-              <option value="normal">Normal Exam</option>
-              <option value="smart">Smart Exam (Adaptive)</option>
-            </select>
-
-            <h3>Select Category</h3>
-
-            <select id="category-select" class="setup-select">
-              <option value="">All Categories</option>
-            </select>
-
-            <h3 style="margin-top: 25px">Select Number of Questions</h3>
-
-            <div class="exam-control-row">
-              <select id="exam-count-select" class="setup-select">
-                <option value="">-- Select Count --</option>
-                <option value="30">30 Questions</option>
-                <option value="50">50 Questions</option>
-                <option value="100">100 Questions</option>
-                <option value="all">Full Exam</option>
-              </select>
-
-              <button id="start-exam-btn" class="start-btn">Start Exam</button>
-            </div>
-          </div>
-
-          <div class="study-footer">
-            <div class="history-dropdown">
-              <div class="history-toggle" id="exam-history-toggle">
-                Exam History &#9660;
+        <div class="study-scroll-content study-reference-scroll">
+          <div class="study-reference-shell exam-reference-shell">
+            <section class="study-reference-hero exam-reference-hero">
+              <div class="study-reference-hero-copy">
+                <h2 class="study-reference-title">Exam Mode</h2>
+                <p class="study-reference-subtitle">Start a timed assessment session</p>
               </div>
+            </section>
+
+            <section class="study-reference-card exam-reference-card">
+              <label class="study-reference-field">
+                <span class="study-reference-label">Exam Type</span>
+                <select id="exam-type-select" class="setup-select study-reference-select">
+                  <option value="normal">Normal Exam</option>
+                  <option value="smart">Smart Exam (Adaptive)</option>
+                </select>
+              </label>
+
+              <label class="study-reference-field">
+                <span class="study-reference-label">Category</span>
+                <select id="category-select" class="setup-select study-reference-select">
+                  <option value="">All Categories</option>
+                </select>
+              </label>
+
+              <label class="study-reference-field">
+                <span class="study-reference-label">Question Count</span>
+                <select id="exam-count-select" class="setup-select study-reference-select">
+                  <option value="">Select count</option>
+                  <option value="30">30 Questions</option>
+                  <option value="50">50 Questions</option>
+                  <option value="100">100 Questions</option>
+                  <option value="all">Full Exam</option>
+                </select>
+              </label>
+
+              <button id="start-exam-btn" class="study-reference-start-btn">Start Exam</button>
+            </section>
+
+            <section class="study-reference-history-block exam-reference-history-block">
+              <button class="study-reference-history-pill history-toggle" id="exam-history-toggle" type="button">
+                <span class="study-reference-history-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 8v5l3 2"></path>
+                    <path d="M20 12a8 8 0 1 1-2.34-5.66"></path>
+                    <path d="M20 4v6h-6"></path>
+                  </svg>
+                </span>
+                <span>View Exam History</span>
+                <span class="study-reference-history-arrow" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M9 6l6 6-6 6"></path>
+                  </svg>
+                </span>
+              </button>
               <div id="exam-history" class="history-content hidden"></div>
-            </div>
+            </section>
           </div>
         </div>
       </div>
 
       <div id="daily-setup" class="setup-page">
         <div class="study-fixed-header">
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
-          <div class="study-main-header exam-header-layout">
-            <h2 class="setup-page-title">&#127919; Daily Quiz Challenge</h2>
-            <button id="daily-back-btn" class="study-menu-btn">&#9776; Menu</button>
+          <div class="study-reference-topbar">
+            <img
+              class="study-reference-logo-image"
+              src="images/ajix-logo.png.png"
+              alt="AJIX Pharmacy"
+            />
+            <button id="daily-back-btn" class="study-reference-menu-btn" type="button" aria-label="Menu">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 7h14"></path>
+                <path d="M5 12h14"></path>
+                <path d="M5 17h14"></path>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div class="study-scroll-content">
-          <div class="setup-card daily-setup-card">
+        <div class="study-scroll-content study-reference-scroll">
+          <div class="study-reference-shell daily-reference-shell">
+            <section class="study-reference-hero daily-reference-hero">
+              <div class="study-reference-hero-copy">
+                <h2 class="study-reference-title">Daily Quiz Challenge</h2>
+              </div>
+            </section>
+
+            <section class="study-reference-card daily-reference-card">
             <div id="daily-quiz-alert" class="daily-quiz-alert hidden">
-              Today's challenge is ready. Complete it before midnight to keep your streak.
+              Challenge ready. Finish today to keep your streak.
             </div>
             <div id="daily-window-line" class="daily-window-line"></div>
             <div id="daily-status-line" class="daily-status-line">Checking status...</div>
 
-            <div class="daily-metrics-grid">
+            <div class="daily-metrics-grid daily-reference-metrics">
               <div class="daily-metric daily-metric-streak">
                 <div class="daily-metric-label">Streak</div>
                 <div id="daily-streak-value" class="daily-metric-value">0</div>
@@ -706,7 +884,7 @@
                 <div id="daily-gems-value" class="daily-metric-value">0</div>
               </div>
               <div class="daily-metric daily-metric-completed">
-                <div class="daily-metric-label">Completed Days</div>
+                <div class="daily-metric-label">Completed</div>
                 <div id="daily-completed-value" class="daily-metric-value">0</div>
               </div>
             </div>
@@ -719,259 +897,393 @@
             <div id="daily-reward-line" class="daily-reward-line"></div>
             <div id="daily-result-line" class="daily-result-line hidden"></div>
 
-            <div class="daily-actions">
-              <button id="start-daily-btn" type="button" class="start-btn">
-                Start Today's 10 Questions
-              </button>
-              <button id="refresh-daily-btn" type="button" class="study-menu-btn">
-                Refresh
-              </button>
-            </div>
+              <div class="daily-actions daily-reference-actions">
+                <button id="start-daily-btn" type="button" class="study-reference-start-btn daily-reference-start-btn">
+                  Start
+                </button>
+                <button id="refresh-daily-btn" type="button" class="daily-reference-refresh-btn">
+                  History
+                </button>
+              </div>
+              <div id="daily-history-panel" class="daily-history-panel hidden"></div>
+            </section>
           </div>
         </div>
       </div>
 
       <div id="topic-library" class="setup-page">
-        <div class="study-fixed-header">
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
-          <div class="study-main-header exam-header-layout">
-            <h2 class="setup-page-title">&#128193; Topic Library</h2>
-            <div class="topic-screen-actions">
-              <button id="topic-library-back-btn" class="study-menu-btn">
-                &#8592; Back
-              </button>
-            </div>
+        <div class="study-fixed-header topic-library-fixed-header">
+          <div class="topic-library-topbar">
+            <img
+              class="topic-library-logo-image"
+              src="images/ajix-logo.png.png"
+              alt="Ajix Pharmacy"
+            />
+            <button id="topic-library-back-btn" class="topic-library-back-btn" type="button" aria-label="Back">
+              <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div class="study-scroll-content">
-          <div class="setup-card topic-library-card">
-            <div class="topic-library-controls">
-              <div class="study-control-block">
-                <label for="topic-library-category">Category</label>
-                <select id="topic-library-category" class="setup-select">
-                  <option value="all">All Categories</option>
-                </select>
+        <div class="study-scroll-content topic-library-scroll">
+          <div class="topic-library-shell">
+            <section class="topic-library-hero">
+              <div class="topic-library-intro-copy">
+                <h2 class="topic-library-page-title">Topic Library</h2>
+                <p class="topic-library-intro-text">Browse focused clinical study notes.</p>
+                <div id="topic-library-count" class="topic-library-count"></div>
               </div>
-              <div class="study-control-block">
-                <label for="topic-library-search">Search Topic</label>
-                <input
-                  id="topic-library-search"
-                  type="search"
-                  class="setup-input"
-                  placeholder="Type a topic name (e.g., hypertension)"
-                />
+              <div class="topic-library-hero-visual" aria-hidden="true">
+                <svg viewBox="0 0 320 180">
+                  <defs>
+                    <linearGradient id="topicHeroBlue" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#8db8e8" />
+                      <stop offset="100%" stop-color="#dceafb" />
+                    </linearGradient>
+                  </defs>
+                  <ellipse cx="212" cy="92" rx="104" ry="62" fill="#edf4fc" />
+                  <circle cx="248" cy="42" r="18" fill="#95c8f4" opacity="0.7" />
+                  <circle cx="278" cy="66" r="8" fill="#cfe4fa" />
+                  <circle cx="102" cy="36" r="6" fill="#b5d6f8" />
+                  <path d="M176 138c0-13 11-24 24-24 8 0 15 3 20 9 5-6 12-9 20-9 13 0 24 11 24 24 0 19-15 31-44 53-28-22-44-34-44-53z" fill="#d9576f" opacity="0.88" />
+                  <rect x="122" y="58" width="72" height="86" rx="16" fill="url(#topicHeroBlue)" />
+                  <rect x="136" y="70" width="44" height="8" rx="4" fill="#ffffff" opacity="0.85" />
+                  <rect x="136" y="86" width="34" height="8" rx="4" fill="#ffffff" opacity="0.75" />
+                  <rect x="136" y="102" width="39" height="8" rx="4" fill="#ffffff" opacity="0.65" />
+                  <path d="M74 150c12-28 31-44 58-48" stroke="#9dcbf2" stroke-width="10" stroke-linecap="round" opacity="0.7" />
+                  <path d="M230 150c14-26 34-40 62-44" stroke="#9dcbf2" stroke-width="10" stroke-linecap="round" opacity="0.7" />
+                  <path d="M228 40c18 0 33 15 33 33" stroke="#72a8de" stroke-width="6" stroke-linecap="round" opacity="0.85" />
+                  <path d="M268 86h28" stroke="#8ab8e7" stroke-width="6" stroke-linecap="round" opacity="0.85" />
+                  <path d="M282 72v28" stroke="#8ab8e7" stroke-width="6" stroke-linecap="round" opacity="0.85" />
+                </svg>
               </div>
-            </div>
-            <div id="topic-library-count" class="topic-library-count"></div>
-            <div id="topic-library-list" class="topic-library-list"></div>
-            <div id="topic-library-empty" class="no-data hidden">
-              No topics found for this filter.
-            </div>
+            </section>
+
+            <section class="topic-library-surface">
+              <div class="topic-library-search-row">
+                <label class="topic-library-search-shell">
+                  <span class="topic-library-search-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="11" cy="11" r="5.5"></circle>
+                      <path d="M16 16 20 20"></path>
+                    </svg>
+                  </span>
+                  <input
+                    id="topic-library-search"
+                    type="search"
+                    class="setup-input topic-library-input topic-library-search-input"
+                    placeholder="Search topics..."
+                  />
+                </label>
+                <button
+                  id="topic-library-category-toggle"
+                  class="topic-library-tool-btn topic-library-filter-btn"
+                  type="button"
+                  aria-label="Show category filter"
+                  aria-pressed="false"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16"></path>
+                    <path d="M7 12h10"></path>
+                    <path d="M10 17h4"></path>
+                  </svg>
+                </button>
+                <div id="topic-library-controls" class="topic-library-controls hidden">
+                  <label id="topic-library-category-field" class="topic-library-field hidden">
+                    <span class="topic-library-field-label">Category</span>
+                    <select id="topic-library-category" class="setup-select topic-library-select">
+                      <option value="all">All Categories</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div class="topic-library-list-wrap">
+                <div id="topic-library-list" class="topic-library-list"></div>
+                <div id="topic-library-empty" class="no-data hidden">
+                  No topics found for this filter.
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>
-      <div id="profile-screen" class="setup-page">
-        <div class="study-fixed-header">
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
-          <div class="study-main-header exam-header-layout">
-            <h2 class="setup-page-title">&#128100; User Profile</h2>
-            <button id="profile-back-btn" class="study-menu-btn">&#8592; Back</button>
-          </div>
-        </div>
+      <div id="profile-screen" class="setup-page profile-page">
         <div class="study-scroll-content">
-          <div class="setup-card profile-card">
-            <div class="profile-avatar-row">
-              <img id="profile-avatar-preview" alt="Profile picture" class="profile-avatar" />
-              <div class="profile-avatar-controls">
-                <div class="profile-photo-actions">
-                  <button
-                    id="profile-photo-camera-btn"
-                    type="button"
-                    class="modal-btn secondary"
-                  >
-                    Take Camera Photo
-                  </button>
-                  <button
-                    id="profile-photo-gallery-btn"
-                    type="button"
-                    class="modal-btn secondary"
-                  >
-                    Select from Files
-                  </button>
-                  <button
-                    id="profile-photo-delete-btn"
-                    type="button"
-                    class="modal-btn secondary hidden"
-                  >
-                    Delete Profile Picture
-                  </button>
-                  <input
-                    id="profile-photo-file-camera"
-                    class="hidden"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                  />
-                  <input
-                    id="profile-photo-file-gallery"
-                    class="hidden"
-                    type="file"
-                    accept="image/*"
-                  />
+          <div class="profile-shell">
+            <div class="profile-page-header">
+              <button id="profile-save-btn" type="button" class="modal-btn primary profile-save-btn">Save</button>
+              <div class="profile-page-heading">
+                <h2 class="profile-page-title">Profile</h2>
+                <p class="profile-page-copy">
+                  Manage your personal details, study identity, and security settings.
+                </p>
+              </div>
+              <button
+                id="profile-back-btn"
+                class="study-menu-btn profile-back-btn"
+                type="button"
+                aria-label="Back to menu"
+                title="Back to menu"
+              >
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div class="profile-layout">
+              <div class="profile-panel profile-overview-panel">
+                <div class="profile-avatar-row">
+                  <img id="profile-avatar-preview" alt="Profile picture" class="profile-avatar" />
+                  <div class="profile-avatar-controls">
+                    <div class="profile-overview-copy">
+                      <h3 class="profile-section-title">Profile image</h3>
+                      <p class="profile-section-copy">
+                        Add a clear profile image and keep your account details current.
+                      </p>
+                    </div>
+                    <div class="profile-photo-actions">
+                      <button
+                        id="profile-photo-camera-btn"
+                        type="button"
+                        class="modal-btn secondary"
+                      >
+                        Take Photo
+                      </button>
+                      <button
+                        id="profile-photo-gallery-btn"
+                        type="button"
+                        class="modal-btn secondary"
+                      >
+                        Upload
+                      </button>
+                      <button
+                        id="profile-photo-delete-btn"
+                        type="button"
+                        class="modal-btn secondary hidden"
+                      >
+                        Remove
+                      </button>
+                      <input
+                        id="profile-photo-file-camera"
+                        class="hidden"
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                      />
+                      <input
+                        id="profile-photo-file-gallery"
+                        class="hidden"
+                        type="file"
+                        accept="image/*"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <label class="auth-field">
-                  <span>Or Image URL (optional)</span>
-                  <input id="profile-photo-url" type="url" placeholder="https://..." />
-                </label>
               </div>
-            </div>
 
-            <div class="profile-grid">
-              <label class="auth-field">
-                <span>Title</span>
-                <select id="profile-title">
-                  <option value="">Select title</option>
-                  <option value="Mr">Mr</option>
-                  <option value="Mrs">Mrs</option>
-                  <option value="Ms">Ms</option>
-                  <option value="Dr">Dr</option>
-                  <option value="Pharm">Pharm</option>
-                </select>
-              </label>
-              <label class="auth-field">
-                <span>First Name</span>
-                <input id="profile-first-name" type="text" />
-              </label>
-              <label class="auth-field">
-                <span>Surname</span>
-                <input id="profile-last-name" type="text" />
-              </label>
-              <label class="auth-field">
-                <span>Username</span>
-                <input id="profile-username" type="text" />
-              </label>
-              <label class="auth-field">
-                <span>Contact</span>
-                <input id="profile-contact" type="text" />
-              </label>
-              <label class="auth-field">
-                <span>Professional Type</span>
-                <select id="profile-professional-type">
-                  <option value="Doctor of Pharmacy">Doctor of Pharmacy</option>
-                  <option value="Pharmacy Technician">Pharmacy Technician</option>
-                  <option value="MCA">MCA</option>
-                  <option value="Other">Other</option>
-                </select>
-              </label>
-              <label class="auth-field">
-                <span>Country</span>
-                <select id="profile-country">
-                  <option value="">Select country</option>
-                  <option value="United States">United States</option>
-                  <option value="Canada">Canada</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="Nigeria">Nigeria</option>
-                  <option value="Ghana">Ghana</option>
-                  <option value="Kenya">Kenya</option>
-                  <option value="India">India</option>
-                  <option value="Pakistan">Pakistan</option>
-                  <option value="Philippines">Philippines</option>
-                  <option value="Australia">Australia</option>
-                  <option value="South Africa">South Africa</option>
-                  <option value="Other">Other</option>
-                </select>
-              </label>
-              <label class="auth-field">
-                <span>Institution</span>
-                <input id="profile-institution" type="text" />
-              </label>
-            </div>
-
-            <div class="auth-field">
-              <span>Role</span>
-              <div class="auth-inline-options">
-                <label><input type="radio" name="profile-role" value="student" /> Student</label>
-                <label><input type="radio" name="profile-role" value="worker" /> Worker</label>
+              <div class="profile-panel">
+                <div class="profile-section-header">
+                  <div>
+                    <h3 class="profile-section-title">Personal information</h3>
+                  </div>
+                </div>
+                <div class="profile-grid profile-grid-personal">
+                  <label class="auth-field">
+                    <span>Title</span>
+                    <select id="profile-title">
+                      <option value="">Select title</option>
+                      <option value="Mr">Mr</option>
+                      <option value="Mrs">Mrs</option>
+                      <option value="Ms">Ms</option>
+                      <option value="Dr">Dr</option>
+                      <option value="Pharm">Pharm</option>
+                    </select>
+                  </label>
+                  <label class="auth-field">
+                    <span>First name</span>
+                    <input id="profile-first-name" type="text" />
+                  </label>
+                  <label class="auth-field">
+                    <span>Surname</span>
+                    <input id="profile-last-name" type="text" />
+                  </label>
+                  <label class="auth-field">
+                    <span>Username</span>
+                    <input id="profile-username" type="text" />
+                  </label>
+                  <label class="auth-field">
+                    <span>Contact (Email or Mobile)</span>
+                    <input id="profile-contact" type="text" placeholder="name@example.com or +233..." />
+                  </label>
+                  <div class="auth-field profile-role-field">
+                    <span>Role</span>
+                    <div class="auth-inline-options profile-role-options">
+                      <label><input type="radio" name="profile-role" value="student" /> Student</label>
+                      <label><input type="radio" name="profile-role" value="worker" /> Worker</label>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div class="modal-actions">
-              <button id="profile-save-btn" type="button" class="modal-btn primary">Save Profile</button>
-            </div>
-
-            <div class="profile-divider"></div>
-
-            <h3 class="menu-section-title">Reset Password</h3>
-            <div class="modal-actions">
-              <button
-                id="profile-password-toggle-btn"
-                type="button"
-                class="modal-btn secondary"
-                aria-expanded="false"
-              >
-                Open Password Section
-              </button>
-            </div>
-            <div id="profile-password-panel" class="profile-collapsible hidden">
-              <div class="profile-grid">
-                <label class="auth-field">
-                  <span>Current Password</span>
-                  <input id="profile-current-password" type="password" autocomplete="current-password" />
-                </label>
-                <label class="auth-field">
-                  <span>New Password</span>
-                  <input id="profile-new-password" type="password" autocomplete="new-password" />
-                </label>
+              <div class="profile-panel">
+                <div class="profile-section-header">
+                  <div>
+                    <h3 class="profile-section-title">Training information</h3>
+                  </div>
+                </div>
+                <div class="profile-grid">
+                  <label class="auth-field">
+                    <span>Professional type</span>
+                    <select id="profile-professional-type">
+                      <option value="Doctor of Pharmacy">Doctor of Pharmacy</option>
+                      <option value="Pharmacy Technician">Pharmacy Technician</option>
+                      <option value="MCA">MCA</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </label>
+                  <label class="auth-field">
+                    <span>Country</span>
+                    <select id="profile-country">
+                      <option value="">Select country</option>
+                      <option value="United States">United States</option>
+                      <option value="Canada">Canada</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Nigeria">Nigeria</option>
+                      <option value="Ghana">Ghana</option>
+                      <option value="Kenya">Kenya</option>
+                      <option value="India">India</option>
+                      <option value="Pakistan">Pakistan</option>
+                      <option value="Philippines">Philippines</option>
+                      <option value="Australia">Australia</option>
+                      <option value="South Africa">South Africa</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </label>
+                  <label class="auth-field profile-grid-span">
+                    <span>Institution</span>
+                    <input id="profile-institution" type="text" />
+                  </label>
+                </div>
               </div>
-              <div class="modal-actions">
-                <button id="profile-change-password-btn" type="button" class="modal-btn primary">Change Password</button>
+
+              <div class="profile-section-split">
+                <div class="profile-panel">
+                  <div class="profile-section-header">
+                    <div>
+                      <h3 class="profile-section-title">Password</h3>
+                    </div>
+                    <button
+                      id="profile-password-toggle-btn"
+                      type="button"
+                      class="modal-btn secondary profile-section-toggle"
+                      aria-expanded="false"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                  <div id="profile-password-panel" class="profile-collapsible hidden">
+                    <div class="profile-grid">
+                      <label class="auth-field">
+                        <span>Current password</span>
+                        <input id="profile-current-password" type="password" autocomplete="current-password" />
+                      </label>
+                      <label class="auth-field">
+                        <span>New password</span>
+                        <input id="profile-new-password" type="password" autocomplete="new-password" />
+                      </label>
+                    </div>
+                    <div class="modal-actions">
+                      <button id="profile-change-password-btn" type="button" class="modal-btn primary">
+                        Change Password
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="profile-panel profile-panel-danger">
+                  <div class="profile-section-header">
+                    <div>
+                      <h3 class="profile-section-title">Controls</h3>
+                    </div>
+                    <button
+                      id="profile-danger-toggle-btn"
+                      type="button"
+                      class="modal-btn secondary profile-section-toggle"
+                      aria-expanded="false"
+                    >
+                      Account Actions
+                    </button>
+                  </div>
+                  <div id="profile-danger-panel" class="profile-collapsible hidden">
+                    <label class="auth-field">
+                      <span>Deactivate for days</span>
+                      <input id="profile-deactivate-days" type="number" min="1" max="30" value="30" />
+                    </label>
+                    <div class="modal-actions profile-danger-actions">
+                      <button id="profile-deactivate-btn" type="button" class="modal-btn secondary">
+                        Deactivate
+                      </button>
+                      <button id="profile-delete-btn" type="button" class="modal-btn primary">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div class="profile-divider"></div>
-
-            <h3 class="menu-section-title">Account Controls</h3>
-            <div class="modal-actions">
-              <button
-                id="profile-danger-toggle-btn"
-                type="button"
-                class="modal-btn secondary"
-                aria-expanded="false"
-              >
-                Open Account Controls
-              </button>
+              <div id="profile-feedback" class="auth-info hidden"></div>
             </div>
-            <div id="profile-danger-panel" class="profile-collapsible hidden">
-              <label class="auth-field">
-                <span>Deactivate for Days (max 30)</span>
-                <input id="profile-deactivate-days" type="number" min="1" max="30" value="30" />
-              </label>
-              <div class="modal-actions profile-danger-actions">
-                <button id="profile-deactivate-btn" type="button" class="modal-btn secondary">Deactivate Account</button>
-                <button id="profile-delete-btn" type="button" class="modal-btn primary">Delete Account</button>
-              </div>
-            </div>
-
-            <div id="profile-feedback" class="auth-info hidden"></div>
           </div>
         </div>
       </div>
 
       <div id="topic-viewer" class="setup-page">
-        <div class="study-fixed-header">
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
-          <div class="study-main-header exam-header-layout">
-            <h2 id="topic-viewer-title" class="setup-page-title">
-              &#128218; Study Note
-            </h2>
-            <div class="topic-screen-actions">
-              <button id="topic-viewer-back-btn" class="study-menu-btn">
-                &#8592; Back
+        <div class="topic-viewer-fixed-header">
+          <div class="topic-viewer-topbar">
+            <div class="topic-viewer-brand" aria-label="Ajix Pharmacy">
+              <img
+                class="topic-viewer-logo-image"
+                src="images/ajix-logo.png.png"
+                alt="Ajix Pharmacy"
+              />
+            </div>
+            <div class="topic-viewer-header-actions">
+              <button
+                id="topic-viewer-back-btn"
+                class="topic-viewer-action-btn"
+                type="button"
+                aria-label="Back"
+                title="Back"
+              >
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
               </button>
-              <button id="topic-viewer-menu-btn" class="study-menu-btn">
-                &#9776; Menu
+              <button
+                id="topic-viewer-menu-btn"
+                class="topic-viewer-action-btn"
+                type="button"
+                aria-label="Menu"
+                title="Menu"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 7h14"></path>
+                  <path d="M5 12h14"></path>
+                  <path d="M5 17h14"></path>
+                </svg>
               </button>
+            </div>
+          </div>
+          <div class="topic-viewer-titlebar">
+            <div class="topic-viewer-title-wrap">
+              <div class="topic-viewer-title-line">
+                <h2 id="topic-viewer-title" class="topic-viewer-title">Study Note</h2>
+                <span id="topic-viewer-category" class="topic-viewer-category hidden"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -987,122 +1299,372 @@
         </div>
       </div>
 
-      <div id="tour-screen" class="setup-page">
-        <div class="study-fixed-header">
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
-          <div class="study-main-header exam-header-layout">
-            <h2 class="setup-page-title">&#129517; App Tour</h2>
-            <div class="topic-screen-actions">
-              <button id="tour-back-btn" class="study-menu-btn">&#8592; Back</button>
-              <button id="tour-menu-btn" class="study-menu-btn">&#9776; Menu</button>
+      <div id="tour-screen" class="setup-page tour-page">
+        <div class="menu-fixed-header menu-dashboard-header tour-fixed-header">
+          <div class="menu-dashboard-topbar">
+            <div class="menu-dashboard-brand tour-dashboard-brand" aria-label="Ajix Pharmacy">
+              <span class="menu-dashboard-brand-stack">
+                <img
+                  class="menu-dashboard-logo-image"
+                  src="images/ajix-logo.png.png"
+                  alt="Ajix Pharmacy"
+                />
+              </span>
+            </div>
+            <div class="menu-dashboard-actions tour-dashboard-actions">
+              <button
+                id="tour-back-btn"
+                class="menu-user-hub-btn menu-dashboard-icon-btn tour-close-btn"
+                type="button"
+                aria-label="Close tour"
+                title="Close tour"
+              >
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6 6l12 12"></path>
+                    <path d="M18 6 6 18"></path>
+                  </svg>
+                </span>
+              </button>
             </div>
           </div>
         </div>
         <div class="study-scroll-content tour-scroll-content">
-          <div class="setup-card tour-card">
-            <h3>Welcome to Ajix Pharmacy Quiz</h3>
-            <p>Use this quick guide to navigate the app smoothly.</p>
+          <div class="tour-wizard-shell">
+            <div class="tour-wizard-panel">
+              <div class="tour-wizard-header">
+                <h2 class="tour-wizard-title">App Tour</h2>
+                <div class="tour-stepper" aria-label="Tour progress">
+                  <div class="tour-stepper-line"></div>
+                  <button class="tour-step-dot is-active" type="button" data-tour-step-target="0">1</button>
+                  <button class="tour-step-dot" type="button" data-tour-step-target="1">2</button>
+                  <button class="tour-step-dot" type="button" data-tour-step-target="2">3</button>
+                  <button class="tour-step-dot" type="button" data-tour-step-target="3">4</button>
+                </div>
+              </div>
 
-            <div class="tour-block">
-              <h4>1. Menu Entry Point</h4>
-              <p>
-                Start from Study Mode for guided practice or Exam Mode for timed
-                simulation.
-              </p>
-            </div>
-            <div class="tour-block">
-              <h4>2. Question Flow</h4>
-              <p>
-                Answer questions, navigate with Previous/Next, and review your
-                results after each session.
-              </p>
-            </div>
-            <div class="tour-block">
-              <h4>3. Topic Library</h4>
-              <p>
-                Open Topic Library to study notes by category and topic before or
-                after quizzes.
-              </p>
-            </div>
-            <div class="tour-block">
-              <h4>4. AI Explanation</h4>
-              <p>
-                After answering and opening explanation, use Explain With AI for
-                deeper understanding.
-              </p>
-            </div>
-            <div class="tour-block">
-              <h4>5. User Dashboard Icon</h4>
-              <p>
-                Use the small icon in the menu header for quick access to Profile,
-                Tour/Help, and Logout.
-              </p>
+              <div class="tour-slide-stack">
+                <section class="tour-slide is-active" data-tour-step="0">
+                  <div class="tour-slide-copy">
+                    <h3 class="tour-slide-heading">Getting Started</h3>
+                    <p class="tour-slide-text">Choose the session type that fits how you want to practice, revise weak areas, or work under timed pressure.</p>
+                  </div>
+
+                  <div class="tour-visual-frame">
+                    <img
+                      class="tour-visual-image"
+                      src="images/get-started.png.png"
+                      alt="Pharmacist using a tablet in a clinical environment"
+                    />
+                  </div>
+
+                  <div class="tour-article">
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Study Mode</h4>
+                      <p class="tour-article-text">
+                        Study Mode is for practicing questions at your own pace. You can focus on a single category such as
+                        cardiovascular, pulmonary, or any other available topic, or choose a mixed session when you want broader
+                        coverage. It also includes weak practice, which lets you return to questions you previously got wrong in
+                        study sessions.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Exam Mode and Smart Exam</h4>
+                      <p class="tour-article-text">
+                        Exam Mode follows the same question structure as Study Mode, but under a time limit. You can choose how
+                        many questions you want to answer, such as 30, 50, 100, or more, and you can run the exam by category or
+                        as a mixed paper. Smart Exam is available for practicing weak questions in a more targeted way when you
+                        want timed revision around your weaker areas.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Quick Drills</h4>
+                      <p class="tour-article-text">
+                        Quick Drills are short focused rounds. Rapid gives you 5 random questions to answer in 60 seconds.
+                        Sudden keeps going until the first wrong answer. Clinical gives you 10 solid case-scenario questions for
+                        more deliberate clinical thinking.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Daily Quiz</h4>
+                      <p class="tour-article-text">
+                        Daily Quiz gives you 10 random questions each day. Completing the daily set helps you build streaks and
+                        accumulate gems while keeping your revision consistent.
+                      </p>
+                    </section>
+                  </div>
+                </section>
+
+                <section class="tour-slide" data-tour-step="1">
+                  <div class="tour-slide-copy">
+                    <h3 class="tour-slide-heading">Question Flow</h3>
+                    <p class="tour-slide-text">Each session follows a simple answer-review-progress workflow.</p>
+                  </div>
+
+                  <div class="tour-visual-frame">
+                    <img
+                      class="tour-visual-image"
+                      src="images/question-flow.png.png?v=20260324-flowimg1"
+                      alt="Quiz question flow interface"
+                    />
+                  </div>
+
+                  <div class="tour-article">
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Answer and move through the session</h4>
+                      <p class="tour-article-text">
+                        Work through questions in order using the session controls. The interface keeps the question, answers,
+                        progress, and timing information close together so you can stay focused.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Open explanations when needed</h4>
+                      <p class="tour-article-text">
+                        After answering, use the explanation area to review the reasoning behind the correct option. This is the
+                        main place to correct misunderstandings before moving on.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Finish with review and results</h4>
+                      <p class="tour-article-text">
+                        Every session ends with a result view. Use it to see how you performed, identify weaker areas, and decide
+                        whether to continue practicing or switch to study tools.
+                      </p>
+                    </section>
+                  </div>
+                </section>
+
+                <section class="tour-slide" data-tour-step="2">
+                  <div class="tour-slide-copy">
+                    <h3 class="tour-slide-heading">Study Tools</h3>
+                    <p class="tour-slide-text">Use the supporting tools between sessions to build stronger coverage.</p>
+                  </div>
+
+                  <div class="tour-visual-frame">
+                    <img
+                      class="tour-visual-image"
+                      src="images/study-tool.png.png"
+                      alt="Study tools and learning support screens"
+                    />
+                  </div>
+
+                  <div class="tour-article">
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Topic Library</h4>
+                      <p class="tour-article-text">
+                        Browse study notes by subject and open reading material directly inside the app. This is useful before a
+                        session when you want preparation, and after a session when you want reinforcement.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Performance Dashboard</h4>
+                      <p class="tour-article-text">
+                        Review overall results, patterns, and weaker areas over time. The dashboard is best used as a follow-up
+                        tool after several practice sessions.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">AI Explanation</h4>
+                      <p class="tour-article-text">
+                        Use AI Explanation when you need a deeper breakdown of the answer logic. It is intended to supplement,
+                        not replace, the standard explanation panel.
+                      </p>
+                    </section>
+                  </div>
+                </section>
+
+                <section class="tour-slide" data-tour-step="3">
+                  <div class="tour-slide-copy">
+                    <h3 class="tour-slide-heading">Account and Settings</h3>
+                    <p class="tour-slide-text">Use the top-right tools to manage account details and app preferences.</p>
+                  </div>
+
+                  <div class="tour-visual-frame">
+                    <img
+                      class="tour-visual-image"
+                      src="images/account-and-settings.png.png"
+                      alt="Account profile and settings screens"
+                    />
+                  </div>
+
+                  <div class="tour-article">
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Profile</h4>
+                      <p class="tour-article-text">
+                        Keep your personal details and training identity current so your workspace remains organised around your account.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Settings</h4>
+                      <p class="tour-article-text">
+                        Adjust theme, text size, font, and motion preferences to make the app more comfortable during longer sessions.
+                      </p>
+                    </section>
+
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">Continue to the workspace</h4>
+                      <p class="tour-article-text">
+                        When you finish this guide, return to the menu and continue with study, exam, drills, topics, analytics,
+                        or account management as needed.
+                      </p>
+                    </section>
+                  </div>
+                </section>
+              </div>
+
+              <div class="tour-wizard-footer">
+                <button
+                  id="tour-prev-step-btn"
+                  class="tour-wizard-footer-btn secondary"
+                  type="button"
+                  aria-label="Previous step"
+                  title="Previous step"
+                >
+                  <span class="tour-wizard-footer-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M15.5 5.5 7.5 12l8 6.5"></path>
+                    </svg>
+                  </span>
+                  <span class="tour-visually-hidden">Back</span>
+                </button>
+                <button
+                  id="tour-next-step-btn"
+                  class="tour-wizard-footer-btn primary"
+                  type="button"
+                  aria-label="Next step"
+                  title="Next step"
+                >
+                  <span class="tour-wizard-footer-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M8.5 5.5 16.5 12l-8 6.5"></path>
+                    </svg>
+                  </span>
+                  <span id="tour-next-step-label" class="tour-visually-hidden">Next</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div id="settings-screen" class="setup-page">
-        <div class="study-fixed-header">
-          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
-          <div class="study-main-header exam-header-layout">
-            <h2 class="setup-page-title">&#9881; App Settings</h2>
-            <div class="topic-screen-actions">
-              <button id="settings-back-btn" class="study-menu-btn">&#8592; Back</button>
-              <button id="settings-menu-btn" class="study-menu-btn">&#9776; Menu</button>
+        <div class="menu-fixed-header settings-fixed-header">
+          <div class="menu-dashboard-topbar settings-topbar">
+            <div class="settings-topbar-copy">
+              <h2 class="settings-page-title">
+                <span class="settings-page-title-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3.2"></circle>
+                    <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.5 1.5 0 0 1-2.1 2.1l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V19a1.5 1.5 0 0 1-3 0v-.1a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1.5 1.5 0 0 1-2.1-2.1l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H5a1.5 1.5 0 0 1 0-3h.1a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1.5 1.5 0 1 1 2.1-2.1l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V5a1.5 1.5 0 0 1 3 0v.1a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.5 1.5 0 1 1 2.1 2.1l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H19a1.5 1.5 0 0 1 0 3h-.1a1 1 0 0 0-.9.6z"></path>
+                  </svg>
+                </span>
+                <span>Settings</span>
+              </h2>
+              <p class="settings-page-subtitle">Appearance, reading preferences, and this device.</p>
+            </div>
+            <div class="settings-topbar-actions">
+              <button id="settings-back-btn" class="settings-topbar-btn is-primary" type="button" aria-label="Back">
+                <span aria-hidden="true">
+                  <svg class="back-icon-glyph" viewBox="0 0 24 24">
+                    <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                  </svg>
+                </span>
+              </button>
             </div>
           </div>
         </div>
-        <div class="study-scroll-content">
-          <div class="setup-card settings-card">
-            <h3>Display</h3>
-            <div class="settings-grid">
-              <label class="auth-field">
-                <span>Theme</span>
-                <select id="app-theme-select">
-                  <option value="system">System Default</option>
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                  <option value="teal">Aqua Calm</option>
-                  <option value="sunset">Sunset Glow</option>
-                </select>
-              </label>
-              <label class="auth-field">
-                <span>Text Size</span>
-                <select id="app-text-size-select">
-                  <option value="default">Default</option>
-                  <option value="large">Large</option>
-                </select>
-              </label>
-              <label class="auth-field">
-                <span>Font</span>
-                <select id="app-font-select">
-                  <option value="default">Default Sans</option>
-                  <option value="neo">Neo Sans</option>
-                  <option value="classic">Classic Serif</option>
-                  <option value="editorial">Editorial Serif</option>
-                  <option value="mono">Tech Mono</option>
-                  <option value="condensed">Condensed Sans</option>
-                  <option value="hand">Handwritten</option>
-                </select>
-              </label>
-            </div>
-            <label class="settings-check-row">
-              <input id="app-reduce-motion" type="checkbox" />
-              <span>Reduce animations</span>
-            </label>
+        <div class="study-scroll-content settings-scroll-content">
+          <div class="settings-shell">
+            <section class="settings-panel settings-panel-appearance">
+              <div class="settings-panel-head">
+                <h3 class="settings-panel-kicker">Display</h3>
+                <p class="settings-panel-text">Choose how the app looks while you study, review, and move through sessions.</p>
+              </div>
 
-            <h3>Device</h3>
-            <p class="settings-help">
-              Clear local practice cache on this device only (this does not delete your backend account data).
-            </p>
-            <div class="settings-actions">
-              <button id="app-clear-local-btn" type="button" class="modal-btn secondary">
-                Clear Local Cache
-              </button>
-            </div>
+              <div class="settings-field-grid">
+                <label class="settings-field-card">
+                  <span class="settings-field-label">Theme</span>
+                  <span class="settings-field-note">Choose the overall color system.</span>
+                  <select id="app-theme-select" class="settings-select">
+                    <option value="system">System Default</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="teal">Aqua Calm</option>
+                    <option value="sunset">Sunset Glow</option>
+                  </select>
+                </label>
 
-            <div id="settings-feedback" class="auth-info hidden"></div>
+                <label class="settings-field-card">
+                  <span class="settings-field-label">Text Size</span>
+                  <span class="settings-field-note">Adjust reading comfort across the app.</span>
+                  <select id="app-text-size-select" class="settings-select">
+                    <option value="default">Default</option>
+                    <option value="large">Large</option>
+                  </select>
+                </label>
+
+                <label class="settings-field-card">
+                  <span class="settings-field-label">Font</span>
+                  <span class="settings-field-note">Select the type style used throughout the workspace.</span>
+                  <select id="app-font-select" class="settings-select">
+                    <option value="default">Default Sans</option>
+                    <option value="neo">Neo Sans</option>
+                    <option value="classic">Classic Serif</option>
+                    <option value="editorial">Editorial Serif</option>
+                    <option value="mono">Tech Mono</option>
+                    <option value="condensed">Condensed Sans</option>
+                    <option value="hand">Handwritten</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <section class="settings-panel settings-panel-motion">
+              <div class="settings-panel-head">
+                <h3 class="settings-panel-kicker">Motion</h3>
+                <p class="settings-panel-text">Reduce animated transitions if you want a calmer interface.</p>
+              </div>
+
+              <label class="settings-toggle-card">
+                <span class="settings-toggle-copy">
+                  <span class="settings-field-label">Reduce animations</span>
+                  <span class="settings-field-note">Turns down motion-heavy effects across the app.</span>
+                </span>
+                <span class="settings-toggle-control">
+                  <input id="app-reduce-motion" type="checkbox" />
+                  <span class="settings-toggle-visual" aria-hidden="true"></span>
+                </span>
+              </label>
+            </section>
+
+            <section class="settings-panel settings-panel-device">
+              <div class="settings-panel-head">
+                <h3 class="settings-panel-kicker">Local Data</h3>
+                <p class="settings-panel-text">Manage data saved on this device without affecting your backend account.</p>
+              </div>
+
+              <div class="settings-device-card">
+                <p class="settings-help">
+                  Clear local practice cache on this device only. This removes saved local sessions and temporary progress, but it
+                  does not delete your online account data.
+                </p>
+                <div class="settings-actions">
+                  <button id="app-clear-local-btn" type="button" class="settings-danger-btn">
+                    Clear Local Cache
+                  </button>
+                </div>
+              </div>
+
+              <div id="settings-feedback" class="auth-info hidden"></div>
+            </section>
           </div>
         </div>
       </div>
@@ -1111,13 +1673,24 @@
       <div id="quiz-area" class="quiz-layout">
         <!-- HEADER -->
         <div class="app-header">
+          <div class="quiz-brand-bar">
+            <img class="quiz-brand-logo" src="images/ajix-logo.png.png" alt="AJIX Pharmacy" />
+            <div id="header-inline-meta" class="header-inline-meta hidden" aria-live="polite"></div>
+            <div class="header-right">
+              <button id="back-btn-quiz" class="header-btn" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="end-study-btn" class="header-btn danger hidden" aria-label="Close Study">
+                &#10005;
+              </button>
+            </div>
+          </div>
           <div class="header-top">
-            <!-- LEFT -->
             <div class="header-left">
               <span id="mode-indicator">&#128218; Study Mode</span>
             </div>
-
-            <!-- CENTER (Score + Streak) -->
             <div class="header-center-stats">
               <div id="header-stats" class="stats-box">
                 <div class="score-inline">
@@ -1132,14 +1705,6 @@
                   <span id="streak-value" class="inline-value"></span>
                 </div>
               </div>
-            </div>
-
-            <!-- RIGHT (Icons only) -->
-            <div class="header-right">
-              <button id="back-btn-quiz" class="header-btn">&larr;</button>
-              <button id="end-study-btn" class="header-btn danger hidden">
-                &#10005;
-              </button>
             </div>
           </div>
 
@@ -1239,38 +1804,88 @@
         <div class="dashboard-wrapper">
           <div class="dashboard-card">
             <div class="dashboard-header">
-              <div>
-                <div class="dashboard-title">Performance Dashboard</div>
-                <div class="dashboard-subtitle">
-                  Your learning analytics overview
+              <div class="dashboard-topbar">
+                <div class="dashboard-brand">
+                  <img
+                    class="dashboard-brand-logo"
+                    src="images/ajix-logo.png.png"
+                    alt="Ajix Pharmacy"
+                  />
                 </div>
+                <div class="dashboard-title">Performance Dashboard</div>
+                <button id="dashboard-close-btn" class="dashboard-close-btn" aria-label="Close dashboard">
+                  &#10005;
+                </button>
               </div>
-              <button id="dashboard-close-btn" class="dashboard-close-btn">
-                &#10005;
-              </button>
             </div>
 
             <div class="dashboard-body">
-              <div class="dashboard-metrics">
-                <div class="metric-tile">
-                  <div class="metric-label">Total Attempts</div>
-                  <div class="metric-value" id="dash-total"></div>
-                </div>
+              <section class="dashboard-overview-grid">
+                <section class="dashboard-panel dashboard-summary-panel">
+                  <div class="dashboard-panel-head">
+                    <div class="dashboard-section-title">Quiz Summary</div>
+                  </div>
 
-                <div class="metric-tile">
-                  <div class="metric-label">Overall Accuracy</div>
-                  <div class="metric-value" id="dash-accuracy"></div>
-                </div>
+                  <div class="dashboard-metrics">
+                    <div class="metric-tile metric-tile-total">
+                      <div class="metric-label">Total Attempts</div>
+                      <div class="metric-value" id="dash-total"></div>
+                    </div>
 
-                <div class="metric-tile">
-                  <div class="metric-label">Weak Questions</div>
-                  <div class="metric-value" id="dash-weak"></div>
-                </div>
-              </div>
+                    <div class="metric-tile metric-tile-accuracy">
+                      <div class="metric-label">Overall Accuracy</div>
+                      <div class="metric-value" id="dash-accuracy"></div>
+                    </div>
 
-              <div class="dashboard-section-title">Category Breakdown</div>
+                    <div class="metric-tile metric-tile-weak">
+                      <div class="metric-label">Weak Questions</div>
+                      <div class="metric-value" id="dash-weak"></div>
+                    </div>
 
-              <div class="dashboard-category-list" id="dash-categories"></div>
+                    <div class="metric-tile metric-tile-sessions">
+                      <div class="metric-label">Sessions</div>
+                      <div class="metric-value" id="dash-sessions"></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="dashboard-panel dashboard-trend-panel">
+                  <div class="dashboard-panel-head">
+                    <div class="dashboard-section-title">Score Trend</div>
+                    <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent sessions</div>
+                  </div>
+                  <div class="dashboard-trend-stage">
+                    <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
+                    <div class="dashboard-trend-chart" id="dash-trend-chart"></div>
+                  </div>
+                </section>
+
+                <section class="dashboard-panel dashboard-topsubjects-panel">
+                  <div class="dashboard-panel-head">
+                    <div class="dashboard-section-title">Top Subjects</div>
+                  </div>
+                  <div class="dashboard-topsubjects-list" id="dash-top-subjects"></div>
+                </section>
+              </section>
+
+              <section class="dashboard-lower-grid">
+                <section class="dashboard-panel dashboard-breakdown-panel">
+                  <div class="dashboard-panel-head">
+                    <div class="dashboard-section-title">Category Breakdown</div>
+                    <div class="dashboard-section-subtitle">Accuracy by subject area</div>
+                  </div>
+
+                  <div class="dashboard-category-list" id="dash-categories"></div>
+                </section>
+
+                <section class="dashboard-panel dashboard-recent-panel">
+                  <div class="dashboard-panel-head">
+                    <div class="dashboard-section-title">Recent Results</div>
+                    <div class="dashboard-section-subtitle">Latest completed sessions</div>
+                  </div>
+                  <div class="dashboard-recent-list" id="dash-recent-results"></div>
+                </section>
+              </section>
             </div>
           </div>
         </div>
@@ -1314,10 +1929,28 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260307-explfull1"></script>
+    <script type="module" src="engine.js?v=20260324-topictochandle2"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
+        window.addEventListener("load", async () => {
+          const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(location.hostname);
+          const isLocalPreview = !isProductionHost;
+
+          if (isLocalPreview) {
+            try {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(registrations.map((registration) => registration.unregister()));
+
+              if ("caches" in window) {
+                const cacheKeys = await caches.keys();
+                await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+              }
+            } catch (error) {
+              console.warn("Local preview cache reset failed:", error);
+            }
+            return;
+          }
+
           navigator.serviceWorker.register("/sw.js").catch((error) => {
             console.warn("Service worker registration failed:", error);
           });

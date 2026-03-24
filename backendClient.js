@@ -1,13 +1,22 @@
 const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
-const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const currentHost = String(window.location.hostname || "").trim();
+const isLocalHost = ["localhost", "127.0.0.1"].includes(currentHost);
+const isLanPreview =
+  !!currentHost &&
+  !isLocalHost &&
+  !/ajixpharmacy\.online$/i.test(currentHost) &&
+  window.location.protocol === "http:";
 const inferredApiBase = isLocalHost
   ? "http://localhost:4000/api"
-  : "https://api.ajixpharmacy.online/api";
+  : isLanPreview
+    ? `http://${currentHost}:4000/api`
+    : "https://api.ajixpharmacy.online/api";
 const hasStaleStoredApiBase =
   !!storedApiBase &&
   (/trycloudflare\.com/i.test(storedApiBase) ||
     /your-new-tunnel/i.test(storedApiBase) ||
-    /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase));
+    /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase) ||
+    (isLanPreview && /localhost:4000/i.test(storedApiBase)));
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }

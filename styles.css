@@ -15672,13 +15672,20 @@ body #topic-viewer .topic-viewer-logo-image,
 body #dashboard .dashboard-brand-logo,
 body #quiz-menu .menu-dashboard-logo-image,
 body #tour-screen .menu-dashboard-logo-image {
-  width: min(122px, 21vw) !important;
-  height: auto !important;
+  width: auto !important;
+  height: 27px !important;
   display: block !important;
   background: rgba(255, 255, 255, 0.94) !important;
-  padding: 4px 6px !important;
-  border-radius: 10px !important;
+  padding: 4px 7px !important;
+  border-radius: 9px !important;
   box-shadow: none !important;
+}
+
+body #quiz-area .quiz-brand-logo {
+  width: auto !important;
+  height: 27px !important;
+  padding: 4px 7px !important;
+  border-radius: 9px !important;
 }
 
 body #topic-viewer .topic-viewer-brand,
@@ -15718,7 +15725,13 @@ body #tour-screen .tour-close-btn {
   body #dashboard .dashboard-brand-logo,
   body #quiz-menu .menu-dashboard-logo-image,
   body #tour-screen .menu-dashboard-logo-image {
-    width: min(112px, 42vw) !important;
+    width: auto !important;
+    height: 25px !important;
+  }
+
+  body #quiz-area .quiz-brand-logo {
+    width: auto !important;
+    height: 25px !important;
   }
 
   body #topic-viewer .topic-viewer-brand,

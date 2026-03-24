@@ -3,14 +3,14 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path -Parent $PSScriptRoot
-$sourcePath = Join-Path $root "images\\ajix-logo.png.png"
+$sourcePath = Join-Path $root "images\\app-logo.png"
 $targets = @(
-  @{ Path = "icons\\favicon-16-s2.png"; Size = 16 },
-  @{ Path = "icons\\favicon-32-s2.png"; Size = 32 },
-  @{ Path = "icons\\favicon-48-s2.png"; Size = 48 },
-  @{ Path = "icons\\favicon-180-s2.png"; Size = 180 },
-  @{ Path = "icons\\icon-192-s2.png"; Size = 192 },
-  @{ Path = "icons\\icon-512-s2.png"; Size = 512 }
+  @{ Path = "icons\\favicon-16-s3.png"; Size = 16 },
+  @{ Path = "icons\\favicon-32-s3.png"; Size = 32 },
+  @{ Path = "icons\\favicon-48-s3.png"; Size = 48 },
+  @{ Path = "icons\\favicon-180-s3.png"; Size = 180 },
+  @{ Path = "icons\\icon-192-s3.png"; Size = 192 },
+  @{ Path = "icons\\icon-512-s3.png"; Size = 512 }
 )
 
 $src = [System.Drawing.Bitmap]::FromFile($sourcePath)

@@ -1,12 +1,12 @@
-const CACHE_VERSION = "ajix-quiz-v35-explfull1";
+const CACHE_VERSION = "ajix-quiz-v36-redesignlive1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
 const STATIC_ASSETS = [
   "/",
   "/index.html",
-  "/styles.css?v=20260305-fixpack1",
-  "/engine.js?v=20260307-explfull1",
+  "/styles.css?v=20260324-imgrefresh2",
+  "/engine.js?v=20260324-imgrefresh2",
   "/data.js?v=20260307-explfull1",
   "/backendClient.js?v=20260305-fixpack1",
   "/manifest.webmanifest?v=20260301-pwasplit6",
@@ -17,6 +17,12 @@ const STATIC_ASSETS = [
   "/icons/favicon-32.png?v=20260301-iconsource3",
   "/icons/favicon-16.png?v=20260301-iconsource3",
   "/icons/favicon-180.png?v=20260301-iconsource3",
+  "/images/ajix-logo.png.png?v=20260324-imgrefresh2",
+  "/images/get-started.png.png?v=20260324-imgrefresh2",
+  "/images/question-flow.png.png?v=20260324-imgrefresh2",
+  "/images/study-tool.png.png?v=20260324-imgrefresh2",
+  "/images/account-and-settings.png.png?v=20260324-imgrefresh2",
+  "/images/pharmacist-hero.png.png?v=20260324-imgrefresh2",
 ];
 
 self.addEventListener("install", (event) => {

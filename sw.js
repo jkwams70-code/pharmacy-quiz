@@ -1,94 +1,35 @@
-const CACHE_VERSION = "ajix-quiz-v37-pwacutover1";
-const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
-
-const STATIC_ASSETS = [
-  "/",
-  "/index.html",
-  "/styles.css?v=20260324-imgrefresh2",
-  "/engine.js?v=20260324-pwacutover1",
-  "/data.js?v=20260307-explfull1",
-  "/backendClient.js?v=20260305-fixpack1",
-  "/manifest.webmanifest?v=20260301-pwasplit6",
-  "/admin-manifest.webmanifest?v=20260301-adminpwa7",
-  "/icons/icon-192-f1.png?v=20260301-iconsource3",
-  "/icons/icon-512-f1.png?v=20260301-iconsource3",
-  "/icons/favicon-48.png?v=20260301-iconsource3",
-  "/icons/favicon-32.png?v=20260301-iconsource3",
-  "/icons/favicon-16.png?v=20260301-iconsource3",
-  "/icons/favicon-180.png?v=20260301-iconsource3",
-  "/images/ajix-logo.png.png?v=20260324-imgrefresh2",
-  "/images/get-started.png.png?v=20260324-imgrefresh2",
-  "/images/question-flow.png.png?v=20260324-imgrefresh2",
-  "/images/study-tool.png.png?v=20260324-imgrefresh2",
-  "/images/account-and-settings.png.png?v=20260324-imgrefresh2",
-  "/images/pharmacist-hero.png.png?v=20260324-imgrefresh2",
-];
+const CUTOVER_VERSION = "ajix-quiz-cutover-v38";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()),
-  );
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== STATIC_CACHE && key !== RUNTIME_CACHE)
-            .map((key) => caches.delete(key)),
-        ),
-      )
-      .then(() => self.clients.claim()),
-  );
-});
-
-self.addEventListener("fetch", (event) => {
-  const request = event.request;
-
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
-
-  // Never cache API calls.
-  if (url.pathname.startsWith("/api/")) {
-    return;
-  }
-
-  // App-shell navigation: network first, offline fallback to cached index.
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(async () => {
-          const cachedPage = await caches.match(request);
-          if (cachedPage) return cachedPage;
-          return caches.match("/index.html");
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      await Promise.all(
+        clients.map((client) => {
+          if ("navigate" in client) {
+            return client.navigate(client.url);
+          }
+          return Promise.resolve();
         }),
-    );
-    return;
-  }
-
-  // Static assets: cache first, then network.
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== "basic") {
-          return response;
-        }
-        const copy = response.clone();
-        caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
-        return response;
-      });
-    }),
+      );
+      await self.registration.unregister();
+    })(),
   );
 });
 
+self.addEventListener("fetch", () => {
+  // Deliberately empty. The redesign now runs without an offline app shell.
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "QUIZ_APP_CUTOVER_VERSION") {
+    event.source?.postMessage?.({ type: "QUIZ_APP_CUTOVER_VERSION", version: CUTOVER_VERSION });
+  }
+});

@@ -56,7 +56,7 @@
       }
     </script>
 
-    <link rel="manifest" href="/manifest.webmanifest?v=20260301-pwasplit6" />
+    <link rel="manifest" href="/manifest.webmanifest?v=20260324-pwaforce2" />
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png?v=20260301-iconsource3" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png?v=20260301-iconsource3" />
@@ -1929,9 +1929,29 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js?v=20260324-hardcutover1"></script>
+    <script type="module" src="engine.js?v=20260324-pwaforce2"></script>
     <script>
-      const APP_BUILD_ID = "20260324-hardcutover1";
+      const APP_BUILD_ID = "20260324-pwaforce2";
+      const APP_STANDALONE_BUILD = "20260324-pwaforce2";
+
+      try {
+        const params = new URLSearchParams(location.search);
+        const isStandalone =
+          window.matchMedia?.("(display-mode: standalone)")?.matches ||
+          navigator.standalone === true;
+        const source = params.get("source") || "";
+        const build = params.get("build") || "";
+
+        if (isStandalone && build !== APP_STANDALONE_BUILD) {
+          params.set("source", "pwa-quiz");
+          params.set("build", APP_STANDALONE_BUILD);
+          const next = `${location.pathname}?${params.toString()}${location.hash || ""}`;
+          location.replace(next);
+        }
+      } catch (error) {
+        console.warn("Standalone URL normalization failed:", error);
+      }
+
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", async () => {
           const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(location.hostname);

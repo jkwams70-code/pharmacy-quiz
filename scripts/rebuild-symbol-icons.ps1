@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path -Parent $PSScriptRoot
-$sourcePath = Join-Path $root "images\\Logo.png.png"
+$sourcePath = Join-Path $root "images\\logo.png"
 $targets = @(
   @{ Path = "icons\\favicon-16-s2.png"; Size = 16 },
   @{ Path = "icons\\favicon-32-s2.png"; Size = 32 },

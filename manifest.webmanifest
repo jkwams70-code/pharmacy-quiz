@@ -1,9 +1,9 @@
 {
   "name": "Ajix Pharmacy Quiz",
   "short_name": "Ajix Quiz",
-  "id": "/pwa-launch.html?app=quiz&build=20260324-pwaforce2",
+  "id": "/?app=quiz",
   "description": "Pharmacy exam practice, study notes, and adaptive quiz sessions.",
-  "start_url": "/pwa-launch.html?source=pwa-quiz&build=20260324-pwaforce2",
+  "start_url": "/?source=pwa-quiz",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

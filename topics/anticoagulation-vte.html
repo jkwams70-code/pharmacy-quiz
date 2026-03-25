@@ -3,841 +3,338 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Anticoagulation &amp; VTE - Clinical Study Note</title>
+    <title>Anticoagulation and VTE - Comprehensive Lecture Note</title>
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48-s3.png?v=20260324-applogo1" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-s3.png?v=20260324-applogo1" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16-s3.png?v=20260324-applogo1" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180-s3.png?v=20260324-applogo1" />
     <style>
-      :root {
-        --bg: #f7fbff;
-        --surface: #ffffff;
-        --ink: #14263d;
-        --muted: #556980;
-        --line: #d7e3f0;
-        --brand: #7a1e2f;
-        --brand-soft: #fff0f4;
-        --teal-soft: #edf9f7;
-        --warn-soft: #fff7e9;
-        --danger-soft: #fff0f0;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-        color: var(--ink);
-        background:
-          radial-gradient(circle at 82% 4%, #ffdce6 0%, transparent 32%),
-          radial-gradient(circle at 8% 20%, #e0f2ff 0%, transparent 26%),
-          var(--bg);
-      }
-
-      .wrap {
-        width: min(1240px, 94vw);
-        margin: 22px auto 34px;
-        display: grid;
-        grid-template-columns: 290px 1fr;
-        gap: 16px;
-      }
-
-      .panel {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
-      }
-
-      .toc {
-        position: sticky;
-        top: 16px;
-        max-height: calc(100dvh - 32px);
-        overflow: auto;
-        padding: 14px;
-      }
-
-      .toc h2 {
-        margin: 0 0 10px;
-        color: var(--brand);
-        font-size: 1rem;
-      }
-
-      .toc a {
-        display: block;
-        text-decoration: none;
-        color: #354a64;
-        border-radius: 8px;
-        padding: 7px 9px;
-        font-size: 13px;
-      }
-
-      .toc a:hover {
-        background: #fff2f6;
-        color: #6e1a2a;
-      }
-
-      .content {
-        padding: 0 0 18px;
-      }
-
-      .hero {
-        padding: 20px;
-        border-bottom: 1px solid var(--line);
-        background: linear-gradient(
-          160deg,
-          #fffdfe 0%,
-          #fff1f6 56%,
-          #edf9f7 100%
-        );
-      }
-
-      .eyebrow {
-        display: inline-flex;
-        align-items: center;
-        min-height: 28px;
-        padding: 5px 12px;
-        border-radius: 999px;
-        background: var(--brand-soft);
-        color: #7a1e2f;
-        font-size: 12px;
-        font-weight: 700;
-        margin-bottom: 10px;
-      }
-
-      h1 {
-        margin: 0;
-        color: #641a28;
-        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
-      }
-
-      .subtitle {
-        margin: 8px 0 0;
-        color: var(--muted);
-        line-height: 1.55;
-      }
-
-      .hero-layout {
-        margin-top: 14px;
-        display: grid;
-        grid-template-columns: 1.35fr 0.95fr;
-        gap: 12px;
-      }
-
-      .hero-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .metric {
-        border: 1px solid #f0d3da;
-        border-radius: 12px;
-        background: #fff;
-        padding: 10px;
-      }
-
-      .metric .k {
-        font-size: 11px;
-        color: #7c5961;
-        margin-bottom: 6px;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-      }
-
-      .metric .v {
-        font-size: 14px;
-        color: #5f1d2c;
-        font-weight: 700;
-      }
-
-      .hero-visual {
-        border: 1px solid #efd1d9;
-        border-radius: 14px;
-        background: #fff;
-        padding: 10px;
-        display: grid;
-        gap: 8px;
-      }
-
-      .hero-visual h3 {
-        margin: 0;
-        font-size: 0.95rem;
-        color: #6d1d2b;
-      }
-
-      .hero-visual p {
-        margin: 0;
-        font-size: 0.84rem;
-        color: #5d758c;
-      }
-
-      .hero-visual svg {
-        width: 100%;
-        height: auto;
-        display: block;
-      }
-
-      .section {
-        padding: 16px 20px;
-        border-bottom: 1px solid #edf3fb;
-      }
-
-      .section:last-child {
-        border-bottom: none;
-      }
-
-      .section h2 {
-        margin: 0 0 10px;
-        color: #6d1d2b;
-        font-size: 1.16rem;
-      }
-
-      .section p {
-        margin: 0;
-        color: #314860;
-        line-height: 1.56;
-      }
-
-      .stack {
-        margin-top: 10px;
-        display: grid;
-        gap: 10px;
-      }
-
-      .grid-2 {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .grid-3 {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .box {
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 11px 12px;
-        background: #fff;
-      }
-
-      .box h3 {
-        margin: 0 0 7px;
-        font-size: 0.97rem;
-        color: #1f4061;
-      }
-
-      .box p {
-        margin: 0;
-      }
-
-      .box ul {
-        margin: 0 0 0 17px;
-        padding: 0;
-      }
-
-      .box li {
-        margin: 4px 0;
-        color: #304860;
-      }
-
-      .table {
-        margin-top: 8px;
-        width: 100%;
-        border-collapse: collapse;
-        border-radius: 12px;
-        border: 1px solid var(--line);
-        overflow: hidden;
-      }
-
-      .table th,
-      .table td {
-        padding: 10px;
-        text-align: left;
-        font-size: 14px;
-        border-bottom: 1px solid #e8eff8;
-        vertical-align: top;
-      }
-
-      .table th {
-        background: #fff3f7;
-        color: #6f1d2b;
-      }
-
-      .table tr:last-child td {
-        border-bottom: none;
-      }
-
-      .chips {
-        margin-top: 8px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .chip {
-        display: inline-flex;
-        align-items: center;
-        min-height: 30px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        border: 1px solid #d8e4f2;
-        background: #f8fbff;
-        color: #254764;
-        font-size: 13px;
-        font-weight: 600;
-      }
-
-      .callout {
-        margin-top: 10px;
-        border-left: 4px solid #0f766e;
-        border-radius: 10px;
-        background: var(--teal-soft);
-        color: #175358;
-        padding: 10px 12px;
-      }
-
-      .callout.warn {
-        border-left-color: #b66a00;
-        background: var(--warn-soft);
-        color: #7c5b1d;
-      }
-
-      .callout.alert {
-        border-left-color: #b91c1c;
-        background: var(--danger-soft);
-        color: #6d2222;
-      }
-
-      .flow {
-        margin-top: 10px;
-        display: grid;
-        gap: 9px;
-      }
-
-      .step {
-        border: 1px solid #d5e3f4;
-        border-radius: 12px;
-        padding: 10px 11px;
-        background: #f9fcff;
-      }
-
-      .step strong {
-        color: #6d1d2b;
-      }
-
-      .arrow {
-        width: 30px;
-        height: 30px;
-        margin: 0 auto;
-        border-radius: 999px;
-        border: 1px solid #c9d8ec;
-        background: #f6fbff;
-        color: #456887;
-        font-weight: 900;
-        display: grid;
-        place-items: center;
-        line-height: 1;
-      }
-
-      .diagram-card {
-        margin-top: 10px;
-        border: 1px solid #d8e4f2;
-        border-radius: 12px;
-        background: #fbfdff;
-        padding: 11px;
-      }
-
-      .diagram-title {
-        margin: 0 0 8px;
-        font-size: 0.9rem;
-        color: #1d3f62;
-        font-weight: 700;
-      }
-
-      .refs a {
-        color: #145aa9;
-        text-decoration: none;
-        word-break: break-word;
-      }
-
-      .refs a:hover {
-        text-decoration: underline;
-      }
-
-      @media (max-width: 1040px) {
-        .wrap {
-          grid-template-columns: 1fr;
-        }
-
-        .toc {
-          position: static;
-          max-height: none;
-        }
-
-        .hero-layout {
-          grid-template-columns: 1fr;
-        }
-
-        .hero-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      @media (max-width: 760px) {
-        .grid-2,
-        .grid-3,
-        .hero-grid {
-          grid-template-columns: 1fr;
-        }
-      }
+      :root { --bg:#f7fbff; --surface:#ffffff; --ink:#11253e; --muted:#546b83; --line:#d7e4f0; --brand:#7a1128; --brand-soft:#ffe9ee; --warn-soft:#fff6e8; --teal-soft:#eefaf6; --danger-soft:#fff0f0; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:"Segoe UI",Tahoma,Arial,sans-serif; color:var(--ink); background:radial-gradient(circle at 84% 9%, #ffd9e1 0%, transparent 31%), radial-gradient(circle at 12% 20%, #e8f4ff 0%, transparent 24%), var(--bg); }
+      .wrap { width:min(1200px,94vw); margin:22px auto 34px; display:grid; grid-template-columns:280px 1fr; gap:16px; }
+      .panel { background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 24px rgba(13,34,62,.06); }
+      .toc { position:sticky; top:16px; max-height:calc(100dvh - 32px); overflow:auto; padding:14px; }
+      .toc h2 { margin:0 0 10px; color:var(--brand); font-size:1rem; }
+      .toc a { display:block; text-decoration:none; color:#36506c; border-radius:8px; padding:7px 9px; font-size:13px; }
+      .toc a:hover { background:#fff1f4; color:#7a1128; }
+      .content { padding:0 0 18px; }
+      .hero { padding:20px; border-bottom:1px solid var(--line); background:linear-gradient(160deg,#ffffff 0%,#fff5f7 56%,#eef7ff 100%); }
+      .eyebrow { display:inline-flex; align-items:center; min-height:28px; padding:5px 12px; border-radius:999px; background:var(--brand-soft); color:var(--brand); font-size:12px; font-weight:700; margin-bottom:10px; }
+      h1 { margin:0; color:#5a0f21; font-size:clamp(1.42rem,2.4vw,2.04rem); }
+      .subtitle { margin:8px 0 0; color:#7c3042; font-family:"Montserrat","Segoe UI",Tahoma,Arial,sans-serif; font-size:.98rem; font-weight:500; line-height:1.5; }
+      .hero-grid { margin-top:14px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+      .metric,.box { border:1px solid #efd0d8; border-radius:12px; background:#fff; padding:12px; }
+      .metric .k { font-size:11px; color:#7d6a57; margin-bottom:6px; text-transform:uppercase; letter-spacing:.3px; }
+      .metric .v { font-size:14px; color:#5a0f21; font-weight:700; }
+      .section { padding:18px 20px; border-bottom:1px solid #edf3fb; }
+      .section:last-child { border-bottom:none; }
+      .section h2 { margin:0 0 10px; color:#7a1128; font-size:1.12rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+      .section h3 { margin:0 0 8px; color:#33526f; font-size:.98rem; font-weight:700; }
+      .section p { margin:0; color:#304860; line-height:1.6; }
+      .stack { margin-top:12px; display:grid; gap:12px; }
+      .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+      .grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+      .box ul,.section ul,.section ol { margin:0 0 0 18px; padding:0; }
+      .box li,.section li { margin:6px 0; color:#304860; line-height:1.55; }
+      .table { margin-top:10px; width:100%; border-collapse:collapse; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+      .table th,.table td { padding:10px; text-align:left; font-size:14px; vertical-align:top; border-bottom:1px solid #e8eff8; }
+      .table thead th { background:#fff4f6; color:#6a1228; font-weight:700; }
+      .table tr:last-child td { border-bottom:none; }
+      .callout { border-radius:12px; padding:12px 14px; border:1px solid #edd1d8; background:#fff8fa; color:#4d2431; }
+      .callout.teal { background:var(--teal-soft); border-color:#d8efe6; }
+      .callout.warn { background:var(--warn-soft); border-color:#f0dfc0; }
+      .callout.danger { background:var(--danger-soft); border-color:#f1d4d4; }
+      .guideline-list { display:grid; gap:10px; }
+      .guideline-line { color:#304863; line-height:1.7; }
+      .guideline-line strong { color:#6a1228; }
+      .note-quiz-footer { padding:18px 20px 24px; }
+      .topic-quiz-actions { display:flex; flex-wrap:wrap; gap:10px; }
+      .topic-quiz-cta { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border-radius:999px; border:1px solid #e1bcc6; background:#7a1128; color:#fff; font-weight:700; text-decoration:none; cursor:pointer; }
+      a { color:#7a1128; }
+      @media (max-width:860px) { .wrap { width:min(100%,100vw); margin:0; display:block; } .panel { border-radius:0; box-shadow:none; border-left:none; border-right:none; } .hero-grid,.grid-2,.grid-3 { grid-template-columns:1fr; } .section { padding:16px 14px; } .table th,.table td { padding:8px; font-size:12px; } }
     </style>
   </head>
   <body>
     <div class="wrap">
       <aside class="panel toc">
         <h2>On This Page</h2>
-        <a href="#what-is-vte">1. What Is VTE?</a>
-        <a href="#pathophysiology">2. Pathophysiology</a>
-        <a href="#clinical-presentation">3. Clinical Presentation</a>
-        <a href="#management-overview">4. Management Overview</a>
-        <a href="#doacs">5. DOACs</a>
-        <a href="#heparins">6. Heparins</a>
-        <a href="#warfarin">7. Warfarin</a>
-        <a href="#duration-of-therapy">8. Duration of Therapy</a>
-        <a href="#pe-severity">9. PE Severity</a>
-        <a href="#special-situations">10. Special Situations</a>
-        <a href="#management-recap-drill">Recap Drill</a>
-        <a href="#exam-traps">11. Common Exam Traps</a>
-        <a href="#quick-revision">12. Quick Revision Summary</a>
+        <a href="#learning-objectives">1. Learning Objectives</a>
+        <a href="#introduction-to-hemostasis-and-thrombosis">2. Introduction to Hemostasis and Thrombosis</a>
+        <a href="#venous-thromboembolism">3. Venous Thromboembolism</a>
+        <a href="#risk-factors-for-vte">4. Risk Factors for VTE</a>
+        <a href="#vte-prophylaxis">5. VTE Prophylaxis</a>
+        <a href="#diagnosis-of-vte">6. Diagnosis of VTE</a>
+        <a href="#anticoagulant-drug-classes">7. Anticoagulant Drug Classes</a>
+        <a href="#treatment-of-vte">8. Treatment of VTE</a>
+        <a href="#special-populations">9. Special Populations</a>
+        <a href="#reversal-agents">10. Reversal Agents</a>
+        <a href="#peri-procedural-management-of-anticoagulation">11. Peri-Procedural Management</a>
+        <a href="#heparin-induced-thrombocytopenia">12. Heparin-Induced Thrombocytopenia</a>
+        <a href="#patient-counseling-points">13. Patient Counseling Points</a>
+        <a href="#summary-for-exam-preparation">14. Summary for Exam Preparation</a>
+        <a href="#key-guidelines-links">15. Key Guidelines Links</a>
       </aside>
-
       <article class="panel content">
         <header class="hero">
-          <span class="eyebrow">Hematology</span>
-          <h1>Anticoagulation &amp; Venous Thromboembolism (VTE)</h1>
-          <p class="subtitle">
-            Clinical Overview and Exam Mastery Guide for DVT, PE, DOACs,
-            heparins, warfarin, HIT, thrombolysis, and therapy duration
-            decisions.
-          </p>
-
-          <div class="hero-layout">
-            <div class="hero-grid">
-              <div class="metric">
-                <div class="k">VTE Core</div>
-                <div class="v">DVT + PE</div>
-              </div>
-              <div class="metric">
-                <div class="k">First-Line</div>
-                <div class="v">DOACs in most patients</div>
-              </div>
-              <div class="metric">
-                <div class="k">High-Risk PE</div>
-                <div class="v">Thrombolysis if massive</div>
-              </div>
-              <div class="metric">
-                <div class="k">Min Duration</div>
-                <div class="v">3 months</div>
-              </div>
-            </div>
-
-            <div class="hero-visual">
-              <h3>Virchow Triad and VTE Risk Frame</h3>
-              <svg viewBox="0 0 500 220" role="img" aria-label="Virchow triad diagram">
-                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
-                <circle cx="160" cy="95" r="62" fill="#fff2f6" stroke="#efcad4" />
-                <circle cx="255" cy="95" r="62" fill="#eef8ff" stroke="#d7e7f8" />
-                <circle cx="208" cy="156" r="62" fill="#f1faf7" stroke="#d4ece4" />
-                <text x="160" y="86" text-anchor="middle" font-size="14" fill="#5e2130" font-weight="700">
-                  Venous
-                </text>
-                <text x="160" y="104" text-anchor="middle" font-size="14" fill="#5e2130" font-weight="700">
-                  Stasis
-                </text>
-                <text x="255" y="86" text-anchor="middle" font-size="14" fill="#204463" font-weight="700">
-                  Endothelial
-                </text>
-                <text x="255" y="104" text-anchor="middle" font-size="14" fill="#204463" font-weight="700">
-                  Injury
-                </text>
-                <text x="208" y="154" text-anchor="middle" font-size="14" fill="#1d554f" font-weight="700">
-                  Hyper-
-                </text>
-                <text x="208" y="172" text-anchor="middle" font-size="14" fill="#1d554f" font-weight="700">
-                  coagulability
-                </text>
-                <rect x="334" y="58" width="146" height="104" rx="10" fill="#ffffff" stroke="#d7e3f0" />
-                <text x="407" y="82" text-anchor="middle" font-size="13" fill="#274660" font-weight="700">
-                  Typical Risk Inputs
-                </text>
-                <text x="407" y="102" text-anchor="middle" font-size="12" fill="#3a546f">
-                  Surgery
-                </text>
-                <text x="407" y="118" text-anchor="middle" font-size="12" fill="#3a546f">
-                  Cancer
-                </text>
-                <text x="407" y="134" text-anchor="middle" font-size="12" fill="#3a546f">
-                  Immobility
-                </text>
-                <text x="407" y="150" text-anchor="middle" font-size="12" fill="#3a546f">
-                  Pregnancy / Estrogen
-                </text>
-              </svg>
-              <p>
-                VTE risk rises when stasis, endothelial injury, and
-                hypercoagulability overlap.
-              </p>
-            </div>
+          <span class="eyebrow">Hematology Therapeutics</span>
+          <h1>Anticoagulation and Venous Thromboembolism (VTE)</h1>
+          <p class="subtitle">A comprehensive lecture note covering hemostasis, DVT and PE, anticoagulant classes, reversal strategies, HIT, peri-procedural management, and exam-focused VTE treatment decisions.</p>
+          <div class="hero-grid">
+            <div class="metric"><div class="k">Core Syndrome</div><div class="v">DVT plus PE = VTE</div></div>
+            <div class="metric"><div class="k">First-Line Trend</div><div class="v">DOACs for most VTE patients</div></div>
+            <div class="metric"><div class="k">High-Yield Complication</div><div class="v">HIT is thrombocytopenic and prothrombotic</div></div>
+            <div class="metric"><div class="k">Warfarin Anchor</div><div class="v">Target INR 2-3 for VTE</div></div>
           </div>
         </header>
-
-        <section class="section" id="what-is-vte">
-          <h2>1. What Is VTE?</h2>
-          <p>
-            Venous thromboembolism (VTE) includes deep vein thrombosis (DVT) and
-            pulmonary embolism (PE). It results from clot formation in the
-            venous circulation and may progress from local thrombosis to
-            life-threatening embolic obstruction.
-          </p>
-          <div class="chips">
-            <span class="chip">DVT</span>
-            <span class="chip">PE</span>
-            <span class="chip">Recurrence risk</span>
-            <span class="chip">Mortality prevention priority</span>
-          </div>
+        <section class="section" id="learning-objectives">
+          <h2>1. Learning Objectives</h2>
+          <div class="stack"><div class="box"><ol>
+            <li>Differentiate arterial and venous thrombosis and understand the coagulation cascade.</li>
+            <li>Identify risk factors, signs, and symptoms of DVT and PE.</li>
+            <li>Apply evidence-based VTE prophylaxis in hospitalized and surgical patients.</li>
+            <li>Compare mechanisms, monitoring, pharmacokinetics, and adverse effects of anticoagulant classes.</li>
+            <li>Select appropriate anticoagulant therapy based on renal function, cancer, pregnancy, and other patient-specific factors.</li>
+            <li>Determine appropriate duration of anticoagulation based on provoking factors and recurrence risk.</li>
+            <li>Manage anticoagulant-related bleeding and reversal agents appropriately.</li>
+            <li>Recognize and manage heparin-induced thrombocytopenia.</li>
+            <li>Provide patient-centered counseling on adherence, monitoring, and bleeding precautions.</li>
+          </ol></div></div>
         </section>
-
-        <section class="section" id="pathophysiology">
-          <h2>2. Pathophysiology (Virchow's Triad)</h2>
-          <div class="grid-3">
-            <div class="box">
-              <h3>1. Venous Stasis</h3>
-              <ul>
-                <li>Immobility</li>
-                <li>Post-operative state</li>
-                <li>Hospitalization</li>
-              </ul>
-            </div>
-            <div class="box">
-              <h3>2. Endothelial Injury</h3>
-              <ul>
-                <li>Trauma</li>
-                <li>Surgery</li>
-                <li>Vascular inflammation</li>
-              </ul>
-            </div>
-            <div class="box">
-              <h3>3. Hypercoagulability</h3>
-              <ul>
-                <li>Cancer</li>
-                <li>Pregnancy</li>
-                <li>Estrogen therapy</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section class="section" id="clinical-presentation">
-          <h2>3. Clinical Presentation</h2>
-          <div class="grid-2">
-            <div class="box">
-              <h3>DVT Pattern</h3>
-              <ul>
-                <li>Unilateral leg swelling</li>
-                <li>Pain/tenderness</li>
-                <li>Warmth</li>
-              </ul>
-            </div>
-            <div class="box">
-              <h3>PE Pattern</h3>
-              <ul>
-                <li>Sudden dyspnea</li>
-                <li>Pleuritic chest pain</li>
-                <li>Tachycardia, hypoxia</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section class="section" id="management-overview">
-          <h2>4. Management Overview</h2>
-          <div class="chips">
-            <span class="chip">Prevent clot extension</span>
-            <span class="chip">Prevent recurrence</span>
-            <span class="chip">Reduce mortality</span>
-          </div>
-          <div class="callout">
-            Initial anticoagulation choice is driven by clinical stability,
-            renal function, pregnancy/mechanical valve status, and bleeding risk.
-          </div>
-        </section>
-
-        <section class="section" id="doacs">
-          <h2>5. First-Line: DOACs (Preferred in Most Patients)</h2>
-          <p>
-            Core agents: apixaban, rivaroxaban, edoxaban, and dabigatran.
-          </p>
+        <section class="section" id="introduction-to-hemostasis-and-thrombosis">
+          <h2>2. Introduction to Hemostasis and Thrombosis</h2>
+          <p>Hemostasis keeps blood fluid within vessels but allows clot formation when injury occurs. Thrombosis is pathologic clot formation within intact vessels, obstructing blood flow and creating embolic risk.</p>
           <table class="table">
-            <thead>
-              <tr>
-                <th>Drug</th>
-                <th>MOA</th>
-                <th>Major Side Effects</th>
-                <th>Contraindications</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Pathway</th><th>Activation Mechanism</th><th>Key Factors</th></tr></thead>
             <tbody>
-              <tr>
-                <td>Apixaban</td>
-                <td>Direct factor Xa inhibitor</td>
-                <td>Bleeding, GI bleeding</td>
-                <td>Active bleeding, severe renal impairment (agent specific)</td>
-              </tr>
-              <tr>
-                <td>Rivaroxaban</td>
-                <td>Direct factor Xa inhibitor</td>
-                <td>Bleeding, GI bleeding</td>
-                <td>Active bleeding, severe renal impairment (agent specific)</td>
-              </tr>
-              <tr>
-                <td>Edoxaban</td>
-                <td>Direct factor Xa inhibitor</td>
-                <td>Bleeding</td>
-                <td>Active bleeding, severe renal impairment (agent specific)</td>
-              </tr>
-              <tr>
-                <td>Dabigatran</td>
-                <td>Direct thrombin (factor IIa) inhibitor</td>
-                <td>Bleeding, GI symptoms</td>
-                <td>
-                  Active bleeding, severe renal impairment, mechanical heart valve
-                </td>
-              </tr>
+              <tr><td>Intrinsic</td><td>Exposure of blood to subendothelial collagen</td><td>XII, XI, IX, VIII</td></tr>
+              <tr><td>Extrinsic</td><td>Tissue factor release from damaged endothelium</td><td>VII</td></tr>
+              <tr><td>Common</td><td>Convergence at Factor X activation</td><td>X, V, II, I</td></tr>
             </tbody>
           </table>
-          <div class="callout">
-            Benefits: fixed dosing, no routine INR monitoring, and lower
-            intracranial bleeding risk versus warfarin in many populations.
-          </div>
-        </section>
-
-        <section class="section" id="heparins">
-          <h2>6. Heparins</h2>
-          <div class="stack">
-            <div class="box">
-              <h3>A. Unfractionated Heparin (UFH)</h3>
-              <ul>
-                <li>MOA: activates antithrombin, inhibiting thrombin and factor Xa</li>
-                <li>Monitoring: aPTT</li>
-                <li>Major side effects: bleeding, heparin-induced thrombocytopenia (HIT)</li>
-                <li>Reversal: protamine sulfate</li>
-              </ul>
-            </div>
-            <div class="box">
-              <h3>B. Low Molecular Weight Heparin (LMWH, e.g., Enoxaparin)</h3>
-              <ul>
-                <li>MOA: antithrombin-mediated factor Xa inhibition (less thrombin effect)</li>
-                <li>Benefits: predictable dosing, no routine monitoring</li>
-                <li>Side effects: bleeding</li>
-                <li>Contra/caution: severe renal impairment (dose adjustment needed)</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section class="section" id="warfarin">
-          <h2>7. Warfarin</h2>
-          <p>
-            Still important in mechanical heart valves, severe kidney disease,
-            and antiphospholipid syndrome.
-          </p>
+          <div class="callout"><strong>Key sequence:</strong> Factor Xa converts prothrombin to thrombin, thrombin converts fibrinogen to fibrin, and Factor XIII cross-links fibrin.</div>
           <div class="grid-2 stack">
-            <div class="box">
-              <h3>Mechanism and Monitoring</h3>
-              <ul>
-                <li>MOA: inhibits vitamin K epoxide reductase</li>
-                <li>Effect: reduced synthesis of factors II, VII, IX, X</li>
-                <li>Monitoring: INR target 2 to 3 in most indications</li>
-              </ul>
-            </div>
-            <div class="box">
-              <h3>Safety and Reversal</h3>
-              <ul>
-                <li>Major side effects: bleeding, rare skin necrosis</li>
-                <li>Contraindications: pregnancy (teratogenic), active bleeding</li>
-                <li>Reversal options: vitamin K, PCC, FFP</li>
-              </ul>
-            </div>
+            <div class="box"><h3>Regulatory anchors</h3><ul><li>Vitamin K-dependent factors: II, VII, IX, X, proteins C and S</li><li>Antithrombin inactivates thrombin and Factor Xa</li><li>Heparin and fondaparinux work by potentiating antithrombin</li></ul></div>
+            <div class="box"><h3>Arterial vs venous thrombosis</h3><ul><li>Arterial clots are platelet-rich and antiplatelet-responsive</li><li>Venous clots are fibrin-rich and anticoagulant-responsive</li><li>Venous thrombosis centers on stasis, hypercoagulability, and endothelial injury</li></ul></div>
           </div>
         </section>
-
-        <section class="section" id="duration-of-therapy">
-          <h2>8. Duration of Therapy</h2>
-          <div class="grid-3">
-            <div class="box">
-              <h3>Provoked VTE</h3>
-              <p>Typically 3 months.</p>
-            </div>
-            <div class="box">
-              <h3>Unprovoked VTE</h3>
-              <p>Consider extended therapy based on recurrence and bleeding risk.</p>
-            </div>
-            <div class="box">
-              <h3>Cancer-Associated Thrombosis</h3>
-              <p>DOAC or LMWH strategy depending on context.</p>
-            </div>
+        <section class="section" id="venous-thromboembolism">
+          <h2>3. Venous Thromboembolism</h2>
+          <div class="grid-2 stack">
+            <div class="box"><h3>3.1. Deep Vein Thrombosis</h3><ul><li>Usually occurs in lower-extremity deep veins</li><li>Typical features: unilateral swelling, pain, warmth, erythema, tenderness</li><li>Homan's sign is unreliable and not diagnostic</li><li>Complications include post-thrombotic syndrome, recurrence, and PE</li></ul></div>
+            <div class="box"><h3>3.2. Pulmonary Embolism</h3><ul><li>Usually originates from lower-extremity DVT</li><li>Typical symptoms: sudden dyspnea, pleuritic chest pain, tachycardia, tachypnea, hemoptysis, syncope</li><li>Signs of DVT may coexist</li></ul></div>
+          </div>
+          <table class="table">
+            <thead><tr><th>PE Classification</th><th>Definition</th><th>Mortality Risk</th><th>Management</th></tr></thead>
+            <tbody>
+              <tr><td>Massive (high-risk)</td><td>Hypotension, cardiogenic shock, or persistent hemodynamic instability</td><td>High</td><td>Thrombolysis or embolectomy plus anticoagulation</td></tr>
+              <tr><td>Submassive (intermediate-risk)</td><td>Normotensive with RV dysfunction or elevated cardiac biomarkers</td><td>Moderate</td><td>Anticoagulation; escalate selectively</td></tr>
+              <tr><td>Low-risk</td><td>Normotensive with no RV dysfunction and normal biomarkers</td><td>Low</td><td>Anticoagulation alone</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="risk-factors-for-vte">
+          <h2>4. Risk Factors for VTE</h2>
+          <p>Virchow's Triad groups VTE risk into venous stasis, endothelial injury, and hypercoagulability.</p>
+          <table class="table">
+            <thead><tr><th>Category</th><th>Risk Factors</th></tr></thead>
+            <tbody>
+              <tr><td>Venous stasis</td><td>Immobility, hospitalization, surgery, long travel, obesity, pregnancy, heart failure, venous insufficiency, advanced age</td></tr>
+              <tr><td>Endothelial injury</td><td>Trauma, fracture, surgery, central lines, pacemakers, atherosclerosis, vasculitis, prior VTE</td></tr>
+              <tr><td>Inherited hypercoagulability</td><td>Factor V Leiden, prothrombin mutation, antithrombin deficiency, protein C deficiency, protein S deficiency</td></tr>
+              <tr><td>Acquired hypercoagulability</td><td>Active cancer, pregnancy, estrogen therapy, HIT, antiphospholipid syndrome, nephrotic syndrome, inflammatory bowel disease</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="vte-prophylaxis">
+          <h2>5. VTE Prophylaxis</h2>
+          <p>Every hospitalized patient should be assessed for VTE risk and receive prophylaxis if indicated and not contraindicated by bleeding risk.</p>
+          <div class="grid-2 stack">
+            <div class="box"><h3>Risk assessment models</h3><ul><li><strong>Padua score:</strong> medical inpatients</li><li><strong>Caprini score:</strong> surgical patients</li></ul></div>
+            <div class="box"><h3>Mechanical options</h3><ul><li>Intermittent pneumatic compression</li><li>Graduated compression stockings</li><li>Use when pharmacologic prophylaxis is contraindicated</li></ul></div>
+          </div>
+          <table class="table">
+            <thead><tr><th>Setting</th><th>Pharmacologic Prophylaxis</th><th>Mechanical Alternative</th></tr></thead>
+            <tbody>
+              <tr><td>Medical inpatient</td><td>LMWH, UFH, or fondaparinux</td><td>IPC or compression stockings</td></tr>
+              <tr><td>Orthopedic surgery</td><td>LMWH, fondaparinux, selected DOACs, or warfarin</td><td>IPC until ambulatory</td></tr>
+              <tr><td>Major abdominal or pelvic surgery</td><td>LMWH, UFH, or fondaparinux</td><td>IPC</td></tr>
+              <tr><td>Major trauma or spinal cord injury</td><td>LMWH when feasible</td><td>IPC</td></tr>
+            </tbody>
+          </table>
+          <div class="callout warn"><strong>Contraindications to pharmacologic prophylaxis:</strong> active bleeding, severe thrombocytopenia, major coagulopathy, recent intracranial hemorrhage, active peptic ulcer bleeding, or procedures with spinal hematoma risk.</div>
+        </section>
+        <section class="section" id="diagnosis-of-vte">
+          <h2>6. Diagnosis of VTE</h2>
+          <div class="grid-2 stack">
+            <div class="box"><h3>DVT diagnostic approach</h3><ul><li>Use Wells score to estimate pretest probability</li><li>Negative D-dimer in low/intermediate probability can exclude DVT</li><li>Compression ultrasound is first-line imaging</li></ul></div>
+            <div class="box"><h3>PE diagnostic approach</h3><ul><li>Use Wells score for PE</li><li>Negative D-dimer helps rule out PE in low-likelihood cases</li><li>CT pulmonary angiography is the main definitive imaging test</li><li>V/Q scan is an alternative in contrast allergy, pregnancy, or renal impairment</li></ul></div>
           </div>
         </section>
-
-        <section class="section" id="pe-severity">
-          <h2>9. Pulmonary Embolism Severity and Thrombolysis</h2>
-          <div class="callout warn">
-            Massive PE (hypotension/shock) requires urgent reperfusion
-            consideration, including thrombolysis.
+        <section class="section" id="anticoagulant-drug-classes">
+          <h2>7. Anticoagulant Drug Classes</h2>
+          <table class="table">
+            <thead><tr><th>7.1. Unfractionated Heparin</th><th>Details</th></tr></thead>
+            <tbody>
+              <tr><td>Mechanism</td><td>Potentiates antithrombin against thrombin and Factor Xa</td></tr>
+              <tr><td>Monitoring</td><td>aPTT or anti-Xa</td></tr>
+              <tr><td>Strengths</td><td>Rapid onset and offset, reversible, usable in renal impairment</td></tr>
+              <tr><td>Key risks</td><td>Bleeding, HIT, osteoporosis with long-term use</td></tr>
+              <tr><td>Reversal</td><td>Protamine sulfate</td></tr>
+            </tbody>
+          </table>
+          <table class="table">
+            <thead><tr><th>7.2. Low Molecular Weight Heparins</th><th>Details</th></tr></thead>
+            <tbody>
+              <tr><td>Examples</td><td>Enoxaparin, dalteparin, tinzaparin</td></tr>
+              <tr><td>Mechanism</td><td>Antithrombin-mediated Factor Xa inhibition greater than thrombin inhibition</td></tr>
+              <tr><td>Monitoring</td><td>Usually none; anti-Xa in special populations</td></tr>
+              <tr><td>Strengths</td><td>Predictable response, outpatient use, lower HIT risk than UFH</td></tr>
+              <tr><td>Limits</td><td>Renal clearance and only partial protamine reversal</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-2 stack">
+            <div class="box"><h3>7.3. Fondaparinux</h3><ul><li>Synthetic pentasaccharide with selective Factor Xa inhibition via antithrombin</li><li>No HIT risk</li><li>Contraindicated when CrCl is under 30 mL/min</li><li>No specific reversal agent</li></ul></div>
+            <div class="box"><h3>7.4. Warfarin</h3><ul><li>Vitamin K antagonist affecting II, VII, IX, X, proteins C and S</li><li>Monitor INR; target 2-3 for VTE</li><li>Needs overlap with parenteral anticoagulation during initiation</li><li>Many drug and food interactions</li></ul></div>
           </div>
-          <div class="box stack">
-            <h3>Alteplase (Thrombolytic)</h3>
-            <ul>
-              <li>MOA: converts plasminogen to plasmin, dissolving fibrin clot</li>
-              <li>Major side effects: major bleeding, intracranial hemorrhage</li>
-              <li>
-                Contraindications: active bleeding, recent major surgery, history
-                of hemorrhagic stroke
-              </li>
-            </ul>
+          <table class="table">
+            <thead><tr><th>7.5. Direct Oral Anticoagulants</th><th>Core Point</th></tr></thead>
+            <tbody>
+              <tr><td>Rivaroxaban</td><td>Direct Factor Xa inhibitor; single-agent lead-in regimen</td></tr>
+              <tr><td>Apixaban</td><td>Direct Factor Xa inhibitor; single-agent lead-in regimen</td></tr>
+              <tr><td>Edoxaban</td><td>Direct Factor Xa inhibitor; requires parenteral lead-in</td></tr>
+              <tr><td>Dabigatran</td><td>Direct thrombin inhibitor; requires parenteral lead-in</td></tr>
+            </tbody>
+          </table>
+          <div class="callout"><strong>High-yield DOAC split:</strong> rivaroxaban and apixaban start as single-agent VTE therapy, while edoxaban and dabigatran require 5-10 days of parenteral anticoagulation first.</div>
+        </section>
+        <section class="section" id="treatment-of-vte">
+          <h2>8. Treatment of VTE</h2>
+          <div class="stack"><div class="box"><h3>8.1. Acute Phase Management</h3><p>Goals are to prevent thrombus extension, embolization, recurrence, death, and long-term complications. Start anticoagulation promptly unless bleeding risk makes it unsafe.</p></div></div>
+          <table class="table">
+            <thead><tr><th>Strategy</th><th>Description</th><th>Examples</th></tr></thead>
+            <tbody>
+              <tr><td>Single-agent DOAC</td><td>Start directly without parenteral lead-in, using higher initial doses</td><td>Rivaroxaban, apixaban</td></tr>
+              <tr><td>Parenteral lead-in to DOAC</td><td>Use LMWH, UFH, or fondaparinux for 5-10 days first</td><td>Edoxaban, dabigatran</td></tr>
+              <tr><td>Parenteral to warfarin</td><td>Overlap for at least 5 days and until INR is therapeutic</td><td>Warfarin</td></tr>
+            </tbody>
+          </table>
+          <div class="stack"><div class="box"><h3>8.2. Long-Term Management</h3><p>Warfarin, DOACs, and LMWH are all options depending on cancer, pregnancy, renal function, mechanical valves, and access issues.</p></div></div>
+          <table class="table">
+            <thead><tr><th>8.3. Duration of Anticoagulation</th><th>Typical Duration</th><th>Rationale</th></tr></thead>
+            <tbody>
+              <tr><td>Provoked VTE</td><td>3 months</td><td>Recurrence risk is relatively low after the transient trigger resolves</td></tr>
+              <tr><td>Unprovoked VTE</td><td>At least 3 months, often extended</td><td>Higher recurrence risk; balance with bleeding risk</td></tr>
+              <tr><td>Cancer-associated thrombosis</td><td>At least 3-6 months and often longer while cancer is active</td><td>High recurrence risk</td></tr>
+              <tr><td>Recurrent VTE</td><td>Often indefinite</td><td>Recurrence risk is high</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="special-populations">
+          <h2>9. Special Populations</h2>
+          <div class="grid-2 stack">
+            <div class="box"><h3>9.1. VTE in Pregnancy</h3><ul><li>LMWH is preferred during pregnancy and postpartum</li><li>Warfarin and DOACs are contraindicated during pregnancy</li><li>Continue therapy at least 6 weeks postpartum and at least 3 months total</li></ul></div>
+            <div class="box"><h3>9.2. Cancer-Associated Thrombosis</h3><ul><li>LMWH was the traditional standard</li><li>DOACs are now accepted alternatives in many patients</li><li>Bleeding risk is higher in GI and GU cancers</li></ul></div>
+          </div>
+          <div class="grid-2 stack">
+            <div class="box"><h3>9.3. VTE in Renal Impairment</h3><p>UFH and warfarin are the most flexible options in severe renal dysfunction. Fondaparinux and most DOACs should be avoided when renal impairment is severe.</p></div>
+            <div class="box"><h3>9.4. VTE in Hepatic Impairment</h3><p>Use caution in mild disease, avoid most DOACs in moderate disease, and prefer highly reversible strategies like UFH when hepatic impairment is severe and anticoagulation is unavoidable.</p></div>
           </div>
         </section>
-
-        <section class="section" id="special-situations">
-          <h2>10. Special Situations</h2>
-          <div class="grid-3">
-            <div class="box">
-              <h3>Pregnancy</h3>
-              <p>LMWH is preferred.</p>
-            </div>
-            <div class="box">
-              <h3>Mechanical Valve</h3>
-              <p>Warfarin preferred; DOACs contraindicated.</p>
-            </div>
-            <div class="box">
-              <h3>HIT</h3>
-              <p>Stop all heparin and use argatroban or bivalirudin.</p>
-            </div>
+        <section class="section" id="reversal-agents">
+          <h2>10. Reversal Agents</h2>
+          <table class="table">
+            <thead><tr><th>10.1. Vitamin K for Warfarin</th><th>Management</th></tr></thead>
+            <tbody>
+              <tr><td>INR &gt;4.5 with no bleeding</td><td>Hold warfarin; low-dose oral vitamin K may be considered</td></tr>
+              <tr><td>INR &gt;10 with no bleeding</td><td>Hold warfarin and give oral vitamin K</td></tr>
+              <tr><td>Major bleeding</td><td>Give vitamin K 10 mg IV and 4-factor PCC</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-2 stack">
+            <div class="box"><h3>10.2. PCC</h3><p>4-factor PCC contains Factors II, VII, IX, and X plus proteins C and S and is preferred for rapid warfarin reversal. It may also be used off-label in DOAC-related bleeding when specific agents are unavailable.</p></div>
+            <div class="box"><h3>10.3. Protamine Sulfate</h3><p>Protamine fully reverses UFH, partially reverses LMWH, and does not reverse fondaparinux.</p></div>
           </div>
+          <table class="table">
+            <thead><tr><th>10.4. Specific DOAC Reversal Agents</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>Andexanet alfa</td><td>Reverses Factor Xa inhibitors such as rivaroxaban and apixaban</td></tr>
+              <tr><td>Idarucizumab</td><td>Reverses dabigatran</td></tr>
+            </tbody>
+          </table>
         </section>
-
-        <section class="section" id="management-recap-drill">
-          <h2>Management Recap Drill</h2>
-          <div class="flow">
-            <div class="step"><strong>DVT/PE 1:</strong> Confirm diagnosis.</div>
-            <div class="arrow" aria-hidden="true">&#8595;</div>
-            <div class="step"><strong>DVT/PE 2:</strong> Start DOAC in most patients.</div>
-            <div class="arrow" aria-hidden="true">&#8595;</div>
-            <div class="step"><strong>DVT/PE 3:</strong> Use heparin bridge if initiating warfarin.</div>
-            <div class="arrow" aria-hidden="true">&#8595;</div>
-            <div class="step"><strong>DVT/PE 4:</strong> Treat at least 3 months.</div>
-            <div class="arrow" aria-hidden="true">&#8595;</div>
-            <div class="step"><strong>DVT/PE 5:</strong> Reassess recurrence risk for extension decisions.</div>
-            <div class="arrow" aria-hidden="true">&#8595;</div>
-            <div class="step"><strong>Massive PE:</strong> Consider thrombolysis.</div>
-            <div class="arrow" aria-hidden="true">&#8595;</div>
-            <div class="step"><strong>HIT:</strong> Stop heparin immediately.</div>
-          </div>
-
-          <div class="diagram-card">
-            <p class="diagram-title">Visual Algorithm Placeholder</p>
-            <p>
-              [Insert VTE Treatment and Anticoagulation Flowchart Here During UI Integration]
-            </p>
-          </div>
+        <section class="section" id="peri-procedural-management-of-anticoagulation">
+          <h2>11. Peri-Procedural Management of Anticoagulation</h2>
+          <p>Peri-procedural planning balances bleeding risk against thrombosis risk if anticoagulation is interrupted.</p>
+          <table class="table">
+            <thead><tr><th>Agent</th><th>Typical Interruption Before Procedure</th><th>Resumption</th></tr></thead>
+            <tbody>
+              <tr><td>Warfarin</td><td>Hold about 5 days before high-risk procedures</td><td>Resume once hemostasis is secure, often same day or next day</td></tr>
+              <tr><td>DOACs</td><td>Usually hold 24 hours for lower risk and about 48 hours for higher risk procedures</td><td>Resume 24-48 hours after procedure if hemostasis is adequate</td></tr>
+              <tr><td>LMWH</td><td>Hold 12-24 hours for prophylactic dosing and longer for therapeutic dosing</td><td>Resume after adequate hemostasis</td></tr>
+            </tbody>
+          </table>
+          <div class="callout"><strong>Bridging:</strong> warfarin may require LMWH or UFH bridging in very high thrombotic-risk settings such as recent VTE or selected mechanical heart valves. DOACs usually do not require bridging because onset and offset are rapid.</div>
         </section>
-
-        <section class="section refs">
-          <h2>Guideline References (Management)</h2>
-          <div class="grid-2">
-            <div class="box">
-              <h3>CHEST Guideline: Antithrombotic Therapy for VTE Disease</h3>
-              <a
-                href="https://journal.chestnet.org"
-                target="_blank"
-                rel="noopener"
-              >
-                https://journal.chestnet.org
-              </a>
-            </div>
-            <div class="box">
-              <h3>ACC Expert Consensus on Anticoagulation</h3>
-              <a
-                href="https://www.acc.org/guidelines"
-                target="_blank"
-                rel="noopener"
-              >
-                https://www.acc.org/guidelines
-              </a>
-            </div>
-          </div>
-          <div class="callout">
-            These references guide DOAC preference, duration decisions,
-            cancer-associated thrombosis strategies, and thrombolysis indications.
-          </div>
-        </section>
-
-        <section class="section" id="exam-traps">
-          <h2>11. Common Exam Traps</h2>
+        <section class="section" id="heparin-induced-thrombocytopenia">
+          <h2>12. Heparin-Induced Thrombocytopenia</h2>
+          <p>HIT is an immune-mediated, prothrombotic complication of heparin therapy. UFH carries higher risk than LMWH.</p>
           <div class="stack">
-            <div class="callout alert">
-              DOACs are preferred over warfarin in most VTE scenarios.
-            </div>
-            <div class="callout alert">
-              Warfarin requires heparin bridge at initiation.
-            </div>
-            <div class="callout alert">
-              Mechanical valves: DOACs are contraindicated.
-            </div>
-            <div class="callout alert">
-              Pregnancy: LMWH is preferred.
-            </div>
-            <div class="callout alert">
-              HIT management starts with stopping all heparin.
-            </div>
+            <div class="box"><h3>Pathophysiology</h3><ol><li>Heparin binds platelet factor 4</li><li>IgG forms against the heparin-PF4 complex</li><li>Platelets are activated through Fc receptors</li><li>Thrombocytopenia occurs alongside thrombosis risk</li></ol></div>
+          </div>
+          <table class="table">
+            <thead><tr><th>4T's Category</th><th>Key Idea</th></tr></thead>
+            <tbody>
+              <tr><td>Thrombocytopenia</td><td>Platelet fall greater than 50% is high-yield</td></tr>
+              <tr><td>Timing</td><td>Usually 5-10 days after exposure unless prior recent exposure</td></tr>
+              <tr><td>Thrombosis</td><td>New thrombosis raises the score</td></tr>
+              <tr><td>oTher causes</td><td>Absence of another cause raises suspicion</td></tr>
+            </tbody>
+          </table>
+          <div class="callout danger"><strong>Management:</strong> stop all heparin immediately, avoid starting warfarin until platelets recover, and begin a non-heparin anticoagulant such as argatroban or fondaparinux when appropriate.</div>
+        </section>
+        <section class="section" id="patient-counseling-points">
+          <h2>13. Patient Counseling Points</h2>
+          <div class="grid-2 stack">
+            <div class="box"><h3>For all anticoagulant patients</h3><ul><li>Take doses exactly as prescribed</li><li>Watch for bruising, prolonged bleeding, black stools, blood in urine, severe headache, or weakness</li><li>Avoid starting OTC drugs, especially NSAIDs, without checking first</li><li>Use a medical alert bracelet or carry anticoagulant identification</li></ul></div>
+            <div class="box"><h3>Drug-specific points</h3><ul><li><strong>Warfarin:</strong> keep vitamin K intake consistent and attend INR checks</li><li><strong>DOACs:</strong> do not double missed doses; rivaroxaban should be taken with food; dabigatran stays in original container</li><li><strong>LMWH:</strong> rotate abdominal injection sites and expect mild bruising</li></ul></div>
           </div>
         </section>
-
-        <section class="section" id="quick-revision">
-          <h2>12. Quick Revision Summary</h2>
-          <div class="grid-2">
-            <div class="box">
-              <h3>Must Remember</h3>
-              <ul>
-                <li>VTE = DVT + PE</li>
-                <li>DOACs are first-line in most patients</li>
-                <li>Warfarin remains useful in selected special groups</li>
-                <li>Massive PE may require thrombolysis</li>
-                <li>Minimum treatment is usually 3 months</li>
-              </ul>
-            </div>
-            <div class="box">
-              <h3>Practice Questions Placeholder</h3>
-              <ul>
-                <li>Topic: VTE and Anticoagulation</li>
-                <li>
-                  Subtopics: DOACs, warfarin, heparins, HIT, thrombolysis,
-                  therapy duration
-                </li>
-              </ul>
-            </div>
+        <section class="section" id="summary-for-exam-preparation">
+          <h2>14. Summary for Exam Preparation</h2>
+          <table class="table">
+            <thead><tr><th>Drug</th><th>Mechanism</th><th>Monitoring</th><th>Reversal</th><th>Key Use</th></tr></thead>
+            <tbody>
+              <tr><td>UFH</td><td>AT-mediated Xa and IIa inhibition</td><td>aPTT / anti-Xa</td><td>Protamine</td><td>Acute VTE, renal impairment</td></tr>
+              <tr><td>LMWH</td><td>AT-mediated Xa greater than IIa inhibition</td><td>Anti-Xa in special situations</td><td>Partial protamine</td><td>VTE treatment, prophylaxis, pregnancy</td></tr>
+              <tr><td>Fondaparinux</td><td>AT-mediated Xa inhibition</td><td>Usually none</td><td>No specific agent</td><td>VTE, HIT option</td></tr>
+              <tr><td>Warfarin</td><td>Vitamin K antagonist</td><td>INR</td><td>Vitamin K, PCC</td><td>VTE, AF, mechanical valves</td></tr>
+              <tr><td>Rivaroxaban / Apixaban / Edoxaban</td><td>Direct Xa inhibition</td><td>None routine</td><td>Andexanet alfa</td><td>VTE and AF</td></tr>
+              <tr><td>Dabigatran</td><td>Direct thrombin inhibition</td><td>None routine</td><td>Idarucizumab</td><td>VTE and AF</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-3 stack">
+            <div class="box"><h3>HIT</h3><p>Think platelet drop greater than 50% about 5-10 days after heparin with paradoxical thrombosis.</p></div>
+            <div class="box"><h3>DOAC Selection</h3><p>Rivaroxaban and apixaban are rapid single-agent VTE options; edoxaban and dabigatran expect parenteral delay.</p></div>
+            <div class="box"><h3>Warfarin Interactions</h3><p>INR rises with amiodarone, antibiotics, and antifungals and falls with rifampin or high vitamin K intake.</p></div>
           </div>
         </section>
+        <section class="section" id="key-guidelines-links">
+          <h2>15. Key Guidelines Links</h2>
+          <div class="guideline-list">
+            <p class="guideline-line"><strong>CHEST Antithrombotic Therapy for VTE Disease 2021:</strong> <a href="https://journal.chestnet.org/article/S0012-3692(20)35259-6/fulltext" target="_blank" rel="noreferrer">https://journal.chestnet.org/article/S0012-3692(20)35259-6/fulltext</a></p>
+            <p class="guideline-line"><strong>ASH VTE Management Guidance:</strong> <a href="https://www.hematology.org/education/clinicians/guidelines-and-quality-care/clinical-practice-guidelines" target="_blank" rel="noreferrer">https://www.hematology.org/education/clinicians/guidelines-and-quality-care/clinical-practice-guidelines</a></p>
+            <p class="guideline-line"><strong>ESC Acute PE Guideline 2019:</strong> <a href="https://academic.oup.com/eurheartj/article/41/4/543/5556137" target="_blank" rel="noreferrer">https://academic.oup.com/eurheartj/article/41/4/543/5556137</a></p>
+            <p class="guideline-line"><strong>ISTH DOAC Reversal Guidance 2021:</strong> <a href="https://onlinelibrary.wiley.com/doi/10.1111/jth.15387" target="_blank" rel="noreferrer">https://onlinelibrary.wiley.com/doi/10.1111/jth.15387</a></p>
+            <p class="guideline-line"><strong>NCCN Cancer-Associated VTE Guidance 2023:</strong> <a href="https://www.nccn.org/guidelines/guidelines-detail?category=3&id=1452" target="_blank" rel="noreferrer">https://www.nccn.org/guidelines/guidelines-detail?category=3&id=1452</a></p>
+          </div>
+        </section>
+        <div class="note-quiz-footer">
+          <div class="topic-quiz-actions">
+            <a class="topic-quiz-cta" href="../index.html?topicQuiz=anticoagulation-vte&topicTitle=Anticoagulation%20%26%20VTE" target="_top" onclick="if(window.top&&typeof window.top.startTopicQuizSession==='function'){window.top.startTopicQuizSession('anticoagulation-vte','Anticoagulation & VTE'); return false;} return true;">Start Topic Quiz</a>
+          </div>
+        </div>
       </article>
     </div>
   </body>
 </html>
-
-
-

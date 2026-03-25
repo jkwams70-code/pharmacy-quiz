@@ -36,18 +36,19 @@
         "resistant-hypertension"
       ],
       "sections": [
-        { "id": "what-is-hypertension", "title": "What Is Hypertension?" },
-        { "id": "primary-vs-secondary", "title": "Primary vs Secondary Hypertension" },
-        { "id": "risk-factors", "title": "Risk Factors" },
-        { "id": "complications", "title": "Complications" },
-        { "id": "treatment-goals", "title": "Treatment Goals" },
-        { "id": "lifestyle-management", "title": "Non-Pharmacologic Management" },
-        { "id": "first-line-drug-classes", "title": "First-Line Drug Classes" },
+        { "id": "learning-objectives", "title": "Learning Objectives" },
+        { "id": "introduction", "title": "Introduction: The Silent Killer" },
+        { "id": "classification-of-blood-pressure", "title": "Classification of Blood Pressure" },
+        { "id": "pathophysiology", "title": "Pathophysiology: Why BP Rises" },
+        { "id": "risk-factors-and-target-organ-damage", "title": "Risk Factors and Target Organ Damage" },
+        { "id": "non-pharmacological-therapy", "title": "Non-Pharmacological Therapy" },
+        { "id": "pharmacological-therapy", "title": "Pharmacological Therapy" },
         { "id": "special-populations", "title": "Special Populations" },
-        { "id": "resistant-hypertension", "title": "Resistant Hypertension" },
-        { "id": "hypertensive-crisis", "title": "Hypertensive Crisis" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
+        { "id": "hypertensive-crises", "title": "Hypertensive Crises" },
+        { "id": "patient-counseling-points", "title": "Patient Counseling Points" },
+        { "id": "summary-for-exam-preparation", "title": "Summary for Exam Preparation" },
+        { "id": "key-guidelines-links", "title": "Key Guidelines Links" },
+        { "id": "comprehensive-question-bank", "title": "Questions & Topic Quiz" }
       ]
     },
     {
@@ -110,31 +111,34 @@
       "slug": "arrhythmias",
       "title": "Arrhythmias",
       "category": "Cardiovascular Disorders",
-      "summary": "AF, VT, bradyarrhythmias, antiarrhythmic drug classes, and anticoagulation strategy.",
+      "summary": "Comprehensive lecture note covering electrophysiology, antiarrhythmic classes, AF anticoagulation, ACLS arrhythmia management, and device strategy.",
       "level": "core",
       "notePath": "arrhythmias.html",
       "tags": [
         "af",
         "atrial-fibrillation",
         "vt",
+        "avnrt",
+        "torsades",
         "vaughan-williams",
         "doac",
-        "warfarin",
         "amiodarone",
-        "digoxin"
+        "digoxin",
+        "adenosine"
       ],
       "sections": [
-        { "id": "what-are-arrhythmias", "title": "What Are Arrhythmias?" },
-        { "id": "electrophysiology-refresher", "title": "Basic Electrophysiology Refresher" },
-        { "id": "major-arrhythmias-tested", "title": "Major Arrhythmias Tested" },
-        { "id": "atrial-fibrillation", "title": "Atrial Fibrillation (AF)" },
-        { "id": "stroke-prevention-in-af", "title": "Stroke Prevention in AF" },
+        { "id": "learning-objectives", "title": "Learning Objectives" },
+        { "id": "introduction-to-cardiac-electrophysiology", "title": "Introduction to Cardiac Electrophysiology" },
+        { "id": "classification-of-antiarrhythmic-drugs", "title": "Antiarrhythmic Classification" },
+        { "id": "supraventricular-arrhythmias", "title": "Supraventricular Arrhythmias" },
         { "id": "ventricular-arrhythmias", "title": "Ventricular Arrhythmias" },
-        { "id": "bradyarrhythmias", "title": "Bradyarrhythmias" },
-        { "id": "vaughan-williams-summary", "title": "Vaughan-Williams Classification Summary" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
+        { "id": "bradyarrhythmias-and-conduction-disorders", "title": "Bradyarrhythmias and Conduction Disorders" },
+        { "id": "management-strategies", "title": "Management Strategies" },
+        { "id": "acute-management-of-specific-arrhythmias", "title": "Acute Management of Specific Arrhythmias" },
+        { "id": "special-populations", "title": "Special Populations" },
+        { "id": "patient-counseling-points", "title": "Patient Counseling Points" },
+        { "id": "summary-for-exam-preparation", "title": "Summary for Exam Preparation" },
+        { "id": "key-guidelines-links", "title": "Key Guidelines Links" }
       ]
     },
     {
@@ -170,7 +174,7 @@
       "slug": "anticoagulation-vte",
       "title": "Anticoagulation & VTE",
       "category": "Hematology",
-      "summary": "DVT/PE framework, DOAC-first strategy, heparins, warfarin, HIT, thrombolysis, and duration decisions.",
+      "summary": "A comprehensive lecture note covering hemostasis, DVT and PE, anticoagulant classes, reversal strategies, HIT, peri-procedural management, and VTE treatment decisions.",
       "level": "core",
       "notePath": "anticoagulation-vte.html",
       "tags": [
@@ -184,19 +188,21 @@
         "thrombolysis"
       ],
       "sections": [
-        { "id": "what-is-vte", "title": "What Is VTE?" },
-        { "id": "pathophysiology", "title": "Pathophysiology" },
-        { "id": "clinical-presentation", "title": "Clinical Presentation" },
-        { "id": "management-overview", "title": "Management Overview" },
-        { "id": "doacs", "title": "DOACs" },
-        { "id": "heparins", "title": "Heparins" },
-        { "id": "warfarin", "title": "Warfarin" },
-        { "id": "duration-of-therapy", "title": "Duration of Therapy" },
-        { "id": "pe-severity", "title": "PE Severity and Thrombolysis" },
-        { "id": "special-situations", "title": "Special Situations" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
+        { "id": "learning-objectives", "title": "1. Learning Objectives" },
+        { "id": "introduction-to-hemostasis-and-thrombosis", "title": "2. Introduction to Hemostasis and Thrombosis" },
+        { "id": "venous-thromboembolism", "title": "3. Venous Thromboembolism" },
+        { "id": "risk-factors-for-vte", "title": "4. Risk Factors for VTE" },
+        { "id": "vte-prophylaxis", "title": "5. VTE Prophylaxis" },
+        { "id": "diagnosis-of-vte", "title": "6. Diagnosis of VTE" },
+        { "id": "anticoagulant-drug-classes", "title": "7. Anticoagulant Drug Classes" },
+        { "id": "treatment-of-vte", "title": "8. Treatment of VTE" },
+        { "id": "special-populations", "title": "9. Special Populations" },
+        { "id": "reversal-agents", "title": "10. Reversal Agents" },
+        { "id": "peri-procedural-management-of-anticoagulation", "title": "11. Peri-Procedural Management of Anticoagulation" },
+        { "id": "heparin-induced-thrombocytopenia", "title": "12. Heparin-Induced Thrombocytopenia" },
+        { "id": "patient-counseling-points", "title": "13. Patient Counseling Points" },
+        { "id": "summary-for-exam-preparation", "title": "14. Summary for Exam Preparation" },
+        { "id": "key-guidelines-links", "title": "15. Key Guidelines Links" }
       ]
     },
     {
@@ -291,27 +297,35 @@
     },
     {
       "slug": "aortic-diseases",
-      "title": "Aortic Diseases",
+      "title": "Aortic Disease",
       "category": "Cardiovascular Disorders",
-      "summary": "Aortic dissection emergency sequence, AAA/TAA surveillance, blood pressure strategy, and repair thresholds.",
+      "summary": "Comprehensive lecture note covering aneurysm and dissection classification, surveillance, anti-impulse therapy, and repair thresholds.",
       "level": "core",
       "notePath": "aortic-diseases.html",
       "tags": [
+        "aortic-aneurysm",
         "aortic-dissection",
         "aaa",
         "taa",
         "beta-blocker",
-        "nitroprusside",
         "marfan",
+        "tevar",
         "surgical-threshold"
       ],
       "sections": [
-        { "id": "what-are-aortic-diseases", "title": "What Are Aortic Diseases?" },
-        { "id": "aortic-dissection", "title": "Aortic Dissection" },
+        { "id": "learning-objectives", "title": "Learning Objectives" },
+        { "id": "anatomy-of-the-aorta", "title": "Anatomy of the Aorta" },
+        { "id": "classification-of-aortic-diseases", "title": "Classification of Aortic Diseases" },
         { "id": "aortic-aneurysm", "title": "Aortic Aneurysm" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
+        { "id": "aortic-dissection", "title": "Aortic Dissection" },
+        { "id": "aortic-ulcer-and-intramural-hematoma", "title": "Aortic Ulcer and Intramural Hematoma" },
+        { "id": "traumatic-aortic-injury", "title": "Traumatic Aortic Injury" },
+        { "id": "aortitis", "title": "Aortitis" },
+        { "id": "pharmacological-management", "title": "Pharmacological Management" },
+        { "id": "surgical-and-endovascular-management", "title": "Surgical and Endovascular Management" },
+        { "id": "patient-counseling-points", "title": "Patient Counseling Points" },
+        { "id": "summary-for-exam-preparation", "title": "Summary for Exam Preparation" },
+        { "id": "key-guidelines-links", "title": "Key Guidelines Links" }
       ]
     },
     {
@@ -609,7 +623,7 @@
       "slug": "diabetes-mellitus",
       "title": "Diabetes Mellitus",
       "category": "Endocrinology",
-      "summary": "T1DM and T2DM diagnosis, insulin and non-insulin drug classes, DKA/HHS management, and complication prevention.",
+      "summary": "A comprehensive lecture note covering diagnosis, glycemic monitoring, insulin and non-insulin therapy, ADA/EASD selection, acute emergencies, chronic complications, and patient counseling.",
       "level": "core",
       "notePath": "diabetes-mellitus.html",
       "tags": [
@@ -623,18 +637,23 @@
         "hhs"
       ],
       "sections": [
-        { "id": "what-is-diabetes", "title": "What Is Diabetes Mellitus?" },
-        { "id": "classification", "title": "Classification" },
+        { "id": "learning-objectives", "title": "1. Learning Objectives" },
+        { "id": "introduction-to-diabetes-mellitus", "title": "2. Introduction to Diabetes Mellitus" },
+        { "id": "classification-of-diabetes-mellitus", "title": "3. Classification of Diabetes Mellitus" },
         { "id": "diagnostic-criteria", "title": "Diagnostic Criteria" },
-        { "id": "pathophysiology", "title": "Type 2 Pathophysiology" },
-        { "id": "goals-of-therapy", "title": "Goals of Therapy" },
-        { "id": "type-1-management", "title": "Type 1 Management" },
-        { "id": "type-2-pharmacology", "title": "Type 2 Pharmacologic Therapy" },
-        { "id": "acute-complications", "title": "Acute Complications" },
-        { "id": "chronic-complications", "title": "Chronic Complications" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
+        { "id": "pathophysiology", "title": "5. Pathophysiology" },
+        { "id": "glycemic-goals-and-monitoring", "title": "6. Glycemic Goals and Monitoring" },
+        { "id": "non-pharmacological-management", "title": "7. Non-Pharmacological Management" },
+        { "id": "pharmacological-management-of-type-1-diabetes", "title": "8. Pharmacological Management of Type 1 Diabetes" },
+        { "id": "pharmacological-management-of-type-2-diabetes", "title": "9. Pharmacological Management of Type 2 Diabetes" },
+        { "id": "approach-to-pharmacotherapy-selection", "title": "10. Approach to Pharmacotherapy Selection" },
+        { "id": "management-of-cardiovascular-risk-and-comorbidities", "title": "11. Management of Cardiovascular Risk and Comorbidities" },
+        { "id": "acute-complications", "title": "12. Acute Complications" },
+        { "id": "chronic-complications", "title": "13. Chronic Complications" },
+        { "id": "special-populations", "title": "14. Special Populations" },
+        { "id": "patient-counseling-points", "title": "15. Patient Counseling Points" },
+        { "id": "summary-for-exam-preparation", "title": "16. Summary for Exam Preparation" },
+        { "id": "key-guidelines-links", "title": "17. Key Guidelines Links" }
       ]
     },
     {
@@ -671,7 +690,7 @@
       "slug": "adrenal-disorders",
       "title": "Adrenal Disorders",
       "category": "Endocrinology",
-      "summary": "Cortisol excess/deficiency patterns, adrenal crisis emergency therapy, and hyperaldosteronism management.",
+      "summary": "A comprehensive lecture note covering adrenal physiology, cortisol excess, adrenal insufficiency, pheochromocytoma, emergency care, and pharmacologic management.",
       "level": "core",
       "notePath": "adrenal-disorders.html",
       "tags": [
@@ -684,15 +703,15 @@
         "hydrocortisone"
       ],
       "sections": [
-        { "id": "adrenal-physiology", "title": "Adrenal Physiology" },
-        { "id": "cushing-syndrome", "title": "Cushing Syndrome" },
-        { "id": "addison-disease", "title": "Addison Disease" },
-        { "id": "adrenal-crisis", "title": "Adrenal Crisis" },
-        { "id": "secondary-adrenal-insufficiency", "title": "Secondary Adrenal Insufficiency" },
-        { "id": "primary-hyperaldosteronism", "title": "Primary Hyperaldosteronism" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
+        { "id": "learning-objectives", "title": "1. Learning Objectives" },
+        { "id": "introduction-to-the-adrenal-gland", "title": "2. Introduction to the Adrenal Gland" },
+        { "id": "disorders-of-adrenal-cortical-excess", "title": "3. Disorders of Adrenal Cortical Excess" },
+        { "id": "disorders-of-adrenal-cortical-insufficiency", "title": "4. Disorders of Adrenal Cortical Insufficiency" },
+        { "id": "disorders-of-adrenal-medulla", "title": "5. Disorders of Adrenal Medulla" },
+        { "id": "pharmacological-management", "title": "6. Pharmacological Management" },
+        { "id": "patient-counseling-points", "title": "7. Patient Counseling Points" },
+        { "id": "summary-for-exam-preparation", "title": "8. Summary for Exam Preparation" },
+        { "id": "key-guidelines-links", "title": "9. Key Guidelines Links" }
       ]
     },
     {

@@ -1,4 +1,4 @@
-import { baseQuestions } from "./data.js?v=20260307-explfull1";
+import { baseQuestions } from "./data.js?v=20260325-bankreshuffle2";
 import { backendClient } from "./backendClient.js?v=20260321-lanfix2";
 
 const MAJOR_CATEGORIES = [
@@ -65,6 +65,45 @@ const NEGATIVE_ANSWER_FEEDBACK = [
   "Keep going.",
   "You'll get the next one.",
 ];
+
+const QUESTION_BANK_SCHEMA_STORAGE_KEY = "quizQuestionBankSchemaVersion";
+const QUESTION_BANK_SCHEMA_VERSION = "20260325-bank-order-v2";
+
+function clearQuestionIdDependentLocalCache() {
+  const keysToClear = [
+    "studySession",
+    "practiceSession",
+    "quizExamSession",
+    "examAbandoned",
+    "quizSessionHistory",
+    "weakTracker",
+    "quizPerformance",
+    "quizCategoryPerformance",
+    "activeStudySessionId",
+    "activeExamSessionId",
+    "dailyQuizPopupShownDate",
+    "dailyQuizCelebrationShownDate",
+  ];
+  keysToClear.forEach((key) => localStorage.removeItem(key));
+}
+
+function ensureQuestionBankSchemaVersion() {
+  try {
+    const current = String(
+      localStorage.getItem(QUESTION_BANK_SCHEMA_STORAGE_KEY) || "",
+    ).trim();
+    if (current === QUESTION_BANK_SCHEMA_VERSION) return;
+    clearQuestionIdDependentLocalCache();
+    localStorage.setItem(
+      QUESTION_BANK_SCHEMA_STORAGE_KEY,
+      QUESTION_BANK_SCHEMA_VERSION,
+    );
+  } catch (error) {
+    console.warn("Unable to apply question bank schema migration:", error);
+  }
+}
+
+ensureQuestionBankSchemaVersion();
 
 function normalizeMajorCategory(category, context = "") {
   const raw = String(category || "").trim();
@@ -161,6 +200,27 @@ let drillEventHideTimer = null;
 let correctAudioContext = null;
 let studySessionEnded = false;
 let inDetailedReview = false;
+let topicQuizSessionMeta = null;
+
+function isTopicQuizMode() {
+  return mode === "topic";
+}
+
+function isStudyLikeMode() {
+  return mode === "study" || mode === "topic";
+}
+
+function getTopicQuizSessionTitle() {
+  return String(topicQuizSessionMeta?.title || "Topic").trim() || "Topic";
+}
+
+function getStudyLikeCompletionTitle() {
+  return isTopicQuizMode() ? `${getTopicQuizSessionTitle()} Quiz Complete` : "Study Session Complete";
+}
+
+function getStudyLikeSessionLabel() {
+  return isTopicQuizMode() ? `${getTopicQuizSessionTitle()} Topic Quiz` : "Study";
+}
 // ==============================
 // WEAK PRACTICE TRACKER (Persistent)
 // ==============================
@@ -178,6 +238,141 @@ let sessionHistory =
 
 function byQuestionIdAscending(a, b) {
   return Number(a?.id || 0) - Number(b?.id || 0);
+}
+
+function stableQuestionOrderKey(value) {
+  let x = Number(value) || 0;
+  x = Math.imul(x ^ 61, 2654435761) >>> 0;
+  x ^= x >>> 16;
+  return x >>> 0;
+}
+
+function byStudyMixedOrder(a, b) {
+  const keyA = stableQuestionOrderKey(a?.id);
+  const keyB = stableQuestionOrderKey(b?.id);
+  if (keyA !== keyB) return keyA - keyB;
+  return byQuestionIdAscending(a, b);
+}
+
+function longestCommonPrefix(parts) {
+  if (!Array.isArray(parts) || parts.length === 0) return "";
+  let prefix = String(parts[0] || "");
+  for (let i = 1; i < parts.length; i++) {
+    const current = String(parts[i] || "");
+    while (prefix && !current.startsWith(prefix)) {
+      prefix = prefix.slice(0, -1);
+    }
+    if (!prefix) break;
+  }
+  return prefix;
+}
+
+function trimDerivedCaseBlock(prefix) {
+  const raw = String(prefix || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  const lastSentenceBreak = Math.max(
+    raw.lastIndexOf(". "),
+    raw.lastIndexOf("? "),
+    raw.lastIndexOf("! "),
+  );
+  if (lastSentenceBreak >= 0) {
+    return raw.slice(0, lastSentenceBreak + 1).trim();
+  }
+  const lastColon = raw.lastIndexOf(": ");
+  if (lastColon >= 0) {
+    return raw.slice(0, lastColon + 1).trim();
+  }
+  return raw;
+}
+
+function deriveImportedCaseMetadata(questions) {
+  const groups = new Map();
+  const metadataById = new Map();
+
+  (Array.isArray(questions) ? questions : []).forEach((question) => {
+    const match = String(question?.question || "").match(/^Case\s+(\d+)([A-Z])\.\s*(.+)$/i);
+    if (!match) return;
+    const topicSlug = normalizeTopicPathToken(question?.topicSlug);
+    if (!topicSlug) return;
+    const caseNumber = String(match[1] || "").trim();
+    const key = `${topicSlug}::${caseNumber}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        caseId: `${topicSlug}-case-${caseNumber}`,
+        entries: [],
+      });
+    }
+    groups.get(key).entries.push({
+      id: Number(question?.id),
+      suffix: String(match[2] || "").toUpperCase(),
+      stem: String(match[3] || "").trim(),
+    });
+  });
+
+  groups.forEach((group) => {
+    const orderedEntries = [...group.entries].sort((a, b) => {
+      if (a.suffix !== b.suffix) return a.suffix.localeCompare(b.suffix);
+      return a.id - b.id;
+    });
+    const derivedCaseBlock = trimDerivedCaseBlock(
+      longestCommonPrefix(orderedEntries.map((entry) => entry.stem)),
+    );
+
+    orderedEntries.forEach((entry, index) => {
+      metadataById.set(entry.id, {
+        caseId: group.caseId,
+        caseBlock: index === 0 ? derivedCaseBlock : "",
+      });
+    });
+  });
+
+  return metadataById;
+}
+
+function enrichImportedCaseQuestions(questions) {
+  const metadataById = deriveImportedCaseMetadata(questions);
+  return (Array.isArray(questions) ? questions : []).map((question) => {
+    const meta = metadataById.get(Number(question?.id));
+    if (!meta) return question;
+    return {
+      ...question,
+      caseId: question?.caseId || meta.caseId,
+      caseBlock: question?.caseBlock || meta.caseBlock,
+    };
+  });
+}
+
+function buildStudyQuestionOrder(questions) {
+  return [...(Array.isArray(questions) ? questions : [])].sort(byStudyMixedOrder);
+}
+
+function ensureBankQuestionLabel(questionText, questionId) {
+  const raw = String(questionText || "").trim();
+  if (!raw) return `Q${Number(questionId)}.`;
+  if (/^Q\d+\.\s*/i.test(raw)) return raw;
+  return `Q${Number(questionId)}. ${raw}`;
+}
+
+function stripBankQuestionLabel(questionText) {
+  return String(questionText || "").replace(/^Q\d+\.\s*/i, "").trim();
+}
+
+function stripImportedCaseLabel(questionText) {
+  return String(questionText || "").replace(/^Case\s+\d+[A-Z]\.\s*/i, "").trim();
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripCaseStemFromQuestion(questionText, caseText) {
+  let output = stripImportedCaseLabel(questionText);
+  const sharedCase = String(caseText || "").trim();
+  if (!sharedCase) return output;
+  const directPrefix = new RegExp(`^${escapeRegExp(sharedCase)}\\s*`, "i");
+  output = output.replace(directPrefix, "").trim();
+  output = output.replace(/^[\s:;.,-]+/, "").trim();
+  return output;
 }
 
 const localQuestionFallbackById = new Map(
@@ -225,7 +420,7 @@ function mapBackendQuestionToLocal(q = {}) {
   };
 }
 
-let questionBank = baseQuestions.map(withMajorCategory).sort(byQuestionIdAscending);
+let questionBank = enrichImportedCaseQuestions(baseQuestions.map(withMajorCategory));
 const caseMap = {};
 let backendReady = false;
 let backendAttemptId = null;
@@ -235,6 +430,7 @@ let topicCatalog = { topics: [], categories: [] };
 let topicCatalogLoaded = false;
 let topicLibraryReturnScreen = "quiz-menu";
 let topicViewerReturnScreen = "topic-library";
+let topicViewerCurrentSlug = "";
 let dailyQuizState = null;
 let dailyQuizSessionMeta = null;
 let dailyQuizPopupShownDate = "";
@@ -254,8 +450,21 @@ async function loadQuestionsFromBackend() {
   try {
     const questions = await backendClient.fetchQuestions({ limit: 1000 });
     if (Array.isArray(questions) && questions.length > 0) {
-      // Map backend format to local format for compatibility
-      questionBank = questions.map(mapBackendQuestionToLocal).sort(byQuestionIdAscending);
+      // Merge backend questions over the local dataset so local-only topic work
+      // remains usable until it is also published to the backend store.
+      const localQuestions = (Array.isArray(baseQuestions) ? baseQuestions : []).map(withMajorCategory);
+      const backendById = new Map(
+        questions.map(mapBackendQuestionToLocal).map((question) => [Number(question?.id), question]),
+      );
+      const mergedQuestions = localQuestions.map((question) => {
+        const questionId = Number(question?.id);
+        return backendById.get(questionId) || question;
+      });
+      const localIds = new Set(localQuestions.map((question) => Number(question?.id)));
+      const backendOnlyQuestions = [...backendById.values()]
+        .filter((question) => !localIds.has(Number(question?.id)))
+        .sort(byQuestionIdAscending);
+      questionBank = enrichImportedCaseQuestions([...mergedQuestions, ...backendOnlyQuestions]);
       backendReady = true;
       reconcileLocalQuestionStats();
       console.info(`Loaded ${questionBank.length} questions from backend`);
@@ -450,6 +659,11 @@ const homeScreen = document.getElementById("home-screen");
 const backHomeBtn = document.getElementById("back-home-btn");
 const backBtnQuiz = document.getElementById("back-btn-quiz");
 const menuBtnQuiz = document.getElementById("menu-btn-quiz");
+const globalQuickNavEl = document.getElementById("global-quick-nav");
+const globalQuickNavOverlay = document.getElementById("global-quick-nav-overlay");
+const globalQuickNavPanel = document.getElementById("global-quick-nav-panel");
+const globalQuickNavLinks = Array.from(document.querySelectorAll(".global-quick-nav-link"));
+const globalQuickNavTriggerBtns = Array.from(document.querySelectorAll("[data-global-nav-btn]"));
 const comboBlock = document.getElementById("combo-block");
 const examExitModal = document.getElementById("exam-exit-modal");
 const examExitTitleEl = document.getElementById("exam-exit-title");
@@ -563,9 +777,12 @@ const topicViewerBackBtn = document.getElementById("topic-viewer-back-btn");
 const topicViewerMenuBtn = document.getElementById("topic-viewer-menu-btn");
 const topicViewerTitleEl = document.getElementById("topic-viewer-title");
 const topicViewerCategoryEl = document.getElementById("topic-viewer-category");
+const topicViewerQuizActionsEl = document.getElementById("topic-viewer-quiz-actions");
+const topicViewerStartQuizBtn = document.getElementById("topic-viewer-start-quiz-btn");
 const topicViewerFrameEl = document.getElementById("topic-viewer-frame");
 const topicViewerFrameWrap = document.querySelector(".topic-viewer-frame-wrap");
 const menuUserHubBtn = document.getElementById("menu-user-hub-btn");
+const menuQuickNavBtn = document.getElementById("menu-quick-nav-btn");
 const menuUserHubPanel = document.getElementById("menu-user-hub-panel");
 const menuUserHubCloseBtn = document.getElementById("menu-user-hub-close-btn");
 const menuTourBtn = document.getElementById("menu-tour-btn");
@@ -586,6 +803,7 @@ const appFontSelect = document.getElementById("app-font-select");
 const appReduceMotionCheckbox = document.getElementById("app-reduce-motion");
 const appClearLocalBtn = document.getElementById("app-clear-local-btn");
 const settingsFeedbackEl = document.getElementById("settings-feedback");
+const dashboardMenuBtn = document.getElementById("dashboard-menu-btn");
 const dailyBackBtn = document.getElementById("daily-back-btn");
 const startDailyBtn = document.getElementById("start-daily-btn");
 const refreshDailyBtn = document.getElementById("refresh-daily-btn");
@@ -735,7 +953,7 @@ function shouldShowAnswerChoiceMotivation() {
     const variant = String(examVariant || "normal").toLowerCase();
     return variant === "rapid" || variant === "sudden" || variant === "clinical";
   }
-  return mode === "study";
+  return isStudyLikeMode();
 }
 
 function isDirectSubmitDrillMode() {
@@ -1115,6 +1333,10 @@ function getTopicViewerThemePalette() {
       tocButtonText: "#d7e3ef",
       tocPanelBg: "rgba(18, 28, 43, 0.95)",
       tocPanelBorder: "rgba(109, 138, 170, 0.28)",
+      link: "#9fd1ff",
+      linkHover: "#dff0ff",
+      guidelineText: "#d8e6f4",
+      guidelineLabel: "#f3f8fd",
     };
   }
   if (theme === "teal") {
@@ -1150,6 +1372,10 @@ function getTopicViewerThemePalette() {
       tocButtonText: "#14454d",
       tocPanelBg: "rgba(242, 249, 248, 0.99)",
       tocPanelBorder: "rgba(37, 102, 109, 0.22)",
+      link: "#7fe8d8",
+      linkHover: "#dbfcf5",
+      guidelineText: "#e8f8f5",
+      guidelineLabel: "#ffffff",
     };
   }
   if (theme === "sunset") {
@@ -1185,6 +1411,10 @@ function getTopicViewerThemePalette() {
       tocButtonText: "#6f371d",
       tocPanelBg: "rgba(255, 247, 241, 0.99)",
       tocPanelBorder: "rgba(145, 79, 44, 0.22)",
+      link: "#ffd0af",
+      linkHover: "#fff0e2",
+      guidelineText: "#faeee6",
+      guidelineLabel: "#fff8f2",
     };
   }
   return {
@@ -1219,6 +1449,10 @@ function getTopicViewerThemePalette() {
     tocButtonText: "#2a4f77",
     tocPanelBg: "rgba(255, 255, 255, 0.98)",
     tocPanelBorder: "rgba(55, 90, 130, 0.14)",
+    link: "#0f3f7f",
+    linkHover: "#082848",
+    guidelineText: "#304863",
+    guidelineLabel: "#153c67",
   };
 }
 
@@ -1307,6 +1541,126 @@ function openSettingsScreen() {
   showScreen("settings-screen");
 }
 
+let activeQuickNavTrigger = null;
+const screenHistoryStack = [];
+
+function setQuickNavTriggerState(trigger, isExpanded) {
+  if (!trigger) return;
+  trigger.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+}
+
+function closeGlobalQuickNav({ restoreFocus = false } = {}) {
+  if (!globalQuickNavEl) return;
+  globalQuickNavEl.classList.add("hidden");
+  globalQuickNavEl.setAttribute("aria-hidden", "true");
+  if (activeQuickNavTrigger) {
+    setQuickNavTriggerState(activeQuickNavTrigger, false);
+    if (restoreFocus) {
+      activeQuickNavTrigger.focus();
+    }
+  }
+  activeQuickNavTrigger = null;
+}
+
+function openGlobalQuickNav(trigger = null) {
+  if (!globalQuickNavEl) return;
+
+  if (!globalQuickNavEl.classList.contains("hidden") && activeQuickNavTrigger === trigger) {
+    closeGlobalQuickNav({ restoreFocus: false });
+    return;
+  }
+
+  closeMenuUserHub();
+  if (activeQuickNavTrigger && activeQuickNavTrigger !== trigger) {
+    setQuickNavTriggerState(activeQuickNavTrigger, false);
+  }
+  activeQuickNavTrigger = trigger;
+  setQuickNavTriggerState(trigger, true);
+  globalQuickNavEl.classList.remove("hidden");
+  globalQuickNavEl.setAttribute("aria-hidden", "false");
+}
+
+function persistSessionForQuickNavigation() {
+  const activeScreen = document.querySelector(".screen-active");
+  if (!activeScreen || activeScreen.id !== "quiz-area") return;
+
+  if (mode === "study" || isTopicQuizMode()) {
+    saveStudyProgress();
+    return;
+  }
+
+  if (mode === "exam" || mode === "smart" || isPausableDrillSession()) {
+    saveExamSession();
+  }
+}
+
+async function handleGlobalQuickNavDestination(destination) {
+  closeGlobalQuickNav();
+  persistSessionForQuickNavigation();
+
+  if (destination === "profile") {
+    await openProfileScreen();
+    return;
+  }
+
+  if (destination === "settings") {
+    openSettingsScreen();
+    return;
+  }
+
+  if (destination === "help") {
+    openTourScreen();
+    return;
+  }
+
+  if (destination === "menu") {
+    showScreen("quiz-menu");
+    return;
+  }
+
+  if (destination === "home") {
+    showScreen("home-screen");
+  }
+}
+
+function getActiveScreenId() {
+  return document.querySelector(".screen-active")?.id || null;
+}
+
+function rememberPreviousScreen(previousId, nextId) {
+  if (!previousId || previousId === nextId) return;
+  const last = screenHistoryStack[screenHistoryStack.length - 1];
+  if (last === previousId) return;
+  screenHistoryStack.push(previousId);
+  if (screenHistoryStack.length > 40) {
+    screenHistoryStack.shift();
+  }
+}
+
+function goToPreviousScreen(fallbackId = "quiz-menu") {
+  const currentId = getActiveScreenId();
+  let previousId = null;
+
+  while (screenHistoryStack.length > 0) {
+    const candidate = screenHistoryStack.pop();
+    if (!candidate || candidate === currentId) continue;
+    if (!document.getElementById(candidate)) continue;
+    previousId = candidate;
+    break;
+  }
+
+  if (!previousId) {
+    previousId = fallbackId;
+  }
+
+  showScreen(previousId, { recordHistory: false });
+}
+
+function returnToParentScreen(screenId) {
+  if (!screenId) return;
+  showScreen(screenId, { recordHistory: false });
+}
+
 function clearDeviceLocalCache() {
   const keysToClear = [
     "studySession",
@@ -1316,11 +1670,12 @@ function clearDeviceLocalCache() {
     "quizSessionHistory",
     "weakTracker",
     "quizBestStreak",
-    "performanceData",
-    "categoryPerformance",
+    "quizPerformance",
+    "quizCategoryPerformance",
     "currentStreak",
     "activeStudySessionId",
     "activeExamSessionId",
+    QUESTION_BANK_SCHEMA_STORAGE_KEY,
     DAILY_QUIZ_POPUP_STORAGE_KEY,
     DAILY_CELEBRATION_SHOWN_STORAGE_KEY,
   ];
@@ -2173,7 +2528,7 @@ if (topicLibraryBtn) {
 
 if (topicLibraryBackBtn) {
   topicLibraryBackBtn.addEventListener("click", () => {
-    showScreen(topicLibraryReturnScreen || "quiz-menu");
+    goToPreviousScreen(topicLibraryReturnScreen || "quiz-menu");
   });
 }
 
@@ -2227,25 +2582,27 @@ document.addEventListener("click", (event) => {
 
 if (topicViewerBackBtn) {
   topicViewerBackBtn.addEventListener("click", () => {
-    showScreen(topicViewerReturnScreen || "topic-library");
+    goToPreviousScreen(topicViewerReturnScreen || "topic-library");
   });
 }
 
 if (topicViewerMenuBtn) {
-  topicViewerMenuBtn.addEventListener("click", () => {
-    showScreen("quiz-menu");
+  topicViewerMenuBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openGlobalQuickNav(topicViewerMenuBtn);
   });
 }
 
 if (tourBackBtn) {
   tourBackBtn.addEventListener("click", () => {
-    showScreen("quiz-menu");
+    goToPreviousScreen("quiz-menu");
   });
 }
 
 if (tourMenuBtn) {
-  tourMenuBtn.addEventListener("click", () => {
-    showScreen("quiz-menu");
+  tourMenuBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openGlobalQuickNav(tourMenuBtn);
   });
 }
 
@@ -2301,15 +2658,52 @@ if (menuSettingsBtn) {
 
 if (settingsBackBtn) {
   settingsBackBtn.addEventListener("click", () => {
-    showScreen("quiz-menu");
+    goToPreviousScreen("quiz-menu");
   });
 }
 
 if (settingsMenuBtn) {
-  settingsMenuBtn.addEventListener("click", () => {
-    showScreen("quiz-menu");
+  settingsMenuBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openGlobalQuickNav(settingsMenuBtn);
   });
 }
+
+globalQuickNavTriggerBtns.forEach((btn) => {
+  if (
+    btn === topicViewerMenuBtn ||
+    btn === tourMenuBtn ||
+    btn === settingsMenuBtn ||
+    btn === menuBtnQuiz
+  ) {
+    return;
+  }
+
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openGlobalQuickNav(btn);
+  });
+});
+
+if (globalQuickNavOverlay) {
+  globalQuickNavOverlay.addEventListener("click", () => {
+    closeGlobalQuickNav();
+  });
+}
+
+if (globalQuickNavPanel) {
+  globalQuickNavPanel.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+}
+
+globalQuickNavLinks.forEach((link) => {
+  link.addEventListener("click", async () => {
+    const destination = String(link.dataset.quickNavDestination || "").trim();
+    if (!destination) return;
+    await handleGlobalQuickNavDestination(destination);
+  });
+});
 
 if (appThemeSelect) {
   appThemeSelect.addEventListener("change", () => {
@@ -2394,19 +2788,31 @@ function normalizeTopicPathToken(value) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(token) ? token : "";
 }
 
+const TOPIC_NOTE_BUILD_ID = "20260325-topicnote8";
+
+function withTopicNoteVersion(url = "") {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  const hashIndex = raw.indexOf("#");
+  const base = hashIndex >= 0 ? raw.slice(0, hashIndex) : raw;
+  const hash = hashIndex >= 0 ? raw.slice(hashIndex) : "";
+  const joiner = base.includes("?") ? "&" : "?";
+  return `${base}${joiner}v=${TOPIC_NOTE_BUILD_ID}${hash}`;
+}
+
 function buildTopicUrl(question) {
   const slug = normalizeTopicPathToken(question?.topicSlug);
   if (!slug) return "";
 
   const sectionId = normalizeTopicPathToken(question?.sectionId);
   const hash = sectionId ? `#${sectionId}` : "";
-  return `topics/${slug}.html${hash}`;
+  return withTopicNoteVersion(`topics/${slug}.html${hash}`);
 }
 
 function renderQuestionTopicLink(question) {
   if (!topicLinkWrapEl || !topicLinkBtnEl) return;
 
-  const isStudyMode = mode === "study";
+  const isStudyMode = isStudyLikeMode();
   if (!isStudyMode) {
     topicLinkWrapEl.classList.add("hidden");
     topicLinkBtnEl.removeAttribute("href");
@@ -2552,7 +2958,7 @@ function setMemoryTrickLoading() {
 }
 
 function canShowPeerInsight() {
-  return mode === "study" || inReview || inDetailedReview;
+  return isStudyLikeMode() || inReview || inDetailedReview;
 }
 
 function clearOptionPeerBadges() {
@@ -2870,6 +3276,28 @@ function enforceTopicViewerMobileLayout() {
           background: ${palette.tocActiveBg} !important;
           text-decoration: none !important;
           outline: none !important;
+        }
+        a {
+          color: ${palette.link} !important;
+        }
+        a:hover,
+        a:focus-visible {
+          color: ${palette.linkHover} !important;
+        }
+        .guideline-line {
+          color: ${palette.guidelineText} !important;
+        }
+        .guideline-line strong {
+          color: ${palette.guidelineLabel} !important;
+        }
+        .guideline-line a {
+          color: ${palette.link} !important;
+          text-decoration-color: ${palette.link} !important;
+        }
+        .guideline-line a:hover,
+        .guideline-line a:focus-visible {
+          color: ${palette.linkHover} !important;
+          text-decoration-color: ${palette.linkHover} !important;
         }
         .panel,
         .content,
@@ -3371,11 +3799,191 @@ function enhanceTopicViewerSectionNavigation() {
   }
 }
 
+function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
+  try {
+    const slug = normalizeTopicPathToken(topicSlug);
+    if (!slug) {
+      alert("Topic quiz could not start because no topic slug was found.");
+      return;
+    }
+
+    const topicQuestions = questionBank
+      .filter((question) => normalizeTopicPathToken(question?.topicSlug) === slug)
+      .sort(byQuestionIdAscending);
+
+    if (topicQuestions.length === 0) {
+      alert(`No topic quiz questions are available for ${topicTitle} yet.`);
+      return;
+    }
+
+    studySessionEnded = false;
+    inReview = false;
+    inStudyReview = false;
+    inDetailedReview = false;
+    answeredCurrent = false;
+    clearAiExplainStateSession();
+    examVariant = "normal";
+    examTimeBudget = 0;
+    clearInterval(examTimer);
+    examTimer = null;
+    activeCase = "";
+    mode = "topic";
+    topicQuizSessionMeta = {
+      slug,
+      title: String(topicTitle || "Topic").trim() || "Topic",
+      returnScreen: "topic-viewer",
+    };
+    current = 0;
+    score = 0;
+    userAnswers = {};
+    currentStreak = 0;
+    active = JSON.parse(JSON.stringify(topicQuestions));
+    nextBtn.onclick = nextQuestion;
+    prevBtn.onclick = previousQuestion;
+    updateModeIndicator("normal");
+    const topicModeIndicator = document.getElementById("mode-indicator");
+    if (topicModeIndicator) {
+      topicModeIndicator.innerText = `${getTopicQuizSessionTitle()} Quiz`;
+    }
+    showScreen("quiz-area");
+    showQuestion();
+    restoreStreakUI();
+  } catch (error) {
+    console.error("Topic quiz launch failed:", error);
+    alert(`Topic quiz launch failed: ${error?.message || error}`);
+  }
+}
+
+window.startTopicQuizSession = startTopicQuizSession;
+window.topicViewerCurrentSlug = topicViewerCurrentSlug;
+
+function consumePendingTopicQuizLaunch() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const topicSlug = String(params.get("topicQuiz") || "").trim();
+    if (!topicSlug) return false;
+    const topicTitle = String(params.get("topicTitle") || "").trim() || "Topic";
+    startTopicQuizSession(topicSlug, topicTitle);
+    params.delete("topicQuiz");
+    params.delete("topicTitle");
+    const nextQuery = params.toString();
+    const nextUrl =
+      window.location.pathname +
+      (nextQuery ? `?${nextQuery}` : "") +
+      (window.location.hash || "");
+    window.history.replaceState(window.history.state, "", nextUrl);
+    return true;
+  } catch (error) {
+    console.debug("Pending topic quiz launch skipped:", error);
+    return false;
+  }
+}
+
+function hasPendingTopicQuizLaunch() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    return String(params.get("topicQuiz") || "").trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function buildTopicQuizLaunchHref(topicSlug = "", topicTitle = "Topic") {
+  const slug = normalizeTopicPathToken(topicSlug);
+  if (!slug) return window.location.pathname || "index.html";
+  const params = new URLSearchParams();
+  params.set("topicQuiz", slug);
+  params.set("topicTitle", String(topicTitle || "Topic").trim() || "Topic");
+  return `${window.location.pathname || "index.html"}?${params.toString()}`;
+}
+
+function bindTopicViewerQuizLaunchers() {
+  if (!topicViewerFrameEl) return;
+  try {
+    const doc = topicViewerFrameEl.contentDocument;
+    if (!doc) return;
+    const launchTopicQuiz = (launcher, event = null) => {
+      if (!launcher) return;
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      const slug = String(launcher.getAttribute("data-topic-quiz") || "").trim();
+      const title =
+        String(launcher.getAttribute("data-topic-title") || "").trim() ||
+        String(topicViewerTitleEl?.innerText || "").trim() ||
+        "Topic";
+      startTopicQuizSession(slug, title);
+    };
+
+    const launchers = [...doc.querySelectorAll("[data-topic-quiz]")];
+    launchers.forEach((launcher) => {
+      if (launcher.dataset.topicQuizBound === "true") return;
+      launcher.dataset.topicQuizBound = "true";
+      launcher.addEventListener("click", (event) => {
+        launchTopicQuiz(launcher, event);
+      });
+    });
+
+    if (!doc.body) return;
+    if (doc.body.dataset.topicQuizDelegated === "true") return;
+    doc.body.dataset.topicQuizDelegated = "true";
+    doc.addEventListener(
+      "click",
+      (event) => {
+        let targetNode = event.target;
+        if (targetNode?.nodeType === 3) {
+          targetNode = targetNode.parentElement;
+        }
+        const launcher = targetNode?.closest?.("[data-topic-quiz]");
+        if (!launcher) return;
+        launchTopicQuiz(launcher, event);
+      },
+      true,
+    );
+  } catch (error) {
+    console.debug("Topic quiz launcher binding skipped:", error);
+  }
+}
+
+function getTopicSlugFromNotePath(notePath = "") {
+  const cleanPath = String(notePath || "")
+    .split("?")[0]
+    .split("#")[0]
+    .trim();
+  const fileName = cleanPath.split("/").pop() || "";
+  const slug = fileName.replace(/\.html$/i, "");
+  return normalizeTopicPathToken(slug);
+}
+
+function refreshTopicViewerQuizAction(topicSlug = "", topicTitle = "Topic") {
+  const slug = normalizeTopicPathToken(topicSlug);
+  topicViewerCurrentSlug = slug;
+  window.topicViewerCurrentSlug = slug;
+  if (!topicViewerQuizActionsEl || !topicViewerStartQuizBtn) return;
+
+  const hasTopicQuiz =
+    !!slug &&
+    questionBank.some((question) => normalizeTopicPathToken(question?.topicSlug) === slug);
+
+  topicViewerQuizActionsEl.classList.toggle("hidden", !hasTopicQuiz);
+  topicViewerStartQuizBtn.setAttribute(
+    "aria-label",
+    hasTopicQuiz ? `Start ${topicTitle} topic quiz` : "Topic quiz unavailable",
+  );
+  topicViewerStartQuizBtn.setAttribute("aria-disabled", hasTopicQuiz ? "false" : "true");
+  topicViewerStartQuizBtn.dataset.topicSlug = slug;
+  topicViewerStartQuizBtn.dataset.topicTitle = String(topicTitle || "Topic").trim() || "Topic";
+  topicViewerStartQuizBtn.href = hasTopicQuiz
+    ? buildTopicQuizLaunchHref(slug, topicTitle)
+    : "#";
+}
+
 function openTopicViewer(notePath, title = "Study Note", returnScreen = "topic-library", category = "") {
   if (!topicViewerFrameEl) return;
   topicViewerReturnScreen = returnScreen;
+  refreshTopicViewerQuizAction(getTopicSlugFromNotePath(notePath), title);
   topicViewerFrameWrap?.classList.add("is-loading");
-  topicViewerFrameEl.src = notePath;
+  topicViewerFrameEl.src = "about:blank";
+  topicViewerFrameEl.src = withTopicNoteVersion(notePath);
   if (topicViewerTitleEl) {
     topicViewerTitleEl.innerText = title;
   }
@@ -3387,10 +3995,24 @@ function openTopicViewer(notePath, title = "Study Note", returnScreen = "topic-l
   showScreen("topic-viewer");
 }
 
+if (topicViewerStartQuizBtn) {
+  topicViewerStartQuizBtn.addEventListener("click", (event) => {
+    const topicSlug = String(topicViewerStartQuizBtn.dataset.topicSlug || topicViewerCurrentSlug || "").trim();
+    if (!topicSlug) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const topicTitle =
+      String(topicViewerStartQuizBtn.dataset.topicTitle || topicViewerTitleEl?.innerText || "Topic").trim() ||
+      "Topic";
+    startTopicQuizSession(topicSlug, topicTitle);
+  });
+}
+
 if (topicViewerFrameEl) {
   topicViewerFrameEl.addEventListener("load", () => {
     enforceTopicViewerMobileLayout();
     enhanceTopicViewerSectionNavigation();
+    bindTopicViewerQuizLaunchers();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         topicViewerFrameWrap?.classList.remove("is-loading");
@@ -4803,7 +5425,7 @@ if (profileBtn) {
 }
 
 if (profileBackBtn) {
-  profileBackBtn.onclick = () => showScreen("quiz-menu");
+  profileBackBtn.onclick = () => goToPreviousScreen("quiz-menu");
 }
 
 if (profileSaveBtn) {
@@ -4992,8 +5614,24 @@ const studyExitModal = document.getElementById("study-exit-modal");
 const cancelStudyExitBtn = document.getElementById("cancel-study-exit-btn");
 const confirmStudyExitBtn = document.getElementById("confirm-study-exit-btn");
 const endStudyBtn = document.getElementById("end-study-btn");
+const studyExitTitleEl = studyExitModal?.querySelector(".modal-title") || null;
+const studyExitTextEl = studyExitModal?.querySelector(".modal-text") || null;
 
 function openStudyExitModal() {
+  if (studyExitTitleEl) {
+    studyExitTitleEl.textContent = isTopicQuizMode() ? "End Topic Quiz?" : "End Study Session?";
+  }
+  if (studyExitTextEl) {
+    studyExitTextEl.textContent = isTopicQuizMode()
+      ? "Ending now will calculate your score and return you to this topic note."
+      : "Ending now will calculate your score and close this session.";
+  }
+  if (cancelStudyExitBtn) {
+    cancelStudyExitBtn.textContent = isTopicQuizMode() ? "Continue Quiz" : "Continue Study";
+  }
+  if (confirmStudyExitBtn) {
+    confirmStudyExitBtn.textContent = isTopicQuizMode() ? "End Quiz" : "End Session";
+  }
   confirmStudyExitBtn.disabled = false;
   studyExitModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -5079,7 +5717,7 @@ function pauseDrillSessionAndReturnToMenu() {
   if (!isPausableDrillSession()) return false;
   saveExamSession();
   localStorage.removeItem("examAbandoned");
-  showScreen("quiz-menu");
+  returnToParentScreen("quiz-menu");
   return true;
 }
 
@@ -5108,7 +5746,12 @@ if (sessionResumeNewBtn) {
 backBtnQuiz.onclick = function () {
   if (mode === "study") {
     saveStudyProgress();
-    showScreen("study-setup");
+    returnToParentScreen("study-setup");
+    return;
+  }
+
+  if (isTopicQuizMode()) {
+    returnToTopicViewerFromQuiz();
     return;
   }
 
@@ -5123,47 +5766,22 @@ backBtnQuiz.onclick = function () {
 
   if (mode === "daily") {
     openQuizExitModal({
-      title: "Leave Daily Quiz?",
-      text: "Your current daily session will close and you will return to the daily setup page.",
-      cancelLabel: "Stay Here",
-      confirmLabel: "Leave Quiz",
-      onConfirm: () => {
-        showScreen("daily-setup");
-        renderDailyQuizUi();
-      },
-    });
-  }
-};
-
-if (menuBtnQuiz) {
-  menuBtnQuiz.onclick = function () {
-    if (mode === "study") {
-      saveStudyProgress();
-      showScreen("quiz-menu");
-      return;
-    }
-
-    if (pauseDrillSessionAndReturnToMenu()) {
-      return;
-    }
-
-    if (mode === "exam" || mode === "smart") {
-      openExamExitModal();
-      return;
-    }
-
-    if (mode === "daily") {
-      openQuizExitModal({
         title: "Leave Daily Quiz?",
         text: "Your current daily session will close and you will return to the daily setup page.",
         cancelLabel: "Stay Here",
         confirmLabel: "Leave Quiz",
         onConfirm: () => {
-          showScreen("daily-setup");
+          returnToParentScreen("daily-setup");
           renderDailyQuizUi();
         },
       });
-    }
+  }
+};
+
+if (menuBtnQuiz) {
+  menuBtnQuiz.onclick = function (event) {
+    event?.stopPropagation();
+    openGlobalQuickNav(menuBtnQuiz);
   };
 }
 
@@ -5176,10 +5794,10 @@ if (backHomeBtn) {
 }
 
 document.getElementById("study-back-btn").onclick = () => {
-  showScreen("quiz-menu");
+  goToPreviousScreen("quiz-menu");
 };
 document.getElementById("exam-back-btn").onclick = () => {
-  showScreen("quiz-menu");
+  goToPreviousScreen("quiz-menu");
 };
 
 const enterBtn = document.getElementById("enter-platform-btn");
@@ -5322,7 +5940,7 @@ if (dailyQuizBtn) {
 
 if (dailyBackBtn) {
   dailyBackBtn.onclick = () => {
-    showScreen("quiz-menu");
+    goToPreviousScreen("quiz-menu");
   };
 }
 
@@ -5666,7 +6284,7 @@ function showDashboard() {
 }
 
 function hideDashboard() {
-  showScreen("quiz-menu");
+  goToPreviousScreen("quiz-menu");
 }
 
 function saveSession(mode, score, total, duration = null) {
@@ -5876,7 +6494,7 @@ function getAdaptiveQuestions(count) {
 }
 
 function updateStreak(isCorrect) {
-  if (mode !== "study") return;
+  if (!isStudyLikeMode()) return;
 
   const streakBox = document.getElementById("streak-box");
   const streakValue = document.getElementById("streak-value");
@@ -5961,6 +6579,7 @@ function updateModeIndicator(studyType = null) {
   if (quizArea) {
     quizArea.classList.remove(
       "mode-study",
+      "mode-topic",
       "mode-exam",
       "mode-smart",
       "mode-daily",
@@ -5981,6 +6600,11 @@ function updateModeIndicator(studyType = null) {
     if (headerStats) headerStats.style.display = "flex";
     if (timerEl) timerEl.classList.add("hidden");
     if (quizArea) quizArea.classList.add("mode-study");
+  } else if (mode === "topic") {
+    indicator.innerText = `${getTopicQuizSessionTitle()} Quiz`;
+    if (headerStats) headerStats.style.display = "none";
+    if (timerEl) timerEl.classList.add("hidden");
+    if (quizArea) quizArea.classList.add("mode-topic");
   } else if (mode === "exam") {
     indicator.innerText =
       examVariant === "rapid"
@@ -6020,6 +6644,7 @@ function updateModeIndicator(studyType = null) {
 
   if (headerInlineMeta) {
     const compactHeaderMode =
+      mode === "topic" ||
       mode === "daily" ||
       mode === "smart" ||
       (mode === "exam" &&
@@ -6101,7 +6726,6 @@ function startStudy() {
 
     if (selectedCategory === "all") {
       active = JSON.parse(JSON.stringify(questionBank));
-      // chronological
     } else {
       active = questionBank.filter((q) => q.category === selectedCategory);
       if (active.length === 0) {
@@ -6131,7 +6755,7 @@ function startStudy() {
       document.getElementById("study-start-number").value;
 
     if (startNumberInput && selectedCategory === "all") {
-      const startIndex = parseInt(startNumberInput) - 1;
+      const startIndex = parseInt(startNumberInput, 10) - 1;
 
       if (startIndex >= 0 && startIndex < active.length) {
         current = startIndex;
@@ -6296,7 +6920,7 @@ function startQuiz() {
                         ================================= */
 
 function showQuestion() {
-  if (inReview && mode !== "study") {
+  if (inReview && !isStudyLikeMode()) {
     renderDetailedQuestion();
     return;
   }
@@ -6333,11 +6957,14 @@ function showQuestion() {
   }
 
   // Study Mode Progress
-  if (mode === "study") {
+  if (isStudyLikeMode()) {
     progressEl.innerText = `Q ${current + 1}/${active.length}`;
     const answered = Object.keys(userAnswers).length;
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
+    if (isTopicQuizMode()) {
+      progressEl.innerText += ` • ${getTopicQuizSessionTitle()}`;
+    }
   } else if (mode === "exam" && examVariant === "sudden") {
     const suddenScore = calculateScore();
     progressEl.innerHTML = `<span class="sudden-score-pill">${suddenScore}</span>`;
@@ -6373,7 +7000,7 @@ function showQuestion() {
 
   const endStudyBtn = document.getElementById("end-study-btn");
 
-  if (mode === "study" && !inStudyReview) {
+  if (isStudyLikeMode() && !inStudyReview) {
     endStudyBtn.classList.remove("hidden");
   } else {
     endStudyBtn.classList.add("hidden");
@@ -6384,15 +7011,30 @@ function showQuestion() {
     const categoryAccuracy = getCategoryAccuracy(q.category);
 
     progressEl.innerText += ` • Accuracy ${questionAccuracy}% • ${q.category} ${categoryAccuracy}%`;
+  } else if (isTopicQuizMode()) {
+    progressEl.innerText += ` • Topic Quiz`;
   }
 
-  let displayText = q.question;
+  let displayText = String(q.question || "").trim();
+
+  if (q.caseId && caseMap[q.caseId]) {
+    displayText = stripCaseStemFromQuestion(displayText, caseMap[q.caseId]);
+  }
+
+  displayText = ensureBankQuestionLabel(displayText, q.id);
+
+  if (mode === "study" || mode === "topic") {
+    const chronologicalNumber = current + 1;
+    displayText =
+      `<span class="question-kicker">Question ${chronologicalNumber}</span><br><br>` +
+      stripBankQuestionLabel(displayText);
+  }
 
   if (mode === "exam" || mode === "smart" || mode === "daily") {
     const chronologicalNumber = current + 1;
     displayText =
       `<span class="question-kicker">Question ${chronologicalNumber}</span><br><br>` +
-      q.question.replace(/^Q\d+\.\s*/, "");
+      stripBankQuestionLabel(displayText);
   }
 
   // Find case text if this question belongs to a case group
@@ -6478,9 +7120,9 @@ function selectAnswer(value, q) {
     backendClient.answerAttempt(backendAttemptId, q.id, value);
   }
 
-  if (mode === "study") {
+  if (isStudyLikeMode()) {
     updatePerformance(q.id, isCorrect, value);
-    const studyType = document.getElementById("study-type-select").value;
+    const studyType = document.getElementById("study-type-select")?.value || "normal";
 
     if (mode === "study" && studyType === "normal") {
       if (!isCorrect) {
@@ -6692,7 +7334,7 @@ function nextQuestion() {
   }
 
   // STUDY MODE
-  if (mode === "study") {
+  if (isStudyLikeMode()) {
     const q = active[current];
 
     // If user skipped without answering
@@ -6761,7 +7403,7 @@ function restoreSelection(q) {
       ? btn.innerText[0]
       : btn.innerText;
 
-    if (mode === "study") {
+    if (isStudyLikeMode()) {
       btn.disabled = true;
 
       if (btnValue === q.correct) {
@@ -6793,14 +7435,14 @@ function restoreSelection(q) {
     }
   });
   // Show explanation again in study mode
-  if (mode === "study") {
+  if (isStudyLikeMode()) {
     renderQuestionExplanation(q);
     renderQuestionTopicLink(q);
     loadAnswerInsightForQuestion(q);
     refreshAiExplainAvailability();
   }
 
-  if (mode === "study") {
+  if (isStudyLikeMode()) {
     nextBtn.classList.remove("hidden");
   }
 }
@@ -6913,6 +7555,7 @@ function renderCompactHeaderMeta() {
   if (!headerInlineMeta) return;
 
   const compactHeaderMode =
+    mode === "topic" ||
     mode === "smart" ||
     (mode === "exam" &&
       ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal")));
@@ -6937,6 +7580,12 @@ function renderCompactHeaderMeta() {
     parts.push(`<span class="header-inline-progress">${correctSoFar}</span>`);
   } else if (mode === "daily") {
     parts.push(`<span class="header-inline-progress">Daily Quiz</span>`);
+  } else if (mode === "topic") {
+    const answered = Object.keys(userAnswers || {}).length;
+    const correctSoFar = calculateScore();
+    parts.push(`<span class="header-inline-progress">${getTopicQuizSessionTitle()} Quiz</span>`);
+    parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
+    parts.push(`<span class="header-inline-progress">Score ${correctSoFar}/${answered}</span>`);
   } else if (mode === "exam" || mode === "smart") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
   }
@@ -7338,7 +7987,7 @@ async function finishExam() {
 
 function finishStudy() {
   backReviewBtn.classList.add("hidden");
-  const studyType = document.getElementById("study-type-select").value;
+  const studyType = document.getElementById("study-type-select")?.value || "normal";
   studySessionEnded = true;
 
   const totalAnswered = Object.keys(userAnswers).length;
@@ -7369,7 +8018,7 @@ function finishStudy() {
   const scoreEl = document.getElementById("result-score");
   const feedbackEl = document.getElementById("result-feedback");
 
-  resultTitle.innerText = "Study Session Complete";
+  resultTitle.innerText = getStudyLikeCompletionTitle();
   percentEl.innerText = percent + "%";
   scoreEl.innerText = correctAnswers + " / " + totalAnswered + " Correct";
 
@@ -7384,14 +8033,12 @@ function finishStudy() {
     percentEl.style.color = "#dc2626";
   }
 
+  saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
   awardXp(8 + Math.round(percent / 25));
 
   clearDailyResultEnhancements();
   showScreen("study-result-screen");
-
-  document.getElementById("result-review-btn").onclick = showStudyReviewPalette;
-
-  document.getElementById("result-menu-btn").onclick = goToMenu;
+  configureStudyLikeResultActions();
 }
 
 function endStudySession() {
@@ -7411,7 +8058,7 @@ function endStudySession() {
     percent: percent,
   };
 
-  saveSession("Study", correctAnswers, totalAnswered);
+  saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
 
   const old = document.getElementById("study-result");
   if (old) old.remove();
@@ -7423,7 +8070,7 @@ function endStudySession() {
   const scoreEl = document.getElementById("result-score");
   const feedbackEl = document.getElementById("result-feedback");
 
-  resultTitle.innerText = "Study Session Complete";
+  resultTitle.innerText = getStudyLikeCompletionTitle();
   percentEl.innerText = percent + "%";
   scoreEl.innerText = correctAnswers + " / " + totalAnswered + " Correct";
 
@@ -7442,13 +8089,47 @@ function endStudySession() {
 
   clearDailyResultEnhancements();
   showScreen("study-result-screen");
-
-  document.getElementById("result-review-btn").onclick = showStudyReviewPalette;
-
-  document.getElementById("result-menu-btn").onclick = goToMenu;
+  configureStudyLikeResultActions();
 
   localStorage.removeItem("studySession");
   localStorage.removeItem("practiceSession");
+}
+
+function returnToTopicViewerFromQuiz() {
+  const detailedReview = document.getElementById("detailed-review");
+  if (detailedReview) detailedReview.remove();
+
+  clearInterval(examTimer);
+  clearInterval(reviewTimer);
+  examTimer = null;
+  reviewTimer = null;
+  inStudyReview = false;
+  inDetailedReview = false;
+  inReview = false;
+  answeredCurrent = false;
+  studySessionEnded = false;
+  mode = "";
+
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
+
+  document.getElementById("back-btn-quiz").classList.remove("hidden");
+  if (menuBtnQuiz) menuBtnQuiz.classList.remove("hidden");
+  backReviewBtn.classList.add("hidden");
+
+  returnToParentScreen("topic-viewer");
+}
+
+function configureStudyLikeResultActions() {
+  const reviewBtn = document.getElementById("result-review-btn");
+  const menuBtn = document.getElementById("result-menu-btn");
+  if (reviewBtn) {
+    reviewBtn.onclick = showStudyReviewPalette;
+  }
+  if (menuBtn) {
+    menuBtn.textContent = isTopicQuizMode() ? "Back to Topic" : "Back to Menu";
+    menuBtn.onclick = isTopicQuizMode() ? returnToTopicViewerFromQuiz : goToMenu;
+  }
 }
 
 function goToMenu() {
@@ -7483,7 +8164,7 @@ function rebuildStudyResult() {
   const scoreEl = document.getElementById("result-score");
   const feedbackEl = document.getElementById("result-feedback");
 
-  resultTitle.innerText = "Study Session Complete";
+  resultTitle.innerText = getStudyLikeCompletionTitle();
   percentEl.innerText = data.percent + "%";
   scoreEl.innerText = data.correct + " / " + data.total + " Correct";
 
@@ -7499,10 +8180,7 @@ function rebuildStudyResult() {
   }
 
   showScreen("study-result-screen");
-
-  document.getElementById("result-review-btn").onclick = showStudyReviewPalette;
-
-  document.getElementById("result-menu-btn").onclick = goToMenu;
+  configureStudyLikeResultActions();
 }
 
 /* ==============================
@@ -7657,7 +8335,7 @@ function renderDetailedQuestion() {
   if (comboBlock) comboBlock.innerHTML = "";
   resetAiExplainPanel();
 
-  if (progressEl && mode !== "study") {
+  if (progressEl && !isStudyLikeMode()) {
     progressEl.innerText = "";
     progressEl.style.color = "";
   }
@@ -7955,6 +8633,7 @@ function saveStudyProgress() {
                   ================================= */
 
 window.addEventListener("load", function () {
+  const pendingTopicQuizLaunch = hasPendingTopicQuizLaunch();
   setAuthMode("login");
   profileImageMarkedForDeletion = false;
   setProfileAvatarPreview("");
@@ -7962,6 +8641,10 @@ window.addEventListener("load", function () {
   refreshProfilePhotoDeleteVisibility();
   renderAuthState();
   restoreAuthSession();
+
+  if (pendingTopicQuizLaunch) {
+    consumePendingTopicQuizLaunch();
+  }
 
   // Load questions from backend first
   loadQuestionsFromBackend().then(() => {
@@ -8034,7 +8717,9 @@ window.addEventListener("load", function () {
     }
   }
 
-  showScreen("home-screen");
+  if (!pendingTopicQuizLaunch) {
+    showScreen("home-screen");
+  }
 });
 function showStudyReviewPalette() {
   const reviewSection = document.getElementById("result-review-section");
@@ -8177,7 +8862,8 @@ function toggleModeHistory(containerId) {
   el.classList.toggle("hidden");
 }
 
-function showScreen(id) {
+function showScreen(id, options = {}) {
+  const { recordHistory = true } = options;
   const screens = [
     "home-screen",
     "quiz-menu",
@@ -8194,6 +8880,11 @@ function showScreen(id) {
     "dashboard",
     "study-result-screen",
   ];
+
+  const currentActiveId = getActiveScreenId();
+  if (recordHistory) {
+    rememberPreviousScreen(currentActiveId, id);
+  }
 
   screens.forEach((screen) => {
     const el = document.getElementById(screen);
@@ -8216,6 +8907,7 @@ function showScreen(id) {
   if (id !== "quiz-menu") {
     closeMenuUserHub();
   }
+  closeGlobalQuickNav();
 
   if (id !== "quiz-area") {
     if (timerEl) timerEl.classList.add("hidden");
@@ -8223,7 +8915,11 @@ function showScreen(id) {
 
   // Browser back support
   if (!history.state || history.state.screen !== id) {
-    history.pushState({ screen: id }, "", "");
+    if (recordHistory) {
+      history.pushState({ screen: id }, "", "");
+    } else {
+      history.replaceState({ screen: id }, "", "");
+    }
   }
 }
 function restoreStreakUI() {
@@ -8274,6 +8970,10 @@ document.addEventListener("keydown", function (e) {
     closeAuthModal();
     return;
   }
+  if (globalQuickNavEl && !globalQuickNavEl.classList.contains("hidden") && e.key === "Escape") {
+    closeGlobalQuickNav({ restoreFocus: true });
+    return;
+  }
   if (menuUserHubPanel && !menuUserHubPanel.classList.contains("hidden") && e.key === "Escape") {
     closeMenuUserHub();
     return;
@@ -8312,6 +9012,11 @@ window.addEventListener("popstate", function () {
   const activeScreen = document.querySelector(".screen-active");
   const activeId = activeScreen ? activeScreen.id : null;
 
+  if (globalQuickNavEl && !globalQuickNavEl.classList.contains("hidden")) {
+    closeGlobalQuickNav();
+    return;
+  }
+
   if (authModal && !authModal.classList.contains("hidden")) {
     closeAuthModal();
     return;
@@ -8341,7 +9046,12 @@ window.addEventListener("popstate", function () {
   if (activeId === "quiz-area") {
     if (mode === "study") {
       saveStudyProgress();
-      showScreen("study-setup");
+      returnToParentScreen("study-setup");
+      return;
+    }
+
+    if (isTopicQuizMode()) {
+      returnToTopicViewerFromQuiz();
       return;
     }
 
@@ -8354,7 +9064,7 @@ window.addEventListener("popstate", function () {
     }
 
     if (mode === "daily") {
-      showScreen("daily-setup");
+      returnToParentScreen("daily-setup");
       renderDailyQuizUi();
       return;
     }

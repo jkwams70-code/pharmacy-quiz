@@ -1,6 +1,6 @@
-import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,7 +12,9 @@ const dataJsPath = path.join(quizRoot, "data.js");
 const questionsPath = path.join(backendRoot, "data", "questions.json");
 const attemptsPath = path.join(backendRoot, "data", "attempts.json");
 const syncPerformancePath = path.join(backendRoot, "data", "syncPerformance.json");
+const usersPath = path.join(backendRoot, "data", "users.json");
 const backupsRoot = path.join(backendRoot, "backups");
+const PERMANENT_REORDER_SEED = "20260325-permanent-bank-reshuffle-v1";
 
 function parseFlags(argv) {
   const args = new Set(argv.slice(2));
@@ -54,39 +56,136 @@ function uniqueQuestionIds(questions) {
   return ids;
 }
 
-function shuffle(array) {
-  const copy = [...array];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = crypto.randomInt(i + 1);
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+function buildSequentialIdMap(questions) {
+  const ids = uniqueQuestionIds(questions);
+  const map = new Map();
+  ids.forEach((oldId, index) => {
+    map.set(oldId, index + 1);
+  });
+  return map;
 }
 
-function buildDerangement(ids) {
-  if (ids.length < 2) {
-    throw new Error("Need at least 2 questions to renumber.");
-  }
+function stableHash(input) {
+  return crypto.createHash("sha256").update(String(input)).digest("hex");
+}
 
-  for (let tries = 0; tries < 1000; tries += 1) {
-    const perm = shuffle(ids);
-    const fixedPoints = perm.filter((value, index) => value === ids[index]).length;
-    if (fixedPoints > 0) continue;
+function deriveCaseGroupKey(row) {
+  const questionText = String(row?.question || row?.text || "");
+  const match = questionText.match(/^Case\s+(\d+)([A-Z])\.\s*/i);
+  if (!match) return null;
+  const topicSlug = String(row?.topicSlug || "").trim().toLowerCase();
+  if (!topicSlug) return null;
+  return `${topicSlug}::case-${match[1]}`;
+}
 
-    const map = new Map();
-    ids.forEach((oldId, index) => {
-      map.set(oldId, perm[index]);
+function deriveCaseSortLetter(row) {
+  const questionText = String(row?.question || row?.text || "");
+  const match = questionText.match(/^Case\s+\d+([A-Z])\.\s*/i);
+  return match ? String(match[1]).toUpperCase() : "";
+}
+
+function buildQuestionBlocks(questions) {
+  const blocks = [];
+  const caseBlocks = new Map();
+
+  questions.forEach((row, index) => {
+    const caseKey = deriveCaseGroupKey(row);
+    if (!caseKey) {
+      blocks.push({
+        key: `single:${Number(row?.id) || index + 1}`,
+        questions: [{ ...row, __sourceIndex: index }],
+        order: index,
+      });
+      return;
+    }
+
+    let block = caseBlocks.get(caseKey);
+    if (!block) {
+      block = {
+        key: `case:${caseKey}`,
+        questions: [],
+        order: index,
+      };
+      caseBlocks.set(caseKey, block);
+      blocks.push(block);
+    }
+
+    block.questions.push({ ...row, __sourceIndex: index });
+  });
+
+  blocks.forEach((block) => {
+    block.questions.sort((a, b) => {
+      const letterA = deriveCaseSortLetter(a);
+      const letterB = deriveCaseSortLetter(b);
+      if (letterA && letterB && letterA !== letterB) {
+        return letterA.localeCompare(letterB);
+      }
+      return Number(a.__sourceIndex || 0) - Number(b.__sourceIndex || 0);
     });
-    return map;
-  }
+  });
 
-  throw new Error("Unable to create derangement mapping after many attempts.");
+  return blocks;
+}
+
+function reorderQuestionsPermanently(questions) {
+  const blocks = buildQuestionBlocks(questions);
+  const reorderedBlocks = [...blocks].sort((a, b) => {
+    const hashA = stableHash(`${PERMANENT_REORDER_SEED}:${a.key}`);
+    const hashB = stableHash(`${PERMANENT_REORDER_SEED}:${b.key}`);
+    if (hashA < hashB) return -1;
+    if (hashA > hashB) return 1;
+    return Number(a.order || 0) - Number(b.order || 0);
+  });
+
+  return reorderedBlocks.flatMap((block) =>
+    block.questions.map(({ __sourceIndex: _sourceIndex, ...row }) => row),
+  );
 }
 
 function updateQuestionPrefix(questionText, nextId) {
   const text = String(questionText || "");
   if (!/^Q\d+\.\s*/.test(text)) return text;
   return text.replace(/^Q\d+\.\s*/, `Q${nextId}. `);
+}
+
+function normalizeBackendOverlay(row, fallback = {}) {
+  const next = {
+    ...fallback,
+    ...row,
+  };
+  const questionText = String(
+    next.question || next.text || fallback.question || fallback.text || "",
+  ).trim();
+  return {
+    ...next,
+    question: questionText,
+    text: questionText,
+    id: ensurePositiveInt(next.id),
+  };
+}
+
+function buildEffectiveQuestionBank(localQuestions, backendQuestions) {
+  const backendById = new Map(
+    backendQuestions
+      .map((row) => normalizeBackendOverlay(row))
+      .filter((row) => row.id)
+      .map((row) => [row.id, row]),
+  );
+
+  const merged = localQuestions.map((row) => {
+    const localId = ensurePositiveInt(row?.id);
+    const backendRow = localId ? backendById.get(localId) : null;
+    return normalizeBackendOverlay(backendRow || row, row);
+  });
+
+  const localIds = new Set(
+    localQuestions.map((row) => ensurePositiveInt(row?.id)).filter(Boolean),
+  );
+  const backendOnly = [...backendById.values()]
+    .filter((row) => !localIds.has(row.id))
+    .sort((a, b) => a.id - b.id);
+
+  return [...merged, ...backendOnly];
 }
 
 function transformQuestionRow(row, idMap) {
@@ -98,8 +197,9 @@ function transformQuestionRow(row, idMap) {
   if (!nextId) {
     throw new Error(`Missing ID mapping for question ${currentId}`);
   }
+  const { text: _legacyText, ...rest } = row;
   return {
-    ...row,
+    ...rest,
     id: nextId,
     question: updateQuestionPrefix(row?.question, nextId),
   };
@@ -136,6 +236,39 @@ function transformSyncPerformanceRow(row, idMap) {
   return next;
 }
 
+function remapIdArray(values, idMap) {
+  if (!Array.isArray(values)) return values;
+  return values.map((value) => {
+    const id = ensurePositiveInt(value);
+    return id && idMap.has(id) ? idMap.get(id) : value;
+  });
+}
+
+function transformUser(user, idMap) {
+  const next = { ...user };
+  const dailyQuiz =
+    next.dailyQuiz && typeof next.dailyQuiz === "object" ? { ...next.dailyQuiz } : null;
+  if (!dailyQuiz) return next;
+
+  const days =
+    dailyQuiz.days && typeof dailyQuiz.days === "object" ? { ...dailyQuiz.days } : {};
+
+  Object.entries(days).forEach(([dateKey, entry]) => {
+    const day = entry && typeof entry === "object" ? { ...entry } : {};
+    if (Array.isArray(day.questionIds)) {
+      day.questionIds = remapIdArray(day.questionIds, idMap);
+    }
+    if (Array.isArray(day.wrongQuestionIds)) {
+      day.wrongQuestionIds = remapIdArray(day.wrongQuestionIds, idMap);
+    }
+    days[dateKey] = day;
+  });
+
+  dailyQuiz.days = days;
+  next.dailyQuiz = dailyQuiz;
+  return next;
+}
+
 async function readJsonFile(filePath) {
   const raw = await fs.readFile(filePath, "utf8");
   return JSON.parse(raw);
@@ -158,25 +291,27 @@ async function run() {
 
   const moduleUrl = `${pathToFileURL(dataJsPath).href}?renumber=${Date.now()}`;
   const imported = await import(moduleUrl);
-  const sourceQuestions = Array.isArray(imported.baseQuestions)
+  const localQuestions = Array.isArray(imported.baseQuestions)
     ? imported.baseQuestions
     : [];
 
-  if (sourceQuestions.length < 2) {
+  if (localQuestions.length < 2) {
     throw new Error("Quiz/data.js does not contain enough questions to renumber.");
   }
 
+  const backendQuestions = await readJsonFile(questionsPath);
+  const effectiveQuestions = buildEffectiveQuestionBank(localQuestions, backendQuestions);
+  const sourceQuestions = reorderQuestionsPermanently(effectiveQuestions);
   const sourceIds = uniqueQuestionIds(sourceQuestions);
-  const idMap = buildDerangement(sourceIds);
+  const idMap = buildSequentialIdMap(sourceQuestions);
 
   const transformedFrontendQuestions = sourceQuestions.map((row) =>
     transformQuestionRow(row, idMap),
   );
-
-  const backendQuestions = await readJsonFile(questionsPath);
-  const transformedBackendQuestions = backendQuestions.map((row) =>
-    transformQuestionRow(row, idMap),
-  );
+  const transformedBackendQuestions = transformedFrontendQuestions.map((row) => ({
+    ...row,
+    text: String(row?.question || row?.text || ""),
+  }));
 
   const attempts = await readJsonFile(attemptsPath);
   const transformedAttempts = attempts.map((row) => transformAttempt(row, idMap));
@@ -186,6 +321,9 @@ async function run() {
     transformSyncPerformanceRow(row, idMap),
   );
 
+  const users = await readJsonFile(usersPath);
+  const transformedUsers = users.map((row) => transformUser(row, idMap));
+
   const mappingRows = sourceIds
     .slice()
     .sort((a, b) => a - b)
@@ -193,14 +331,11 @@ async function run() {
       oldId,
       newId: idMap.get(oldId),
     }));
-
-  const unchanged = mappingRows.filter((row) => row.oldId === row.newId);
-  if (unchanged.length > 0) {
-    throw new Error("Derangement safeguard failed: some IDs did not change.");
-  }
+  const changedCount = mappingRows.filter((row) => row.oldId !== row.newId).length;
 
   console.log(`[${mode}] Questions detected: ${sourceQuestions.length}`);
   console.log(`[${mode}] Mapping entries: ${mappingRows.length}`);
+  console.log(`[${mode}] IDs changed: ${changedCount}`);
   console.log(
     `[${mode}] Sample map: ${mappingRows
       .slice(0, 10)
@@ -223,6 +358,7 @@ async function run() {
   await copyFileIntoDir(questionsPath, backupDir);
   await copyFileIntoDir(attemptsPath, backupDir);
   await copyFileIntoDir(syncPerformancePath, backupDir);
+  await copyFileIntoDir(usersPath, backupDir);
 
   await fs.writeFile(
     path.join(backupDir, "id-map.json"),
@@ -240,6 +376,7 @@ async function run() {
   await writeJsonFile(questionsPath, transformedBackendQuestions);
   await writeJsonFile(attemptsPath, transformedAttempts);
   await writeJsonFile(syncPerformancePath, transformedSyncPerformance);
+  await writeJsonFile(usersPath, transformedUsers);
 
   console.log(`[APPLY] Backup created: ${backupDir}`);
   console.log("[APPLY] Updated files:");
@@ -247,6 +384,7 @@ async function run() {
   console.log(` - ${questionsPath}`);
   console.log(` - ${attemptsPath}`);
   console.log(` - ${syncPerformancePath}`);
+  console.log(` - ${usersPath}`);
   console.log("[APPLY] Completed one-time renumbering.");
 }
 

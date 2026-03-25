@@ -3330,8 +3330,8 @@ function enforceTopicViewerMobileLayout() {
         .subtitle {
           margin: 0 !important;
           color: ${palette.subtitle} !important;
-          font-size: 0.98rem !important;
-          line-height: 1.76 !important;
+          font-size: 13px !important;
+          line-height: 1.75 !important;
           max-width: 74ch !important;
         }
         .hero-grid,
@@ -3395,7 +3395,7 @@ function enforceTopicViewerMobileLayout() {
           margin-left: 4px !important;
           color: ${palette.metaValue} !important;
           font-family: "Inter", "Segoe UI", Tahoma, Arial, sans-serif !important;
-          font-size: 0.95rem !important;
+          font-size: 13px !important;
           font-weight: 600 !important;
         }
         .metric .k,
@@ -3419,9 +3419,9 @@ function enforceTopicViewerMobileLayout() {
           padding-bottom: 8px !important;
           color: ${palette.sectionHeading} !important;
           font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
-          font-size: 1.16rem !important;
-          font-weight: 600 !important;
-          line-height: 1.35 !important;
+          font-size: 15px !important;
+          font-weight: 700 !important;
+          line-height: 1.45 !important;
           border-bottom: 1px solid ${palette.divider} !important;
         }
         .section h3,
@@ -3429,9 +3429,9 @@ function enforceTopicViewerMobileLayout() {
           margin: 18px 0 8px !important;
           color: ${palette.sectionSubheading} !important;
           font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
-          font-size: 0.94rem !important;
+          font-size: 13px !important;
           font-weight: 700 !important;
-          line-height: 1.4 !important;
+          line-height: 1.65 !important;
         }
         .section p,
         .box p,
@@ -3441,12 +3441,12 @@ function enforceTopicViewerMobileLayout() {
         th,
         details.quiz p {
           color: ${palette.bodyText} !important;
-          font-size: 0.98rem !important;
-          line-height: 1.82 !important;
+          font-size: 13px !important;
+          line-height: 1.75 !important;
         }
         .section > p:first-of-type {
           color: ${palette.firstPara} !important;
-          font-size: 1rem !important;
+          font-size: 13px !important;
         }
         ul,
         ol {
@@ -3466,7 +3466,7 @@ function enforceTopicViewerMobileLayout() {
         .hero-visual h3,
         details.quiz summary {
           font-family: "Montserrat", "Inter", "Segoe UI", sans-serif !important;
-          font-size: 0.82rem !important;
+          font-size: 13px !important;
           font-weight: 700 !important;
           letter-spacing: 0.04em !important;
           text-transform: uppercase !important;

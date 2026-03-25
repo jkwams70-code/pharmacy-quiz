@@ -4995,10 +4995,10 @@ body.theme-sunset {
   width: min(154px, 42vw);
   height: auto;
   display: block;
-  background: rgba(255, 255, 255, 0.96);
-  padding: 6px 10px;
-  border-radius: 12px;
-  box-shadow: 0 8px 18px rgba(9, 30, 66, 0.14);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .header-collapse-toggle {
@@ -11490,9 +11490,9 @@ body.reduce-motion *::after {
 #quiz-area.mode-rapid .quiz-brand-logo,
 #quiz-area.mode-sudden .quiz-brand-logo,
 #quiz-area.mode-clinical .quiz-brand-logo {
-  padding: 6px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 #quiz-area.mode-exam .header-btn,
@@ -15563,8 +15563,10 @@ body.theme-dark .question-card-modern {
 #quiz-area .quiz-brand-logo {
   width: min(92px, 16vw) !important;
   height: auto !important;
-  padding: 4px 6px !important;
-  border-radius: 10px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 #quiz-area .header-btn {
@@ -15598,7 +15600,7 @@ body.theme-dark .question-card-modern {
 
 body.theme-dark #quiz-area .quiz-brand-logo {
   width: min(86px, 31vw) !important;
-  background: rgba(255, 255, 255, 0.94) !important;
+  background: transparent !important;
   box-shadow: none !important;
 }
 
@@ -15858,17 +15860,17 @@ body #tour-screen .menu-dashboard-logo-image {
   width: auto !important;
   height: 32px !important;
   display: block !important;
-  background: rgba(255, 255, 255, 0.94) !important;
-  padding: 4px 7px !important;
-  border-radius: 9px !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
 }
 
 body #quiz-area .quiz-brand-logo {
   width: auto !important;
   height: 32px !important;
-  padding: 4px 7px !important;
-  border-radius: 9px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
 }
 
 body #topic-viewer .topic-viewer-brand,

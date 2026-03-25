@@ -84,6 +84,17 @@ function deriveCaseSortLetter(row) {
   return match ? String(match[1]).toUpperCase() : "";
 }
 
+function deriveSingleQuestionKey(row, index) {
+  const topicSlug = String(row?.topicSlug || "").trim().toLowerCase();
+  const category = String(row?.category || "").trim().toLowerCase();
+  const type = String(row?.type || "").trim().toLowerCase();
+  const questionText = String(row?.question || row?.text || "").trim();
+  if (questionText) {
+    return `single:${topicSlug}:${category}:${type}:${questionText}`;
+  }
+  return `single:fallback:${Number(row?.id) || index + 1}`;
+}
+
 function buildQuestionBlocks(questions) {
   const blocks = [];
   const caseBlocks = new Map();
@@ -92,7 +103,7 @@ function buildQuestionBlocks(questions) {
     const caseKey = deriveCaseGroupKey(row);
     if (!caseKey) {
       blocks.push({
-        key: `single:${Number(row?.id) || index + 1}`,
+        key: deriveSingleQuestionKey(row, index),
         questions: [{ ...row, __sourceIndex: index }],
         order: index,
       });

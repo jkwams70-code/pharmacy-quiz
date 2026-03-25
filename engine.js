@@ -1484,48 +1484,27 @@ function syncViewportBackground(screenOrId) {
 }
 
 function setHeadersCollapsed(nextCollapsed) {
-  headersCollapsed = Boolean(nextCollapsed);
-  document.body.classList.toggle("headers-collapsed", headersCollapsed);
-  document.querySelectorAll(".header-collapse-toggle").forEach((button) => {
-    const collapsedText = headersCollapsed ? "v" : "^";
-    const actionText = headersCollapsed ? "Expand header bars" : "Collapse header bars";
-    button.textContent = collapsedText;
-    button.setAttribute("aria-label", actionText);
-    button.setAttribute("title", actionText);
-    button.setAttribute("aria-pressed", headersCollapsed ? "true" : "false");
-  });
+  headersCollapsed = false;
+  document.body.classList.remove("headers-collapsed");
   try {
-    localStorage.setItem(HEADER_COLLAPSE_STORAGE_KEY, headersCollapsed ? "1" : "0");
+    localStorage.removeItem(HEADER_COLLAPSE_STORAGE_KEY);
   } catch {
     // Ignore storage errors silently.
   }
 }
 
 function toggleHeadersCollapsed() {
-  setHeadersCollapsed(!headersCollapsed);
+  setHeadersCollapsed(false);
 }
 
 function ensureHeaderCollapseControls() {
-  document
-    .querySelectorAll(".app-header")
-    .forEach((header) => {
-      if (header.querySelector(".header-collapse-toggle")) return;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "header-collapse-toggle";
-      button.addEventListener("click", toggleHeadersCollapsed);
-      header.appendChild(button);
-    });
+  document.querySelectorAll(".header-collapse-toggle").forEach((button) => button.remove());
 }
 
 function initHeaderCollapseState() {
-  try {
-    headersCollapsed = localStorage.getItem(HEADER_COLLAPSE_STORAGE_KEY) === "1";
-  } catch {
-    headersCollapsed = false;
-  }
+  headersCollapsed = false;
   ensureHeaderCollapseControls();
-  setHeadersCollapsed(headersCollapsed);
+  setHeadersCollapsed(false);
 }
 
 function syncSettingsControls() {
@@ -7583,9 +7562,15 @@ function renderCompactHeaderMeta() {
   } else if (mode === "topic") {
     const answered = Object.keys(userAnswers || {}).length;
     const correctSoFar = calculateScore();
-    parts.push(`<span class="header-inline-progress">${getTopicQuizSessionTitle()} Quiz</span>`);
-    parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
-    parts.push(`<span class="header-inline-progress">Score ${correctSoFar}/${answered}</span>`);
+    parts.push(
+      `<span class="topic-header-stack">` +
+        `<span class="topic-header-top">` +
+          `<span class="header-inline-progress">Score ${correctSoFar}/${answered}</span>` +
+          `<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>` +
+        `</span>` +
+        `<span class="topic-header-title">${escapeHtml(getTopicQuizSessionTitle())} Quiz</span>` +
+      `</span>`,
+    );
   } else if (mode === "exam" || mode === "smart") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
   }

@@ -816,6 +816,12 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
       }
 
       async function resetSystem() {
+        showAlert(
+          "settings-alerts",
+          "System reset is disabled in this build.",
+          "info",
+        );
+        return;
         if (
           !confirm(
             "⚠️ This will DELETE all users and attempts. Questions will be re-seeded.",
@@ -876,6 +882,11 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
         document
           .getElementById("reset-system-btn")
           ?.addEventListener("click", resetSystem);
+        const resetButton = document.getElementById("reset-system-btn");
+        if (resetButton) {
+          resetButton.disabled = true;
+          resetButton.title = "System reset is disabled";
+        }
         document
           .getElementById("user-cancel-btn")
           ?.addEventListener("click", closeUserModal);

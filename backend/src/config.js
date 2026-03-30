@@ -21,6 +21,7 @@ const httpsPort = Number(process.env.HTTPS_PORT || 4443);
 const httpsPfxPath = process.env.HTTPS_PFX_PATH || "";
 const httpsPfxPassphrase = process.env.HTTPS_PFX_PASSPHRASE || "";
 const exposeResetCode = process.env.EXPOSE_RESET_CODE === "true";
+const enableAdminReset = process.env.ENABLE_ADMIN_RESET === "true";
 const aiEnabled = String(process.env.AI_ENABLED || "true").toLowerCase() !== "false";
 const aiFreeProvider = String(process.env.AI_FREE_PROVIDER || "openrouter")
   .trim()
@@ -38,6 +39,9 @@ const openRouterModelFree = String(
 const openAiApiKey = String(process.env.OPENAI_API_KEY || "").trim();
 const openAiModelPremium = String(process.env.OPENAI_MODEL_PREMIUM || "gpt-5-mini")
   .trim();
+const openAiModerationModel = String(process.env.OPENAI_MODERATION_MODEL || "omni-moderation-latest")
+  .trim();
+const googleVisionApiKey = String(process.env.GOOGLE_VISION_API_KEY || "").trim();
 const aiRequestTimeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS || 25000);
 const aiFreeDailyRequests = Number(process.env.AI_FREE_DAILY_REQUESTS || 25);
 const aiPremiumDailyRequests = Number(process.env.AI_PREMIUM_DAILY_REQUESTS || 300);
@@ -53,6 +57,14 @@ const aiPremiumUserIds = String(process.env.AI_PREMIUM_USER_IDS || "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
+const supabaseRealtimeUrl = String(process.env.SUPABASE_REALTIME_URL || "").trim();
+const supabaseRealtimeAnonKey = String(process.env.SUPABASE_REALTIME_ANON_KEY || "").trim();
+const supabaseRealtimeServiceKey = String(process.env.SUPABASE_REALTIME_SERVICE_KEY || "").trim();
+const supabaseStorageBucket = String(process.env.SUPABASE_STORAGE_BUCKET || "community-media").trim();
+const supabaseStorageFolder = String(process.env.SUPABASE_STORAGE_FOLDER || "ajix-community").trim();
+const oneSignalAppId = String(process.env.ONESIGNAL_APP_ID || "").trim();
+const oneSignalRestApiKey = String(process.env.ONESIGNAL_REST_API_KEY || "").trim();
+const oneSignalSafariWebId = String(process.env.ONESIGNAL_SAFARI_WEB_ID || "").trim();
 
 if (!Number.isFinite(port) || port <= 0) {
   throw new Error("Invalid PORT. Set a positive numeric PORT value.");
@@ -165,6 +177,7 @@ export const config = {
   httpsPfxPath,
   httpsPfxPassphrase,
   exposeResetCode,
+  enableAdminReset,
   aiEnabled,
   aiFreeProvider,
   aiPremiumProvider,
@@ -174,6 +187,8 @@ export const config = {
   openRouterModelFree,
   openAiApiKey,
   openAiModelPremium,
+  openAiModerationModel,
+  googleVisionApiKey,
   aiRequestTimeoutMs,
   aiFreeDailyRequests,
   aiPremiumDailyRequests,
@@ -182,5 +197,13 @@ export const config = {
   aiFreeMaxOutputTokens,
   aiPremiumMaxOutputTokens,
   aiPremiumUserIds,
+  supabaseRealtimeUrl,
+  supabaseRealtimeAnonKey,
+  supabaseRealtimeServiceKey,
+  supabaseStorageBucket,
+  supabaseStorageFolder,
+  oneSignalAppId,
+  oneSignalRestApiKey,
+  oneSignalSafariWebId,
   tokenTtl: "7d",
 };

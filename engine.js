@@ -1338,8 +1338,7 @@ function syncCommunityDesktopSplitLayout() {
 function syncCommunityViewportFrame() {
   const activeId = getActiveScreenId();
   const isCommunityActive = isCommunityScreenId(activeId);
-  const isCommunityProfileScreen = activeId === "community-profile-screen";
-  const shouldUseDocumentScroll = isCommunityProfileScreen && !isCommunityDesktopSplitEligible();
+  const shouldUseDocumentScroll = false;
   const shouldLockCommunityViewport = isCommunityActive && !shouldUseDocumentScroll;
   const root = document.documentElement;
   if (!root) return;
@@ -2812,6 +2811,7 @@ const communityState = {
   statusViewerProgressElapsed: 0,
   statusViewerProgressDuration: 5000,
   statusViewerPaused: false,
+  statusViewerSkipComposeOnClose: false,
   mediaViewerOpen: false,
   mediaViewerHistoryArmed: false,
   mediaViewerSrc: "",
@@ -7126,9 +7126,16 @@ function openCommunityStatusModal({ recordHistory = true } = {}) {
 function closeCommunityStatusModal({ useHistory = false } = {}) {
   if (!communityStatusModalEl) return;
   if (useHistory && history.state?.overlay === "community-status") {
+    communityState.statusViewerSkipComposeOnClose = true;
     history.back();
+    window.setTimeout(() => {
+      if (!communityStatusModalEl.classList.contains("hidden")) {
+        closeCommunityStatusModal({ useHistory: false });
+      }
+    }, 260);
     return;
   }
+  communityState.statusViewerSkipComposeOnClose = false;
   clearCommunityStatusViewerTimer();
   communityState.statusViewerPaused = false;
   communityState.statusViewerProgressElapsed = 0;
@@ -7439,17 +7446,7 @@ function getCommunityStatusNavigationTarget(delta = 1) {
   if (nextIndex >= 0 && nextIndex < items.length) {
     return { ownerId, index: nextIndex };
   }
-  const owners = getCommunityStatusOwnerOrder();
-  const ownerPosition = owners.indexOf(ownerId);
-  if (ownerPosition < 0) return null;
-  const adjacentOwner = owners[ownerPosition + (delta > 0 ? 1 : -1)] || "";
-  if (!adjacentOwner) return null;
-  const adjacentItems = getCommunityStatusEntriesByOwner(adjacentOwner);
-  if (!adjacentItems.length) return null;
-  return {
-    ownerId: adjacentOwner,
-    index: delta > 0 ? 0 : adjacentItems.length - 1,
-  };
+  return null;
 }
 
 function getCommunityStatusOwnerNavigationTarget(delta = 1) {
@@ -8215,10 +8212,14 @@ function renderCommunityStatusViewerEntry(entry = {}) {
     autoSizeTextarea(communityStatusReplyInput, 180);
   }
   if (communityStatusPrevBtn) {
-    communityStatusPrevBtn.disabled = !getCommunityStatusNavigationTarget(-1);
+    const hasPrev = Boolean(getCommunityStatusNavigationTarget(-1));
+    communityStatusPrevBtn.disabled = false;
+    communityStatusPrevBtn.classList.toggle("is-edge-close", !hasPrev);
   }
   if (communityStatusNextBtn) {
-    communityStatusNextBtn.disabled = !getCommunityStatusNavigationTarget(1);
+    const hasNext = Boolean(getCommunityStatusNavigationTarget(1));
+    communityStatusNextBtn.disabled = false;
+    communityStatusNextBtn.classList.toggle("is-edge-close", !hasNext);
   }
   if (communityStatusDeleteBtn) {
     communityStatusDeleteBtn.classList.toggle("hidden", !isOwnStatus);
@@ -8269,12 +8270,26 @@ function openCommunityStatusSequence(ownerId = "", startIndex = 0, { recordHisto
 }
 
 function stepCommunityStatus(delta = 1) {
-  const target = getCommunityStatusNavigationTarget(delta);
-  if (!target) {
+  const direction = Number(delta || 0) >= 0 ? 1 : -1;
+  const ownerId = String(communityState.statusViewerOwnerId || "").trim();
+  const items = getCommunityStatusEntriesByOwner(ownerId);
+  if (!ownerId || !items.length) {
     closeCommunityStatusModal({ useHistory: true });
     return;
   }
-  showCommunityStatusViewerTarget(target, { markViewed: true });
+  const currentIndex = Math.max(0, Math.min(Math.round(Number(communityState.statusViewerIndex) || 0), items.length - 1));
+  const nextIndex = currentIndex + direction;
+  if (nextIndex < 0 || nextIndex >= items.length) {
+    closeCommunityStatusModal({ useHistory: true });
+    return;
+  }
+  showCommunityStatusViewerTarget(
+    {
+      ownerId,
+      index: nextIndex,
+    },
+    { markViewed: true },
+  );
 }
 
 function syncCommunityGroupMemberSelection() {
@@ -17537,14 +17552,18 @@ if (communityStatusPrevBtn) {
       finishCommunityStatusHold();
     }, { passive: true });
   });
-  communityStatusPrevBtn.addEventListener("click", () => {
+  communityStatusPrevBtn.addEventListener("click", (event) => {
     if (Date.now() < communityStatusSwipeSuppressTapUntil) {
       return;
     }
-    if (communityStatusHoldWasTriggered) {
+    const hasPrev = Boolean(getCommunityStatusNavigationTarget(-1));
+    if (communityStatusHoldWasTriggered && hasPrev) {
       communityStatusHoldWasTriggered = false;
       return;
     }
+    communityStatusHoldWasTriggered = false;
+    event.preventDefault();
+    event.stopPropagation();
     stepCommunityStatus(-1);
   });
 }
@@ -17560,14 +17579,18 @@ if (communityStatusNextBtn) {
       finishCommunityStatusHold();
     }, { passive: true });
   });
-  communityStatusNextBtn.addEventListener("click", () => {
+  communityStatusNextBtn.addEventListener("click", (event) => {
     if (Date.now() < communityStatusSwipeSuppressTapUntil) {
       return;
     }
-    if (communityStatusHoldWasTriggered) {
+    const hasNext = Boolean(getCommunityStatusNavigationTarget(1));
+    if (communityStatusHoldWasTriggered && hasNext) {
       communityStatusHoldWasTriggered = false;
       return;
     }
+    communityStatusHoldWasTriggered = false;
+    event.preventDefault();
+    event.stopPropagation();
     stepCommunityStatus(1);
   });
 }
@@ -24695,10 +24718,50 @@ window.addEventListener("beforeunload", function () {
 // SMART PHONE BACK SUPPORT
 // ==============================
 
+function triggerInAppBackNavigation(state = null) {
+  const nextState = state && typeof state === "object" ? state : {};
+  window.dispatchEvent(new PopStateEvent("popstate", { state: nextState }));
+}
+
+function registerNativeBackButtonHandler() {
+  const capacitorApp = window?.Capacitor?.Plugins?.App;
+  if (!capacitorApp || typeof capacitorApp.addListener !== "function") return;
+
+  capacitorApp.addListener("backButton", () => {
+    const hasHistoryEntry = window.history.length > 1;
+    const hasAppState = Boolean(history.state && (history.state.screen || history.state.overlay));
+
+    if (hasHistoryEntry || hasAppState) {
+      window.history.back();
+      return;
+    }
+
+    triggerInAppBackNavigation(history.state || {});
+  });
+}
+
+registerNativeBackButtonHandler();
+
 window.addEventListener("popstate", function (event) {
   const state = event?.state || {};
   const activeScreen = document.querySelector(".screen-active");
   const activeId = activeScreen ? activeScreen.id : null;
+  const overlay = String(state?.overlay || "").trim();
+
+  if (communityState.statusViewerSkipComposeOnClose) {
+    if (/^community-status-compose/.test(overlay)) {
+      if (history.length > 1) {
+        history.back();
+        return;
+      }
+      communityState.statusViewerSkipComposeOnClose = false;
+      if (!communityStatusModalEl?.classList.contains("hidden")) {
+        closeCommunityStatusModal();
+      }
+      return;
+    }
+    communityState.statusViewerSkipComposeOnClose = false;
+  }
 
   if (state?.overlay === "leaderboard") {
     const targetScreen = String(state.screen || leaderboardState.returnScreen || activeId || "quiz-menu").trim();

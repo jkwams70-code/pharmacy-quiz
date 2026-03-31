@@ -159,6 +159,19 @@
         </div>
       </div>
     </div>
+    <div id="app-update-modal" class="modal hidden">
+      <div class="modal-card app-update-modal-card">
+        <div id="app-update-title" class="modal-title">Update Available</div>
+        <div id="app-update-message" class="modal-text">
+          A new version of Ajix is available. Update now for the latest fixes and features.
+        </div>
+        <div id="app-update-version-line" class="modal-text app-update-version-line hidden"></div>
+        <div class="modal-actions">
+          <button id="app-update-later-btn" class="modal-btn secondary">Later</button>
+          <button id="app-update-download-btn" class="modal-btn primary">Download Update</button>
+        </div>
+      </div>
+    </div>
     <div id="auth-modal" class="modal hidden">
       <div class="modal-card auth-modal-card">
         <div class="auth-modal-hero">
@@ -3508,10 +3521,10 @@
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="engine.js?v=20260331-statusedgeclose1"></script>
+    <script type="module" src="engine.js?v=20260331-appupdate1"></script>
     <script>
-      const APP_BUILD_ID = "20260329-statusarchive-remove1";
-      const APP_STANDALONE_BUILD = "20260329-statusarchive-remove1";
+      const APP_BUILD_ID = "20260331-appupdate1";
+      const APP_STANDALONE_BUILD = "20260331-appupdate1";
 
       try {
         const params = new URLSearchParams(location.search);

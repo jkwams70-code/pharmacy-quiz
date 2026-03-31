@@ -31792,6 +31792,26 @@ body.community-status-compose-open {
   z-index: 13063 !important;
 }
 
+#app-update-modal.modal {
+  z-index: 13064 !important;
+}
+
+#app-update-modal .app-update-modal-card {
+  position: relative;
+  z-index: 13065 !important;
+  width: min(420px, calc(100vw - 28px));
+}
+
+.app-update-version-line {
+  margin-top: 6px;
+  font-size: 0.84rem;
+  color: color-mix(in srgb, var(--text, #1f2937) 72%, transparent);
+}
+
+body.theme-dark .app-update-version-line {
+  color: color-mix(in srgb, #f5f7fb 74%, transparent);
+}
+
 /* Global subtle interaction lock */
 button,
 a,

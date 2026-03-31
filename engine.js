@@ -754,6 +754,12 @@ const sessionResumeTitleEl = document.getElementById("session-resume-title");
 const sessionResumeTextEl = document.getElementById("session-resume-text");
 const sessionResumeNewBtn = document.getElementById("session-resume-new-btn");
 const sessionResumeContinueBtn = document.getElementById("session-resume-continue-btn");
+const appUpdateModalEl = document.getElementById("app-update-modal");
+const appUpdateTitleEl = document.getElementById("app-update-title");
+const appUpdateMessageEl = document.getElementById("app-update-message");
+const appUpdateVersionLineEl = document.getElementById("app-update-version-line");
+const appUpdateLaterBtn = document.getElementById("app-update-later-btn");
+const appUpdateDownloadBtn = document.getElementById("app-update-download-btn");
 const authModal = document.getElementById("auth-modal");
 const authForm = document.getElementById("auth-form");
 const authTabLoginBtn = document.getElementById("auth-tab-login");
@@ -1185,6 +1191,9 @@ const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
 const POINTS_STORAGE_KEY = "quizPointsV1";
 const POINTS_PENDING_STORAGE_KEY = "quizPointsPendingV1";
 const SETUP_POINTS_STORAGE_KEY = "quizSetupPointsV1";
+const APP_UPDATE_FEED_URL = "https://ajixpharmacy.online/app-update.json";
+const APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY = "quizAppUpdateDismissedVersionV1";
+const APP_UPDATE_CHECK_COOLDOWN_MS = 2 * 60 * 1000;
 const LIVE_ANSWER_ADVANCE_DELAY_MS = 1800;
 const COMMUNITY_LOCK_PIN_MIN_LENGTH = 4;
 const COMMUNITY_LOCK_PIN_MAX_LENGTH = 8;
@@ -2661,6 +2670,9 @@ const ANSWER_FEEDBACK_VISIBLE_MS = 1600;
 const ANSWER_CHOICE_MOTIVATION_VISIBLE_MS = 1800;
 let pendingCommunityConfirmAction = null;
 let pendingCommunityLockResolver = null;
+let appUpdateCheckInFlight = false;
+let appUpdateLastCheckedAt = 0;
+let appUpdateCurrentPayload = null;
 let activeCommunityMessageAction = null;
 let communityMessageHoldHandle = null;
 let communityChatScrollWatchEl = null;
@@ -9196,6 +9208,156 @@ function setCommunitySettingsView(view = "main") {
   if (communitySettingsTitleEl) communitySettingsTitleEl.textContent = meta.title;
   if (communitySettingsCopyEl) communitySettingsCopyEl.textContent = meta.copy;
   communitySettingsBackBtn?.classList.toggle("hidden", communityState.settingsView === "main");
+}
+
+function isNativeAndroidAppRuntime() {
+  try {
+    const platform = String(window?.Capacitor?.getPlatform?.() || "").trim().toLowerCase();
+    if (platform === "android") return true;
+    if (platform === "ios") return false;
+    if (typeof window?.Capacitor?.isNativePlatform === "function" && window.Capacitor.isNativePlatform()) {
+      const userAgent = String(navigator?.userAgent || "").toLowerCase();
+      return userAgent.includes("android");
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeAppVersionValue(value = "") {
+  return String(value || "").trim().replace(/^v/i, "");
+}
+
+function parseAppVersionSegments(value = "") {
+  const safeValue = normalizeAppVersionValue(value);
+  if (!safeValue) return [];
+  const core = safeValue.split(/[+-]/)[0];
+  return core
+    .split(".")
+    .map((part) => Number.parseInt(part, 10))
+    .map((part) => (Number.isFinite(part) ? Math.max(0, part) : 0));
+}
+
+function compareAppVersions(current = "", latest = "") {
+  const a = parseAppVersionSegments(current);
+  const b = parseAppVersionSegments(latest);
+  if (!a.length || !b.length) {
+    return normalizeAppVersionValue(current).localeCompare(
+      normalizeAppVersionValue(latest),
+      undefined,
+      { numeric: true, sensitivity: "base" },
+    );
+  }
+  const size = Math.max(a.length, b.length);
+  for (let index = 0; index < size; index += 1) {
+    const left = Number(a[index] || 0);
+    const right = Number(b[index] || 0);
+    if (left > right) return 1;
+    if (left < right) return -1;
+  }
+  return 0;
+}
+
+async function getNativeAppVersion() {
+  const appPlugin = window?.Capacitor?.Plugins?.App;
+  if (!appPlugin || typeof appPlugin.getInfo !== "function") return "";
+  try {
+    const info = await appPlugin.getInfo();
+    return normalizeAppVersionValue(info?.version || info?.build || "");
+  } catch {
+    return "";
+  }
+}
+
+function closeAppUpdateModal() {
+  if (!appUpdateModalEl) return;
+  appUpdateModalEl.classList.add("hidden");
+  appUpdateCurrentPayload = null;
+}
+
+function openAppUpdateModal(payload = null, currentVersion = "") {
+  if (!appUpdateModalEl || !payload) return;
+  const latestVersion = normalizeAppVersionValue(payload.latestVersion);
+  const forceUpdate = Boolean(payload.forceUpdate);
+  const message = String(payload.message || "").trim()
+    || "A new version of Ajix is available. Update now for the latest fixes and features.";
+  if (appUpdateTitleEl) {
+    appUpdateTitleEl.textContent = forceUpdate ? "Update Required" : "Update Available";
+  }
+  if (appUpdateMessageEl) {
+    appUpdateMessageEl.textContent = message;
+  }
+  if (appUpdateVersionLineEl) {
+    const versionLine = currentVersion && latestVersion
+      ? `Current: ${currentVersion}   Latest: ${latestVersion}`
+      : latestVersion
+        ? `Latest version: ${latestVersion}`
+        : "";
+    appUpdateVersionLineEl.textContent = versionLine;
+    appUpdateVersionLineEl.classList.toggle("hidden", !versionLine);
+  }
+  if (appUpdateLaterBtn) {
+    appUpdateLaterBtn.classList.toggle("hidden", forceUpdate);
+    appUpdateLaterBtn.disabled = forceUpdate;
+  }
+  appUpdateCurrentPayload = { ...payload, latestVersion, forceUpdate };
+  appUpdateModalEl.classList.remove("hidden");
+}
+
+async function openAppUpdateDownloadUrl(url = "") {
+  const safeUrl = String(url || "").trim();
+  if (!safeUrl) return;
+  const browserPlugin = window?.Capacitor?.Plugins?.Browser;
+  if (browserPlugin && typeof browserPlugin.open === "function") {
+    try {
+      await browserPlugin.open({ url: safeUrl });
+      return;
+    } catch {
+      // Fall through to window open fallback.
+    }
+  }
+  const popup = window.open(safeUrl, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    window.location.assign(safeUrl);
+  }
+}
+
+async function checkForNativeAppUpdate({ force = false } = {}) {
+  if (!isNativeAndroidAppRuntime()) return null;
+  const now = Date.now();
+  if (!force && now - appUpdateLastCheckedAt < APP_UPDATE_CHECK_COOLDOWN_MS) return null;
+  if (appUpdateCheckInFlight) return null;
+  appUpdateCheckInFlight = true;
+  appUpdateLastCheckedAt = now;
+  try {
+    const currentVersion = await getNativeAppVersion();
+    if (!currentVersion) return null;
+    const response = await fetch(`${APP_UPDATE_FEED_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const latestVersion = normalizeAppVersionValue(payload?.latestVersion);
+    const apkUrl = String(payload?.apkUrl || "").trim();
+    if (!latestVersion || !apkUrl) return null;
+    if (compareAppVersions(currentVersion, latestVersion) >= 0) return null;
+    const forceUpdate = Boolean(payload?.forceUpdate);
+    const dismissedVersion = String(localStorage.getItem(APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY) || "").trim();
+    if (!forceUpdate && dismissedVersion === latestVersion) return null;
+    openAppUpdateModal(
+      {
+        latestVersion,
+        apkUrl,
+        message: String(payload?.message || "").trim(),
+        forceUpdate,
+      },
+      currentVersion,
+    );
+    return { currentVersion, latestVersion };
+  } catch {
+    return null;
+  } finally {
+    appUpdateCheckInFlight = false;
+  }
 }
 
 function normalizeCommunityPinValue(value = "") {
@@ -18175,6 +18337,35 @@ if (communityLockResetModalEl) {
   });
 }
 
+if (appUpdateLaterBtn) {
+  appUpdateLaterBtn.addEventListener("click", () => {
+    const latestVersion = normalizeAppVersionValue(appUpdateCurrentPayload?.latestVersion || "");
+    if (latestVersion) {
+      localStorage.setItem(APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY, latestVersion);
+    }
+    closeAppUpdateModal();
+  });
+}
+
+if (appUpdateDownloadBtn) {
+  appUpdateDownloadBtn.addEventListener("click", () => {
+    const safeUrl = String(appUpdateCurrentPayload?.apkUrl || "").trim();
+    if (!safeUrl) return;
+    if (!Boolean(appUpdateCurrentPayload?.forceUpdate)) {
+      closeAppUpdateModal();
+    }
+    void openAppUpdateDownloadUrl(safeUrl);
+  });
+}
+
+if (appUpdateModalEl) {
+  appUpdateModalEl.addEventListener("click", (event) => {
+    if (event.target !== appUpdateModalEl) return;
+    if (Boolean(appUpdateCurrentPayload?.forceUpdate)) return;
+    closeAppUpdateModal();
+  });
+}
+
 if (menuPointsBtn) {
   menuPointsBtn.addEventListener("click", () => {
     closeMenuUserHub();
@@ -24322,6 +24513,9 @@ window.addEventListener("load", function () {
   refreshProfilePhotoDeleteVisibility();
   renderAuthState();
   restoreAuthSession();
+  window.setTimeout(() => {
+    void checkForNativeAppUpdate();
+  }, 900);
 
   if (pendingTopicQuizLaunch) {
     consumePendingTopicQuizLaunch();
@@ -24686,6 +24880,12 @@ function shuffle(array) {
 }
 
 document.addEventListener("keydown", function (e) {
+  if (appUpdateModalEl && !appUpdateModalEl.classList.contains("hidden") && e.key === "Escape") {
+    if (!Boolean(appUpdateCurrentPayload?.forceUpdate)) {
+      closeAppUpdateModal();
+    }
+    return;
+  }
   if (authModal && !authModal.classList.contains("hidden") && e.key === "Escape") {
     closeAuthModal();
     return;
@@ -24756,6 +24956,11 @@ function registerNativeBackButtonHandler() {
 
     triggerInAppBackNavigation(history.state || {});
   });
+
+  capacitorApp.addListener("appStateChange", ({ isActive }) => {
+    if (!isActive) return;
+    void checkForNativeAppUpdate({ force: true });
+  });
 }
 
 registerNativeBackButtonHandler();
@@ -24765,6 +24970,13 @@ window.addEventListener("popstate", function (event) {
   const activeScreen = document.querySelector(".screen-active");
   const activeId = activeScreen ? activeScreen.id : null;
   const overlay = String(state?.overlay || "").trim();
+
+  if (appUpdateModalEl && !appUpdateModalEl.classList.contains("hidden")) {
+    if (!Boolean(appUpdateCurrentPayload?.forceUpdate)) {
+      closeAppUpdateModal();
+    }
+    return;
+  }
 
   if (communityState.statusViewerSkipComposeOnClose) {
     if (/^community-status-compose/.test(overlay)) {

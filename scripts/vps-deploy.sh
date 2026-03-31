@@ -17,6 +17,7 @@ cp -f engine.js "${FRONTEND_DIR}/engine.js"
 cp -f styles.css "${FRONTEND_DIR}/styles.css"
 cp -f data.js "${FRONTEND_DIR}/data.js"
 cp -f backendClient.js "${FRONTEND_DIR}/backendClient.js"
+cp -f app-update.json "${FRONTEND_DIR}/app-update.json"
 cp -f status.html "${FRONTEND_DIR}/status.html"
 cp -f manifest.webmanifest "${FRONTEND_DIR}/manifest.webmanifest"
 cp -f admin-manifest.webmanifest "${FRONTEND_DIR}/admin-manifest.webmanifest"
@@ -26,11 +27,14 @@ if [ -f pwa-launch.html ]; then
 fi
 cp -f robots.txt "${FRONTEND_DIR}/robots.txt"
 cp -f sitemap.xml "${FRONTEND_DIR}/sitemap.xml"
-mkdir -p "${FRONTEND_DIR}/admin" "${FRONTEND_DIR}/topics" "${FRONTEND_DIR}/images" "${FRONTEND_DIR}/icons"
+mkdir -p "${FRONTEND_DIR}/admin" "${FRONTEND_DIR}/topics" "${FRONTEND_DIR}/images" "${FRONTEND_DIR}/icons" "${FRONTEND_DIR}/downloads"
 cp -rf admin/. "${FRONTEND_DIR}/admin/"
 cp -rf topics/. "${FRONTEND_DIR}/topics/"
 cp -rf images/. "${FRONTEND_DIR}/images/"
 cp -rf icons/. "${FRONTEND_DIR}/icons/"
+if [ -d downloads ]; then
+  cp -rf downloads/. "${FRONTEND_DIR}/downloads/"
+fi
 
 # Copy Google Search Console verification files if present.
 shopt -s nullglob

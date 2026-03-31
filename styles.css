@@ -34978,3 +34978,50 @@ body.theme-dark .community-notification-badge.is-dot {
     white-space: nowrap;
   }
 }
+
+/* Community profile behavior: group scrolls under header, learner stays fixed */
+body:not(.community-desktop-split-active)
+  #community-profile-screen.is-group-profile-view.screen-active {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100svh !important;
+  min-height: 100svh !important;
+  max-height: 100svh !important;
+  overflow: hidden !important;
+}
+
+body:not(.community-desktop-split-active)
+  #community-profile-screen.is-group-profile-view
+  > .community-fixed-header {
+  position: fixed !important;
+  top: var(--community-vv-top, 0px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 18 !important;
+}
+
+body:not(.community-desktop-split-active)
+  #community-profile-screen.is-group-profile-view
+  > .study-scroll-content {
+  position: absolute !important;
+  top: calc(var(--community-profile-group-header-offset, 0px) + var(--community-vv-top, 0px)) !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0 0 24px !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+body:not(.community-desktop-split-active)
+  #community-profile-screen.is-contact-profile-view
+  > .study-scroll-content {
+  overflow: hidden !important;
+}

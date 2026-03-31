@@ -764,6 +764,41 @@ function getUploadExtensionFromMime(mimeType = "") {
   return ".bin";
 }
 
+function inferUploadMimeTypeFromFileName(fileName = "") {
+  const safeName = String(fileName || "").trim();
+  if (!safeName) return "";
+  const extension = path.extname(safeName).trim().toLowerCase();
+  if (!extension) return "";
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  if (extension === ".mp4") return "video/mp4";
+  if (extension === ".webm") return "video/webm";
+  if (extension === ".mov" || extension === ".qt") return "video/quicktime";
+  if (extension === ".ogg" || extension === ".oga") return "audio/ogg";
+  if (extension === ".m4a") return "audio/mp4";
+  if (extension === ".mp3") return "audio/mpeg";
+  if (extension === ".wav") return "audio/wav";
+  if (extension === ".pdf") return "application/pdf";
+  if (extension === ".doc") return "application/msword";
+  if (extension === ".docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (extension === ".ppt") return "application/vnd.ms-powerpoint";
+  if (extension === ".pptx") return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (extension === ".txt") return "text/plain";
+  return "";
+}
+
+function resolveUploadMimeType(contentType = "", fileName = "") {
+  const safeContentType = String(contentType || "").trim().toLowerCase();
+  if (safeContentType && safeContentType !== "application/octet-stream") {
+    return safeContentType;
+  }
+  const inferred = inferUploadMimeTypeFromFileName(fileName);
+  if (inferred) return inferred;
+  return safeContentType || "application/octet-stream";
+}
+
 function buildStructuredUploadFileName({ mimeType = "", now = Date.now() } = {}) {
   const fileType = getUploadFileTypeFromMime(mimeType);
   const prefix = getUploadTypePrefix(fileType);
@@ -4628,10 +4663,6 @@ app.post(
       res.status(400).json({ error: "group photo file is required" });
       return;
     }
-    if (!ALLOWED_IMAGE_MIME_TYPES.has(contentType)) {
-      res.status(400).json({ error: "Only JPG, PNG, WEBP, or GIF images are allowed." });
-      return;
-    }
     const rawName = String(req.get("x-group-avatar-name") || "").trim();
     let fileName = "group-avatar";
     if (rawName) {
@@ -4641,12 +4672,17 @@ app.post(
         fileName = rawName.trim() || fileName;
       }
     }
+    const effectiveMimeType = resolveUploadMimeType(contentType, fileName);
+    if (!ALLOWED_IMAGE_MIME_TYPES.has(effectiveMimeType)) {
+      res.status(400).json({ error: "Only JPG, PNG, WEBP, or GIF images are allowed." });
+      return;
+    }
     try {
       const upload = await createStoredUploadFromBuffer({
         ownerUserId: viewerId,
         kind: "group-avatar",
         fileName: fileName.slice(0, 160),
-        mimeType: contentType,
+        mimeType: effectiveMimeType,
         buffer: bodyBuffer,
       });
       const persistedUploadResult = persistUploadRecord(uploads, upload);
@@ -4862,18 +4898,19 @@ app.post(
     const fileName = String(meta?.fileName || "status-media").trim().slice(0, 160) || "status-media";
     const style = meta?.style && typeof meta.style === "object" ? meta.style : {};
     const contentType = String(req.get("content-type") || "application/octet-stream").trim().toLowerCase();
+    const effectiveMimeType = resolveUploadMimeType(contentType, fileName);
     const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
     if (!bodyBuffer.length) {
       res.status(400).json({ error: "status media file is required" });
       return;
     }
-    if (!ALLOWED_IMAGE_MIME_TYPES.has(contentType) && !ALLOWED_VIDEO_MIME_TYPES.has(contentType)) {
+    if (!ALLOWED_IMAGE_MIME_TYPES.has(effectiveMimeType) && !ALLOWED_VIDEO_MIME_TYPES.has(effectiveMimeType)) {
       res.status(400).json({ error: "Only image or video files are allowed." });
       return;
     }
     try {
       await moderateCommunityTextContent(caption);
-      await moderateCommunityUploadBuffer(bodyBuffer, contentType);
+      await moderateCommunityUploadBuffer(bodyBuffer, effectiveMimeType);
     } catch (error) {
       res.status(400).json({ error: String(error?.message || "Status was rejected.") });
       return;
@@ -4881,8 +4918,8 @@ app.post(
     try {
       let upload;
       let nextStyle = { ...style };
-      if (ALLOWED_VIDEO_MIME_TYPES.has(contentType)) {
-        const processed = await trimStatusVideoBuffer(bodyBuffer, contentType, {
+      if (ALLOWED_VIDEO_MIME_TYPES.has(effectiveMimeType)) {
+        const processed = await trimStatusVideoBuffer(bodyBuffer, effectiveMimeType, {
           start: Number(style?.videoTrimStart || 0) || 0,
           end: Number(style?.videoTrimEnd || 0) || 0,
         });
@@ -4907,7 +4944,7 @@ app.post(
           ownerUserId: viewerId,
           kind: "status-image",
           fileName,
-          mimeType: contentType,
+          mimeType: effectiveMimeType,
           buffer: bodyBuffer,
         });
         nextStyle = {
@@ -4946,24 +4983,25 @@ app.post(
     const fileName = String(meta?.fileName || "status-video").trim().slice(0, 160) || "status-video";
     const style = meta?.style && typeof meta.style === "object" ? meta.style : {};
     const contentType = String(req.get("content-type") || "application/octet-stream").trim().toLowerCase();
+    const effectiveMimeType = resolveUploadMimeType(contentType, fileName);
     const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
     if (!bodyBuffer.length) {
       res.status(400).json({ error: "status video file is required" });
       return;
     }
-    if (!ALLOWED_VIDEO_MIME_TYPES.has(contentType)) {
+    if (!ALLOWED_VIDEO_MIME_TYPES.has(effectiveMimeType)) {
       res.status(400).json({ error: "Only MP4, WEBM, or MOV videos are allowed." });
       return;
     }
     try {
       await moderateCommunityTextContent(caption);
-      await moderateCommunityUploadBuffer(bodyBuffer, contentType);
+      await moderateCommunityUploadBuffer(bodyBuffer, effectiveMimeType);
     } catch (error) {
       res.status(400).json({ error: String(error?.message || "Status was rejected.") });
       return;
     }
     try {
-      const processed = await trimStatusVideoBuffer(bodyBuffer, contentType, {
+      const processed = await trimStatusVideoBuffer(bodyBuffer, effectiveMimeType, {
         start: Number(style?.videoTrimStart || 0) || 0,
         end: Number(style?.videoTrimEnd || 0) || 0,
       });
@@ -5454,6 +5492,7 @@ app.post(
     const fileName = String(meta?.fileName || "attachment").trim().slice(0, 160) || "attachment";
     const mediaStyle = meta?.mediaStyle && typeof meta.mediaStyle === "object" ? meta.mediaStyle : null;
     const contentType = String(req.get("content-type") || "application/octet-stream").trim().toLowerCase();
+    const effectiveMimeType = resolveUploadMimeType(contentType, fileName);
     const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
     if (!bodyBuffer.length) {
       res.status(400).json({ error: "attachment file is required" });
@@ -5461,7 +5500,7 @@ app.post(
     }
     try {
       await moderateCommunityTextContent(text);
-      await moderateCommunityUploadBuffer(bodyBuffer, contentType);
+      await moderateCommunityUploadBuffer(bodyBuffer, effectiveMimeType);
     } catch (error) {
       res.status(400).json({ error: String(error?.message || "Invalid attachment.") });
       return;
@@ -5469,14 +5508,14 @@ app.post(
     let upload = null;
     try {
       let kind = "chat-file";
-      if (ALLOWED_VIDEO_MIME_TYPES.has(contentType)) kind = "chat-video";
-      else if (ALLOWED_AUDIO_MIME_TYPES.has(contentType)) kind = "chat-audio";
-      else if (ALLOWED_IMAGE_MIME_TYPES.has(contentType)) kind = "chat-image";
+      if (ALLOWED_VIDEO_MIME_TYPES.has(effectiveMimeType)) kind = "chat-video";
+      else if (ALLOWED_AUDIO_MIME_TYPES.has(effectiveMimeType)) kind = "chat-audio";
+      else if (ALLOWED_IMAGE_MIME_TYPES.has(effectiveMimeType)) kind = "chat-image";
       let bufferToStore = bodyBuffer;
-      let mimeTypeToStore = contentType;
+      let mimeTypeToStore = effectiveMimeType;
       let fileNameToStore = fileName;
       if (kind === "chat-video" && mediaStyle) {
-        const processed = await trimStatusVideoBuffer(bodyBuffer, contentType, {
+        const processed = await trimStatusVideoBuffer(bodyBuffer, effectiveMimeType, {
           start: Number(mediaStyle?.videoTrimStart || 0) || 0,
           end: Number(mediaStyle?.videoTrimEnd || 0) || 0,
         });

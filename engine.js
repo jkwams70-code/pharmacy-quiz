@@ -9260,12 +9260,29 @@ function createCommunityBiometricChallenge(size = 32) {
   return bytes;
 }
 
-async function getCommunityBiometricAvailability() {
-  const supported =
-    Boolean(window.isSecureContext) &&
+function isCommunityNativeAppRuntime() {
+  try {
+    if (typeof window?.Capacitor?.isNativePlatform === "function") {
+      return Boolean(window.Capacitor.isNativePlatform());
+    }
+    const platform = String(window?.Capacitor?.getPlatform?.() || "").trim().toLowerCase();
+    return platform === "android" || platform === "ios";
+  } catch {
+    return false;
+  }
+}
+
+function hasCommunityWebAuthnApiSupport() {
+  return (
     typeof window.PublicKeyCredential !== "undefined" &&
     Boolean(navigator.credentials?.create) &&
-    Boolean(navigator.credentials?.get);
+    Boolean(navigator.credentials?.get)
+  );
+}
+
+async function getCommunityBiometricAvailability() {
+  const nativeRuntime = isCommunityNativeAppRuntime();
+  const supported = (nativeRuntime || Boolean(window.isSecureContext)) && hasCommunityWebAuthnApiSupport();
   if (!supported) {
     return { supported: false, available: false };
   }
@@ -9273,8 +9290,12 @@ async function getCommunityBiometricAvailability() {
   if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
     try {
       platformAvailable = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (!platformAvailable && nativeRuntime) {
+        // Android/iOS WebView can return false even when biometric prompt still works.
+        platformAvailable = true;
+      }
     } catch {
-      platformAvailable = false;
+      platformAvailable = nativeRuntime;
     }
   }
   return {
@@ -9448,11 +9469,8 @@ function setCommunitySecurityPinActionMode(mode = "") {
 function syncCommunitySecuritySettingsUi() {
   const hasPin = hasCommunityLockPin();
   const lockEnabled = Boolean(hasPin && communitySettingsPrefs.securityCommunityLockEnabled);
-  const biometricSupported =
-    Boolean(window.isSecureContext) &&
-    typeof window.PublicKeyCredential !== "undefined" &&
-    Boolean(navigator.credentials?.create) &&
-    Boolean(navigator.credentials?.get);
+  const biometricSupported = (isCommunityNativeAppRuntime() || Boolean(window.isSecureContext))
+    && hasCommunityWebAuthnApiSupport();
   const biometricSaved = hasCommunityBiometricCredential();
   const biometricEnabled = isCommunityBiometricEnabled();
   const actionMode = hasPin ? String(communityState.securityPinActionMode || "").trim() : "";

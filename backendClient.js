@@ -1,9 +1,20 @@
 const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const currentHost = String(window.location.hostname || "").trim();
 const currentProtocol = String(window.location.protocol || "").trim().toLowerCase();
+const currentPort = String(window.location.port || "").trim();
+const userAgent = String(
+  typeof navigator !== "undefined" ? navigator.userAgent || "" : "",
+);
+const hasCapacitorGlobal =
+  typeof window !== "undefined" && typeof window.Capacitor === "object";
+const isAndroidWebView = /\bwv\b/i.test(userAgent);
+const isLikelyNativeHost = ["localhost", "127.0.0.1"].includes(currentHost) && !currentPort;
 const isNativeShell =
   currentProtocol.startsWith("capacitor:") ||
   currentProtocol.startsWith("ionic:") ||
+  hasCapacitorGlobal ||
+  isAndroidWebView ||
+  isLikelyNativeHost ||
   Boolean(
     typeof window !== "undefined" &&
       window.Capacitor &&
@@ -18,7 +29,7 @@ const isLanPreview =
   !isLocalHost &&
   !isProductionHost &&
   window.location.protocol === "http:";
-const shouldUseLocalApi = (isFilePreview || isLocalHost) && !isNativeShell;
+const shouldUseLocalApi = (isFilePreview || (isLocalHost && !isLikelyNativeHost)) && !isNativeShell;
 const inferredApiBase = shouldUseLocalApi
   ? "http://localhost:4000/api"
   : isLanPreview
@@ -31,7 +42,7 @@ const hasStaleStoredApiBase =
     /your-new-tunnel/i.test(storedApiBase) ||
     /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase) ||
     (isLanPreview && /localhost:4000/i.test(storedApiBase)) ||
-    (isNativeShell && /localhost:4000/i.test(storedApiBase)));
+    ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)));
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }

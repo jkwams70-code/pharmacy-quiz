@@ -4663,6 +4663,10 @@ app.get(
       res.status(404).json({ error: "conversation not found" });
       return;
     }
+    if (String(conversation.type || "").trim().toLowerCase() !== "direct") {
+      res.status(400).json({ error: "Calls are only available for direct chats right now." });
+      return;
+    }
     const activeSession = getActiveCommunityCallSession(conversation.id);
     res.json({
       call: activeSession ? buildCommunityCallPublicPayload(activeSession) : null,
@@ -4681,6 +4685,10 @@ app.post(
     const conversation = await getCommunityConversationForMember(conversationId, viewerId);
     if (!conversation) {
       res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    if (String(conversation.type || "").trim().toLowerCase() !== "direct") {
+      res.status(400).json({ error: "Calls are only available for direct chats right now." });
       return;
     }
     try {

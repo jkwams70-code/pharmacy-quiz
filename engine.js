@@ -1094,6 +1094,10 @@ const communityChatActiveCallTextEl = document.getElementById("community-chat-ac
 const communityChatActiveCallJoinBtn = document.getElementById("community-chat-active-call-join-btn");
 const communityCallModalEl = document.getElementById("community-call-modal");
 const communityCallTitleEl = document.getElementById("community-call-title");
+const communityCallUsernameEl = document.getElementById("community-call-username");
+const communityCallAvatarWrapEl = document.getElementById("community-call-avatar-wrap");
+const communityCallAvatarEl = document.getElementById("community-call-avatar");
+const communityCallAvatarFallbackEl = document.getElementById("community-call-avatar-fallback");
 const communityCallStatusEl = document.getElementById("community-call-status");
 const communityCallRemoteAudioEl = document.getElementById("community-call-remote-audio");
 const communityCallVideoStageEl = document.getElementById("community-call-video-stage");
@@ -4770,13 +4774,45 @@ function getCommunityCallModeLabel(mode = "voice") {
   return String(mode || "").trim().toLowerCase() === "video" ? "Video" : "Voice";
 }
 
+function getCommunityCallPeerUser() {
+  const partner = communityState.activeConversationPartner;
+  if (partner && typeof partner === "object") return partner;
+  const conversationId = String(communityState.activeConversation?.id || "").trim();
+  const chatRow = Array.isArray(communityState.overview?.chats)
+    ? communityState.overview.chats.find((row) => String(row?.id || "").trim() === conversationId)
+    : null;
+  return chatRow?.partner && typeof chatRow.partner === "object" ? chatRow.partner : {};
+}
+
 function getCommunityCallPeerLabel() {
-  const conversation = communityState.activeConversation || {};
-  const partner = communityState.activeConversationPartner || {};
-  if (String(conversation.type || "").trim().toLowerCase() === "direct") {
-    return getCommunityDisplayName(partner) || String(conversation.title || "").trim() || "Contact";
+  const peer = getCommunityCallPeerUser();
+  return getCommunityDisplayName(peer) || "Contact";
+}
+
+function syncCommunityCallIdentity() {
+  const peer = getCommunityCallPeerUser();
+  const displayName = getCommunityDisplayName(peer) || "Contact";
+  const username = String(peer?.username || "").trim();
+  const profileImage = String(peer?.profileImage || "").trim();
+  if (communityCallTitleEl) {
+    communityCallTitleEl.textContent = displayName;
   }
-  return String(conversation.title || "").trim() || "Group";
+  if (communityCallUsernameEl) {
+    communityCallUsernameEl.textContent = username ? `@${username}` : "@user";
+  }
+  if (communityCallAvatarEl && communityCallAvatarFallbackEl) {
+    if (profileImage) {
+      communityCallAvatarEl.src = profileImage;
+      communityCallAvatarEl.classList.remove("hidden");
+      communityCallAvatarFallbackEl.classList.add("hidden");
+      communityCallAvatarFallbackEl.textContent = displayName.slice(0, 1).toUpperCase() || "C";
+    } else {
+      communityCallAvatarEl.removeAttribute("src");
+      communityCallAvatarEl.classList.add("hidden");
+      communityCallAvatarFallbackEl.classList.remove("hidden");
+      communityCallAvatarFallbackEl.textContent = displayName.slice(0, 1).toUpperCase() || "C";
+    }
+  }
 }
 
 function setCommunityCallScreenMode(mode = "idle") {
@@ -4845,7 +4881,7 @@ function setCommunityChatActiveCallBar(callPayload = null) {
   if (!show) return;
   const modeLabel = getCommunityCallModeLabel(safeCall.mode);
   const participantCount = Math.max(1, Number(safeCall?.participantUserIds?.length || 0));
-  communityChatActiveCallTextEl.textContent = `Active ${modeLabel.toLowerCase()} call • ${participantCount} online`;
+  communityChatActiveCallTextEl.textContent = `Active ${modeLabel.toLowerCase()} call - ${participantCount} online`;
 }
 
 function setCommunityCallModalOpen(open = false) {
@@ -4916,15 +4952,14 @@ function openCommunityIncomingCallScreen(call = null) {
   if (!currentUserId || String(safeCall.startedByUserId || "").trim() === currentUserId) return;
   if (String(communityState.callIncomingDismissedId || "") === String(safeCall.id || "")) return;
   communityState.activeCall = safeCall;
+  syncCommunityCallIdentity();
   setCommunityCallScreenMode("incoming");
   setCommunityCallModalOpen(true);
   const modeLabel = getCommunityCallModeLabel(safeCall.mode);
-  if (communityCallTitleEl) {
-    communityCallTitleEl.textContent = `${modeLabel} call from ${getCommunityCallPeerLabel()}`;
-  }
-  setCommunityCallStatus(`Incoming ${modeLabel.toLowerCase()} call`);
+  setCommunityCallStatus(`Incoming ${modeLabel.toLowerCase()} call...`);
   communityCallVideoStageEl?.classList.toggle("hidden", true);
   communityCallVideoStageEl?.setAttribute("aria-hidden", "true");
+  communityCallAvatarWrapEl?.classList.remove("hidden");
   startCommunityIncomingRing();
   syncCommunityCallActionButtons();
 }
@@ -5003,6 +5038,7 @@ function resetCommunityCallMediaUi() {
   if (communityCallLocalVideoEl) {
     communityCallLocalVideoEl.innerHTML = "";
   }
+  communityCallAvatarWrapEl?.classList.remove("hidden");
 }
 
 function getCommunityAgoraRtcGlobal() {
@@ -5045,6 +5081,35 @@ function loadCommunityAgoraRtcSdk() {
     throw error;
   });
   return communityAgoraSdkPromise;
+}
+
+async function ensureCommunityCallMediaPermissions(mode = "voice") {
+  const mediaDevices = navigator?.mediaDevices;
+  if (!mediaDevices || typeof mediaDevices.getUserMedia !== "function") {
+    throw new Error("This device does not support microphone access for calls.");
+  }
+  const wantsVideo = String(mode || "").trim().toLowerCase() === "video";
+  let stream = null;
+  try {
+    stream = await mediaDevices.getUserMedia({
+      audio: true,
+      video: wantsVideo,
+    });
+  } catch {
+    throw new Error(
+      wantsVideo
+        ? "Allow microphone and camera permission on your phone for video calls."
+        : "Allow microphone permission on your phone for voice calls.",
+    );
+  } finally {
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+      });
+    }
+  }
 }
 
 function bindCommunityCallClientEvents(client) {
@@ -5180,15 +5245,14 @@ async function joinCommunityCallFromPayload(payload = {}) {
     throw new Error("Call session is no longer available.");
   }
   const mode = String(call.mode || "voice").trim().toLowerCase() === "video" ? "video" : "voice";
+  syncCommunityCallIdentity();
   setCommunityCallModalOpen(true);
   setCommunityCallScreenMode("connecting");
-  if (communityCallTitleEl) {
-    const modeLabel = getCommunityCallModeLabel(mode);
-    communityCallTitleEl.textContent = `${modeLabel} call • ${getCommunityCallPeerLabel()}`;
-  }
+  const modeLabel = getCommunityCallModeLabel(mode);
   setCommunityCallStatus("Connecting...");
   communityCallVideoStageEl?.classList.toggle("hidden", mode !== "video");
   communityCallVideoStageEl?.setAttribute("aria-hidden", mode === "video" ? "false" : "true");
+  communityCallAvatarWrapEl?.classList.toggle("hidden", mode === "video");
   syncCommunityCallActionButtons();
   await destroyCommunityCallTransport();
   const AgoraRTC = await loadCommunityAgoraRtcSdk();
@@ -5207,20 +5271,28 @@ async function joinCommunityCallFromPayload(payload = {}) {
     String(rtc.token || "").trim(),
     Number(rtc.uid) || null,
   );
-  if (mode === "video") {
-    const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-    communityCallLocalAudioTrack = audioTrack;
-    communityCallLocalVideoTrack = videoTrack;
-    await client.publish([audioTrack, videoTrack]);
-    if (communityCallLocalVideoEl && videoTrack) {
-      try {
-        videoTrack.play(communityCallLocalVideoEl);
-      } catch {}
+  try {
+    await ensureCommunityCallMediaPermissions(mode);
+    if (mode === "video") {
+      const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+      communityCallLocalAudioTrack = audioTrack;
+      communityCallLocalVideoTrack = videoTrack;
+      await client.publish([audioTrack, videoTrack]);
+      if (communityCallLocalVideoEl && videoTrack) {
+        try {
+          videoTrack.play(communityCallLocalVideoEl);
+        } catch {}
+      }
+    } else {
+      const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      communityCallLocalAudioTrack = audioTrack;
+      await client.publish([audioTrack]);
     }
-  } else {
-    const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-    communityCallLocalAudioTrack = audioTrack;
-    await client.publish([audioTrack]);
+  } catch (error) {
+    try {
+      await client.leave();
+    } catch {}
+    throw error;
   }
   communityCallConnected = true;
   const currentUserId = String(currentUser?.id || "").trim();
@@ -5243,6 +5315,13 @@ async function startCommunityConversationCall(mode = "voice") {
   const safeConversationId = String(communityState.activeConversation?.id || "").trim();
   if (!safeConversationId) {
     setCommunityFeedback("Open a chat first to place a call.", true);
+    return;
+  }
+  const isGroupChat =
+    String(communityState.activeConversation?.type || "").trim().toLowerCase() === "group" ||
+    Boolean(communityState.activeConversationPartner?.isGroup);
+  if (isGroupChat) {
+    setCommunityFeedback("Calls are only available in direct chats right now.", true);
     return;
   }
   if (
@@ -5274,6 +5353,13 @@ async function startCommunityConversationCall(mode = "voice") {
 
 async function joinCommunityConversationActiveCall(callPayload = null) {
   const safeConversationId = String(communityState.activeConversation?.id || "").trim();
+  const isGroupChat =
+    String(communityState.activeConversation?.type || "").trim().toLowerCase() === "group" ||
+    Boolean(communityState.activeConversationPartner?.isGroup);
+  if (isGroupChat) {
+    setCommunityFeedback("Calls are only available in direct chats right now.", true);
+    return;
+  }
   const safeCallId = String(callPayload?.id || communityState.activeCall?.id || "").trim();
   if (!safeConversationId || !safeCallId) {
     setCommunityFeedback("No active call to join right now.", true);

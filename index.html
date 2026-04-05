@@ -2134,9 +2134,15 @@
 
       <div id="community-call-modal" class="community-call-screen hidden" aria-hidden="true">
         <div class="community-call-screen-surface">
-          <div class="community-call-kicker">Community Call</div>
-          <h3 id="community-call-title" class="community-call-title">Voice call</h3>
-          <p id="community-call-status" class="community-call-status">Connecting...</p>
+          <div class="community-call-identity">
+            <h3 id="community-call-title" class="community-call-title">Contact</h3>
+            <p id="community-call-username" class="community-call-username">@username</p>
+            <p id="community-call-status" class="community-call-status">Connecting...</p>
+          </div>
+          <div id="community-call-avatar-wrap" class="community-call-avatar-wrap" aria-hidden="true">
+            <img id="community-call-avatar" class="community-call-avatar hidden" alt="" />
+            <span id="community-call-avatar-fallback" class="community-call-avatar-fallback">C</span>
+          </div>
           <div id="community-call-video-stage" class="community-call-video-stage hidden" aria-hidden="true">
             <div id="community-call-remote-video" class="community-call-video-panel"></div>
             <div id="community-call-local-video" class="community-call-video-panel is-local"></div>

@@ -28436,6 +28436,68 @@ body
   letter-spacing: -0.01em;
 }
 
+#community-chat-screen .community-message-call-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+#community-chat-screen .community-message-call-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(40, 108, 164, 0.14);
+  color: #3d6d96;
+}
+
+#community-chat-screen .community-message-call-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#community-chat-screen .community-message-call-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+#community-chat-screen .community-message-call-label {
+  color: #213645;
+  font:
+    700 0.79rem/1.2 "Inter",
+    sans-serif;
+  letter-spacing: 0.01em;
+}
+
+#community-chat-screen .community-message-call-duration {
+  color: #4d6678;
+  font:
+    600 0.67rem/1.1 "Inter",
+    sans-serif;
+}
+
+#community-chat-screen .community-message-call-card.is-missed .community-message-call-icon {
+  background: rgba(226, 75, 92, 0.16);
+  color: #cf4152;
+}
+
+#community-chat-screen .community-message-call-card.is-received .community-message-call-icon {
+  background: rgba(47, 163, 102, 0.16);
+  color: #23915a;
+}
+
 #community-chat-screen .community-message-deleted-label {
   color: #495867;
   font:
@@ -28477,6 +28539,18 @@ body.theme-dark
   .community-message-bubble.is-own
   .community-message-text {
   color: #f3f8ff !important;
+}
+
+body.theme-dark #community-chat-screen .community-message-call-card {
+  background: rgba(16, 31, 47, 0.78);
+}
+
+body.theme-dark #community-chat-screen .community-message-call-label {
+  color: #e7f1fb;
+}
+
+body.theme-dark #community-chat-screen .community-message-call-duration {
+  color: #b3c6d9;
 }
 
 #community-chat-screen
@@ -28959,7 +29033,7 @@ body.community-call-open {
 #community-call-modal .community-call-title {
   margin: 0;
   font:
-    700 2rem/1.06 "Inter",
+    700 1.45rem/1.08 "Inter",
     sans-serif;
   letter-spacing: 0.01em;
   color: #f4f8ff;
@@ -28969,7 +29043,7 @@ body.community-call-open {
   margin: 0;
   color: rgba(220, 232, 247, 0.74);
   font:
-    500 1rem/1.2 "Inter",
+    500 0.84rem/1.2 "Inter",
     sans-serif;
 }
 
@@ -28977,14 +29051,14 @@ body.community-call-open {
   margin: 0;
   color: rgba(236, 244, 255, 0.9);
   font:
-    600 0.94rem/1.2 "Inter",
+    600 0.82rem/1.2 "Inter",
     sans-serif;
 }
 
 #community-call-modal .community-call-avatar-wrap {
   justify-self: center;
   align-self: center;
-  width: min(62vw, 320px);
+  width: min(54vw, 244px);
   aspect-ratio: 1 / 1;
   border-radius: 999px;
   overflow: hidden;
@@ -29008,7 +29082,7 @@ body.community-call-open {
   place-items: center;
   color: #f5f9ff;
   font:
-    700 clamp(3.2rem, 15vw, 5.2rem)/1 "Inter",
+    700 clamp(2.4rem, 10vw, 3.8rem)/1 "Inter",
     sans-serif;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -29068,20 +29142,39 @@ body.community-call-open {
 }
 
 #community-call-modal .community-call-btn {
-  min-width: 72px;
-  min-height: 50px;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: #f2f8ff;
-  font:
-    600 0.83rem/1 "Inter",
-    sans-serif;
   cursor: pointer;
 }
 
 #community-call-modal .community-call-btn.neutral {
   background: rgba(255, 255, 255, 0.08);
+}
+
+#community-call-modal .community-call-btn svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#community-call-modal .community-call-btn.is-toggled {
+  background: rgba(60, 143, 224, 0.32);
+  border-color: rgba(117, 186, 255, 0.52);
+  color: #f7fbff;
 }
 
 #community-call-modal .community-call-btn.success {

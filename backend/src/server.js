@@ -235,7 +235,7 @@ const FRIEND_REQUEST_STATUS_VALUES = new Set([
   "rejected",
   "cancelled",
 ]);
-const MESSAGE_TYPE_VALUES = new Set(["text", "image", "video", "audio", "file", "document"]);
+const MESSAGE_TYPE_VALUES = new Set(["text", "image", "video", "audio", "file", "document", "call"]);
 const MESSAGE_DELETED_PLACEHOLDER = "message deleted";
 const CONVERSATION_TYPE_VALUES = new Set(["direct", "group"]);
 const UPLOAD_KIND_VALUES = new Set(["chat-image", "chat-video", "chat-audio", "chat-file", "status-image", "status-video", "group-avatar"]);
@@ -333,12 +333,29 @@ function buildCommunityCallPublicPayload(session = {}) {
     mode: normalizeCommunityCallMode(safeSession.mode),
     channelName: String(safeSession.channelName || "").trim(),
     startedByUserId: String(safeSession.startedByUserId || "").trim(),
+    answeredByUserId: String(safeSession.answeredByUserId || "").trim(),
     startedAt: String(safeSession.startedAt || "").trim(),
+    answeredAt: String(safeSession.answeredAt || "").trim(),
     expiresAt: String(safeSession.expiresAt || "").trim(),
     participantUserIds: Array.isArray(safeSession.participantUserIds)
       ? [...new Set(safeSession.participantUserIds.map((value) => String(value || "").trim()).filter(Boolean))]
       : [],
     active: isCommunityCallSessionActive(safeSession),
+  };
+}
+
+function markCommunityCallSessionAnswered(session = {}, userId = "") {
+  const safeSession = session && typeof session === "object" ? session : null;
+  const safeUserId = String(userId || "").trim();
+  if (!safeSession || !safeUserId) return safeSession;
+  if (String(safeSession.startedByUserId || "").trim() === safeUserId) return safeSession;
+  if (String(safeSession.answeredAt || "").trim()) return safeSession;
+  const nowIso = new Date().toISOString();
+  return {
+    ...safeSession,
+    answeredByUserId: safeUserId,
+    answeredAt: nowIso,
+    updatedAt: nowIso,
   };
 }
 
@@ -406,8 +423,10 @@ function createCommunityCallSession({
     mode: normalizeCommunityCallMode(mode),
     channelName: "",
     startedByUserId: safeStartedByUserId,
+    answeredByUserId: "",
     participantUserIds: [safeStartedByUserId],
     startedAt: new Date(nowMs).toISOString(),
+    answeredAt: "",
     expiresAt: new Date(expiresAtMs).toISOString(),
     expiresAtSeconds: Math.floor(expiresAtMs / 1000),
     endedAt: "",
@@ -717,6 +736,7 @@ function normalizeMessage(raw = {}) {
     type: MESSAGE_TYPE_VALUES.has(type) ? type : "text",
     text: String(raw.text || "").trim(),
     attachment: raw.attachment && typeof raw.attachment === "object" ? raw.attachment : null,
+    call: normalizeMessageCall(raw.call),
     replyTo: normalizeMessageReply(raw.replyTo),
     deliveredAt: raw.deliveredAt ? String(raw.deliveredAt) : null,
     readAt: raw.readAt ? String(raw.readAt) : null,
@@ -733,6 +753,30 @@ function normalizeMessage(raw = {}) {
       : [],
     createdAt,
     updatedAt: String(raw.updatedAt || createdAt),
+  };
+}
+
+function normalizeMessageCall(raw = null) {
+  if (!raw || typeof raw !== "object") return null;
+  const mode = normalizeCommunityCallMode(raw.mode || "voice");
+  const startedAt = String(raw.startedAt || "").trim();
+  const answeredAt = String(raw.answeredAt || "").trim();
+  const endedAt = String(raw.endedAt || "").trim();
+  const startedByUserId = String(raw.startedByUserId || "").trim();
+  const answeredByUserId = String(raw.answeredByUserId || "").trim();
+  const endedByUserId = String(raw.endedByUserId || "").trim();
+  const durationSeconds = Math.max(0, Math.round(Number(raw.durationSeconds) || 0));
+  const outcome = String(raw.outcome || "").trim().toLowerCase();
+  return {
+    mode,
+    startedAt,
+    answeredAt,
+    endedAt,
+    startedByUserId,
+    answeredByUserId,
+    endedByUserId,
+    durationSeconds,
+    outcome: outcome === "answered" ? "answered" : "missed",
   };
 }
 
@@ -1400,6 +1444,65 @@ async function persistCommunityConversationMessage({
   return message;
 }
 
+async function persistCommunityCallLogMessage({
+  conversationId = "",
+  session = null,
+  endedByUserId = "",
+} = {}) {
+  const safeConversationId = String(conversationId || "").trim();
+  const safeSession = session && typeof session === "object" ? session : null;
+  const safeEndedByUserId = String(endedByUserId || "").trim();
+  if (!safeConversationId || !safeSession) return null;
+  const conversations = (await readCollection("conversations")).map(normalizeConversation);
+  const conversationIndex = conversations.findIndex((entry) => entry.id === safeConversationId);
+  if (conversationIndex < 0) return null;
+  const messages = (await readCollection("messages")).map(normalizeMessage);
+  const endedAtIso = String(safeSession.endedAt || new Date().toISOString());
+  const startedAtMs = new Date(String(safeSession.startedAt || "")).getTime();
+  const answeredAtMs = new Date(String(safeSession.answeredAt || "")).getTime();
+  const endedAtMs = new Date(endedAtIso).getTime();
+  const hasAnsweredAt = Number.isFinite(answeredAtMs) && answeredAtMs > 0;
+  const mode = normalizeCommunityCallMode(safeSession.mode);
+  const modeLabel = mode === "video" ? "Video" : "Voice";
+  const durationSeconds = hasAnsweredAt && Number.isFinite(endedAtMs)
+    ? Math.max(0, Math.round((endedAtMs - answeredAtMs) / 1000))
+    : 0;
+  const message = normalizeMessage({
+    conversationId: safeConversationId,
+    senderUserId: safeEndedByUserId || String(safeSession.startedByUserId || "").trim(),
+    type: "call",
+    text: `${modeLabel} call`,
+    call: {
+      mode,
+      startedByUserId: String(safeSession.startedByUserId || "").trim(),
+      answeredByUserId: String(safeSession.answeredByUserId || "").trim(),
+      endedByUserId: safeEndedByUserId || String(safeSession.startedByUserId || "").trim(),
+      startedAt: Number.isFinite(startedAtMs) && startedAtMs > 0 ? new Date(startedAtMs).toISOString() : "",
+      answeredAt: hasAnsweredAt ? new Date(answeredAtMs).toISOString() : "",
+      endedAt: Number.isFinite(endedAtMs) && endedAtMs > 0 ? new Date(endedAtMs).toISOString() : endedAtIso,
+      durationSeconds,
+      outcome: hasAnsweredAt ? "answered" : "missed",
+    },
+    seenByUserIds: safeEndedByUserId ? [safeEndedByUserId] : [],
+  });
+  messages.push(message);
+  conversations[conversationIndex] = {
+    ...conversations[conversationIndex],
+    lastMessageId: message.id,
+    lastMessageAt: message.createdAt,
+    updatedAt: message.createdAt,
+  };
+  await writeCollection("messages", messages);
+  await writeCollection("conversations", conversations);
+  fireCommunityRealtimeMessages(
+    buildCommunityConversationRealtimeMessages(safeConversationId, {
+      reason: "message-created",
+      messageId: message.id,
+    }),
+  );
+  return message;
+}
+
 async function persistCommunityStatus({
   viewerId = "",
   caption = "",
@@ -1725,6 +1828,7 @@ function sanitizeDeletedCommunityMessage(message = {}) {
     type: "text",
     text: MESSAGE_DELETED_PLACEHOLDER,
     attachment: null,
+    call: null,
     replyTo: null,
     editedAt: null,
     isDeletedForEveryone: true,
@@ -1741,6 +1845,7 @@ function buildConversationLastMessagePayload(message = null) {
     createdAt: safeMessage.createdAt,
     type: safeMessage.type,
     attachment: safeMessage.attachment || null,
+    call: safeMessage.call || null,
     isDeletedForEveryone: Boolean(safeMessage.deletedAt),
   };
 }
@@ -4732,6 +4837,7 @@ app.post(
     if (!session.participantUserIds.includes(viewerId)) {
       session.participantUserIds = [...session.participantUserIds, viewerId];
     }
+    session = markCommunityCallSessionAnswered(session, viewerId);
     session.updatedAt = new Date().toISOString();
     communityCallSessionsByConversation.set(conversation.id, session);
 
@@ -4766,7 +4872,11 @@ app.post(
       res.status(404).json({ error: "conversation not found" });
       return;
     }
-    const session = getActiveCommunityCallSession(conversation.id);
+    if (String(conversation.type || "").trim().toLowerCase() !== "direct") {
+      res.status(400).json({ error: "Calls are only available for direct chats right now." });
+      return;
+    }
+    let session = getActiveCommunityCallSession(conversation.id);
     if (!session) {
       res.status(404).json({ error: "no active call in this conversation" });
       return;
@@ -4786,9 +4896,10 @@ app.post(
     }
     if (!session.participantUserIds.includes(viewerId)) {
       session.participantUserIds = [...session.participantUserIds, viewerId];
-      session.updatedAt = new Date().toISOString();
-      communityCallSessionsByConversation.set(conversation.id, session);
     }
+    session = markCommunityCallSessionAnswered(session, viewerId);
+    session.updatedAt = new Date().toISOString();
+    communityCallSessionsByConversation.set(conversation.id, session);
     const rtc = buildAgoraCallTokenPayload(session, viewerId);
     fireCommunityRealtimeMessages(
       buildCommunityConversationRealtimeMessages(conversation.id, {
@@ -4819,6 +4930,10 @@ app.post(
       res.status(404).json({ error: "conversation not found" });
       return;
     }
+    if (String(conversation.type || "").trim().toLowerCase() !== "direct") {
+      res.status(400).json({ error: "Calls are only available for direct chats right now." });
+      return;
+    }
     const session = getActiveCommunityCallSession(conversation.id);
     if (!session) {
       res.json({ ok: true });
@@ -4831,7 +4946,15 @@ app.post(
       });
       return;
     }
+    const endedAtIso = new Date().toISOString();
+    session.endedAt = endedAtIso;
+    session.updatedAt = endedAtIso;
     communityCallSessionsByConversation.delete(conversation.id);
+    await persistCommunityCallLogMessage({
+      conversationId: conversation.id,
+      session,
+      endedByUserId: viewerId,
+    });
     fireCommunityRealtimeMessages(
       buildCommunityConversationRealtimeMessages(conversation.id, {
         reason: "call-ended",

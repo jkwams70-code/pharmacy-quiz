@@ -2765,6 +2765,8 @@ let communityCallConnected = false;
 let communityCallSpeakerEnabled = true;
 let communityCallRingHandle = null;
 let communityCallAudioContext = null;
+let communityCallTimerHandle = null;
+let communityCallConnectedAtMs = 0;
 let communityStatusHoldHandle = null;
 let communityStatusHoldWasTriggered = false;
 let communityStatusSwipeState = null;
@@ -4101,6 +4103,30 @@ function getCommunityConversationTypingPreview(row = {}) {
   return "typing...";
 }
 
+function getCommunityCallLogOutcomeForViewer(call = null, viewerUserId = "") {
+  const safeCall = call && typeof call === "object" ? call : null;
+  const safeViewerId = String(viewerUserId || "").trim();
+  if (!safeCall || !safeViewerId) return "dialed";
+  const startedByUserId = String(safeCall.startedByUserId || "").trim();
+  const answeredByUserId = String(safeCall.answeredByUserId || "").trim();
+  const answered = Boolean(String(safeCall.answeredAt || "").trim()) || String(safeCall.outcome || "").trim().toLowerCase() === "answered";
+  if (startedByUserId === safeViewerId) return "dialed";
+  if (!answered) return "missed";
+  return answeredByUserId === safeViewerId ? "received" : "missed";
+}
+
+function getCommunityCallLogSummaryText(call = null, viewerUserId = "", { includeDuration = false } = {}) {
+  const safeCall = call && typeof call === "object" ? call : null;
+  if (!safeCall) return "Call";
+  const mode = String(safeCall.mode || "").trim().toLowerCase() === "video" ? "video" : "voice";
+  const outcome = getCommunityCallLogOutcomeForViewer(safeCall, viewerUserId);
+  const prefix = outcome === "missed" ? "Missed" : outcome === "received" ? "Received" : "Dialed";
+  const label = `${prefix} ${mode} call`;
+  if (!includeDuration) return label;
+  const durationSeconds = Math.max(0, Math.round(Number(safeCall.durationSeconds) || 0));
+  return `${label} - ${formatCommunityCallDurationLabel(durationSeconds)}`;
+}
+
 function getCommunityConversationPreviewText(row = {}) {
   const typingPreview = getCommunityConversationTypingPreview(row);
   if (typingPreview) return typingPreview;
@@ -4114,6 +4140,7 @@ function getCommunityConversationPreviewText(row = {}) {
     if (type === "audio") return "Voice note";
     if (type === "document") return "Document";
     if (type === "file") return "Attachment";
+    if (type === "call") return "Call";
     return "Message";
   }
   if (type === "image") return text || "Photo";
@@ -4121,6 +4148,7 @@ function getCommunityConversationPreviewText(row = {}) {
   if (type === "audio") return text || "Voice note";
   if (type === "document") return text || "Document";
   if (type === "file") return text || "Attachment";
+  if (type === "call") return getCommunityCallLogSummaryText(lastMessage.call, String(currentUser?.id || "").trim(), { includeDuration: false });
   return text || "Start the conversation";
 }
 
@@ -4820,6 +4848,43 @@ function setCommunityCallScreenMode(mode = "idle") {
   communityState.callScreenMode = safeMode || "idle";
 }
 
+function formatCommunityCallDurationLabel(totalSeconds = 0) {
+  const safe = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  if (hours > 0) {
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function stopCommunityCallTimer({ reset = false } = {}) {
+  if (communityCallTimerHandle) {
+    clearInterval(communityCallTimerHandle);
+    communityCallTimerHandle = null;
+  }
+  if (reset) {
+    communityCallConnectedAtMs = 0;
+  }
+}
+
+function syncCommunityCallTimerStatus() {
+  if (String(communityState.callScreenMode || "") !== "connected" || !communityCallConnectedAtMs) return;
+  const elapsedSeconds = Math.max(0, Math.round((Date.now() - communityCallConnectedAtMs) / 1000));
+  setCommunityCallStatus(formatCommunityCallDurationLabel(elapsedSeconds));
+}
+
+function startCommunityCallTimer(startedAtIso = "") {
+  const parsedMs = new Date(String(startedAtIso || "")).getTime();
+  communityCallConnectedAtMs = Number.isFinite(parsedMs) && parsedMs > 0 ? parsedMs : Date.now();
+  stopCommunityCallTimer({ reset: false });
+  syncCommunityCallTimerStatus();
+  communityCallTimerHandle = setInterval(() => {
+    syncCommunityCallTimerStatus();
+  }, 1000);
+}
+
 function setCommunityCallStatus(message = "") {
   if (!communityCallStatusEl) return;
   communityCallStatusEl.textContent = String(message || "").trim();
@@ -4836,19 +4901,30 @@ function syncCommunityCallActionButtons() {
   }
   if (communityCallMuteBtn) {
     const enabled = Boolean(communityCallLocalAudioTrack?.enabled);
-    communityCallMuteBtn.textContent = enabled ? "Mute" : "Unmute";
+    const muted = !enabled;
     communityCallMuteBtn.disabled = incomingMode || !(communityCallLocalAudioTrack && communityCallConnected);
+    communityCallMuteBtn.classList.toggle("is-toggled", muted);
+    communityCallMuteBtn.setAttribute("aria-pressed", muted ? "true" : "false");
+    communityCallMuteBtn.setAttribute("aria-label", muted ? "Unmute microphone" : "Mute microphone");
+    communityCallMuteBtn.title = muted ? "Unmute" : "Mute";
   }
   if (communityCallSpeakerBtn) {
-    communityCallSpeakerBtn.textContent = communityCallSpeakerEnabled ? "Speaker On" : "Speaker Off";
+    const speakerEnabled = Boolean(communityCallSpeakerEnabled);
     communityCallSpeakerBtn.disabled = incomingMode || !communityState.activeCall;
+    communityCallSpeakerBtn.classList.toggle("is-toggled", speakerEnabled);
+    communityCallSpeakerBtn.setAttribute("aria-pressed", speakerEnabled ? "true" : "false");
+    communityCallSpeakerBtn.setAttribute("aria-label", speakerEnabled ? "Speaker on" : "Speaker off");
+    communityCallSpeakerBtn.title = speakerEnabled ? "Speaker on" : "Speaker off";
   }
   if (communityCallVideoToggleBtn) {
     const videoMode = String(communityState.activeCall?.mode || "").trim().toLowerCase() === "video";
     const enabled = Boolean(communityCallLocalVideoTrack?.enabled);
     communityCallVideoToggleBtn.classList.toggle("hidden", !videoMode);
     communityCallVideoToggleBtn.disabled = incomingMode || !videoMode || !(communityCallLocalVideoTrack && communityCallConnected);
-    communityCallVideoToggleBtn.textContent = enabled ? "Camera Off" : "Camera On";
+    communityCallVideoToggleBtn.classList.toggle("is-toggled", !enabled);
+    communityCallVideoToggleBtn.setAttribute("aria-pressed", enabled ? "false" : "true");
+    communityCallVideoToggleBtn.setAttribute("aria-label", enabled ? "Turn camera off" : "Turn camera on");
+    communityCallVideoToggleBtn.title = enabled ? "Camera off" : "Camera on";
   }
   if (communityCallDeclineBtn) {
     communityCallDeclineBtn.disabled = !communityState.activeCall;
@@ -4987,7 +5063,7 @@ function handleCommunityConversationRealtimeSignal(payload = {}) {
     if (communityCallConnected) {
       setCommunityCallScreenMode("connected");
       stopCommunityIncomingRing();
-      setCommunityCallStatus("Connected");
+      startCommunityCallTimer(communityState.activeCall?.answeredAt || "");
       syncCommunityCallActionButtons();
     }
     return;
@@ -5127,7 +5203,7 @@ function bindCommunityCallClientEvents(client) {
       } catch {}
       setCommunityCallScreenMode("connected");
       stopCommunityIncomingRing();
-      setCommunityCallStatus("Connected");
+      startCommunityCallTimer(communityState.activeCall?.answeredAt || "");
       syncCommunityCallActionButtons();
     }
     if (mediaType === "video" && user?.videoTrack && communityCallRemoteVideoEl) {
@@ -5156,11 +5232,13 @@ function bindCommunityCallClientEvents(client) {
       }
     }
     setCommunityCallScreenMode("outgoing");
+    stopCommunityCallTimer({ reset: false });
     setCommunityCallStatus("Connected. Waiting for participant...");
     syncCommunityCallActionButtons();
   });
   client.on("user-left", () => {
     setCommunityCallScreenMode("outgoing");
+    stopCommunityCallTimer({ reset: false });
     setCommunityCallStatus("Participant left. Waiting...");
     syncCommunityCallActionButtons();
   });
@@ -5168,6 +5246,7 @@ function bindCommunityCallClientEvents(client) {
 
 async function destroyCommunityCallTransport() {
   stopCommunityIncomingRing();
+  stopCommunityCallTimer({ reset: false });
   const audioTrack = communityCallLocalAudioTrack;
   const videoTrack = communityCallLocalVideoTrack;
   const client = communityCallClient;
@@ -5215,6 +5294,7 @@ async function endCommunityConversationCall({
     ? { ...communityState.activeCall }
     : null;
   await destroyCommunityCallTransport();
+  stopCommunityCallTimer({ reset: true });
   setCommunityCallModalOpen(false);
   setCommunityCallScreenMode("idle");
   communityState.activeCall = null;
@@ -5302,10 +5382,14 @@ async function joinCommunityCallFromPayload(payload = {}) {
   const startedBySelf = String(call.startedByUserId || "").trim() === currentUserId;
   if (startedBySelf && !hasPeerInCall) {
     setCommunityCallScreenMode("outgoing");
+    stopCommunityCallTimer({ reset: true });
     setCommunityCallStatus("Ringing...");
   } else {
     setCommunityCallScreenMode("connected");
-    setCommunityCallStatus(hasPeerInCall ? "Connected" : "Connected. Waiting for participant...");
+    startCommunityCallTimer(call?.answeredAt || "");
+    if (!hasPeerInCall) {
+      setCommunityCallStatus("Connected. Waiting for participant...");
+    }
   }
   setCommunityChatActiveCallBar(null);
   syncCommunityCallActionButtons();
@@ -5412,6 +5496,9 @@ async function refreshCommunityConversationActiveCall({ silent = true, force = f
     }
     if (call && communityCallConnected && String(communityState.activeCall?.id || "") === String(call.id || "")) {
       communityState.activeCall = { ...communityState.activeCall, ...call };
+      if (String(communityState.callScreenMode || "") === "connected" && String(call.answeredAt || "").trim()) {
+        startCommunityCallTimer(call.answeredAt);
+      }
     } else if (!communityCallConnected) {
       communityState.activeCall = call;
       const currentUserId = String(currentUser?.id || "").trim();
@@ -12834,6 +12921,28 @@ function renderCommunityMessageAttachment(message = {}) {
   `;
 }
 
+function renderCommunityCallLogCard(message = {}) {
+  const call = message?.call && typeof message.call === "object" ? message.call : null;
+  if (!call) return "";
+  const outcome = getCommunityCallLogOutcomeForViewer(call, String(currentUser?.id || "").trim());
+  const mode = String(call.mode || "").trim().toLowerCase() === "video" ? "video" : "voice";
+  const label = getCommunityCallLogSummaryText(call, String(currentUser?.id || "").trim(), { includeDuration: false });
+  const durationSeconds = Math.max(0, Math.round(Number(call.durationSeconds) || 0));
+  const iconMarkup =
+    mode === "video"
+      ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h7A1.5 1.5 0 0 1 14 8.5v7a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 4 15.5z"></path><path d="m14 11 5-3v8l-5-3z"></path></svg>`
+      : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.4 14.9 2.4-1.1a1 1 0 0 1 1.2.3l1.2 1.4a10.2 10.2 0 0 0 5.1-5.1L13.9 9a1 1 0 0 1-.3-1.2l1.1-2.4"></path><path d="M4 18.5a12.5 12.5 0 0 1 17.7 0"></path></svg>`;
+  return `
+    <div class="community-message-call-card is-${escapeHtml(outcome)}">
+      <span class="community-message-call-icon" aria-hidden="true">${iconMarkup}</span>
+      <span class="community-message-call-copy">
+        <span class="community-message-call-label">${escapeHtml(label)}</span>
+        <span class="community-message-call-duration">${escapeHtml(formatCommunityCallDurationLabel(durationSeconds))}</span>
+      </span>
+    </div>
+  `;
+}
+
 function renderCommunityDateDivider(label = "") {
   return `<div class="community-message-date-divider"><span>${escapeHtml(label)}</span></div>`;
 }
@@ -12847,11 +12956,15 @@ function getCommunityMessageContentSignature(messages = []) {
         String(message?.id || ""),
         String(message?.editedAt || ""),
         String(message?.text || ""),
+        String(message?.type || ""),
         String(message?.replyTo?.sourceId || ""),
         String(upload?.id || ""),
         String(upload?.fileName || ""),
         String(upload?.mimeType || ""),
         String(upload?.dataUrl || upload?.remoteUrl || ""),
+        String(message?.call?.mode || ""),
+        String(message?.call?.outcome || ""),
+        String(message?.call?.durationSeconds || ""),
       ].join("::");
     })
     .join("||");
@@ -12934,6 +13047,8 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
       const startsDay = !previousMessage || !isCommunitySameCalendarDay(previousMessage.createdAt || "", message.createdAt || "");
       const showSender = Boolean(communityState.activeConversationPartner?.isGroup) && !isOwn && !sameSenderAsPrevious;
       const isDeletedForEveryone = isCommunityMessageDeletedForEveryone(message);
+      const messageType = String(message?.type || "").trim().toLowerCase();
+      const isCallMessage = !isDeletedForEveryone && messageType === "call" && message?.call;
       const attachmentKind = isDeletedForEveryone ? "" : getCommunityAttachmentKind(getCommunityMessageAttachmentUpload(message));
       const hasImageAttachment = attachmentKind === "image";
       const hasVideoAttachment = attachmentKind === "video";
@@ -12961,8 +13076,8 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
                   <span class="community-message-deleted-label">message deleted</span>
                   <span class="community-message-deleted-time">${escapeHtml(bubbleTime)}</span>
                   ${isOwn ? renderCommunityMessageReceiptIcon(message) : ""}
-                </div>`
-              : `${messageText ? `<div class="community-message-text">${escapeHtml(messageText)}</div>` : ""}
+                 </div>`
+              : `${isCallMessage ? renderCommunityCallLogCard(message) : (messageText ? `<div class="community-message-text">${escapeHtml(messageText)}</div>` : "")}
                  <div class="community-message-meta">
                    <span class="community-message-time">${escapeHtml(bubbleTime)}</span>
                    ${message.editedAt ? '<span class="community-message-edited">edited</span>' : ""}

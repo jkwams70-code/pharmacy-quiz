@@ -2149,14 +2149,45 @@
           </div>
           <audio id="community-call-remote-audio" autoplay playsinline></audio>
           <div id="community-call-incoming-actions" class="community-call-actions community-call-incoming-actions hidden">
-            <button id="community-call-decline-btn" type="button" class="community-call-btn danger">Decline</button>
-            <button id="community-call-answer-btn" type="button" class="community-call-btn success">Answer</button>
+            <button id="community-call-decline-btn" type="button" class="community-call-btn danger" aria-label="Decline call" title="Decline">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m5.4 14.9 2.4-1.1a1 1 0 0 1 1.2.3l1.2 1.4a10.2 10.2 0 0 0 5.1-5.1L13.9 9a1 1 0 0 1-.3-1.2l1.1-2.4"></path>
+                <path d="M4 18.5a12.5 12.5 0 0 1 17.7 0"></path>
+              </svg>
+            </button>
+            <button id="community-call-answer-btn" type="button" class="community-call-btn success" aria-label="Answer call" title="Answer">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m5.4 14.9 2.4-1.1a1 1 0 0 1 1.2.3l1.2 1.4a10.2 10.2 0 0 0 5.1-5.1L13.9 9a1 1 0 0 1-.3-1.2l1.1-2.4"></path>
+                <path d="M4 18.5a12.5 12.5 0 0 1 17.7 0"></path>
+              </svg>
+            </button>
           </div>
           <div id="community-call-ongoing-actions" class="community-call-actions community-call-ongoing-actions hidden">
-            <button id="community-call-mute-btn" type="button" class="community-call-btn neutral">Mute</button>
-            <button id="community-call-speaker-btn" type="button" class="community-call-btn neutral">Speaker</button>
-            <button id="community-call-video-toggle-btn" type="button" class="community-call-btn neutral hidden">Camera Off</button>
-            <button id="community-call-end-btn" type="button" class="community-call-btn danger">End</button>
+            <button id="community-call-mute-btn" type="button" class="community-call-btn neutral" aria-label="Toggle mute" title="Mute">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4.8a2.4 2.4 0 0 1 2.4 2.4v5.2a2.4 2.4 0 1 1-4.8 0V7.2A2.4 2.4 0 0 1 12 4.8Z"></path>
+                <path d="M7.8 11.8a4.2 4.2 0 0 0 8.4 0"></path>
+              </svg>
+            </button>
+            <button id="community-call-speaker-btn" type="button" class="community-call-btn neutral" aria-label="Toggle speaker" title="Speaker">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 10h4l4-3v10l-4-3H4z"></path>
+                <path d="M16 9a4 4 0 0 1 0 6"></path>
+                <path d="M18.5 7a7 7 0 0 1 0 10"></path>
+              </svg>
+            </button>
+            <button id="community-call-video-toggle-btn" type="button" class="community-call-btn neutral hidden" aria-label="Toggle camera" title="Camera">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h7A1.5 1.5 0 0 1 14 8.5v7a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 4 15.5z"></path>
+                <path d="m14 11 5-3v8l-5-3z"></path>
+              </svg>
+            </button>
+            <button id="community-call-end-btn" type="button" class="community-call-btn danger" aria-label="End call" title="End">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 18.5a12.5 12.5 0 0 1 17.7 0"></path>
+                <path d="m5.4 14.9 2.4-1.1a1 1 0 0 1 1.2.3l1.2 1.4a10.2 10.2 0 0 0 5.1-5.1L13.9 9a1 1 0 0 1-.3-1.2l1.1-2.4"></path>
+              </svg>
+            </button>
           </div>
         </div>
       </div>

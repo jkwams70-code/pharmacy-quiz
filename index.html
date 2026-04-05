@@ -2056,6 +2056,10 @@
             <path d="m6 10 6 6 6-6"></path>
           </svg>
         </button>
+        <div id="community-chat-active-call-bar" class="community-chat-active-call-bar hidden" aria-hidden="true">
+          <span id="community-chat-active-call-text" class="community-chat-active-call-text">Active voice call</span>
+          <button id="community-chat-active-call-join-btn" type="button" class="community-chat-active-call-join-btn">Join</button>
+        </div>
         <div class="community-chat-composer">
           <input id="community-chat-image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,audio/webm,audio/ogg,audio/mp4,audio/mpeg,audio/wav,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain" multiple hidden />
           <input id="community-chat-camera-input" type="file" accept="image/*" capture="environment" hidden />
@@ -2124,6 +2128,24 @@
                 <path d="M9.4 19.5h5.2"></path>
               </svg>
             </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="community-call-modal" class="modal hidden" aria-hidden="true">
+        <div class="modal-card community-call-modal-card">
+          <div class="community-call-kicker">Community Call</div>
+          <h3 id="community-call-title" class="modal-title">Voice call</h3>
+          <p id="community-call-status" class="modal-text">Connecting...</p>
+          <div id="community-call-video-stage" class="community-call-video-stage hidden" aria-hidden="true">
+            <div id="community-call-remote-video" class="community-call-video-panel"></div>
+            <div id="community-call-local-video" class="community-call-video-panel is-local"></div>
+          </div>
+          <audio id="community-call-remote-audio" autoplay playsinline></audio>
+          <div class="modal-actions community-call-actions">
+            <button id="community-call-mute-btn" type="button" class="modal-btn secondary">Mute</button>
+            <button id="community-call-video-toggle-btn" type="button" class="modal-btn secondary hidden">Camera Off</button>
+            <button id="community-call-end-btn" type="button" class="modal-btn primary">End</button>
           </div>
         </div>
       </div>
@@ -3521,10 +3543,13 @@
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="engine.js?v=20260331-appupdate1"></script>
+    <script type="module" src="engine.js?v=20260331-nativefix1"></script>
     <script>
-      const APP_BUILD_ID = "20260331-appupdate1";
-      const APP_STANDALONE_BUILD = "20260331-appupdate1";
+      const APP_BUILD_ID = "20260331-nativefix1";
+      const APP_STANDALONE_BUILD = "20260331-nativefix1";
+      const APP_NATIVE_VERSION = "1.0.1";
+      window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
+      document.documentElement.dataset.nativeAppVersion = APP_NATIVE_VERSION;
 
       try {
         const params = new URLSearchParams(location.search);

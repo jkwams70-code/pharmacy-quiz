@@ -346,11 +346,11 @@ function deriveImportedCaseMetadata(questions) {
   const metadataById = new Map();
 
   (Array.isArray(questions) ? questions : []).forEach((question) => {
-    const match = String(question?.question || "").match(/^Case\s+(\d+)([A-Z])\.\s*(.+)$/i);
-    if (!match) return;
+    const parsedCase = parseImportedCaseQuestionLabel(question?.question || question?.text || "");
+    if (!parsedCase) return;
     const topicSlug = normalizeTopicPathToken(question?.topicSlug);
     if (!topicSlug) return;
-    const caseNumber = String(match[1] || "").trim();
+    const caseNumber = parsedCase.caseNumber;
     const key = `${topicSlug}::${caseNumber}`;
     if (!groups.has(key)) {
       groups.set(key, {
@@ -360,8 +360,8 @@ function deriveImportedCaseMetadata(questions) {
     }
     groups.get(key).entries.push({
       id: Number(question?.id),
-      suffix: String(match[2] || "").toUpperCase(),
-      stem: String(match[3] || "").trim(),
+      suffix: parsedCase.caseLetter,
+      stem: parsedCase.stem,
     });
   });
 
@@ -425,7 +425,25 @@ function stripBankQuestionLabel(questionText) {
 }
 
 function stripImportedCaseLabel(questionText) {
-  return String(questionText || "").replace(/^Case\s+\d+[A-Z]\.\s*/i, "").trim();
+  const parsedCase = parseImportedCaseQuestionLabel(questionText);
+  if (parsedCase) return parsedCase.stem;
+  return String(questionText || "").trim();
+}
+
+function parseImportedCaseQuestionLabel(questionText = "") {
+  const raw = String(questionText || "").trim();
+  if (!raw) return null;
+  const match = raw.match(/^(?:Q\d+\.\s*)?Case\s+(\d+)([A-Z])(?:[.):\-])?\s*(.+)$/i);
+  if (!match) return null;
+  const caseNumber = String(match[1] || "").trim();
+  const caseLetter = String(match[2] || "").trim().toUpperCase();
+  const stem = String(match[3] || "").trim();
+  if (!caseNumber || !caseLetter || !stem) return null;
+  return {
+    caseNumber,
+    caseLetter,
+    stem,
+  };
 }
 
 function escapeRegExp(value) {
@@ -554,9 +572,32 @@ function rebuildCaseMap() {
   Object.keys(caseMap).forEach((key) => delete caseMap[key]);
   questionBank.forEach((q) => {
     if (q.caseId && q.caseBlock) {
-      caseMap[q.caseId] = q.caseBlock;
+      const scopedKey = buildScopedCaseMapKey(q.caseId, q.topicSlug);
+      if (scopedKey) {
+        caseMap[scopedKey] = q.caseBlock;
+      } else {
+        caseMap[String(q.caseId || "").trim()] = q.caseBlock;
+      }
     }
   });
+}
+
+function buildScopedCaseMapKey(caseId = "", topicSlug = "") {
+  const safeCaseId = String(caseId || "").trim();
+  if (!safeCaseId) return "";
+  const safeTopicSlug = normalizeTopicPathToken(topicSlug);
+  return safeTopicSlug ? `${safeTopicSlug}::${safeCaseId}` : safeCaseId;
+}
+
+function resolveQuestionCaseText(question) {
+  const directCaseBlock = String(question?.caseBlock || "").trim();
+  if (directCaseBlock) return directCaseBlock;
+  const scopedKey = buildScopedCaseMapKey(question?.caseId, question?.topicSlug);
+  if (scopedKey && caseMap[scopedKey]) {
+    return String(caseMap[scopedKey] || "").trim();
+  }
+  const fallbackKey = String(question?.caseId || "").trim();
+  return fallbackKey ? String(caseMap[fallbackKey] || "").trim() : "";
 }
 
 function findQuestionById(questionId) {
@@ -1048,6 +1089,19 @@ const communityChatRecordingCancelBtn = document.getElementById("community-chat-
 const communityChatRecordingSendBtn = document.getElementById("community-chat-recording-send-btn");
 const communityChatCallBtn = document.getElementById("community-chat-call-btn");
 const communityChatVideoBtn = document.getElementById("community-chat-video-btn");
+const communityChatActiveCallBarEl = document.getElementById("community-chat-active-call-bar");
+const communityChatActiveCallTextEl = document.getElementById("community-chat-active-call-text");
+const communityChatActiveCallJoinBtn = document.getElementById("community-chat-active-call-join-btn");
+const communityCallModalEl = document.getElementById("community-call-modal");
+const communityCallTitleEl = document.getElementById("community-call-title");
+const communityCallStatusEl = document.getElementById("community-call-status");
+const communityCallRemoteAudioEl = document.getElementById("community-call-remote-audio");
+const communityCallVideoStageEl = document.getElementById("community-call-video-stage");
+const communityCallRemoteVideoEl = document.getElementById("community-call-remote-video");
+const communityCallLocalVideoEl = document.getElementById("community-call-local-video");
+const communityCallMuteBtn = document.getElementById("community-call-mute-btn");
+const communityCallVideoToggleBtn = document.getElementById("community-call-video-toggle-btn");
+const communityCallEndBtn = document.getElementById("community-call-end-btn");
 const communityAvatarModalEl = document.getElementById("community-avatar-modal");
 const communityAvatarCloseBtn = document.getElementById("community-avatar-close-btn");
 const communityAvatarModalImageEl = document.getElementById("community-avatar-modal-image");
@@ -1194,6 +1248,8 @@ const SETUP_POINTS_STORAGE_KEY = "quizSetupPointsV1";
 const APP_UPDATE_FEED_URL = "https://ajixpharmacy.online/app-update.json";
 const APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY = "quizAppUpdateDismissedVersionV1";
 const APP_UPDATE_CHECK_COOLDOWN_MS = 2 * 60 * 1000;
+const COMMUNITY_AGORA_SDK_URL = "https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.24.0/AgoraRTC_N-production.min.js";
+const COMMUNITY_NATIVE_BIOMETRIC_CREDENTIAL_ID = "__native_android_biometric__";
 const LIVE_ANSWER_ADVANCE_DELAY_MS = 1800;
 const COMMUNITY_LOCK_PIN_MIN_LENGTH = 4;
 const COMMUNITY_LOCK_PIN_MAX_LENGTH = 8;
@@ -2670,6 +2726,7 @@ const ANSWER_FEEDBACK_VISIBLE_MS = 1600;
 const ANSWER_CHOICE_MOTIVATION_VISIBLE_MS = 1800;
 let pendingCommunityConfirmAction = null;
 let pendingCommunityLockResolver = null;
+let communityLockAutoBiometricAttempted = false;
 let appUpdateCheckInFlight = false;
 let appUpdateLastCheckedAt = 0;
 let appUpdateCurrentPayload = null;
@@ -2688,6 +2745,13 @@ let communityMessageTouchStart = null;
 let communityMessagePointerStart = null;
 let communityScreenTouchStart = null;
 let communityScreenSwipeLocked = false;
+let communityAgoraSdkPromise = null;
+let communityCallClient = null;
+let communityCallLocalAudioTrack = null;
+let communityCallLocalVideoTrack = null;
+let communityCallRemoteAudioTrack = null;
+let communityCallRemoteVideoTrack = null;
+let communityCallConnected = false;
 let communityStatusHoldHandle = null;
 let communityStatusHoldWasTriggered = false;
 let communityStatusSwipeState = null;
@@ -2748,6 +2812,7 @@ let tourStepIndex = 0;
 let dailyHistoryOpen = false;
 let pointsSyncHandle = null;
 let pointsSyncInFlight = false;
+let appUpdateResumeListenersRegistered = false;
 const leaderboardState = {
   open: false,
   scope: "daily",
@@ -2765,6 +2830,8 @@ const communityState = {
   statuses: [],
   activeConversation: null,
   activeConversationPartner: null,
+  activeCall: null,
+  callProbeAt: 0,
   communityLockSessionUnlocked: true,
   chatPollHandle: null,
   searchOpen: false,
@@ -4681,7 +4748,392 @@ function syncCommunityChatPolling() {
   void ensureCommunityConversationRealtimeSubscription();
   communityState.chatPollHandle = setInterval(() => {
     void loadCommunityMessages({ silent: true });
+    void refreshCommunityConversationActiveCall({ silent: true });
   }, 5000);
+}
+
+function getCommunityCallModeLabel(mode = "voice") {
+  return String(mode || "").trim().toLowerCase() === "video" ? "Video" : "Voice";
+}
+
+function setCommunityCallStatus(message = "") {
+  if (!communityCallStatusEl) return;
+  communityCallStatusEl.textContent = String(message || "").trim();
+}
+
+function syncCommunityCallActionButtons() {
+  if (communityCallMuteBtn) {
+    const enabled = Boolean(communityCallLocalAudioTrack?.enabled);
+    communityCallMuteBtn.textContent = enabled ? "Mute" : "Unmute";
+    communityCallMuteBtn.disabled = !(communityCallLocalAudioTrack && communityCallConnected);
+  }
+  if (communityCallVideoToggleBtn) {
+    const videoMode = String(communityState.activeCall?.mode || "").trim().toLowerCase() === "video";
+    const enabled = Boolean(communityCallLocalVideoTrack?.enabled);
+    communityCallVideoToggleBtn.classList.toggle("hidden", !videoMode);
+    communityCallVideoToggleBtn.disabled = !videoMode || !(communityCallLocalVideoTrack && communityCallConnected);
+    communityCallVideoToggleBtn.textContent = enabled ? "Camera Off" : "Camera On";
+  }
+  if (communityCallEndBtn) {
+    communityCallEndBtn.disabled = !communityState.activeCall;
+  }
+}
+
+function setCommunityChatActiveCallBar(callPayload = null) {
+  if (!communityChatActiveCallBarEl || !communityChatActiveCallTextEl) return;
+  const safeCall = callPayload && typeof callPayload === "object" ? callPayload : null;
+  const activeConversationId = String(communityState.activeConversation?.id || "").trim();
+  const callConversationId = String(safeCall?.conversationId || "").trim();
+  const show =
+    Boolean(
+      safeCall &&
+      safeCall.active !== false &&
+      callConversationId &&
+      callConversationId === activeConversationId &&
+      getActiveScreenId() === "community-chat-screen" &&
+      !communityCallConnected,
+    );
+  communityChatActiveCallBarEl.classList.toggle("hidden", !show);
+  communityChatActiveCallBarEl.setAttribute("aria-hidden", show ? "false" : "true");
+  if (!show) return;
+  const modeLabel = getCommunityCallModeLabel(safeCall.mode);
+  const participantCount = Math.max(1, Number(safeCall?.participantUserIds?.length || 0));
+  communityChatActiveCallTextEl.textContent = `Active ${modeLabel.toLowerCase()} call • ${participantCount} online`;
+}
+
+function setCommunityCallModalOpen(open = false) {
+  if (!communityCallModalEl) return;
+  const next = Boolean(open);
+  communityCallModalEl.classList.toggle("hidden", !next);
+  communityCallModalEl.setAttribute("aria-hidden", next ? "false" : "true");
+}
+
+function resetCommunityCallMediaUi() {
+  if (communityCallRemoteAudioEl) {
+    try {
+      communityCallRemoteAudioEl.pause();
+    } catch {}
+    communityCallRemoteAudioEl.srcObject = null;
+    communityCallRemoteAudioEl.removeAttribute("src");
+  }
+  if (communityCallRemoteVideoEl) {
+    communityCallRemoteVideoEl.innerHTML = "";
+  }
+  if (communityCallLocalVideoEl) {
+    communityCallLocalVideoEl.innerHTML = "";
+  }
+}
+
+function getCommunityAgoraRtcGlobal() {
+  return window?.AgoraRTC || null;
+}
+
+function loadCommunityAgoraRtcSdk() {
+  if (getCommunityAgoraRtcGlobal()) {
+    return Promise.resolve(getCommunityAgoraRtcGlobal());
+  }
+  if (communityAgoraSdkPromise) return communityAgoraSdkPromise;
+  communityAgoraSdkPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector("script[data-community-agora-sdk='true']");
+    if (existing) {
+      existing.addEventListener("load", () => {
+        const sdk = getCommunityAgoraRtcGlobal();
+        if (sdk) resolve(sdk);
+        else reject(new Error("Call SDK did not load."));
+      }, { once: true });
+      existing.addEventListener("error", () => reject(new Error("Call SDK failed to load.")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = COMMUNITY_AGORA_SDK_URL;
+    script.async = true;
+    script.defer = true;
+    script.dataset.communityAgoraSdk = "true";
+    script.onload = () => {
+      const sdk = getCommunityAgoraRtcGlobal();
+      if (!sdk) {
+        reject(new Error("Call SDK did not load."));
+        return;
+      }
+      resolve(sdk);
+    };
+    script.onerror = () => reject(new Error("Could not load call SDK."));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    communityAgoraSdkPromise = null;
+    throw error;
+  });
+  return communityAgoraSdkPromise;
+}
+
+function bindCommunityCallClientEvents(client) {
+  if (!client || typeof client.on !== "function") return;
+  client.on("user-published", async (user, mediaType) => {
+    try {
+      await client.subscribe(user, mediaType);
+    } catch {
+      return;
+    }
+    if (mediaType === "audio" && user?.audioTrack) {
+      communityCallRemoteAudioTrack = user.audioTrack;
+      try {
+        user.audioTrack.play();
+      } catch {}
+      setCommunityCallStatus("Connected");
+    }
+    if (mediaType === "video" && user?.videoTrack && communityCallRemoteVideoEl) {
+      communityCallRemoteVideoTrack = user.videoTrack;
+      communityCallVideoStageEl?.classList.remove("hidden");
+      communityCallVideoStageEl?.setAttribute("aria-hidden", "false");
+      try {
+        user.videoTrack.play(communityCallRemoteVideoEl);
+      } catch {}
+    }
+  });
+  client.on("user-unpublished", (user, mediaType) => {
+    if (mediaType === "audio" && user?.audioTrack) {
+      try {
+        user.audioTrack.stop();
+      } catch {}
+      communityCallRemoteAudioTrack = null;
+    }
+    if (mediaType === "video" && user?.videoTrack) {
+      try {
+        user.videoTrack.stop();
+      } catch {}
+      communityCallRemoteVideoTrack = null;
+      if (communityCallRemoteVideoEl) {
+        communityCallRemoteVideoEl.innerHTML = "";
+      }
+    }
+    setCommunityCallStatus("Connected. Waiting for participant...");
+  });
+  client.on("user-left", () => {
+    setCommunityCallStatus("Participant left. Waiting...");
+  });
+}
+
+async function destroyCommunityCallTransport() {
+  const audioTrack = communityCallLocalAudioTrack;
+  const videoTrack = communityCallLocalVideoTrack;
+  const client = communityCallClient;
+  communityCallLocalAudioTrack = null;
+  communityCallLocalVideoTrack = null;
+  communityCallRemoteAudioTrack = null;
+  communityCallRemoteVideoTrack = null;
+  communityCallConnected = false;
+  if (audioTrack) {
+    try {
+      audioTrack.stop();
+    } catch {}
+    try {
+      audioTrack.close();
+    } catch {}
+  }
+  if (videoTrack) {
+    try {
+      videoTrack.stop();
+    } catch {}
+    try {
+      videoTrack.close();
+    } catch {}
+  }
+  if (client) {
+    try {
+      await client.unpublish();
+    } catch {}
+    try {
+      await client.leave();
+    } catch {}
+    try {
+      client.removeAllListeners?.();
+    } catch {}
+  }
+  communityCallClient = null;
+  resetCommunityCallMediaUi();
+}
+
+async function endCommunityConversationCall({
+  notifyBackend = true,
+  silent = false,
+} = {}) {
+  const activeCall = communityState.activeCall && typeof communityState.activeCall === "object"
+    ? { ...communityState.activeCall }
+    : null;
+  await destroyCommunityCallTransport();
+  setCommunityCallModalOpen(false);
+  communityState.activeCall = null;
+  communityState.callProbeAt = 0;
+  setCommunityChatActiveCallBar(null);
+  syncCommunityCallActionButtons();
+  if (notifyBackend) {
+    const safeConversationId = String(activeCall?.conversationId || communityState.activeConversation?.id || "").trim();
+    const safeCallId = String(activeCall?.id || "").trim();
+    if (safeConversationId && safeCallId) {
+      try {
+        await backendClient.endCommunityConversationCall(safeConversationId, safeCallId);
+      } catch {}
+    }
+  }
+  if (!silent) {
+    setCommunityFeedback("Call ended.");
+  }
+}
+
+async function joinCommunityCallFromPayload(payload = {}) {
+  const call = payload?.call && typeof payload.call === "object" ? payload.call : null;
+  const rtc = payload?.rtc && typeof payload.rtc === "object" ? payload.rtc : null;
+  const safeConversationId = String(communityState.activeConversation?.id || "").trim();
+  const callConversationId = String(call?.conversationId || "").trim();
+  if (!call || !rtc || !safeConversationId || safeConversationId !== callConversationId) {
+    throw new Error("Call session is no longer available.");
+  }
+  const mode = String(call.mode || "voice").trim().toLowerCase() === "video" ? "video" : "voice";
+  setCommunityCallModalOpen(true);
+  if (communityCallTitleEl) {
+    const modeLabel = getCommunityCallModeLabel(mode);
+    communityCallTitleEl.textContent = `${modeLabel} call`;
+  }
+  setCommunityCallStatus("Connecting...");
+  communityCallVideoStageEl?.classList.toggle("hidden", mode !== "video");
+  communityCallVideoStageEl?.setAttribute("aria-hidden", mode === "video" ? "false" : "true");
+  await destroyCommunityCallTransport();
+  const AgoraRTC = await loadCommunityAgoraRtcSdk();
+  const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+  bindCommunityCallClientEvents(client);
+  communityCallClient = client;
+  communityState.activeCall = {
+    ...call,
+    mode,
+  };
+  communityState.callProbeAt = Date.now();
+  await client.join(
+    String(rtc.appId || "").trim(),
+    String(rtc.channelName || "").trim(),
+    String(rtc.token || "").trim(),
+    Number(rtc.uid) || null,
+  );
+  if (mode === "video") {
+    const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+    communityCallLocalAudioTrack = audioTrack;
+    communityCallLocalVideoTrack = videoTrack;
+    await client.publish([audioTrack, videoTrack]);
+    if (communityCallLocalVideoEl && videoTrack) {
+      try {
+        videoTrack.play(communityCallLocalVideoEl);
+      } catch {}
+    }
+  } else {
+    const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    communityCallLocalAudioTrack = audioTrack;
+    await client.publish([audioTrack]);
+  }
+  communityCallConnected = true;
+  setCommunityCallStatus("Connected. Waiting for participant...");
+  setCommunityChatActiveCallBar(null);
+  syncCommunityCallActionButtons();
+}
+
+async function startCommunityConversationCall(mode = "voice") {
+  const safeConversationId = String(communityState.activeConversation?.id || "").trim();
+  if (!safeConversationId) {
+    setCommunityFeedback("Open a chat first to place a call.", true);
+    return;
+  }
+  if (
+    communityCallConnected &&
+    communityState.activeCall &&
+    String(communityState.activeCall.conversationId || "").trim() === safeConversationId
+  ) {
+    setCommunityFeedback("You are already in this call.");
+    return;
+  }
+  const safeMode = String(mode || "").trim().toLowerCase() === "video" ? "video" : "voice";
+  try {
+    const payload = await backendClient.startCommunityConversationCall(safeConversationId, safeMode);
+    await joinCommunityCallFromPayload(payload);
+    setCommunityFeedback(`${getCommunityCallModeLabel(safeMode)} call started.`);
+  } catch (error) {
+    await endCommunityConversationCall({ notifyBackend: false, silent: true });
+    setCommunityFeedback(generalApiErrorMessage(error, `${getCommunityCallModeLabel(safeMode)} call could not start right now.`), true);
+  }
+}
+
+async function joinCommunityConversationActiveCall(callPayload = null) {
+  const safeConversationId = String(communityState.activeConversation?.id || "").trim();
+  const safeCallId = String(callPayload?.id || communityState.activeCall?.id || "").trim();
+  if (!safeConversationId || !safeCallId) {
+    setCommunityFeedback("No active call to join right now.", true);
+    return;
+  }
+  if (
+    communityCallConnected &&
+    String(communityState.activeCall?.id || "").trim() === safeCallId &&
+    String(communityState.activeCall?.conversationId || "").trim() === safeConversationId
+  ) {
+    setCommunityFeedback("You are already in this call.");
+    return;
+  }
+  try {
+    const payload = await backendClient.joinCommunityConversationCall(safeConversationId, safeCallId);
+    await joinCommunityCallFromPayload(payload);
+    setCommunityFeedback("Joined active call.");
+  } catch (error) {
+    await endCommunityConversationCall({ notifyBackend: false, silent: true });
+    setCommunityFeedback(generalApiErrorMessage(error, "Call could not join right now."), true);
+  }
+}
+
+async function refreshCommunityConversationActiveCall({ silent = true, force = false } = {}) {
+  const safeConversationId = String(communityState.activeConversation?.id || "").trim();
+  if (!safeConversationId || getActiveScreenId() !== "community-chat-screen") {
+    setCommunityChatActiveCallBar(null);
+    return null;
+  }
+  const now = Date.now();
+  if (!force && now - Number(communityState.callProbeAt || 0) < 2200) {
+    return communityState.activeCall;
+  }
+  communityState.callProbeAt = now;
+  try {
+    const response = await backendClient.fetchCommunityConversationActiveCall(safeConversationId);
+    const call = response?.call && typeof response.call === "object" ? response.call : null;
+    if (!call && communityCallConnected && String(communityState.activeCall?.conversationId || "") === safeConversationId) {
+      await endCommunityConversationCall({ notifyBackend: false, silent: true });
+      setCommunityFeedback("Call ended.");
+      return null;
+    }
+    if (call && communityCallConnected && String(communityState.activeCall?.id || "") === String(call.id || "")) {
+      communityState.activeCall = { ...communityState.activeCall, ...call };
+    } else if (!communityCallConnected) {
+      communityState.activeCall = call;
+    }
+    setCommunityChatActiveCallBar(call);
+    return call;
+  } catch (error) {
+    if (!silent) {
+      setCommunityFeedback(generalApiErrorMessage(error, "Call status could not update."), true);
+    }
+    return null;
+  }
+}
+
+async function toggleCommunityCallMute() {
+  if (!communityCallLocalAudioTrack) return;
+  const nextEnabled = !Boolean(communityCallLocalAudioTrack.enabled);
+  try {
+    await communityCallLocalAudioTrack.setEnabled(nextEnabled);
+  } catch {}
+  syncCommunityCallActionButtons();
+}
+
+async function toggleCommunityCallVideoEnabled() {
+  if (!communityCallLocalVideoTrack) return;
+  const nextEnabled = !Boolean(communityCallLocalVideoTrack.enabled);
+  try {
+    await communityCallLocalVideoTrack.setEnabled(nextEnabled);
+  } catch {}
+  syncCommunityCallActionButtons();
 }
 
 function renderCommunitySummaryCard(label, value, tab, note = "") {
@@ -9225,6 +9677,15 @@ function isNativeAndroidAppRuntime() {
   }
 }
 
+function getEmbeddedNativeAppVersion() {
+  return normalizeAppVersionValue(
+    window?.__AJIX_NATIVE_APP_VERSION__ ||
+      window?.APP_NATIVE_VERSION ||
+      document?.documentElement?.dataset?.nativeAppVersion ||
+      "",
+  );
+}
+
 function normalizeAppVersionValue(value = "") {
   return String(value || "").trim().replace(/^v/i, "");
 }
@@ -9261,13 +9722,16 @@ function compareAppVersions(current = "", latest = "") {
 
 async function getNativeAppVersion() {
   const appPlugin = window?.Capacitor?.Plugins?.App;
-  if (!appPlugin || typeof appPlugin.getInfo !== "function") return "";
-  try {
-    const info = await appPlugin.getInfo();
-    return normalizeAppVersionValue(info?.version || info?.build || "");
-  } catch {
-    return "";
+  if (appPlugin && typeof appPlugin.getInfo === "function") {
+    try {
+      const info = await appPlugin.getInfo();
+      const pluginVersion = normalizeAppVersionValue(info?.version || info?.build || "");
+      if (pluginVersion) return pluginVersion;
+    } catch {
+      // Fall back to the bundled app version marker below.
+    }
   }
+  return getEmbeddedNativeAppVersion();
 }
 
 function closeAppUpdateModal() {
@@ -9434,6 +9898,20 @@ function isCommunityNativeAppRuntime() {
   }
 }
 
+function getCommunityNativeBiometricPlugin() {
+  return window?.Capacitor?.Plugins?.CommunityBiometric || null;
+}
+
+function hasCommunityNativeBiometricBridge() {
+  const plugin = getCommunityNativeBiometricPlugin();
+  return Boolean(
+    isCommunityNativeAppRuntime() &&
+      plugin &&
+      typeof plugin.isAvailable === "function" &&
+      typeof plugin.authenticate === "function",
+  );
+}
+
 function hasCommunityWebAuthnApiSupport() {
   return (
     typeof window.PublicKeyCredential !== "undefined" &&
@@ -9443,6 +9921,18 @@ function hasCommunityWebAuthnApiSupport() {
 }
 
 async function getCommunityBiometricAvailability() {
+  if (hasCommunityNativeBiometricBridge()) {
+    try {
+      const payload = await getCommunityNativeBiometricPlugin().isAvailable();
+      return {
+        supported: Boolean(payload?.supported || payload?.available),
+        available: Boolean(payload?.available),
+        native: true,
+      };
+    } catch {
+      return { supported: true, available: false, native: true };
+    }
+  }
   const nativeRuntime = isCommunityNativeAppRuntime();
   const supported = (nativeRuntime || Boolean(window.isSecureContext)) && hasCommunityWebAuthnApiSupport();
   if (!supported) {
@@ -9466,6 +9956,25 @@ async function getCommunityBiometricAvailability() {
   };
 }
 
+async function authenticateCommunityNativeBiometric({
+  title = "Unlock Community",
+  subtitle = "Use face or fingerprint",
+  description = "",
+  negativeButtonText = "Use PIN",
+} = {}) {
+  const plugin = getCommunityNativeBiometricPlugin();
+  if (!plugin || typeof plugin.authenticate !== "function") {
+    throw new Error("Face/Fingerprint unlock is unavailable right now.");
+  }
+  const payload = await plugin.authenticate({
+    title,
+    subtitle,
+    description,
+    negativeButtonText,
+  });
+  return Boolean(payload?.verified);
+}
+
 async function registerCommunityBiometricCredential() {
   const availability = await getCommunityBiometricAvailability();
   if (!availability.supported || !availability.available) {
@@ -9473,6 +9982,21 @@ async function registerCommunityBiometricCredential() {
   }
   if (!hasCommunityLockPin()) {
     throw new Error("Set a PIN first before enabling biometrics.");
+  }
+  if (availability.native && hasCommunityNativeBiometricBridge()) {
+    await authenticateCommunityNativeBiometric({
+      title: "Enable Community Unlock",
+      subtitle: "Confirm face or fingerprint",
+      description: "Ajix will use your phone biometrics to unlock Community.",
+      negativeButtonText: "Cancel",
+    });
+    communitySettingsPrefs = {
+      ...communitySettingsPrefs,
+      securityCommunityBiometricEnabled: true,
+      securityCommunityBiometricCredentialId: COMMUNITY_NATIVE_BIOMETRIC_CREDENTIAL_ID,
+    };
+    saveCommunitySettingsPrefs();
+    return;
   }
   if (typeof TextEncoder === "undefined") {
     throw new Error("This browser cannot encode biometric credentials.");
@@ -9536,6 +10060,15 @@ async function verifyCommunityBiometricUnlock() {
   const credentialId = String(communitySettingsPrefs.securityCommunityBiometricCredentialId || "").trim();
   if (!credentialId) {
     throw new Error("No biometric unlock is set.");
+  }
+  if (credentialId === COMMUNITY_NATIVE_BIOMETRIC_CREDENTIAL_ID) {
+    await authenticateCommunityNativeBiometric({
+      title: "Unlock Community",
+      subtitle: "Use face or fingerprint",
+      description: "Confirm your identity to re-enter Community.",
+      negativeButtonText: "Use PIN",
+    });
+    return true;
   }
   const credentialBytes = decodeCommunityBase64Url(credentialId);
   if (!(credentialBytes instanceof Uint8Array) || !credentialBytes.length) {
@@ -9631,8 +10164,8 @@ function setCommunitySecurityPinActionMode(mode = "") {
 function syncCommunitySecuritySettingsUi() {
   const hasPin = hasCommunityLockPin();
   const lockEnabled = Boolean(hasPin && communitySettingsPrefs.securityCommunityLockEnabled);
-  const biometricSupported = (isCommunityNativeAppRuntime() || Boolean(window.isSecureContext))
-    && hasCommunityWebAuthnApiSupport();
+  const biometricSupported = hasCommunityNativeBiometricBridge()
+    || ((isCommunityNativeAppRuntime() || Boolean(window.isSecureContext)) && hasCommunityWebAuthnApiSupport());
   const biometricSaved = hasCommunityBiometricCredential();
   const biometricEnabled = isCommunityBiometricEnabled();
   const actionMode = hasPin ? String(communityState.securityPinActionMode || "").trim() : "";
@@ -9755,6 +10288,15 @@ function setCommunityLockModalFeedback(message = "", isError = false) {
   communityLockFeedbackEl.classList.toggle("is-error", Boolean(safeMessage && isError));
 }
 
+function focusCommunityLockPinInput(delayMs = 20) {
+  window.setTimeout(() => {
+    if (!communityLockPinInput) return;
+    if (communityLockModalEl?.classList.contains("hidden")) return;
+    communityLockPinInput.focus();
+    communityLockPinInput.setSelectionRange?.(0, communityLockPinInput.value.length);
+  }, Math.max(0, Number(delayMs) || 0));
+}
+
 function setCommunityLockResetFeedback(message = "", isError = false) {
   if (!communityLockResetFeedbackEl) return;
   const safeMessage = String(message || "").trim();
@@ -9859,6 +10401,7 @@ async function submitCommunityLockForgotPinReset() {
 function closeCommunityLockModal({ unlocked = false } = {}) {
   closeCommunityLockResetModal();
   communityLockModalEl?.classList.add("hidden");
+  communityLockAutoBiometricAttempted = false;
   if (communityLockPinInput) {
     communityLockPinInput.value = "";
   }
@@ -9883,15 +10426,19 @@ function openCommunityLockModal() {
   if (communityLockPinInput) {
     communityLockPinInput.value = "";
   }
+  communityLockAutoBiometricAttempted = false;
   setCommunityLockModalFeedback("");
   syncCommunitySecuritySettingsUi();
   communityLockModalEl.classList.remove("hidden");
-  window.setTimeout(() => {
-    communityLockPinInput?.focus();
-    communityLockPinInput?.setSelectionRange?.(0, communityLockPinInput.value.length);
-  }, 20);
+  if (!isCommunityBiometricEnabled()) {
+    focusCommunityLockPinInput(20);
+  }
   return new Promise((resolve) => {
     pendingCommunityLockResolver = resolve;
+    if (isCommunityBiometricEnabled() && !communityLockAutoBiometricAttempted) {
+      communityLockAutoBiometricAttempted = true;
+      void submitCommunityLockModalBiometricUnlock({ silent: true, automatic: true });
+    }
   });
 }
 
@@ -9914,10 +10461,13 @@ async function submitCommunityLockModalUnlock() {
   closeCommunityLockModal({ unlocked: true });
 }
 
-async function submitCommunityLockModalBiometricUnlock({ silent = false } = {}) {
+async function submitCommunityLockModalBiometricUnlock({ silent = false, automatic = false } = {}) {
   if (!isCommunityBiometricEnabled()) {
     if (!silent) {
       setCommunityLockModalFeedback("Set up Face/Fingerprint in Security first.", true);
+    }
+    if (automatic) {
+      focusCommunityLockPinInput(10);
     }
     return;
   }
@@ -9934,6 +10484,9 @@ async function submitCommunityLockModalBiometricUnlock({ silent = false } = {}) 
         generalApiErrorMessage(error, "Face/Fingerprint unlock failed. Use PIN instead."),
         true,
       );
+    }
+    if (communityLockModalEl && !communityLockModalEl.classList.contains("hidden")) {
+      focusCommunityLockPinInput(10);
     }
   } finally {
     if (communityLockBiometricBtn) {
@@ -12122,6 +12675,7 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false } 
         scrollCommunityChatToLatest({ settle: true, attempts: 1 });
       }
     }
+    void refreshCommunityConversationActiveCall({ silent: true });
     if (!silent) setCommunityFeedback("");
   } catch (error) {
     if (!silent) setCommunityFeedback(generalApiErrorMessage(error, "Messages could not load right now."), true);
@@ -12139,6 +12693,20 @@ async function openCommunityConversation(userId = "", existingConversationId = "
       communityState.activeConversation = response?.conversation || { id: conversationId };
     } else {
       communityState.activeConversation = { id: conversationId };
+    }
+    if (
+      communityCallConnected &&
+      communityState.activeCall &&
+      String(communityState.activeCall.conversationId || "").trim() !== String(conversationId || "").trim()
+    ) {
+      await endCommunityConversationCall({ notifyBackend: true, silent: true });
+    } else if (
+      !communityCallConnected &&
+      communityState.activeCall &&
+      String(communityState.activeCall.conversationId || "").trim() !== String(conversationId || "").trim()
+    ) {
+      communityState.activeCall = null;
+      setCommunityChatActiveCallBar(null);
     }
 
     const partner =
@@ -12167,6 +12735,7 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     syncCommunityChatComposerState();
     showScreen("community-chat-screen");
     await loadCommunityMessages({ scrollToBottom: true });
+    void refreshCommunityConversationActiveCall({ silent: true, force: true });
     syncCommunityChatPolling();
     void ensureCommunityConversationRealtimeSubscription();
   } catch (error) {
@@ -13041,10 +13610,10 @@ async function executeCommunityAction(action = "", payload = {}) {
       await openCommunityConversation(userId, conversationId);
       return;
     } else if (action === "community-call-soon") {
-      setCommunityFeedback("Voice calling is coming soon.");
+      await startCommunityConversationCall("voice");
       return;
     } else if (action === "community-video-soon") {
-      setCommunityFeedback("Video calling is coming soon.");
+      await startCommunityConversationCall("video");
       return;
     } else if (action === "search-group") {
       setCommunityFeedback("Group message search is coming soon.");
@@ -15659,7 +16228,21 @@ document.querySelectorAll("[data-community-group-storage-tab]").forEach((button)
 
 if (communityChatBackBtn) {
   communityChatBackBtn.addEventListener("click", () => {
-    goBackByHistory("community-chat-screen", "community-screen");
+    if (!communityCallConnected) {
+      goBackByHistory("community-chat-screen", "community-screen");
+      return;
+    }
+    openCommunityConfirmModal({
+      title: "End call and leave chat?",
+      text: "Leaving this chat will end the current call for everyone in this conversation.",
+      confirmLabel: "End Call",
+      intent: "danger",
+      onConfirm: async () => {
+        closeCommunityConfirmModal();
+        await endCommunityConversationCall({ notifyBackend: true, silent: true });
+        goBackByHistory("community-chat-screen", "community-screen");
+      },
+    });
   });
 }
 
@@ -15681,15 +16264,41 @@ if (communityChatJumpLatestBtn) {
 
 if (communityChatCallBtn) {
   communityChatCallBtn.addEventListener("click", () => {
-    setCommunityFeedback("Voice calling is coming soon.");
+    void startCommunityConversationCall("voice");
   });
 }
 
 if (communityChatVideoBtn) {
   communityChatVideoBtn.addEventListener("click", () => {
-    setCommunityFeedback("Video calling is coming soon.");
+    void startCommunityConversationCall("video");
   });
 }
+
+if (communityChatActiveCallJoinBtn) {
+  communityChatActiveCallJoinBtn.addEventListener("click", () => {
+    void joinCommunityConversationActiveCall(communityState.activeCall || null);
+  });
+}
+
+if (communityCallMuteBtn) {
+  communityCallMuteBtn.addEventListener("click", () => {
+    void toggleCommunityCallMute();
+  });
+}
+
+if (communityCallVideoToggleBtn) {
+  communityCallVideoToggleBtn.addEventListener("click", () => {
+    void toggleCommunityCallVideoEnabled();
+  });
+}
+
+if (communityCallEndBtn) {
+  communityCallEndBtn.addEventListener("click", () => {
+    void endCommunityConversationCall({ notifyBackend: true, silent: false });
+  });
+}
+
+syncCommunityCallActionButtons();
 
 if (communityChatEmojiBtn) {
   communityChatEmojiBtn.addEventListener("click", () => {
@@ -19600,11 +20209,15 @@ function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
       return;
     }
 
-    const topicQuestions = localTopicQuestionBank
+    const sourceBank = Array.isArray(questionBank) && questionBank.length
+      ? questionBank
+      : localTopicQuestionBank;
+    const topicQuestions = sourceBank
       .filter((question) => normalizeTopicPathToken(question?.topicSlug) === slug)
       .sort(byQuestionIdAscending);
+    const normalizedTopicQuestions = enrichImportedCaseQuestions(topicQuestions);
 
-    if (topicQuestions.length === 0) {
+    if (normalizedTopicQuestions.length === 0) {
       alert(`No topic quiz questions are available for ${topicTitle} yet.`);
       return;
     }
@@ -19630,7 +20243,7 @@ function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
     score = 0;
     userAnswers = {};
     currentStreak = 0;
-    active = JSON.parse(JSON.stringify(topicQuestions));
+    active = JSON.parse(JSON.stringify(normalizedTopicQuestions));
     nextBtn.onclick = nextQuestion;
     prevBtn.onclick = previousQuestion;
     updateModeIndicator("normal");
@@ -19699,7 +20312,12 @@ function bindTopicViewerQuizLaunchers() {
       if (!launcher) return;
       event?.preventDefault?.();
       event?.stopPropagation?.();
-      const slug = String(launcher.getAttribute("data-topic-quiz") || "").trim();
+      const launcherSlug = normalizeTopicPathToken(
+        String(launcher.getAttribute("data-topic-quiz") || "").trim(),
+      );
+      const currentViewerSlug = normalizeTopicPathToken(topicViewerCurrentSlug);
+      const slug = currentViewerSlug || launcherSlug;
+      if (!slug) return;
       const title =
         String(launcher.getAttribute("data-topic-title") || "").trim() ||
         String(topicViewerTitleEl?.innerText || "").trim() ||
@@ -22872,7 +23490,7 @@ function showQuestion() {
 
   let displayText = String(q.question || "").trim();
 
-  const sharedCaseText = String(q.caseBlock || caseMap[q.caseId] || "").trim();
+  const sharedCaseText = resolveQuestionCaseText(q);
   if (sharedCaseText) {
     displayText = stripCaseStemFromQuestion(displayText, sharedCaseText);
   }
@@ -24222,7 +24840,7 @@ function renderDetailedQuestion() {
   }
 
   // Question title
-  const sharedCaseText = String(q.caseBlock || caseMap[q.caseId] || "").trim();
+  const sharedCaseText = resolveQuestionCaseText(q);
   const questionBody = sharedCaseText
     ? stripCaseStemFromQuestion(String(q.question || "").replace(/^Q\d+\.\s*/, ""), sharedCaseText)
     : String(q.question || "").replace(/^Q\d+\.\s*/, "").trim();
@@ -24348,9 +24966,15 @@ function showQuestionDetailedMode() {
   const q = active[current];
   applyQuestionCategoryShift(q);
 
+  const sharedCaseText = resolveQuestionCaseText(q);
+  const questionBody = sharedCaseText
+    ? stripCaseStemFromQuestion(String(q.question || "").replace(/^Q\d+\.\s*/, ""), sharedCaseText)
+    : stripImportedCaseLabel(String(q.question || "").replace(/^Q\d+\.\s*/, ""));
+  const caseText = sharedCaseText ? `<strong>Case:</strong><br>${sharedCaseText}<br><br>` : "";
   questionEl.innerHTML =
+    caseText +
     `<span class="question-kicker">Question ${current + 1}</span><br><br>` +
-    q.question.replace(/^Q\d+\.\s*/, "");
+    questionBody;
 
   if (q.type === "match" || q.type === "single") {
     q.options.forEach((opt) => {
@@ -24810,6 +25434,11 @@ function showScreen(id, options = {}) {
     void sendCommunityTypingState(false);
     stopCommunityChatPolling();
     stopCommunityConversationRealtimeSubscription();
+    if (communityCallConnected) {
+      void endCommunityConversationCall({ notifyBackend: true, silent: true });
+    } else {
+      setCommunityChatActiveCallBar(null);
+    }
   } else {
     syncCommunityChatPolling();
   }
@@ -24941,7 +25570,22 @@ function triggerInAppBackNavigation(state = null) {
   window.dispatchEvent(new PopStateEvent("popstate", { state: nextState }));
 }
 
+function registerAppUpdateResumeListeners() {
+  if (appUpdateResumeListenersRegistered) return;
+  appUpdateResumeListenersRegistered = true;
+
+  const triggerUpdateCheck = () => {
+    if (document.visibilityState !== "visible") return;
+    void checkForNativeAppUpdate({ force: true });
+  };
+
+  document.addEventListener("visibilitychange", triggerUpdateCheck);
+  window.addEventListener("focus", triggerUpdateCheck);
+  window.addEventListener("pageshow", triggerUpdateCheck);
+}
+
 function registerNativeBackButtonHandler() {
+  registerAppUpdateResumeListeners();
   const capacitorApp = window?.Capacitor?.Plugins?.App;
   if (!capacitorApp || typeof capacitorApp.addListener !== "function") return;
 

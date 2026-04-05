@@ -388,6 +388,22 @@ export const backendClient = {
     return get(`/community/conversations/${encodeURIComponent(conversationId)}/messages${query}`);
   },
 
+  fetchCommunityConversationActiveCall(conversationId) {
+    return get(`/community/conversations/${encodeURIComponent(conversationId)}/calls/active`);
+  },
+
+  startCommunityConversationCall(conversationId, mode = "voice") {
+    return post(`/community/conversations/${encodeURIComponent(conversationId)}/calls/start`, { mode });
+  },
+
+  joinCommunityConversationCall(conversationId, callId = "") {
+    return post(`/community/conversations/${encodeURIComponent(conversationId)}/calls/join`, { callId });
+  },
+
+  endCommunityConversationCall(conversationId, callId = "") {
+    return post(`/community/conversations/${encodeURIComponent(conversationId)}/calls/end`, { callId });
+  },
+
   sendConversationMessage(conversationId, text = "", attachment = null, replyTo = null) {
     return post(`/community/conversations/${encodeURIComponent(conversationId)}/messages`, {
       text,

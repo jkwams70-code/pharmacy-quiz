@@ -65,6 +65,9 @@ const supabaseStorageFolder = String(process.env.SUPABASE_STORAGE_FOLDER || "aji
 const oneSignalAppId = String(process.env.ONESIGNAL_APP_ID || "").trim();
 const oneSignalRestApiKey = String(process.env.ONESIGNAL_REST_API_KEY || "").trim();
 const oneSignalSafariWebId = String(process.env.ONESIGNAL_SAFARI_WEB_ID || "").trim();
+const agoraAppId = String(process.env.AGORA_APP_ID || "").trim();
+const agoraAppCertificate = String(process.env.AGORA_APP_CERTIFICATE || "").trim();
+const agoraTokenExpirySeconds = Number(process.env.AGORA_TOKEN_EXPIRY_SECONDS || 3600);
 
 if (!Number.isFinite(port) || port <= 0) {
   throw new Error("Invalid PORT. Set a positive numeric PORT value.");
@@ -112,6 +115,10 @@ if (!Number.isFinite(aiFreeMaxOutputTokens) || aiFreeMaxOutputTokens < 64) {
 
 if (!Number.isFinite(aiPremiumMaxOutputTokens) || aiPremiumMaxOutputTokens < 64) {
   throw new Error("Invalid AI_PREMIUM_MAX_OUTPUT_TOKENS. Use a number >= 64.");
+}
+
+if (!Number.isFinite(agoraTokenExpirySeconds) || agoraTokenExpirySeconds < 300) {
+  throw new Error("Invalid AGORA_TOKEN_EXPIRY_SECONDS. Use a number >= 300.");
 }
 
 if (!["debug", "info", "silent"].includes(logLevel)) {
@@ -205,5 +212,8 @@ export const config = {
   oneSignalAppId,
   oneSignalRestApiKey,
   oneSignalSafariWebId,
+  agoraAppId,
+  agoraAppCertificate,
+  agoraTokenExpirySeconds,
   tokenTtl: "7d",
 };

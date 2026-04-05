@@ -12,6 +12,7 @@ import morgan from "morgan";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import agoraAccessTokenPackage from "agora-access-token";
 import {
   createToken,
   hashPassword,
@@ -38,6 +39,7 @@ import {
 
 const app = express();
 const execFileAsync = promisify(execFile);
+const { RtcRole, RtcTokenBuilder } = agoraAccessTokenPackage;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +60,7 @@ let cachedFfmpegPath = "";
 let cachedFfprobePath = "";
 const COMMUNITY_REALTIME_GLOBAL_TOPIC = "community:global";
 const COMMUNITY_REALTIME_PRESENCE_TOPIC = "community:presence";
+const communityCallSessionsByConversation = new Map();
 
 function resolveWingetFfmpegBinary(binaryName = "ffmpeg.exe") {
   const localAppData = String(process.env.LOCALAPPDATA || "").trim();
@@ -261,6 +264,8 @@ const MAX_GROUP_MEMBERS = 50;
 const MAX_ACTIVE_STATUSES_PER_USER = 20;
 const COMMUNITY_STATUS_MAX_VIDEO_SECONDS = 30;
 const STATUS_TTL_MS = 24 * 60 * 60 * 1000;
+const COMMUNITY_CALL_MODE_VALUES = new Set(["voice", "video"]);
+const COMMUNITY_CALL_MAX_DURATION_MS = 2 * 60 * 60 * 1000;
 const COMMUNITY_MODERATION_BLOCK_MESSAGE = "This content violates our guidelines and cannot be shared.";
 const COMMUNITY_MODERATION_VIDEO_FRAME_INTERVAL_SECONDS = 2;
 const COMMUNITY_RESTRICTED_TEXT_PATTERNS = [
@@ -275,6 +280,153 @@ const COMMUNITY_RESTRICTED_TEXT_PATTERNS = [
 
 function normalizeBioValue(value) {
   return normalizeWhitespace(String(value || "")).slice(0, 280);
+}
+
+function normalizeCommunityCallMode(value = "voice") {
+  const mode = String(value || "").trim().toLowerCase();
+  return COMMUNITY_CALL_MODE_VALUES.has(mode) ? mode : "voice";
+}
+
+function sanitizeCommunityCallChannelToken(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 60);
+}
+
+function buildCommunityCallChannelName(conversationId = "", callId = "") {
+  const conversationToken = sanitizeCommunityCallChannelToken(conversationId).slice(0, 32);
+  const callToken = sanitizeCommunityCallChannelToken(callId).slice(0, 18);
+  return `ajix-${conversationToken || "community"}-${callToken || "call"}`;
+}
+
+function isCommunityCallSessionActive(session = null, nowMs = Date.now()) {
+  const payload = session && typeof session === "object" ? session : null;
+  if (!payload) return false;
+  if (String(payload.endedAt || "").trim()) return false;
+  const expiresMs = Date.parse(String(payload.expiresAt || ""));
+  return Number.isFinite(expiresMs) && expiresMs > nowMs;
+}
+
+function pruneInactiveCommunityCallSessions(nowMs = Date.now()) {
+  communityCallSessionsByConversation.forEach((session, conversationId) => {
+    if (!isCommunityCallSessionActive(session, nowMs)) {
+      communityCallSessionsByConversation.delete(conversationId);
+    }
+  });
+}
+
+function getActiveCommunityCallSession(conversationId = "", nowMs = Date.now()) {
+  pruneInactiveCommunityCallSessions(nowMs);
+  const safeConversationId = String(conversationId || "").trim();
+  if (!safeConversationId) return null;
+  const session = communityCallSessionsByConversation.get(safeConversationId);
+  return isCommunityCallSessionActive(session, nowMs) ? session : null;
+}
+
+function buildCommunityCallPublicPayload(session = {}) {
+  const safeSession = session && typeof session === "object" ? session : {};
+  return {
+    id: String(safeSession.id || "").trim(),
+    conversationId: String(safeSession.conversationId || "").trim(),
+    mode: normalizeCommunityCallMode(safeSession.mode),
+    channelName: String(safeSession.channelName || "").trim(),
+    startedByUserId: String(safeSession.startedByUserId || "").trim(),
+    startedAt: String(safeSession.startedAt || "").trim(),
+    expiresAt: String(safeSession.expiresAt || "").trim(),
+    participantUserIds: Array.isArray(safeSession.participantUserIds)
+      ? [...new Set(safeSession.participantUserIds.map((value) => String(value || "").trim()).filter(Boolean))]
+      : [],
+    active: isCommunityCallSessionActive(safeSession),
+  };
+}
+
+function assertAgoraCallConfigReady() {
+  if (!config.agoraAppId || !config.agoraAppCertificate) {
+    const error = new Error("Voice and video calls are not configured yet.");
+    error.status = 503;
+    throw error;
+  }
+  if (!RtcTokenBuilder || typeof RtcTokenBuilder.buildTokenWithUid !== "function") {
+    const error = new Error("Call token generator is unavailable on the server.");
+    error.status = 503;
+    throw error;
+  }
+}
+
+function buildAgoraCallTokenPayload(session = {}, userId = "") {
+  assertAgoraCallConfigReady();
+  const safeSession = session && typeof session === "object" ? session : {};
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) {
+    const error = new Error("A valid call user is required.");
+    error.status = 400;
+    throw error;
+  }
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const expiresAtSeconds = Number(safeSession.expiresAtSeconds || 0);
+  const tokenExpirySeconds = Number.isFinite(expiresAtSeconds) && expiresAtSeconds > nowSeconds
+    ? expiresAtSeconds
+    : nowSeconds + config.agoraTokenExpirySeconds;
+  const uid = crypto.randomInt(1, 2147483000);
+  const token = RtcTokenBuilder.buildTokenWithUid(
+    config.agoraAppId,
+    config.agoraAppCertificate,
+    String(safeSession.channelName || "").trim(),
+    uid,
+    RtcRole.PUBLISHER,
+    tokenExpirySeconds,
+  );
+  return {
+    appId: config.agoraAppId,
+    channelName: String(safeSession.channelName || "").trim(),
+    uid,
+    token,
+    tokenExpiresAt: new Date(tokenExpirySeconds * 1000).toISOString(),
+  };
+}
+
+function createCommunityCallSession({
+  conversationId = "",
+  mode = "voice",
+  startedByUserId = "",
+} = {}) {
+  const safeConversationId = String(conversationId || "").trim();
+  const safeStartedByUserId = String(startedByUserId || "").trim();
+  if (!safeConversationId || !safeStartedByUserId) return null;
+  const nowMs = Date.now();
+  const expiresAtMs = nowMs + Math.max(
+    300 * 1000,
+    Math.min(COMMUNITY_CALL_MAX_DURATION_MS, Number(config.agoraTokenExpirySeconds || 3600) * 1000),
+  );
+  const session = {
+    id: crypto.randomUUID(),
+    conversationId: safeConversationId,
+    mode: normalizeCommunityCallMode(mode),
+    channelName: "",
+    startedByUserId: safeStartedByUserId,
+    participantUserIds: [safeStartedByUserId],
+    startedAt: new Date(nowMs).toISOString(),
+    expiresAt: new Date(expiresAtMs).toISOString(),
+    expiresAtSeconds: Math.floor(expiresAtMs / 1000),
+    endedAt: "",
+    updatedAt: new Date(nowMs).toISOString(),
+  };
+  session.channelName = buildCommunityCallChannelName(session.conversationId, session.id);
+  return session;
+}
+
+async function getCommunityConversationForMember(conversationId = "", memberId = "") {
+  const safeConversationId = String(conversationId || "").trim();
+  const safeMemberId = String(memberId || "").trim();
+  if (!safeConversationId || !safeMemberId) return null;
+  const conversations = (await readCollection("conversations")).map(normalizeConversation);
+  const conversation = conversations.find((entry) => entry.id === safeConversationId);
+  if (!conversation || !Array.isArray(conversation.memberIds) || !conversation.memberIds.includes(safeMemberId)) {
+    return null;
+  }
+  return conversation;
 }
 
 function normalizePrivacySettings(raw = {}) {
@@ -4496,6 +4648,188 @@ app.post(
       ]);
     }
     res.status(201).json({ ok: true, conversation });
+  }),
+);
+
+app.get(
+  "/api/community/conversations/:conversationId/calls/active",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    const activeSession = getActiveCommunityCallSession(conversation.id);
+    res.json({
+      call: activeSession ? buildCommunityCallPublicPayload(activeSession) : null,
+    });
+  }),
+);
+
+app.post(
+  "/api/community/conversations/:conversationId/calls/start",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const mode = normalizeCommunityCallMode(req.body?.mode || "voice");
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    try {
+      assertAgoraCallConfigReady();
+    } catch (error) {
+      res.status(Number(error?.status) || 503).json({ error: String(error?.message || "Call setup failed.") });
+      return;
+    }
+    const blocks = (await readCollection("blocks")).map(normalizeBlock);
+    const partnerId =
+      conversation.type === "direct"
+        ? String(conversation.memberIds.find((memberId) => memberId !== viewerId) || "").trim()
+        : "";
+    if (partnerId && isBlocked(blocks, viewerId, partnerId)) {
+      res.status(403).json({ error: "unblock user first" });
+      return;
+    }
+
+    let session = getActiveCommunityCallSession(conversation.id);
+    let created = false;
+    if (session && normalizeCommunityCallMode(session.mode) !== mode) {
+      res.status(409).json({
+        error: "An active call already exists in this conversation.",
+        call: buildCommunityCallPublicPayload(session),
+      });
+      return;
+    }
+    if (!session) {
+      session = createCommunityCallSession({
+        conversationId: conversation.id,
+        mode,
+        startedByUserId: viewerId,
+      });
+      if (!session) {
+        res.status(400).json({ error: "Call could not be started." });
+        return;
+      }
+      communityCallSessionsByConversation.set(conversation.id, session);
+      created = true;
+    }
+    if (!session.participantUserIds.includes(viewerId)) {
+      session.participantUserIds = [...session.participantUserIds, viewerId];
+    }
+    session.updatedAt = new Date().toISOString();
+    communityCallSessionsByConversation.set(conversation.id, session);
+
+    const rtc = buildAgoraCallTokenPayload(session, viewerId);
+    fireCommunityRealtimeMessages(
+      buildCommunityConversationRealtimeMessages(conversation.id, {
+        reason: created ? "call-started" : "call-joined",
+        callId: session.id,
+        mode: session.mode,
+      }),
+    );
+    res.status(created ? 201 : 200).json({
+      ok: true,
+      created,
+      call: buildCommunityCallPublicPayload(session),
+      rtc,
+    });
+  }),
+);
+
+app.post(
+  "/api/community/conversations/:conversationId/calls/join",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const requestedCallId = String(req.body?.callId || "").trim();
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    const session = getActiveCommunityCallSession(conversation.id);
+    if (!session) {
+      res.status(404).json({ error: "no active call in this conversation" });
+      return;
+    }
+    if (requestedCallId && session.id !== requestedCallId) {
+      res.status(409).json({
+        error: "That call session has ended.",
+        call: buildCommunityCallPublicPayload(session),
+      });
+      return;
+    }
+    try {
+      assertAgoraCallConfigReady();
+    } catch (error) {
+      res.status(Number(error?.status) || 503).json({ error: String(error?.message || "Call join failed.") });
+      return;
+    }
+    if (!session.participantUserIds.includes(viewerId)) {
+      session.participantUserIds = [...session.participantUserIds, viewerId];
+      session.updatedAt = new Date().toISOString();
+      communityCallSessionsByConversation.set(conversation.id, session);
+    }
+    const rtc = buildAgoraCallTokenPayload(session, viewerId);
+    fireCommunityRealtimeMessages(
+      buildCommunityConversationRealtimeMessages(conversation.id, {
+        reason: "call-joined",
+        callId: session.id,
+        mode: session.mode,
+      }),
+    );
+    res.json({
+      ok: true,
+      call: buildCommunityCallPublicPayload(session),
+      rtc,
+    });
+  }),
+);
+
+app.post(
+  "/api/community/conversations/:conversationId/calls/end",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const requestedCallId = String(req.body?.callId || "").trim();
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    const session = getActiveCommunityCallSession(conversation.id);
+    if (!session) {
+      res.json({ ok: true });
+      return;
+    }
+    if (requestedCallId && session.id !== requestedCallId) {
+      res.status(409).json({
+        error: "That call session has already changed.",
+        call: buildCommunityCallPublicPayload(session),
+      });
+      return;
+    }
+    communityCallSessionsByConversation.delete(conversation.id);
+    fireCommunityRealtimeMessages(
+      buildCommunityConversationRealtimeMessages(conversation.id, {
+        reason: "call-ended",
+        callId: session.id,
+        mode: session.mode,
+      }),
+    );
+    res.json({ ok: true });
   }),
 );
 

@@ -4731,6 +4731,7 @@ app.post(
     fireCommunityRealtimeMessages(
       buildCommunityConversationRealtimeMessages(conversation.id, {
         reason: created ? "call-started" : "call-joined",
+        actorUserId: viewerId,
         callId: session.id,
         mode: session.mode,
       }),
@@ -4784,6 +4785,7 @@ app.post(
     fireCommunityRealtimeMessages(
       buildCommunityConversationRealtimeMessages(conversation.id, {
         reason: "call-joined",
+        actorUserId: viewerId,
         callId: session.id,
         mode: session.mode,
       }),
@@ -4825,6 +4827,7 @@ app.post(
     fireCommunityRealtimeMessages(
       buildCommunityConversationRealtimeMessages(conversation.id, {
         reason: "call-ended",
+        actorUserId: viewerId,
         callId: session.id,
         mode: session.mode,
       }),

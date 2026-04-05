@@ -2132,20 +2132,25 @@
         </div>
       </div>
 
-      <div id="community-call-modal" class="modal hidden" aria-hidden="true">
-        <div class="modal-card community-call-modal-card">
+      <div id="community-call-modal" class="community-call-screen hidden" aria-hidden="true">
+        <div class="community-call-screen-surface">
           <div class="community-call-kicker">Community Call</div>
-          <h3 id="community-call-title" class="modal-title">Voice call</h3>
-          <p id="community-call-status" class="modal-text">Connecting...</p>
+          <h3 id="community-call-title" class="community-call-title">Voice call</h3>
+          <p id="community-call-status" class="community-call-status">Connecting...</p>
           <div id="community-call-video-stage" class="community-call-video-stage hidden" aria-hidden="true">
             <div id="community-call-remote-video" class="community-call-video-panel"></div>
             <div id="community-call-local-video" class="community-call-video-panel is-local"></div>
           </div>
           <audio id="community-call-remote-audio" autoplay playsinline></audio>
-          <div class="modal-actions community-call-actions">
-            <button id="community-call-mute-btn" type="button" class="modal-btn secondary">Mute</button>
-            <button id="community-call-video-toggle-btn" type="button" class="modal-btn secondary hidden">Camera Off</button>
-            <button id="community-call-end-btn" type="button" class="modal-btn primary">End</button>
+          <div id="community-call-incoming-actions" class="community-call-actions community-call-incoming-actions hidden">
+            <button id="community-call-decline-btn" type="button" class="community-call-btn danger">Decline</button>
+            <button id="community-call-answer-btn" type="button" class="community-call-btn success">Answer</button>
+          </div>
+          <div id="community-call-ongoing-actions" class="community-call-actions community-call-ongoing-actions hidden">
+            <button id="community-call-mute-btn" type="button" class="community-call-btn neutral">Mute</button>
+            <button id="community-call-speaker-btn" type="button" class="community-call-btn neutral">Speaker</button>
+            <button id="community-call-video-toggle-btn" type="button" class="community-call-btn neutral hidden">Camera Off</button>
+            <button id="community-call-end-btn" type="button" class="community-call-btn danger">End</button>
           </div>
         </div>
       </div>

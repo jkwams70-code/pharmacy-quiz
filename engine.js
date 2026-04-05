@@ -1099,8 +1099,13 @@ const communityCallRemoteAudioEl = document.getElementById("community-call-remot
 const communityCallVideoStageEl = document.getElementById("community-call-video-stage");
 const communityCallRemoteVideoEl = document.getElementById("community-call-remote-video");
 const communityCallLocalVideoEl = document.getElementById("community-call-local-video");
+const communityCallIncomingActionsEl = document.getElementById("community-call-incoming-actions");
+const communityCallOngoingActionsEl = document.getElementById("community-call-ongoing-actions");
 const communityCallMuteBtn = document.getElementById("community-call-mute-btn");
+const communityCallSpeakerBtn = document.getElementById("community-call-speaker-btn");
 const communityCallVideoToggleBtn = document.getElementById("community-call-video-toggle-btn");
+const communityCallDeclineBtn = document.getElementById("community-call-decline-btn");
+const communityCallAnswerBtn = document.getElementById("community-call-answer-btn");
 const communityCallEndBtn = document.getElementById("community-call-end-btn");
 const communityAvatarModalEl = document.getElementById("community-avatar-modal");
 const communityAvatarCloseBtn = document.getElementById("community-avatar-close-btn");
@@ -1249,6 +1254,7 @@ const APP_UPDATE_FEED_URL = "https://ajixpharmacy.online/app-update.json";
 const APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY = "quizAppUpdateDismissedVersionV1";
 const APP_UPDATE_CHECK_COOLDOWN_MS = 2 * 60 * 1000;
 const COMMUNITY_AGORA_SDK_URL = "https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.24.0/AgoraRTC_N-production.min.js";
+const COMMUNITY_CALL_RING_RETRY_MS = 1600;
 const COMMUNITY_NATIVE_BIOMETRIC_CREDENTIAL_ID = "__native_android_biometric__";
 const LIVE_ANSWER_ADVANCE_DELAY_MS = 1800;
 const COMMUNITY_LOCK_PIN_MIN_LENGTH = 4;
@@ -2752,6 +2758,9 @@ let communityCallLocalVideoTrack = null;
 let communityCallRemoteAudioTrack = null;
 let communityCallRemoteVideoTrack = null;
 let communityCallConnected = false;
+let communityCallSpeakerEnabled = true;
+let communityCallRingHandle = null;
+let communityCallAudioContext = null;
 let communityStatusHoldHandle = null;
 let communityStatusHoldWasTriggered = false;
 let communityStatusSwipeState = null;
@@ -2831,6 +2840,8 @@ const communityState = {
   activeConversation: null,
   activeConversationPartner: null,
   activeCall: null,
+  callScreenMode: "idle",
+  callIncomingDismissedId: "",
   callProbeAt: 0,
   communityLockSessionUnlocked: true,
   chatPollHandle: null,
@@ -4536,7 +4547,9 @@ async function ensureCommunityGlobalRealtimeSubscription() {
     },
   });
   channel.on("broadcast", { event: "community.overview.changed" }, ({ payload }) => {
-    maybeShowCommunityCustomAlert(payload && typeof payload === "object" ? payload : {});
+    const safePayload = payload && typeof payload === "object" ? payload : {};
+    maybeShowCommunityCustomAlert(safePayload);
+    handleCommunityGlobalRealtimeSignal(safePayload);
     scheduleCommunityRealtimeOverviewRefresh();
     if (getActiveScreenId() === "community-chat-screen") {
       scheduleCommunityRealtimeConversationRefresh();
@@ -4605,9 +4618,10 @@ async function ensureCommunityConversationRealtimeSubscription() {
       broadcast: { self: false },
     },
   });
-  channel.on("broadcast", { event: "community.conversation.changed" }, () => {
+  channel.on("broadcast", { event: "community.conversation.changed" }, ({ payload }) => {
     scheduleCommunityRealtimeConversationRefresh();
     scheduleCommunityRealtimeOverviewRefresh();
+    handleCommunityConversationRealtimeSignal(payload);
   });
   channel.on("broadcast", { event: "community.typing" }, ({ payload }) => {
     const nextPayload = payload && typeof payload === "object" ? payload : {};
@@ -4756,23 +4770,55 @@ function getCommunityCallModeLabel(mode = "voice") {
   return String(mode || "").trim().toLowerCase() === "video" ? "Video" : "Voice";
 }
 
+function getCommunityCallPeerLabel() {
+  const conversation = communityState.activeConversation || {};
+  const partner = communityState.activeConversationPartner || {};
+  if (String(conversation.type || "").trim().toLowerCase() === "direct") {
+    return getCommunityDisplayName(partner) || String(conversation.title || "").trim() || "Contact";
+  }
+  return String(conversation.title || "").trim() || "Group";
+}
+
+function setCommunityCallScreenMode(mode = "idle") {
+  const safeMode = String(mode || "idle").trim().toLowerCase();
+  communityState.callScreenMode = safeMode || "idle";
+}
+
 function setCommunityCallStatus(message = "") {
   if (!communityCallStatusEl) return;
   communityCallStatusEl.textContent = String(message || "").trim();
 }
 
 function syncCommunityCallActionButtons() {
+  const currentMode = String(communityState.callScreenMode || "idle").trim().toLowerCase();
+  const incomingMode = currentMode === "incoming";
+  if (communityCallIncomingActionsEl) {
+    communityCallIncomingActionsEl.classList.toggle("hidden", !incomingMode);
+  }
+  if (communityCallOngoingActionsEl) {
+    communityCallOngoingActionsEl.classList.toggle("hidden", incomingMode || !communityState.activeCall);
+  }
   if (communityCallMuteBtn) {
     const enabled = Boolean(communityCallLocalAudioTrack?.enabled);
     communityCallMuteBtn.textContent = enabled ? "Mute" : "Unmute";
-    communityCallMuteBtn.disabled = !(communityCallLocalAudioTrack && communityCallConnected);
+    communityCallMuteBtn.disabled = incomingMode || !(communityCallLocalAudioTrack && communityCallConnected);
+  }
+  if (communityCallSpeakerBtn) {
+    communityCallSpeakerBtn.textContent = communityCallSpeakerEnabled ? "Speaker On" : "Speaker Off";
+    communityCallSpeakerBtn.disabled = incomingMode || !communityState.activeCall;
   }
   if (communityCallVideoToggleBtn) {
     const videoMode = String(communityState.activeCall?.mode || "").trim().toLowerCase() === "video";
     const enabled = Boolean(communityCallLocalVideoTrack?.enabled);
     communityCallVideoToggleBtn.classList.toggle("hidden", !videoMode);
-    communityCallVideoToggleBtn.disabled = !videoMode || !(communityCallLocalVideoTrack && communityCallConnected);
+    communityCallVideoToggleBtn.disabled = incomingMode || !videoMode || !(communityCallLocalVideoTrack && communityCallConnected);
     communityCallVideoToggleBtn.textContent = enabled ? "Camera Off" : "Camera On";
+  }
+  if (communityCallDeclineBtn) {
+    communityCallDeclineBtn.disabled = !communityState.activeCall;
+  }
+  if (communityCallAnswerBtn) {
+    communityCallAnswerBtn.disabled = !incomingMode || !communityState.activeCall;
   }
   if (communityCallEndBtn) {
     communityCallEndBtn.disabled = !communityState.activeCall;
@@ -4791,6 +4837,7 @@ function setCommunityChatActiveCallBar(callPayload = null) {
       callConversationId &&
       callConversationId === activeConversationId &&
       getActiveScreenId() === "community-chat-screen" &&
+      String(communityState.callScreenMode || "") !== "incoming" &&
       !communityCallConnected,
     );
   communityChatActiveCallBarEl.classList.toggle("hidden", !show);
@@ -4806,6 +4853,140 @@ function setCommunityCallModalOpen(open = false) {
   const next = Boolean(open);
   communityCallModalEl.classList.toggle("hidden", !next);
   communityCallModalEl.setAttribute("aria-hidden", next ? "false" : "true");
+  document.body?.classList?.toggle?.("community-call-open", next);
+}
+
+function playCommunityRingPulse() {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return;
+  try {
+    if (!communityCallAudioContext) {
+      communityCallAudioContext = new AudioCtx();
+    }
+    const context = communityCallAudioContext;
+    if (!context || context.state === "closed") return;
+    if (context.state === "suspended") {
+      context.resume().catch(() => {});
+    }
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(790, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(1040, context.currentTime + 0.22);
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, context.currentTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.34);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.36);
+  } catch {}
+}
+
+function stopCommunityIncomingRing() {
+  if (communityCallRingHandle) {
+    clearInterval(communityCallRingHandle);
+    communityCallRingHandle = null;
+  }
+  if (navigator?.vibrate instanceof Function) {
+    navigator.vibrate(0);
+  }
+}
+
+function startCommunityIncomingRing() {
+  stopCommunityIncomingRing();
+  playCommunityRingPulse();
+  communityCallRingHandle = setInterval(() => {
+    if (String(communityState.callScreenMode || "") !== "incoming") {
+      stopCommunityIncomingRing();
+      return;
+    }
+    playCommunityRingPulse();
+  }, COMMUNITY_CALL_RING_RETRY_MS);
+  if (navigator?.vibrate instanceof Function) {
+    navigator.vibrate([250, 120, 250, 120, 250]);
+  }
+}
+
+function openCommunityIncomingCallScreen(call = null) {
+  const safeCall = call && typeof call === "object" ? call : null;
+  if (!safeCall) return;
+  if (communityCallConnected) return;
+  const currentUserId = String(currentUser?.id || "").trim();
+  if (!currentUserId || String(safeCall.startedByUserId || "").trim() === currentUserId) return;
+  if (String(communityState.callIncomingDismissedId || "") === String(safeCall.id || "")) return;
+  communityState.activeCall = safeCall;
+  setCommunityCallScreenMode("incoming");
+  setCommunityCallModalOpen(true);
+  const modeLabel = getCommunityCallModeLabel(safeCall.mode);
+  if (communityCallTitleEl) {
+    communityCallTitleEl.textContent = `${modeLabel} call from ${getCommunityCallPeerLabel()}`;
+  }
+  setCommunityCallStatus(`Incoming ${modeLabel.toLowerCase()} call`);
+  communityCallVideoStageEl?.classList.toggle("hidden", true);
+  communityCallVideoStageEl?.setAttribute("aria-hidden", "true");
+  startCommunityIncomingRing();
+  syncCommunityCallActionButtons();
+}
+
+function handleCommunityConversationRealtimeSignal(payload = {}) {
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const reason = String(safePayload.reason || "").trim().toLowerCase();
+  if (!reason.startsWith("call-")) return;
+  const currentUserId = String(currentUser?.id || "").trim();
+  const actorUserId = String(safePayload.actorUserId || "").trim();
+  const eventCallId = String(safePayload.callId || "").trim();
+  if (reason === "call-started") {
+    if (actorUserId && actorUserId === currentUserId) return;
+    void refreshCommunityConversationActiveCall({ silent: true, force: true })
+      .then((call) => {
+        if (!call || String(call.id || "").trim() !== eventCallId) return;
+        openCommunityIncomingCallScreen(call);
+      })
+      .catch(() => {});
+    return;
+  }
+  if (reason === "call-joined") {
+    if (actorUserId && actorUserId === currentUserId) return;
+    if (!communityState.activeCall || String(communityState.activeCall.id || "").trim() !== eventCallId) return;
+    if (communityCallConnected) {
+      setCommunityCallScreenMode("connected");
+      stopCommunityIncomingRing();
+      setCommunityCallStatus("Connected");
+      syncCommunityCallActionButtons();
+    }
+    return;
+  }
+  if (reason === "call-ended") {
+    if (!communityState.activeCall || String(communityState.activeCall.id || "").trim() !== eventCallId) return;
+    void endCommunityConversationCall({ notifyBackend: false, silent: true })
+      .then(() => {
+        setCommunityFeedback("Call ended.");
+      })
+      .catch(() => {});
+  }
+}
+
+function handleCommunityGlobalRealtimeSignal(payload = {}) {
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const scope = String(safePayload.scope || "").trim().toLowerCase();
+  const reason = String(safePayload.reason || "").trim().toLowerCase();
+  if (scope !== "conversations" || reason !== "call-started") return;
+  const currentUserId = String(currentUser?.id || "").trim();
+  const actorUserId = String(safePayload.actorUserId || "").trim();
+  if (currentUserId && actorUserId && actorUserId === currentUserId) return;
+  const conversationId = String(safePayload.conversationId || "").trim();
+  if (!conversationId) return;
+  const activeScreen = String(getActiveScreenId() || "");
+  if (!activeScreen.startsWith("community-")) return;
+  const activeConversationId = String(communityState.activeConversation?.id || "").trim();
+  if (activeScreen !== "community-chat-screen" || activeConversationId !== conversationId) {
+    void openCommunityConversation("", conversationId)
+      .then(() => refreshCommunityConversationActiveCall({ silent: true, force: true }))
+      .catch(() => {});
+    return;
+  }
+  void refreshCommunityConversationActiveCall({ silent: true, force: true });
 }
 
 function resetCommunityCallMediaUi() {
@@ -4879,7 +5060,10 @@ function bindCommunityCallClientEvents(client) {
       try {
         user.audioTrack.play();
       } catch {}
+      setCommunityCallScreenMode("connected");
+      stopCommunityIncomingRing();
       setCommunityCallStatus("Connected");
+      syncCommunityCallActionButtons();
     }
     if (mediaType === "video" && user?.videoTrack && communityCallRemoteVideoEl) {
       communityCallRemoteVideoTrack = user.videoTrack;
@@ -4906,14 +5090,19 @@ function bindCommunityCallClientEvents(client) {
         communityCallRemoteVideoEl.innerHTML = "";
       }
     }
+    setCommunityCallScreenMode("outgoing");
     setCommunityCallStatus("Connected. Waiting for participant...");
+    syncCommunityCallActionButtons();
   });
   client.on("user-left", () => {
+    setCommunityCallScreenMode("outgoing");
     setCommunityCallStatus("Participant left. Waiting...");
+    syncCommunityCallActionButtons();
   });
 }
 
 async function destroyCommunityCallTransport() {
+  stopCommunityIncomingRing();
   const audioTrack = communityCallLocalAudioTrack;
   const videoTrack = communityCallLocalVideoTrack;
   const client = communityCallClient;
@@ -4962,7 +5151,9 @@ async function endCommunityConversationCall({
     : null;
   await destroyCommunityCallTransport();
   setCommunityCallModalOpen(false);
+  setCommunityCallScreenMode("idle");
   communityState.activeCall = null;
+  communityState.callIncomingDismissedId = "";
   communityState.callProbeAt = 0;
   setCommunityChatActiveCallBar(null);
   syncCommunityCallActionButtons();
@@ -4990,13 +5181,15 @@ async function joinCommunityCallFromPayload(payload = {}) {
   }
   const mode = String(call.mode || "voice").trim().toLowerCase() === "video" ? "video" : "voice";
   setCommunityCallModalOpen(true);
+  setCommunityCallScreenMode("connecting");
   if (communityCallTitleEl) {
     const modeLabel = getCommunityCallModeLabel(mode);
-    communityCallTitleEl.textContent = `${modeLabel} call`;
+    communityCallTitleEl.textContent = `${modeLabel} call • ${getCommunityCallPeerLabel()}`;
   }
   setCommunityCallStatus("Connecting...");
   communityCallVideoStageEl?.classList.toggle("hidden", mode !== "video");
   communityCallVideoStageEl?.setAttribute("aria-hidden", mode === "video" ? "false" : "true");
+  syncCommunityCallActionButtons();
   await destroyCommunityCallTransport();
   const AgoraRTC = await loadCommunityAgoraRtcSdk();
   const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
@@ -5006,6 +5199,7 @@ async function joinCommunityCallFromPayload(payload = {}) {
     ...call,
     mode,
   };
+  communityState.callIncomingDismissedId = "";
   communityState.callProbeAt = Date.now();
   await client.join(
     String(rtc.appId || "").trim(),
@@ -5029,7 +5223,18 @@ async function joinCommunityCallFromPayload(payload = {}) {
     await client.publish([audioTrack]);
   }
   communityCallConnected = true;
-  setCommunityCallStatus("Connected. Waiting for participant...");
+  const currentUserId = String(currentUser?.id || "").trim();
+  const hasPeerInCall = Array.isArray(call.participantUserIds)
+    ? call.participantUserIds.some((userId) => String(userId || "").trim() && String(userId || "").trim() !== currentUserId)
+    : false;
+  const startedBySelf = String(call.startedByUserId || "").trim() === currentUserId;
+  if (startedBySelf && !hasPeerInCall) {
+    setCommunityCallScreenMode("outgoing");
+    setCommunityCallStatus("Ringing...");
+  } else {
+    setCommunityCallScreenMode("connected");
+    setCommunityCallStatus(hasPeerInCall ? "Connected" : "Connected. Waiting for participant...");
+  }
   setCommunityChatActiveCallBar(null);
   syncCommunityCallActionButtons();
 }
@@ -5041,15 +5246,23 @@ async function startCommunityConversationCall(mode = "voice") {
     return;
   }
   if (
-    communityCallConnected &&
     communityState.activeCall &&
     String(communityState.activeCall.conversationId || "").trim() === safeConversationId
   ) {
-    setCommunityFeedback("You are already in this call.");
+    if (communityCallConnected) {
+      setCommunityFeedback("You are already in this call.");
+      return;
+    }
+    if (String(communityState.callScreenMode || "") === "incoming") {
+      setCommunityFeedback("Answer or decline the incoming call first.", true);
+      return;
+    }
+    setCommunityFeedback("A call is already active in this chat.");
     return;
   }
   const safeMode = String(mode || "").trim().toLowerCase() === "video" ? "video" : "voice";
   try {
+    communityState.callIncomingDismissedId = "";
     const payload = await backendClient.startCommunityConversationCall(safeConversationId, safeMode);
     await joinCommunityCallFromPayload(payload);
     setCommunityFeedback(`${getCommunityCallModeLabel(safeMode)} call started.`);
@@ -5075,6 +5288,8 @@ async function joinCommunityConversationActiveCall(callPayload = null) {
     return;
   }
   try {
+    communityState.callIncomingDismissedId = "";
+    stopCommunityIncomingRing();
     const payload = await backendClient.joinCommunityConversationCall(safeConversationId, safeCallId);
     await joinCommunityCallFromPayload(payload);
     setCommunityFeedback("Joined active call.");
@@ -5103,10 +5318,21 @@ async function refreshCommunityConversationActiveCall({ silent = true, force = f
       setCommunityFeedback("Call ended.");
       return null;
     }
+    if (!call && !communityCallConnected && communityState.activeCall) {
+      communityState.activeCall = null;
+      setCommunityCallModalOpen(false);
+      setCommunityCallScreenMode("idle");
+      stopCommunityIncomingRing();
+    }
     if (call && communityCallConnected && String(communityState.activeCall?.id || "") === String(call.id || "")) {
       communityState.activeCall = { ...communityState.activeCall, ...call };
     } else if (!communityCallConnected) {
       communityState.activeCall = call;
+      const currentUserId = String(currentUser?.id || "").trim();
+      const startedBySelf = String(call?.startedByUserId || "").trim() === currentUserId;
+      if (!startedBySelf && String(communityState.callIncomingDismissedId || "") !== String(call?.id || "")) {
+        openCommunityIncomingCallScreen(call);
+      }
     }
     setCommunityChatActiveCallBar(call);
     return call;
@@ -5134,6 +5360,49 @@ async function toggleCommunityCallVideoEnabled() {
     await communityCallLocalVideoTrack.setEnabled(nextEnabled);
   } catch {}
   syncCommunityCallActionButtons();
+}
+
+async function toggleCommunityCallSpeaker() {
+  communityCallSpeakerEnabled = !communityCallSpeakerEnabled;
+  if (communityCallRemoteAudioEl) {
+    communityCallRemoteAudioEl.volume = communityCallSpeakerEnabled ? 1 : 0.75;
+  }
+  if (!("setSinkId" in HTMLMediaElement.prototype)) {
+    setCommunityFeedback("Speaker routing follows your phone audio route.", false);
+  }
+  syncCommunityCallActionButtons();
+}
+
+async function answerCommunityIncomingCall() {
+  const activeCall = communityState.activeCall && typeof communityState.activeCall === "object"
+    ? { ...communityState.activeCall }
+    : null;
+  if (!activeCall) return;
+  stopCommunityIncomingRing();
+  setCommunityCallScreenMode("outgoing");
+  setCommunityCallStatus("Connecting...");
+  syncCommunityCallActionButtons();
+  await joinCommunityConversationActiveCall(activeCall);
+}
+
+async function declineCommunityIncomingCall() {
+  const activeCall = communityState.activeCall && typeof communityState.activeCall === "object"
+    ? { ...communityState.activeCall }
+    : null;
+  const safeConversationId = String(activeCall?.conversationId || communityState.activeConversation?.id || "").trim();
+  const safeCallId = String(activeCall?.id || "").trim();
+  stopCommunityIncomingRing();
+  communityState.callIncomingDismissedId = safeCallId;
+  setCommunityCallModalOpen(false);
+  setCommunityCallScreenMode("idle");
+  syncCommunityCallActionButtons();
+  if (safeConversationId && safeCallId && String(communityState.activeConversation?.type || "").trim().toLowerCase() === "direct") {
+    try {
+      await backendClient.endCommunityConversationCall(safeConversationId, safeCallId);
+      communityState.activeCall = null;
+    } catch {}
+  }
+  setCommunityFeedback("Call declined.");
 }
 
 function renderCommunitySummaryCard(label, value, tab, note = "") {
@@ -12695,18 +12964,10 @@ async function openCommunityConversation(userId = "", existingConversationId = "
       communityState.activeConversation = { id: conversationId };
     }
     if (
-      communityCallConnected &&
       communityState.activeCall &&
       String(communityState.activeCall.conversationId || "").trim() !== String(conversationId || "").trim()
     ) {
       await endCommunityConversationCall({ notifyBackend: true, silent: true });
-    } else if (
-      !communityCallConnected &&
-      communityState.activeCall &&
-      String(communityState.activeCall.conversationId || "").trim() !== String(conversationId || "").trim()
-    ) {
-      communityState.activeCall = null;
-      setCommunityChatActiveCallBar(null);
     }
 
     const partner =
@@ -16228,13 +16489,13 @@ document.querySelectorAll("[data-community-group-storage-tab]").forEach((button)
 
 if (communityChatBackBtn) {
   communityChatBackBtn.addEventListener("click", () => {
-    if (!communityCallConnected) {
+    if (!communityState.activeCall) {
       goBackByHistory("community-chat-screen", "community-screen");
       return;
     }
     openCommunityConfirmModal({
       title: "End call and leave chat?",
-      text: "Leaving this chat will end the current call for everyone in this conversation.",
+      text: "Leaving this chat will end the current call in this conversation.",
       confirmLabel: "End Call",
       intent: "danger",
       onConfirm: async () => {
@@ -16286,9 +16547,27 @@ if (communityCallMuteBtn) {
   });
 }
 
+if (communityCallSpeakerBtn) {
+  communityCallSpeakerBtn.addEventListener("click", () => {
+    void toggleCommunityCallSpeaker();
+  });
+}
+
 if (communityCallVideoToggleBtn) {
   communityCallVideoToggleBtn.addEventListener("click", () => {
     void toggleCommunityCallVideoEnabled();
+  });
+}
+
+if (communityCallDeclineBtn) {
+  communityCallDeclineBtn.addEventListener("click", () => {
+    void declineCommunityIncomingCall();
+  });
+}
+
+if (communityCallAnswerBtn) {
+  communityCallAnswerBtn.addEventListener("click", () => {
+    void answerCommunityIncomingCall();
   });
 }
 
@@ -25434,7 +25713,7 @@ function showScreen(id, options = {}) {
     void sendCommunityTypingState(false);
     stopCommunityChatPolling();
     stopCommunityConversationRealtimeSubscription();
-    if (communityCallConnected) {
+    if (communityState.activeCall) {
       void endCommunityConversationCall({ notifyBackend: true, silent: true });
     } else {
       setCommunityChatActiveCallBar(null);
@@ -25799,6 +26078,20 @@ window.addEventListener("popstate", function (event) {
   }
 
   if (activeId === "community-chat-screen") {
+    if (communityState.activeCall) {
+      openCommunityConfirmModal({
+        title: "End call and leave chat?",
+        text: "Leaving this chat will end the current call in this conversation.",
+        confirmLabel: "End Call",
+        intent: "danger",
+        onConfirm: async () => {
+          closeCommunityConfirmModal();
+          await endCommunityConversationCall({ notifyBackend: true, silent: true });
+          goBackByHistory("community-chat-screen", "community-screen");
+        },
+      });
+      return;
+    }
     goBackByHistory("community-chat-screen", "community-screen");
     return;
   }

@@ -50,6 +50,28 @@ const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || infe
 
 const CLIENT_ID_KEY = "quizClientId";
 const AUTH_TOKEN_KEY = "quizAuthToken";
+const UPLOAD_MIME_TYPE_ALIASES = {
+  "audio/mp3": "audio/mpeg",
+  "audio/m4a": "audio/mp4",
+  "audio/x-m4a": "audio/mp4",
+  "audio/mp4a-latm": "audio/mp4",
+  "audio/aac": "audio/mp4",
+  "audio/3gpp": "audio/mp4",
+  "audio/3gpp2": "audio/mp4",
+  "audio/amr": "audio/mp4",
+  "audio/x-wav": "audio/wav",
+  "video/mp4v-es": "video/mp4",
+  "video/x-quicktime": "video/quicktime",
+  "application/x-pdf": "application/pdf",
+};
+
+function normalizeUploadMimeType(value = "") {
+  const safeValue = String(value || "").trim().toLowerCase();
+  if (!safeValue) return "";
+  const baseMimeType = String(safeValue.split(";")[0] || "").trim();
+  if (!baseMimeType) return "";
+  return UPLOAD_MIME_TYPE_ALIASES[baseMimeType] || baseMimeType;
+}
 
 function getClientId() {
   const existing = localStorage.getItem(CLIENT_ID_KEY);
@@ -374,7 +396,7 @@ export const backendClient = {
       return Promise.reject(new Error("A group photo is required."));
     }
     return requestBinary("POST", `/community/groups/${encodeURIComponent(groupId)}/avatar/file`, file, {
-      contentType: String(file.type || "application/octet-stream").trim() || "application/octet-stream",
+      contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
       headers: {
         "x-group-avatar-name": encodeURIComponent(
           file instanceof File ? (file.name || "group-avatar") : "group-avatar",
@@ -425,7 +447,7 @@ export const backendClient = {
       mediaStyle: mediaStyle && typeof mediaStyle === "object" ? mediaStyle : null,
     }));
     return requestBinary("POST", `/community/conversations/${encodeURIComponent(conversationId)}/messages/file`, file, {
-      contentType: String(file.type || "application/octet-stream").trim() || "application/octet-stream",
+      contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
       headers: {
         "x-message-meta": meta,
       },
@@ -458,7 +480,7 @@ export const backendClient = {
       style,
     }));
     return requestBinary("POST", "/community/statuses/file", file, {
-      contentType: String(file.type || "application/octet-stream").trim() || "application/octet-stream",
+      contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
       headers: {
         "x-status-meta": meta,
       },
@@ -476,7 +498,7 @@ export const backendClient = {
       style,
     }));
     return requestBinary("POST", "/community/statuses/video", file, {
-      contentType: String(file.type || "application/octet-stream").trim() || "application/octet-stream",
+      contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
       headers: {
         "x-status-meta": meta,
       },

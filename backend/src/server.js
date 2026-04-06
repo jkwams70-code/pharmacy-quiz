@@ -251,6 +251,20 @@ const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "text/plain",
 ]);
+const MIME_TYPE_ALIASES = {
+  "audio/mp3": "audio/mpeg",
+  "audio/m4a": "audio/mp4",
+  "audio/x-m4a": "audio/mp4",
+  "audio/mp4a-latm": "audio/mp4",
+  "audio/aac": "audio/mp4",
+  "audio/3gpp": "audio/mp4",
+  "audio/3gpp2": "audio/mp4",
+  "audio/amr": "audio/mp4",
+  "audio/x-wav": "audio/wav",
+  "video/mp4v-es": "video/mp4",
+  "video/x-quicktime": "video/quicktime",
+  "application/x-pdf": "application/pdf",
+};
 const MAX_IMAGE_UPLOAD_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_UPLOAD_BYTES = 12 * 1024 * 1024;
 const MAX_AUDIO_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -823,7 +837,7 @@ function parseDataUrlByMime(value = "") {
   const markerIndex = text.toLowerCase().indexOf(marker);
   if (markerIndex <= 5) return null;
   const header = text.slice(5, markerIndex);
-  const mimeType = String(header.split(";")[0] || "").trim().toLowerCase();
+  const mimeType = normalizeUploadMimeType(header);
   const base64 = String(text.slice(markerIndex + marker.length) || "").replace(/\s+/g, "");
   if (!mimeType || !base64) return null;
   const buffer = Buffer.from(base64, "base64");
@@ -876,7 +890,7 @@ function createUploadFromDataUrl({ ownerUserId = "", kind = "chat-file", fileNam
 }
 
 function validateUploadBinary({ mimeType = "", buffer = Buffer.alloc(0) } = {}) {
-  const safeMimeType = String(mimeType || "").trim().toLowerCase();
+  const safeMimeType = normalizeUploadMimeType(mimeType);
   const safeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || []);
   if (!safeMimeType || !safeBuffer.length) {
     throw new Error("Unsupported attachment format.");
@@ -905,7 +919,7 @@ function isSupabaseStorageConfigured() {
 }
 
 function getSupabaseStorageResourceTypeForUpload(kind = "", mimeType = "") {
-  const safeMimeType = String(mimeType || "").trim().toLowerCase();
+  const safeMimeType = normalizeUploadMimeType(mimeType);
   const safeKind = String(kind || "").trim().toLowerCase();
   if (safeMimeType.startsWith("image/") || safeKind.includes("avatar") || safeKind.includes("image")) {
     return "image";
@@ -917,7 +931,7 @@ function getSupabaseStorageResourceTypeForUpload(kind = "", mimeType = "") {
 }
 
 function getUploadFileTypeFromMime(mimeType = "") {
-  const safeMimeType = String(mimeType || "").trim().toLowerCase();
+  const safeMimeType = normalizeUploadMimeType(mimeType);
   if (safeMimeType.startsWith("image/")) return "image";
   if (safeMimeType.startsWith("video/")) return "video";
   return "document";
@@ -938,7 +952,7 @@ function buildSupabaseStorageFolderByMime(mimeType = "") {
 }
 
 function getUploadExtensionFromMime(mimeType = "") {
-  const safeMimeType = String(mimeType || "").trim().toLowerCase();
+  const safeMimeType = normalizeUploadMimeType(mimeType);
   if (safeMimeType === "video/mp4") return ".mp4";
   if (safeMimeType === "video/webm") return ".webm";
   if (safeMimeType === "video/quicktime") return ".mov";
@@ -985,8 +999,16 @@ function inferUploadMimeTypeFromFileName(fileName = "") {
   return "";
 }
 
+function normalizeUploadMimeType(value = "") {
+  const safeValue = String(value || "").trim().toLowerCase();
+  if (!safeValue) return "";
+  const baseMimeType = String(safeValue.split(";")[0] || "").trim();
+  if (!baseMimeType) return "";
+  return MIME_TYPE_ALIASES[baseMimeType] || baseMimeType;
+}
+
 function resolveUploadMimeType(contentType = "", fileName = "") {
-  const safeContentType = String(contentType || "").trim().toLowerCase();
+  const safeContentType = normalizeUploadMimeType(contentType);
   if (safeContentType && safeContentType !== "application/octet-stream") {
     return safeContentType;
   }
@@ -1160,7 +1182,7 @@ function createUploadFromBuffer({
   mimeType = "",
   buffer = Buffer.alloc(0),
 } = {}) {
-  const safeMimeType = String(mimeType || "").trim().toLowerCase();
+  const safeMimeType = normalizeUploadMimeType(mimeType);
   const safeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || []);
   if (!safeMimeType || !safeBuffer.length) {
     throw new Error("Unsupported attachment format.");
@@ -5852,6 +5874,7 @@ app.post(
     let upload = null;
     if (attachmentDataUrl) {
       try {
+        const normalizedAttachmentMimeType = normalizeUploadMimeType(attachmentMimeType);
         const parsedAttachment = parseDataUrlByMime(attachmentDataUrl);
         if (!parsedAttachment) {
           throw new Error("Invalid attachment.");
@@ -5863,11 +5886,11 @@ app.post(
         upload = await createStoredUploadFromDataUrl({
           ownerUserId: viewerId,
           kind:
-            attachmentMimeType && ALLOWED_VIDEO_MIME_TYPES.has(attachmentMimeType)
+            normalizedAttachmentMimeType && ALLOWED_VIDEO_MIME_TYPES.has(normalizedAttachmentMimeType)
               ? "chat-video"
-              : attachmentMimeType && ALLOWED_AUDIO_MIME_TYPES.has(attachmentMimeType)
+              : normalizedAttachmentMimeType && ALLOWED_AUDIO_MIME_TYPES.has(normalizedAttachmentMimeType)
                 ? "chat-audio"
-              : attachmentMimeType && ALLOWED_IMAGE_MIME_TYPES.has(attachmentMimeType)
+              : normalizedAttachmentMimeType && ALLOWED_IMAGE_MIME_TYPES.has(normalizedAttachmentMimeType)
                 ? "chat-image"
                 : "chat-file",
           fileName: attachmentFileName,

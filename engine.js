@@ -2462,6 +2462,21 @@ function getCommunityPreferredAudioMimeType() {
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
 }
 
+function normalizeCommunityUploadMimeType(value = "") {
+  const safeValue = String(value || "").trim().toLowerCase();
+  if (!safeValue) return "";
+  const baseMimeType = String(safeValue.split(";")[0] || "").trim();
+  if (!baseMimeType) return "";
+  if (baseMimeType === "audio/mp3") return "audio/mpeg";
+  if (baseMimeType === "audio/m4a" || baseMimeType === "audio/x-m4a" || baseMimeType === "audio/mp4a-latm") return "audio/mp4";
+  if (baseMimeType === "audio/aac" || baseMimeType === "audio/3gpp" || baseMimeType === "audio/3gpp2" || baseMimeType === "audio/amr") return "audio/mp4";
+  if (baseMimeType === "audio/x-wav") return "audio/wav";
+  if (baseMimeType === "video/mp4v-es") return "video/mp4";
+  if (baseMimeType === "video/x-quicktime") return "video/quicktime";
+  if (baseMimeType === "application/x-pdf") return "application/pdf";
+  return baseMimeType;
+}
+
 function stopCommunityVoiceRecorderStream() {
   if (communityState.voiceRecorderStream) {
     communityState.voiceRecorderStream.getTracks().forEach((track) => track.stop());
@@ -2523,7 +2538,7 @@ async function sendCommunityVoiceNoteFile(file) {
 
 async function sendCommunityVoiceNote(blob) {
   if (!(blob instanceof Blob)) return;
-  const mimeType = String(blob.type || "audio/webm").trim().toLowerCase() || "audio/webm";
+  const mimeType = normalizeCommunityUploadMimeType(blob.type) || "audio/webm";
   const extension = mimeType.includes("ogg") ? "ogg" : mimeType.includes("mp4") ? "m4a" : mimeType.includes("wav") ? "wav" : "webm";
   const voiceFile = new File([blob], `voice-note-${Date.now()}.${extension}`, { type: mimeType });
   await sendCommunityVoiceNoteFile(voiceFile);
@@ -5121,6 +5136,34 @@ function getCommunityAgoraRtcGlobal() {
   return window?.AgoraRTC || null;
 }
 
+async function resumeCommunityCallAudioPlaybackContext() {
+  const AgoraRTC = getCommunityAgoraRtcGlobal();
+  if (AgoraRTC && typeof AgoraRTC.resumeAudioContext === "function") {
+    try {
+      await AgoraRTC.resumeAudioContext();
+    } catch {}
+  }
+}
+
+async function playCommunityRemoteAudioTrack(track = null) {
+  if (!track) return;
+  await resumeCommunityCallAudioPlaybackContext();
+  const fallbackVolume = communityCallSpeakerEnabled ? 1 : 0.75;
+  const mediaTrack = typeof track.getMediaStreamTrack === "function" ? track.getMediaStreamTrack() : null;
+  if (communityCallRemoteAudioEl && mediaTrack) {
+    try {
+      communityCallRemoteAudioEl.srcObject = new MediaStream([mediaTrack]);
+      communityCallRemoteAudioEl.muted = false;
+      communityCallRemoteAudioEl.volume = fallbackVolume;
+      await communityCallRemoteAudioEl.play();
+      return;
+    } catch {}
+  }
+  try {
+    track.play();
+  } catch {}
+}
+
 function loadCommunityAgoraRtcSdk() {
   if (getCommunityAgoraRtcGlobal()) {
     return Promise.resolve(getCommunityAgoraRtcGlobal());
@@ -5198,9 +5241,7 @@ function bindCommunityCallClientEvents(client) {
     }
     if (mediaType === "audio" && user?.audioTrack) {
       communityCallRemoteAudioTrack = user.audioTrack;
-      try {
-        user.audioTrack.play();
-      } catch {}
+      await playCommunityRemoteAudioTrack(user.audioTrack);
       setCommunityCallScreenMode("connected");
       stopCommunityIncomingRing();
       startCommunityCallTimer(communityState.activeCall?.answeredAt || "");
@@ -5336,6 +5377,7 @@ async function joinCommunityCallFromPayload(payload = {}) {
   syncCommunityCallActionButtons();
   await destroyCommunityCallTransport();
   const AgoraRTC = await loadCommunityAgoraRtcSdk();
+  await resumeCommunityCallAudioPlaybackContext();
   const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
   bindCommunityCallClientEvents(client);
   communityCallClient = client;
@@ -5538,7 +5580,13 @@ async function toggleCommunityCallVideoEnabled() {
 async function toggleCommunityCallSpeaker() {
   communityCallSpeakerEnabled = !communityCallSpeakerEnabled;
   if (communityCallRemoteAudioEl) {
+    communityCallRemoteAudioEl.muted = false;
     communityCallRemoteAudioEl.volume = communityCallSpeakerEnabled ? 1 : 0.75;
+    if (communityCallSpeakerEnabled) {
+      try {
+        await communityCallRemoteAudioEl.play();
+      } catch {}
+    }
   }
   if (!("setSinkId" in HTMLMediaElement.prototype)) {
     setCommunityFeedback("Speaker routing follows your phone audio route.", false);
@@ -16912,7 +16960,11 @@ if (communityChatVoiceInput) {
   communityChatVoiceInput.addEventListener("change", (event) => {
     const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
     if (file instanceof File) {
-      void sendCommunityVoiceNoteFile(file);
+      const normalizedMimeType = normalizeCommunityUploadMimeType(file.type) || String(file.type || "").trim();
+      const outbound = normalizedMimeType && normalizedMimeType !== String(file.type || "").trim().toLowerCase()
+        ? new File([file], String(file.name || `voice-note-${Date.now()}`), { type: normalizedMimeType })
+        : file;
+      void sendCommunityVoiceNoteFile(outbound);
     }
     if (event.target instanceof HTMLInputElement) event.target.value = "";
   });
@@ -26337,6 +26389,3 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 });
-
-
-

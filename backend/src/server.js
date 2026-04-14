@@ -213,7 +213,7 @@ const DELETE_ACCOUNT_CONFIRM_TOKEN = "DELETE_MY_ACCOUNT_CONFIRMED";
 const DAILY_QUIZ_SEASON = {
   key: "2026-03",
   start: "2026-03-01",
-  end: "2026-03-31",
+  end: "2026-12-31",
   timezone: "Africa/Accra",
   questionsPerDay: 10,
 };
@@ -2556,10 +2556,22 @@ function normalizeDailyQuizState(rawState = {}) {
   };
 }
 
+function getDailySeasonTotalDays() {
+  const start = new Date(`${DAILY_QUIZ_SEASON.start}T00:00:00.000Z`);
+  const end = new Date(`${DAILY_QUIZ_SEASON.end}T00:00:00.000Z`);
+  const startMs = start.getTime();
+  const endMs = end.getTime();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
+    return 1;
+  }
+  const dayMs = 24 * 60 * 60 * 1000;
+  return Math.max(1, Math.floor((endMs - startMs) / dayMs) + 1);
+}
+
 function summarizeDailyQuizState(rawState = {}) {
   const state = normalizeDailyQuizState(rawState);
   const completedDays = Object.values(state.days).filter((row) => Boolean(row?.submittedAt)).length;
-  const totalSeasonDays = 31;
+  const totalSeasonDays = getDailySeasonTotalDays();
   return {
     seasonKey: state.seasonKey,
     gems: state.gems,
@@ -6917,7 +6929,13 @@ app.post(
       total,
       percent,
       duration: req.body?.duration || null,
-      date: req.body?.date || new Date().toLocaleString(),
+      date: req.body?.date || new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date()),
       createdAt: new Date().toISOString(),
     };
 

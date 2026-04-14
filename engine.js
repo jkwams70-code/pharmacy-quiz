@@ -840,6 +840,12 @@ const menuPointsValueEl = document.getElementById("menu-points-value");
 const studySetupPointsValueEl = document.getElementById("study-setup-points-value");
 const examSetupPointsValueEl = document.getElementById("exam-setup-points-value");
 const dailySetupPointsValueEl = document.getElementById("daily-setup-points-value");
+const menuStudyPointsBadgeEl = document.getElementById("menu-study-points-badge");
+const menuExamPointsBadgeEl = document.getElementById("menu-exam-points-badge");
+const menuDailyPointsBadgeEl = document.getElementById("menu-daily-points-badge");
+const menuRapidPointsBadgeEl = document.getElementById("menu-rapid-points-badge");
+const menuSuddenPointsBadgeEl = document.getElementById("menu-sudden-points-badge");
+const menuClinicalPointsBadgeEl = document.getElementById("menu-clinical-points-badge");
 const logoutBtn = document.getElementById("quiz-logout-btn");
 const logoutConfirmBox = document.getElementById("menu-logout-confirm");
 const logoutConfirmBtn = document.getElementById("menu-logout-confirm-btn");
@@ -2768,6 +2774,9 @@ let communityMessageAttachmentOpenHandle = null;
 let communityReplyJumpHighlightHandle = null;
 let communityMessageTouchStart = null;
 let communityMessagePointerStart = null;
+const COMMUNITY_REPLY_SWIPE_TRIGGER_MOUSE = 72;
+const COMMUNITY_REPLY_SWIPE_TRIGGER_TOUCH = 56;
+const COMMUNITY_REPLY_SWIPE_MAX_OFFSET = 88;
 let communityScreenTouchStart = null;
 let communityScreenSwipeLocked = false;
 let communityAgoraSdkPromise = null;
@@ -3032,6 +3041,9 @@ function createEmptySetupPoints() {
     study: 0,
     exam: 0,
     daily: 0,
+    rapid: 0,
+    sudden: 0,
+    clinical: 0,
   };
 }
 
@@ -3098,6 +3110,7 @@ function getCurrentSetupPointsBucket() {
   if (mode === "smart") return "exam";
   if (mode === "exam") {
     const variant = String(examVariant || "normal").trim().toLowerCase();
+    if (variant === "rapid" || variant === "sudden" || variant === "clinical") return variant;
     if (variant === "normal") return "exam";
     return "";
   }
@@ -3113,11 +3126,30 @@ function addPointsToCurrentSetupBucket(delta = 1) {
   writeCurrentSetupPoints(current);
 }
 
+function formatMenuCardPointsBadge(value) {
+  const safeValue = Math.max(0, Math.round(Number(value) || 0));
+  if (safeValue > 999) return "999+";
+  return String(safeValue);
+}
+
 function renderSetupPoints() {
   const points = readCurrentSetupPoints();
-  if (studySetupPointsValueEl) studySetupPointsValueEl.textContent = String(points.study || 0);
-  if (examSetupPointsValueEl) examSetupPointsValueEl.textContent = String(points.exam || 0);
-  if (dailySetupPointsValueEl) dailySetupPointsValueEl.textContent = String(points.daily || 0);
+  const studyValue = Number(points.study) || 0;
+  const examValue = Number(points.exam) || 0;
+  const dailyValue = Number(points.daily) || 0;
+  const rapidValue = Number(points.rapid) || 0;
+  const suddenValue = Number(points.sudden) || 0;
+  const clinicalValue = Number(points.clinical) || 0;
+  if (studySetupPointsValueEl) studySetupPointsValueEl.textContent = String(studyValue);
+  if (examSetupPointsValueEl) examSetupPointsValueEl.textContent = String(examValue);
+  if (dailySetupPointsValueEl) dailySetupPointsValueEl.textContent = String(dailyValue);
+  if (menuStudyPointsBadgeEl) menuStudyPointsBadgeEl.textContent = formatMenuCardPointsBadge(studyValue);
+  if (menuExamPointsBadgeEl) menuExamPointsBadgeEl.textContent = formatMenuCardPointsBadge(examValue);
+  if (menuDailyPointsBadgeEl) menuDailyPointsBadgeEl.textContent = formatMenuCardPointsBadge(dailyValue);
+  if (menuRapidPointsBadgeEl) menuRapidPointsBadgeEl.textContent = formatMenuCardPointsBadge(rapidValue);
+  if (menuSuddenPointsBadgeEl) menuSuddenPointsBadgeEl.textContent = formatMenuCardPointsBadge(suddenValue);
+  if (menuClinicalPointsBadgeEl)
+    menuClinicalPointsBadgeEl.textContent = formatMenuCardPointsBadge(clinicalValue);
 }
 
 function renderPoints() {
@@ -3276,19 +3308,12 @@ function renderLeaderboardSummary(yourEntry = null) {
 
 function getLeaderboardAvatarHtml(entry = {}, extraClass = "") {
   const name = getCommunityLeaderboardName(entry);
-  const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("") || "L";
   const image = String(entry.profileImage || "").trim();
   const classes = `leaderboard-avatar ${extraClass}`.trim();
   if (image) {
     return `<span class="${classes} is-clickable" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} photo" data-community-avatar-view="true" data-community-avatar-image="${escapeHtml(image)}" data-community-avatar-name="${escapeHtml(name)}" style="background-image:url('${escapeHtml(image)}')"></span>`;
   }
-  return `<span class="${classes} is-fallback">${escapeHtml(initials)}</span>`;
+  return `<span class="${classes} is-fallback">${getCommunityAvatarFallbackIconMarkup("user")}</span>`;
 }
 
 function renderLeaderboardPodium(entries = []) {
@@ -3543,9 +3568,30 @@ function truncateWithEllipsis(value = "", maxLength = 56) {
   return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
+function isCommunityGroupEntity(entity = {}) {
+  const type = String(entity?.type || entity?.conversationType || "").trim().toLowerCase();
+  return Boolean(
+    entity?.isGroup ||
+      type === "group" ||
+      type === "groupchat" ||
+      type === "community-group",
+  );
+}
+
+function getCommunityAvatarFallbackIconMarkup(kind = "user", extraClass = "") {
+  const safeKind = String(kind || "").trim().toLowerCase() === "group" ? "group" : "user";
+  const iconPath =
+    safeKind === "group"
+      ? `<circle cx="10" cy="8.3" r="3.7"></circle><path d="M2.7 20.2a7.4 7.4 0 0 1 14.6 0"></path><path d="M21.3 20.2c0-3.1-2.2-5.8-5.2-6.6"></path><path d="M16 4.2a3.3 3.3 0 0 1 0 6.4"></path>`
+      : `<circle cx="12" cy="8" r="4"></circle><path d="M4 20a8 8 0 0 1 16 0"></path>`;
+  const classes = ["community-avatar-fallback-icon", extraClass].filter(Boolean).join(" ");
+  return `<span class="${classes}" aria-hidden="true"><svg viewBox="0 0 24 24">${iconPath}</svg></span>`;
+}
+
 function getCommunityAvatarMarkup(user = {}, extraClass = "") {
   const image = String(user?.profileImage || "").trim();
   const name = getCommunityUiDisplayName(user);
+  const isGroup = isCommunityGroupEntity(user);
   const onlineClass = isCommunityUserOnline(user) ? " is-online" : "";
   const blockedClass = isCommunityUserBlocked(user) ? " is-blocked" : "";
   const statusRingState = getCommunityStatusRingState(user?.id);
@@ -3555,52 +3601,32 @@ function getCommunityAvatarMarkup(user = {}, extraClass = "") {
       : statusRingState === "viewed"
         ? " has-status-ring is-status-viewed"
         : "";
-  const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("") || "L";
   const classes = ["community-avatar", extraClass].filter(Boolean).join(" ");
   if (image) {
     return `<span class="${classes}${onlineClass}${blockedClass}${hasStatusClass} is-clickable" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} photo" data-community-avatar-view="true" data-community-avatar-user-id="${escapeHtml(String(user?.id || ""))}" data-community-avatar-has-status="${communityUserHasActiveStatus(user?.id) ? "true" : "false"}" data-community-avatar-image="${escapeHtml(image)}" data-community-avatar-name="${escapeHtml(name)}" style="background-image:url('${escapeHtml(image)}')"></span>`;
   }
-  return `<span class="${classes}${onlineClass}${blockedClass}${hasStatusClass} is-fallback is-clickable" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} profile options" data-community-avatar-view="true" data-community-avatar-user-id="${escapeHtml(String(user?.id || ""))}" data-community-avatar-has-status="${communityUserHasActiveStatus(user?.id) ? "true" : "false"}" data-community-avatar-image="" data-community-avatar-name="${escapeHtml(name)}">${escapeHtml(initials)}</span>`;
+  return `<span class="${classes}${onlineClass}${blockedClass}${hasStatusClass} is-fallback is-clickable" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} profile options" data-community-avatar-view="true" data-community-avatar-user-id="${escapeHtml(String(user?.id || ""))}" data-community-avatar-has-status="${communityUserHasActiveStatus(user?.id) ? "true" : "false"}" data-community-avatar-image="" data-community-avatar-name="${escapeHtml(name)}">${getCommunityAvatarFallbackIconMarkup(isGroup ? "group" : "user")}</span>`;
 }
 
 function getCommunityPlainAvatarMarkup(user = {}, extraClass = "") {
   const image = String(user?.profileImage || "").trim();
-  const name = getCommunityUiDisplayName(user);
-  const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("") || "L";
+  const isGroup = isCommunityGroupEntity(user);
   const classes = ["community-avatar", extraClass].filter(Boolean).join(" ");
   if (image) {
     return `<span class="${classes}" aria-hidden="true" style="background-image:url('${escapeHtml(image)}')"></span>`;
   }
-  return `<span class="${classes} is-fallback" aria-hidden="true">${escapeHtml(initials)}</span>`;
+  return `<span class="${classes} is-fallback" aria-hidden="true">${getCommunityAvatarFallbackIconMarkup(isGroup ? "group" : "user")}</span>`;
 }
 
 function getCommunityExpandableAvatarMarkup(user = {}, extraClass = "") {
   const image = String(user?.profileImage || "").trim();
   const name = getCommunityUiDisplayName(user);
-  const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("") || "G";
+  const isGroup = isCommunityGroupEntity(user) || String(extraClass || "").includes("group");
   const classes = ["community-avatar", extraClass, "is-clickable"].filter(Boolean).join(" ");
   if (image) {
     return `<span class="${classes}" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} photo" data-community-avatar-view="true" data-community-avatar-image="${escapeHtml(image)}" data-community-avatar-name="${escapeHtml(name)}" style="background-image:url('${escapeHtml(image)}')"></span>`;
   }
-  return `<span class="${classes} is-fallback" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} avatar" data-community-avatar-view="true" data-community-avatar-image="" data-community-avatar-name="${escapeHtml(name)}">${escapeHtml(initials)}</span>`;
+  return `<span class="${classes} is-fallback" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} avatar" data-community-avatar-view="true" data-community-avatar-image="" data-community-avatar-name="${escapeHtml(name)}">${getCommunityAvatarFallbackIconMarkup(isGroup ? "group" : "user")}</span>`;
 }
 
 function communityUserHasActiveStatus(userId = "") {
@@ -3688,6 +3714,22 @@ function isMobileViewport() {
   return window.matchMedia("(max-width: 760px)").matches;
 }
 
+function formatAppDate(value = "", { includeYear = true } = {}) {
+  const date = value instanceof Date ? value : new Date(String(value || ""));
+  if (Number.isNaN(date.getTime())) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  if (!includeYear) return `${day}/${month}`;
+  return `${day}/${month}/${date.getFullYear()}`;
+}
+
+function formatAppDateTime(value = "") {
+  const date = value instanceof Date ? value : new Date(String(value || ""));
+  if (Number.isNaN(date.getTime())) return "";
+  const time = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return `${formatAppDate(date)} ${time}`;
+}
+
 function formatCommunityStatusTimestamp(value = "") {
   const date = new Date(String(value || ""));
   if (Number.isNaN(date.getTime())) return "";
@@ -3698,7 +3740,7 @@ function formatCommunityStatusTimestamp(value = "") {
   const timeText = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   if (diffDays <= 0) return `Today, ${timeText}`;
   if (diffDays === 1) return `Yesterday, ${timeText}`;
-  return `${date.toLocaleDateString([], { month: "short", day: "numeric" })}, ${timeText}`;
+  return `${formatAppDate(date)}, ${timeText}`;
 }
 
 function getCommunityStatusRingMarkup(user = {}, items = []) {
@@ -3929,7 +3971,7 @@ function formatCommunityTimestamp(value = "") {
   if (isSameDay) {
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
-  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  return formatAppDate(date);
 }
 
 function formatCommunityBubbleTime(value = "") {
@@ -3954,7 +3996,7 @@ function formatCommunityChatDateLabel(value = "") {
   const diffDays = Math.round((today - target) / 86400000);
   if (diffDays <= 0) return "Today";
   if (diffDays === 1) return "Yesterday";
-  return date.toLocaleDateString([], { month: "short", day: "numeric", year: now.getFullYear() === date.getFullYear() ? undefined : "numeric" });
+  return formatAppDate(date);
 }
 
 function isCommunityUserOnline(user = {}) {
@@ -3989,7 +4031,7 @@ function formatCommunityPresenceStatus(user = {}) {
   if (date.toDateString() === yesterday.toDateString()) {
     return `Last seen yesterday at ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
   }
-  return `Last seen ${date.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+  return `Last seen ${formatAppDate(date)}`;
 }
 
 function getCommunityMessageReceiptState(message = {}) {
@@ -4837,6 +4879,7 @@ function syncCommunityCallIdentity() {
   const displayName = getCommunityDisplayName(peer) || "Contact";
   const username = String(peer?.username || "").trim();
   const profileImage = String(peer?.profileImage || "").trim();
+  const isGroup = isCommunityGroupEntity(peer);
   if (communityCallTitleEl) {
     communityCallTitleEl.textContent = displayName;
   }
@@ -4848,12 +4891,16 @@ function syncCommunityCallIdentity() {
       communityCallAvatarEl.src = profileImage;
       communityCallAvatarEl.classList.remove("hidden");
       communityCallAvatarFallbackEl.classList.add("hidden");
-      communityCallAvatarFallbackEl.textContent = displayName.slice(0, 1).toUpperCase() || "C";
+      communityCallAvatarFallbackEl.innerHTML = getCommunityAvatarFallbackIconMarkup(
+        isGroup ? "group" : "user",
+      );
     } else {
       communityCallAvatarEl.removeAttribute("src");
       communityCallAvatarEl.classList.add("hidden");
       communityCallAvatarFallbackEl.classList.remove("hidden");
-      communityCallAvatarFallbackEl.textContent = displayName.slice(0, 1).toUpperCase() || "C";
+      communityCallAvatarFallbackEl.innerHTML = getCommunityAvatarFallbackIconMarkup(
+        isGroup ? "group" : "user",
+      );
     }
   }
 }
@@ -7596,11 +7643,7 @@ function formatCommunityStorageDateLabel(createdAt = "") {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, {
-    month: "numeric",
-    day: "numeric",
-    year: "2-digit",
-  }).format(date);
+  return formatAppDate(date);
 }
 
 function formatCommunityStorageFileMeta(upload = null) {
@@ -7928,6 +7971,27 @@ function startCommunityReplyToMessage(message = {}) {
   closeCommunityMessageActions();
   renderCommunityReplyDraft();
   communityChatInput?.focus();
+}
+
+function clearCommunityMessageSwipeVisual(gesture = null) {
+  const rowEl = gesture?.rowEl instanceof HTMLElement ? gesture.rowEl : null;
+  if (!(rowEl instanceof HTMLElement)) return;
+  rowEl.classList.remove("is-swipe-dragging");
+  rowEl.style.removeProperty("transform");
+}
+
+function updateCommunityMessageSwipeVisual(gesture = null, deltaX = 0, deltaY = 0) {
+  const rowEl = gesture?.rowEl instanceof HTMLElement ? gesture.rowEl : null;
+  if (!(rowEl instanceof HTMLElement)) return;
+  const horizontal = Number(deltaX) || 0;
+  const vertical = Number(deltaY) || 0;
+  if (horizontal <= 0 || Math.abs(vertical) > Math.abs(horizontal) * 1.25) {
+    clearCommunityMessageSwipeVisual(gesture);
+    return;
+  }
+  const offset = Math.max(0, Math.min(COMMUNITY_REPLY_SWIPE_MAX_OFFSET, horizontal * 0.72));
+  rowEl.classList.add("is-swipe-dragging");
+  rowEl.style.transform = `translate3d(${offset}px, 0, 0)`;
 }
 
 function renderCommunityPendingAttachment() {
@@ -9611,20 +9675,15 @@ function renderCommunityGroupEditAvatarPreview() {
   if (!communityGroupEditAvatarPreviewEl) return;
   const draft = communityState.groupEdit || {};
   const preview = String(draft.avatarPreview || "").trim();
-  const name = String(draft.name || draft.originalName || "Study Group").trim() || "Study Group";
-  const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("") || "SG";
   if (preview) {
     communityGroupEditAvatarPreviewEl.className = "community-group-edit-avatar-preview";
     communityGroupEditAvatarPreviewEl.innerHTML = `<span class="community-group-edit-avatar-image" style="background-image:url('${escapeHtml(preview)}')"></span>`;
   } else {
     communityGroupEditAvatarPreviewEl.className = "community-group-edit-avatar-preview is-fallback";
-    communityGroupEditAvatarPreviewEl.textContent = initials;
+    communityGroupEditAvatarPreviewEl.innerHTML = getCommunityAvatarFallbackIconMarkup(
+      "group",
+      "is-group-edit",
+    );
   }
   if (communityGroupEditPhotoBtn) {
     communityGroupEditPhotoBtn.textContent = preview ? "Change photo" : "Add photo";
@@ -10038,17 +10097,9 @@ function extractAvatarImageFromElement(element) {
 function renderCommunityHeaderProfile() {
   if (!communityProfileBtn) return;
   const image = String(currentUser?.profileImage || "").trim();
-  const name = getCommunityDisplayName(currentUser || {});
-  const initials =
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("") || "L";
   const markup = image
     ? `<span class="community-avatar is-inline" style="background-image:url('${escapeHtml(image)}')"></span>`
-    : `<span class="community-avatar is-inline is-fallback">${escapeHtml(initials)}</span>`;
+    : `<span class="community-avatar is-inline is-fallback">${getCommunityAvatarFallbackIconMarkup("user")}</span>`;
   if (communityState.headerProfileRenderSignature === markup) return;
   communityProfileBtn.innerHTML = markup;
   communityState.headerProfileRenderSignature = markup;
@@ -11552,6 +11603,10 @@ function getCommunityUserCardMarkup(user = {}, options = {}) {
   const blockedUser = showUnblock || isCommunityUserBlocked(user);
   const forwardMode = isCommunityForwardMode();
   const sideMeta = subtitle || user.institution || user.country || "Ajix learner";
+  const displayName = truncateWithEllipsis(getCommunityUiDisplayName(user), 28);
+  const tileActionAttrs = !forwardMode && relationship === "friend"
+    ? ` data-community-action="open-chat"`
+    : "";
   const actions = [
     getCommunityActionButton("View Profile", "open-profile", "secondary", `data-user-id="${escapeHtml(user.id || "")}"`),
   ];
@@ -11596,12 +11651,11 @@ function getCommunityUserCardMarkup(user = {}, options = {}) {
 
   const forwardSelectedClass = isCommunityForwardTargetSelected(getCommunityForwardTargetId({ userId: user.id })) ? " is-selected" : "";
   return `
-    <article class="community-user-card${forwardSelectedClass}" data-user-id="${escapeHtml(user.id || "")}">
+    <article class="community-user-card${forwardSelectedClass}" data-user-id="${escapeHtml(user.id || "")}"${tileActionAttrs}>
       <div class="community-user-card-head">
         ${getCommunityAvatarMarkup(user)}
         <div class="community-user-card-copy">
-          <button type="button" class="community-name-link community-user-card-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(user.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(user), 28))}</button>
-          <div class="community-user-card-handle">@${escapeHtml(user.username || "user")}</div>
+          <button type="button" class="community-name-link community-user-card-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(user.id || "")}">${escapeHtml(displayName)}</button>
         </div>
         <div class="community-user-card-side">
           <div class="community-user-card-meta">${escapeHtml(sideMeta)}</div>
@@ -13100,13 +13154,15 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
       const attachmentKind = isDeletedForEveryone ? "" : getCommunityAttachmentKind(getCommunityMessageAttachmentUpload(message));
       const hasImageAttachment = attachmentKind === "image";
       const hasVideoAttachment = attachmentKind === "video";
+      const hasAudioAttachment = attachmentKind === "audio";
       const messageText = String(message.text || "");
       const bubbleTime = formatCommunityBubbleTime(message.createdAt || "");
       const imageOnly = attachmentKind === "image" && !String(messageText || "").trim();
+      const audioOnly = hasAudioAttachment && !String(messageText || "").trim();
       return `
         ${startsDay ? renderCommunityDateDivider(formatCommunityChatDateLabel(message.createdAt || "")) : ""}
-        <div class="community-message-row ${isOwn ? "is-own" : ""} ${sameSenderAsPrevious ? "is-grouped" : "is-group-start"} ${sameSenderAsNext ? "is-group-middle" : "is-group-end"} ${imageOnly ? "is-image-row" : ""} ${hasVideoAttachment ? "is-video-row" : ""}" data-message-id="${escapeHtml(message.id || "")}" data-message-own="${isOwn ? "true" : "false"}">
-          <div class="community-message-bubble ${isOwn ? "is-own" : ""} ${isDeletedForEveryone ? "is-deleted" : ""} ${imageOnly ? "is-image-only" : ""} ${hasImageAttachment ? "has-image-attachment" : ""} ${hasVideoAttachment ? "has-video-attachment" : ""}">
+        <div class="community-message-row ${isOwn ? "is-own" : ""} ${sameSenderAsPrevious ? "is-grouped" : "is-group-start"} ${sameSenderAsNext ? "is-group-middle" : "is-group-end"} ${imageOnly ? "is-image-row" : ""} ${audioOnly ? "is-audio-row" : ""} ${hasVideoAttachment ? "is-video-row" : ""}" data-message-id="${escapeHtml(message.id || "")}" data-message-own="${isOwn ? "true" : "false"}">
+          <div class="community-message-bubble ${isOwn ? "is-own" : ""} ${isDeletedForEveryone ? "is-deleted" : ""} ${imageOnly ? "is-image-only" : ""} ${audioOnly ? "is-audio-only" : ""} ${hasImageAttachment ? "has-image-attachment" : ""} ${hasAudioAttachment ? "has-audio-attachment" : ""} ${hasVideoAttachment ? "has-video-attachment" : ""}">
             ${showSender ? `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || "Member"), 18))}</div>` : ""}
             ${isDeletedForEveryone ? "" : renderCommunityMessageReplySnippet(message.replyTo)}
             ${isDeletedForEveryone ? "" : renderCommunityMessageAttachment(message)}
@@ -13991,59 +14047,51 @@ async function editCommunityMessageText() {
 
 function confirmCommunityMessageDelete(scope = "self") {
   const selectedMessages = getCommunitySelectedMessages();
-  if (!selectedMessages.length) return;
+  if (!selectedMessages.length) {
+    closeCommunityMessageActions();
+    return;
+  }
   const targetMessageIds = new Set(selectedMessages.map((entry) => String(entry?.id || "")).filter(Boolean));
   const canDeleteForEveryone = selectedMessages.every((entry) =>
     String(entry?.senderUserId || "") === String(currentUser?.id || "") &&
     !isCommunityMessageDeletedForEveryone(entry));
   const isEveryone = scope === "everyone" && canDeleteForEveryone;
-  const plural = selectedMessages.length > 1;
+  const shouldStickToBottom = isCommunityChatNearBottom();
   closeCommunityMessageActions();
-  openCommunityConfirmModal({
-    title: isEveryone
-      ? (plural ? "Delete for everyone?" : "Delete for everyone?")
-      : (plural ? "Delete selected for you?" : "Delete for you?"),
-    text: isEveryone
-      ? (plural ? "These messages will disappear from both sides." : "This message will disappear from both sides.")
-      : (plural ? "These messages will only disappear from your view." : "This message will only disappear from your view."),
-    confirmLabel: "Delete",
-    intent: "danger",
-    onConfirm: async () => {
-      closeCommunityConfirmModal();
-      try {
-        const nextVisibleMessages = Array.isArray(communityState.messages)
-          ? (isEveryone
-            ? communityState.messages.map((entry) =>
-              targetMessageIds.has(String(entry.id || ""))
-                ? {
-                    ...entry,
-                    text: "message deleted",
-                    type: "text",
-                    attachment: null,
-                    replyTo: null,
-                    editedAt: null,
-                    deletedAt: new Date().toISOString(),
-                  }
-                : entry,
-            )
-            : communityState.messages.filter((entry) => !targetMessageIds.has(String(entry.id || ""))))
-          : [];
-        closeCommunityMessageActions();
-        renderCommunityMessages(nextVisibleMessages, { scrollToBottom: true });
-        for (const message of selectedMessages) {
-          if (!message?.id) continue;
-          const deleteScope = isEveryone ? "everyone" : "self";
-          await backendClient.deleteConversationMessage(message.id, deleteScope);
-        }
-        await loadCommunityMessages({ silent: true, scrollToBottom: true });
-        communityState.overview = await backendClient.fetchCommunityOverview();
-        renderCommunitySummary();
-      } catch (error) {
-        await loadCommunityMessages({ silent: true, scrollToBottom: true }).catch(() => {});
-        setCommunityFeedback(generalApiErrorMessage(error, "Message could not delete right now."), true);
-      }
-    },
-  });
+  void (async () => {
+    try {
+      const nextVisibleMessages = Array.isArray(communityState.messages)
+        ? (isEveryone
+          ? communityState.messages.map((entry) =>
+            targetMessageIds.has(String(entry.id || ""))
+              ? {
+                  ...entry,
+                  text: "message deleted",
+                  type: "text",
+                  attachment: null,
+                  replyTo: null,
+                  editedAt: null,
+                  deletedAt: new Date().toISOString(),
+                }
+              : entry,
+          )
+          : communityState.messages.filter((entry) => !targetMessageIds.has(String(entry.id || ""))))
+        : [];
+      renderCommunityMessages(nextVisibleMessages, { scrollToBottom: shouldStickToBottom });
+      const deleteScope = isEveryone ? "everyone" : "self";
+      await Promise.all(
+        selectedMessages
+          .filter((message) => Boolean(message?.id))
+          .map((message) => backendClient.deleteConversationMessage(message.id, deleteScope)),
+      );
+      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom });
+      communityState.overview = await backendClient.fetchCommunityOverview();
+      renderCommunitySummary();
+    } catch (error) {
+      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom }).catch(() => {});
+      setCommunityFeedback(generalApiErrorMessage(error, "Message could not delete right now."), true);
+    }
+  })();
 }
 
 async function executeCommunityAction(action = "", payload = {}) {
@@ -15226,13 +15274,13 @@ function formatDateKey(dateKey = "") {
   const value = String(dateKey || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value || "N/A";
   const [year, month, day] = value.split("-").map((part) => Number(part));
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return value || "N/A";
+  }
+  const dd = String(day).padStart(2, "0");
+  const mm = String(month).padStart(2, "0");
+  const yyyy = String(year).padStart(4, "0");
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function normalizeDailyQuizPayload(raw = {}) {
@@ -17476,7 +17524,23 @@ if (communityChatMessagesEl) {
       x: event.clientX,
       y: event.clientY,
       messageId: String(bubble.dataset.messageId || ""),
+      rowEl: bubble,
+      moved: false,
     };
+  });
+
+  communityChatMessagesEl.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch") return;
+    const gesture = communityMessagePointerStart;
+    if (!gesture) return;
+    const rowEl = event.target instanceof HTMLElement ? event.target.closest("[data-message-id]") : null;
+    if (!(rowEl instanceof HTMLElement) || String(rowEl.dataset.messageId || "") !== gesture.messageId) return;
+    const deltaX = event.clientX - gesture.x;
+    const deltaY = event.clientY - gesture.y;
+    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
+      gesture.moved = true;
+    }
+    updateCommunityMessageSwipeVisual(gesture, deltaX, deltaY);
   });
 
   communityChatMessagesEl.addEventListener("pointerup", (event) => {
@@ -17484,12 +17548,19 @@ if (communityChatMessagesEl) {
     const gesture = communityMessagePointerStart;
     communityMessagePointerStart = null;
     if (!gesture) return;
+    clearCommunityMessageSwipeVisual(gesture);
     const target = event.target instanceof HTMLElement ? event.target.closest("[data-message-id]") : null;
     if (!(target instanceof HTMLElement)) return;
     if (String(target.dataset.messageId || "") !== gesture.messageId) return;
     const deltaX = event.clientX - gesture.x;
     const deltaY = event.clientY - gesture.y;
-    if (deltaX < 72 || Math.abs(deltaY) > 40 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
+    if (
+      deltaX < COMMUNITY_REPLY_SWIPE_TRIGGER_MOUSE ||
+      Math.abs(deltaY) > 40 ||
+      Math.abs(deltaX) <= Math.abs(deltaY) * 1.2
+    ) {
+      return;
+    }
     const message = communityState.messages.find((entry) => String(entry.id || "") === gesture.messageId);
     if (!message) return;
     startCommunityReplyToMessage(message);
@@ -17497,6 +17568,7 @@ if (communityChatMessagesEl) {
 
   ["pointercancel", "pointerleave"].forEach((eventName) => {
     communityChatMessagesEl.addEventListener(eventName, () => {
+      clearCommunityMessageSwipeVisual(communityMessagePointerStart);
       communityMessagePointerStart = null;
     });
   });
@@ -17512,6 +17584,7 @@ if (communityChatMessagesEl) {
           x: touch.clientX,
           y: touch.clientY,
           messageId: String(message.id || ""),
+          rowEl: bubble,
           moved: false,
         }
       : null;
@@ -17527,6 +17600,7 @@ if (communityChatMessagesEl) {
     const touch = event.changedTouches?.[0] || null;
     const gesture = communityMessageTouchStart;
     communityMessageTouchStart = null;
+    clearCommunityMessageSwipeVisual(gesture);
     if (communityMessageHoldHandle) {
       clearTimeout(communityMessageHoldHandle);
       communityMessageHoldHandle = null;
@@ -17535,7 +17609,11 @@ if (communityChatMessagesEl) {
     if (String(target.dataset.messageId || "") !== gesture.messageId) return;
     const deltaX = touch.clientX - gesture.x;
     const deltaY = touch.clientY - gesture.y;
-    if (deltaX >= 56 && Math.abs(deltaY) <= 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+    if (
+      deltaX >= COMMUNITY_REPLY_SWIPE_TRIGGER_TOUCH &&
+      Math.abs(deltaY) <= 40 &&
+      Math.abs(deltaX) > Math.abs(deltaY) * 1.2
+    ) {
       const message = communityState.messages.find((entry) => String(entry.id || "") === gesture.messageId);
       if (message) {
         event.preventDefault();
@@ -17557,7 +17635,9 @@ if (communityChatMessagesEl) {
         communityMessageHoldHandle = null;
       }
     }
+    updateCommunityMessageSwipeVisual(gesture, deltaX, deltaY);
     if (Math.abs(deltaY) > 72 && Math.abs(deltaY) > Math.abs(deltaX)) {
+      clearCommunityMessageSwipeVisual(gesture);
       communityMessageTouchStart = null;
     }
   }, { passive: true });
@@ -17567,6 +17647,7 @@ if (communityChatMessagesEl) {
       clearTimeout(communityMessageHoldHandle);
       communityMessageHoldHandle = null;
     }
+    clearCommunityMessageSwipeVisual(communityMessageTouchStart);
     communityMessageTouchStart = null;
   }, { passive: true });
 
@@ -21078,13 +21159,7 @@ function refreshProfilePhotoDeleteVisibility() {
 }
 
 function defaultProfileAvatarDataUri() {
-  const label = String(
-    currentUser?.username || currentUser?.firstName || currentUser?.name || "U",
-  )
-    .trim()
-    .slice(0, 2)
-    .toUpperCase();
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' rx='18' fill='#0f3f7f'/><text x='60' y='72' text-anchor='middle' font-size='42' font-family='Arial' fill='#fff'>${label || "U"}</text></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' rx='18' fill='#dfe9f5'/><g stroke='#1d446c' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'><circle cx='60' cy='40' r='18'/><path d='M24 94a36 36 0 0 1 72 0'/></g></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
@@ -23299,7 +23374,7 @@ function saveSession(mode, score, total, duration = null) {
     score,
     total,
     percent,
-    date: new Date().toLocaleString(),
+    date: formatAppDateTime(new Date()),
     duration,
   };
 

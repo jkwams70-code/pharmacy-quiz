@@ -1,0 +1,27 @@
+{
+  "name": "quiz",
+  "version": "1.0.1",
+  "description": "A comprehensive, full-stack pharmacy examination and study platform with real-time performance tracking and admin management.",
+  "main": "backendClient.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jkwams70-code/pharmacy-quiz.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jkwams70-code/pharmacy-quiz/issues"
+  },
+  "homepage": "https://github.com/jkwams70-code/pharmacy-quiz#readme",
+  "dependencies": {
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0"
+  }
+}

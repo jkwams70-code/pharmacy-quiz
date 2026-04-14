@@ -356,6 +356,79 @@ body {
   stroke-width: 2;
 }
 
+#quiz-menu .menu-modern-daily-card,
+#quiz-menu .menu-modern-feature-card,
+#quiz-menu .menu-modern-drill-tile {
+  position: relative;
+  overflow: hidden;
+}
+
+#quiz-menu .menu-modern-card-points-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  left: auto;
+  z-index: 4;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text);
+  font-family: "Montserrat", var(--font-heading), sans-serif;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+}
+
+#quiz-menu .menu-modern-card-points-badge.is-drill {
+  top: 8px;
+  right: 10px;
+  left: auto;
+  font-size: 0.7rem;
+}
+
+#quiz-menu .menu-modern-card-points-icon {
+  display: none;
+}
+
+#quiz-menu .menu-modern-card-points-badge::before {
+  content: "Pts ";
+  font-size: 0.64em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+  text-transform: uppercase;
+}
+
+#quiz-menu .menu-modern-drill-tile .menu-modern-card-points-badge {
+  color: rgba(255, 255, 255, 0.96);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+#quiz-menu .menu-modern-feature-card .menu-modern-card-points-badge {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+#quiz-menu #daily-quiz-btn .menu-modern-card-points-badge {
+  top: auto;
+  bottom: 12px;
+  right: 56px;
+  left: auto;
+  transform: none;
+}
+
 #quiz-menu .menu-modern-section {
   margin-top: 22px;
 }
@@ -18280,6 +18353,79 @@ body #quiz-menu .menu-modern-section-note {
   letter-spacing: 0.08em !important;
 }
 
+body #quiz-menu .menu-modern-daily-card,
+body #quiz-menu .menu-modern-feature-card,
+body #quiz-menu .menu-modern-drill-tile {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+body #quiz-menu .menu-modern-card-points-badge {
+  position: absolute !important;
+  top: 10px !important;
+  right: 12px !important;
+  left: auto !important;
+  z-index: 4 !important;
+  min-width: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+  font-family: "Montserrat", var(--font-heading), sans-serif !important;
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0.01em !important;
+  pointer-events: none !important;
+}
+
+body #quiz-menu .menu-modern-card-points-icon {
+  display: none !important;
+}
+
+body #quiz-menu .menu-modern-card-points-badge::before {
+  content: "Pts " !important;
+  font-size: 0.64em !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  opacity: 0.72 !important;
+  text-transform: uppercase !important;
+}
+
+body #quiz-menu .menu-modern-card-points-badge.is-drill {
+  top: 8px !important;
+  right: 10px !important;
+  left: auto !important;
+  font-size: 0.7rem !important;
+}
+
+body #quiz-menu .menu-modern-drill-tile .menu-modern-card-points-badge {
+  color: rgba(255, 255, 255, 0.96) !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2) !important;
+}
+
+body #quiz-menu .menu-modern-feature-card .menu-modern-card-points-badge {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+}
+
+body #quiz-menu #daily-quiz-btn .menu-modern-card-points-badge {
+  top: auto !important;
+  bottom: 12px !important;
+  right: 56px !important;
+  left: auto !important;
+  transform: none !important;
+}
+
 body #quiz-menu .menu-modern-daily-card {
   grid-template-columns: 78px minmax(0, 1fr) auto !important;
   gap: 10px !important;
@@ -18563,6 +18709,14 @@ body.theme-dark #quiz-menu .menu-modern-card-eyebrow {
   color: #ffb15d !important;
 }
 
+body.theme-dark #quiz-menu .menu-modern-card-points-badge {
+  color: #f4f8ff !important;
+}
+
+body.theme-dark #quiz-menu .menu-modern-card-points-icon {
+  color: inherit !important;
+}
+
 @media (min-width: 961px) {
   body #quiz-menu {
     padding: 36px 42px 112px !important;
@@ -18813,6 +18967,32 @@ body.theme-dark #quiz-menu .menu-modern-card-eyebrow {
   body #quiz-menu .menu-modern-section-note {
     font-size: 0.56rem !important;
     letter-spacing: 0.06em !important;
+  }
+
+  body #quiz-menu .menu-modern-card-points-badge {
+    top: 7px !important;
+    right: 9px !important;
+    left: auto !important;
+    font-size: 0.66rem !important;
+  }
+
+  body #quiz-menu #daily-quiz-btn .menu-modern-card-points-badge {
+    top: auto !important;
+    bottom: 10px !important;
+    right: 50px !important;
+    left: auto !important;
+    transform: none !important;
+  }
+
+  body #quiz-menu .menu-modern-card-points-icon {
+    display: none !important;
+  }
+
+  body #quiz-menu .menu-modern-card-points-badge.is-drill {
+    top: 4px !important;
+    right: 7px !important;
+    left: auto !important;
+    font-size: 0.58rem !important;
   }
 
   body #quiz-menu .menu-modern-daily-card {
@@ -19230,6 +19410,17 @@ body #quiz-menu .menu-modern-points-pill {
 
 .leaderboard-avatar.is-fallback {
   background-image: none !important;
+  color: #5b3a86;
+}
+
+.leaderboard-avatar .community-avatar-fallback-icon {
+  width: 62%;
+  height: 62%;
+}
+
+.leaderboard-avatar.is-podium .community-avatar-fallback-icon {
+  width: 58%;
+  height: 58%;
 }
 
 .leaderboard-podium-card.is-first .leaderboard-avatar.is-podium {
@@ -21342,6 +21533,35 @@ body.theme-dark .community-settings-security-pin-input::placeholder {
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
+}
+
+.community-avatar.is-fallback {
+  background-image: none !important;
+}
+
+.community-avatar-fallback-icon {
+  width: 66%;
+  height: 66%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.community-avatar-fallback-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.community-avatar-fallback-icon.is-group-edit {
+  width: 56%;
+  height: 56%;
 }
 
 .community-avatar.has-status-ring {
@@ -28282,6 +28502,12 @@ body
   padding-left: 0;
   margin-top: 2px;
   animation: none;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+#community-chat-screen .community-message-row.is-swipe-dragging {
+  transition: none;
 }
 
 #community-chat-screen .community-message-row.is-selected::before {
@@ -28439,27 +28665,27 @@ body
 #community-chat-screen .community-message-call-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
+  gap: 6px;
   align-items: center;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.7);
+  padding: 2px 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 #community-chat-screen .community-message-call-icon {
-  width: 30px;
-  height: 30px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(40, 108, 164, 0.14);
+  background: transparent;
   color: #3d6d96;
 }
 
 #community-chat-screen .community-message-call-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   stroke: currentColor;
   stroke-width: 1.8;
   fill: none;
@@ -28469,14 +28695,16 @@ body
 
 #community-chat-screen .community-message-call-copy {
   min-width: 0;
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 #community-chat-screen .community-message-call-label {
   color: #213645;
   font:
-    700 0.79rem/1.2 "Inter",
+    600 0.76rem/1.2 "Inter",
     sans-serif;
   letter-spacing: 0.01em;
 }
@@ -28484,7 +28712,7 @@ body
 #community-chat-screen .community-message-call-duration {
   color: #4d6678;
   font:
-    600 0.67rem/1.1 "Inter",
+    600 0.72rem/1.1 "Inter",
     sans-serif;
 }
 
@@ -28542,7 +28770,7 @@ body.theme-dark
 }
 
 body.theme-dark #community-chat-screen .community-message-call-card {
-  background: rgba(16, 31, 47, 0.78);
+  background: transparent;
 }
 
 body.theme-dark #community-chat-screen .community-message-call-label {
@@ -28744,19 +28972,19 @@ body.theme-dark #community-chat-screen .community-message-call-duration {
 
 #community-chat-screen .community-message-audio-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
   align-items: center;
-  min-width: min(72vw, 280px);
-  padding: 10px 12px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 10px 22px rgba(17, 27, 33, 0.06);
+  min-width: min(72vw, 228px);
+  padding: 2px 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 #community-chat-screen .community-message-audio-play {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: 999px;
   background: #128c7e;
@@ -28767,8 +28995,8 @@ body.theme-dark #community-chat-screen .community-message-call-duration {
 }
 
 #community-chat-screen .community-message-audio-play svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   stroke: currentColor;
   fill: none;
   stroke-width: 2;
@@ -28776,23 +29004,16 @@ body.theme-dark #community-chat-screen .community-message-call-duration {
 }
 
 #community-chat-screen .community-message-audio-body {
-  display: grid;
-  gap: 6px;
+  display: contents;
   min-width: 0;
 }
 
 #community-chat-screen .community-message-audio-wave {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 14px;
+  display: none;
 }
 
 #community-chat-screen .community-message-audio-wave span {
-  width: 3px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(18, 140, 126, 0.72);
+  display: none;
 }
 
 #community-chat-screen
@@ -28828,33 +29049,108 @@ body.theme-dark #community-chat-screen .community-message-call-duration {
 }
 
 #community-chat-screen .community-message-audio-progress {
+  grid-column: 2;
   width: 100%;
   margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
 }
 
 #community-chat-screen .community-message-audio-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  display: contents;
 }
 
 #community-chat-screen .community-message-audio-label {
-  min-width: 0;
-  color: #111b21;
-  font:
-    600 0.78rem/1.2 "Inter",
-    sans-serif;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
 #community-chat-screen .community-message-audio-duration {
+  grid-column: 3;
+  justify-self: end;
   color: #667781;
   font:
-    600 0.7rem/1 "Inter",
+    600 0.68rem/1 "Inter",
     sans-serif;
+}
+
+#community-chat-screen .community-message-audio-progress::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(17, 27, 33, 0.2);
+}
+
+#community-chat-screen .community-message-audio-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #128c7e;
+  border: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  margin-top: -2.5px;
+}
+
+#community-chat-screen .community-message-audio-progress::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #128c7e;
+  border: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+#community-chat-screen .community-message-audio-progress::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(17, 27, 33, 0.2);
+}
+
+#community-chat-screen .community-message-row.is-own .community-message-audio-progress {
+  background: transparent;
+}
+
+#community-chat-screen
+  .community-message-row.is-own
+  .community-message-audio-progress::-webkit-slider-runnable-track {
+  background: rgba(17, 27, 33, 0.2);
+}
+
+#community-chat-screen
+  .community-message-row.is-own
+  .community-message-audio-progress::-webkit-slider-thumb {
+  background: #128c7e;
+}
+
+#community-chat-screen
+  .community-message-row.is-own
+  .community-message-audio-progress::-moz-range-thumb {
+  background: #128c7e;
+}
+
+body.theme-dark #community-chat-screen .community-message-audio-duration {
+  color: #c3d2e1;
+}
+
+body.theme-dark #community-chat-screen .community-message-audio-progress {
+  background: transparent;
+}
+
+body.theme-dark #community-chat-screen .community-message-audio-progress::-webkit-slider-runnable-track {
+  background: rgba(206, 221, 236, 0.28);
+}
+
+body.theme-dark #community-chat-screen .community-message-audio-progress::-moz-range-track {
+  background: rgba(206, 221, 236, 0.28);
+}
+
+#community-chat-screen .community-message-bubble.has-audio-attachment,
+#community-chat-screen .community-message-bubble.is-audio-only {
+  padding: 7px 11px 6px;
+  gap: 5px;
 }
 
 #community-chat-screen .community-empty-state.is-chat {
@@ -29091,6 +29387,12 @@ body.community-call-open {
     linear-gradient(180deg, rgba(47, 118, 182, 0.55), rgba(15, 53, 85, 0.72));
 }
 
+#community-call-modal .community-call-avatar-fallback .community-avatar-fallback-icon {
+  width: 48%;
+  height: 48%;
+  color: #f5f9ff;
+}
+
 #community-call-modal .community-call-video-stage {
   position: fixed;
   inset: max(98px, env(safe-area-inset-top, 0px) + 86px) 14px max(118px, env(safe-area-inset-bottom, 0px) + 108px);
@@ -29136,7 +29438,7 @@ body.community-call-open {
   background: rgba(8, 21, 37, 0.78);
   border: 1px solid rgba(224, 237, 255, 0.16);
   border-radius: 24px;
-  padding: 12px 14px;
+  padding: 12px 14px 30px;
   width: min(95vw, 470px);
   justify-self: center;
 }
@@ -29155,6 +29457,22 @@ body.community-call-open {
   background: rgba(255, 255, 255, 0.08);
   color: #f2f8ff;
   cursor: pointer;
+  position: relative;
+}
+
+#community-call-modal .community-call-btn[data-label]::after {
+  content: attr(data-label);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(236, 244, 255, 0.92);
+  font:
+    600 0.68rem/1 "Inter",
+    sans-serif;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 #community-call-modal .community-call-btn.neutral {
@@ -29185,6 +29503,10 @@ body.community-call-open {
 #community-call-modal .community-call-btn.danger {
   border-color: rgba(219, 77, 109, 0.52);
   background: rgba(208, 50, 84, 0.9);
+}
+
+#community-call-modal .community-call-btn.danger[data-label]::after {
+  color: rgba(255, 226, 234, 0.98);
 }
 
 #community-call-modal .community-call-incoming-actions {

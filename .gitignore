@@ -1,0 +1,26 @@
+node_modules/
+
+# Local build caches
+.gradle-local/
+.cache/
+
+# Capacitor generated web output
+www/
+
+# Android build/cache outputs
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
+android/captures/
+android/.cxx/
+
+# Logs and temp outputs
+*.log
+*.err
+*.out
+backend/run-err.log
+backend/run-out.log
+frontend-preview.err
+frontend-preview.log

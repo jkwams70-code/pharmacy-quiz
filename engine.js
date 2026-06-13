@@ -32575,6 +32575,19 @@ function showScreen(id, options = {}) {
   renderCommunityNotificationBadges();
   syncAppNotificationBannerVisibility();
 
+  if (id === "quiz-menu") {
+    closeMenuUserHub();
+    closeGlobalQuickNav();
+    closeLeaderboardModal?.({ useHistory: false });
+    closeAppUpdateModal?.();
+    closeExamExitModal?.();
+    closeStudyExitModal?.();
+    closeSessionResumeModal?.();
+    closeCommunityConfirmModal?.();
+    closeCommunityConversationActions?.();
+    closeCommunityFriendActions?.();
+  }
+
   if (nextCommunityScreen && !wasCommunityScreen && isCommunityLockEnabled() && !communityState.communityLockSessionUnlocked) {
     const fallbackScreen = currentActiveId && document.getElementById(currentActiveId) ? currentActiveId : "quiz-menu";
     void ensureCommunityLockAccess({

@@ -32,6 +32,10 @@ cp -rf admin/. "${FRONTEND_DIR}/admin/"
 cp -rf topics/. "${FRONTEND_DIR}/topics/"
 cp -rf images/. "${FRONTEND_DIR}/images/"
 cp -rf icons/. "${FRONTEND_DIR}/icons/"
+mkdir -p "${FRONTEND_DIR}/question-batches"
+if [ -d question-batches ]; then
+  cp -rf question-batches/. "${FRONTEND_DIR}/question-batches/"
+fi
 if [ -d downloads ]; then
   cp -rf downloads/. "${FRONTEND_DIR}/downloads/"
 fi

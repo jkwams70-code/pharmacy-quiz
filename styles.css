@@ -38044,3 +38044,8 @@ body.theme-sunset {
   right: 102px !important;
   z-index: 6 !important;
 }
+
+#quiz-menu button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}

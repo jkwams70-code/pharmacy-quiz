@@ -1,5 +1,6 @@
-import { baseQuestions } from "./data.js?v=20260327-statusstory1";
-import { backendClient } from "./backendClient.js?v=20260329-communitylock1";
+import { baseQuestions } from "./data.js?v=20260613-manufacturing-set2";
+import { backendClient } from "./backendClient.js?v=20260611-community29";
+import { inferQuestionRotation } from "./rotationTaxonomy.js";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -14,14 +15,44 @@ const MAJOR_CATEGORIES = [
   "Rheumatology & Pain",
   "Women's & Men's Health",
   "Immunizations",
+  "Pharmacy Practice",
+  "Manufacturing and Calculation",
   "Pharmacy Law & Ethics",
 ];
 
+const ROTATION_OPTIONS = [
+  "Internal Medicine",
+  "Paediatrics",
+  "Maternal and Child Health",
+  "Accident & Emergency",
+  "Surgery",
+  "Mental Health",
+  "Oncology",
+  "ENT/Dental",
+];
+
+const ROTATION_ALIASES = {
+  emergency: "Accident & Emergency",
+  "accident and emergency": "Accident & Emergency",
+  "accident & emergency": "Accident & Emergency",
+  "paediatrics": "Paediatrics",
+  pediatrics: "Paediatrics",
+  "child health": "Paediatrics",
+  "maternal health": "Maternal and Child Health",
+  "maternal and child": "Maternal and Child Health",
+  "ent and dental": "ENT/Dental",
+  "ent/dental": "ENT/Dental",
+};
+
 const LEGACY_CATEGORY_MAP = {
   Cardiology: "Cardiovascular Disorders",
-  "Clinical Pharmacology": "Pharmacy Law & Ethics",
+  "Clinical Pharmacology": "Pharmacy Practice",
+  "Pharmaceutical Technology": "Pharmacy Practice",
+  "Pharmacy Technology": "Pharmacy Practice",
   Haematology: "Hematology",
   Hematology: "Hematology",
+  "Renal Disorders": "Renal & Electrolyte Disorders",
+  "Renal Disorder": "Renal & Electrolyte Disorders",
   Endocrinology: "Endocrinology",
   Oncology: "Oncology",
   Neurology: "Neurology & Psychiatry",
@@ -31,6 +62,8 @@ const LEGACY_CATEGORY_MAP = {
   Rheumatology: "Rheumatology & Pain",
   Dermatology: "Rheumatology & Pain",
   Obstetrics: "Women's & Men's Health",
+  "Obstetrics & Gynaecology": "Women's & Men's Health",
+  "Obstetrics & Gynecology": "Women's & Men's Health",
   "Allergy and Immunology": "Respiratory Disorders",
   "Infectious Diseases": "Infectious Diseases",
 };
@@ -48,6 +81,8 @@ const CATEGORY_COLOR_SHIFTS = {
   "Rheumatology & Pain": "rgba(245, 158, 11, 0.16)",
   "Women's & Men's Health": "rgba(225, 29, 72, 0.16)",
   Immunizations: "rgba(20, 184, 166, 0.16)",
+  "Pharmacy Practice": "rgba(14, 116, 144, 0.16)",
+  "Manufacturing and Calculation": "rgba(14, 116, 144, 0.16)",
   "Pharmacy Law & Ethics": "rgba(15, 63, 127, 0.16)",
 };
 
@@ -67,12 +102,33 @@ const NEGATIVE_ANSWER_FEEDBACK = [
 ];
 
 const QUESTION_BANK_SCHEMA_STORAGE_KEY = "quizQuestionBankSchemaVersion";
-const QUESTION_BANK_SCHEMA_VERSION = "20260325-bank-order-v2";
+const QUESTION_BANK_SCHEMA_VERSION = "20260613-manufacturing-set2";
+const LAW_DRILL_STORAGE_KEY = "lawDrillSession";
+const LAW_DRILL_TOTAL_LEVELS = 100;
+const LAW_DRILL_QUESTIONS_PER_LEVEL = 5;
+const QUESTION_CATEGORY_OVERRIDES = {
+  32: "Rheumatology & Pain",
+  53: "Infectious Diseases",
+  112: "Gastrointestinal Disorders",
+  145: "Renal & Electrolyte Disorders",
+  160: "Gastrointestinal Disorders",
+  238: "Gastrointestinal Disorders",
+  306: "Hematology",
+  314: "Renal & Electrolyte Disorders",
+  315: "Renal & Electrolyte Disorders",
+  324: "Hematology",
+  336: "Renal & Electrolyte Disorders",
+  460: "Infectious Diseases",
+  472: "Cardiovascular Disorders",
+  703: "Neurology & Psychiatry",
+  720: "Cardiovascular Disorders",
+};
 
 function clearQuestionIdDependentLocalCache() {
   const keysToClear = [
     "studySession",
     "practiceSession",
+    LAW_DRILL_STORAGE_KEY,
     "quizExamSession",
     "examAbandoned",
     "quizSessionHistory",
@@ -122,7 +178,11 @@ function normalizeMajorCategory(category, context = "") {
   if (
     combined.includes("respir") ||
     combined.includes("asthma") ||
-    combined.includes("allergic rhinitis")
+    combined.includes("allergic rhinitis") ||
+    combined.includes("smok") ||
+    combined.includes("tobacco") ||
+    combined.includes("pack year") ||
+    combined.includes("cigarette")
   ) {
     return "Respiratory Disorders";
   }
@@ -135,7 +195,16 @@ function normalizeMajorCategory(category, context = "") {
   if (combined.includes("neuro") || combined.includes("psy") || combined.includes("seizure")) {
     return "Neurology & Psychiatry";
   }
-  if (combined.includes("haemat") || combined.includes("hemat") || combined.includes("anemia")) {
+  if (
+    combined.includes("haemat") ||
+    combined.includes("hemat") ||
+    combined.includes("anemia") ||
+    combined.includes("iron") ||
+    combined.includes("ferrous") ||
+    combined.includes("ferric") ||
+    combined.includes("hemoglobin") ||
+    combined.includes("haemoglobin")
+  ) {
     return "Hematology";
   }
   if (combined.includes("onco") || combined.includes("cancer")) {
@@ -150,25 +219,110 @@ function normalizeMajorCategory(category, context = "") {
   ) {
     return "Rheumatology & Pain";
   }
-  if (combined.includes("pregnan") || combined.includes("contraception") || combined.includes("bph")) {
+  if (
+    combined.includes("pregnan") ||
+    combined.includes("contraception") ||
+    combined.includes("bph") ||
+    combined.includes("breast") ||
+    combined.includes("prostate")
+  ) {
     return "Women's & Men's Health";
   }
   if (combined.includes("vaccine") || combined.includes("immunization")) {
     return "Immunizations";
   }
-  if (combined.includes("law") || combined.includes("ethic")) {
+  if (
+    raw === "Pharmacy Practice" ||
+    combined.includes("professional practice") ||
+    combined.includes("pharmacy practice") ||
+    combined.includes("pharmaceutical care") ||
+    combined.includes("pharmaceutical technology") ||
+    combined.includes("pharmacology") ||
+    combined.includes("counsel") ||
+    combined.includes("poison") ||
+    combined.includes("toxicol") ||
+    combined.includes("overdose") ||
+    combined.includes("antidote") ||
+    combined.includes("pesticide") ||
+    combined.includes("pralidoxime") ||
+    combined.includes("atropine") ||
+    combined.includes("glaucoma") ||
+    combined.includes("drug interaction") ||
+    combined.includes("adverse drug")
+  ) {
+    return "Pharmacy Practice";
+  }
+  if (
+    raw === "Manufacturing and Calculation" ||
+    combined.includes("manufacturing") ||
+    combined.includes("calculation")
+  ) {
+    return "Manufacturing and Calculation";
+  }
+  if (combined.includes("law") || combined.includes("ethic") || combined.includes("act ")) {
     return "Pharmacy Law & Ethics";
   }
 
-  return "Pharmacy Law & Ethics";
+  return "Pharmacy Practice";
+}
+
+function normalizeRotationValue(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const key = raw.toLowerCase();
+  return ROTATION_ALIASES[key] || ROTATION_OPTIONS.find((option) => option.toLowerCase() === key) || raw;
+}
+
+function getQuestionRotationValues(question = {}) {
+  const arrayValues = Array.isArray(question?.rotations)
+    ? question.rotations.map((rotation) => normalizeRotationValue(rotation)).filter(Boolean)
+    : [];
+  if (arrayValues.length > 0) return arrayValues;
+  const singleValue = normalizeRotationValue(question?.rotation || question?.rotationGroup || question?.rotationName || "");
+  if (singleValue) return [singleValue];
+  const inferredValue = normalizeRotationValue(inferQuestionRotation(question));
+  return inferredValue ? [inferredValue] : [];
+}
+
+function questionMatchesRotation(question = {}, selectedRotation = "all") {
+  const normalizedSelection = normalizeRotationValue(selectedRotation);
+  if (!normalizedSelection || normalizedSelection === "all") return true;
+  const values = getQuestionRotationValues(question);
+  return values.includes(normalizedSelection);
+}
+
+function filterQuestionsByCategoryAndRotation(questions = [], category = "all", rotation = "all") {
+  const safeCategory = String(category || "all").trim();
+  const safeRotation = String(rotation || "all").trim();
+  return (Array.isArray(questions) ? questions : []).filter((question) => {
+    const matchesCategory = safeCategory === "all" ? true : question?.category === safeCategory;
+    return matchesCategory && questionMatchesRotation(question, safeRotation);
+  });
+}
+
+function isRetiredLawCategoryQuestion(question = {}) {
+  return false;
+}
+
+function normalizeQuestionCategory(question = {}) {
+  const questionId = Number(question?.id || 0);
+  if (QUESTION_CATEGORY_OVERRIDES[questionId]) {
+    return QUESTION_CATEGORY_OVERRIDES[questionId];
+  }
+
+  if (isLawDrillQuestion(question)) {
+    return "Pharmacy Law & Ethics";
+  }
+
+  const questionText = String(question?.question || question?.text || "");
+  const explanation = String(question?.explanation || "");
+  return normalizeMajorCategory(question?.category, `${questionText} ${explanation}`);
 }
 
 function withMajorCategory(question) {
-  const questionText = String(question?.question || question?.text || "");
-  const explanation = String(question?.explanation || "");
   return {
     ...question,
-    category: normalizeMajorCategory(question?.category, `${questionText} ${explanation}`),
+    category: normalizeQuestionCategory(question),
   };
 }
 
@@ -197,10 +351,12 @@ let answerFeedbackHideTimer = null;
 let answerChoiceMotivationHideTimer = null;
 let answerCheckHideTimer = null;
 let drillEventHideTimer = null;
+let appNotificationBannerHideTimer = null;
 let correctAudioContext = null;
 let studySessionEnded = false;
 let inDetailedReview = false;
 let topicQuizSessionMeta = null;
+let lawDrillState = null;
 
 function isTopicQuizMode() {
   return mode === "topic";
@@ -210,16 +366,1202 @@ function isStudyLikeMode() {
   return mode === "study" || mode === "topic";
 }
 
+function isPreSubmitReviewMode() {
+  return inReview && !inDetailedReview && (mode === "exam" || mode === "smart" || mode === "daily");
+}
+
 function getTopicQuizSessionTitle() {
   return String(topicQuizSessionMeta?.title || "Topic").trim() || "Topic";
 }
 
 function getStudyLikeCompletionTitle() {
+  if (isLawStudyMode()) return "Law Drill Complete";
   return isTopicQuizMode() ? `${getTopicQuizSessionTitle()} Quiz Complete` : "Study Session Complete";
 }
 
 function getStudyLikeSessionLabel() {
+  if (isLawStudyMode()) return "Law Drill";
   return isTopicQuizMode() ? `${getTopicQuizSessionTitle()} Topic Quiz` : "Study";
+}
+
+function getCurrentStudyType() {
+  return String(document.getElementById("study-type-select")?.value || "normal")
+    .trim()
+    .toLowerCase();
+}
+
+function isLawStudyMode() {
+  return mode === "study" && Boolean(lawDrillState);
+}
+
+function getQuestionDrillTags(question = {}) {
+  const rawTags = question?.drillTags;
+  if (Array.isArray(rawTags)) {
+    return rawTags
+      .map((tag) => String(tag || "").trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  const fallbackTags = [];
+  const rawTag = String(question?.drillTag || question?.drillTrack || "").trim().toLowerCase();
+  if (rawTag) fallbackTags.push(rawTag);
+  if (question?.lawDrill === true) fallbackTags.push("law");
+  return fallbackTags;
+}
+
+function isLawDrillQuestion(question = {}) {
+  return getQuestionDrillTags(question).includes("law");
+}
+
+function getLawDrillView() {
+  return String(lawDrillState?.view || "ladder").trim().toLowerCase() || "ladder";
+}
+
+function setLawDrillView(view = "ladder", { persist = true } = {}) {
+  if (!lawDrillState) return;
+  const nextView = ["ladder", "level", "review", "result"].includes(String(view))
+    ? String(view)
+    : "ladder";
+  lawDrillState.view = nextView;
+  syncLawDrillLayout();
+  if (persist) persistLawDrillSession();
+}
+
+function syncLawDrillLayout() {
+  const view = getLawDrillView();
+  if (quizArea) {
+    quizArea.classList.toggle("law-drill-ladder-view", view === "ladder");
+    quizArea.classList.toggle("law-drill-level-view", view === "level");
+    quizArea.classList.toggle("law-drill-review-view", view === "review");
+    quizArea.classList.toggle("law-drill-result-view", view === "result");
+  }
+  if (lawDrillPanelEl) {
+    lawDrillPanelEl.classList.toggle("hidden", view !== "ladder");
+  }
+  if (questionCardEl) {
+    questionCardEl.classList.toggle("hidden", view === "ladder" || view === "result");
+  }
+  if (lawDrillStackEl) {
+    lawDrillStackEl.classList.toggle("hidden", view !== "level" && view !== "review");
+  }
+}
+
+function getLawDrillLevelQuestions(levelIndex = 0) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return [];
+  const level = lawDrillState.levels[Number(levelIndex)] || null;
+  if (!level || !Array.isArray(level.questionIds)) return [];
+  return level.questionIds
+    .map((questionId) => findQuestionById(questionId))
+    .filter(Boolean);
+}
+
+function normalizeLawDrillEntry(entry = {}, question = null) {
+  return {
+    questionId: Number(entry.questionId || question?.id || 0) || 0,
+    questionText:
+      String(entry.questionText || question?.question || question?.text || "").trim(),
+    selectedAnswer: String(entry.selectedAnswer || entry.answer || "").trim(),
+    correctAnswer: String(entry.correctAnswer || question?.correct || "").trim(),
+    explanation: String(entry.explanation || question?.explanation || "").trim(),
+    explainCorrect: String(entry.explainCorrect || question?.explainCorrect || "").trim(),
+    memoryTrick: String(entry.memoryTrick || question?.memoryTrick || "").trim(),
+    isCorrect:
+      typeof entry.isCorrect === "boolean"
+        ? entry.isCorrect
+        : String(entry.selectedAnswer || entry.answer || "") === String(question?.correct || ""),
+  };
+}
+
+function createLawDrillLevel(index, questionIds = []) {
+  return {
+    index,
+    questionIds: questionIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0),
+    status: index === 0 ? "current" : "locked",
+    history: [],
+    score: 0,
+    completedAt: "",
+  };
+}
+
+function buildLawDrillLevels(sourceQuestions = questionBank) {
+  const eligible = (Array.isArray(sourceQuestions) ? sourceQuestions : []).filter(isLawDrillQuestion);
+  if (eligible.length < LAW_DRILL_QUESTIONS_PER_LEVEL) return [];
+
+  const levels = [];
+  let bag = shuffle([...eligible]);
+  let bagIndex = 0;
+
+  for (let levelIndex = 0; levelIndex < LAW_DRILL_TOTAL_LEVELS; levelIndex++) {
+    const questionIds = [];
+    const usedIds = new Set();
+
+    while (questionIds.length < LAW_DRILL_QUESTIONS_PER_LEVEL) {
+      if (bagIndex >= bag.length) {
+        bag = shuffle([...eligible]);
+        bagIndex = 0;
+      }
+
+      const candidate = bag[bagIndex++];
+      const candidateId = Number(candidate?.id || 0);
+      if (!Number.isInteger(candidateId) || candidateId <= 0 || usedIds.has(candidateId)) {
+        continue;
+      }
+
+      usedIds.add(candidateId);
+      questionIds.push(candidateId);
+    }
+
+    levels.push(createLawDrillLevel(levelIndex, questionIds));
+  }
+
+  return levels;
+}
+
+function cloneLawDrillLevels(levels = []) {
+  return (Array.isArray(levels) ? levels : []).map((level, index) => ({
+    index: Number.isInteger(Number(level?.index)) ? Number(level.index) : index,
+    questionIds: Array.isArray(level?.questionIds)
+      ? level.questionIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0)
+      : [],
+    status:
+      String(level?.status || "").trim().toLowerCase() ||
+      (index === 0 ? "current" : "locked"),
+    history: Array.isArray(level?.history)
+      ? level.history.map((entry) => ({ ...entry }))
+      : [],
+    score: Math.max(0, Math.round(Number(level?.score) || 0)),
+    completedAt: String(level?.completedAt || "").trim(),
+  }));
+}
+
+function buildLawDrillStackMarkup(levelIndex = null, eyebrowLabel = null) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return "";
+  const targetIndex =
+    Number.isInteger(levelIndex) ? levelIndex : lawDrillState.currentLevelIndex ?? 0;
+  const level = lawDrillState.levels[targetIndex] || null;
+  if (!level) return "";
+
+  const history = Array.isArray(level.history) ? level.history : [];
+  const questions = Array.isArray(level?.questionIds)
+    ? level.questionIds.map((questionId) => findQuestionById(questionId)).filter(Boolean)
+    : [];
+  const answered = history.length;
+  const correct = history.filter((entry) => entry?.isCorrect).length;
+  const isReview = lawDrillState?.reviewLevelIndex === targetIndex;
+  const eyebrow = String(
+    eyebrowLabel || (isReview ? "Past Level Review" : "Level Stack"),
+    ).trim();
+  const entries = history.length
+    ? history
+    : questions.map((question, index) => ({
+        questionId: question?.id || 0,
+        questionText: question?.question || "",
+        selectedAnswer: "",
+        correctAnswer: question?.correct || "",
+        explanation: question?.explanation || "",
+        explainCorrect: question?.explainCorrect || "",
+        memoryTrick: question?.memoryTrick || "",
+        isCorrect: false,
+        _fallbackIndex: index,
+      }));
+
+  return `
+    <div class="law-drill-stack-head">
+      <div>
+        <div class="law-drill-stack-eyebrow">${escapeHtml(eyebrow)}</div>
+        <div class="law-drill-stack-title">Level ${targetIndex + 1}</div>
+      </div>
+      <div class="law-drill-stack-meta">${correct}/${Math.max(1, answered)} Correct</div>
+    </div>
+    <div class="law-drill-stack-list">
+      ${
+        entries.length
+          ? entries
+              .map((entry, entryIndex) => {
+                const stateClass = entry?.isCorrect
+                  ? "is-correct"
+                  : String(entry?.selectedAnswer || "").toLowerCase() === "skipped"
+                    ? "is-skipped"
+                    : "is-wrong";
+                const explanation = String(entry?.explanation || "").trim();
+                const explainCorrect = String(entry?.explainCorrect || "").trim();
+                const memoryTrick = String(entry?.memoryTrick || "").trim();
+                return `
+                  <article class="law-drill-stack-item ${stateClass}">
+                    <div class="law-drill-stack-item-head">
+                      <span class="law-drill-stack-item-index">${entryIndex + 1}</span>
+                      <span class="law-drill-stack-item-state">${
+                        history.length
+                          ? entry?.isCorrect
+                            ? "Correct"
+                            : String(entry?.selectedAnswer || "").toLowerCase() === "skipped"
+                              ? "Skipped"
+                              : "Wrong"
+                          : "Pending"
+                      }</span>
+                    </div>
+                    <div class="law-drill-stack-question">${escapeHtml(
+                      String(entry?.questionText || questions[entryIndex]?.question || "").trim() ||
+                        `Question ${entryIndex + 1}`,
+                    )}</div>
+                    <div class="law-drill-stack-answer">
+                      <span class="law-drill-stack-label">Your answer</span>
+                      <span class="law-drill-stack-value">${escapeHtml(
+                        String(entry?.selectedAnswer || (history.length ? "Skipped" : "Not answered")).trim() ||
+                          (history.length ? "Skipped" : "Not answered"),
+                      )}</span>
+                    </div>
+                    <div class="law-drill-stack-answer">
+                      <span class="law-drill-stack-label">Correct answer</span>
+                      <span class="law-drill-stack-value">${escapeHtml(
+                        String(entry?.correctAnswer || "").trim(),
+                      )}</span>
+                    </div>
+                    ${
+                      explainCorrect
+                        ? `<div class="law-drill-stack-note"><strong>Why:</strong> ${escapeHtml(explainCorrect)}</div>`
+                        : ""
+                    }
+                    ${
+                      explanation && explanation !== explainCorrect
+                        ? `<div class="law-drill-stack-note">${escapeHtml(explanation)}</div>`
+                        : ""
+                    }
+                    ${
+                      memoryTrick
+                        ? `<div class="law-drill-stack-note law-drill-stack-memory">${escapeHtml(memoryTrick)}</div>`
+                        : ""
+                    }
+                  </article>
+                `;
+              })
+              .join("")
+          : `<div class="law-drill-stack-empty">Answer the 5 questions in this level to build the stack.</div>`
+      }
+    </div>
+  `;
+}
+
+function normalizeLawDrillState(rawState = null) {
+  if (!rawState || typeof rawState !== "object") return null;
+
+  const levels = cloneLawDrillLevels(rawState.levels);
+  if (levels.length === 0) return null;
+
+  const currentLevelIndex = Math.max(
+    0,
+    Math.min(levels.length - 1, Math.round(Number(rawState.currentLevelIndex) || 0)),
+  );
+  const hasReviewLevel =
+    rawState.reviewLevelIndex !== null &&
+    rawState.reviewLevelIndex !== undefined &&
+    String(rawState.reviewLevelIndex).trim() !== "";
+  const reviewLevelIndex = hasReviewLevel
+    ? Math.max(0, Math.min(levels.length - 1, Math.round(Number(rawState.reviewLevelIndex) || 0)))
+    : null;
+  const hasResultLevel =
+    rawState.resultLevelIndex !== null &&
+    rawState.resultLevelIndex !== undefined &&
+    String(rawState.resultLevelIndex).trim() !== "";
+  const resultLevelIndex = hasResultLevel
+    ? Math.max(0, Math.min(levels.length - 1, Math.round(Number(rawState.resultLevelIndex) || 0)))
+    : null;
+  const rawView = String(rawState.view || "").trim().toLowerCase();
+  const view = ["ladder", "level", "review", "result"].includes(rawView) ? rawView : "ladder";
+
+  levels.forEach((level, index) => {
+    if (index < currentLevelIndex) {
+      level.status = "completed";
+    } else if (index === currentLevelIndex) {
+      level.status = reviewLevelIndex === index ? "review" : "current";
+    } else if (!["completed", "current", "review"].includes(level.status)) {
+      level.status = "locked";
+    }
+    level.index = index;
+  });
+
+  return {
+    version: Math.max(1, Math.round(Number(rawState.version) || 1)),
+    totalLevels: Math.max(1, Math.round(Number(rawState.totalLevels) || LAW_DRILL_TOTAL_LEVELS)),
+    questionsPerLevel: Math.max(
+      1,
+      Math.round(Number(rawState.questionsPerLevel) || LAW_DRILL_QUESTIONS_PER_LEVEL),
+    ),
+    currentLevelIndex,
+    reviewLevelIndex,
+    resultLevelIndex,
+    view,
+    levels,
+  };
+}
+
+function createLawDrillState(sourceQuestions = questionBank) {
+  const levels = buildLawDrillLevels(sourceQuestions);
+  if (!levels.length) return null;
+  return {
+    version: 1,
+    totalLevels: LAW_DRILL_TOTAL_LEVELS,
+    questionsPerLevel: LAW_DRILL_QUESTIONS_PER_LEVEL,
+    currentLevelIndex: 0,
+    reviewLevelIndex: null,
+    resultLevelIndex: null,
+    view: "ladder",
+    levels,
+  };
+}
+
+function getLawDrillCurrentLevel() {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return null;
+  return lawDrillState.levels[lawDrillState.currentLevelIndex] || null;
+}
+
+function getLawDrillReviewLevel() {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return null;
+  if (!Number.isInteger(lawDrillState.reviewLevelIndex)) return null;
+  return lawDrillState.levels[lawDrillState.reviewLevelIndex] || null;
+}
+
+function getLawDrillCurrentLevelQuestions() {
+  const currentLevel = getLawDrillCurrentLevel();
+  if (!currentLevel) return [];
+  return getLawDrillLevelQuestions(currentLevel.index);
+}
+
+function getLawDrillReviewQuestions() {
+  const reviewLevel = getLawDrillReviewLevel();
+  if (!reviewLevel) return [];
+  return reviewLevel.questionIds
+    .map((questionId) => findQuestionById(questionId))
+    .filter(Boolean);
+}
+
+function getLawDrillTotalAnswered() {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return 0;
+  return lawDrillState.levels.reduce(
+    (total, level) => total + (Array.isArray(level.history) ? level.history.length : 0),
+    0,
+  );
+}
+
+function getLawDrillTotalCorrect() {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return 0;
+  return lawDrillState.levels.reduce((total, level) => {
+    const correctCount = Array.isArray(level.history)
+      ? level.history.filter((entry) => entry?.isCorrect).length
+      : 0;
+    return total + correctCount;
+  }, 0);
+}
+
+function getLawDrillCurrentLevelScore() {
+  return getLawDrillLevelScore(lawDrillState?.currentLevelIndex ?? 0);
+}
+
+function getLawDrillLevelScore(levelIndex = 0) {
+  const level = lawDrillState?.levels?.[levelIndex] || null;
+  if (!level) return 0;
+  return Array.isArray(level.history) ? level.history.filter((entry) => entry?.isCorrect).length : 0;
+}
+
+function getLawDrillCumulativeScore() {
+  const setupScore = Number(readCurrentSetupPoints()?.law) || 0;
+  const historyScore = getLawDrillTotalCorrect();
+  return Math.max(0, Math.round(Math.max(setupScore, historyScore)));
+}
+
+function buildLawDrillResultReviewMarkup(levelIndex = 0) {
+  const level = lawDrillState?.levels?.[levelIndex] || null;
+  const history = Array.isArray(level?.history) ? level.history : [];
+  const questions = Array.isArray(level?.questionIds)
+    ? level.questionIds.map((questionId) => findQuestionById(questionId)).filter(Boolean)
+    : [];
+
+  const sourceEntries = history.length
+    ? history.map((entry, index) => ({ entry, index }))
+    : questions.map((question, index) => ({
+        entry: {
+          questionId: question?.id || 0,
+          questionText: question?.question || "",
+          selectedAnswer: "",
+          correctAnswer: question?.correct || "",
+          explanation: question?.explanation || "",
+          explainCorrect: question?.explainCorrect || "",
+          memoryTrick: question?.memoryTrick || "",
+          isCorrect: false,
+        },
+        index,
+      }));
+
+  return sourceEntries
+    .map(({ entry, index: entryIndex }) => {
+      const isCorrect = Boolean(entry?.isCorrect);
+      const selectedAnswerRaw = String(entry?.selectedAnswer || "").trim();
+      const selectedAnswer = selectedAnswerRaw || (history.length ? "Skipped" : "Not answered");
+      const correctAnswer = String(entry?.correctAnswer || "").trim();
+      const explanation = String(entry?.explanation || "").trim();
+      const explainCorrect = String(entry?.explainCorrect || "").trim();
+      const memoryTrick = String(entry?.memoryTrick || "").trim();
+      const questionText = String(entry?.questionText || questions[entryIndex]?.question || "").trim() ||
+        `Question ${entryIndex + 1}`;
+      const stateLabel = history.length
+        ? (isCorrect ? "Correct" : selectedAnswer.toLowerCase() === "skipped" ? "Skipped" : "Wrong")
+        : "Pending";
+      const cardClass = isCorrect
+        ? "analysis-correct"
+        : selectedAnswer.toLowerCase() === "skipped"
+          ? "analysis-wrong"
+          : "analysis-wrong";
+
+      return `
+        <article class="analysis-card ${cardClass}">
+          <div class="analysis-header">
+            <span>Question ${entryIndex + 1}</span>
+            <span>${stateLabel}</span>
+          </div>
+          <div class="analysis-question">${escapeHtml(questionText)}</div>
+          <div class="analysis-answer"><strong>Your answer:</strong> ${escapeHtml(selectedAnswer)}</div>
+          <div class="analysis-answer"><strong>Correct answer:</strong> ${escapeHtml(correctAnswer)}</div>
+          ${
+            explainCorrect
+              ? `<div class="analysis-answer"><strong>Why:</strong> ${escapeHtml(explainCorrect)}</div>`
+              : ""
+          }
+          ${
+            explanation && explanation !== explainCorrect
+              ? `<div class="analysis-answer">${escapeHtml(explanation)}</div>`
+              : ""
+          }
+          ${
+            memoryTrick
+              ? `<div class="analysis-answer"><strong>Memory:</strong> ${escapeHtml(memoryTrick)}</div>`
+              : ""
+          }
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function setLawDrillLevelStatus(levelIndex, status) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return;
+  const level = lawDrillState.levels[levelIndex];
+  if (!level) return;
+  level.status = status;
+}
+
+function serializeLawDrillState() {
+  if (!lawDrillState) return null;
+  return {
+    version: lawDrillState.version || 1,
+    totalLevels: lawDrillState.totalLevels || LAW_DRILL_TOTAL_LEVELS,
+    questionsPerLevel: lawDrillState.questionsPerLevel || LAW_DRILL_QUESTIONS_PER_LEVEL,
+    currentLevelIndex: lawDrillState.currentLevelIndex || 0,
+    reviewLevelIndex: Number.isInteger(lawDrillState.reviewLevelIndex)
+      ? lawDrillState.reviewLevelIndex
+      : null,
+    resultLevelIndex: Number.isInteger(lawDrillState.resultLevelIndex)
+      ? lawDrillState.resultLevelIndex
+      : null,
+    view: String(lawDrillState.view || "ladder"),
+    levels: Array.isArray(lawDrillState.levels)
+      ? lawDrillState.levels.map((level, index) => ({
+          index,
+          questionIds: Array.isArray(level.questionIds) ? [...level.questionIds] : [],
+          status: String(level.status || "locked"),
+          history: Array.isArray(level.history) ? level.history.map((entry) => ({ ...entry })) : [],
+          score: Math.max(0, Math.round(Number(level.score) || 0)),
+          completedAt: String(level.completedAt || "").trim(),
+        }))
+      : [],
+  };
+}
+
+function persistLawDrillSession() {
+  if (!lawDrillState) return;
+  const payload = {
+    mode: "study",
+    studyType: "law",
+    current: current || 0,
+    currentStreak,
+    userAnswers,
+    active,
+    lawDrillState: serializeLawDrillState(),
+    timestamp: Date.now(),
+  };
+  localStorage.setItem(LAW_DRILL_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function clearLawDrillSession() {
+  localStorage.removeItem(LAW_DRILL_STORAGE_KEY);
+}
+
+function updateLawDrillCurrentLevelScore() {
+  const currentLevel = getLawDrillCurrentLevel();
+  if (!currentLevel) return;
+  currentLevel.score = getLawDrillCurrentLevelScore();
+  syncLawDrillCumulativeScore();
+  renderSetupPoints();
+}
+
+function syncLawDrillCumulativeScore() {
+  if (!lawDrillState) return;
+  const nextScore = getLawDrillCumulativeScore();
+  const points = readCurrentSetupPoints();
+  points.law = Math.max(0, Math.round(Number(nextScore) || 0));
+  writeCurrentSetupPoints(points);
+}
+
+function renderLawDrillStack(levelIndex = null, targetEl = lawDrillStackEl, eyebrowLabel = null) {
+  if (!targetEl) return;
+  const markup = buildLawDrillStackMarkup(levelIndex, eyebrowLabel);
+  if (!markup) {
+    targetEl.classList.add("hidden");
+    targetEl.innerHTML = "";
+    return;
+  }
+
+  targetEl.classList.remove("hidden");
+  targetEl.innerHTML = markup;
+
+  if (targetEl === lawDrillStackEl) {
+    renderSessionPointsDisplay();
+    renderCompactHeaderMeta();
+  }
+}
+
+function renderLawDrillRail() {
+  if (!lawDrillRailEl || !lawDrillState) return;
+  const levels = Array.isArray(lawDrillState.levels) ? lawDrillState.levels : [];
+  const rowSize = window.matchMedia("(max-width: 720px)").matches ? 5 : 10;
+  lawDrillRailEl.innerHTML = "";
+
+  for (let rowStart = 0; rowStart < levels.length; rowStart += rowSize) {
+    const rowIndex = Math.floor(rowStart / rowSize);
+    const rowLevels = levels.slice(rowStart, rowStart + rowSize);
+    const isReverse = rowIndex % 2 === 1;
+    const row = document.createElement("div");
+    row.className = `law-drill-row ${isReverse ? "is-reverse" : "is-forward"}`;
+
+    const track = document.createElement("div");
+    track.className = "law-drill-row-track";
+
+    rowLevels.forEach((level, offset) => {
+      const index = rowStart + offset;
+      const button = document.createElement("button");
+      const isHard = (index + 1) % 5 === 0;
+      const isCurrent =
+        lawDrillState.reviewLevelIndex == null &&
+        getLawDrillView() !== "result" &&
+        index === lawDrillState.currentLevelIndex;
+      const isReview = lawDrillState.reviewLevelIndex === index;
+      const isCompleted = level.status === "completed";
+      const isLocked = level.status === "locked";
+      button.type = "button";
+      button.className = [
+        "law-drill-node",
+        isHard ? "is-hard" : "",
+        isCompleted ? "is-completed" : "",
+        isCurrent ? "is-current" : "",
+        isLocked ? "is-locked" : "",
+        isReview ? "is-review" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      button.innerHTML = `
+        <span class="law-drill-node-number">${index + 1}</span>
+      `;
+      button.title = `Level ${index + 1}`;
+      button.disabled = isLocked;
+      if (isCompleted) {
+        button.onclick = () => openLawDrillLevelReview(index);
+      } else if (isCurrent) {
+        button.onclick = () => openLawDrillLevel(index, { resetProgress: false });
+      }
+      track.appendChild(button);
+    });
+
+    row.appendChild(track);
+    if (rowStart + rowSize < levels.length) {
+      const connector = document.createElement("div");
+      connector.className = `law-drill-row-connector ${isReverse ? "is-left" : "is-right"}`;
+      row.appendChild(connector);
+    }
+
+    lawDrillRailEl.appendChild(row);
+  }
+}
+
+function syncLawDrillRailForViewport() {
+  if (!isLawStudyMode()) return;
+  if (getLawDrillView() !== "ladder") return;
+  renderLawDrillRail();
+}
+
+function showLawDrillLadderView() {
+  if (!lawDrillState) return;
+  setLawDrillView("ladder", { persist: false });
+  lawDrillState.reviewLevelIndex = null;
+  lawDrillState.resultLevelIndex = null;
+  inDetailedReview = false;
+  active = [];
+  if (backReviewBtn) {
+    backReviewBtn.classList.add("hidden");
+  }
+  if (questionCardEl) {
+    questionCardEl.classList.add("hidden");
+  }
+  if (lawDrillStackEl) {
+    lawDrillStackEl.classList.add("hidden");
+    lawDrillStackEl.innerHTML = "";
+  }
+  renderLawDrillRail();
+  if (progressEl) {
+    progressEl.innerText = `Level ${lawDrillState.currentLevelIndex + 1}/${lawDrillState.totalLevels}`;
+    progressEl.style.color = "";
+  }
+  if (liveScore) liveScore.innerText = "";
+  showScreen("quiz-area");
+  renderSessionPointsDisplay();
+  renderCompactHeaderMeta();
+  persistLawDrillSession();
+}
+
+function openLawDrillLevel(levelIndex = 0, { resetProgress = false } = {}) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return;
+  const level = lawDrillState.levels[levelIndex];
+  if (!level || level.status === "locked") return;
+  if (level.status === "completed") {
+    openLawDrillLevelReview(levelIndex);
+    return;
+  }
+
+  const nextQuestions = getLawDrillLevelQuestions(levelIndex);
+  if (!nextQuestions.length) {
+    alert("No questions were found for this level yet.");
+    return;
+  }
+
+  const existingQuestionIds = Array.isArray(active) ? active.map((item) => Number(item?.id || 0)) : [];
+  const nextQuestionIds = nextQuestions.map((item) => Number(item?.id || 0));
+  const sameLevel =
+    existingQuestionIds.length === nextQuestionIds.length &&
+    existingQuestionIds.every((value, index) => value === nextQuestionIds[index]);
+
+  lawDrillState.currentLevelIndex = levelIndex;
+  lawDrillState.reviewLevelIndex = null;
+  lawDrillState.resultLevelIndex = null;
+  setLawDrillView("level", { persist: false });
+  active = nextQuestions;
+  nextQuestions.forEach((question) => {
+    if (question && Object.prototype.hasOwnProperty.call(userAnswers, question.id)) {
+      delete userAnswers[question.id];
+    }
+  });
+  if (resetProgress || !sameLevel) {
+    current = 0;
+    userAnswers = {};
+    answeredCurrent = false;
+  } else {
+    current = Math.max(0, Math.min(current || 0, Math.max(0, active.length - 1)));
+  }
+  inDetailedReview = false;
+  renderLawDrillRail();
+  showScreen("quiz-area");
+  syncLawDrillLayout();
+  persistLawDrillSession();
+  showQuestion();
+}
+
+function updateLawDrillHeaderMeta() {
+  if (!lawDrillState) return;
+  const currentLevel = lawDrillState.reviewLevelIndex != null
+    ? lawDrillState.reviewLevelIndex
+    : lawDrillState.resultLevelIndex != null
+      ? lawDrillState.resultLevelIndex
+      : lawDrillState.currentLevelIndex;
+  const reviewLabel = lawDrillState.reviewLevelIndex != null ? "Review" : "Level";
+  const levelNumber = currentLevel + 1;
+  const questionsInLevel = Array.isArray(lawDrillState.levels?.[currentLevel]?.questionIds)
+    ? lawDrillState.levels[currentLevel].questionIds.length
+    : LAW_DRILL_QUESTIONS_PER_LEVEL;
+  const levelScore = getLawDrillLevelScore(currentLevel);
+  if (progressEl) {
+    progressEl.innerText = `${reviewLabel} ${levelNumber}/${lawDrillState.totalLevels} • Q ${current + 1}/${active.length}`;
+  }
+}
+
+function renderLawDrillReviewLevelViewLegacy(levelIndex = 0) {
+  const level = lawDrillState?.levels?.[levelIndex] || null;
+  const history = Array.isArray(level?.history) ? level.history : [];
+  const questions = getLawDrillReviewQuestions();
+  const answered = history.length;
+  const correct = history.filter((entry) => entry?.isCorrect).length;
+
+  if (!lawDrillStackEl) return;
+
+  prevBtn.classList.add("hidden");
+  nextBtn.classList.add("hidden");
+  if (backReviewBtn) {
+    backReviewBtn.classList.add("hidden");
+  }
+
+  if (lawDrillStackEl) {
+    lawDrillStackEl.classList.remove("hidden");
+  }
+
+  if (questionEl) {
+    questionEl.innerHTML =
+      `<span class="question-kicker">Level ${levelIndex + 1} Review</span><br><br>` +
+      `This level is locked from re-answering. Use the ladder or move to the next level when you're ready.`;
+  }
+
+  if (comboBlock) comboBlock.innerHTML = "";
+  if (answersEl) answersEl.innerHTML = "";
+  if (explanationEl) {
+    explanationEl.classList.add("hidden");
+    explanationEl.innerHTML = "";
+  }
+  if (memoryTrickBoxEl) {
+    memoryTrickBoxEl.classList.add("hidden");
+    memoryTrickBoxEl.innerHTML = "";
+  }
+  if (topicLinkWrapEl) topicLinkWrapEl.classList.add("hidden");
+  if (aiExplainWrapEl) aiExplainWrapEl.classList.add("hidden");
+  if (drillEventBannerEl) {
+    drillEventBannerEl.classList.add("hidden");
+    drillEventBannerEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
+  }
+
+  if (progressEl) {
+    progressEl.innerText = `Level ${levelIndex + 1} Review • ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.style.color = "";
+  }
+  if (liveScore) liveScore.innerText = "";
+
+  lawDrillStackEl.innerHTML = `
+    <div class="law-drill-stack-head">
+      <div>
+        <div class="law-drill-stack-eyebrow">Past Level Review</div>
+        <div class="law-drill-stack-title">Level ${levelIndex + 1}</div>
+      </div>
+      <div class="law-drill-stack-meta">${correct}/${Math.max(1, answered)} Correct</div>
+    </div>
+    <div class="law-drill-stack-list">
+      ${
+        history.length
+          ? history
+              .map((entry, entryIndex) => {
+                const stateClass = entry?.isCorrect
+                  ? "is-correct"
+                  : String(entry?.selectedAnswer || "").toLowerCase() === "skipped"
+                    ? "is-skipped"
+                    : "is-wrong";
+                const explanation = String(entry?.explanation || "").trim();
+                const explainCorrect = String(entry?.explainCorrect || "").trim();
+                const memoryTrick = String(entry?.memoryTrick || "").trim();
+                return `
+                  <article class="law-drill-stack-item ${stateClass}">
+                    <div class="law-drill-stack-item-head">
+                      <span class="law-drill-stack-item-index">${entryIndex + 1}</span>
+                      <span class="law-drill-stack-item-state">${
+                        entry?.isCorrect ? "Correct" : String(entry?.selectedAnswer || "").toLowerCase() === "skipped" ? "Skipped" : "Wrong"
+                      }</span>
+                    </div>
+                    <div class="law-drill-stack-question">${escapeHtml(
+                      String(entry?.questionText || questions[entryIndex]?.question || "").trim() ||
+                        `Question ${entryIndex + 1}`,
+                    )}</div>
+                    <div class="law-drill-stack-answer">
+                      <span class="law-drill-stack-label">Your answer</span>
+                      <span class="law-drill-stack-value">${escapeHtml(
+                        String(entry?.selectedAnswer || "Skipped").trim() || "Skipped",
+                      )}</span>
+                    </div>
+                    <div class="law-drill-stack-answer">
+                      <span class="law-drill-stack-label">Correct answer</span>
+                      <span class="law-drill-stack-value">${escapeHtml(
+                        String(entry?.correctAnswer || "").trim(),
+                      )}</span>
+                    </div>
+                    ${
+                      explainCorrect
+                        ? `<div class="law-drill-stack-note"><strong>Why:</strong> ${escapeHtml(explainCorrect)}</div>`
+                        : ""
+                    }
+                    ${
+                      explanation && explanation !== explainCorrect
+                        ? `<div class="law-drill-stack-note">${escapeHtml(explanation)}</div>`
+                        : ""
+                    }
+                    ${
+                      memoryTrick
+                        ? `<div class="law-drill-stack-note law-drill-stack-memory">${escapeHtml(memoryTrick)}</div>`
+                        : ""
+                    }
+                  </article>
+                `;
+              })
+              .join("")
+          : `<div class="law-drill-stack-empty">No answered questions recorded for this level yet.</div>`
+      }
+    </div>
+  `;
+}
+
+function renderLawDrillReviewLevelView(levelIndex = 0) {
+  const level = lawDrillState?.levels?.[levelIndex] || null;
+  const history = Array.isArray(level?.history) ? level.history : [];
+  const answered = history.length;
+  const correct = history.filter((entry) => entry?.isCorrect).length;
+
+  if (!lawDrillStackEl) return;
+
+  prevBtn.classList.add("hidden");
+  nextBtn.classList.add("hidden");
+  if (backReviewBtn) {
+    backReviewBtn.classList.add("hidden");
+  }
+
+  if (questionCardEl) questionCardEl.classList.remove("hidden");
+  if (lawDrillPanelEl) lawDrillPanelEl.classList.add("hidden");
+  if (lawDrillStackEl) lawDrillStackEl.classList.remove("hidden");
+
+  if (comboBlock) comboBlock.innerHTML = "";
+  if (answersEl) answersEl.innerHTML = "";
+  if (explanationEl) {
+    explanationEl.classList.add("hidden");
+    explanationEl.innerHTML = "";
+  }
+  if (memoryTrickBoxEl) {
+    memoryTrickBoxEl.classList.add("hidden");
+    memoryTrickBoxEl.innerHTML = "";
+  }
+  if (topicLinkWrapEl) topicLinkWrapEl.classList.add("hidden");
+  if (aiExplainWrapEl) aiExplainWrapEl.classList.add("hidden");
+  if (drillEventBannerEl) {
+    drillEventBannerEl.classList.add("hidden");
+    drillEventBannerEl.classList.remove("show", "tone-good", "tone-bad", "tone-info");
+  }
+
+  if (questionEl) {
+    questionEl.innerHTML =
+      `<span class="question-kicker">Level ${levelIndex + 1} Review</span><br><br>` +
+      `Completed questions, your answers, and the correct answers are shown below.`;
+  }
+
+  if (progressEl) {
+    progressEl.innerText = `Level ${levelIndex + 1} Review • ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.style.color = "";
+  }
+  if (liveScore) liveScore.innerText = "";
+
+  if (lawDrillStackEl) {
+    lawDrillStackEl.classList.remove("review-palette-grid");
+    renderLawDrillStack(levelIndex, lawDrillStackEl, "Past Level Review");
+  }
+}
+
+function openLawDrillLevelReview(levelIndex = 0) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return;
+  const level = lawDrillState.levels[levelIndex];
+  if (!level || level.status !== "completed") return;
+  lawDrillState.reviewLevelIndex = levelIndex;
+  lawDrillState.resultLevelIndex = null;
+  setLawDrillView("review", { persist: false });
+  inDetailedReview = true;
+  renderLawDrillRail();
+  showScreen("quiz-area");
+  showQuestion();
+}
+
+function exitLawDrillLevelReview() {
+  if (!lawDrillState) return;
+  lawDrillState.reviewLevelIndex = null;
+  inDetailedReview = false;
+  showLawDrillLadderView();
+}
+
+function returnToLawLadder() {
+  if (!lawDrillState) return;
+  lawDrillState.reviewLevelIndex = null;
+  lawDrillState.resultLevelIndex = null;
+  inDetailedReview = false;
+  showLawDrillLadderView();
+}
+
+function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return;
+  const level = lawDrillState.levels[levelIndex] || null;
+  if (!level) return;
+
+  const history = Array.isArray(level.history) ? level.history : [];
+  const answered = history.length;
+  const correct = history.filter((entry) => entry?.isCorrect).length;
+  const nextLevelIndex = levelIndex + 1;
+  const hasNext = !final && nextLevelIndex < lawDrillState.levels.length;
+  const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+
+  lawDrillState.resultLevelIndex = levelIndex;
+  lawDrillState.reviewLevelIndex = null;
+  setLawDrillView("result", { persist: false });
+  if (questionCardEl) questionCardEl.classList.add("hidden");
+  if (lawDrillPanelEl) lawDrillPanelEl.classList.add("hidden");
+  if (lawDrillStackEl) {
+    lawDrillStackEl.classList.add("hidden");
+    lawDrillStackEl.innerHTML = "";
+  }
+
+  const resultTitle = document.getElementById("result-title");
+  const percentEl = document.getElementById("result-percentage");
+  const scoreEl = document.getElementById("result-score");
+  const feedbackEl = document.getElementById("result-feedback");
+  const reviewSection = document.getElementById("result-review-section");
+  const reviewContent = document.getElementById("result-review-content");
+  const reviewSectionTitle = reviewSection?.querySelector(".review-section-title");
+  const reviewBtn = document.getElementById("result-review-btn");
+  const shareBtn = document.getElementById("result-share-btn");
+  const menuBtn = document.getElementById("result-menu-btn");
+
+  if (resultTitle) {
+    resultTitle.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
+    resultTitle.classList.toggle("hidden", !final);
+  }
+  if (resultBadgeEl) {
+    resultBadgeEl.textContent = final ? "Drill Complete" : `Level ${levelIndex + 1} Completed`;
+    resultBadgeEl.classList.remove("hidden");
+  }
+  if (percentEl) {
+    percentEl.innerText = `${accuracy}%`;
+    percentEl.style.color = accuracy >= 80 ? "#15803d" : accuracy >= 60 ? "#f9a825" : "#dc2626";
+  }
+  if (scoreEl) {
+    scoreEl.innerText = `${correct} / ${Math.max(1, answered)} Correct`;
+  }
+  if (feedbackEl) {
+    feedbackEl.innerText = final
+      ? "You have cleared all 100 levels. You can review the ladder or head back to the menu."
+      : hasNext
+        ? `Nice work. Level ${nextLevelIndex + 1} is ready when you are.`
+        : "That level is complete. Return to the ladder when ready.";
+  }
+  if (reviewSection) {
+    reviewSection.classList.remove("hidden");
+  }
+  if (reviewSectionTitle) {
+    reviewSectionTitle.textContent = "Review";
+  }
+  if (reviewContent) {
+    reviewContent.classList.remove("review-palette-grid");
+    reviewContent.classList.add("analysis-list");
+    reviewContent.innerHTML = buildLawDrillStackMarkup(levelIndex, "Past Level Review");
+  }
+
+  if (reviewBtn) {
+    reviewBtn.classList.toggle("hidden", !hasNext);
+    reviewBtn.textContent = hasNext ? `Level ${nextLevelIndex + 1}` : "Close";
+    reviewBtn.onclick = hasNext
+      ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
+      : returnToLawLadder;
+  }
+  if (shareBtn) {
+    shareBtn.classList.toggle("hidden", false);
+    shareBtn.textContent = "Close";
+    shareBtn.onclick = returnToLawLadder;
+  }
+  if (menuBtn) {
+    menuBtn.textContent = "Back to Menu";
+    menuBtn.onclick = goToMenu;
+  }
+
+  showScreen("study-result-screen");
+  renderPoints();
+  renderSessionPointsDisplay();
+  persistLawDrillSession();
+}
+
+function ensureLawDrillActiveLevel() {
+  const questions = getLawDrillCurrentLevelQuestions();
+  active = questions;
+  current = Math.max(0, Math.min(current || 0, Math.max(0, active.length - 1)));
+  return active.length > 0;
+}
+
+function markLawDrillCurrentLevelComplete() {
+  const currentLevel = getLawDrillCurrentLevel();
+  if (!currentLevel) return;
+  updateLawDrillCurrentLevelScore();
+  currentLevel.status = "completed";
+  currentLevel.completedAt = new Date().toISOString();
+
+  const nextLevelIndex = currentLevel.index + 1;
+  if (nextLevelIndex >= (lawDrillState?.levels?.length || 0)) {
+    lawDrillState.resultLevelIndex = currentLevel.index;
+    lawDrillState.view = "result";
+    active = [];
+    userAnswers = {};
+    current = 0;
+    answeredCurrent = false;
+    inDetailedReview = false;
+    renderLawDrillRail();
+    persistLawDrillSession();
+    showDrillEventBanner(`Level ${currentLevel.index + 1} complete`, "good");
+    showLawDrillLevelResult(currentLevel.index, { final: true });
+    return;
+  }
+
+  const nextLevel = lawDrillState.levels[nextLevelIndex];
+  if (nextLevel) {
+    nextLevel.status = "current";
+  }
+
+  lawDrillState.currentLevelIndex = nextLevelIndex;
+  lawDrillState.reviewLevelIndex = null;
+  lawDrillState.resultLevelIndex = currentLevel.index;
+  lawDrillState.view = "result";
+  active = [];
+  userAnswers = {};
+  current = 0;
+  answeredCurrent = false;
+  inDetailedReview = false;
+  renderLawDrillRail();
+  persistLawDrillSession();
+  showDrillEventBanner(`Level ${currentLevel.index + 1} complete`, "good");
+  showLawDrillLevelResult(currentLevel.index);
+}
+
+function recordLawDrillAnswer(question, selectedAnswer, isCorrect) {
+  if (!lawDrillState) return;
+  const currentLevel = getLawDrillCurrentLevel();
+  if (!currentLevel) return;
+
+  const existingIndex = Array.isArray(currentLevel.history)
+    ? currentLevel.history.findIndex(
+        (entry) => Number(entry?.questionId || 0) === Number(question?.id || 0),
+      )
+    : -1;
+
+  const entry = normalizeLawDrillEntry(
+    {
+      questionId: question?.id,
+      questionText: question?.question || question?.text || "",
+      selectedAnswer,
+      correctAnswer: question?.correct || "",
+      explanation: question?.explanation || "",
+      explainCorrect: question?.explainCorrect || "",
+      memoryTrick: question?.memoryTrick || "",
+      isCorrect,
+    },
+    question,
+  );
+
+  if (existingIndex >= 0) {
+    currentLevel.history[existingIndex] = entry;
+  } else {
+    currentLevel.history.push(entry);
+  }
+
+  updateLawDrillCurrentLevelScore();
+  renderLawDrillStack(currentLevel.index);
+  persistLawDrillSession();
+}
+
+async function startLawDrillSession({ resumeState = null } = {}) {
+  studySessionEnded = false;
+  clearAiExplainStateSession();
+  examVariant = "normal";
+  examTimeBudget = 0;
+  clearInterval(examTimer);
+  clearInterval(reviewTimer);
+  examTimer = null;
+  reviewTimer = null;
+  current = 0;
+  userAnswers = {};
+  currentStreak = 0;
+  answeredCurrent = false;
+  inDetailedReview = false;
+  if (timerEl) {
+    timerEl.classList.add("hidden");
+    timerEl.innerText = "";
+  }
+
+  const restoredState = normalizeLawDrillState(resumeState?.lawDrillState || resumeState);
+  lawDrillState = restoredState || createLawDrillState(questionBank);
+  if (!lawDrillState) {
+    alert("No law drill questions are tagged yet. Add law-tagged questions and try again.");
+    return;
+  }
+
+  mode = "study";
+  lawDrillState.reviewLevelIndex =
+    Number.isInteger(lawDrillState.reviewLevelIndex) && lawDrillState.reviewLevelIndex >= 0
+      ? lawDrillState.reviewLevelIndex
+      : null;
+  lawDrillState.resultLevelIndex =
+    Number.isInteger(lawDrillState.resultLevelIndex) && lawDrillState.resultLevelIndex >= 0
+      ? lawDrillState.resultLevelIndex
+      : null;
+  lawDrillState.view = "ladder";
+
+  if (lawDrillState.reviewLevelIndex == null) {
+    const currentLevel = getLawDrillCurrentLevel();
+    if (currentLevel && currentLevel.status !== "current") {
+      currentLevel.status = "current";
+    }
+  }
+
+  ensureLawDrillActiveLevel();
+  updateModeIndicator();
+  renderLawDrillRail();
+  if (nextBtn) nextBtn.onclick = nextQuestion;
+  if (prevBtn) prevBtn.onclick = previousQuestion;
+  currentStreak = Math.max(0, Number(resumeState?.currentStreak) || 0);
+  if (Number.isInteger(Number(resumeState?.current))) {
+    current = Math.max(0, Math.min(active.length - 1, Number(resumeState.current)));
+  }
+  userAnswers =
+    resumeState && typeof resumeState.userAnswers === "object"
+      ? { ...resumeState.userAnswers }
+      : {};
+  if (lawDrillState.reviewLevelIndex != null) {
+    inDetailedReview = true;
+    current = 0;
+  }
+
+  const currentLevel = getLawDrillCurrentLevel();
+  if (currentLevel) {
+    currentLevel.history = Array.isArray(currentLevel.history) ? currentLevel.history : [];
+    updateLawDrillCurrentLevelScore();
+  }
+
+  if (backendReady) {
+    backendClient
+      .startAttempt({
+        mode: "study",
+        category: "law-drill",
+        questionIds: active.map((q) => Number(q.id)),
+      })
+      .then((result) => {
+        backendAttemptId = result.attemptId;
+      })
+      .catch((error) => {
+        console.warn("Failed to start law drill backend attempt:", error);
+      });
+  }
+
+  showLawDrillLadderView();
+  persistLawDrillSession();
+}
+
+function getSavedLawDrillSession() {
+  try {
+    const raw = localStorage.getItem(LAW_DRILL_STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    return saved;
+  } catch {
+    return null;
+  }
 }
 // ==============================
 // WEAK PRACTICE TRACKER (Persistent)
@@ -461,7 +1803,9 @@ function stripCaseStemFromQuestion(questionText, caseText) {
 }
 
 const normalizedLocalQuestions = enrichImportedCaseQuestions(
-  (Array.isArray(baseQuestions) ? baseQuestions : []).map(withMajorCategory),
+  (Array.isArray(baseQuestions) ? baseQuestions : [])
+    .filter((question) => !isRetiredLawCategoryQuestion(question))
+    .map(withMajorCategory),
 );
 
 const localQuestionFallbackById = new Map(
@@ -476,10 +1820,11 @@ function mapBackendQuestionToLocal(q = {}) {
     id: q.id,
     text: q.text || q.question || fallback.text || fallback.question || "",
     question: q.question || q.text || fallback.question || fallback.text || "",
-    category: normalizeMajorCategory(
-      q.category,
-      `${String(q.question || q.text || "")} ${String(q.explanation || "")}`,
-    ),
+    category: normalizeQuestionCategory({
+      ...q,
+      question: q.question || q.text || fallback.question || fallback.text || "",
+      explanation: q.explanation || fallback.explanation || "",
+    }),
     options: Array.isArray(q.options)
       ? q.options
       : Array.isArray(fallback.options)
@@ -506,6 +1851,13 @@ function mapBackendQuestionToLocal(q = {}) {
     type: q.type || fallback.type || "single",
     topicSlug: q.topicSlug || fallback.topicSlug || "",
     sectionId: q.sectionId || fallback.sectionId || "",
+    drillTags: Array.isArray(q.drillTags)
+      ? q.drillTags
+      : Array.isArray(fallback.drillTags)
+        ? fallback.drillTags
+        : [],
+    drillTrack: q.drillTrack || fallback.drillTrack || "",
+    lawDrill: q.lawDrill ?? fallback.lawDrill ?? false,
   };
 }
 
@@ -546,8 +1898,9 @@ async function loadQuestionsFromBackend() {
       // Merge backend questions over the local dataset so local-only topic work
       // remains usable until it is also published to the backend store.
       const localQuestions = [...normalizedLocalQuestions];
+      const filteredBackendQuestions = questions.filter((question) => !isRetiredLawCategoryQuestion(question));
       const backendById = new Map(
-        questions.map(mapBackendQuestionToLocal).map((question) => [Number(question?.id), question]),
+        filteredBackendQuestions.map(mapBackendQuestionToLocal).map((question) => [Number(question?.id), question]),
       );
       const mergedQuestions = localQuestions.map((question) => {
         const questionId = Number(question?.id);
@@ -668,11 +2021,15 @@ function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (question && question.category) {
     updateCategoryPerformance(question.category, isCorrect);
   }
+  if (question && (question.rotation || Array.isArray(question.rotations))) {
+    updateRotationPerformance(question.rotation || question.rotations?.[0] || "", isCorrect);
+  }
 
   backendClient.syncPerformance({
     questionId,
     isCorrect,
     category: question?.category || "General",
+    rotation: question?.rotation || question?.rotations?.[0] || "",
     selectedAnswer: String(selectedAnswer || "").trim(),
   });
 
@@ -730,6 +2087,69 @@ function getWeakCategories(threshold = 80) {
   );
 }
 
+let rotationPerformance =
+  JSON.parse(localStorage.getItem("quizRotationPerformance")) || {};
+
+function rebuildRotationPerformanceFromQuestionStats() {
+  const rebuilt = {};
+
+  Object.entries(performanceData || {}).forEach(([questionId, row]) => {
+    const question = findQuestionById(questionId);
+    const rotation = normalizeRotationValue(
+      question?.rotation || question?.rotations?.[0] || "",
+    );
+    if (!rotation || rotation === "all") return;
+
+    const attempts = Math.max(0, Number(row?.attempts) || 0);
+    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
+    if (!rebuilt[rotation]) {
+      rebuilt[rotation] = { attempts: 0, correct: 0 };
+    }
+    rebuilt[rotation].attempts += attempts;
+    rebuilt[rotation].correct += correct;
+  });
+
+  rotationPerformance = rebuilt;
+  localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
+}
+
+function updateRotationPerformance(rotation, isCorrect) {
+  const key = normalizeRotationValue(rotation);
+  if (!key || key === "all") return;
+  if (!rotationPerformance[key]) {
+    rotationPerformance[key] = {
+      attempts: 0,
+      correct: 0,
+    };
+  }
+
+  rotationPerformance[key].attempts++;
+
+  if (isCorrect) {
+    rotationPerformance[key].correct++;
+  }
+
+  localStorage.setItem(
+    "quizRotationPerformance",
+    JSON.stringify(rotationPerformance),
+  );
+}
+
+function getRotationAccuracy(rotation) {
+  const key = normalizeRotationValue(rotation);
+  const data = rotationPerformance[key];
+  if (!key || !data || data.attempts === 0) return 100;
+  return Math.round((data.correct / data.attempts) * 100);
+}
+
+function getWeakRotations(threshold = 80) {
+  return Object.keys(rotationPerformance).filter(
+    (rotation) => getRotationAccuracy(rotation) < threshold,
+  );
+}
+
+rebuildRotationPerformanceFromQuestionStats();
+
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");
 const dashboardBtns = Array.from(document.querySelectorAll('[data-open-dashboard="true"], .dashboard-mode'));
@@ -740,7 +2160,14 @@ const menuCommunityBtn = document.getElementById("menu-community-btn");
 const rapidDrillBtn = document.getElementById("rapid-drill-btn");
 const suddenDrillBtn = document.getElementById("sudden-drill-btn");
 const clinicalDrillBtn = document.getElementById("clinical-drill-btn");
+const lawDrillBtn = document.getElementById("law-drill-btn");
 const menuHomeBtn = document.getElementById("menu-home-btn");
+const studyTypeSelect = document.getElementById("study-type-select");
+const studyTypePickerBtn = document.getElementById("study-type-picker-btn");
+const studyRotationSelect = document.getElementById("study-rotation-select");
+const studyRotationPickerBtn = document.getElementById("study-rotation-picker-btn");
+const studyCategorySelect = document.getElementById("study-category-select");
+const studyCategoryPickerBtn = document.getElementById("study-category-picker-btn");
 const historyBtn = document.querySelector(".history-mode");
 if (historyBtn) {
   historyBtn.onclick = () => {
@@ -759,6 +2186,8 @@ const memoryTrickBoxEl = document.getElementById("memory-trick-box");
 const answerCheckmarkEl = document.getElementById("answer-checkmark");
 const answerFeedbackEl = document.getElementById("answer-feedback");
 const drillEventBannerEl = document.getElementById("drill-event-banner");
+const appNotificationBannerEl = document.getElementById("app-notification-banner");
+const questionCardEl = document.querySelector(".question-card-modern");
 const topicLinkWrapEl = document.getElementById("question-topic-link-wrap");
 const topicLinkBtnEl = document.getElementById("topic-link-btn");
 const aiExplainWrapEl = document.getElementById("ai-explain-wrap");
@@ -773,9 +2202,15 @@ const headerInlineMeta = document.getElementById("header-inline-meta");
 const liveScore = document.getElementById("live-score");
 const sessionPointsChipEl = document.getElementById("session-points-chip");
 const sessionPointsValueEl = document.getElementById("session-points-value");
+const lawDrillPanelEl = document.getElementById("law-drill-panel");
+const lawDrillRailEl = document.getElementById("law-drill-rail");
+const lawDrillStackEl = document.getElementById("law-drill-stack");
+const lawDrillResultStackEl = document.getElementById("law-drill-result-stack");
+const resultBadgeEl = document.getElementById("result-badge");
 const backReviewBtn = document.getElementById("back-review-btn");
 const quizMenu = document.getElementById("quiz-menu");
 const homeScreen = document.getElementById("home-screen");
+const welcomeScreen = document.getElementById("welcome-screen");
 const backHomeBtn = document.getElementById("back-home-btn");
 const backBtnQuiz = document.getElementById("back-btn-quiz");
 const menuBtnQuiz = document.getElementById("menu-btn-quiz");
@@ -831,12 +2266,26 @@ const authSubmitBtn = document.getElementById("auth-submit-btn");
 const authCancelBtn = document.getElementById("auth-cancel-btn");
 const authUserLabel = document.getElementById("quiz-auth-user");
 const profileBtn = document.getElementById("quiz-profile-btn");
+const welcomeRegisterCtaBtns = Array.from(
+  document.querySelectorAll('[data-open-welcome-register="true"]'),
+);
+const WELCOME_INTRO_SEEN_KEY = "quizWelcomeIntroSeenV1";
 const profileBtnIcon = profileBtn?.querySelector(".menu-profile-icon");
 const profileBtnAvatarEl = profileBtn?.querySelector(".menu-modern-profile-avatar");
 const menuProfileNameEl = document.getElementById("menu-profile-name");
 const menuProfileSubtitleEl = document.getElementById("menu-profile-subtitle");
 const menuPointsBtn = document.getElementById("menu-points-btn");
 const menuPointsValueEl = document.getElementById("menu-points-value");
+const menuStreakCardBtn = document.getElementById("menu-streak-card");
+const menuPointsCardBtn = document.getElementById("menu-points-card");
+const menuRankCardBtn = document.getElementById("menu-rank-card");
+const menuWeeklyPercentValueEl = document.getElementById("menu-weekly-percent-value");
+const menuStreakValueEl = document.getElementById("menu-streak-value");
+const menuTotalPointsValueEl = document.getElementById("menu-total-points-value");
+const menuRankValueEl = document.getElementById("menu-rank-value");
+const menuLevelRingEl = document.getElementById("menu-level-ring");
+const menuLevelValueEl = document.getElementById("menu-level-value");
+const menuLevelPercentEl = document.getElementById("menu-level-percent");
 const studySetupPointsValueEl = document.getElementById("study-setup-points-value");
 const examSetupPointsValueEl = document.getElementById("exam-setup-points-value");
 const dailySetupPointsValueEl = document.getElementById("daily-setup-points-value");
@@ -846,6 +2295,7 @@ const menuDailyPointsBadgeEl = document.getElementById("menu-daily-points-badge"
 const menuRapidPointsBadgeEl = document.getElementById("menu-rapid-points-badge");
 const menuSuddenPointsBadgeEl = document.getElementById("menu-sudden-points-badge");
 const menuClinicalPointsBadgeEl = document.getElementById("menu-clinical-points-badge");
+const menuLawPointsBadgeEl = document.getElementById("menu-law-points-badge");
 const logoutBtn = document.getElementById("quiz-logout-btn");
 const logoutConfirmBox = document.getElementById("menu-logout-confirm");
 const logoutConfirmBtn = document.getElementById("menu-logout-confirm-btn");
@@ -897,6 +2347,7 @@ const profileDeactivateDaysInput = document.getElementById("profile-deactivate-d
 const studyHistoryToggle = document.getElementById("study-history-toggle");
 const studyHistoryBox = document.getElementById("study-history");
 const topicLibraryCategorySelect = document.getElementById("topic-library-category");
+const topicLibraryCategoryPickerBtn = document.getElementById("topic-library-category-picker-btn");
 const topicLibrarySearchInput = document.getElementById("topic-library-search");
 const topicLibraryListEl = document.getElementById("topic-library-list");
 const topicLibraryCountEl = document.getElementById("topic-library-count");
@@ -916,6 +2367,7 @@ const topicViewerStartQuizBtn = document.getElementById("topic-viewer-start-quiz
 const topicViewerFrameEl = document.getElementById("topic-viewer-frame");
 const topicViewerFrameWrap = document.querySelector(".topic-viewer-frame-wrap");
 const menuUserHubBtn = document.getElementById("menu-user-hub-btn");
+const menuMobileHamburgerBtn = document.getElementById("menu-mobile-hamburger-btn");
 const menuQuickNavBtn = document.getElementById("menu-quick-nav-btn");
 const menuUserHubPanel = document.getElementById("menu-user-hub-panel");
 const menuUserHubCloseBtn = document.getElementById("menu-user-hub-close-btn");
@@ -959,6 +2411,13 @@ const reviewTitleEl = document.querySelector("#review-screen .review-title");
 const reviewTimerStatusEl = document.getElementById("review-timer");
 const submitExamBtn = document.getElementById("submit-exam");
 const examTypeSelect = document.getElementById("exam-type-select");
+const examTypePickerBtn = document.getElementById("exam-type-picker-btn");
+const examRotationSelect = document.getElementById("rotation-select");
+const examRotationPickerBtn = document.getElementById("exam-rotation-picker-btn");
+const examCategorySelect = document.getElementById("category-select");
+const examCategoryPickerBtn = document.getElementById("exam-category-picker-btn");
+const examCountSelect = document.getElementById("exam-count-select");
+const examCountPickerBtn = document.getElementById("exam-count-picker-btn");
 const dailySocialCardEl = document.getElementById("daily-social-card");
 const leaderboardModalEl = document.getElementById("leaderboard-modal");
 const leaderboardCloseBtn = document.getElementById("leaderboard-close-btn");
@@ -972,6 +2431,11 @@ const leaderboardPodiumEl = document.getElementById("leaderboard-podium");
 const leaderboardYourRankEl = document.getElementById("leaderboard-your-rank");
 const leaderboardListEl = document.getElementById("leaderboard-list");
 const leaderboardTabEls = Array.from(document.querySelectorAll(".leaderboard-tab"));
+const setupPickerModalEl = document.getElementById("setup-picker-modal");
+const setupPickerCloseBtn = document.getElementById("setup-picker-close-btn");
+const setupPickerTitleEl = document.getElementById("setup-picker-title");
+const setupPickerSubtitleEl = document.getElementById("setup-picker-subtitle");
+const setupPickerListEl = document.getElementById("setup-picker-list");
 const communityScreenEl = document.getElementById("community-screen");
 const communityStatusImageInput = document.getElementById("community-status-image-input");
 const communityStatusCameraInput = document.getElementById("community-status-camera-input");
@@ -1042,6 +2506,9 @@ const communitySettingsCommunityCustomAlertsInput = document.getElementById("com
 const communitySettingsMediaAutoDownloadInput = document.getElementById("community-settings-media-auto-download");
 const communitySettingsMediaQualityInput = document.getElementById("community-settings-media-quality");
 const communitySettingsStatusRepliesInput = document.getElementById("community-settings-status-replies");
+const communitySettingsAdminSectionEl = document.getElementById("community-settings-admin-section");
+const communitySettingsAdminTargetBtn = document.getElementById("community-settings-admin-target-btn");
+const communitySettingsAdminKeyInput = document.getElementById("community-settings-admin-key");
 const communitySettingsAccountValueEl = document.getElementById("community-settings-account-value");
 const communitySettingsAppearanceValueEl = document.getElementById("community-settings-appearance-value");
 const communitySettingsGlobalNotificationsValueEl = document.getElementById("community-settings-global-notifications-value");
@@ -1083,6 +2550,8 @@ const communityChatCameraInput = document.getElementById("community-chat-camera-
 const communityChatVoiceInput = document.getElementById("community-chat-voice-input");
 const communityChatReplyPreviewEl = document.getElementById("community-chat-reply-preview");
 const communityChatAttachmentPreviewEl = document.getElementById("community-chat-attachment-preview");
+const communityChatReadonlyBannerEl = document.getElementById("community-chat-readonly-banner");
+const communityChatComposerEl = document.querySelector(".community-chat-composer");
 const communityChatEmojiBtn = document.getElementById("community-chat-emoji-btn");
 const communityChatEmojiPanelEl = document.getElementById("community-chat-emoji-panel");
 const communityChatAttachBtn = document.getElementById("community-chat-attach-btn");
@@ -1126,8 +2595,13 @@ const communityMediaCloseBtn = document.getElementById("community-media-close-bt
 const communityMediaModalImageEl = document.getElementById("community-media-modal-image");
 const communityMediaModalVideoEl = document.getElementById("community-media-modal-video");
 const communityMediaModalNameEl = document.getElementById("community-media-modal-name");
+const communityMediaPrevBtn = document.getElementById("community-media-prev-btn");
+const communityMediaNextBtn = document.getElementById("community-media-next-btn");
+const communityMediaAddBtn = document.getElementById("community-media-add-btn");
+const communityMediaRemoveBtn = document.getElementById("community-media-remove-btn");
+const communityMediaCountEl = document.getElementById("community-media-modal-count");
 const communityAttachmentPreviewModalEl = document.getElementById("community-attachment-preview-modal");
-const communityAttachmentPreviewCloseBtn = document.getElementById("community-attachment-preview-close-btn");
+const communityAttachmentPreviewCloseBtn = document.querySelector(".community-attachment-preview-close-btn");
 const communityAttachmentPreviewEditBtn = document.getElementById("community-attachment-preview-edit-btn");
 const communityAttachmentPreviewDeleteBtn = document.getElementById("community-attachment-preview-delete-btn");
 const communityAttachmentPreviewCountEl = document.getElementById("community-attachment-preview-count");
@@ -1150,6 +2624,43 @@ const communityConfirmTitleEl = document.getElementById("community-confirm-title
 const communityConfirmTextEl = document.getElementById("community-confirm-text");
 const communityConfirmCancelBtn = document.getElementById("community-confirm-cancel-btn");
 const communityConfirmOkBtn = document.getElementById("community-confirm-ok-btn");
+const communityThreadActionsModalEl = document.getElementById("community-thread-actions-modal");
+const communityThreadActionsCloseBtn = document.getElementById("community-thread-actions-close-btn");
+const communityThreadActionsTitleEl = document.getElementById("community-thread-actions-title");
+const communityThreadActionsSummaryEl = document.getElementById("community-thread-actions-summary");
+const communityThreadActionsSelectedEl = document.getElementById("community-thread-actions-selected");
+const communityThreadActionsViewBtn = document.getElementById("community-thread-actions-view-btn");
+const communityThreadActionsFavoriteBtn = document.getElementById("community-thread-actions-favorite-btn");
+const communityThreadActionsClearBtn = document.getElementById("community-thread-actions-clear-btn");
+const communityThreadActionsUnfriendBtn = document.getElementById("community-thread-actions-unfriend-btn");
+const communityThreadActionsDeleteBtn = document.getElementById("community-thread-actions-delete-btn");
+const communityThreadActionsBlockBtn = document.getElementById("community-thread-actions-block-btn");
+const communityThreadActionsExitBtn = document.getElementById("community-thread-actions-exit-btn");
+const communityFriendActionsModalEl = document.getElementById("community-friend-actions-modal");
+const communityFriendActionsCloseBtn = document.getElementById("community-friend-actions-close-btn");
+const communityFriendActionsTitleEl = document.getElementById("community-friend-actions-title");
+const communityFriendActionsSummaryEl = document.getElementById("community-friend-actions-summary");
+const communityFriendActionsSelectedEl = document.getElementById("community-friend-actions-selected");
+const communityFriendActionsViewBtn = document.getElementById("community-friend-actions-view-btn");
+const communityFriendActionsMessageBtn = document.getElementById("community-friend-actions-message-btn");
+const communityFriendActionsUnfriendBtn = document.getElementById("community-friend-actions-unfriend-btn");
+const communityFriendActionsAcceptBtn = document.getElementById("community-friend-actions-accept-btn");
+const communityFriendActionsRejectBtn = document.getElementById("community-friend-actions-reject-btn");
+const communityFriendActionsCancelBtn = document.getElementById("community-friend-actions-cancel-btn");
+const communityFriendActionsAddBtn = document.getElementById("community-friend-actions-add-btn");
+const communityFriendActionsBlockBtn = document.getElementById("community-friend-actions-block-btn");
+const communityFriendActionsUnblockBtn = document.getElementById("community-friend-actions-unblock-btn");
+const communityReportModalEl = document.getElementById("community-report-modal");
+const communityReportTitleEl = document.getElementById("community-report-title");
+const communityReportTargetEl = document.getElementById("community-report-target");
+const communityReportTargetAvatarEl = document.getElementById("community-report-target-avatar");
+const communityReportTargetNameEl = document.getElementById("community-report-target-name");
+const communityReportTargetLabelEl = document.getElementById("community-report-target-label");
+const communityReportReasonSelectEl = document.getElementById("community-report-reason-select");
+const communityReportDetailsEl = document.getElementById("community-report-details");
+const communityReportHintEl = document.getElementById("community-report-hint");
+const communityReportCancelBtn = document.getElementById("community-report-cancel-btn");
+const communityReportSubmitBtn = document.getElementById("community-report-submit-btn");
 const communityLockModalEl = document.getElementById("community-lock-modal");
 const communityLockPinInput = document.getElementById("community-lock-pin-input");
 const communityLockBiometricBtn = document.getElementById("community-lock-biometric-btn");
@@ -1164,9 +2675,20 @@ const communityLockResetCancelBtn = document.getElementById("community-lock-rese
 const communityLockResetConfirmBtn = document.getElementById("community-lock-reset-confirm-btn");
 const communityGroupModalEl = document.getElementById("community-group-modal");
 const communityGroupNameInput = document.getElementById("community-group-name-input");
+const communityGroupModalCopyEl = document.getElementById("community-group-modal-copy");
 const communityGroupMembersEl = document.getElementById("community-group-members");
 const communityGroupCancelBtn = document.getElementById("community-group-cancel-btn");
 const communityGroupCreateBtn = document.getElementById("community-group-create-btn");
+const communityGroupInviteModalEl = document.getElementById("community-group-invite-modal");
+const communityGroupInviteCloseBtn = document.getElementById("community-group-invite-close-btn");
+const communityGroupInviteAvatarEl = document.getElementById("community-group-invite-avatar");
+const communityGroupInviteNameEl = document.getElementById("community-group-invite-name");
+const communityGroupInviteSubtitleEl = document.getElementById("community-group-invite-subtitle");
+const communityGroupInviteMembersEl = document.getElementById("community-group-invite-members");
+const communityGroupInviteShortLinkEl = document.getElementById("community-group-invite-short-link");
+const communityGroupInviteNoteEl = document.getElementById("community-group-invite-note");
+const communityGroupInviteCopyBtn = document.getElementById("community-group-invite-copy-btn");
+const communityGroupInvitePrimaryBtn = document.getElementById("community-group-invite-primary-btn");
 const communityGroupEditModalEl = document.getElementById("community-group-edit-modal");
 const communityGroupEditCloseBtn = document.getElementById("community-group-edit-close-btn");
 const communityGroupEditAvatarPreviewEl = document.getElementById("community-group-edit-avatar-preview");
@@ -1234,12 +2756,22 @@ const communityStatusToolTextAlignBtn = document.getElementById("community-statu
 const communityStatusCaptionInput = document.getElementById("community-status-caption-input");
 const communityStatusCaptionEmojiBtn = document.getElementById("community-status-caption-emoji-btn");
 const communityStatusCaptionFieldEl = communityStatusCaptionInput?.closest("label") || null;
+const communityStatusComposeVisibilityEl = document.querySelector(".community-status-compose-visibility");
 const communityStatusTextWrapEl = document.getElementById("community-status-text-wrap");
 const communityStatusTextInput = document.getElementById("community-status-text-input");
 const communityStatusComposeCancelBtn = document.getElementById("community-status-compose-cancel-btn");
 const communityStatusComposeUploadBtn = document.getElementById("community-status-compose-upload-btn");
+const communityAdminBroadcastModalEl = document.getElementById("community-admin-broadcast-modal");
+const communityAdminBroadcastCloseBtn = document.getElementById("community-admin-broadcast-close-btn");
+const communityAdminBroadcastInput = document.getElementById("community-admin-broadcast-input");
+const communityAdminBroadcastAttachBtn = document.getElementById("community-admin-broadcast-attach-btn");
+const communityAdminBroadcastFileInput = document.getElementById("community-admin-broadcast-file-input");
+const communityAdminBroadcastAttachmentNameEl = document.getElementById("community-admin-broadcast-attachment-name");
+const communityAdminBroadcastClearBtn = document.getElementById("community-admin-broadcast-clear-btn");
+const communityAdminBroadcastSendBtn = document.getElementById("community-admin-broadcast-send-btn");
 const communityMessageToolbarEl = document.getElementById("community-message-toolbar");
 const communityMessageReplyBtn = document.getElementById("community-message-reply-btn");
+const communityMessageReadonlyLabelEl = document.getElementById("community-message-readonly-label");
 const communityMessageCopyBtn = document.getElementById("community-message-copy-btn");
 const communityMessageDownloadBtn = document.getElementById("community-message-download-btn");
 const communityMessageFileShareBtn = document.getElementById("community-message-file-share-btn");
@@ -1249,11 +2781,15 @@ const communityMessageDeleteBtn = document.getElementById("community-message-del
 const communityMessageDeleteMenuEl = document.getElementById("community-message-delete-menu");
 const communityMessageDeleteMenuSelfBtn = document.getElementById("community-message-delete-menu-self-btn");
 const communityMessageDeleteMenuAllBtn = document.getElementById("community-message-delete-menu-all-btn");
+const COMMUNITY_ADMIN_NOTICE_SENDER_ID = "__admin_notice__";
+const COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE = "/icons/icon-512-s3.png?v=20260324-applogo1";
 const resultShareBtn = document.getElementById("result-share-btn");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const COMMUNITY_SETTINGS_STORAGE_KEY = "quizCommunitySettingsV1";
 const COMMUNITY_DOWNLOAD_HISTORY_STORAGE_KEY = "quizCommunityDownloadsV1";
 const COMMUNITY_EMOJI_RECENT_STORAGE_KEY = "quizCommunityEmojiRecentsV1";
+const COMMUNITY_CHAT_DRAFT_STORAGE_KEY = "quizCommunityChatDraftsV1";
+const COMMUNITY_ADMIN_KEY_STORAGE_KEY = "quizAdminKey";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
 const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
@@ -1265,6 +2801,8 @@ const APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY = "quizAppUpdateDismissedVersionV
 const APP_UPDATE_CHECK_COOLDOWN_MS = 2 * 60 * 1000;
 const COMMUNITY_AGORA_SDK_URL = "https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.24.0/AgoraRTC_N-production.min.js";
 const COMMUNITY_CALL_RING_RETRY_MS = 1600;
+const COMMUNITY_CALL_NO_ANSWER_TIMEOUT_MS = 60 * 1000;
+const COMMUNITY_NATIVE_CALL_STATUS_SYNC_DEBOUNCE_MS = 450;
 const COMMUNITY_NATIVE_BIOMETRIC_CREDENTIAL_ID = "__native_android_biometric__";
 const LIVE_ANSWER_ADVANCE_DELAY_MS = 1800;
 const COMMUNITY_LOCK_PIN_MIN_LENGTH = 4;
@@ -1528,33 +3066,90 @@ function autosizeCommunityChatInput() {
 function syncCommunityChatComposerState() {
   if (!communityChatSendBtn) return;
   const isRecording = Boolean(communityState.voiceRecordingActive);
+  const readOnlyReason = getCommunityChatReadonlyReason();
+  const isNoticeThread = isCommunityNoticeConversation();
+  const isReadOnly = Boolean(readOnlyReason);
   const hasText = Boolean(String(communityChatInput?.value || "").trim());
   const hasAttachment = Array.isArray(communityState.pendingAttachments) && communityState.pendingAttachments.length > 0;
-  const canSend = hasText || hasAttachment;
+  const canSend = !isReadOnly && (hasText || hasAttachment);
+  if (communityChatInput) {
+    communityChatInput.readOnly = isReadOnly;
+    communityChatInput.placeholder = isReadOnly ? readOnlyReason : "Type a message";
+    communityChatInput.classList.toggle("is-readonly", isReadOnly);
+  }
+  communityChatSendBtn.disabled = isReadOnly;
   communityChatSendBtn.dataset.mode = canSend ? "send" : "voice";
   communityChatSendBtn.classList.toggle("is-recording", isRecording);
-  communityChatSendBtn.setAttribute("aria-label", isRecording ? "Voice note recording" : canSend ? "Send message" : "Voice message");
-  communityChatSendBtn.setAttribute("title", isRecording ? "Recording" : canSend ? "Send" : "Voice message");
+  communityChatSendBtn.setAttribute(
+    "aria-label",
+    isReadOnly
+      ? readOnlyReason
+      : isRecording
+        ? "Voice note recording"
+        : canSend
+          ? "Send message"
+          : "Voice message",
+  );
+  communityChatSendBtn.setAttribute(
+    "title",
+    isReadOnly
+      ? readOnlyReason
+      : isRecording
+        ? "Recording"
+        : canSend
+          ? "Send"
+          : "Voice message",
+  );
   if (communityChatScreenEl) {
     communityChatScreenEl.classList.toggle("is-recording-voice", isRecording);
     communityChatScreenEl.classList.toggle("is-emoji-open", Boolean(communityState.emojiPickerOpen));
     communityChatScreenEl.classList.toggle("is-compose-text", hasText);
+    communityChatScreenEl.classList.toggle("is-notice-thread", isNoticeThread);
+    communityChatScreenEl.classList.toggle("is-chat-readonly", isReadOnly && !isNoticeThread);
+  }
+  if (communityChatComposerEl) {
+    communityChatComposerEl.classList.toggle("hidden", isReadOnly);
+    communityChatComposerEl.setAttribute("aria-hidden", isReadOnly ? "true" : "false");
+  }
+  if (communityChatReadonlyBannerEl) {
+    communityChatReadonlyBannerEl.classList.toggle("hidden", !isReadOnly);
+    communityChatReadonlyBannerEl.setAttribute("aria-hidden", isReadOnly ? "false" : "true");
+    const bannerTextEl = communityChatReadonlyBannerEl.querySelector(".community-chat-readonly-banner-text");
+    if (bannerTextEl instanceof HTMLElement) {
+      bannerTextEl.textContent = readOnlyReason || "Admin notices are read only.";
+    }
+  }
+  if (communityChatEmojiBtn) {
+    communityChatEmojiBtn.classList.toggle("hidden", isReadOnly);
+    communityChatEmojiBtn.setAttribute("aria-hidden", isReadOnly ? "true" : "false");
+  }
+  if (communityChatAttachBtn) {
+    communityChatAttachBtn.classList.toggle("hidden", isReadOnly);
+    communityChatAttachBtn.setAttribute("aria-hidden", isReadOnly ? "true" : "false");
   }
   if (communityChatCameraBtn) {
-    const hideCamera = hasText;
+    const hideCamera = hasText || isReadOnly;
     communityChatCameraBtn.classList.toggle("hidden", hideCamera);
     communityChatCameraBtn.setAttribute("aria-hidden", hideCamera ? "true" : "false");
   }
   if (communityChatRecordingBarEl) {
-    communityChatRecordingBarEl.classList.toggle("hidden", !isRecording);
-    communityChatRecordingBarEl.setAttribute("aria-hidden", isRecording ? "false" : "true");
+    const hideRecording = !isRecording || isReadOnly;
+    communityChatRecordingBarEl.classList.toggle("hidden", hideRecording);
+    communityChatRecordingBarEl.setAttribute("aria-hidden", hideRecording ? "true" : "false");
   }
   if (communityChatEmojiPanelEl) {
-    communityChatEmojiPanelEl.classList.toggle("hidden", !communityState.emojiPickerOpen);
-    communityChatEmojiPanelEl.setAttribute("aria-hidden", communityState.emojiPickerOpen ? "false" : "true");
+    const hideEmojiPanel = !communityState.emojiPickerOpen || isReadOnly;
+    communityChatEmojiPanelEl.classList.toggle("hidden", hideEmojiPanel);
+    communityChatEmojiPanelEl.setAttribute("aria-hidden", hideEmojiPanel ? "true" : "false");
   }
   communityChatEmojiBtn?.classList.toggle("is-active", Boolean(communityState.emojiPickerOpen));
-  communityChatSendBtn.innerHTML = canSend
+  communityChatSendBtn.innerHTML = isReadOnly
+    ? `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3.5a8 8 0 0 0-8 8V16l-1.8 2H21.8L20 16v-4.5a8 8 0 0 0-8-8Zm0 17a2.2 2.2 0 0 1-2.2-2.2h4.4A2.2 2.2 0 0 1 12 20.5Z"></path>
+      </svg>
+    `
+    : canSend
     ? `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4.5 11.5 19.5 4.5l-4.2 15-3.4-5-5-3z"></path>
@@ -1568,6 +3163,7 @@ function syncCommunityChatComposerState() {
         <path d="M9.4 19.5h5.2"></path>
       </svg>
     `;
+  syncCommunityChatDraftPersistence();
 }
 
 function canCommunityUseLiveVoiceRecorder() {
@@ -2477,6 +4073,7 @@ function normalizeCommunityUploadMimeType(value = "") {
   if (baseMimeType === "audio/m4a" || baseMimeType === "audio/x-m4a" || baseMimeType === "audio/mp4a-latm") return "audio/mp4";
   if (baseMimeType === "audio/aac" || baseMimeType === "audio/3gpp" || baseMimeType === "audio/3gpp2" || baseMimeType === "audio/amr") return "audio/mp4";
   if (baseMimeType === "audio/x-wav") return "audio/wav";
+  if (baseMimeType === "image/jpg" || baseMimeType === "image/pjpeg") return "image/jpeg";
   if (baseMimeType === "video/mp4v-es") return "video/mp4";
   if (baseMimeType === "video/x-quicktime") return "video/quicktime";
   if (baseMimeType === "application/x-pdf") return "application/pdf";
@@ -2523,6 +4120,11 @@ function resetCommunityVoiceRecordingState() {
 async function sendCommunityVoiceNoteFile(file) {
   const conversationId = communityState.activeConversation?.id || "";
   if (!conversationId || !(file instanceof File)) return;
+  const readOnlyReason = getCommunityChatReadonlyReason();
+  if (readOnlyReason) {
+    setCommunityFeedback(readOnlyReason, true);
+    return;
+  }
   const replyTo = communityState.replyDraft ? { ...communityState.replyDraft } : null;
   if (communityChatSendBtn) communityChatSendBtn.disabled = true;
   setCommunityFeedback("Checking content...");
@@ -2764,6 +4366,21 @@ let appUpdateCurrentPayload = null;
 let activeCommunityMessageAction = null;
 let communityMessageHoldHandle = null;
 let communityChatScrollWatchEl = null;
+let communityConversationActionHoldHandle = null;
+let communityConversationActionOpenHandle = null;
+let communityConversationActionHoldTriggered = false;
+let communityConversationActionLastPointerType = "";
+let communityConversationActionTouchStart = null;
+let communityConversationActionLastTapAt = 0;
+let communityConversationActionLastTapConversationId = "";
+let communityConversationActionSuppressClickUntil = 0;
+let communityConversationActionSuppressClickConversationId = "";
+let communityFriendActionHoldHandle = null;
+let communityFriendActionHoldTriggered = false;
+let communityFriendActionTouchStart = null;
+let communityFriendActionLastPointerType = "";
+let communityFriendActionLastTapAt = 0;
+let communityFriendActionLastTapUserId = "";
 let communityChatJumpLatestVisible = false;
 let communityChatJumpLatestAnimating = false;
 let communityChatJumpLatestRaf = 0;
@@ -2791,6 +4408,10 @@ let communityCallRingHandle = null;
 let communityCallAudioContext = null;
 let communityCallTimerHandle = null;
 let communityCallConnectedAtMs = 0;
+let communityCallNoAnswerHandle = null;
+let communityNativeCallActionListenerHandle = null;
+let communityNativeCallStatusSyncHandle = null;
+let communityNativeCallListenerRegistered = false;
 let communityStatusHoldHandle = null;
 let communityStatusHoldWasTriggered = false;
 let communityStatusSwipeState = null;
@@ -2810,6 +4431,8 @@ let communityRealtimeConversationRefreshHandle = null;
 let communityRealtimeOverviewRefreshHandle = null;
 let communityTypingBroadcastHandle = null;
 let communityTypingInactiveHandle = null;
+let communityAdminBroadcastAttachment = null;
+let communityAdminBroadcastSending = false;
 const communityRealtimeTypingByConversation = new Map();
 let pushConfig = null;
 let pushConfigPromise = null;
@@ -2866,6 +4489,7 @@ const communityState = {
   blocked: [],
   profile: null,
   messages: [],
+  pendingOutgoingMessages: [],
   statuses: [],
   activeConversation: null,
   activeConversationPartner: null,
@@ -2885,6 +4509,21 @@ const communityState = {
   forwardTargets: [],
   replyDraft: null,
   pendingAttachments: [],
+  chatDrafts: Object.create(null),
+  friendActions: {
+    open: false,
+    user: null,
+    relationship: "",
+    requestId: "",
+    pointerType: "",
+  },
+  conversationActions: {
+    open: false,
+    mode: "chats",
+    selectedIds: [],
+    anchorId: "",
+    pointerType: "",
+  },
   emojiPickerOpen: false,
   voiceRecorder: null,
   voiceRecorderStream: null,
@@ -2898,6 +4537,7 @@ const communityState = {
   voiceRecordingTimer: null,
   pendingStatusUpload: null,
   statusUploadInFlight: false,
+  statusUploadError: "",
   statusComposeCaptionDraft: "",
   statusComposeEmojiPickerOpen: false,
   statusComposePanel: "",
@@ -2938,6 +4578,15 @@ const communityState = {
   mediaViewerName: "",
   mediaViewerKind: "image",
   mediaViewerMimeType: "",
+  mediaViewerSequence: [],
+  mediaViewerSequenceIndex: 0,
+  mediaViewerTouchStartX: 0,
+  mediaViewerTouchStartY: 0,
+  mediaViewerTouchDeltaX: 0,
+  mediaViewerTouchDeltaY: 0,
+  mediaViewerTouchActive: false,
+  mediaViewerSwipeSuppressTapUntil: 0,
+  pendingAttachmentMergeMode: "replace",
   attachmentPreviewOpen: false,
   attachmentPreviewIndex: 0,
   attachmentPreviewTouchStartX: 0,
@@ -2963,6 +4612,50 @@ const communityState = {
       docs: [],
     },
   },
+  groupInviteLaunch: {
+    groupId: "",
+    inviteToken: "",
+    handled: false,
+    attempting: false,
+  },
+  groupInviteModal: {
+    open: false,
+    loading: false,
+    groupId: "",
+    inviteToken: "",
+    inviteUrl: "",
+    inviteExpiresAt: "",
+    inviteExpired: false,
+    group: null,
+    members: [],
+    memberCount: 0,
+    relationship: {
+      isMember: false,
+      isOwner: false,
+      isAdmin: false,
+      isMuted: false,
+    },
+    status: "",
+    source: "invite",
+  },
+  reportModal: {
+    open: false,
+    sending: false,
+    targetType: "",
+    targetId: "",
+    targetName: "",
+    targetLabel: "",
+    targetAvatar: "",
+    reason: "",
+    details: "",
+  },
+  adminBroadcastModal: {
+    open: false,
+    sending: false,
+    message: "",
+    attachment: null,
+    attachmentName: "",
+  },
   groupEdit: {
     open: false,
     groupId: "",
@@ -2977,14 +4670,17 @@ const communityState = {
     saving: false,
   },
   selectedGroupMembers: [],
+  groupMemberPickerMode: "create",
+  groupMemberPickerGroupId: "",
   acknowledged: {
     chats: 0,
+    groups: 0,
     requests: 0,
     discover: "",
   },
 };
 
-const COMMUNITY_FRIENDS_VIEWS = ["friends", "requests", "suggestions", "blocked"];
+const COMMUNITY_FRIENDS_VIEWS = ["friends", "incoming", "sent", "suggestions", "blocked"];
 
 let settingsFeedbackTimer = null;
 
@@ -3044,6 +4740,7 @@ function createEmptySetupPoints() {
     rapid: 0,
     sudden: 0,
     clinical: 0,
+    law: 0,
   };
 }
 
@@ -3110,7 +4807,8 @@ function getCurrentSetupPointsBucket() {
   if (mode === "smart") return "exam";
   if (mode === "exam") {
     const variant = String(examVariant || "normal").trim().toLowerCase();
-    if (variant === "rapid" || variant === "sudden" || variant === "clinical") return variant;
+    if (variant === "rapid" || variant === "sudden" || variant === "clinical" || variant === "law")
+      return variant;
     if (variant === "normal") return "exam";
     return "";
   }
@@ -3126,10 +4824,137 @@ function addPointsToCurrentSetupBucket(delta = 1) {
   writeCurrentSetupPoints(current);
 }
 
+function shouldCountCorrectAnswerTowardLeaderboard() {
+  return isLawStudyMode() || !(mode === "study" || isTopicQuizMode());
+}
+
 function formatMenuCardPointsBadge(value) {
   const safeValue = Math.max(0, Math.round(Number(value) || 0));
   if (safeValue > 999) return "999+";
   return String(safeValue);
+}
+
+function getMenuLevelSnapshot(points = 0) {
+  const safePoints = Math.max(0, Math.round(Number(points) || 0));
+  const levelStep = 200;
+  const level = Math.max(1, Math.floor(safePoints / levelStep) + 1);
+  const progress = safePoints % levelStep;
+  const progressPercent = Math.max(0, Math.min(100, Math.round((progress / levelStep) * 100)));
+  const pointsToNextLevel = Math.max(0, levelStep - progress);
+  return {
+    level,
+    progressPercent,
+    pointsToNextLevel,
+  };
+}
+
+function getMenuLeaderboardRankLabel() {
+  const cachedAllTime = leaderboardState?.cache?.alltime?.yourEntry;
+  const rankValue = Number(
+    cachedAllTime?.rank ??
+    currentUser?.leaderboardStats?.rank ??
+    currentUser?.leaderboardRank ??
+    0,
+  );
+  if (Number.isFinite(rankValue) && rankValue > 0) {
+    return `#${formatOrdinalRank(rankValue)}`;
+  }
+  return "Unranked";
+}
+
+function parseMenuSessionDate(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  const isoLikeMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+  if (isoLikeMatch) {
+    const parsed = new Date(
+      Number(isoLikeMatch[1]),
+      Number(isoLikeMatch[2]) - 1,
+      Number(isoLikeMatch[3]),
+      12,
+      0,
+      0,
+      0,
+    );
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const appMatch = raw.match(
+    /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?:\s*([AP]M))?)?$/i,
+  );
+  if (appMatch) {
+    const day = Number(appMatch[1]);
+    const month = Number(appMatch[2]) - 1;
+    const year = Number(appMatch[3]);
+    let hour = Number(appMatch[4] || 12);
+    const minute = Number(appMatch[5] || 0);
+    const meridiem = String(appMatch[6] || "").trim().toUpperCase();
+    if (meridiem === "PM" && hour < 12) hour += 12;
+    if (meridiem === "AM" && hour === 12) hour = 0;
+    const parsed = new Date(year, month, day, hour, minute, 0, 0);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const fallback = new Date(raw);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function getStartOfCurrentWeekDate(reference = new Date()) {
+  const start = new Date(reference);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return start;
+}
+
+function getMenuWeeklyPercent() {
+  const weekStart = getStartOfCurrentWeekDate();
+  let totalScore = 0;
+  let totalQuestions = 0;
+
+  (Array.isArray(sessionHistory) ? sessionHistory : []).forEach((entry) => {
+    const sessionDate = parseMenuSessionDate(entry?.timestamp || entry?.date);
+    if (!sessionDate || sessionDate < weekStart) return;
+    const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+    const total = Math.max(0, Math.round(Number(entry?.total) || 0));
+    if (total <= 0) return;
+    totalScore += Math.min(score, total);
+    totalQuestions += total;
+  });
+
+  if (totalQuestions <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((totalScore / totalQuestions) * 100)));
+}
+
+function renderMenuDashboardStats() {
+  const points = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
+  const dailyStreak = Math.max(
+    0,
+    Math.round(
+      Number(
+        dailyQuizState?.stats?.streak ??
+          currentUser?.dailyQuiz?.streak ??
+          currentUser?.dailyQuiz?.dailyStreak ??
+          0,
+      ) || 0,
+    ),
+  );
+  const { level, progressPercent, pointsToNextLevel } = getMenuLevelSnapshot(points);
+  const rankLabel = getMenuLeaderboardRankLabel();
+  const weeklyPercent = getMenuWeeklyPercent();
+
+  if (menuStreakValueEl) menuStreakValueEl.textContent = String(dailyStreak);
+  if (menuTotalPointsValueEl) menuTotalPointsValueEl.textContent = String(points);
+  if (menuRankValueEl) menuRankValueEl.textContent = rankLabel;
+  if (menuWeeklyPercentValueEl) menuWeeklyPercentValueEl.textContent = `${weeklyPercent}%`;
+  if (menuLevelValueEl) menuLevelValueEl.textContent = String(level);
+  if (menuLevelPercentEl) {
+    menuLevelPercentEl.textContent = `${progressPercent}%`;
+  }
+  if (menuLevelRingEl) {
+    menuLevelRingEl.style.setProperty("--menu-level-progress", String(progressPercent));
+    menuLevelRingEl.title = `${pointsToNextLevel} points to level ${level + 1}`;
+  }
 }
 
 function renderSetupPoints() {
@@ -3140,6 +4965,7 @@ function renderSetupPoints() {
   const rapidValue = Number(points.rapid) || 0;
   const suddenValue = Number(points.sudden) || 0;
   const clinicalValue = Number(points.clinical) || 0;
+  const lawValue = getLawDrillCumulativeScore();
   if (studySetupPointsValueEl) studySetupPointsValueEl.textContent = String(studyValue);
   if (examSetupPointsValueEl) examSetupPointsValueEl.textContent = String(examValue);
   if (dailySetupPointsValueEl) dailySetupPointsValueEl.textContent = String(dailyValue);
@@ -3150,11 +4976,13 @@ function renderSetupPoints() {
   if (menuSuddenPointsBadgeEl) menuSuddenPointsBadgeEl.textContent = formatMenuCardPointsBadge(suddenValue);
   if (menuClinicalPointsBadgeEl)
     menuClinicalPointsBadgeEl.textContent = formatMenuCardPointsBadge(clinicalValue);
+  if (menuLawPointsBadgeEl) menuLawPointsBadgeEl.textContent = formatMenuCardPointsBadge(lawValue);
 }
 
 function renderPoints() {
   if (!menuPointsValueEl) return;
   menuPointsValueEl.textContent = String(readStoredPoints());
+  renderMenuDashboardStats();
   renderSetupPoints();
 }
 
@@ -3168,8 +4996,13 @@ function renderSessionPointsDisplay() {
   if (!sessionPointsChipEl || !sessionPointsValueEl) return;
   const variant = String(examVariant || "normal").trim().toLowerCase();
   const drillHeaderMode =
-    mode === "exam" && ["rapid", "sudden", "clinical"].includes(variant);
-  const visible = drillHeaderMode && Array.isArray(active) && active.length > 0;
+    (mode === "exam" && ["rapid", "sudden", "clinical", "law"].includes(variant)) ||
+    isLawStudyMode();
+  const visible =
+    drillHeaderMode &&
+    !isLawStudyMode() &&
+    Array.isArray(active) &&
+    active.length > 0;
   sessionPointsChipEl.classList.toggle("hidden", !visible);
   if (!visible) {
     sessionPointsValueEl.textContent = "0";
@@ -3185,9 +5018,10 @@ function resetPointsState() {
 }
 
 function syncPointsFromCurrentUser() {
+  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
   const pending = readPendingPoints();
-  writeStoredPoints(remotePoints + pending);
+  writeStoredPoints(Math.max(localPoints, remotePoints + pending));
   leaderboardState.cache = Object.create(null);
   renderPoints();
 }
@@ -3205,7 +5039,9 @@ async function flushPendingPoints() {
   pointsSyncInFlight = true;
   try {
     const response = await backendClient.addPoints({ delta });
+    const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
     const nextPoints = Math.max(
+      localPoints,
       0,
       Math.round(Number(response?.points ?? response?.user?.points ?? 0)),
     );
@@ -3235,13 +5071,17 @@ function awardCorrectAnswerPoint(delta = 1) {
   const safeDelta = Math.max(0, Math.round(Number(delta) || 0));
   if (safeDelta <= 0) return;
 
-  writeStoredPoints(readStoredPoints() + safeDelta);
-  writePendingPoints(readPendingPoints() + safeDelta);
-  addPointsToCurrentSetupBucket(safeDelta);
+  if (shouldCountCorrectAnswerTowardLeaderboard()) {
+    writeStoredPoints(readStoredPoints() + safeDelta);
+    writePendingPoints(readPendingPoints() + safeDelta);
+  }
+  if (!isLawStudyMode()) {
+    addPointsToCurrentSetupBucket(safeDelta);
+  }
   leaderboardState.cache = Object.create(null);
   renderPoints();
 
-  if (currentUser && backendClient.isAuthenticated()) {
+  if (currentUser && backendClient.isAuthenticated() && shouldCountCorrectAnswerTowardLeaderboard()) {
     schedulePendingPointsSync();
   }
 }
@@ -3444,6 +5284,7 @@ function renderLeaderboardSnapshot(snapshot = {}, scope = "daily") {
   renderLeaderboardYourRank(yourEntry, totalPlayers);
   renderLeaderboardList(leaderboard.slice(podiumCount));
   setLeaderboardEmptyState(leaderboard.length === 0, "No leaderboard points yet for this period.");
+  renderMenuDashboardStats();
 }
 
 async function loadLeaderboard(scope = "daily", { force = false } = {}) {
@@ -3460,7 +5301,7 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     if (currentUser && backendClient.isAuthenticated()) {
       await flushPendingPoints();
     }
-    const snapshot = await backendClient.fetchPointsLeaderboard(safeScope, 20);
+    const snapshot = await backendClient.fetchPointsLeaderboard(safeScope);
     leaderboardState.cache[safeScope] = snapshot || {};
     renderLeaderboardSnapshot(snapshot || {}, safeScope);
   } catch {
@@ -3530,6 +5371,114 @@ function setCommunityFeedback(message = "", isError = false) {
   }
 }
 
+function isExamNotificationSuppressed() {
+  if (getActiveScreenId() === "exam-setup") return true;
+  return mode === "exam" || mode === "smart";
+}
+
+function hideAppNotificationBanner() {
+  if (appNotificationBannerHideTimer) {
+    clearTimeout(appNotificationBannerHideTimer);
+    appNotificationBannerHideTimer = null;
+  }
+  if (!(appNotificationBannerEl instanceof HTMLElement)) return;
+  appNotificationBannerEl.textContent = "";
+  appNotificationBannerEl.classList.add("hidden");
+  appNotificationBannerEl.classList.remove("tone-good", "tone-info", "tone-bad");
+}
+
+function syncAppNotificationBannerVisibility() {
+  if (
+    isExamNotificationSuppressed() ||
+    !communitySettingsPrefs.globalNotificationsEnabled ||
+    communitySettingsPrefs.communityMute
+  ) {
+    hideAppNotificationBanner();
+  }
+}
+
+function showAppNotificationBanner(message = "", tone = "info") {
+  if (!(appNotificationBannerEl instanceof HTMLElement)) return;
+  if (isExamNotificationSuppressed()) {
+    hideAppNotificationBanner();
+    return;
+  }
+  const text = String(message || "").trim();
+  if (!text) {
+    hideAppNotificationBanner();
+    return;
+  }
+  if (appNotificationBannerHideTimer) {
+    clearTimeout(appNotificationBannerHideTimer);
+    appNotificationBannerHideTimer = null;
+  }
+  appNotificationBannerEl.textContent = text;
+  appNotificationBannerEl.classList.remove("hidden", "tone-good", "tone-info", "tone-bad");
+  appNotificationBannerEl.classList.add(
+    tone === "bad" ? "tone-bad" : tone === "good" ? "tone-good" : "tone-info",
+  );
+  appNotificationBannerHideTimer = setTimeout(() => {
+    hideAppNotificationBanner();
+  }, 5000);
+}
+
+function getCommunityNotificationSummaryCounts() {
+  const counts = getCommunityPendingNotificationCounts();
+  const chats = Math.max(0, Math.round(Number(counts.chats) || 0));
+  const groups = Math.max(0, Math.round(Number(counts.groups) || 0));
+  const requests = Math.max(0, Math.round(Number(counts.requests) || 0));
+  return {
+    chats,
+    groups,
+    requests,
+    total: chats + groups + requests,
+  };
+}
+
+function getCommunityNotificationSummaryText(counts = getCommunityNotificationSummaryCounts()) {
+  const parts = [];
+  if (counts.chats) {
+    parts.push(`${counts.chats} chat${counts.chats === 1 ? "" : "s"}`);
+  }
+  if (counts.groups) {
+    parts.push(`${counts.groups} group${counts.groups === 1 ? "" : "s"}`);
+  }
+  if (counts.requests) {
+    parts.push(`${counts.requests} request${counts.requests === 1 ? "" : "s"}`);
+  }
+  return parts.join(" - ");
+}
+
+function maybeShowCommunityEntryNotificationBanner() {
+  if (!communitySettingsPrefs.globalNotificationsEnabled || communitySettingsPrefs.communityMute) {
+    return;
+  }
+  const counts = getCommunityNotificationSummaryCounts();
+  if (!counts.total) return;
+  const currentUserId = String(currentUser?.id || "").trim() || "guest";
+  const storageKey = `community-entry-notification:${currentUserId}`;
+  const signature = `${counts.chats}:${counts.groups}:${counts.requests}`;
+  try {
+    if (sessionStorage.getItem(storageKey) === signature) return;
+    const detail = getCommunityNotificationSummaryText(counts);
+    showAppNotificationBanner(
+      detail
+        ? `${counts.total} community notification${counts.total === 1 ? "" : "s"} - ${detail}`
+        : `${counts.total} community notification${counts.total === 1 ? "" : "s"}`,
+      "info",
+    );
+    sessionStorage.setItem(storageKey, signature);
+  } catch {
+    const detail = getCommunityNotificationSummaryText(counts);
+    showAppNotificationBanner(
+      detail
+        ? `${counts.total} community notification${counts.total === 1 ? "" : "s"} - ${detail}`
+        : `${counts.total} community notification${counts.total === 1 ? "" : "s"}`,
+      "info",
+    );
+  }
+}
+
 function getCommunityDisplayName(user = {}) {
   return String(
     user?.name ||
@@ -3540,6 +5489,9 @@ function getCommunityDisplayName(user = {}) {
 }
 
 function getCommunityUiDisplayName(user = {}, { preserveRealName = false } = {}) {
+  if (user?.isNotice) {
+    return String(user?.noticeTitle || user?.name || user?.displayName || "Admin Notice").trim() || "Admin Notice";
+  }
   if (!preserveRealName && String(user?.id || "") === String(currentUser?.id || "")) {
     return "You";
   }
@@ -3555,6 +5507,10 @@ function getCommunityUiDisplayName(user = {}, { preserveRealName = false } = {})
   ).trim();
 }
 
+function isCommunityAppAdminUser(user = {}) {
+  return String(user?.role || "").trim().toLowerCase() === "admin" || Boolean(user?.isAppAdmin);
+}
+
 function getCommunityLeaderboardName(entry = {}) {
   if (String(entry?.userId || "") === String(currentUser?.id || "")) {
     return "You";
@@ -3568,6 +5524,83 @@ function truncateWithEllipsis(value = "", maxLength = 56) {
   return `${text.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
+function isCommunityNoticeConversation(partner = null) {
+  const activePartner = partner && typeof partner === "object" ? partner : communityState.activeConversationPartner || {};
+  const conversationType = String(communityState.activeConversation?.type || "").trim().toLowerCase();
+  const activeName = String(
+    activePartner?.noticeSenderName ||
+      activePartner?.name ||
+      activePartner?.displayName ||
+      activePartner?.username ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+  return Boolean(
+    activePartner?.isNotice ||
+      conversationType === "notice" ||
+      activePartner?.noticeTitle ||
+      activePartner?.noticeOriginType ||
+      activeName.includes("ajixpharmacy admin"),
+  );
+}
+
+function getCommunityChatReadonlyReason(partner = null) {
+  if (isCommunityNoticeConversation(partner)) {
+    return "Admin notices are read only.";
+  }
+  const activePartner = partner && typeof partner === "object" ? partner : communityState.activeConversationPartner || {};
+  const conversationType = String(communityState.activeConversation?.type || "").trim().toLowerCase();
+  if (conversationType !== "group" && !activePartner?.isGroup) {
+    if (activePartner?.isFriend === false) {
+      return "You can only send messages to friends.";
+    }
+    return "";
+  }
+  const permissions =
+    activePartner?.permissions ||
+    communityState.activeConversation?.permissions ||
+    communityState.profile?.group?.permissions ||
+    {};
+  const viewerId = String(currentUser?.id || "").trim();
+  const ownerId = String(
+    activePartner?.ownerUserId ||
+      communityState.activeConversation?.ownerUserId ||
+      communityState.profile?.group?.ownerUserId ||
+      "",
+  ).trim();
+  const activeGroupId = String(activePartner?.id || communityState.activeConversation?.id || "").trim();
+  const profileGroupId = String(communityState.profile?.group?.id || "").trim();
+  const adminIds = Array.isArray(activePartner?.adminIds)
+    ? activePartner.adminIds
+    : Array.isArray(communityState.activeConversation?.adminIds)
+      ? communityState.activeConversation.adminIds
+      : Array.isArray(communityState.profile?.group?.adminIds)
+        ? communityState.profile.group.adminIds
+        : [];
+  const viewerIsAdmin =
+    Boolean(viewerId) &&
+    Boolean(
+      viewerId === ownerId ||
+        adminIds.some((adminId) => String(adminId || "").trim() === viewerId) ||
+        (profileGroupId && profileGroupId === activeGroupId && communityState.profile?.relationship?.isAdmin),
+    );
+  if (permissions.membersCanSendMessages === false && !viewerIsAdmin) {
+    return "Only admins can send messages in this group.";
+  }
+  return "";
+}
+
+function canCurrentViewerSendCommunityMessages(partner = null) {
+  return !getCommunityChatReadonlyReason(partner);
+}
+
+function isCommunityAdminMessage(message = {}) {
+  const senderUserId = String(message?.senderUserId || "").trim();
+  const senderName = String(message?.senderName || "").trim().toLowerCase();
+  return senderUserId === COMMUNITY_ADMIN_NOTICE_SENDER_ID || senderName === "ajixpharmacy admin";
+}
+
 function isCommunityGroupEntity(entity = {}) {
   const type = String(entity?.type || entity?.conversationType || "").trim().toLowerCase();
   return Boolean(
@@ -3579,10 +5612,15 @@ function isCommunityGroupEntity(entity = {}) {
 }
 
 function getCommunityAvatarFallbackIconMarkup(kind = "user", extraClass = "") {
-  const safeKind = String(kind || "").trim().toLowerCase() === "group" ? "group" : "user";
+  const safeKind = String(kind || "").trim().toLowerCase();
+  if (safeKind === "notice") {
+    return `<img class="community-avatar-fallback-logo${extraClass ? ` ${extraClass}` : ""}" src="${COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE}" alt="" aria-hidden="true" />`;
+  }
   const iconPath =
     safeKind === "group"
       ? `<circle cx="10" cy="8.3" r="3.7"></circle><path d="M2.7 20.2a7.4 7.4 0 0 1 14.6 0"></path><path d="M21.3 20.2c0-3.1-2.2-5.8-5.2-6.6"></path><path d="M16 4.2a3.3 3.3 0 0 1 0 6.4"></path>`
+      : safeKind === "notice"
+        ? `<path d="M12 22a2.2 2.2 0 0 0 2.2-2.2h-4.4A2.2 2.2 0 0 0 12 22Zm6-6.2v-4.6c0-3.6-2-6.6-5.3-7.5V3a.7.7 0 0 0-1.4 0v.7C8 4.6 6 7.6 6 11.2v4.6L4.6 17v1h14.8v-1Z"></path>`
       : `<circle cx="12" cy="8" r="4"></circle><path d="M4 20a8 8 0 0 1 16 0"></path>`;
   const classes = ["community-avatar-fallback-icon", extraClass].filter(Boolean).join(" ");
   return `<span class="${classes}" aria-hidden="true"><svg viewBox="0 0 24 24">${iconPath}</svg></span>`;
@@ -3592,6 +5630,7 @@ function getCommunityAvatarMarkup(user = {}, extraClass = "") {
   const image = String(user?.profileImage || "").trim();
   const name = getCommunityUiDisplayName(user);
   const isGroup = isCommunityGroupEntity(user);
+  const isNotice = Boolean(user?.isNotice);
   const onlineClass = isCommunityUserOnline(user) ? " is-online" : "";
   const blockedClass = isCommunityUserBlocked(user) ? " is-blocked" : "";
   const statusRingState = getCommunityStatusRingState(user?.id);
@@ -3605,17 +5644,18 @@ function getCommunityAvatarMarkup(user = {}, extraClass = "") {
   if (image) {
     return `<span class="${classes}${onlineClass}${blockedClass}${hasStatusClass} is-clickable" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} photo" data-community-avatar-view="true" data-community-avatar-user-id="${escapeHtml(String(user?.id || ""))}" data-community-avatar-has-status="${communityUserHasActiveStatus(user?.id) ? "true" : "false"}" data-community-avatar-image="${escapeHtml(image)}" data-community-avatar-name="${escapeHtml(name)}" style="background-image:url('${escapeHtml(image)}')"></span>`;
   }
-  return `<span class="${classes}${onlineClass}${blockedClass}${hasStatusClass} is-fallback is-clickable" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} profile options" data-community-avatar-view="true" data-community-avatar-user-id="${escapeHtml(String(user?.id || ""))}" data-community-avatar-has-status="${communityUserHasActiveStatus(user?.id) ? "true" : "false"}" data-community-avatar-image="" data-community-avatar-name="${escapeHtml(name)}">${getCommunityAvatarFallbackIconMarkup(isGroup ? "group" : "user")}</span>`;
+  return `<span class="${classes}${onlineClass}${blockedClass}${hasStatusClass} is-fallback is-clickable" role="button" tabindex="0" aria-label="Open ${escapeHtml(name)} profile options" data-community-avatar-view="true" data-community-avatar-user-id="${escapeHtml(String(user?.id || ""))}" data-community-avatar-has-status="${communityUserHasActiveStatus(user?.id) ? "true" : "false"}" data-community-avatar-image="" data-community-avatar-name="${escapeHtml(name)}">${getCommunityAvatarFallbackIconMarkup(isNotice ? "notice" : isGroup ? "group" : "user")}</span>`;
 }
 
 function getCommunityPlainAvatarMarkup(user = {}, extraClass = "") {
   const image = String(user?.profileImage || "").trim();
   const isGroup = isCommunityGroupEntity(user);
+  const isNotice = Boolean(user?.isNotice);
   const classes = ["community-avatar", extraClass].filter(Boolean).join(" ");
   if (image) {
     return `<span class="${classes}" aria-hidden="true" style="background-image:url('${escapeHtml(image)}')"></span>`;
   }
-  return `<span class="${classes} is-fallback" aria-hidden="true">${getCommunityAvatarFallbackIconMarkup(isGroup ? "group" : "user")}</span>`;
+  return `<span class="${classes} is-fallback" aria-hidden="true">${getCommunityAvatarFallbackIconMarkup(isNotice ? "notice" : isGroup ? "group" : "user")}</span>`;
 }
 
 function getCommunityExpandableAvatarMarkup(user = {}, extraClass = "") {
@@ -3980,6 +6020,74 @@ function formatCommunityBubbleTime(value = "") {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+function parseCommunityInviteUrl(url = "") {
+  const safeUrl = String(url || "").trim();
+  if (!safeUrl) return null;
+  try {
+    const parsed = new URL(safeUrl, window.location.origin);
+    const groupId = String(parsed.searchParams.get("groupInvite") || "").trim();
+    const inviteToken = String(parsed.searchParams.get("groupToken") || "").trim();
+    if (!groupId || !inviteToken) return null;
+    return {
+      groupId,
+      inviteToken,
+      inviteUrl: parsed.toString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function renderCommunityMessageText(text = "") {
+  const rawText = String(text || "");
+  if (!rawText) return "";
+  const urlRegex = /https?:\/\/[^\s<>"']+/gi;
+  let lastIndex = 0;
+  let output = "";
+  for (const match of rawText.matchAll(urlRegex)) {
+    const rawUrl = String(match[0] || "");
+    const cleanedUrl = rawUrl.replace(/[),.;!?]+$/g, "");
+    const startIndex = Number(match.index || 0);
+    const beforeText = rawText.slice(lastIndex, startIndex);
+    output += escapeHtml(beforeText).replace(/\r?\n/g, "<br>");
+    const invite = parseCommunityInviteUrl(cleanedUrl);
+    const displayText = invite
+      ? getCommunityGroupInviteShortLabel(invite.inviteToken, invite.inviteUrl)
+      : truncateWithEllipsis(cleanedUrl, 72);
+    if (invite) {
+      output += `
+        <a
+          href="${escapeHtml(cleanedUrl)}"
+          class="community-message-link is-group-invite"
+          data-community-group-invite-link="true"
+          data-community-group-id="${escapeHtml(invite.groupId)}"
+          data-community-group-token="${escapeHtml(invite.inviteToken)}"
+          data-community-group-invite-url="${escapeHtml(invite.inviteUrl)}"
+          title="${escapeHtml(invite.inviteUrl || cleanedUrl)}"
+        >${escapeHtml(displayText)}</a>
+      `;
+    } else {
+      output += `
+        <a
+          href="${escapeHtml(cleanedUrl)}"
+          class="community-message-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        >${escapeHtml(displayText)}</a>
+      `;
+    }
+    lastIndex = startIndex + rawUrl.length;
+  }
+  output += escapeHtml(rawText.slice(lastIndex)).replace(/\r?\n/g, "<br>");
+  return output;
+}
+
+function formatCommunityInviteExpiryLabel(value = "") {
+  const date = new Date(String(value || ""));
+  if (Number.isNaN(date.getTime())) return "";
+  return formatAppDateTime(date);
+}
+
 function isCommunitySameCalendarDay(a = "", b = "") {
   const first = new Date(String(a || ""));
   const second = new Date(String(b || ""));
@@ -4012,6 +6120,15 @@ function isCommunityUserOnline(user = {}) {
 
 function formatCommunityPresenceStatus(user = {}) {
   if (!user || !Object.keys(user).length) return "Direct conversation";
+  if (user?.isNotice) {
+    const isBroadcastNotice =
+      String(user?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+      String(user?.noticeThreadKey || "").trim().toLowerCase() === "broadcast";
+    return String(
+      user?.noticeSubtitle ||
+      (isBroadcastNotice ? "Announcement sent to all users" : "Admin notice"),
+    ).trim() || (isBroadcastNotice ? "Announcement sent to all users" : "Admin notice");
+  }
   if (isCommunityUserOnline(user)) return "Online";
   const stamp = String(user?.lastSeenAt || "").trim();
   if (!stamp) {
@@ -4064,15 +6181,27 @@ function renderCommunityMessageReceiptIcon(message = {}) {
 function updateCommunityChatHeader(partner = {}) {
   communityState.activeConversationPartner = partner || null;
   if (communityChatAvatarEl) {
-    if (partner?.isGroup) {
+    if (partner?.isNotice) {
+      communityChatAvatarEl.innerHTML = getCommunityPlainAvatarMarkup(partner || {}, "is-inline");
+    } else if (partner?.isGroup) {
       communityChatAvatarEl.innerHTML = `<button type="button" class="community-avatar-action-btn" data-community-action="open-group-profile" data-group-id="${escapeHtml(String(partner?.id || communityState.activeConversation?.id || ""))}" aria-label="Open ${escapeHtml(getCommunityUiDisplayName(partner || {}))} info">${getCommunityPlainAvatarMarkup(partner || {}, "is-inline")}</button>`;
     } else {
       communityChatAvatarEl.innerHTML = getCommunityAvatarMarkup(partner || {}, "is-inline");
     }
   }
   if (communityChatTitleEl) {
-    communityChatTitleEl.textContent = truncateWithEllipsis(getCommunityUiDisplayName(partner || {}), 26);
-    if (partner?.isGroup) {
+    const chatTitle = partner?.isNotice
+      ? String(partner?.noticeSenderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin"
+      : getCommunityUiDisplayName(partner || {});
+    communityChatTitleEl.textContent = truncateWithEllipsis(chatTitle, 26);
+    if (partner?.isNotice) {
+      delete communityChatTitleEl.dataset.communityAction;
+      delete communityChatTitleEl.dataset.groupId;
+      delete communityChatTitleEl.dataset.userId;
+      communityChatTitleEl.classList.remove("community-name-link");
+      communityChatTitleEl.removeAttribute("role");
+      communityChatTitleEl.removeAttribute("tabindex");
+    } else if (partner?.isGroup) {
       communityChatTitleEl.dataset.communityAction = "open-group-profile";
       communityChatTitleEl.dataset.groupId = String(partner?.id || communityState.activeConversation?.id || "");
       delete communityChatTitleEl.dataset.userId;
@@ -4092,11 +6221,29 @@ function updateCommunityChatHeader(partner = {}) {
     const conversationId = String(communityState.activeConversation?.id || "").trim();
     const typingUsers = getCommunityConversationTypingUsers(conversationId);
     const isTyping = Boolean(communitySettingsPrefs.chatTypingIndicators && Array.isArray(typingUsers) && typingUsers.length);
-    communityChatSubtitleEl.textContent = partner?.isGroup
-      ? getCommunityGroupTypingSubtitle(partner || {}, typingUsers)
-      : getCommunityDirectTypingSubtitle(partner || {}, typingUsers);
+    const isBroadcastNotice =
+      String(partner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+      String(partner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast";
+    const subtitleText = partner?.isNotice
+      ? isBroadcastNotice
+        ? ""
+        : String(partner?.noticeSubtitle || "Messages from the admin team").trim() || "Messages from the admin team"
+      : partner?.isGroup
+        ? getCommunityGroupTypingSubtitle(partner || {}, typingUsers)
+        : getCommunityDirectTypingSubtitle(partner || {}, typingUsers);
+    communityChatSubtitleEl.textContent = subtitleText;
+    communityChatSubtitleEl.classList.toggle("hidden", !subtitleText);
     communityChatSubtitleEl.classList.toggle("is-typing", isTyping);
   }
+  if (communityChatCallBtn) {
+    communityChatCallBtn.classList.toggle("hidden", Boolean(partner?.isGroup || partner?.isNotice));
+    communityChatCallBtn.setAttribute("aria-hidden", partner?.isGroup || partner?.isNotice ? "true" : "false");
+  }
+  if (communityChatVideoBtn) {
+    communityChatVideoBtn.classList.toggle("hidden", Boolean(partner?.isGroup || partner?.isNotice));
+    communityChatVideoBtn.setAttribute("aria-hidden", partner?.isGroup || partner?.isNotice ? "true" : "false");
+  }
+  syncCommunityChatComposerState();
 }
 
 function getCommunityPresenceUserId(user = {}) {
@@ -4185,12 +6332,38 @@ function getCommunityCallLogSummaryText(call = null, viewerUserId = "", { includ
 }
 
 function getCommunityConversationPreviewText(row = {}) {
+  const draft = getCommunityChatDraftForConversation(row?.id || "");
+  if (draft) {
+    if (!communitySettingsPrefs.globalPreviews) return "Draft";
+    const draftText = String(draft.text || "").replace(/\s+/g, " ").trim();
+    if (draftText) return draftText;
+    if (draft.attachments.length === 1) return "Draft attachment";
+    if (draft.attachments.length > 1) return `${draft.attachments.length} draft attachments`;
+    if (draft.replyDraft?.sourceId) return "Draft reply";
+    return "Draft";
+  }
   const typingPreview = getCommunityConversationTypingPreview(row);
   if (typingPreview) return typingPreview;
   const lastMessage = row?.lastMessage || {};
   const type = String(lastMessage?.type || "").trim().toLowerCase();
   const text = String(lastMessage?.text || "").trim();
   if (!type && !text) return "Start the conversation";
+  if (row?.partner?.isNotice) {
+    if (!communitySettingsPrefs.globalPreviews) {
+      if (type === "image") return "Photo";
+      if (type === "video") return "Video";
+      if (type === "audio") return "Voice note";
+      if (type === "document") return "Document";
+      if (type === "file") return "Attachment";
+      return "Message";
+    }
+    if (type === "image") return text || "Photo";
+    if (type === "video") return text || "Video";
+    if (type === "audio") return text || "Voice note";
+    if (type === "document") return text || "Document";
+    if (type === "file") return text || "Attachment";
+    return String(text || "Message").replace(/\s+/g, " ").trim() || "Message";
+  }
   if (!communitySettingsPrefs.globalPreviews) {
     if (type === "image") return "Photo";
     if (type === "video") return "Video";
@@ -4229,19 +6402,52 @@ function stopCommunityPresenceHeartbeat() {
 }
 
 function maybeShowCommunityCustomAlert(payload = {}) {
-  if (communitySettingsPrefs.communityMute || !communitySettingsPrefs.communityCustomAlerts) return;
+  if (
+    !communitySettingsPrefs.globalNotificationsEnabled ||
+    communitySettingsPrefs.communityMute ||
+    !communitySettingsPrefs.communityCustomAlerts
+  ) {
+    return;
+  }
   const scope = String(payload?.scope || "").trim().toLowerCase();
   const reason = String(payload?.reason || "").trim().toLowerCase();
   const conversationId = String(payload?.conversationId || "").trim();
+  const currentUserId = String(currentUser?.id || "").trim();
   if (scope === "conversations" && reason === "message-created") {
-    if (
-      getActiveScreenId() === "community-chat-screen"
-      && conversationId
-      && conversationId === String(communityState.activeConversation?.id || "").trim()
-    ) {
+    const activeConversationId = String(communityState.activeConversation?.id || "").trim();
+    const actorUserId = String(payload?.actorUserId || "").trim();
+    if (actorUserId && currentUserId && actorUserId === currentUserId) {
       return;
     }
-    setCommunityFeedback("New message received.");
+    if (getActiveScreenId() === "community-chat-screen" && conversationId && conversationId === activeConversationId) {
+      return;
+    }
+    const chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
+    const row = chats.find((entry) => String(entry?.id || "").trim() === conversationId) || null;
+    const partner = row?.partner || null;
+    if (partner && partner.isMuted) {
+      return;
+    }
+    const actorName = String(payload?.actorName || partner?.displayName || partner?.name || "Someone").trim() || "Someone";
+    const conversationName = String(payload?.conversationName || partner?.displayName || partner?.name || "").trim();
+    const isGroup = Boolean(payload?.conversationType === "group" || partner?.isGroup);
+    showAppNotificationBanner(
+      isGroup
+        ? conversationName
+          ? `${actorName} sent a new message in ${conversationName}`
+          : `${actorName} sent a new group message`
+        : `1 new message from ${actorName}`,
+      "info",
+    );
+    return;
+  }
+  if (scope === "requests" && reason === "request-created") {
+    const targetUserId = String(payload?.targetUserId || "").trim();
+    if (currentUserId && targetUserId && targetUserId !== currentUserId) {
+      return;
+    }
+    const requesterName = String(payload?.requesterName || payload?.actorName || "Someone").trim() || "Someone";
+    showAppNotificationBanner(`1 new request from ${requesterName}`, "info");
     return;
   }
   if (scope === "statuses" && reason === "status-created") {
@@ -4693,8 +6899,12 @@ async function ensureCommunityPresenceRealtimeSubscription() {
 async function ensureCommunityConversationRealtimeSubscription() {
   const client = await ensureCommunityRealtimeClient();
   const config = communityRealtimeConfig;
-  const conversationId = String(communityState.activeConversation?.id || "").trim();
-  if (!client || !config?.enabled || getActiveScreenId() !== "community-chat-screen" || !conversationId) {
+  const conversationId =
+    String(communityState.activeConversation?.id || "").trim() ||
+    String(communityState.activeCall?.conversationId || "").trim();
+  const chatScreenOpen = getActiveScreenId() === "community-chat-screen";
+  const shouldKeepAliveForCall = Boolean(communityState.activeCall);
+  if (!client || !config?.enabled || !conversationId || (!chatScreenOpen && !shouldKeepAliveForCall)) {
     stopCommunityConversationRealtimeSubscription();
     return false;
   }
@@ -4845,7 +7055,9 @@ function syncCommunityPresenceHeartbeat() {
 function syncCommunityChatPolling() {
   stopCommunityChatPolling();
   if (getActiveScreenId() !== "community-chat-screen" || !communityState.activeConversation?.id) {
-    stopCommunityConversationRealtimeSubscription();
+    if (!communityState.activeCall) {
+      stopCommunityConversationRealtimeSubscription();
+    }
     return;
   }
   void ensureCommunityConversationRealtimeSubscription();
@@ -4853,6 +7065,211 @@ function syncCommunityChatPolling() {
     void loadCommunityMessages({ silent: true });
     void refreshCommunityConversationActiveCall({ silent: true });
   }, 5000);
+}
+
+function isCommunityAndroidNativeRuntime() {
+  try {
+    if (!isCommunityNativeAppRuntime()) return false;
+    const platform = String(window?.Capacitor?.getPlatform?.() || "").trim().toLowerCase();
+    return platform === "android";
+  } catch {
+    return false;
+  }
+}
+
+function getCommunityNativeCallPlugin() {
+  return window?.Capacitor?.Plugins?.NativeCall || null;
+}
+
+function hasCommunityNativeCallBridge() {
+  const plugin = getCommunityNativeCallPlugin();
+  return Boolean(
+    isCommunityAndroidNativeRuntime() &&
+      plugin &&
+      typeof plugin.startOutgoing === "function" &&
+      typeof plugin.presentIncoming === "function" &&
+      typeof plugin.setState === "function" &&
+      typeof plugin.endCall === "function",
+  );
+}
+
+async function runCommunityNativeCallCommand(method = "", payload = {}, { silent = true } = {}) {
+  if (!hasCommunityNativeCallBridge()) return null;
+  const plugin = getCommunityNativeCallPlugin();
+  const command = String(method || "").trim();
+  if (!command || typeof plugin?.[command] !== "function") return null;
+  try {
+    return await plugin[command](payload && typeof payload === "object" ? payload : {});
+  } catch (error) {
+    if (!silent) {
+      setCommunityFeedback(
+        generalApiErrorMessage(error, "Native call controls are unavailable right now."),
+        true,
+      );
+    }
+    return null;
+  }
+}
+
+function buildCommunityNativeCallPayload(base = {}) {
+  const activeCall = communityState.activeCall && typeof communityState.activeCall === "object"
+    ? communityState.activeCall
+    : {};
+  const payload = {
+    callId: String(base.callId || activeCall.id || "").trim(),
+    conversationId: String(base.conversationId || activeCall.conversationId || communityState.activeConversation?.id || "").trim(),
+    callerName: String(base.callerName || getCommunityCallPeerLabel() || "Contact").trim() || "Contact",
+    mode: String(base.mode || activeCall.mode || "voice").trim().toLowerCase() === "video" ? "video" : "voice",
+    state: String(base.state || "").trim().toLowerCase(),
+    incoming: Boolean(base.incoming),
+    muted: Boolean(base.muted),
+    speakerOn: Boolean(base.speakerOn),
+  };
+  const connectedAtMs = Number(base.connectedAtMs || communityCallConnectedAtMs || 0);
+  if (connectedAtMs > 0) {
+    payload.connectedAtMs = connectedAtMs;
+  }
+  return payload;
+}
+
+async function syncCommunityNativeCallState() {
+  if (!hasCommunityNativeCallBridge()) return;
+  const activeCall = communityState.activeCall && typeof communityState.activeCall === "object"
+    ? communityState.activeCall
+    : null;
+  if (!activeCall) {
+    await runCommunityNativeCallCommand("endCall", {}, { silent: true });
+    return;
+  }
+  const screenMode = String(communityState.callScreenMode || "").trim().toLowerCase();
+  const state =
+    screenMode === "incoming" ? "incoming"
+      : screenMode === "outgoing" ? "outgoing"
+        : screenMode === "connecting" ? "connecting"
+          : screenMode === "connected" ? "connected"
+            : "connecting";
+  const payload = buildCommunityNativeCallPayload({
+    state,
+    incoming: state === "incoming",
+    muted: !Boolean(communityCallLocalAudioTrack?.enabled),
+    speakerOn: Boolean(communityCallSpeakerEnabled),
+    connectedAtMs: communityCallConnectedAtMs,
+  });
+  await runCommunityNativeCallCommand("setState", payload, { silent: true });
+}
+
+function queueCommunityNativeCallStateSync() {
+  if (!hasCommunityNativeCallBridge()) return;
+  if (communityNativeCallStatusSyncHandle) {
+    clearTimeout(communityNativeCallStatusSyncHandle);
+    communityNativeCallStatusSyncHandle = null;
+  }
+  communityNativeCallStatusSyncHandle = setTimeout(() => {
+    communityNativeCallStatusSyncHandle = null;
+    void syncCommunityNativeCallState();
+  }, COMMUNITY_NATIVE_CALL_STATUS_SYNC_DEBOUNCE_MS);
+}
+
+async function presentCommunityNativeIncomingCall(call = null) {
+  const safeCall = call && typeof call === "object" ? call : null;
+  if (!safeCall) return;
+  await runCommunityNativeCallCommand("presentIncoming", buildCommunityNativeCallPayload({
+    callId: safeCall.id,
+    conversationId: safeCall.conversationId,
+    mode: safeCall.mode,
+    state: "incoming",
+    incoming: true,
+    muted: false,
+    speakerOn: true,
+  }), { silent: true });
+}
+
+async function presentCommunityNativeOutgoingCall(call = null) {
+  const safeCall = call && typeof call === "object" ? call : null;
+  if (!safeCall) return;
+  await runCommunityNativeCallCommand("startOutgoing", buildCommunityNativeCallPayload({
+    callId: safeCall.id,
+    conversationId: safeCall.conversationId,
+    mode: safeCall.mode,
+    state: "outgoing",
+    incoming: false,
+    muted: false,
+    speakerOn: true,
+  }), { silent: true });
+}
+
+async function clearCommunityNativeCallState() {
+  if (!hasCommunityNativeCallBridge()) return;
+  await runCommunityNativeCallCommand("endCall", {}, { silent: true });
+}
+
+async function handleCommunityNativeCallActionEvent(eventName = "", payload = {}) {
+  const safeEvent = String(eventName || "").trim().toLowerCase();
+  if (!safeEvent) return;
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const conversationId = String(safePayload.conversationId || "").trim();
+
+  if (conversationId && String(communityState.activeConversation?.id || "").trim() !== conversationId) {
+    await openCommunityConversation("", conversationId);
+  }
+
+  if (safeEvent === "open") {
+    if (communityState.activeCall) {
+      setCommunityCallModalOpen(true);
+    }
+    return;
+  }
+  if (safeEvent === "answer") {
+    if (String(communityState.callScreenMode || "") === "incoming") {
+      await answerCommunityIncomingCall();
+    }
+    return;
+  }
+  if (safeEvent === "decline") {
+    if (String(communityState.callScreenMode || "") === "incoming") {
+      await declineCommunityIncomingCall();
+    } else if (communityState.activeCall) {
+      await endCommunityConversationCall({ notifyBackend: true, silent: true });
+    }
+    return;
+  }
+  if (safeEvent === "end") {
+    if (communityState.activeCall) {
+      await endCommunityConversationCall({ notifyBackend: true, silent: true });
+    }
+    return;
+  }
+  if (safeEvent === "toggle-mute") {
+    if (communityState.activeCall && communityCallConnected) {
+      await toggleCommunityCallMute();
+    }
+    return;
+  }
+  if (safeEvent === "toggle-speaker") {
+    if (communityState.activeCall) {
+      await toggleCommunityCallSpeaker();
+    }
+  }
+}
+
+async function registerCommunityNativeCallBridge() {
+  if (!hasCommunityNativeCallBridge() || communityNativeCallListenerRegistered) return;
+  const plugin = getCommunityNativeCallPlugin();
+  communityNativeCallListenerRegistered = true;
+  try {
+    communityNativeCallActionListenerHandle = await plugin.addListener?.("nativeCallAction", (event) => {
+      const safeEvent = event && typeof event === "object" ? event : {};
+      void handleCommunityNativeCallActionEvent(String(safeEvent.event || ""), safeEvent.payload || {});
+    });
+  } catch {}
+  const pending = await runCommunityNativeCallCommand("drainPendingActions", {}, { silent: true });
+  const actions = Array.isArray(pending?.actions) ? pending.actions : [];
+  for (const action of actions) {
+    const eventName = String(action?.event || "").trim();
+    const payload = action?.payload && typeof action.payload === "object" ? action.payload : {};
+    if (!eventName) continue;
+    await handleCommunityNativeCallActionEvent(eventName, payload);
+  }
 }
 
 function getCommunityCallModeLabel(mode = "voice") {
@@ -4908,6 +7325,7 @@ function syncCommunityCallIdentity() {
 function setCommunityCallScreenMode(mode = "idle") {
   const safeMode = String(mode || "idle").trim().toLowerCase();
   communityState.callScreenMode = safeMode || "idle";
+  queueCommunityNativeCallStateSync();
 }
 
 function formatCommunityCallDurationLabel(totalSeconds = 0) {
@@ -4950,6 +7368,12 @@ function startCommunityCallTimer(startedAtIso = "") {
 function setCommunityCallStatus(message = "") {
   if (!communityCallStatusEl) return;
   communityCallStatusEl.textContent = String(message || "").trim();
+}
+
+function showCommunityCallsComingSoon() {
+  const message = "Voice and video calls are coming soon.";
+  setCommunityFeedback(message, true);
+  return message;
 }
 
 function syncCommunityCallActionButtons() {
@@ -4997,6 +7421,7 @@ function syncCommunityCallActionButtons() {
   if (communityCallEndBtn) {
     communityCallEndBtn.disabled = !communityState.activeCall;
   }
+  queueCommunityNativeCallStateSync();
 }
 
 function setCommunityChatActiveCallBar(callPayload = null) {
@@ -5030,7 +7455,8 @@ function setCommunityCallModalOpen(open = false) {
   document.body?.classList?.toggle?.("community-call-open", next);
 }
 
-function playCommunityRingPulse() {
+function playCommunityRingPulse(kind = "incoming") {
+  const safeKind = String(kind || "").trim().toLowerCase() === "outgoing" ? "outgoing" : "incoming";
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) return;
   try {
@@ -5045,10 +7471,15 @@ function playCommunityRingPulse() {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(790, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(1040, context.currentTime + 0.22);
+    if (safeKind === "outgoing") {
+      oscillator.frequency.setValueAtTime(430, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(520, context.currentTime + 0.22);
+    } else {
+      oscillator.frequency.setValueAtTime(790, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(1040, context.currentTime + 0.22);
+    }
     gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.12, context.currentTime + 0.03);
+    gain.gain.exponentialRampToValueAtTime(safeKind === "outgoing" ? 0.08 : 0.12, context.currentTime + 0.03);
     gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.34);
     oscillator.connect(gain);
     gain.connect(context.destination);
@@ -5068,18 +7499,64 @@ function stopCommunityIncomingRing() {
 }
 
 function startCommunityIncomingRing() {
+  if (hasCommunityNativeCallBridge()) return;
   stopCommunityIncomingRing();
-  playCommunityRingPulse();
+  playCommunityRingPulse("incoming");
   communityCallRingHandle = setInterval(() => {
     if (String(communityState.callScreenMode || "") !== "incoming") {
       stopCommunityIncomingRing();
       return;
     }
-    playCommunityRingPulse();
+    playCommunityRingPulse("incoming");
   }, COMMUNITY_CALL_RING_RETRY_MS);
   if (navigator?.vibrate instanceof Function) {
     navigator.vibrate([250, 120, 250, 120, 250]);
   }
+}
+
+function startCommunityOutgoingRing() {
+  if (hasCommunityNativeCallBridge()) return;
+  stopCommunityIncomingRing();
+  playCommunityRingPulse("outgoing");
+  communityCallRingHandle = setInterval(() => {
+    if (String(communityState.callScreenMode || "") !== "outgoing") {
+      stopCommunityIncomingRing();
+      return;
+    }
+    playCommunityRingPulse("outgoing");
+  }, COMMUNITY_CALL_RING_RETRY_MS);
+}
+
+function clearCommunityCallNoAnswerTimer() {
+  if (communityCallNoAnswerHandle) {
+    clearTimeout(communityCallNoAnswerHandle);
+    communityCallNoAnswerHandle = null;
+  }
+}
+
+function startCommunityCallNoAnswerTimer(call = null) {
+  clearCommunityCallNoAnswerTimer();
+  const safeCall = call && typeof call === "object" ? call : null;
+  const safeCallId = String(safeCall?.id || "").trim();
+  if (!safeCallId) return;
+  const currentUserId = String(currentUser?.id || "").trim();
+  if (!currentUserId || String(safeCall?.startedByUserId || "").trim() !== currentUserId) return;
+  if (String(safeCall?.answeredAt || "").trim()) return;
+  const startedAtMs = new Date(String(safeCall?.startedAt || "")).getTime();
+  const elapsedMs = Number.isFinite(startedAtMs) && startedAtMs > 0 ? Math.max(0, Date.now() - startedAtMs) : 0;
+  const waitMs = Math.max(0, COMMUNITY_CALL_NO_ANSWER_TIMEOUT_MS - elapsedMs);
+  communityCallNoAnswerHandle = setTimeout(() => {
+    communityCallNoAnswerHandle = null;
+    const activeCallId = String(communityState.activeCall?.id || "").trim();
+    const outgoingMode = String(communityState.callScreenMode || "").trim().toLowerCase() === "outgoing";
+    const unanswered = !String(communityState.activeCall?.answeredAt || "").trim();
+    if (!outgoingMode || !unanswered || activeCallId !== safeCallId) return;
+    void endCommunityConversationCall({ notifyBackend: true, silent: true })
+      .then(() => {
+        setCommunityFeedback("No answer. Call ended.");
+      })
+      .catch(() => {});
+  }, waitMs);
 }
 
 function openCommunityIncomingCallScreen(call = null) {
@@ -5100,6 +7577,7 @@ function openCommunityIncomingCallScreen(call = null) {
   communityCallAvatarWrapEl?.classList.remove("hidden");
   startCommunityIncomingRing();
   syncCommunityCallActionButtons();
+  void presentCommunityNativeIncomingCall(safeCall);
 }
 
 function handleCommunityConversationRealtimeSignal(payload = {}) {
@@ -5125,6 +7603,7 @@ function handleCommunityConversationRealtimeSignal(payload = {}) {
     if (communityCallConnected) {
       setCommunityCallScreenMode("connected");
       stopCommunityIncomingRing();
+      clearCommunityCallNoAnswerTimer();
       startCommunityCallTimer(communityState.activeCall?.answeredAt || "");
       syncCommunityCallActionButtons();
     }
@@ -5150,15 +7629,20 @@ function handleCommunityGlobalRealtimeSignal(payload = {}) {
   if (currentUserId && actorUserId && actorUserId === currentUserId) return;
   const conversationId = String(safePayload.conversationId || "").trim();
   if (!conversationId) return;
-  const activeScreen = String(getActiveScreenId() || "");
-  if (!activeScreen.startsWith("community-")) return;
-  const activeConversationId = String(communityState.activeConversation?.id || "").trim();
-  if (activeScreen !== "community-chat-screen" || activeConversationId !== conversationId) {
-    void openCommunityConversation("", conversationId)
-      .then(() => refreshCommunityConversationActiveCall({ silent: true, force: true }))
-      .catch(() => {});
+  if (communityState.activeCall && String(communityState.activeCall.conversationId || "").trim() !== conversationId) {
     return;
   }
+  const activeConversationId = String(communityState.activeConversation?.id || "").trim();
+  if (activeConversationId !== conversationId) {
+    communityState.activeConversation = { id: conversationId, type: "direct" };
+    const chatRow = Array.isArray(communityState.overview?.chats)
+      ? communityState.overview.chats.find((row) => String(row?.id || "").trim() === conversationId)
+      : null;
+    if (chatRow?.partner && typeof chatRow.partner === "object") {
+      communityState.activeConversationPartner = chatRow.partner;
+    }
+  }
+  void ensureCommunityConversationRealtimeSubscription();
   void refreshCommunityConversationActiveCall({ silent: true, force: true });
 }
 
@@ -5291,8 +7775,10 @@ function bindCommunityCallClientEvents(client) {
       await playCommunityRemoteAudioTrack(user.audioTrack);
       setCommunityCallScreenMode("connected");
       stopCommunityIncomingRing();
+      clearCommunityCallNoAnswerTimer();
       startCommunityCallTimer(communityState.activeCall?.answeredAt || "");
       syncCommunityCallActionButtons();
+      await syncCommunityNativeCallState();
     }
     if (mediaType === "video" && user?.videoTrack && communityCallRemoteVideoEl) {
       communityCallRemoteVideoTrack = user.videoTrack;
@@ -5319,21 +7805,24 @@ function bindCommunityCallClientEvents(client) {
         communityCallRemoteVideoEl.innerHTML = "";
       }
     }
-    setCommunityCallScreenMode("outgoing");
-    stopCommunityCallTimer({ reset: false });
-    setCommunityCallStatus("Connected. Waiting for participant...");
     syncCommunityCallActionButtons();
   });
   client.on("user-left", () => {
-    setCommunityCallScreenMode("outgoing");
-    stopCommunityCallTimer({ reset: false });
-    setCommunityCallStatus("Participant left. Waiting...");
-    syncCommunityCallActionButtons();
+    const safeConversationId = String(communityState.activeCall?.conversationId || "").trim();
+    const safeCallId = String(communityState.activeCall?.id || "").trim();
+    if (!safeConversationId || !safeCallId) return;
+    setCommunityCallStatus("Call ended");
+    void endCommunityConversationCall({ notifyBackend: true, silent: true })
+      .then(() => {
+        setCommunityFeedback("Call ended.");
+      })
+      .catch(() => {});
   });
 }
 
 async function destroyCommunityCallTransport() {
   stopCommunityIncomingRing();
+  clearCommunityCallNoAnswerTimer();
   stopCommunityCallTimer({ reset: false });
   const audioTrack = communityCallLocalAudioTrack;
   const videoTrack = communityCallLocalVideoTrack;
@@ -5382,6 +7871,7 @@ async function endCommunityConversationCall({
     ? { ...communityState.activeCall }
     : null;
   await destroyCommunityCallTransport();
+  clearCommunityCallNoAnswerTimer();
   stopCommunityCallTimer({ reset: true });
   setCommunityCallModalOpen(false);
   setCommunityCallScreenMode("idle");
@@ -5390,6 +7880,7 @@ async function endCommunityConversationCall({
   communityState.callProbeAt = 0;
   setCommunityChatActiveCallBar(null);
   syncCommunityCallActionButtons();
+  await clearCommunityNativeCallState();
   if (notifyBackend) {
     const safeConversationId = String(activeCall?.conversationId || communityState.activeConversation?.id || "").trim();
     const safeCallId = String(activeCall?.id || "").trim();
@@ -5416,7 +7907,6 @@ async function joinCommunityCallFromPayload(payload = {}) {
   syncCommunityCallIdentity();
   setCommunityCallModalOpen(true);
   setCommunityCallScreenMode("connecting");
-  const modeLabel = getCommunityCallModeLabel(mode);
   setCommunityCallStatus("Connecting...");
   communityCallVideoStageEl?.classList.toggle("hidden", mode !== "video");
   communityCallVideoStageEl?.setAttribute("aria-hidden", mode === "video" ? "false" : "true");
@@ -5473,94 +7963,37 @@ async function joinCommunityCallFromPayload(payload = {}) {
     setCommunityCallScreenMode("outgoing");
     stopCommunityCallTimer({ reset: true });
     setCommunityCallStatus("Ringing...");
+    startCommunityOutgoingRing();
+    startCommunityCallNoAnswerTimer(call);
+    await presentCommunityNativeOutgoingCall(call);
   } else {
     setCommunityCallScreenMode("connected");
+    stopCommunityIncomingRing();
+    clearCommunityCallNoAnswerTimer();
     startCommunityCallTimer(call?.answeredAt || "");
-    if (!hasPeerInCall) {
-      setCommunityCallStatus("Connected. Waiting for participant...");
-    }
+    await syncCommunityNativeCallState();
   }
   setCommunityChatActiveCallBar(null);
   syncCommunityCallActionButtons();
 }
 
 async function startCommunityConversationCall(mode = "voice") {
-  const safeConversationId = String(communityState.activeConversation?.id || "").trim();
-  if (!safeConversationId) {
-    setCommunityFeedback("Open a chat first to place a call.", true);
-    return;
-  }
-  const isGroupChat =
-    String(communityState.activeConversation?.type || "").trim().toLowerCase() === "group" ||
-    Boolean(communityState.activeConversationPartner?.isGroup);
-  if (isGroupChat) {
-    setCommunityFeedback("Calls are only available in direct chats right now.", true);
-    return;
-  }
-  if (
-    communityState.activeCall &&
-    String(communityState.activeCall.conversationId || "").trim() === safeConversationId
-  ) {
-    if (communityCallConnected) {
-      setCommunityFeedback("You are already in this call.");
-      return;
-    }
-    if (String(communityState.callScreenMode || "") === "incoming") {
-      setCommunityFeedback("Answer or decline the incoming call first.", true);
-      return;
-    }
-    setCommunityFeedback("A call is already active in this chat.");
-    return;
-  }
-  const safeMode = String(mode || "").trim().toLowerCase() === "video" ? "video" : "voice";
-  try {
-    communityState.callIncomingDismissedId = "";
-    const payload = await backendClient.startCommunityConversationCall(safeConversationId, safeMode);
-    await joinCommunityCallFromPayload(payload);
-    setCommunityFeedback(`${getCommunityCallModeLabel(safeMode)} call started.`);
-  } catch (error) {
-    await endCommunityConversationCall({ notifyBackend: false, silent: true });
-    setCommunityFeedback(generalApiErrorMessage(error, `${getCommunityCallModeLabel(safeMode)} call could not start right now.`), true);
-  }
+  void mode;
+  showCommunityCallsComingSoon();
 }
 
 async function joinCommunityConversationActiveCall(callPayload = null) {
-  const safeConversationId = String(communityState.activeConversation?.id || "").trim();
-  const isGroupChat =
-    String(communityState.activeConversation?.type || "").trim().toLowerCase() === "group" ||
-    Boolean(communityState.activeConversationPartner?.isGroup);
-  if (isGroupChat) {
-    setCommunityFeedback("Calls are only available in direct chats right now.", true);
-    return;
-  }
-  const safeCallId = String(callPayload?.id || communityState.activeCall?.id || "").trim();
-  if (!safeConversationId || !safeCallId) {
-    setCommunityFeedback("No active call to join right now.", true);
-    return;
-  }
-  if (
-    communityCallConnected &&
-    String(communityState.activeCall?.id || "").trim() === safeCallId &&
-    String(communityState.activeCall?.conversationId || "").trim() === safeConversationId
-  ) {
-    setCommunityFeedback("You are already in this call.");
-    return;
-  }
-  try {
-    communityState.callIncomingDismissedId = "";
-    stopCommunityIncomingRing();
-    const payload = await backendClient.joinCommunityConversationCall(safeConversationId, safeCallId);
-    await joinCommunityCallFromPayload(payload);
-    setCommunityFeedback("Joined active call.");
-  } catch (error) {
-    await endCommunityConversationCall({ notifyBackend: false, silent: true });
-    setCommunityFeedback(generalApiErrorMessage(error, "Call could not join right now."), true);
-  }
+  void callPayload;
+  showCommunityCallsComingSoon();
 }
 
 async function refreshCommunityConversationActiveCall({ silent = true, force = false } = {}) {
-  const safeConversationId = String(communityState.activeConversation?.id || "").trim();
-  if (!safeConversationId || getActiveScreenId() !== "community-chat-screen") {
+  const activeScreen = String(getActiveScreenId() || "").trim();
+  const chatScreenOpen = activeScreen === "community-chat-screen";
+  const safeConversationId =
+    String(communityState.activeConversation?.id || "").trim() ||
+    String(communityState.activeCall?.conversationId || "").trim();
+  if (!safeConversationId) {
     setCommunityChatActiveCallBar(null);
     return null;
   }
@@ -5582,11 +8015,16 @@ async function refreshCommunityConversationActiveCall({ silent = true, force = f
       setCommunityCallModalOpen(false);
       setCommunityCallScreenMode("idle");
       stopCommunityIncomingRing();
+      clearCommunityCallNoAnswerTimer();
+      await clearCommunityNativeCallState();
     }
     if (call && communityCallConnected && String(communityState.activeCall?.id || "") === String(call.id || "")) {
       communityState.activeCall = { ...communityState.activeCall, ...call };
       if (String(communityState.callScreenMode || "") === "connected" && String(call.answeredAt || "").trim()) {
         startCommunityCallTimer(call.answeredAt);
+      }
+      if (String(call.answeredAt || "").trim()) {
+        clearCommunityCallNoAnswerTimer();
       }
     } else if (!communityCallConnected) {
       communityState.activeCall = call;
@@ -5594,9 +8032,15 @@ async function refreshCommunityConversationActiveCall({ silent = true, force = f
       const startedBySelf = String(call?.startedByUserId || "").trim() === currentUserId;
       if (!startedBySelf && String(communityState.callIncomingDismissedId || "") !== String(call?.id || "")) {
         openCommunityIncomingCallScreen(call);
+      } else if (startedBySelf && !String(call?.answeredAt || "").trim()) {
+        setCommunityCallScreenMode("outgoing");
+        setCommunityCallStatus("Ringing...");
+        startCommunityOutgoingRing();
+        startCommunityCallNoAnswerTimer(call);
+        await presentCommunityNativeOutgoingCall(call);
       }
     }
-    setCommunityChatActiveCallBar(call);
+    setCommunityChatActiveCallBar(chatScreenOpen ? call : null);
     return call;
   } catch (error) {
     if (!silent) {
@@ -5613,6 +8057,7 @@ async function toggleCommunityCallMute() {
     await communityCallLocalAudioTrack.setEnabled(nextEnabled);
   } catch {}
   syncCommunityCallActionButtons();
+  queueCommunityNativeCallStateSync();
 }
 
 async function toggleCommunityCallVideoEnabled() {
@@ -5622,6 +8067,7 @@ async function toggleCommunityCallVideoEnabled() {
     await communityCallLocalVideoTrack.setEnabled(nextEnabled);
   } catch {}
   syncCommunityCallActionButtons();
+  queueCommunityNativeCallStateSync();
 }
 
 async function toggleCommunityCallSpeaker() {
@@ -5639,6 +8085,7 @@ async function toggleCommunityCallSpeaker() {
     setCommunityFeedback("Speaker routing follows your phone audio route.", false);
   }
   syncCommunityCallActionButtons();
+  queueCommunityNativeCallStateSync();
 }
 
 async function answerCommunityIncomingCall() {
@@ -5650,6 +8097,7 @@ async function answerCommunityIncomingCall() {
   setCommunityCallScreenMode("outgoing");
   setCommunityCallStatus("Connecting...");
   syncCommunityCallActionButtons();
+  queueCommunityNativeCallStateSync();
   await joinCommunityConversationActiveCall(activeCall);
 }
 
@@ -5664,6 +8112,7 @@ async function declineCommunityIncomingCall() {
   setCommunityCallModalOpen(false);
   setCommunityCallScreenMode("idle");
   syncCommunityCallActionButtons();
+  await clearCommunityNativeCallState();
   if (safeConversationId && safeCallId && String(communityState.activeConversation?.type || "").trim().toLowerCase() === "direct") {
     try {
       await backendClient.endCommunityConversationCall(safeConversationId, safeCallId);
@@ -5728,6 +8177,205 @@ function dataUrlToBlob(dataUrl = "") {
   return new Blob([bytes], { type: mimeType });
 }
 
+function loadCommunityChatDraftStore() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCommunityChatDraftStore(store = {}) {
+  try {
+    localStorage.setItem(
+      COMMUNITY_CHAT_DRAFT_STORAGE_KEY,
+      JSON.stringify(store && typeof store === "object" ? store : {}),
+    );
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+function getCommunityChatDraftConversationId(conversationId = "") {
+  return String(conversationId || "").trim();
+}
+
+function normalizeCommunityChatDraftAttachment(raw = {}) {
+  const dataUrl = normalizeCommunityDataUrlMime(String(raw?.dataUrl || "")).trim();
+  if (!dataUrl) return null;
+  const fileName = String(raw?.fileName || "attachment").trim() || "attachment";
+  const mimeType = String(raw?.mimeType || dataUrlToBlob(dataUrl)?.type || "").trim().toLowerCase();
+  const sourceLabel = String(raw?.sourceLabel || "").trim() || "Attachment";
+  return {
+    fileName,
+    dataUrl,
+    mimeType,
+    sourceLabel,
+  };
+}
+
+function normalizeCommunityChatDraftReply(raw = null) {
+  if (!raw || typeof raw !== "object") return null;
+  const sourceId = String(raw?.sourceId || "").trim();
+  if (!sourceId) return null;
+  return {
+    type: String(raw?.type || "message").trim().toLowerCase() || "message",
+    sourceId,
+    senderName: String(raw?.senderName || "Message").trim() || "Message",
+    text: String(raw?.text || "").trim(),
+    imageDataUrl: String(raw?.imageDataUrl || "").trim(),
+  };
+}
+
+function getCommunityChatDraftSnapshot() {
+  const conversationId = getCommunityChatDraftConversationId(communityState.activeConversation?.id || "");
+  if (!conversationId || getCommunityChatReadonlyReason()) return null;
+  const text = String(communityChatInput?.value || "");
+  const textHasContent = Boolean(text.trim());
+  const replyDraft = normalizeCommunityChatDraftReply(communityState.replyDraft);
+  const attachments = Array.isArray(communityState.pendingAttachments)
+    ? communityState.pendingAttachments
+        .map((attachment) => normalizeCommunityChatDraftAttachment(attachment))
+        .filter(Boolean)
+    : [];
+  if (!textHasContent && !replyDraft && !attachments.length) return null;
+  return {
+    conversationId,
+    text,
+    replyDraft,
+    attachments,
+    updatedAt: Date.now(),
+  };
+}
+
+function persistCommunityChatDraftForConversation(conversationId = "") {
+  const safeConversationId = getCommunityChatDraftConversationId(conversationId);
+  if (!safeConversationId) return false;
+  const store = loadCommunityChatDraftStore();
+  const currentConversationId = getCommunityChatDraftConversationId(communityState.activeConversation?.id || "");
+  const snapshot =
+    safeConversationId === currentConversationId
+      ? getCommunityChatDraftSnapshot()
+      : null;
+  if (!snapshot) {
+    delete store[safeConversationId];
+    communityState.chatDrafts = store;
+    saveCommunityChatDraftStore(store);
+    return false;
+  }
+  store[safeConversationId] = snapshot;
+  communityState.chatDrafts = store;
+  saveCommunityChatDraftStore(store);
+  return true;
+}
+
+function removeCommunityChatDraftForConversation(conversationId = "") {
+  const safeConversationId = getCommunityChatDraftConversationId(conversationId);
+  if (!safeConversationId) return false;
+  const store = loadCommunityChatDraftStore();
+  if (!Object.prototype.hasOwnProperty.call(store, safeConversationId)) {
+    communityState.chatDrafts = store;
+    return false;
+  }
+  delete store[safeConversationId];
+  communityState.chatDrafts = store;
+  saveCommunityChatDraftStore(store);
+  return true;
+}
+
+function getCommunityChatDraftForConversation(conversationId = "") {
+  const safeConversationId = getCommunityChatDraftConversationId(conversationId);
+  if (!safeConversationId) return null;
+  const store = communityState.chatDrafts && typeof communityState.chatDrafts === "object"
+    ? communityState.chatDrafts
+    : loadCommunityChatDraftStore();
+  const draft = store[safeConversationId];
+  if (!draft || typeof draft !== "object") return null;
+  const attachments = Array.isArray(draft.attachments)
+    ? draft.attachments
+        .map((attachment) => normalizeCommunityChatDraftAttachment(attachment))
+        .filter(Boolean)
+    : [];
+  const replyDraft = normalizeCommunityChatDraftReply(draft.replyDraft);
+  const text = String(draft.text || "");
+  if (!text.trim() && !attachments.length && !replyDraft) return null;
+  return {
+    conversationId: safeConversationId,
+    text,
+    replyDraft,
+    attachments,
+    updatedAt: Math.max(0, Math.round(Number(draft.updatedAt) || 0)),
+  };
+}
+
+function syncCommunityChatDraftPersistence() {
+  const conversationId = getCommunityChatDraftConversationId(communityState.activeConversation?.id || "");
+  if (!conversationId) return;
+  if (getCommunityChatReadonlyReason()) {
+    removeCommunityChatDraftForConversation(conversationId);
+    return;
+  }
+  const snapshot = getCommunityChatDraftSnapshot();
+  if (!snapshot) {
+    removeCommunityChatDraftForConversation(conversationId);
+    return;
+  }
+  const store = loadCommunityChatDraftStore();
+  store[conversationId] = snapshot;
+  communityState.chatDrafts = store;
+  saveCommunityChatDraftStore(store);
+}
+
+function applyCommunityChatDraftToComposer(draft = null) {
+  const safeDraft = draft && typeof draft === "object" ? draft : null;
+  if (getCommunityChatReadonlyReason()) {
+    communityState.replyDraft = null;
+    communityState.pendingAttachments = [];
+    if (communityChatInput) {
+      communityChatInput.value = "";
+    }
+    if (communityChatImageInput) communityChatImageInput.value = "";
+    if (communityChatCameraInput) communityChatCameraInput.value = "";
+    if (communityChatVoiceInput) communityChatVoiceInput.value = "";
+    renderCommunityReplyDraft();
+    renderCommunityPendingAttachment();
+    autosizeCommunityChatInput();
+    return;
+  }
+  communityState.replyDraft = safeDraft?.replyDraft ? { ...safeDraft.replyDraft } : null;
+  communityState.pendingAttachments = Array.isArray(safeDraft?.attachments)
+    ? safeDraft.attachments
+        .map((attachment) => normalizeCommunityChatDraftAttachment(attachment))
+        .filter(Boolean)
+    : [];
+  if (communityChatInput) {
+    communityChatInput.value = String(safeDraft?.text || "");
+  }
+  if (communityChatImageInput) communityChatImageInput.value = "";
+  if (communityChatCameraInput) communityChatCameraInput.value = "";
+  if (communityChatVoiceInput) communityChatVoiceInput.value = "";
+  renderCommunityReplyDraft();
+  renderCommunityPendingAttachment();
+  autosizeCommunityChatInput();
+}
+
+function restoreCommunityChatDraftIfNeeded(conversationId = "") {
+  const safeConversationId = getCommunityChatDraftConversationId(conversationId || communityState.activeConversation?.id || "");
+  if (!safeConversationId) return false;
+  if (getCommunityChatReadonlyReason()) return false;
+  const draft = getCommunityChatDraftForConversation(safeConversationId);
+  if (!draft) return false;
+  const hasComposerContent =
+    Boolean(String(communityChatInput?.value || "").trim()) ||
+    Boolean(communityState.replyDraft?.sourceId) ||
+    (Array.isArray(communityState.pendingAttachments) && communityState.pendingAttachments.length > 0);
+  if (hasComposerContent) return false;
+  applyCommunityChatDraftToComposer(draft);
+  return true;
+}
+
 function getCommunityImageQualityPreset() {
   switch (String(communitySettingsPrefs.mediaQuality || "high").trim().toLowerCase()) {
     case "data-saver":
@@ -5784,6 +8432,70 @@ async function optimizeCommunityImageBlobForQuality(blob = null, fileName = "ima
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+function getCommunityUploadExtensionFromMime(mimeType = "") {
+  const safeMimeType = normalizeCommunityUploadMimeType(mimeType);
+  if (safeMimeType === "video/mp4") return ".mp4";
+  if (safeMimeType === "video/webm") return ".webm";
+  if (safeMimeType === "video/quicktime") return ".mov";
+  if (safeMimeType === "image/png") return ".png";
+  if (safeMimeType === "image/webp") return ".webp";
+  if (safeMimeType === "image/gif") return ".gif";
+  if (safeMimeType === "image/jpeg") return ".jpg";
+  if (safeMimeType === "audio/webm") return ".webm";
+  if (safeMimeType === "audio/ogg") return ".ogg";
+  if (safeMimeType === "audio/mp4") return ".m4a";
+  if (safeMimeType === "audio/mpeg") return ".mp3";
+  if (safeMimeType === "audio/wav") return ".wav";
+  if (safeMimeType === "application/pdf") return ".pdf";
+  if (safeMimeType === "text/plain") return ".txt";
+  if (safeMimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return ".docx";
+  if (safeMimeType === "application/msword") return ".doc";
+  if (safeMimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation") return ".pptx";
+  if (safeMimeType === "application/vnd.ms-powerpoint") return ".ppt";
+  return "";
+}
+
+function getCommunityUploadFileNameFromMime(mimeType = "", fallbackName = "attachment") {
+  const safeFallback = String(fallbackName || "attachment").trim() || "attachment";
+  const safeMimeType = normalizeCommunityUploadMimeType(mimeType);
+  const extension = getCommunityUploadExtensionFromMime(safeMimeType);
+  if (!extension) return safeFallback;
+  const baseName = safeFallback.replace(/\.[a-z0-9]+$/i, "").trim() || safeFallback;
+  return `${baseName}${extension}`;
+}
+
+async function normalizeCommunityOutboundAttachmentFile(attachment = null) {
+  if (!attachment || typeof attachment !== "object") return null;
+  const kind = getCommunityAttachmentKind(attachment);
+  const attachmentName = String(attachment.fileName || "attachment").trim() || "attachment";
+  const sourceFile = attachment.originalFile instanceof Blob ? attachment.originalFile : null;
+  const sourceBlob = sourceFile || dataUrlToBlob(String(attachment.dataUrl || ""));
+  if (!(sourceBlob instanceof Blob)) return null;
+  let outboundBlob = sourceBlob;
+  if (kind === "image") {
+    outboundBlob = await optimizeCommunityImageBlobForQuality(
+      sourceBlob,
+      getCommunityUploadFileNameFromMime(sourceBlob.type || attachment.mimeType || "image/jpeg", attachmentName),
+    );
+  }
+  const normalizedMimeType =
+    normalizeCommunityUploadMimeType(outboundBlob.type)
+    || normalizeCommunityUploadMimeType(attachment.mimeType)
+    || (kind === "image" ? "image/jpeg" : "");
+  const safeMimeType = kind === "image"
+    ? (
+        ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(normalizedMimeType)
+          ? normalizedMimeType
+          : "image/jpeg"
+      )
+    : (normalizedMimeType || "application/octet-stream");
+  const safeFileName = getCommunityUploadFileNameFromMime(safeMimeType, attachmentName);
+  if (outboundBlob instanceof File && String(outboundBlob.name || "") === safeFileName && String(outboundBlob.type || "").trim().toLowerCase() === safeMimeType) {
+    return outboundBlob;
+  }
+  return new File([outboundBlob], safeFileName, { type: safeMimeType });
 }
 
 function isCommunityRemoteSourceUrl(value = "") {
@@ -7279,6 +9991,7 @@ function syncCommunityStatusComposeState() {
   const isToolFocus = Boolean(activePanel);
   const isImageTextTool = payload?.type === "image" && activePanel === "overlayText";
   const isAttachmentCompose = communityState.statusComposeSource?.mode === "chat-attachment";
+  const isAdminBroadcastStatus = communityState.statusComposeSource?.mode === "admin-broadcast-status";
   const nextCaptionValue = isText
     ? String(payload?.text || "")
     : isImageTextTool
@@ -7307,10 +10020,21 @@ function syncCommunityStatusComposeState() {
     Boolean(communityStatusComposeModalEl && !communityStatusComposeModalEl.classList.contains("hidden")),
   );
   if (communityStatusComposeSendBtn) {
-    communityStatusComposeSendBtn.disabled = !isReady;
-    communityStatusComposeSendBtn.classList.toggle("is-disabled", !isReady);
-    communityStatusComposeSendBtn.setAttribute("aria-label", isAttachmentCompose ? "Apply edit" : "Send status");
-    communityStatusComposeSendBtn.setAttribute("title", isAttachmentCompose ? "Apply" : "Send");
+    const disabled = !isReady || Boolean(communityState.statusUploadInFlight);
+    communityStatusComposeSendBtn.disabled = disabled;
+    communityStatusComposeSendBtn.classList.toggle("is-disabled", disabled);
+    communityStatusComposeSendBtn.setAttribute(
+      "aria-label",
+      isAttachmentCompose
+        ? "Apply edit"
+        : isAdminBroadcastStatus
+          ? "Publish announcement"
+          : "Send status",
+    );
+    communityStatusComposeSendBtn.setAttribute("title", isAttachmentCompose ? "Apply" : isAdminBroadcastStatus ? "Publish" : "Send");
+  }
+  if (communityStatusComposeVisibilityEl) {
+    communityStatusComposeVisibilityEl.textContent = isAdminBroadcastStatus ? "Broadcast (Everyone)" : "Status (Contacts)";
   }
   if (communityStatusComposeModalEl) {
     communityStatusComposeModalEl.classList.toggle("is-emoji-open", Boolean(communityState.statusComposeEmojiPickerOpen));
@@ -7362,9 +10086,29 @@ function syncCommunityStatusComposeState() {
   queueMicrotask(() => syncCommunityStatusComposeViewportFrame());
 }
 
+function renderCommunityStatusComposeUploadOverlayMarkup({ state = "checking", error = "" } = {}) {
+  const safeState = String(state || "checking").trim().toLowerCase() === "failed" ? "failed" : "checking";
+  const label = safeState === "failed"
+    ? String(error || "Upload failed. Check content and try again.").trim()
+    : "Checking content...";
+  return `
+    <div class="community-status-compose-upload-state is-${escapeHtml(safeState)}" aria-live="polite">
+      <span class="community-status-compose-upload-state-icon" aria-hidden="true">
+        ${safeState === "failed" ? "!" : `<span class="community-status-compose-upload-spinner"></span>`}
+      </span>
+      <span class="community-status-compose-upload-state-text">${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
 function renderCommunityStatusComposePreview() {
   const payload = communityState.pendingStatusUpload;
   if (!communityStatusComposePreviewEl) return;
+  const uploadState = communityState.statusUploadInFlight
+    ? "checking"
+    : String(communityState.statusUploadError || "").trim()
+      ? "failed"
+      : "";
   const existingPreviewVideo = communityStatusComposePreviewEl.querySelector("[data-community-status-compose-video='true']");
   if (existingPreviewVideo instanceof HTMLVideoElement) {
     stopCommunityStatusComposeVideoPlayback({ clearSource: true });
@@ -7442,6 +10186,12 @@ function renderCommunityStatusComposePreview() {
     if (textNodeEl instanceof HTMLElement) {
       textNodeEl.style.setProperty("--status-text-align", layout.align);
     }
+    if (uploadState) {
+      communityStatusComposePreviewEl.insertAdjacentHTML(
+        "beforeend",
+        renderCommunityStatusComposeUploadOverlayMarkup({ state: uploadState, error: communityState.statusUploadError }),
+      );
+    }
     resetCommunityStatusCaptionInputPresentation();
     refreshCommunityStatusComposeChrome();
     return;
@@ -7459,6 +10209,7 @@ function renderCommunityStatusComposePreview() {
     communityStatusComposePreviewEl.innerHTML = `
       <div class="community-status-compose-image-wrap is-video">
         <video class="community-status-compose-video" src="${escapeHtml(String(payload.dataUrl || ""))}" data-community-status-compose-video="true" data-community-status-compose-media="true" playsinline autoplay preload="metadata"></video>
+        <button type="button" class="community-status-compose-video-hitbox" data-community-status-compose-video-hitbox="true" aria-label="Play or pause video" title="Play or pause video"></button>
         <div class="community-status-compose-video-indicator" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d="M9 7v10"></path>
@@ -7477,8 +10228,46 @@ function renderCommunityStatusComposePreview() {
       } else {
         previewVideo.addEventListener("loadedmetadata", syncVideoLayout, { once: true });
       }
+      const toggleComposePreviewVideoPlayback = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        unlockCommunityMediaAudio(previewVideo);
+        setCommunityActiveVideo(previewVideo, { scope: "status-compose" });
+        syncCommunityVideoElementAudio(previewVideo, { preferSound: true });
+        if (previewVideo.paused) {
+          void previewVideo.play().catch(() => {});
+        } else {
+          previewVideo.pause();
+        }
+        syncCommunityStatusComposeVideoPauseState(previewVideo);
+      };
+      const previewHitbox = communityStatusComposePreviewEl.querySelector("[data-community-status-compose-video-hitbox='true']");
+      if (previewHitbox instanceof HTMLElement) {
+        previewHitbox.addEventListener("pointerdown", toggleComposePreviewVideoPlayback);
+        previewHitbox.addEventListener("click", toggleComposePreviewVideoPlayback);
+      } else {
+        previewVideo.addEventListener("pointerdown", toggleComposePreviewVideoPlayback);
+        previewVideo.addEventListener("click", toggleComposePreviewVideoPlayback);
+      }
+      const previewWrap = previewVideo.closest(".community-status-compose-image-wrap.is-video");
+      if (previewWrap instanceof HTMLElement) {
+        previewWrap.addEventListener("pointerdown", (event) => {
+          if (event.target === previewVideo || event.target === previewHitbox) return;
+          toggleComposePreviewVideoPlayback(event);
+        });
+        previewWrap.addEventListener("click", (event) => {
+          if (event.target === previewVideo || event.target === previewHitbox) return;
+          toggleComposePreviewVideoPlayback(event);
+        });
+      }
     }
     syncCommunityStatusComposeVideoPlayback();
+    if (uploadState) {
+      communityStatusComposePreviewEl.insertAdjacentHTML(
+        "beforeend",
+        renderCommunityStatusComposeUploadOverlayMarkup({ state: uploadState, error: communityState.statusUploadError }),
+      );
+    }
     refreshCommunityStatusComposeChrome();
     return;
   }
@@ -7529,6 +10318,12 @@ function renderCommunityStatusComposePreview() {
     scheduleCommunityStatusCropVisualUpdate();
   }
   syncCommunityStatusComposeMediaTransform(payload);
+  if (uploadState) {
+    communityStatusComposePreviewEl.insertAdjacentHTML(
+      "beforeend",
+      renderCommunityStatusComposeUploadOverlayMarkup({ state: uploadState, error: communityState.statusUploadError }),
+    );
+  }
   refreshCommunityStatusComposeChrome();
 }
 
@@ -7571,6 +10366,18 @@ function getCommunityAttachmentLabel(attachment = null) {
   if (kind === "document") return "Document";
   if (kind === "text") return "Text file";
   return "File";
+}
+
+function inferCommunityPreviewMediaKind(attachment = null) {
+  const kind = getCommunityAttachmentKind(attachment);
+  if (kind === "image" || kind === "video") return kind;
+  const dataUrl = String(attachment?.dataUrl || attachment?.upload?.dataUrl || "").trim().toLowerCase();
+  if (dataUrl.startsWith("data:image/")) return "image";
+  if (dataUrl.startsWith("data:video/")) return "video";
+  const fileName = String(attachment?.fileName || attachment?.upload?.fileName || "").trim().toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif)$/i.test(fileName)) return "image";
+  if (/\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(fileName)) return "video";
+  return kind;
 }
 
 function getCommunityStatusMediaSourceUrl(status = null) {
@@ -7776,11 +10583,11 @@ function openCommunityFilePreview(dataUrl = "", fileName = "", mimeType = "") {
   }
   const safeMimeType = String(mimeType || "").trim().toLowerCase();
   if (safeMimeType.startsWith("image/")) {
-    openCommunityMediaModal(safeDataUrl, fileName, { kind: "image", mimeType: safeMimeType });
+    openCommunityMediaModal(safeDataUrl, "", { kind: "image", mimeType: safeMimeType });
     return;
   }
   if (safeMimeType.startsWith("video/")) {
-    openCommunityMediaModal(safeDataUrl, fileName, { kind: "video", mimeType: safeMimeType });
+    openCommunityMediaModal(safeDataUrl, "", { kind: "video", mimeType: safeMimeType });
     return;
   }
   const previewWin = window.open(safeDataUrl, "_blank", "noopener");
@@ -7876,7 +10683,7 @@ function renderCommunityReactionRow(entry = {}, timeKey = "likedAt") {
       ${getCommunityAvatarMarkup(entry, "is-inline")}
       <div class="community-status-liker-copy">
         <button type="button" class="community-name-link community-chat-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(entry?.id || "")}">${escapeHtml(displayName)}</button>
-        <div class="community-status-liker-handle">@${escapeHtml(handle || "user")} · ${escapeHtml(timeText)}</div>
+        <div class="community-status-liker-handle">@${escapeHtml(handle || "user")} - ${escapeHtml(timeText)}</div>
       </div>
     </div>
   `;
@@ -7893,6 +10700,11 @@ function resetCommunityPendingAttachment() {
     communityChatAttachmentPreviewEl.classList.add("hidden");
   }
   syncCommunityChatComposerState();
+}
+
+function cancelCommunityAttachmentDraft() {
+  resetCommunityPendingAttachment();
+  setCommunityFeedback("");
 }
 
 function getCommunityReplySnippet(raw = {}) {
@@ -7953,6 +10765,12 @@ function renderCommunityReplyDraft() {
 }
 
 function startCommunityReplyToMessage(message = {}) {
+  const readOnlyReason = getCommunityChatReadonlyReason();
+  if (readOnlyReason || isCommunityAdminMessage(message)) {
+    closeCommunityMessageActions();
+    setCommunityFeedback(readOnlyReason || "Admin notices are read only.", true);
+    return;
+  }
   if (isCommunityMessageDeletedForEveryone(message)) {
     closeCommunityMessageActions();
     return;
@@ -7998,7 +10816,7 @@ function renderCommunityPendingAttachment() {
   if (!communityChatAttachmentPreviewEl) return;
   const attachments = (Array.isArray(communityState.pendingAttachments) ? communityState.pendingAttachments : [])
     .map((attachment, index) => ({ attachment, index }))
-    .filter(({ attachment }) => !isCommunityPreviewableAttachment(attachment));
+    .filter(({ attachment }) => Boolean(attachment));
   if (!attachments.length) {
     communityChatAttachmentPreviewEl.innerHTML = "";
     communityChatAttachmentPreviewEl.classList.add("hidden");
@@ -8052,6 +10870,10 @@ async function createCommunityPendingAttachment(file, sourceLabel = "Image") {
 }
 
 async function handleCommunityAttachmentInput(inputFiles, sourceLabel = "Image") {
+  const mergeMode = String(communityState.pendingAttachmentMergeMode || "replace").trim().toLowerCase() === "append"
+    ? "append"
+    : "replace";
+  communityState.pendingAttachmentMergeMode = "replace";
   const files = Array.isArray(inputFiles)
     ? inputFiles.filter((file) => file instanceof File)
     : inputFiles instanceof FileList
@@ -8060,13 +10882,15 @@ async function handleCommunityAttachmentInput(inputFiles, sourceLabel = "Image")
         ? [inputFiles]
         : [];
   if (!files.length) return;
-  const current = Array.isArray(communityState.pendingAttachments) ? [...communityState.pendingAttachments] : [];
-  const availableSlots = Math.max(0, COMMUNITY_CHAT_MAX_ATTACHMENTS - current.length);
-  if (!availableSlots) {
-    setCommunityFeedback(`You can attach up to ${COMMUNITY_CHAT_MAX_ATTACHMENTS} files at once.`, true);
+  const previousAttachments = Array.isArray(communityState.pendingAttachments)
+    ? [...communityState.pendingAttachments]
+    : [];
+  const maxSlots = Math.max(0, COMMUNITY_CHAT_MAX_ATTACHMENTS - (mergeMode === "append" ? previousAttachments.length : 0));
+  if (mergeMode === "append" && maxSlots <= 0) {
+    setCommunityFeedback(`You can attach at most ${COMMUNITY_CHAT_MAX_ATTACHMENTS} files.`, true);
     return;
   }
-  const filesToPrepare = files.slice(0, availableSlots);
+  const filesToPrepare = files.slice(0, mergeMode === "append" ? maxSlots : COMMUNITY_CHAT_MAX_ATTACHMENTS);
   try {
     const nextAttachments = [];
     for (const file of filesToPrepare) {
@@ -8077,24 +10901,20 @@ async function handleCommunityAttachmentInput(inputFiles, sourceLabel = "Image")
       setCommunityFeedback("Attachment could not be prepared.", true);
       return;
     }
-    communityState.pendingAttachments = [...current, ...nextAttachments];
+    communityState.pendingAttachments = mergeMode === "append"
+      ? [...previousAttachments, ...nextAttachments].slice(0, COMMUNITY_CHAT_MAX_ATTACHMENTS)
+      : nextAttachments;
     renderCommunityPendingAttachment();
-    const previewItems = getCommunityPreviewablePendingAttachments();
-    if (previewItems.length) {
-      const firstNewPreviewIndex = previewItems.findIndex(({ index }) => index >= current.length);
-      if (firstNewPreviewIndex >= 0) {
-        await openCommunityComposeForPendingAttachment(previewItems[firstNewPreviewIndex]?.index ?? -1);
-      }
-    }
+    syncCommunityChatComposerState();
     const attachmentCount = communityState.pendingAttachments.length;
     const overflowCount = Math.max(0, files.length - filesToPrepare.length);
     setCommunityFeedback(
       overflowCount
         ? `${attachmentCount} files ready. ${overflowCount} file${overflowCount === 1 ? "" : "s"} skipped because the limit is ${COMMUNITY_CHAT_MAX_ATTACHMENTS}.`
         : `${attachmentCount} file${attachmentCount === 1 ? "" : "s"} ready to send.`,
-    );
+      );
   } catch (error) {
-    communityState.pendingAttachments = current;
+    communityState.pendingAttachments = previousAttachments;
     renderCommunityPendingAttachment();
     setCommunityFeedback(String(error?.message || "Attachment could not be prepared."), true);
   }
@@ -8283,11 +11103,26 @@ function renderCommunityStatusStrip() {
   communityState.statusStripRenderSignature = markup;
 }
 
-function openCommunityGroupModal() {
-  if (!communityGroupModalEl || !communityGroupMembersEl) return;
+function getCommunityGroupEligibleFriends(groupId = "") {
   const friends = Array.isArray(communityState.overview?.friends) ? communityState.overview.friends : [];
-  communityState.selectedGroupMembers = [];
-  if (communityGroupNameInput) communityGroupNameInput.value = "";
+  const memberIds = new Set(
+    Array.isArray(communityState.profile?.group?.memberIds)
+      ? communityState.profile.group.memberIds.map((value) => String(value || "").trim()).filter(Boolean)
+      : [],
+  );
+  const targetGroupId = String(groupId || communityState.profile?.group?.id || "").trim();
+  const currentViewerId = String(currentUser?.id || "").trim();
+  return friends.filter((friend) => {
+    const friendId = String(friend?.id || "").trim();
+    if (!friendId || friendId === currentViewerId) return false;
+    if (memberIds.has(friendId) && targetGroupId) return false;
+    return true;
+  });
+}
+
+function renderCommunityGroupMemberPicker(friends = [], { mode = "create" } = {}) {
+  if (!communityGroupMembersEl) return;
+  const safeMode = String(mode || "create").trim().toLowerCase();
   communityGroupMembersEl.innerHTML = friends.length
     ? friends
         .map(
@@ -8299,15 +11134,69 @@ function openCommunityGroupModal() {
           `,
         )
         .join("")
-    : `<div class="community-empty-state">Add friends first to create a study group.</div>`;
-  communityGroupModalEl.classList.remove("hidden");
+    : `<div class="community-empty-state">${safeMode === "add" ? "No eligible friends found for this group." : "Add friends first to create a study group."}</div>`;
+  syncCommunityGroupMemberSelection();
+}
+
+function openCommunityGroupModal({ mode = "create", groupId = "" } = {}) {
+  if (!communityGroupModalEl || !communityGroupMembersEl) return;
+  const safeMode = String(mode || "create").trim().toLowerCase() === "add" ? "add" : "create";
+  if (safeMode === "add") {
+    const payload = communityState.profile?.group ? communityState.profile : null;
+    const canAddMembers = Boolean(payload?.relationship?.isAdmin || payload?.group?.permissions?.membersCanAddMembers);
+    if (!canAddMembers) {
+      setCommunityFeedback("Only admins can add participants to this group.", true);
+      return;
+    }
+  }
+  communityState.groupMemberPickerMode = safeMode;
+  communityState.groupMemberPickerGroupId = String(groupId || "").trim();
+  communityState.selectedGroupMembers = [];
+  const groupName = String(communityState.profile?.group?.name || "Study Group").trim() || "Study Group";
+  const friends = safeMode === "add"
+    ? getCommunityGroupEligibleFriends(communityState.groupMemberPickerGroupId)
+    : getCommunityGroupEligibleFriends("");
+  if (communityGroupNameInput) {
+    communityGroupNameInput.classList.toggle("hidden", safeMode === "add");
+    communityGroupNameInput.value = safeMode === "add" ? "" : "";
+    communityGroupNameInput.placeholder = safeMode === "add" ? "Group name" : "Study group name";
+  }
+  if (communityGroupCreateBtn) {
+    communityGroupCreateBtn.textContent = safeMode === "add" ? "Add" : "Create";
+  }
+  if (communityGroupCancelBtn) {
+    communityGroupCancelBtn.textContent = "Cancel";
+  }
+  if (communityGroupModalCopyEl) {
+    communityGroupModalCopyEl.textContent =
+      safeMode === "add"
+        ? `Select friends to add to "${groupName}".`
+        : "Choose a group name and select friends to add.";
+  }
+  if (communityGroupMembersEl) {
+    renderCommunityGroupMemberPicker(friends, { mode: safeMode });
+  }
+  if (communityGroupModalEl) {
+    const titleEl = communityGroupModalEl.querySelector(".modal-title");
+    if (titleEl) {
+      titleEl.textContent = safeMode === "add" ? "Add Participants" : "Create Study Group";
+    }
+    communityGroupModalEl.classList.remove("hidden");
+  }
 }
 
 function closeCommunityGroupModal() {
   if (!communityGroupModalEl) return;
   communityGroupModalEl.classList.add("hidden");
   communityState.selectedGroupMembers = [];
+  communityState.groupMemberPickerMode = "create";
+  communityState.groupMemberPickerGroupId = "";
   if (communityGroupNameInput) communityGroupNameInput.value = "";
+  if (communityGroupNameInput) communityGroupNameInput.classList.remove("hidden");
+  if (communityGroupCreateBtn) communityGroupCreateBtn.textContent = "Create";
+  if (communityGroupModalCopyEl) {
+    communityGroupModalCopyEl.textContent = "Choose a group name and select friends to add.";
+  }
 }
 
 function getCommunityStatusEntriesByOwner(ownerId = "") {
@@ -8776,6 +11665,7 @@ function openCommunityStatusCompose(payload = null, { recordHistory = true, sour
   const next = payload && typeof payload === "object" ? { ...payload } : null;
   clearCommunityStatusComposeVideoLoop();
   communityState.pendingStatusUpload = next;
+  communityState.statusUploadError = "";
   communityState.statusComposeSource = source && typeof source === "object"
     ? {
         mode: String(source.mode || "status").trim() || "status",
@@ -8787,6 +11677,7 @@ function openCommunityStatusCompose(payload = null, { recordHistory = true, sour
       };
   communityState.statusComposeCaptionDraft = "";
   communityState.statusComposeEmojiPickerOpen = false;
+  communityState.statusUploadInFlight = false;
   communityState.statusComposeActiveOverlayTextId = "";
   if (communityStatusCaptionInput) {
     communityStatusCaptionInput.value = next?.type === "text" ? String(next?.text || "") : "";
@@ -8827,8 +11718,11 @@ function openCommunityStatusComposeHome() {
   openCommunityStatusCompose(null);
 }
 
-function closeCommunityStatusCompose({ useHistory = false } = {}) {
+function closeCommunityStatusCompose({ useHistory = false, returnToAttachmentPreview = false } = {}) {
   if (!communityStatusComposeModalEl || !communityStatusComposePreviewEl) return;
+  const sourceMode = String(communityState.statusComposeSource?.mode || "").trim();
+  const wasChatAttachmentEdit = sourceMode === "chat-attachment";
+  const attachmentIndex = Math.max(-1, getCommunityNumericIndex(communityState.statusComposeSource?.attachmentIndex, -1));
   if (useHistory && communityState.statusComposeHistoryArmed && /^community-status-compose/.test(String(history.state?.overlay || ""))) {
     history.back();
     return;
@@ -8870,12 +11764,20 @@ function closeCommunityStatusCompose({ useHistory = false } = {}) {
   communityState.statusComposeCaptionDraft = "";
   communityState.statusComposeViewportHeight = 0;
   communityState.pendingStatusUpload = null;
+  communityState.statusUploadError = "";
+  communityState.statusUploadInFlight = false;
   communityState.statusComposeSource = {
     mode: "status",
     attachmentIndex: -1,
   };
   syncCommunityStatusComposeViewportFrame({ forceBase: true });
   syncCommunityStatusComposeState();
+  if (returnToAttachmentPreview && wasChatAttachmentEdit && attachmentIndex >= 0) {
+    const previewIndex = getCommunityPreviewablePendingAttachments().findIndex(({ index }) => index === attachmentIndex);
+    if (previewIndex >= 0) {
+      queueCommunityPendingAttachmentOpen(() => openCommunityAttachmentPreviewModal(previewIndex));
+    }
+  }
 }
 
 async function cropCommunityImageDataUrl(dataUrl = "", crop = null) {
@@ -9065,7 +11967,9 @@ function renderCommunityStatusViewerEntry(entry = {}) {
     communityStatusOwnerNameEl.textContent = truncateWithEllipsis(getCommunityUiDisplayName(owner || {}), 24);
   }
   if (communityStatusOwnerTimeEl) {
-    communityStatusOwnerTimeEl.textContent = formatCommunityStatusTimestamp(current.createdAt || "");
+    communityStatusOwnerTimeEl.textContent = current?.isAdminBroadcast
+      ? "Announcement"
+      : formatCommunityStatusTimestamp(current.createdAt || "");
   }
   if (communityStatusModalImageEl) {
     if (!isText && !isVideo && imageUrl) {
@@ -9322,9 +12226,19 @@ function syncCommunityGroupMemberSelection() {
 function getCommunityNotificationCounts() {
   const chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
   const incoming = Array.isArray(communityState.overview?.incoming) ? communityState.overview.incoming : [];
-  const chatUnread = chats.reduce((sum, row) => sum + Math.max(0, Math.round(Number(row?.unreadCount) || 0)), 0);
+  const directUnread = chats.reduce(
+    (sum, row) =>
+      sum + (row?.partner?.isGroup ? 0 : Math.max(0, Math.round(Number(row?.unreadCount) || 0))),
+    0,
+  );
+  const groupUnread = chats.reduce(
+    (sum, row) =>
+      sum + (row?.partner?.isGroup ? Math.max(0, Math.round(Number(row?.unreadCount) || 0)) : 0),
+    0,
+  );
   return {
-    chats: chatUnread,
+    chats: directUnread,
+    groups: groupUnread,
     requests: incoming.length,
     discover: 0,
     discoverIds: [],
@@ -9332,12 +12246,50 @@ function getCommunityNotificationCounts() {
   };
 }
 
+function normalizeCommunityFriendsView(view = "") {
+  const normalized = String(view || "").trim().toLowerCase();
+  if (normalized === "requests") return "incoming";
+  return COMMUNITY_FRIENDS_VIEWS.includes(normalized) ? normalized : "friends";
+}
+
+function getCommunityFriendsHubCounts() {
+  const overview = communityState.overview || {};
+  const incoming = Array.isArray(overview.incoming) ? overview.incoming : [];
+  const sent = Array.isArray(overview.sent) ? overview.sent : [];
+  const friends = Array.isArray(overview.friends) ? overview.friends : [];
+  const suggestions = Array.isArray(communityState.searchResults)
+    ? communityState.searchResults
+    : Array.isArray(overview.suggested)
+      ? overview.suggested
+      : [];
+  const blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+  return {
+    friends: friends.length,
+    incoming: incoming.length,
+    sent: sent.length,
+    suggestions: suggestions.length,
+    blocked: blocked.length,
+  };
+}
+
+function formatCommunityTabLabel(label = "", count = 0) {
+  return `${label} [${Math.max(0, Math.round(Number(count) || 0))}]`;
+}
+
 function markCommunityNotificationsSeen(tab = "") {
   const scope = String(tab || "").trim().toLowerCase();
-  if (!["chats", "requests", "friends"].includes(scope)) return;
+  if (!["chats", "groups", "requests", "friends", "incoming"].includes(scope)) return;
   const counts = getCommunityNotificationCounts();
-  if (scope === "friends") {
+  if (scope === "friends" || scope === "incoming" || scope === "requests") {
     communityState.acknowledged.requests = counts.requests || 0;
+    return;
+  }
+  if (scope === "chats") {
+    communityState.acknowledged.chats = counts.chats || 0;
+    return;
+  }
+  if (scope === "groups") {
+    communityState.acknowledged.groups = counts.groups || 0;
     return;
   }
   communityState.acknowledged[scope] = counts[scope] || 0;
@@ -9346,7 +12298,8 @@ function markCommunityNotificationsSeen(tab = "") {
 function getCommunityPendingNotificationCounts() {
   const counts = getCommunityNotificationCounts();
   return {
-    chats: Math.max(0, counts.chats - Number(communityState.acknowledged?.chats || 0)),
+    chats: Math.max(0, counts.chats),
+    groups: Math.max(0, counts.groups),
     requests: Math.max(0, counts.requests - Number(communityState.acknowledged?.requests || 0)),
     discover: 0,
   };
@@ -9371,12 +12324,11 @@ function setButtonBadge(button, count = 0, { dotOnly = false } = {}) {
 }
 
 function renderCommunityNotificationBadges() {
-  const pending = communitySettingsPrefs.communityMute
-    ? { chats: 0, requests: 0, discover: 0 }
-    : getCommunityPendingNotificationCounts();
+  const pending = getCommunityPendingNotificationCounts();
   const isCommunityActive = ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen"].includes(getActiveScreenId());
   const dockBadges = {
     chats: pending.chats,
+    groups: pending.groups,
     friends: pending.requests,
     discover: pending.discover,
   };
@@ -9384,7 +12336,7 @@ function renderCommunityNotificationBadges() {
     const tabName = String(tabEl.dataset.communityTab || "").trim().toLowerCase();
     setButtonBadge(tabEl, dockBadges[tabName] || 0);
   });
-  setButtonBadge(menuCommunityBtn, isCommunityActive ? 0 : (pending.chats + pending.requests + pending.discover), { dotOnly: true });
+  setButtonBadge(menuCommunityBtn, isCommunityActive ? 0 : (pending.chats + pending.groups + pending.requests), { dotOnly: true });
 }
 
 function openCommunityAvatarModal(image = "", name = "") {
@@ -9419,6 +12371,12 @@ function openCommunityMediaModal(src = "", name = "", {
   const safeName = String(name || "").trim();
   const safeKind = String(kind || "image").trim().toLowerCase() === "video" ? "video" : "image";
   const safeMimeType = String(mimeType || "").trim();
+  const displayName = safeKind === "image" || safeKind === "video" ? "" : safeName;
+  const pendingSequence = getCommunityMediaViewerPendingSequence(safeSrc);
+  communityState.mediaViewerSequence = pendingSequence.sequence;
+  communityState.mediaViewerSequenceIndex = pendingSequence.index >= 0 ? pendingSequence.index : 0;
+  communityMediaModalEl.classList.toggle("is-video-media-view", safeKind === "video");
+  communityMediaModalEl.classList.toggle("is-image-media-view", safeKind !== "video");
   if (communityMediaModalImageEl) {
     communityMediaModalImageEl.classList.toggle("hidden", safeKind !== "image");
   }
@@ -9452,15 +12410,23 @@ function openCommunityMediaModal(src = "", name = "", {
     }
   }
   if (communityMediaModalNameEl) {
-    communityMediaModalNameEl.textContent = safeName;
-    communityMediaModalNameEl.classList.toggle("hidden", !safeName);
+    communityMediaModalNameEl.textContent = displayName;
+    communityMediaModalNameEl.classList.toggle("hidden", !displayName);
   }
   communityState.mediaViewerOpen = true;
   communityState.mediaViewerSrc = safeSrc;
-  communityState.mediaViewerName = safeName;
+  communityState.mediaViewerName = displayName;
   communityState.mediaViewerKind = safeKind;
   communityState.mediaViewerMimeType = safeMimeType;
   communityState.mediaViewerHistoryArmed = false;
+  syncCommunityMediaViewerControls();
+  resetCommunityMediaViewerTransform();
+  communityState.mediaViewerTouchStartX = 0;
+  communityState.mediaViewerTouchStartY = 0;
+  communityState.mediaViewerTouchDeltaX = 0;
+  communityState.mediaViewerTouchDeltaY = 0;
+  communityState.mediaViewerTouchActive = false;
+  communityState.mediaViewerSwipeSuppressTapUntil = 0;
   if (recordHistory && isCommunityCoarsePointer()) {
     const activeScreenId = getActiveScreenId() || "community-chat-screen";
     history.pushState(
@@ -9468,7 +12434,7 @@ function openCommunityMediaModal(src = "", name = "", {
         screen: activeScreenId,
         overlay: "community-media",
         mediaSrc: safeSrc,
-        mediaName: safeName,
+        mediaName: displayName,
         mediaKind: safeKind,
         mediaMimeType: safeMimeType,
       },
@@ -9478,6 +12444,226 @@ function openCommunityMediaModal(src = "", name = "", {
     communityState.mediaViewerHistoryArmed = true;
   }
   communityMediaModalEl.classList.remove("hidden");
+}
+
+function getCommunityMediaViewerPendingSequence(sourceSrc = "") {
+  const safeSrc = String(sourceSrc || "").trim();
+  const previewItems = getCommunityPreviewablePendingAttachments();
+  const sequence = previewItems.filter(({ attachment }) => {
+    const kind = inferCommunityPreviewMediaKind(attachment);
+    return kind === "image" || kind === "video";
+  });
+  const index = safeSrc
+    ? sequence.findIndex(({ attachment }) => String(attachment?.dataUrl || attachment?.remoteUrl || "").trim() === safeSrc)
+    : -1;
+  if (index < 0) {
+    return {
+      sequence: [],
+      index: -1,
+    };
+  }
+  return {
+    sequence,
+    index,
+  };
+}
+
+function syncCommunityMediaViewerControls() {
+  const sequence = Array.isArray(communityState.mediaViewerSequence) ? communityState.mediaViewerSequence : [];
+  const index = Math.max(0, Math.min(Number(communityState.mediaViewerSequenceIndex) || 0, Math.max(0, sequence.length - 1)));
+  const total = sequence.length;
+  if (communityMediaCountEl) {
+    communityMediaCountEl.textContent = total > 1 ? `${index + 1} of ${total}` : "";
+    communityMediaCountEl.classList.toggle("hidden", total <= 1);
+  }
+  if (communityMediaPrevBtn) {
+    communityMediaPrevBtn.classList.toggle("hidden", total <= 1);
+    communityMediaPrevBtn.disabled = total <= 1 || index <= 0;
+  }
+  if (communityMediaNextBtn) {
+    communityMediaNextBtn.classList.toggle("hidden", total <= 1);
+    communityMediaNextBtn.disabled = total <= 1 || index >= total - 1;
+  }
+  if (communityMediaAddBtn) {
+    const hasRoom = total > 0 && Array.isArray(communityState.pendingAttachments)
+      ? communityState.pendingAttachments.length < COMMUNITY_CHAT_MAX_ATTACHMENTS
+      : false;
+    communityMediaAddBtn.classList.toggle("hidden", !hasRoom);
+    communityMediaAddBtn.disabled = !hasRoom;
+  }
+  if (communityMediaRemoveBtn) {
+    communityMediaRemoveBtn.classList.toggle("hidden", total <= 0);
+    communityMediaRemoveBtn.disabled = total <= 0;
+  }
+}
+
+function resetCommunityMediaViewerTransform() {
+  const visibleMedia = communityMediaModalVideoEl && !communityMediaModalVideoEl.classList.contains("hidden")
+    ? communityMediaModalVideoEl
+    : communityMediaModalImageEl && !communityMediaModalImageEl.classList.contains("hidden")
+      ? communityMediaModalImageEl
+      : null;
+  if (!(visibleMedia instanceof HTMLElement)) return;
+  visibleMedia.style.transform = "";
+  visibleMedia.style.opacity = "";
+  visibleMedia.style.transition = "";
+}
+
+function setCommunityMediaViewerSwipeTransform(deltaX = 0) {
+  const visibleMedia = communityMediaModalVideoEl && !communityMediaModalVideoEl.classList.contains("hidden")
+    ? communityMediaModalVideoEl
+    : communityMediaModalImageEl && !communityMediaModalImageEl.classList.contains("hidden")
+      ? communityMediaModalImageEl
+      : null;
+  if (!(visibleMedia instanceof HTMLElement)) return;
+  const offset = Math.max(-160, Math.min(160, Number(deltaX) || 0));
+  visibleMedia.style.transition = "transform 140ms ease, opacity 140ms ease";
+  visibleMedia.style.transform = `translate3d(${Math.round(offset * 0.22)}px, 0, 0)`;
+  visibleMedia.style.opacity = String(Math.max(0.5, 1 - Math.abs(offset) / 560));
+}
+
+function getCommunityMediaViewerPointerTarget(target) {
+  if (!(target instanceof Element)) return null;
+  const button = target.closest("button");
+  if (button && !button.classList.contains("community-status-tap-zone")) return null;
+  if (target.closest(".community-media-modal-card")) return target.closest(".community-media-modal-card");
+  return null;
+}
+
+function handleCommunityMediaViewerTap(clientX = 0) {
+  if (!isCommunityCoarsePointer()) return false;
+  const viewportWidth = Math.max(1, Number(window.innerWidth || document.documentElement?.clientWidth || 0) || 1);
+  const leftEdge = viewportWidth * 0.18;
+  const rightEdge = viewportWidth * 0.82;
+  if (clientX <= leftEdge) {
+    return stepCommunityMediaViewer(-1);
+  }
+  if (clientX >= rightEdge) {
+    return stepCommunityMediaViewer(1);
+  }
+  return false;
+}
+
+function handleCommunityMediaViewerTouchStart(event) {
+  if (String(communityState.mediaViewerKind || "").toLowerCase() === "video") {
+    communityState.mediaViewerTouchActive = false;
+    return;
+  }
+  const touch = event.touches?.[0] || null;
+  if (!touch || !getCommunityMediaViewerPointerTarget(event.target)) {
+    communityState.mediaViewerTouchActive = false;
+    return;
+  }
+  communityState.mediaViewerTouchStartX = Number(touch.clientX || 0);
+  communityState.mediaViewerTouchStartY = Number(touch.clientY || 0);
+  communityState.mediaViewerTouchDeltaX = 0;
+  communityState.mediaViewerTouchDeltaY = 0;
+  communityState.mediaViewerTouchActive = true;
+}
+
+function handleCommunityMediaViewerTouchMove(event) {
+  if (String(communityState.mediaViewerKind || "").toLowerCase() === "video") return;
+  if (!communityState.mediaViewerTouchActive) return;
+  const touch = event.touches?.[0] || null;
+  if (!touch) return;
+  const deltaX = Number(touch.clientX || 0) - Number(communityState.mediaViewerTouchStartX || 0);
+  const deltaY = Number(touch.clientY || 0) - Number(communityState.mediaViewerTouchStartY || 0);
+  communityState.mediaViewerTouchDeltaX = deltaX;
+  communityState.mediaViewerTouchDeltaY = deltaY;
+  if (Math.abs(deltaX) < Math.abs(deltaY) * 1.1) {
+    resetCommunityMediaViewerTransform();
+    return;
+  }
+  setCommunityMediaViewerSwipeTransform(deltaX);
+}
+
+function handleCommunityMediaViewerTouchEnd(event) {
+  if (String(communityState.mediaViewerKind || "").toLowerCase() === "video") {
+    handleCommunityMediaViewerTouchCancel();
+    return;
+  }
+  if (!communityState.mediaViewerTouchActive) return;
+  const touch = event.changedTouches?.[0] || null;
+  const deltaX = Number(communityState.mediaViewerTouchDeltaX || 0);
+  const deltaY = Number(communityState.mediaViewerTouchDeltaY || 0);
+  const clientX = Number(touch?.clientX || 0);
+  const movedHorizontally = Math.abs(deltaX) >= 48 && Math.abs(deltaX) > Math.abs(deltaY) * 1.08;
+  resetCommunityMediaViewerTransform();
+  communityState.mediaViewerTouchActive = false;
+  communityState.mediaViewerTouchStartX = 0;
+  communityState.mediaViewerTouchStartY = 0;
+  communityState.mediaViewerTouchDeltaX = 0;
+  communityState.mediaViewerTouchDeltaY = 0;
+  if (movedHorizontally) {
+    if (deltaX > 0) {
+      stepCommunityMediaViewer(-1);
+    } else {
+      stepCommunityMediaViewer(1);
+    }
+    communityState.mediaViewerSwipeSuppressTapUntil = Date.now() + 300;
+    return;
+  }
+}
+
+function handleCommunityMediaViewerTouchCancel() {
+  communityState.mediaViewerTouchActive = false;
+  communityState.mediaViewerTouchStartX = 0;
+  communityState.mediaViewerTouchStartY = 0;
+  communityState.mediaViewerTouchDeltaX = 0;
+  communityState.mediaViewerTouchDeltaY = 0;
+  resetCommunityMediaViewerTransform();
+}
+
+function stepCommunityMediaViewer(delta = 1) {
+  const sequence = Array.isArray(communityState.mediaViewerSequence) ? communityState.mediaViewerSequence : [];
+  if (sequence.length <= 1) return false;
+  const currentIndex = Math.max(0, Math.min(Number(communityState.mediaViewerSequenceIndex) || 0, sequence.length - 1));
+  const nextIndex = Math.max(0, Math.min(sequence.length - 1, currentIndex + Number(delta || 0)));
+  if (nextIndex === currentIndex) return false;
+  const nextEntry = sequence[nextIndex] || null;
+  if (!nextEntry) return false;
+  const nextAttachment = nextEntry.attachment || null;
+  const nextKind = inferCommunityPreviewMediaKind(nextAttachment);
+  const nextSrc = String(nextAttachment?.dataUrl || nextAttachment?.remoteUrl || "").trim();
+  if (!nextSrc) return false;
+  communityState.mediaViewerSequenceIndex = nextIndex;
+  openCommunityMediaModal(nextSrc, String(nextAttachment?.fileName || "").trim(), {
+    kind: nextKind,
+    mimeType: String(nextAttachment?.mimeType || "").trim(),
+    recordHistory: false,
+  });
+  return true;
+}
+
+function removeCurrentCommunityMediaViewerItem() {
+  const sequence = Array.isArray(communityState.mediaViewerSequence) ? communityState.mediaViewerSequence : [];
+  if (!sequence.length) return false;
+  const currentIndex = Math.max(0, Math.min(Number(communityState.mediaViewerSequenceIndex) || 0, sequence.length - 1));
+  const currentEntry = sequence[currentIndex] || null;
+  const attachmentIndex = getCommunityNumericIndex(currentEntry?.index, -1);
+  if (attachmentIndex < 0) return false;
+  const attachments = Array.isArray(communityState.pendingAttachments) ? [...communityState.pendingAttachments] : [];
+  attachments.splice(attachmentIndex, 1);
+  communityState.pendingAttachments = attachments;
+  renderCommunityPendingAttachment();
+  const nextPreviewItems = getCommunityPreviewablePendingAttachments();
+  if (!nextPreviewItems.length) {
+    closeCommunityMediaModal();
+    return true;
+  }
+  const nextTargetIndex = Math.max(0, Math.min(attachmentIndex, nextPreviewItems.length - 1));
+  const nextEntry = nextPreviewItems[nextTargetIndex] || nextPreviewItems[0] || null;
+  if (!nextEntry) {
+    closeCommunityMediaModal();
+    return true;
+  }
+  const nextAttachment = nextEntry.attachment || null;
+  openCommunityMediaModal(String(nextAttachment?.dataUrl || nextAttachment?.remoteUrl || ""), String(nextAttachment?.fileName || ""), {
+    kind: inferCommunityPreviewMediaKind(nextAttachment),
+    mimeType: String(nextAttachment?.mimeType || "").trim(),
+    recordHistory: false,
+  });
+  return true;
 }
 
 function renderCommunityAttachmentPreviewModal() {
@@ -9491,7 +12677,7 @@ function renderCommunityAttachmentPreviewModal() {
   communityState.attachmentPreviewIndex = nextIndex;
   const currentEntry = previewItems[nextIndex] || null;
   const attachment = currentEntry?.attachment || null;
-  const kind = getCommunityAttachmentKind(attachment);
+  const kind = inferCommunityPreviewMediaKind(attachment);
   const src = String(attachment?.dataUrl || "").trim();
   if (communityAttachmentPreviewCountEl) {
     communityAttachmentPreviewCountEl.textContent = `${nextIndex + 1} of ${previewItems.length}`;
@@ -9545,8 +12731,9 @@ function renderCommunityAttachmentPreviewModal() {
 function openCommunityAttachmentPreviewModal(index = 0) {
   const previewItems = getCommunityPreviewablePendingAttachments();
   if (!previewItems.length || !communityAttachmentPreviewModalEl) return;
+  const nextIndex = Math.max(0, Math.min(Number(index) || 0, previewItems.length - 1));
   communityState.attachmentPreviewOpen = true;
-  communityState.attachmentPreviewIndex = Math.max(0, Math.min(Number(index) || 0, previewItems.length - 1));
+  communityState.attachmentPreviewIndex = nextIndex;
   renderCommunityAttachmentPreviewModal();
   communityAttachmentPreviewModalEl.classList.remove("hidden");
 }
@@ -9617,12 +12804,17 @@ function closeCommunityMediaModal({ useHistory = false } = {}) {
     communityMediaModalNameEl.textContent = "";
     communityMediaModalNameEl.classList.add("hidden");
   }
+  communityMediaModalEl.classList.remove("is-video-media-view", "is-image-media-view");
   communityState.mediaViewerOpen = false;
   communityState.mediaViewerHistoryArmed = false;
   communityState.mediaViewerSrc = "";
   communityState.mediaViewerName = "";
   communityState.mediaViewerKind = "image";
   communityState.mediaViewerMimeType = "";
+  communityState.mediaViewerSequence = [];
+  communityState.mediaViewerSequenceIndex = 0;
+  communityState.mediaViewerSwipeSuppressTapUntil = 0;
+  handleCommunityMediaViewerTouchCancel();
 }
 
 function openCommunityConfirmModal({
@@ -9653,6 +12845,17 @@ function canCurrentViewerEditCommunityGroup(payload = null) {
   const relationship = payload?.relationship || {};
   const permissions = payload?.group?.permissions || {};
   return Boolean(relationship.isAdmin || permissions.membersCanEditSettings);
+}
+
+function canCurrentViewerDeleteCommunityGroup(group = null) {
+  const currentUserId = String(currentUser?.id || "").trim();
+  if (!currentUserId) return false;
+  const ownerUserId = String(group?.ownerUserId || "").trim();
+  if (ownerUserId && ownerUserId === currentUserId) return true;
+  const adminIds = Array.isArray(group?.adminIds)
+    ? group.adminIds.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  return adminIds.includes(currentUserId);
 }
 
 function resetCommunityGroupEditState() {
@@ -9881,6 +13084,160 @@ function getCommunityMessageAttachmentUpload(message = {}) {
   return attachment;
 }
 
+function getCommunityMessageUploadState(message = {}) {
+  const explicitState = String(message?.uploadState || message?.pendingUploadState || "").trim().toLowerCase();
+  if (explicitState === "checking" || explicitState === "failed" || explicitState === "success") {
+    return explicitState;
+  }
+  if (message?.isPendingUpload) return "checking";
+  return "";
+}
+
+function getCommunityVisibleMessages(messages = []) {
+  const baseMessages = Array.isArray(messages) ? [...messages] : [];
+  const pendingMessages = Array.isArray(communityState.pendingOutgoingMessages)
+    ? communityState.pendingOutgoingMessages
+    : [];
+  if (!pendingMessages.length) return baseMessages;
+  const activeConversationId = String(communityState.activeConversation?.id || "").trim();
+  const merged = [...baseMessages];
+  pendingMessages.forEach((entry) => {
+    if (!entry || typeof entry !== "object") return;
+    const entryConversationId = String(entry.conversationId || "").trim();
+    if (activeConversationId && entryConversationId && entryConversationId !== activeConversationId) return;
+    const entryId = String(entry.id || "").trim();
+    if (!entryId) return;
+    if (merged.some((message) => String(message?.id || "") === entryId)) return;
+    merged.push(entry);
+  });
+  return merged.sort((left, right) => {
+    const leftTime = new Date(String(left?.createdAt || "")).getTime();
+    const rightTime = new Date(String(right?.createdAt || "")).getTime();
+    if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) {
+      return leftTime - rightTime;
+    }
+    return String(left?.id || "").localeCompare(String(right?.id || ""));
+  });
+}
+
+function createCommunityPendingOutgoingMessage({
+  text = "",
+  attachment = null,
+  replyTo = null,
+  batchId = "",
+  index = 0,
+} = {}) {
+  const viewerId = String(currentUser?.id || "").trim();
+  if (!viewerId) return null;
+  const tempId = `pending-${Date.now()}-${index}-${Math.random().toString(16).slice(2, 8)}`;
+  const safeAttachment = attachment && typeof attachment === "object" ? attachment : null;
+  const kind = safeAttachment ? getCommunityAttachmentKind(safeAttachment) : "text";
+  const dataUrl = String(safeAttachment?.dataUrl || safeAttachment?.remoteUrl || "").trim();
+  return {
+    id: tempId,
+    conversationId: String(communityState.activeConversation?.id || ""),
+    senderUserId: viewerId,
+    senderName: getCommunityUiDisplayName(currentUser || {}) || "You",
+    type: safeAttachment ? (kind || "file") : "text",
+    text: String(text || ""),
+    attachment: safeAttachment
+      ? {
+          uploadId: tempId,
+          kind,
+          fileName: String(safeAttachment.fileName || "attachment").trim() || "attachment",
+          mimeType: String(safeAttachment.mimeType || "").trim().toLowerCase(),
+          dataUrl,
+          remoteUrl: dataUrl,
+        }
+      : null,
+    replyTo: replyTo && typeof replyTo === "object" ? { ...replyTo } : null,
+    createdAt: new Date().toISOString(),
+    deliveredAt: null,
+    readAt: null,
+    seenByUserIds: [viewerId],
+    hiddenForUserIds: [],
+    isLocalPendingUpload: true,
+    uploadState: "checking",
+    uploadError: "",
+    batchId: String(batchId || ""),
+  };
+}
+
+function addCommunityPendingOutgoingMessages(entries = []) {
+  const nextEntries = Array.isArray(entries) ? entries.filter((entry) => entry && typeof entry === "object") : [];
+  if (!nextEntries.length) return [];
+  const current = Array.isArray(communityState.pendingOutgoingMessages) ? [...communityState.pendingOutgoingMessages] : [];
+  const nextIds = new Set(nextEntries.map((entry) => String(entry.id || "").trim()).filter(Boolean));
+  const merged = current.filter((entry) => !nextIds.has(String(entry?.id || "").trim()));
+  merged.push(...nextEntries);
+  communityState.pendingOutgoingMessages = merged;
+  return nextEntries;
+}
+
+function removeCommunityPendingOutgoingMessageIds(ids = []) {
+  const nextIds = new Set(
+    Array.isArray(ids)
+      ? ids.map((value) => String(value || "").trim()).filter(Boolean)
+      : [String(ids || "").trim()].filter(Boolean),
+  );
+  if (!nextIds.size) return;
+  communityState.pendingOutgoingMessages = Array.isArray(communityState.pendingOutgoingMessages)
+    ? communityState.pendingOutgoingMessages.filter((entry) => !nextIds.has(String(entry?.id || "").trim()))
+    : [];
+}
+
+function updateCommunityPendingOutgoingMessages(ids = [], updater = null) {
+  const nextIds = new Set(
+    Array.isArray(ids)
+      ? ids.map((value) => String(value || "").trim()).filter(Boolean)
+      : [String(ids || "").trim()].filter(Boolean),
+  );
+  if (!nextIds.size || typeof updater !== "function") return;
+  communityState.pendingOutgoingMessages = Array.isArray(communityState.pendingOutgoingMessages)
+    ? communityState.pendingOutgoingMessages.map((entry) => {
+        const entryId = String(entry?.id || "").trim();
+        if (!nextIds.has(entryId)) return entry;
+        return updater(entry) || entry;
+      })
+    : [];
+}
+
+function renderCommunityMessageUploadState(message = {}) {
+  const state = getCommunityMessageUploadState(message);
+  if (!state) return "";
+  const isFailed = state === "failed";
+  const label = isFailed
+    ? String(message?.uploadError || "Upload failed. Check content and try again.").trim()
+    : "Checking content...";
+  return `
+    <div class="community-message-upload-state is-${escapeHtml(state)}" aria-live="polite">
+      <span class="community-message-upload-state-icon" aria-hidden="true">
+        ${isFailed ? "!" : `<span class="community-message-upload-spinner"></span>`}
+      </span>
+      <span class="community-message-upload-state-text">${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function wrapCommunityPendingAttachmentMarkup(innerMarkup = "", message = {}) {
+  const state = getCommunityMessageUploadState(message);
+  if (!state) return innerMarkup;
+  const isFailed = state === "failed";
+  const label = isFailed
+    ? String(message?.uploadError || "Upload failed. Check content and try again.").trim()
+    : "Checking content...";
+  return `
+    <div class="community-message-attachment-shell is-${escapeHtml(state)}" aria-busy="${state === "checking" ? "true" : "false"}">
+      ${innerMarkup}
+      <div class="community-message-upload-overlay is-${escapeHtml(state)}">
+        <span class="community-message-upload-overlay-icon" aria-hidden="true">${isFailed ? "!" : ""}</span>
+        ${isFailed ? "" : `<span class="community-message-upload-spinner" aria-hidden="true"></span>`}
+        <span class="community-message-upload-overlay-text">${escapeHtml(label)}</span>
+      </div>
+    </div>
+  `;
+}
+
 function getCommunitySelectedMessageIds() {
   if (!Array.isArray(activeCommunityMessageAnchorIds)) return [];
   return [...new Set(activeCommunityMessageAnchorIds.map((value) => String(value || "").trim()).filter(Boolean))];
@@ -10012,9 +13369,19 @@ function openCommunityMessageActions(message = {}, anchorEl = null, { toggleSele
     const upload = getCommunityMessageAttachmentUpload(entry);
     return Boolean(textValue || String(upload?.dataUrl || upload?.remoteUrl || "").trim());
   });
+  const canReplyToMessage =
+    !multiSelect &&
+    !isDeletedForEveryone &&
+    !getCommunityChatReadonlyReason() &&
+    !isCommunityAdminMessage(anchorMessage);
 
   if (communityMessageReplyBtn) {
-    communityMessageReplyBtn.classList.toggle("hidden", multiSelect || isDeletedForEveryone);
+    communityMessageReplyBtn.classList.toggle("hidden", !canReplyToMessage);
+  }
+  if (communityMessageReadonlyLabelEl) {
+    const showReadonly = !multiSelect && !isDeletedForEveryone && isCommunityAdminMessage(anchorMessage);
+    communityMessageReadonlyLabelEl.classList.toggle("hidden", !showReadonly);
+    communityMessageReadonlyLabelEl.setAttribute("aria-hidden", showReadonly ? "false" : "true");
   }
   if (communityMessageShareBtn) {
     communityMessageShareBtn.classList.toggle("hidden", multiSelect
@@ -11246,7 +14613,7 @@ function syncCommunitySettingsSummaryValues() {
   }
   if (communitySettingsStorageCacheValueEl) {
     communitySettingsStorageCacheValueEl.textContent =
-      messageCount || statusCount ? `${messageCount} chats · ${statusCount} statuses` : "Ready";
+      messageCount || statusCount ? `${messageCount} chats - ${statusCount} statuses` : "Ready";
   }
   if (communitySettingsPrivacyValueEl) {
     if (communitySettingsStorageCacheValueEl) {
@@ -11356,6 +14723,16 @@ function syncCommunitySettingsForm() {
   if (communitySettingsStatusRepliesInput) {
     communitySettingsStatusRepliesInput.checked = Boolean(communitySettingsPrefs.statusReplies);
   }
+  if (communitySettingsAdminSectionEl) {
+    // Admin broadcasts now live in the dedicated admin dashboard only.
+    communitySettingsAdminSectionEl.classList.add("hidden");
+  }
+  if (communitySettingsAdminTargetBtn) {
+    communitySettingsAdminTargetBtn.classList.add("hidden");
+  }
+  if (communitySettingsAdminKeyInput) {
+    communitySettingsAdminKeyInput.value = localStorage.getItem(COMMUNITY_ADMIN_KEY_STORAGE_KEY) || "";
+  }
   syncCommunitySettingsSummaryValues();
 }
 
@@ -11372,6 +14749,7 @@ function setCommunitySettingsOpen(open = false) {
   } else {
     setCommunitySettingsThemeMenuOpen(false);
     setCommunitySettingsView("main");
+    closeCommunityAdminBroadcastModal();
   }
 }
 
@@ -11423,14 +14801,6 @@ function updateCommunitySettingsPref(key, value) {
       clearDownloadHistory: !communitySettingsPrefs.storageKeepDownloads,
     });
   }
-  if (key === "communityMute" && communitySettingsPrefs.communityMute) {
-    const counts = getCommunityNotificationCounts();
-    communityState.acknowledged = {
-      ...(communityState.acknowledged || {}),
-      chats: counts.chats,
-      requests: counts.requests,
-    };
-  }
   syncCommunitySettingsForm();
   if (key === "globalPreviews") {
     syncCommunityChatListTypingUi();
@@ -11440,6 +14810,7 @@ function updateCommunitySettingsPref(key, value) {
   }
   if (key === "communityMute") {
     renderCommunityNotificationBadges();
+    syncAppNotificationBannerVisibility();
   }
   if (["mediaAutoDownload", "mediaQuality", "chatReadReceipts"].includes(String(key || "")) && communityState.activeConversation?.id) {
     void loadCommunityMessages({ silent: true });
@@ -11604,54 +14975,62 @@ function getCommunityUserCardMarkup(user = {}, options = {}) {
   const forwardMode = isCommunityForwardMode();
   const sideMeta = subtitle || user.institution || user.country || "Ajix learner";
   const displayName = truncateWithEllipsis(getCommunityUiDisplayName(user), 28);
-  const tileActionAttrs = !forwardMode && relationship === "friend"
-    ? ` data-community-action="open-chat"`
-    : "";
-  const actions = [
-    getCommunityActionButton("View Profile", "open-profile", "secondary", `data-user-id="${escapeHtml(user.id || "")}"`),
-  ];
-
-  if (forwardMode) {
-    // Forward mode uses whole-card selection; keep action row hidden for clarity.
-  } else if (blockedUser) {
-    actions.push(
-      getCommunityActionButton("Unblock", "unblock-user", "primary", `data-user-id="${escapeHtml(user.id || "")}"`),
-    );
+  const tileActionAttrs = "";
+  let primaryAction = {
+    label: "Add Friend",
+    action: "send-request",
+    style: "primary",
+    attrs: `data-user-id="${escapeHtml(user.id || "")}"`,
+  };
+  if (blockedUser) {
+    primaryAction = {
+      label: "Unblock",
+      action: "unblock-user",
+      style: "primary",
+      attrs: `data-user-id="${escapeHtml(user.id || "")}"`,
+    };
   } else if (relationship === "incoming") {
-    actions.push(
-      getCommunityActionButton("Accept", "accept-request", "primary", `data-request-id="${escapeHtml(requestId)}"`),
-      getCommunityActionButton("Reject", "reject-request", "ghost", `data-request-id="${escapeHtml(requestId)}"`),
-    );
+    primaryAction = {
+      label: "Accept",
+      action: "accept-request",
+      style: "primary",
+      attrs: `data-request-id="${escapeHtml(requestId)}"`,
+    };
   } else if (relationship === "sent") {
-    actions.push(
-      getCommunityActionButton("Pending", "noop", "ghost", 'disabled="disabled"'),
-      getCommunityActionButton("Cancel", "cancel-request", "ghost", `data-request-id="${escapeHtml(requestId)}"`),
-    );
+    primaryAction = {
+      label: "Cancel",
+      action: "cancel-request",
+      style: "ghost",
+      attrs: `data-request-id="${escapeHtml(requestId)}"`,
+    };
   } else if (relationship === "friend") {
-    if (showMessage) {
-      actions.push(
-        getCommunityActionButton("Chat", "open-chat", "primary", `data-user-id="${escapeHtml(user.id || "")}"`),
-      );
-    }
-    if (showBlock) {
-      actions.push(
-        getCommunityActionButton("Block", "block-user", "ghost", `data-user-id="${escapeHtml(user.id || "")}"`),
-      );
-    }
-  } else {
-    actions.push(
-      getCommunityActionButton("Add Friend", "send-request", "primary", `data-user-id="${escapeHtml(user.id || "")}"`),
-    );
-    if (showBlock) {
-      actions.push(
-        getCommunityActionButton("Block", "block-user", "ghost", `data-user-id="${escapeHtml(user.id || "")}"`),
-      );
-    }
+    primaryAction = {
+      label: showMessage ? "Message" : "View",
+      action: showMessage ? "open-chat" : "open-profile",
+      style: "primary",
+      attrs: `data-user-id="${escapeHtml(user.id || "")}"`,
+    };
   }
+  const actions = forwardMode
+    ? []
+    : [
+        getCommunityActionButton(
+          primaryAction.label,
+          primaryAction.action,
+          primaryAction.style,
+          primaryAction.attrs,
+        ),
+      ];
 
   const forwardSelectedClass = isCommunityForwardTargetSelected(getCommunityForwardTargetId({ userId: user.id })) ? " is-selected" : "";
   return `
-    <article class="community-user-card${forwardSelectedClass}" data-user-id="${escapeHtml(user.id || "")}"${tileActionAttrs}>
+    <article
+      class="community-user-card${forwardSelectedClass}"
+      data-user-id="${escapeHtml(user.id || "")}"
+      data-community-friend-relationship="${escapeHtml(relationship)}"
+      data-community-request-id="${escapeHtml(requestId)}"
+      ${tileActionAttrs}
+    >
       <div class="community-user-card-head">
         ${getCommunityAvatarMarkup(user)}
         <div class="community-user-card-copy">
@@ -11669,25 +15048,47 @@ function getCommunityUserCardMarkup(user = {}, options = {}) {
 function getCommunityConversationCardMarkup(row = {}) {
   const partner = row.partner || {};
   const isGroup = Boolean(partner?.isGroup);
+  const isNotice = Boolean(partner?.isNotice);
+  const draft = getCommunityChatDraftForConversation(row?.id || "");
+  const isWarningNotice =
+    isNotice && String(partner?.noticeOriginType || "").trim().toLowerCase() === "report";
+  const noticeSenderName = isNotice
+    ? String(partner?.noticeSenderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin"
+    : "";
   const typingPreview = getCommunityConversationTypingPreview(row);
   const lastMessage = getCommunityConversationPreviewText(row);
   const unreadCount = Math.max(0, Math.round(Number(row?.unreadCount) || 0));
   const unreadClass = unreadCount > 0 ? " is-unread" : "";
   const typingClass = typingPreview ? " is-typing" : "";
-  const forwardSelectedClass = isCommunityForwardTargetSelected(getCommunityForwardTargetId({ conversationId: row.id, userId: partner.id })) ? " is-selected" : "";
-  const avatarMarkup = isGroup
+  const forwardSelectedClass = !isNotice && isCommunityForwardTargetSelected(getCommunityForwardTargetId({ conversationId: row.id, userId: partner.id })) ? " is-selected" : "";
+  const draftClass = draft ? " has-draft" : "";
+  const draftBadge = draft ? '<span class="community-chat-draft-badge">Draft</span>' : "";
+  const actionSelectedClass = getCommunityConversationActionSelectedIds().includes(String(row.id || "").trim()) ? " is-selected" : "";
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">★</span>' : "";
+  const avatarMarkup = isNotice
+    ? `<button type="button" class="community-avatar-action-btn" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}" aria-label="Open ${escapeHtml(getCommunityUiDisplayName(partner))}">${getCommunityPlainAvatarMarkup(partner, "is-inline")}</button>`
+    : isGroup
     ? `<button type="button" class="community-avatar-action-btn" data-community-action="open-group-profile" data-group-id="${escapeHtml(row.id || partner.id || "")}" aria-label="Open ${escapeHtml(getCommunityUiDisplayName(partner))} info">${getCommunityPlainAvatarMarkup(partner, "is-inline")}</button>`
     : getCommunityAvatarMarkup(partner, "is-inline");
   return `
-    <article class="community-chat-row${forwardSelectedClass}${unreadClass}${typingClass}" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}" data-user-id="${escapeHtml(partner.id || "")}">
+    <article class="community-chat-row${forwardSelectedClass}${actionSelectedClass}${unreadClass}${typingClass}${draftClass}${row.isFavorite ? " is-favorite" : ""}${isNotice ? " is-notice" : ""}" data-conversation-id="${escapeHtml(row.id || "")}" data-user-id="${escapeHtml(isNotice ? "" : partner.id || "")}">
       ${avatarMarkup}
       <div class="community-chat-row-copy">
         ${
-          isGroup
+          isNotice
+            ? `<div class="community-chat-row-head is-notice">
+                <button type="button" class="community-name-link community-chat-name-link" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}">${escapeHtml(truncateWithEllipsis(noticeSenderName, 26))}</button>
+                ${isWarningNotice ? '<span class="community-chat-warning-badge">Warning</span>' : ""}
+              </div>`
+            : isGroup
             ? `<button type="button" class="community-name-link community-chat-name-link" data-community-action="open-group-profile" data-group-id="${escapeHtml(row.id || partner.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(partner), 26))}</button>`
             : `<button type="button" class="community-name-link community-chat-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(partner.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(partner), 26))}</button>`
         }
-        <div class="community-chat-row-message">${escapeHtml(truncateWithEllipsis(lastMessage, 72))}</div>
+        <div class="community-chat-row-message">
+          ${draftBadge}
+          ${favoriteBadge}
+          <span class="community-chat-row-message-text">${escapeHtml(truncateWithEllipsis(lastMessage, 72))}</span>
+        </div>
       </div>
       <div class="community-chat-row-side">
         <span class="community-chat-row-time">${escapeHtml(formatCommunityTimestamp(row.updatedAt || row.lastMessage?.createdAt || ""))}</span>
@@ -11765,43 +15166,50 @@ function getCommunitySuggestionsPanelMarkup() {
   );
 }
 
-function getCommunityRequestsPanelMarkup() {
+function getCommunityIncomingRequestsPanelMarkup() {
   const incoming = Array.isArray(communityState.overview?.incoming) ? communityState.overview.incoming : [];
-  const sent = Array.isArray(communityState.overview?.sent) ? communityState.overview.sent : [];
-  const sections = [];
   if (incoming.length) {
-    sections.push(`
-      <section class="community-friends-subgroup">
-        <div class="community-friends-subgroup-title">Incoming</div>
-        <div class="community-card-list">
-          ${incoming.map((row) => getCommunityUserCardMarkup(row.user, {
-            relationship: "incoming",
-            requestId: row.id,
-            subtitle: "Wants to connect",
-          })).join("")}
-        </div>
-      </section>
-    `);
+    return renderCommunitySectionMarkup(
+      "Incoming Requests",
+      `<div class="community-card-list">
+        ${incoming.map((row) => getCommunityUserCardMarkup(row.user, {
+          relationship: "incoming",
+          requestId: row.id,
+          subtitle: "Wants to connect",
+        })).join("")}
+      </div>`,
+    );
   }
-  if (sent.length) {
-    sections.push(`
-      <section class="community-friends-subgroup">
-        <div class="community-friends-subgroup-title">Sent</div>
-        <div class="community-card-list">
-          ${sent.map((row) => getCommunityUserCardMarkup(row.user, {
-            relationship: "sent",
-            requestId: row.id,
-            subtitle: "Awaiting response",
-          })).join("")}
-        </div>
-      </section>
-    `);
+  return `<div class="community-empty-state">No incoming requests right now.</div>`;
+}
+
+function getCommunitySentRequestsPanelMarkup() {
+  const sent = Array.isArray(communityState.overview?.sent) ? communityState.overview.sent : [];
+  if (!sent.length) {
+    return `<div class="community-empty-state">No sent requests right now.</div>`;
   }
-  return sections.join("") || `<div class="community-empty-state">No pending requests right now.</div>`;
+  return renderCommunitySectionMarkup(
+    "Sent Requests",
+    `<div class="community-card-list">
+      ${sent.map((row) => getCommunityUserCardMarkup(row.user, {
+        relationship: "sent",
+        requestId: row.id,
+        subtitle: "Awaiting response",
+      })).join("")}
+    </div>`,
+  );
+}
+
+function renderCommunityIncomingRequests() {
+  renderCommunityResultsMarkup(getCommunityIncomingRequestsPanelMarkup());
+}
+
+function renderCommunitySentRequests() {
+  renderCommunityResultsMarkup(getCommunitySentRequestsPanelMarkup());
 }
 
 function renderCommunityRequests() {
-  renderCommunityResultsMarkup(getCommunityRequestsPanelMarkup());
+  renderCommunityIncomingRequests();
 }
 
 function getCommunityFriendsPanelMarkup() {
@@ -11826,8 +15234,18 @@ function renderCommunityFriends() {
 }
 
 function renderCommunityChats() {
+  const renderChatList = (rows = []) => rows.map((row) => getCommunityConversationCardMarkup(row)).join("");
   const allChats = Array.isArray(communityState.overview?.chats)
     ? [...communityState.overview.chats].sort((a, b) => {
+        const aDraft = getCommunityChatDraftForConversation(a?.id || "");
+        const bDraft = getCommunityChatDraftForConversation(b?.id || "");
+        if (aDraft && !bDraft) return -1;
+        if (!aDraft && bDraft) return 1;
+        if (aDraft && bDraft) {
+          const aDraftTime = Math.max(0, Math.round(Number(aDraft.updatedAt) || 0));
+          const bDraftTime = Math.max(0, Math.round(Number(bDraft.updatedAt) || 0));
+          if (aDraftTime !== bDraftTime) return bDraftTime - aDraftTime;
+        }
         const aTime = new Date(a?.updatedAt || a?.lastMessage?.createdAt || 0).getTime() || 0;
         const bTime = new Date(b?.updatedAt || b?.lastMessage?.createdAt || 0).getTime() || 0;
         return bTime - aTime;
@@ -11840,8 +15258,13 @@ function renderCommunityChats() {
   );
   const friends = Array.isArray(communityState.overview?.friends) ? communityState.overview.friends : [];
   const isForwardMode = isCommunityForwardMode();
+  const favoriteChats = chats.filter((row) => Boolean(row?.isFavorite));
+  const regularChats = chats.filter((row) => !Boolean(row?.isFavorite));
+  const chatListMarkup = renderChatList(chats);
   const sections = [];
   const heading = communityState.chatMode === "groups" ? "Study Groups" : "Recent Chats";
+  const regularHeading = communityState.chatMode === "groups" ? "All Groups" : "Recent Chats";
+  const favoriteHeading = communityState.chatMode === "groups" ? "Favorite Groups" : "Favorite Chats";
   if (!chats.length && friends.length) {
     renderCommunityResultsMarkup(
       renderCommunitySectionMarkup(
@@ -11865,11 +15288,32 @@ function renderCommunityChats() {
     );
     return;
   }
-  const chatListMarkup = chats.map((row) => getCommunityConversationCardMarkup(row)).join("");
-  if (!isForwardMode && syncCommunityChatListOnlyMarkup(chatListMarkup)) {
-    return;
+  if (!isForwardMode && !favoriteChats.length) {
+    const chatListMarkup = renderChatList(chats);
+    if (syncCommunityChatListOnlyMarkup(chatListMarkup)) {
+      return;
+    }
+    communityState.chatListRenderSignature = chatListMarkup;
+    sections.push(`<div class="community-chat-list">${chatListMarkup}</div>`);
+  } else {
+    if (favoriteChats.length) {
+      sections.push(
+        renderCommunitySectionMarkup(
+          favoriteHeading,
+          `<div class="community-chat-list is-favorites">${renderChatList(favoriteChats)}</div>`,
+        ),
+      );
+    }
+    if (regularChats.length) {
+      sections.push(
+        renderCommunitySectionMarkup(
+          regularHeading,
+          `<div class="community-chat-list">${renderChatList(regularChats)}</div>`,
+        ),
+      );
+    }
+    communityState.chatListRenderSignature = "";
   }
-  sections.push(`<div class="community-chat-list">${chatListMarkup}</div>`);
   if (isForwardMode && friends.length) {
     sections.push(`
       <section class="community-group">
@@ -11915,27 +15359,36 @@ function getCommunityFriendsViewIndex(view = "") {
 }
 
 function renderCommunityFriendsHub() {
-  const activeView = COMMUNITY_FRIENDS_VIEWS.includes(communityState.friendsView)
-    ? communityState.friendsView
-    : "friends";
+  const counts = getCommunityFriendsHubCounts();
+  const activeView = normalizeCommunityFriendsView(communityState.friendsView);
   const activeIndex = getCommunityFriendsViewIndex(activeView);
+  const tabs = [
+    { view: "friends", label: "Friends", count: counts.friends },
+    { view: "incoming", label: "Incoming", count: counts.incoming },
+    { view: "sent", label: "Sent", count: counts.sent },
+    { view: "suggestions", label: "Suggestions", count: counts.suggestions },
+    { view: "blocked", label: "Blocked", count: counts.blocked },
+  ];
   renderCommunityResultsMarkup(`
     <section class="community-friends-hub" data-community-friends-active="${escapeHtml(activeView)}">
       <div class="community-friends-tabs" role="tablist" aria-label="Friend views">
-        ${COMMUNITY_FRIENDS_VIEWS.map((view) => `
+        ${tabs.map(({ view, label, count }) => `
           <button
             type="button"
             class="community-friends-tab${view === activeView ? " is-active" : ""}"
             data-community-friends-view="${escapeHtml(view)}"
             role="tab"
             aria-selected="${view === activeView ? "true" : "false"}"
-          >${escapeHtml(view.charAt(0).toUpperCase() + view.slice(1))}</button>
+          >
+            <span class="community-friends-tab-label">${escapeHtml(label)} <span class="community-friends-tab-count">${escapeHtml(`[${Math.max(0, Math.round(Number(count) || 0))}]`)}</span></span>
+          </button>
         `).join("")}
       </div>
       <div class="community-friends-viewport">
         <div class="community-friends-track" style="transform: translate3d(-${activeIndex * 100}%, 0, 0);">
           <section class="community-friends-panel" data-community-friends-panel="friends">${getCommunityFriendsPanelMarkup()}</section>
-          <section class="community-friends-panel" data-community-friends-panel="requests">${getCommunityRequestsPanelMarkup()}</section>
+          <section class="community-friends-panel" data-community-friends-panel="incoming">${getCommunityIncomingRequestsPanelMarkup()}</section>
+          <section class="community-friends-panel" data-community-friends-panel="sent">${getCommunitySentRequestsPanelMarkup()}</section>
           <section class="community-friends-panel" data-community-friends-panel="suggestions">${getCommunitySuggestionsPanelMarkup()}</section>
           <section class="community-friends-panel" data-community-friends-panel="blocked">${getCommunityBlockedPanelMarkup()}</section>
         </div>
@@ -11948,9 +15401,7 @@ function syncCommunityFriendsHubView({ animate = false } = {}) {
   if (!(communityResultsEl instanceof HTMLElement)) return false;
   const hubEl = communityResultsEl.querySelector(".community-friends-hub");
   if (!(hubEl instanceof HTMLElement)) return false;
-  const activeView = COMMUNITY_FRIENDS_VIEWS.includes(communityState.friendsView)
-    ? communityState.friendsView
-    : "friends";
+  const activeView = normalizeCommunityFriendsView(communityState.friendsView);
   const activeIndex = getCommunityFriendsViewIndex(activeView);
   hubEl.dataset.communityFriendsActive = activeView;
   hubEl.querySelectorAll("[data-community-friends-view]").forEach((tabEl) => {
@@ -11988,11 +15439,9 @@ async function refreshCommunityBlockedUsers({ silent = false } = {}) {
 }
 
 function setCommunityFriendsView(nextView = "friends", { animate = true } = {}) {
-  const normalized = COMMUNITY_FRIENDS_VIEWS.includes(String(nextView || "").trim().toLowerCase())
-    ? String(nextView || "").trim().toLowerCase()
-    : "friends";
+  const normalized = normalizeCommunityFriendsView(nextView);
   communityState.friendsView = normalized;
-  if (normalized === "requests") {
+  if (normalized === "incoming") {
     markCommunityNotificationsSeen("friends");
     renderCommunityNotificationBadges();
   }
@@ -12006,6 +15455,591 @@ function setCommunityFriendsView(nextView = "friends", { animate = true } = {}) 
   }
 }
 
+function getCommunityFriendActionState() {
+  const state = communityState.friendActions;
+  return state && typeof state === "object"
+    ? state
+    : {
+        open: false,
+        user: null,
+        relationship: "",
+        requestId: "",
+        pointerType: "",
+      };
+}
+
+function getCommunityFriendActionUser() {
+  const user = getCommunityFriendActionState().user;
+  return user && typeof user === "object" ? user : null;
+}
+
+function isCommunityFriendActionOpen() {
+  return Boolean(getCommunityFriendActionState().open) && !communityFriendActionsModalEl?.classList.contains("hidden");
+}
+
+function syncCommunityFriendActionRowStyles() {
+  if (!communityResultsEl) return;
+  const selectedId = String(getCommunityFriendActionUser()?.id || "").trim();
+  communityResultsEl.querySelectorAll(".community-user-card[data-user-id]").forEach((cardEl) => {
+    if (!(cardEl instanceof HTMLElement)) return;
+    cardEl.classList.toggle("is-selected", Boolean(selectedId) && String(cardEl.dataset.userId || "").trim() === selectedId);
+  });
+}
+
+function clearCommunityFriendActionTimers({ keepTapState = false } = {}) {
+  if (communityFriendActionHoldHandle) {
+    clearTimeout(communityFriendActionHoldHandle);
+    communityFriendActionHoldHandle = null;
+  }
+  communityFriendActionHoldTriggered = false;
+  communityFriendActionTouchStart = null;
+  communityFriendActionLastPointerType = "";
+  if (!keepTapState) {
+    communityFriendActionLastTapAt = 0;
+    communityFriendActionLastTapUserId = "";
+  }
+  const state = getCommunityFriendActionState();
+  state.pointerType = "";
+}
+
+function closeCommunityFriendActions({ keepSelection = false } = {}) {
+  clearCommunityFriendActionTimers();
+  const state = getCommunityFriendActionState();
+  state.open = false;
+  state.relationship = "";
+  state.requestId = "";
+  state.pointerType = "";
+  if (!keepSelection) {
+    state.user = null;
+  }
+  if (communityFriendActionsModalEl) {
+    communityFriendActionsModalEl.classList.add("hidden");
+    communityFriendActionsModalEl.setAttribute("aria-hidden", "true");
+  }
+  syncCommunityFriendActionRowStyles();
+}
+
+function renderCommunityFriendActionSelection() {
+  const state = getCommunityFriendActionState();
+  const user = getCommunityFriendActionUser();
+  if (!user) {
+    closeCommunityFriendActions();
+    return;
+  }
+  const relationship = String(state.relationship || user.relationship || "none").trim().toLowerCase();
+  const displayName = getCommunityUiDisplayName(user);
+  const handle = String(user.username || user.handle || "user").trim() || "user";
+  const subtitle = String(user.institution || user.country || "Learner").trim() || "Learner";
+  const isAppAdmin = isCommunityAppAdminUser(user);
+  if (communityFriendActionsTitleEl) {
+    communityFriendActionsTitleEl.textContent =
+      relationship === "incoming"
+        ? "Incoming request"
+        : relationship === "sent"
+          ? "Sent request"
+          : relationship === "friend"
+            ? "Friend actions"
+            : relationship === "blocked"
+              ? "Blocked learner"
+              : "Connection actions";
+  }
+  if (communityFriendActionsSummaryEl) {
+    communityFriendActionsSummaryEl.textContent = relationship === "friend"
+      ? "Choose what you want to do with this friend."
+      : relationship === "incoming"
+        ? "Choose how to respond to this request."
+        : relationship === "sent"
+          ? "Review or cancel the request you sent."
+          : relationship === "blocked"
+            ? "Manage access for this blocked learner."
+            : "Choose how to connect with this learner.";
+  }
+  if (communityFriendActionsSelectedEl) {
+    communityFriendActionsSelectedEl.innerHTML = `
+      <span class="community-thread-actions-selected-pill is-empty" style="display:inline-flex;gap:6px;align-items:center;">
+        <strong>${escapeHtml(displayName)}</strong>
+        <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} • ${escapeHtml(subtitle)}</span>
+      </span>
+    `;
+  }
+  const setVisible = (el, visible) => {
+    if (!(el instanceof HTMLElement)) return;
+    el.classList.toggle("hidden", !visible);
+  };
+  setVisible(communityFriendActionsViewBtn, true);
+  setVisible(communityFriendActionsMessageBtn, relationship === "friend");
+  setVisible(communityFriendActionsUnfriendBtn, relationship === "friend");
+  setVisible(communityFriendActionsAcceptBtn, relationship === "incoming");
+  setVisible(communityFriendActionsRejectBtn, relationship === "incoming");
+  setVisible(communityFriendActionsCancelBtn, relationship === "sent");
+  setVisible(communityFriendActionsAddBtn, relationship === "none" || relationship === "suggestions");
+  setVisible(
+    communityFriendActionsBlockBtn,
+    !isAppAdmin && (relationship === "friend" || relationship === "none" || relationship === "suggestions"),
+  );
+  setVisible(communityFriendActionsUnblockBtn, relationship === "blocked");
+}
+
+function openCommunityFriendActionsForUser(user = {}, { relationship = "", requestId = "", pointerType = "" } = {}) {
+  const safeUserId = String(user?.id || "").trim();
+  if (!safeUserId) return false;
+  const state = getCommunityFriendActionState();
+  state.open = true;
+  state.user = { ...user };
+  state.relationship = String(relationship || user?.relationship || "none").trim().toLowerCase();
+  state.requestId = String(requestId || user?.requestId || "").trim();
+  state.pointerType = String(pointerType || "").trim();
+  renderCommunityFriendActionSelection();
+  syncCommunityFriendActionRowStyles();
+  if (communityFriendActionsModalEl) {
+    communityFriendActionsModalEl.classList.remove("hidden");
+    communityFriendActionsModalEl.setAttribute("aria-hidden", "false");
+  }
+  return true;
+}
+
+async function runCommunityFriendAction(action = "") {
+  const state = getCommunityFriendActionState();
+  const user = getCommunityFriendActionUser();
+  if (!user) {
+    closeCommunityFriendActions();
+    return;
+  }
+  const payload = {
+    userId: String(user.id || "").trim(),
+    requestId: String(state.requestId || user.requestId || "").trim(),
+  };
+  if (action === "view") {
+    closeCommunityFriendActions();
+    await executeCommunityAction("open-profile", payload);
+    return;
+  }
+  if (action === "message") {
+    closeCommunityFriendActions();
+    await executeCommunityAction("open-chat", payload);
+    return;
+  }
+  if (action === "unfriend") {
+    closeCommunityFriendActions({ keepSelection: true });
+    await backendClient.unfriendUser(payload.userId);
+    if (communityState.activeConversationPartner && String(communityState.activeConversationPartner.id || "") === payload.userId) {
+      communityState.activeConversationPartner = {
+        ...communityState.activeConversationPartner,
+        isFriend: false,
+      };
+      syncCommunityChatComposerState();
+    }
+    communityState.profile = null;
+    await loadCommunityOverview({ silent: true });
+    closeCommunityFriendActions();
+    if (getActiveScreenId() === "community-profile-screen" && payload.userId) {
+      await openCommunityProfile(payload.userId);
+    }
+    return;
+  }
+  if (action === "accept") {
+    closeCommunityFriendActions({ keepSelection: true });
+    await executeCommunityAction("accept-request", payload);
+    closeCommunityFriendActions();
+    return;
+  }
+  if (action === "reject") {
+    closeCommunityFriendActions({ keepSelection: true });
+    await executeCommunityAction("reject-request", payload);
+    closeCommunityFriendActions();
+    return;
+  }
+  if (action === "cancel") {
+    closeCommunityFriendActions({ keepSelection: true });
+    await executeCommunityAction("cancel-request", payload);
+    closeCommunityFriendActions();
+    return;
+  }
+  if (action === "add") {
+    closeCommunityFriendActions({ keepSelection: true });
+    await executeCommunityAction("send-request", payload);
+    closeCommunityFriendActions();
+    return;
+  }
+  if (action === "block") {
+    if (isCommunityAppAdminUser(user)) {
+      setCommunityFeedback("App admins cannot be blocked.", true);
+      return;
+    }
+    closeCommunityFriendActions({ keepSelection: true });
+    await executeCommunityAction("block-user", payload);
+    closeCommunityFriendActions();
+    return;
+  }
+  if (action === "unblock") {
+    closeCommunityFriendActions({ keepSelection: true });
+    await executeCommunityAction("unblock-user", payload);
+    closeCommunityFriendActions();
+    return;
+  }
+}
+
+function getCommunityConversationActionRows() {
+  return Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
+}
+
+function getCommunityConversationActionState() {
+  const state = communityState.conversationActions;
+  return state && typeof state === "object" ? state : {
+    open: false,
+    mode: "chats",
+    selectedIds: [],
+    anchorId: "",
+    pointerType: "",
+  };
+}
+
+function getCommunityConversationActionSelectedIds() {
+  const ids = Array.isArray(getCommunityConversationActionState().selectedIds)
+    ? getCommunityConversationActionState().selectedIds
+    : [];
+  return [...new Set(ids.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function getCommunityConversationActionSelectedRows() {
+  const ids = new Set(getCommunityConversationActionSelectedIds());
+  if (!ids.size) return [];
+  return getCommunityConversationActionRows().filter((row) => ids.has(String(row?.id || "").trim()));
+}
+
+function isCommunityConversationActionOpen() {
+  return Boolean(getCommunityConversationActionState().open) && !communityThreadActionsModalEl?.classList.contains("hidden");
+}
+
+function clearCommunityConversationActionTimers() {
+  if (communityConversationActionHoldHandle) {
+    clearTimeout(communityConversationActionHoldHandle);
+    communityConversationActionHoldHandle = null;
+  }
+  if (communityConversationActionOpenHandle) {
+    clearTimeout(communityConversationActionOpenHandle);
+    communityConversationActionOpenHandle = null;
+  }
+  communityConversationActionHoldTriggered = false;
+  communityConversationActionLastPointerType = "";
+  communityConversationActionLastTapAt = 0;
+  communityConversationActionLastTapConversationId = "";
+}
+
+function getCommunityConversationRowFromEventTarget(target = null) {
+  if (!(target instanceof HTMLElement)) return null;
+  const row = target.closest(".community-chat-row[data-conversation-id]");
+  if (!(row instanceof HTMLElement) || !communityResultsEl?.contains(row)) return null;
+  return row;
+}
+
+function getCommunityFriendCardFromEventTarget(target = null) {
+  if (!(target instanceof HTMLElement)) return null;
+  const card = target.closest(".community-user-card[data-user-id]");
+  if (!(card instanceof HTMLElement) || !communityResultsEl?.contains(card)) return null;
+  if (target.closest("[data-community-avatar-view='true']")) return null;
+  const actionTarget = target.closest("[data-community-action]");
+  if (actionTarget instanceof HTMLElement && actionTarget !== card) return null;
+  return card;
+}
+
+function renderCommunityConversationActionSelection() {
+  const rows = getCommunityConversationActionSelectedRows();
+  const mode = rows.some((row) => Boolean(row?.partner?.isGroup)) ? "group" : "direct";
+  const selectedIds = getCommunityConversationActionSelectedIds();
+  const state = getCommunityConversationActionState();
+  state.mode = mode;
+  state.selectedIds = selectedIds;
+  if (communityThreadActionsTitleEl) {
+    communityThreadActionsTitleEl.textContent = rows.length > 1
+      ? `${rows.length} selected`
+      : mode === "group"
+        ? "Group actions"
+        : "Chat actions";
+  }
+  if (communityThreadActionsSummaryEl) {
+    const favoriteCount = rows.filter((row) => row?.isFavorite).length;
+    const summaryParts = [
+      `${rows.length} selected`,
+      mode === "group" ? "Group thread actions" : "Direct chat actions",
+    ];
+    if (favoriteCount > 0) {
+      summaryParts.push(`${favoriteCount} already favorite${favoriteCount === 1 ? "" : "s"}`);
+    }
+    communityThreadActionsSummaryEl.textContent = summaryParts.join(" • ");
+  }
+  if (communityThreadActionsSelectedEl) {
+    const badges = rows.map((row) => {
+      const partner = row?.partner || {};
+      const label = truncateWithEllipsis(getCommunityUiDisplayName(partner), 22);
+      const meta = partner?.isGroup ? "Group" : partner?.isNotice ? "Notice" : "Chat";
+      const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">★</span>' : "";
+      return `<span class="community-thread-actions-selected-pill">${flag}${escapeHtml(label)}<span class="community-thread-actions-selected-meta">${escapeHtml(meta)}</span></span>`;
+    }).join("");
+    communityThreadActionsSelectedEl.innerHTML = badges || `<span class="community-thread-actions-selected-pill is-empty">No thread selected</span>`;
+  }
+  const singleSelection = rows.length === 1;
+  const allFavorites = rows.length > 0 && rows.every((row) => Boolean(row?.isFavorite));
+  const hasAnyFavorite = rows.some((row) => Boolean(row?.isFavorite));
+  const hasGroup = rows.some((row) => Boolean(row?.partner?.isGroup));
+  const hasDirect = rows.some((row) => !Boolean(row?.partner?.isGroup));
+  const allDirectFriends = rows.length > 0 && rows.every((row) => !Boolean(row?.partner?.isGroup) && Boolean(row?.partner?.isFriend));
+  const hasAppAdminDirect = rows.some((row) => !Boolean(row?.partner?.isGroup) && isCommunityAppAdminUser(row?.partner));
+  const showDelete = hasDirect || hasGroup;
+  if (communityThreadActionsViewBtn) {
+    communityThreadActionsViewBtn.classList.toggle("hidden", !singleSelection);
+  }
+  if (communityThreadActionsFavoriteBtn) {
+    communityThreadActionsFavoriteBtn.classList.toggle("hidden", !rows.length);
+    communityThreadActionsFavoriteBtn.textContent = allFavorites ? "Remove Favorite" : "Favorite";
+    communityThreadActionsFavoriteBtn.dataset.intent = allFavorites ? "remove-favorite" : "favorite";
+    communityThreadActionsFavoriteBtn.title = allFavorites
+      ? "Remove from favorites"
+      : hasAnyFavorite
+        ? "Add or keep favorites"
+        : "Add to favorites";
+  }
+  if (communityThreadActionsClearBtn) {
+    communityThreadActionsClearBtn.classList.toggle("hidden", !rows.length);
+  }
+  if (communityThreadActionsUnfriendBtn) {
+    communityThreadActionsUnfriendBtn.classList.toggle("hidden", !allDirectFriends);
+  }
+  if (communityThreadActionsDeleteBtn) {
+    communityThreadActionsDeleteBtn.classList.toggle("hidden", !showDelete);
+    communityThreadActionsDeleteBtn.textContent = hasGroup && !hasDirect ? "Delete Group" : "Delete";
+    communityThreadActionsDeleteBtn.title = hasGroup && !hasDirect
+      ? "Delete this group for everyone"
+      : "Remove this chat from your list";
+  }
+  if (communityThreadActionsBlockBtn) {
+    communityThreadActionsBlockBtn.classList.toggle("hidden", !hasDirect || hasAppAdminDirect);
+  }
+  if (communityThreadActionsExitBtn) {
+    communityThreadActionsExitBtn.classList.toggle("hidden", !hasGroup);
+  }
+}
+
+function syncCommunityConversationActionRowStyles() {
+  if (!(communityResultsEl instanceof HTMLElement)) return;
+  const selectedIds = new Set(getCommunityConversationActionSelectedIds());
+  communityResultsEl.querySelectorAll(".community-chat-row[data-conversation-id]").forEach((rowEl) => {
+    if (!(rowEl instanceof HTMLElement)) return;
+    const conversationId = String(rowEl.dataset.conversationId || "").trim();
+    rowEl.classList.toggle("is-selected", selectedIds.has(conversationId));
+  });
+}
+
+function closeCommunityConversationActions({ keepSelection = false } = {}) {
+  clearCommunityConversationActionTimers();
+  const state = getCommunityConversationActionState();
+  state.open = false;
+  state.anchorId = "";
+  state.pointerType = "";
+  if (!keepSelection) {
+    state.selectedIds = [];
+  }
+  if (communityThreadActionsModalEl) {
+    communityThreadActionsModalEl.classList.add("hidden");
+    communityThreadActionsModalEl.setAttribute("aria-hidden", "true");
+  }
+  syncCommunityConversationActionRowStyles();
+  if (communityState.tab === "chats" || communityState.tab === "groups") {
+    renderCommunityChats();
+  }
+}
+
+function openCommunityConversationActionsForRow(row = {}, { addToSelection = false, pointerType = "" } = {}) {
+  const conversationId = String(row?.id || "").trim();
+  if (!conversationId) return false;
+  if (communityConversationActionHoldHandle) {
+    clearTimeout(communityConversationActionHoldHandle);
+    communityConversationActionHoldHandle = null;
+  }
+  if (communityConversationActionOpenHandle) {
+    clearTimeout(communityConversationActionOpenHandle);
+    communityConversationActionOpenHandle = null;
+  }
+  const state = getCommunityConversationActionState();
+  const rows = getCommunityConversationActionRows();
+  const matchingRow = rows.find((entry) => String(entry?.id || "").trim() === conversationId) || null;
+  if (!matchingRow) return false;
+  const currentIds = new Set(getCommunityConversationActionSelectedIds());
+  if (!state.open || !addToSelection) {
+    state.selectedIds = [conversationId];
+  } else if (currentIds.has(conversationId)) {
+    currentIds.delete(conversationId);
+    state.selectedIds = [...currentIds];
+    if (!state.selectedIds.length) {
+      closeCommunityConversationActions();
+      return true;
+    }
+  } else {
+    currentIds.add(conversationId);
+    state.selectedIds = [...currentIds];
+  }
+  state.open = true;
+  state.anchorId = conversationId;
+  state.pointerType = String(pointerType || "").trim();
+  communityConversationActionSuppressClickConversationId = conversationId;
+  communityConversationActionSuppressClickUntil = Date.now() + 1600;
+  renderCommunityConversationActionSelection();
+  syncCommunityConversationActionRowStyles();
+  if (communityThreadActionsModalEl) {
+    communityThreadActionsModalEl.classList.remove("hidden");
+    communityThreadActionsModalEl.setAttribute("aria-hidden", "false");
+  }
+  return true;
+}
+
+async function runCommunityConversationAction(action = "") {
+  const rows = getCommunityConversationActionSelectedRows();
+  const selectedIds = rows.map((row) => String(row?.id || "").trim()).filter(Boolean);
+  if (!selectedIds.length) {
+    closeCommunityConversationActions();
+    return;
+  }
+  const mode = rows.some((row) => Boolean(row?.partner?.isGroup)) ? "group" : "direct";
+  const singleRow = rows[0] || null;
+  try {
+    if (action === "view") {
+      closeCommunityConversationActions();
+      if (singleRow?.partner?.isGroup) {
+        await openCommunityGroupProfile(singleRow.id);
+      } else if (singleRow?.partner?.id) {
+        await openCommunityProfile(singleRow.partner.id);
+      }
+      return;
+    }
+    if (action === "favorite" || action === "remove-favorite") {
+      const wantsFavorite = action === "favorite";
+      const favoriteRows = rows.filter((row) => Boolean(row?.id));
+      const currentFavorites = getCommunityConversationActionRows().filter((row) => Boolean(row?.isFavorite)).length;
+      const nextAdds = favoriteRows.filter((row) => !row?.isFavorite).length;
+      if (wantsFavorite && currentFavorites + nextAdds > 5) {
+        setCommunityFeedback("You can only keep 5 favorites.", true);
+        return;
+      }
+      closeCommunityConversationActions({ keepSelection: true });
+      await Promise.all(
+        favoriteRows.map((row) =>
+          wantsFavorite
+            ? backendClient.favoriteCommunityConversation(row.id)
+            : backendClient.unfavoriteCommunityConversation(row.id),
+        ),
+      );
+      await loadCommunityOverview({ silent: true });
+      closeCommunityConversationActions();
+      renderCommunitySummary();
+      renderCommunityView();
+      return;
+    }
+    if (action === "clear") {
+      closeCommunityConversationActions({ keepSelection: true });
+      await Promise.all(selectedIds.map((conversationId) => backendClient.clearCommunityConversation(conversationId)));
+      await loadCommunityOverview({ silent: true });
+      closeCommunityConversationActions();
+      renderCommunitySummary();
+      renderCommunityView();
+      return;
+    }
+    if (action === "unfriend") {
+      const friendUserIds = [...new Set(rows
+        .filter((row) => !Boolean(row?.partner?.isGroup) && Boolean(row?.partner?.isFriend))
+        .map((row) => String(row?.partner?.id || "").trim())
+        .filter(Boolean))];
+      if (!friendUserIds.length) {
+        closeCommunityConversationActions();
+        return;
+      }
+      closeCommunityConversationActions({ keepSelection: true });
+      await Promise.all(friendUserIds.map((userId) => backendClient.unfriendUser(userId)));
+      const activePartnerId = String(communityState.activeConversationPartner?.id || "").trim();
+      if (activePartnerId && friendUserIds.includes(activePartnerId)) {
+        communityState.activeConversationPartner = {
+          ...communityState.activeConversationPartner,
+          isFriend: false,
+        };
+        syncCommunityChatComposerState();
+      }
+      communityState.profile = null;
+      await loadCommunityOverview({ silent: true });
+      closeCommunityConversationActions();
+      renderCommunitySummary();
+      renderCommunityView();
+      return;
+    }
+    if (action === "delete") {
+      closeCommunityConversationActions({ keepSelection: true });
+      const directConversationIds = rows
+        .filter((row) => !Boolean(row?.partner?.isGroup))
+        .map((row) => String(row?.id || "").trim())
+        .filter(Boolean);
+      const groupConversationIds = rows
+        .filter((row) => Boolean(row?.partner?.isGroup))
+        .map((row) => String(row?.id || "").trim())
+        .filter(Boolean);
+      await Promise.all([
+        ...directConversationIds.map((conversationId) => backendClient.deleteCommunityConversation(conversationId)),
+        ...groupConversationIds.map((conversationId) => backendClient.deleteCommunityGroup(conversationId)),
+      ]);
+      await loadCommunityOverview({ silent: true });
+      closeCommunityConversationActions();
+      renderCommunitySummary();
+      renderCommunityView();
+      return;
+    }
+    if (action === "block" && mode === "direct") {
+      const userIds = [...new Set(rows.map((row) => String(row?.partner?.id || "").trim()).filter(Boolean))];
+      if (rows.some((row) => isCommunityAppAdminUser(row?.partner))) {
+        setCommunityFeedback("App admins cannot be blocked.", true);
+        return;
+      }
+      closeCommunityConversationActions({ keepSelection: true });
+      await Promise.all(userIds.map((userId) => backendClient.blockUser(userId)));
+      communityState.profile = null;
+      await loadCommunityOverview({ silent: true });
+      closeCommunityConversationActions();
+      renderCommunitySummary();
+      renderCommunityView();
+      return;
+    }
+    if (action === "exit-group" && mode === "group") {
+      const groupIds = [...new Set(selectedIds)];
+      closeCommunityConversationActions({ keepSelection: true });
+      await Promise.all(groupIds.map((conversationId) => backendClient.leaveCommunityGroup(conversationId)));
+      communityState.profile = null;
+      await loadCommunityOverview({ silent: true });
+      closeCommunityConversationActions();
+      renderCommunitySummary();
+      renderCommunityView();
+      return;
+    }
+  } catch (error) {
+    setCommunityFeedback(generalApiErrorMessage(error, "Conversation action could not complete."), true);
+  }
+}
+
+function syncCommunityConversationActionsAfterRender() {
+  if (!isCommunityConversationActionOpen()) return;
+  if (!getCommunityConversationActionSelectedRows().length) {
+    closeCommunityConversationActions();
+    return;
+  }
+  renderCommunityConversationActionSelection();
+  syncCommunityConversationActionRowStyles();
+}
+
+function syncCommunityFriendActionsAfterRender() {
+  if (!isCommunityFriendActionOpen()) return;
+  if (!getCommunityFriendActionUser()) {
+    closeCommunityFriendActions();
+    return;
+  }
+  renderCommunityFriendActionSelection();
+  syncCommunityFriendActionRowStyles();
+}
+
 function renderCommunityView() {
   syncCommunityForwardBar();
   renderCommunitySummary();
@@ -12015,18 +16049,22 @@ function renderCommunityView() {
   if (communityState.settingsOpen) {
     syncCommunitySettingsForm();
   }
-  if (["friends", "requests", "discover", "blocked"].includes(communityState.tab)) {
+  if (["friends", "requests", "incoming", "sent", "discover", "blocked"].includes(communityState.tab)) {
     renderCommunityFriendsHub();
+    syncCommunityConversationActionsAfterRender();
+    syncCommunityFriendActionsAfterRender();
     return;
   }
   if (communityState.tab === "chats") {
     communityState.chatMode = "chats";
     renderCommunityChats();
+    syncCommunityConversationActionsAfterRender();
     return;
   }
   if (communityState.tab === "groups") {
     communityState.chatMode = "groups";
     renderCommunityChats();
+    syncCommunityConversationActionsAfterRender();
     return;
   }
   if (communityState.tab === "blocked") {
@@ -12054,6 +16092,8 @@ async function loadCommunityOverview({ silent = false } = {}) {
     markCommunityNotificationsSeen(communityState.tab);
     setCommunityFeedback("");
     renderCommunityNotificationBadges();
+    maybeShowCommunityEntryNotificationBanner();
+    syncAppNotificationBannerVisibility();
     renderCommunityView();
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Community could not load right now."), true);
@@ -12092,7 +16132,9 @@ async function runCommunitySearch() {
 }
 
 function updateCommunityTabState() {
-  const activeDockTab = ["friends", "requests", "discover", "blocked"].includes(communityState.tab) ? "friends" : communityState.tab;
+  const activeDockTab = ["friends", "requests", "incoming", "sent", "discover", "blocked"].includes(communityState.tab)
+    ? "friends"
+    : communityState.tab;
   communityTabEls.forEach((tab) => {
     const active = tab.dataset.communityTab === activeDockTab;
     tab.classList.toggle("is-active", active);
@@ -12107,7 +16149,7 @@ function getCommunityCurrentSwipeView() {
   if (communityState.settingsOpen) return "settings";
   const currentTab = String(communityState.tab || "").trim().toLowerCase();
   if (COMMUNITY_SWIPE_VIEWS.includes(currentTab)) return currentTab;
-  if (["requests", "discover", "blocked"].includes(currentTab)) return "friends";
+  if (["requests", "incoming", "sent", "discover", "blocked"].includes(currentTab)) return "friends";
   return "chats";
 }
 
@@ -12168,7 +16210,7 @@ async function setCommunityTab(nextTab = "friends") {
   let requestedFriendsView = "";
   if (requestedTab === "requests") {
     tab = "friends";
-    requestedFriendsView = "requests";
+    requestedFriendsView = "incoming";
   } else if (requestedTab === "discover") {
     tab = "friends";
     requestedFriendsView = "suggestions";
@@ -12201,6 +16243,12 @@ async function setCommunityTab(nextTab = "friends") {
     communityState.chatMode = "groups";
   } else if (communityState.tab !== "chats") {
     communityState.chatMode = "chats";
+  }
+  if (communityState.tab !== "chats" && communityState.tab !== "groups") {
+    closeCommunityConversationActions();
+  }
+  if (communityState.tab !== "friends") {
+    closeCommunityFriendActions();
   }
   setCommunitySettingsOpen(false);
   setCommunityStatusActionsOpen(false);
@@ -12253,6 +16301,7 @@ function renderCommunityProfileView() {
   const canShowLeaderboard =
     !blockedByUser &&
     (Boolean(profile.leaderboardStats) || isSelf || leaderboardVisibility === "everyone" || (leaderboardVisibility === "friends" && isFriend));
+  const isAppAdmin = isCommunityAppAdminUser(profile);
   const leaderboardStats = canShowLeaderboard ? profile.leaderboardStats || null : null;
   const leaderboardPoints = canShowLeaderboard
     ? Math.max(0, Math.round(Number(leaderboardStats?.points ?? profile?.points) || 0))
@@ -12308,14 +16357,20 @@ function renderCommunityProfileView() {
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 17.5H10l-4.5 3v-3H5A1.5 1.5 0 0 1 3.5 16V8A1.5 1.5 0 0 1 5 6.5Z"></path></svg>',
         `data-user-id="${escapeHtml(profile.id || "")}"`,
       ),
-      getCommunityProfileQuickAction(
-        blocked ? "Unblock" : "Block",
-        blocked ? "unblock-user" : "block-user",
-        blocked
-          ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M9.5 12l1.8 1.8L15 10.2"></path></svg>'
-          : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"></path><path d="M17.5 6.5l-11 11"></path><circle cx="12" cy="12" r="8"></circle></svg>',
-        `data-user-id="${escapeHtml(profile.id || "")}"`,
-      ),
+    );
+    if (!isAppAdmin) {
+      quickActions.push(
+        getCommunityProfileQuickAction(
+          blocked ? "Unblock" : "Block",
+          blocked ? "unblock-user" : "block-user",
+          blocked
+            ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M9.5 12l1.8 1.8L15 10.2"></path></svg>'
+            : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"></path><path d="M17.5 6.5l-11 11"></path><circle cx="12" cy="12" r="8"></circle></svg>',
+          `data-user-id="${escapeHtml(profile.id || "")}"`,
+        ),
+      );
+    }
+    quickActions.push(
       getCommunityProfileQuickAction(
         "Report",
         "report-user",
@@ -12485,6 +16540,8 @@ function renderCommunityGroupProfileView() {
   const createdBy = members.find((entry) => String(entry?.id || "") === String(group.ownerUserId || "")) || null;
   const permissions = group.permissions || {};
   const canEditGroupProfile = canCurrentViewerEditCommunityGroup(payload);
+  const canAddGroupMembers = Boolean(isAdmin || permissions.membersCanAddMembers);
+  const canShareInviteLink = Boolean(isAdmin || permissions.membersCanInviteByLink);
   const permissionRows = [
     ["Edit group settings", "Members can change the group name, icon, and description.", "membersCanEditSettings"],
     ["Send new messages", "Turn this off if only admins should post in the group.", "membersCanSendMessages"],
@@ -12532,6 +16589,10 @@ function renderCommunityGroupProfileView() {
           <button type="button" class="community-profile-info-row is-button" data-community-action="open-group-storage" data-group-id="${escapeHtml(group.id || "")}">
             <div class="community-profile-meta-label">Media, links &amp; docs</div>
           </button>
+          ${canShareInviteLink ? `
+          <button type="button" class="community-profile-info-row is-button" data-community-action="share-group-link" data-group-id="${escapeHtml(group.id || "")}">
+            <div class="community-profile-meta-label">Share invite link</div>
+          </button>` : ""}
           <div class="community-profile-info-row is-toggle">
             <div class="community-profile-meta-label">Mute group</div>
             <div class="community-profile-meta-value">
@@ -12543,10 +16604,23 @@ function renderCommunityGroupProfileView() {
           </div>
         </div>
       </section>
+      <section class="community-group-flat-section is-danger">
+        <div class="community-group-flat-title">Danger zone</div>
+        <div class="community-profile-secondary-actions">
+          <button type="button" class="community-profile-secondary-btn is-danger" data-community-action="exit-group" data-group-id="${escapeHtml(group.id || "")}">Exit group</button>
+          <button type="button" class="community-profile-secondary-btn" data-community-action="report-group" data-group-id="${escapeHtml(group.id || "")}">Report group</button>
+        </div>
+      </section>
       <section class="community-group-flat-section">
         <div class="community-group-section-head">
           <div class="community-group-flat-title">Participants (${escapeHtml(String(members.length))})</div>
-          <button type="button" class="community-group-inline-action" data-community-action="add-group-members" data-group-id="${escapeHtml(group.id || "")}">+ Add participants</button>
+          <button
+            type="button"
+            class="community-group-inline-action"
+            data-community-action="add-group-members"
+            data-group-id="${escapeHtml(group.id || "")}"
+            ${canAddGroupMembers ? "" : "hidden aria-hidden=\"true\" tabindex=\"-1\""}
+          >+ Add participants</button>
         </div>
         <div class="community-group-members-list">
           ${members
@@ -12590,13 +16664,6 @@ function renderCommunityGroupProfileView() {
             .join("")}
         </div>
       </section>` : ""}
-      <section class="community-group-flat-section is-danger">
-        <div class="community-group-flat-title">Danger zone</div>
-        <div class="community-profile-secondary-actions">
-          <button type="button" class="community-profile-secondary-btn is-danger" data-community-action="exit-group" data-group-id="${escapeHtml(group.id || "")}">Exit group</button>
-          <button type="button" class="community-profile-secondary-btn" data-community-action="report-group" data-group-id="${escapeHtml(group.id || "")}">Report group</button>
-        </div>
-      </section>
       </div>
     </section>
   `;
@@ -12955,36 +17022,36 @@ function renderCommunityMessageAttachment(message = {}) {
   const sourceUrl = String(upload.dataUrl || upload.remoteUrl || "").trim();
   const kind = getCommunityAttachmentKind(upload);
   if (!sourceUrl) {
-    return renderCommunityMissingAttachmentCard(upload, kind);
+    return wrapCommunityPendingAttachmentMarkup(renderCommunityMissingAttachmentCard(upload, kind), message);
   }
   if (kind === "image") {
-    if (!shouldCommunityAutoDownloadMedia(kind)) {
-      return renderCommunityDeferredMediaCard(upload, kind);
-    }
-    return `
-      <img class="community-message-image" src="${escapeHtml(sourceUrl)}" alt="${escapeHtml(upload.fileName || "Shared image")}" data-community-media-view="true" data-community-media-kind="image" data-community-media-image="${escapeHtml(sourceUrl)}" data-community-media-name="${escapeHtml(upload.fileName || "Shared image")}" data-community-media-mime="${escapeHtml(upload.mimeType || "image/jpeg")}" />
-      ${renderCommunityUploadActions(upload)}
-    `;
+    const mediaMarkup = shouldCommunityAutoDownloadMedia(kind)
+      ? `
+          <img class="community-message-image" src="${escapeHtml(sourceUrl)}" alt="${escapeHtml(upload.fileName || "Shared image")}" data-community-media-view="true" data-community-media-kind="image" data-community-media-image="${escapeHtml(sourceUrl)}" data-community-media-name="${escapeHtml(upload.fileName || "Shared image")}" data-community-media-mime="${escapeHtml(upload.mimeType || "image/jpeg")}" />
+          ${renderCommunityUploadActions(upload)}
+        `
+      : renderCommunityDeferredMediaCard(upload, kind);
+    return wrapCommunityPendingAttachmentMarkup(mediaMarkup, message);
   }
   if (kind === "video") {
-    if (!shouldCommunityAutoDownloadMedia(kind)) {
-      return renderCommunityDeferredMediaCard(upload, kind);
-    }
-    return `
-      <div class="community-message-file-card is-video">
-        <video class="community-message-video" controls playsinline preload="metadata" data-community-inline-video="true">
-          <source src="${escapeHtml(sourceUrl)}" type="${escapeHtml(upload.mimeType || "video/mp4")}" />
-        </video>
-        <div class="community-message-file-copy">
-          <div class="community-message-file-label">Video</div>
-          <div class="community-message-file-name">${escapeHtml(truncateWithEllipsis(upload.fileName || "video", 32))}</div>
-        </div>
-        ${renderCommunityUploadActions(upload)}
-      </div>
-    `;
+    const mediaMarkup = shouldCommunityAutoDownloadMedia(kind)
+      ? `
+          <div class="community-message-file-card is-video">
+            <video class="community-message-video" controls playsinline preload="metadata" data-community-inline-video="true">
+              <source src="${escapeHtml(sourceUrl)}" type="${escapeHtml(upload.mimeType || "video/mp4")}" />
+            </video>
+            <div class="community-message-file-copy">
+              <div class="community-message-file-label">Video</div>
+              <div class="community-message-file-name">${escapeHtml(truncateWithEllipsis(upload.fileName || "video", 32))}</div>
+            </div>
+            ${renderCommunityUploadActions(upload)}
+          </div>
+        `
+      : renderCommunityDeferredMediaCard(upload, kind);
+    return wrapCommunityPendingAttachmentMarkup(mediaMarkup, message);
   }
   if (kind === "audio") {
-    return `
+    return wrapCommunityPendingAttachmentMarkup(`
       <div class="community-message-audio-card" data-community-audio-card="true">
         <button type="button" class="community-message-audio-play" data-community-audio-play="true" aria-label="Play voice note" title="Play voice note">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -13009,9 +17076,9 @@ function renderCommunityMessageAttachment(message = {}) {
           <source src="${escapeHtml(sourceUrl)}" type="${escapeHtml(upload.mimeType || "audio/webm")}" />
         </audio>
       </div>
-    `;
+    `, message);
   }
-  return `
+  return wrapCommunityPendingAttachmentMarkup(`
     <div class="community-message-file-card">
       <div class="community-message-file-icon">${getCommunityAttachmentIcon(kind)}</div>
       <div class="community-message-file-copy">
@@ -13020,7 +17087,7 @@ function renderCommunityMessageAttachment(message = {}) {
       </div>
       ${renderCommunityUploadActions(upload)}
     </div>
-  `;
+  `, message);
 }
 
 function renderCommunityCallLogCard(message = {}) {
@@ -13121,7 +17188,8 @@ function getCommunityNumericIndex(value, fallback = -1) {
 
 function renderCommunityMessages(messages = [], { scrollToBottom = false } = {}) {
   if (!communityChatMessagesEl) return;
-  if (!messages.length) {
+  const visibleMessages = getCommunityVisibleMessages(messages);
+  if (!visibleMessages.length) {
     communityChatMessagesEl.innerHTML = `<div class="community-empty-state is-chat">Say hello and start learning together.</div>`;
     communityState.messages = [];
     communityState.messageRenderSignature = "";
@@ -13130,13 +17198,18 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
     syncCommunityChatJumpLatestButton({ forceHidden: true });
     return;
   }
-  communityState.messages = Array.isArray(messages) ? [...messages] : [];
-  communityState.messageRenderSignature = getCommunityMessageContentSignature(messages);
-  communityState.messageMetaSignature = getCommunityMessageMetaSignature(messages);
-  communityChatMessagesEl.innerHTML = messages
+  communityState.messages = Array.isArray(visibleMessages) ? [...visibleMessages] : [];
+  communityState.messageRenderSignature = getCommunityMessageContentSignature(visibleMessages);
+  communityState.messageMetaSignature = getCommunityMessageMetaSignature(visibleMessages);
+  const noticePartner = communityState.activeConversationPartner || {};
+  const isNoticeThread = Boolean(noticePartner?.isNotice);
+  const isWarningNotice =
+    isNoticeThread && String(noticePartner?.noticeOriginType || "").trim().toLowerCase() === "report";
+  const noticeTitle = String(noticePartner?.noticeTitle || noticePartner?.name || "Admin Notice").trim() || "Admin Notice";
+  communityChatMessagesEl.innerHTML = visibleMessages
     .map((message, index) => {
-      const previousMessage = messages[index - 1] || null;
-      const nextMessage = messages[index + 1] || null;
+      const previousMessage = visibleMessages[index - 1] || null;
+      const nextMessage = visibleMessages[index + 1] || null;
       const isOwn = String(message.senderUserId || "") === String(currentUser?.id || "");
       const sameSenderAsPrevious =
         previousMessage &&
@@ -13147,7 +17220,7 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
         String(nextMessage.senderUserId || "") === String(message.senderUserId || "") &&
         isCommunitySameCalendarDay(nextMessage.createdAt || "", message.createdAt || "");
       const startsDay = !previousMessage || !isCommunitySameCalendarDay(previousMessage.createdAt || "", message.createdAt || "");
-      const showSender = Boolean(communityState.activeConversationPartner?.isGroup) && !isOwn && !sameSenderAsPrevious;
+       const showSender = Boolean(communityState.activeConversationPartner?.isGroup || communityState.activeConversationPartner?.isNotice) && !isOwn && !sameSenderAsPrevious;
       const isDeletedForEveryone = isCommunityMessageDeletedForEveryone(message);
       const messageType = String(message?.type || "").trim().toLowerCase();
       const isCallMessage = !isDeletedForEveryone && messageType === "call" && message?.call;
@@ -13155,15 +17228,25 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
       const hasImageAttachment = attachmentKind === "image";
       const hasVideoAttachment = attachmentKind === "video";
       const hasAudioAttachment = attachmentKind === "audio";
+      const hasAttachment = Boolean(getCommunityMessageAttachmentUpload(message));
+      const uploadState = getCommunityMessageUploadState(message);
       const messageText = String(message.text || "");
       const bubbleTime = formatCommunityBubbleTime(message.createdAt || "");
       const imageOnly = attachmentKind === "image" && !String(messageText || "").trim();
       const audioOnly = hasAudioAttachment && !String(messageText || "").trim();
+      const senderMarkup = showSender
+        ? isNoticeThread
+          ? `
+              ${isWarningNotice ? '<div class="community-message-notice-label">Warning</div>' : ""}
+              <div class="community-message-sender is-notice-title">${escapeHtml(truncateWithEllipsis(noticeTitle, 26))}</div>
+            `
+          : `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || "Member"), 18))}</div>`
+        : "";
       return `
         ${startsDay ? renderCommunityDateDivider(formatCommunityChatDateLabel(message.createdAt || "")) : ""}
-        <div class="community-message-row ${isOwn ? "is-own" : ""} ${sameSenderAsPrevious ? "is-grouped" : "is-group-start"} ${sameSenderAsNext ? "is-group-middle" : "is-group-end"} ${imageOnly ? "is-image-row" : ""} ${audioOnly ? "is-audio-row" : ""} ${hasVideoAttachment ? "is-video-row" : ""}" data-message-id="${escapeHtml(message.id || "")}" data-message-own="${isOwn ? "true" : "false"}">
-          <div class="community-message-bubble ${isOwn ? "is-own" : ""} ${isDeletedForEveryone ? "is-deleted" : ""} ${imageOnly ? "is-image-only" : ""} ${audioOnly ? "is-audio-only" : ""} ${hasImageAttachment ? "has-image-attachment" : ""} ${hasAudioAttachment ? "has-audio-attachment" : ""} ${hasVideoAttachment ? "has-video-attachment" : ""}">
-            ${showSender ? `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || "Member"), 18))}</div>` : ""}
+        <div class="community-message-row ${isOwn ? "is-own" : ""} ${sameSenderAsPrevious ? "is-grouped" : "is-group-start"} ${sameSenderAsNext ? "is-group-middle" : "is-group-end"} ${imageOnly ? "is-image-row" : ""} ${audioOnly ? "is-audio-row" : ""} ${hasVideoAttachment ? "is-video-row" : ""} ${uploadState ? `is-upload-${uploadState}` : ""}" data-message-id="${escapeHtml(message.id || "")}" data-message-own="${isOwn ? "true" : "false"}">
+          <div class="community-message-bubble ${isOwn ? "is-own" : ""} ${isDeletedForEveryone ? "is-deleted" : ""} ${imageOnly ? "is-image-only" : ""} ${audioOnly ? "is-audio-only" : ""} ${hasImageAttachment ? "has-image-attachment" : ""} ${hasAudioAttachment ? "has-audio-attachment" : ""} ${hasVideoAttachment ? "has-video-attachment" : ""} ${uploadState ? `is-upload-${uploadState}` : ""}">
+            ${senderMarkup}
             ${isDeletedForEveryone ? "" : renderCommunityMessageReplySnippet(message.replyTo)}
             ${isDeletedForEveryone ? "" : renderCommunityMessageAttachment(message)}
             ${isDeletedForEveryone
@@ -13180,13 +17263,14 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
                   <span class="community-message-deleted-label">message deleted</span>
                   <span class="community-message-deleted-time">${escapeHtml(bubbleTime)}</span>
                   ${isOwn ? renderCommunityMessageReceiptIcon(message) : ""}
-                 </div>`
-              : `${isCallMessage ? renderCommunityCallLogCard(message) : (messageText ? `<div class="community-message-text">${escapeHtml(messageText)}</div>` : "")}
-                 <div class="community-message-meta">
-                   <span class="community-message-time">${escapeHtml(bubbleTime)}</span>
-                   ${message.editedAt ? '<span class="community-message-edited">edited</span>' : ""}
-                   ${isOwn ? renderCommunityMessageReceiptIcon(message) : ""}
-                 </div>`}
+                </div>`
+               : `${isCallMessage ? renderCommunityCallLogCard(message) : (messageText ? `<div class="community-message-text">${renderCommunityMessageText(messageText)}</div>` : "")}
+                  <div class="community-message-meta">
+                    <span class="community-message-time">${escapeHtml(bubbleTime)}</span>
+                    ${message.editedAt ? '<span class="community-message-edited">edited</span>' : ""}
+                    ${isOwn ? (!uploadState ? renderCommunityMessageReceiptIcon(message) : "") : ""}
+                  </div>`}
+            ${isOwn && uploadState && !hasAttachment ? renderCommunityMessageUploadState(message) : ""}
           </div>
         </div>
       `;
@@ -13249,6 +17333,7 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false } 
         scrollCommunityChatToLatest({ settle: true, attempts: 1 });
       }
     }
+    restoreCommunityChatDraftIfNeeded(communityState.activeConversation?.id || "");
     void refreshCommunityConversationActiveCall({ silent: true });
     if (!silent) setCommunityFeedback("");
   } catch (error) {
@@ -13260,6 +17345,10 @@ async function openCommunityConversation(userId = "", existingConversationId = "
   const ok = await ensureAuthenticated();
   if (!ok || (!userId && !existingConversationId)) return;
   try {
+    const previousConversationId = getCommunityChatDraftConversationId(communityState.activeConversation?.id || "");
+    if (previousConversationId) {
+      persistCommunityChatDraftForConversation(previousConversationId);
+    }
     let conversationId = existingConversationId;
     if (!conversationId) {
       const response = await backendClient.openDirectConversation(userId);
@@ -13268,13 +17357,6 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     } else {
       communityState.activeConversation = { id: conversationId };
     }
-    if (
-      communityState.activeCall &&
-      String(communityState.activeCall.conversationId || "").trim() !== String(conversationId || "").trim()
-    ) {
-      await endCommunityConversationCall({ notifyBackend: true, silent: true });
-    }
-
     const partner =
       communityState.overview?.chats?.find((row) =>
         conversationId
@@ -13287,20 +17369,21 @@ async function openCommunityConversation(userId = "", existingConversationId = "
       communityState.profile?.profile ||
       null;
 
-    updateCommunityChatHeader(partner || {});
-    if (communityChatInput) {
-      communityChatInput.value = "";
-      autosizeCommunityChatInput();
-    }
     clearCommunityTypingTimers();
     clearCommunityTypingState(conversationId);
-    clearCommunityReplyDraft();
-    resetCommunityPendingAttachment();
-    setCommunityChatEmojiPickerOpen(false);
+    communityState.activeConversationPartner = partner || null;
+    communityState.emojiPickerOpen = false;
+    applyCommunityChatDraftToComposer(getCommunityChatDraftForConversation(conversationId));
     resetCommunityVoiceRecordingState();
-    syncCommunityChatComposerState();
+    updateCommunityChatHeader(partner || {});
     showScreen("community-chat-screen");
     await loadCommunityMessages({ scrollToBottom: true });
+    try {
+      communityState.overview = await backendClient.fetchCommunityOverview();
+      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+      renderCommunityNotificationBadges();
+    } catch {}
+    restoreCommunityChatDraftIfNeeded(conversationId);
     void refreshCommunityConversationActiveCall({ silent: true, force: true });
     syncCommunityChatPolling();
     void ensureCommunityConversationRealtimeSubscription();
@@ -13311,10 +17394,41 @@ async function openCommunityConversation(userId = "", existingConversationId = "
 
 async function sendCommunityMessage() {
   const conversationId = communityState.activeConversation?.id || "";
+  const readOnlyReason = getCommunityChatReadonlyReason();
+  if (readOnlyReason) {
+    setCommunityFeedback(readOnlyReason, true);
+    return;
+  }
   const text = String(communityChatInput?.value || "").trim();
   const attachments = Array.isArray(communityState.pendingAttachments) ? [...communityState.pendingAttachments] : [];
   const replyTo = communityState.replyDraft ? { ...communityState.replyDraft } : null;
   if (!conversationId || (!text && !attachments.length)) return;
+  const batchId = `community-send-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const pendingDrafts = [];
+  if (attachments.length) {
+    for (let index = 0; index < attachments.length; index += 1) {
+      const draft = createCommunityPendingOutgoingMessage({
+        text: index === 0 ? text : "",
+        attachment: attachments[index] || null,
+        replyTo: index === 0 ? replyTo : null,
+        batchId,
+        index,
+      });
+      if (draft) pendingDrafts.push(draft);
+    }
+  } else {
+    const draft = createCommunityPendingOutgoingMessage({
+      text,
+      replyTo,
+      batchId,
+      index: 0,
+    });
+    if (draft) pendingDrafts.push(draft);
+  }
+  if (pendingDrafts.length) {
+    addCommunityPendingOutgoingMessages(pendingDrafts);
+    renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
+  }
   if (communityChatSendBtn) communityChatSendBtn.disabled = true;
   setCommunityChatEmojiPickerOpen(false);
   clearCommunityTypingTimers();
@@ -13326,27 +17440,67 @@ async function sendCommunityMessage() {
         const attachment = attachments[index];
         const messageText = index === 0 ? text : "";
         const messageReplyTo = index === 0 ? replyTo : null;
-        if (attachment?.originalFile instanceof Blob) {
-          let outboundFile = attachment.originalFile;
-          if (getCommunityAttachmentKind(attachment) === "image") {
-            outboundFile = await optimizeCommunityImageBlobForQuality(
-              outboundFile,
-              String(attachment.fileName || "image.jpg").trim() || "image.jpg",
-            );
+        const optimisticId = String(pendingDrafts[index]?.id || "").trim();
+        let response = null;
+        if (attachment?.originalFile instanceof Blob || String(attachment?.dataUrl || "").trim()) {
+          const outboundFile = await normalizeCommunityOutboundAttachmentFile(attachment);
+          if (!(outboundFile instanceof Blob)) {
+            throw new Error("Attachment could not be prepared for upload.");
           }
-          await backendClient.sendConversationMessageFile(
-            conversationId,
-            outboundFile,
-            messageText,
-            messageReplyTo,
-            getCommunityAttachmentUploadStyle(attachment),
-          );
+          const outboundDataUrl = await readFileAsDataUrl(outboundFile);
+          try {
+            response = await backendClient.sendConversationMessage(
+              conversationId,
+              messageText,
+              {
+                dataUrl: outboundDataUrl,
+                fileName: String(outboundFile.name || attachment.fileName || "attachment").trim() || "attachment",
+                mimeType: String(outboundFile.type || attachment.mimeType || "").trim().toLowerCase(),
+              },
+              messageReplyTo,
+            );
+          } catch (primaryError) {
+            try {
+              response = await backendClient.sendConversationMessageFile(
+                conversationId,
+                outboundFile,
+                messageText,
+                messageReplyTo,
+                getCommunityAttachmentUploadStyle(attachment),
+              );
+            } catch {
+              throw primaryError;
+            }
+          }
         } else {
-          await backendClient.sendConversationMessage(conversationId, messageText, attachment, messageReplyTo);
+          response = await backendClient.sendConversationMessage(conversationId, messageText, attachment, messageReplyTo);
+        }
+        const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
+        if (savedMessage) {
+          communityState.messages = Array.isArray(communityState.messages)
+            ? communityState.messages.filter((entry) => String(entry?.id || "") !== optimisticId)
+            : [];
+          if (!communityState.messages.some((entry) => String(entry?.id || "") === String(savedMessage.id || ""))) {
+            communityState.messages.push(savedMessage);
+          }
+          removeCommunityPendingOutgoingMessageIds(optimisticId);
+          renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
         }
       }
     } else {
-      await backendClient.sendConversationMessage(conversationId, text, null, replyTo);
+      const response = await backendClient.sendConversationMessage(conversationId, text, null, replyTo);
+      const optimisticId = String(pendingDrafts[0]?.id || "").trim();
+      const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
+      if (savedMessage) {
+        communityState.messages = Array.isArray(communityState.messages)
+          ? communityState.messages.filter((entry) => String(entry?.id || "") !== optimisticId)
+          : [];
+        if (!communityState.messages.some((entry) => String(entry?.id || "") === String(savedMessage.id || ""))) {
+          communityState.messages.push(savedMessage);
+        }
+      }
+      removeCommunityPendingOutgoingMessageIds(optimisticId);
+      renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
     }
     if (communityChatInput) {
       communityChatInput.value = "";
@@ -13354,17 +17508,34 @@ async function sendCommunityMessage() {
     }
     clearCommunityReplyDraft();
     resetCommunityPendingAttachment();
+    removeCommunityChatDraftForConversation(conversationId);
     syncCommunityChatComposerState();
     await loadCommunityMessages({ silent: true, scrollToBottom: true });
     communityState.overview = await backendClient.fetchCommunityOverview();
     communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
     renderCommunitySummary();
     renderCommunityStatusStrip();
-  } catch (error) {
-    setCommunityFeedback(
-      attachments.length
+    } catch (error) {
+      const errorMessage = attachments.length
         ? generalApiErrorMessage(error, "Attachments could not send right now.")
-        : generalApiErrorMessage(error, "Message could not send right now."),
+        : generalApiErrorMessage(error, "Message could not send right now.");
+      if (pendingDrafts.length) {
+      updateCommunityPendingOutgoingMessages(
+        pendingDrafts.map((entry) => entry.id),
+        (entry) => ({
+          ...entry,
+          uploadState: "failed",
+          uploadError: errorMessage,
+        }),
+        );
+        renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
+      }
+    if (communityChatInput) {
+      autosizeCommunityChatInput();
+    }
+    clearCommunityReplyDraft();
+    setCommunityFeedback(
+      errorMessage,
       true,
     );
   } finally {
@@ -13485,13 +17656,17 @@ function queuePendingCommunityStatusUpload() {
     return;
   }
   communityState.statusUploadInFlight = true;
+  communityState.statusUploadError = "";
   communityState.statusComposeEmojiPickerOpen = false;
   renderCommunityStatusStrip();
-  closeCommunityStatusCompose();
+  renderCommunityStatusComposePreview();
   setCommunityFeedback("Status uploading...");
-  void uploadPendingCommunityStatus(payload, draftText)
+  void uploadPendingCommunityStatus()
     .finally(() => {
       communityState.statusUploadInFlight = false;
+      if (String(communityState.statusUploadError || "").trim()) {
+        renderCommunityStatusComposePreview();
+      }
       renderCommunityStatusStrip();
     });
 }
@@ -13503,7 +17678,10 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
   if (!payload) return;
   try {
     setCommunityFeedback("Checking content...");
-    const statusVisibility = String(currentUser?.privacy?.statusVisibility || "friends").trim() || "friends";
+    const isAdminBroadcastStatus = communityState.statusComposeSource?.mode === "admin-broadcast-status";
+    const statusVisibility = isAdminBroadcastStatus
+      ? "everyone"
+      : String(currentUser?.privacy?.statusVisibility || "friends").trim() || "friends";
     if (payload.type === "text") {
       const text = String(captionOverride || communityStatusCaptionInput?.value || payload.text || "").trim();
       const layout = ensureCommunityStatusTextLayout(payload);
@@ -13512,24 +17690,27 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
         setCommunityFeedback("Write something for the status.", true);
         return;
       }
-        await backendClient.uploadStatusText(
-          text,
-          String(payload.background || "#2f80d0"),
-          statusVisibility,
-          {
+      await backendClient.uploadStatusText(
+        text,
+        String(payload.background || "#2f80d0"),
+        statusVisibility,
+        {
           textColor: String(payload.textColor || "#ffffff"),
           textStyle: String(payload.textStyle || "default"),
           textAlign: String(layout.align || "center"),
-            textBold: formatting.bold,
-            textItalic: formatting.italic,
-            textUnderline: formatting.underline,
-            textScale: Number(layout.scale || 1) || 1,
-            textX: 0.5,
-            textY: 0.5,
-            durationSeconds: COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-            allowReplies: Boolean(communitySettingsPrefs.statusReplies),
-          },
-        );
+          textBold: formatting.bold,
+          textItalic: formatting.italic,
+          textUnderline: formatting.underline,
+          textScale: Number(layout.scale || 1) || 1,
+          textX: 0.5,
+          textY: 0.5,
+          durationSeconds: COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
+          allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+        },
+        {
+          isAdminBroadcast: isAdminBroadcastStatus,
+        },
+      );
     } else {
       if (payload.type === "video") {
         const duration = Math.max(0, Number(payload.videoDuration) || 0);
@@ -13555,7 +17736,10 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
               videoTrimStart: Math.max(0, trim.start),
               videoTrimEnd: Math.max(0, trim.end),
               durationSeconds: clipDuration,
-              allowReplies: Boolean(communitySettingsPrefs.statusReplies),
+              allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+            },
+            {
+              isAdminBroadcast: isAdminBroadcastStatus,
             },
           );
           if (!isBackgroundUpload) closeCommunityStatusCompose();
@@ -13595,10 +17779,10 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
         payload.cropBaseDataUrl = String(payload.dataUrl || payload.cropBaseDataUrl || "");
         payload.mediaView = { scale: 1, offsetX: 0, offsetY: 0, frameWidth: 0, frameHeight: 0 };
       }
-      const statusStyle = {
-        imageFit: String(payload.imageFit || "contain"),
-        imageFilter: String(payload.imageFilter || "none"),
-        imageRotate: 0,
+        const statusStyle = {
+          imageFit: String(payload.imageFit || "contain"),
+          imageFilter: String(payload.imageFilter || "none"),
+          imageRotate: 0,
         type: String(payload.type || "image"),
         videoTrimStart: payload.type === "video"
           ? Math.max(0, Number(payload.videoTrim?.start || 0) || 0)
@@ -13606,12 +17790,12 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
         videoTrimEnd: payload.type === "video"
           ? Math.max(0, Number(payload.videoTrim?.end || 0) || 0)
           : 0,
-        durationSeconds:
-          payload.type === "video"
-            ? getCommunityStatusVideoDurationSeconds(payload)
-            : COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-        allowReplies: Boolean(communitySettingsPrefs.statusReplies),
-      };
+          durationSeconds:
+            payload.type === "video"
+              ? getCommunityStatusVideoDurationSeconds(payload)
+              : COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
+          allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+        };
       const shouldUseOriginalStatusFile =
         payload.originalFile instanceof Blob &&
         (
@@ -13638,6 +17822,9 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           captionDraft,
           statusVisibility,
           statusStyle,
+          {
+            isAdminBroadcast: isAdminBroadcastStatus,
+          },
         );
       } else {
         await backendClient.uploadStatusMedia(
@@ -13646,9 +17833,13 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           captionDraft,
           statusVisibility,
           statusStyle,
+          {
+            isAdminBroadcast: isAdminBroadcastStatus,
+          },
         );
       }
     }
+    communityState.statusUploadError = "";
     if (!isBackgroundUpload) closeCommunityStatusCompose();
     setCommunityFeedback("Status uploaded successfully.");
     communityState.overview = await backendClient.fetchCommunityOverview();
@@ -13656,7 +17847,10 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
     renderCommunityStatusStrip();
     renderCommunityView();
   } catch (error) {
-    setCommunityFeedback(rawApiErrorMessage(error, "Status upload failed."), true);
+    const message = rawApiErrorMessage(error, "Status upload failed.");
+    communityState.statusUploadError = message;
+    setCommunityFeedback(message, true);
+    renderCommunityStatusComposePreview();
   }
 }
 
@@ -13680,7 +17874,21 @@ async function createCommunityStudyGroup() {
     setCommunityFeedback("Study group created.");
     const conversationId = String(response?.conversation?.id || "").trim();
     if (conversationId) {
+      const previousConversationId = getCommunityChatDraftConversationId(communityState.activeConversation?.id || "");
+      if (previousConversationId) {
+        persistCommunityChatDraftForConversation(previousConversationId);
+      }
       communityState.activeConversation = response.conversation;
+      communityState.activeConversationPartner = {
+        id: conversationId,
+        name,
+        isGroup: true,
+        profileImage: "",
+        institution: `${memberIds.length + 1} members`,
+      };
+      communityState.emojiPickerOpen = false;
+      applyCommunityChatDraftToComposer(getCommunityChatDraftForConversation(conversationId));
+      resetCommunityVoiceRecordingState();
       updateCommunityChatHeader({
         id: conversationId,
         name,
@@ -13690,10 +17898,783 @@ async function createCommunityStudyGroup() {
       });
       showScreen("community-chat-screen");
       await loadCommunityMessages({ scrollToBottom: true });
+      restoreCommunityChatDraftIfNeeded(conversationId);
       syncCommunityChatPolling();
     }
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Study group could not be created right now."), true);
+  }
+}
+
+async function addCommunityGroupMembers() {
+  const groupId = String(communityState.groupMemberPickerGroupId || communityState.profile?.group?.id || "").trim();
+  const memberIds = Array.isArray(communityState.selectedGroupMembers) ? [...communityState.selectedGroupMembers] : [];
+  const payload = communityState.profile?.group ? communityState.profile : null;
+  const canAddMembers = Boolean(payload?.relationship?.isAdmin || payload?.group?.permissions?.membersCanAddMembers);
+  if (!groupId) {
+    setCommunityFeedback("Group not found.", true);
+    return;
+  }
+  if (!canAddMembers) {
+    setCommunityFeedback("Only admins can add participants to this group.", true);
+    return;
+  }
+  if (!memberIds.length) {
+    setCommunityFeedback("Select at least one friend to add.", true);
+    return;
+  }
+  try {
+    await backendClient.addCommunityGroupMembers(groupId, memberIds);
+    closeCommunityGroupModal();
+    communityState.profile = await backendClient.fetchCommunityGroup(groupId);
+    communityState.overview = await backendClient.fetchCommunityOverview();
+    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+    renderCommunityProfileView();
+    renderCommunityView();
+    setCommunityFeedback("Participants added to the group.");
+  } catch (error) {
+    setCommunityFeedback(generalApiErrorMessage(error, "Participants could not be added right now."), true);
+  }
+}
+
+async function submitCommunityGroupModal() {
+  const mode = String(communityState.groupMemberPickerMode || "create").trim().toLowerCase();
+  if (mode === "add") {
+    await addCommunityGroupMembers();
+    return;
+  }
+  await createCommunityStudyGroup();
+}
+
+function buildCommunityGroupInviteHref(groupId = "", inviteToken = "") {
+  const safeGroupId = String(groupId || "").trim();
+  const safeInviteToken = String(inviteToken || "").trim();
+  if (!safeGroupId || !safeInviteToken) return "";
+  const params = new URLSearchParams(window.location.search || "");
+  params.set("groupInvite", safeGroupId);
+  params.set("groupToken", safeInviteToken);
+  const pathname = String(window.location.pathname || "/index.html").trim() || "/index.html";
+  return `${window.location.origin}${pathname}?${params.toString()}`;
+}
+
+function getCommunityGroupInviteShortLabel(inviteToken = "", inviteUrl = "") {
+  const token = String(inviteToken || "").trim();
+  if (token.length >= 10) {
+    return `${token.slice(0, 4)}…${token.slice(-4)}`;
+  }
+  const url = String(inviteUrl || "").trim();
+  if (url) {
+    try {
+      const parsed = new URL(url, window.location.origin);
+      const path = `${parsed.pathname || ""}${parsed.search || ""}`.replace(/^\/+/, "");
+      if (path.length > 18) {
+        return `${path.slice(0, 8)}…${path.slice(-6)}`;
+      }
+      return path;
+    } catch {
+      if (url.length > 18) {
+        return `${url.slice(0, 8)}…${url.slice(-6)}`;
+      }
+      return url;
+    }
+  }
+  return "Invite link";
+}
+
+function normalizeCommunityInviteUrl(url = "") {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  try {
+    return new URL(value, window.location.origin).toString();
+  } catch {
+    return value;
+  }
+}
+
+function renderCommunityGroupInviteMembers(members = [], totalCount = 0) {
+  const previewMembers = Array.isArray(members) ? members.slice(0, 5) : [];
+  const safeTotal = Math.max(0, Math.round(Number(totalCount) || previewMembers.length || 0));
+  const extraCount = Math.max(0, safeTotal - previewMembers.length);
+  if (!previewMembers.length && !safeTotal) {
+    return `<div class="community-empty-state">No member preview available.</div>`;
+  }
+  const items = previewMembers
+    .map((member) => {
+      const displayName = truncateWithEllipsis(getCommunityUiDisplayName(member || {}), 22);
+      return `
+        <div class="community-group-invite-member-item">
+          <div class="community-group-invite-member-avatar" title="${escapeHtml(displayName)}" aria-label="${escapeHtml(displayName)}">
+            ${getCommunityPlainAvatarMarkup(member || {}, "community-group-invite-member-avatar-image")}
+          </div>
+          <div class="community-group-invite-member-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</div>
+        </div>
+      `;
+    })
+    .join("");
+  const moreItem = extraCount > 0
+    ? `
+      <div class="community-group-invite-member-item is-more">
+        <div class="community-group-invite-member-count" title="${escapeHtml(`${extraCount} more members`)}">+${escapeHtml(String(extraCount))}</div>
+        <div class="community-group-invite-member-name">more</div>
+      </div>
+    `
+    : "";
+  return `${items}${moreItem}`;
+}
+
+function renderCommunityGroupInviteModal() {
+  if (!communityGroupInviteModalEl) return;
+  const state = communityState.groupInviteModal || {};
+  const group = state.group || {};
+  const inviteToken = String(state.inviteToken || group.inviteToken || "").trim();
+  const inviteUrl = String(state.inviteUrl || "").trim();
+  const inviteExpired = Boolean(state.inviteExpired);
+  const relationship = state.relationship || {};
+  const isMember = Boolean(relationship.isMember);
+  const requiresApproval = Boolean(group?.permissions?.adminsMustApproveNewMembers);
+  const source = String(state.source || "invite").trim().toLowerCase();
+  const isShareMode = source === "share";
+  const members = Array.isArray(state.members) ? state.members : [];
+  const memberCount = Math.max(0, Math.round(Number(state.memberCount || group.memberIds?.length || members.length) || 0));
+  const isLoading = Boolean(state.loading);
+
+  if (communityGroupInviteAvatarEl) {
+    communityGroupInviteAvatarEl.innerHTML = getCommunityPlainAvatarMarkup(group, "community-group-invite-avatar-image");
+  }
+  if (communityGroupInviteNameEl) {
+    communityGroupInviteNameEl.textContent = String(group.name || "Study Group").trim() || "Study Group";
+  }
+  if (communityGroupInviteSubtitleEl) {
+    if (isLoading) {
+      communityGroupInviteSubtitleEl.textContent = "Loading invite preview...";
+    } else if (inviteExpired && !isMember) {
+      communityGroupInviteSubtitleEl.textContent = "This invite is no longer active.";
+    } else if (String(state.source || "") === "share") {
+      communityGroupInviteSubtitleEl.textContent = "Invite link ready to share.";
+    } else if (isMember) {
+      communityGroupInviteSubtitleEl.textContent = "You are already a member of this group.";
+    } else if (requiresApproval) {
+      communityGroupInviteSubtitleEl.textContent = "Admins must approve new members before they can join.";
+    } else {
+      communityGroupInviteSubtitleEl.textContent = "Tap Join to enter the group.";
+    }
+  }
+  if (communityGroupInviteMembersEl) {
+    communityGroupInviteMembersEl.innerHTML = renderCommunityGroupInviteMembers(members, memberCount);
+  }
+  if (communityGroupInviteShortLinkEl) {
+    const shortLabel = inviteExpired && isMember
+      ? "Used"
+      : getCommunityGroupInviteShortLabel(inviteToken, inviteUrl);
+    communityGroupInviteShortLinkEl.textContent = shortLabel;
+    communityGroupInviteShortLinkEl.title = inviteUrl || inviteToken || "Invite link";
+  }
+  if (communityGroupInviteNoteEl) {
+    if (String(state.status || "").trim()) {
+      communityGroupInviteNoteEl.textContent = String(state.status || "").trim();
+    } else if (requiresApproval && !isMember && !inviteExpired) {
+      communityGroupInviteNoteEl.textContent = "Join requests need admin approval.";
+    } else if (inviteExpired && !isMember) {
+      communityGroupInviteNoteEl.textContent = "Invite expired. Share the group again to create a fresh link.";
+    } else {
+      communityGroupInviteNoteEl.textContent = "Invite expires after 24 hours or after the first join.";
+    }
+  }
+  if (communityGroupInviteCopyBtn) {
+    communityGroupInviteCopyBtn.disabled = isLoading || !inviteUrl;
+    communityGroupInviteCopyBtn.textContent = "Copy link";
+  }
+  if (communityGroupInvitePrimaryBtn) {
+    if (isLoading) {
+      communityGroupInvitePrimaryBtn.textContent = "Loading...";
+      communityGroupInvitePrimaryBtn.disabled = true;
+    } else if (isShareMode) {
+      communityGroupInvitePrimaryBtn.textContent = "Share link";
+      communityGroupInvitePrimaryBtn.disabled = !inviteUrl;
+    } else if (isMember) {
+      communityGroupInvitePrimaryBtn.textContent = "View group";
+      communityGroupInvitePrimaryBtn.disabled = false;
+    } else if (requiresApproval && !inviteExpired) {
+      communityGroupInvitePrimaryBtn.textContent = "Approval required";
+      communityGroupInvitePrimaryBtn.disabled = true;
+    } else if (inviteExpired) {
+      communityGroupInvitePrimaryBtn.textContent = "Invite expired";
+      communityGroupInvitePrimaryBtn.disabled = true;
+    } else {
+      communityGroupInvitePrimaryBtn.textContent = "Join group";
+      communityGroupInvitePrimaryBtn.disabled = false;
+    }
+  }
+  communityGroupInviteModalEl.classList.remove("hidden");
+}
+
+function openCommunityGroupInviteModal(nextState = {}) {
+  communityState.groupInviteModal = {
+    ...communityState.groupInviteModal,
+    open: true,
+    loading: Boolean(nextState.loading),
+    groupId: String(nextState.groupId || "").trim(),
+    inviteToken: String(nextState.inviteToken || "").trim(),
+    inviteUrl: String(nextState.inviteUrl || "").trim(),
+    inviteExpiresAt: String(nextState.inviteExpiresAt || "").trim(),
+    inviteExpired: Boolean(nextState.inviteExpired),
+    group: nextState.group || null,
+    members: Array.isArray(nextState.members) ? nextState.members : [],
+    memberCount: Math.max(0, Math.round(Number(nextState.memberCount || 0) || 0)),
+    relationship: {
+      ...communityState.groupInviteModal.relationship,
+      ...(nextState.relationship || {}),
+    },
+    status: String(nextState.status || "").trim(),
+    source: String(nextState.source || "invite").trim() || "invite",
+  };
+  renderCommunityGroupInviteModal();
+}
+
+function closeCommunityGroupInviteModal() {
+  if (!communityGroupInviteModalEl) return;
+  communityGroupInviteModalEl.classList.add("hidden");
+  communityState.groupInviteModal = {
+    open: false,
+    loading: false,
+    groupId: "",
+    inviteToken: "",
+    inviteUrl: "",
+    inviteExpiresAt: "",
+    inviteExpired: false,
+    group: null,
+    members: [],
+    memberCount: 0,
+    relationship: {
+      isMember: false,
+      isOwner: false,
+      isAdmin: false,
+      isMuted: false,
+    },
+    status: "",
+    source: "invite",
+  };
+}
+
+async function copyCommunityGroupInviteLink() {
+  const inviteUrl = normalizeCommunityInviteUrl(communityState.groupInviteModal?.inviteUrl || "");
+  if (!inviteUrl) {
+    setCommunityFeedback("Invite link is not ready yet.", true);
+    return;
+  }
+  try {
+    await fallbackCopyText(inviteUrl);
+    setCommunityFeedback("Invite link copied.");
+  } catch (error) {
+    setCommunityFeedback(generalApiErrorMessage(error, "Invite link could not be prepared right now."), true);
+  }
+}
+
+const COMMUNITY_REPORT_REASON_OPTIONS = [
+  { value: "Spam or scam", label: "Spam or scam" },
+  { value: "Harassment or bullying", label: "Harassment or bullying" },
+  { value: "Inappropriate content", label: "Inappropriate content" },
+  { value: "Impersonation or fake account", label: "Impersonation or fake account" },
+  { value: "Other", label: "Other" },
+];
+
+function closeCommunityReportModal() {
+  if (!communityReportModalEl) return;
+  communityReportModalEl.classList.add("hidden");
+  communityState.reportModal = {
+    open: false,
+    sending: false,
+    targetType: "",
+    targetId: "",
+    targetName: "",
+    targetLabel: "",
+    targetAvatar: "",
+    reason: "",
+    details: "",
+  };
+}
+
+function syncCommunityAdminBroadcastModal() {
+  if (!communityAdminBroadcastModalEl) return;
+  const state = communityState.adminBroadcastModal || {};
+  if (communityAdminBroadcastInput && communityAdminBroadcastInput.value !== String(state.message || "")) {
+    communityAdminBroadcastInput.value = String(state.message || "");
+  }
+  if (communityAdminBroadcastAttachmentNameEl) {
+    communityAdminBroadcastAttachmentNameEl.textContent = String(state.attachmentName || "No attachment selected.");
+  }
+  if (communityAdminBroadcastClearBtn) {
+    communityAdminBroadcastClearBtn.classList.toggle("hidden", !state.attachment);
+    communityAdminBroadcastClearBtn.disabled = !state.attachment;
+  }
+  if (communityAdminBroadcastSendBtn) {
+    const hasMessage = Boolean(String(state.message || "").trim());
+    communityAdminBroadcastSendBtn.disabled = state.sending || (!hasMessage && !state.attachment);
+    communityAdminBroadcastSendBtn.textContent = state.sending ? "Sending..." : "Send to all";
+  }
+}
+
+function openCommunityAdminBroadcastModal() {
+  if (!communityAdminBroadcastModalEl) return;
+  communityState.adminBroadcastModal = {
+    open: true,
+    sending: false,
+    message: "",
+    attachment: null,
+    attachmentName: "No attachment selected.",
+  };
+  syncCommunityAdminBroadcastModal();
+  communityAdminBroadcastModalEl.classList.remove("hidden");
+}
+
+function closeCommunityAdminBroadcastModal() {
+  if (!communityAdminBroadcastModalEl) return;
+  communityAdminBroadcastModalEl.classList.add("hidden");
+  communityState.adminBroadcastModal = {
+    open: false,
+    sending: false,
+    message: "",
+    attachment: null,
+    attachmentName: "",
+  };
+  if (communityAdminBroadcastInput) {
+    communityAdminBroadcastInput.value = "";
+  }
+  if (communityAdminBroadcastFileInput) {
+    communityAdminBroadcastFileInput.value = "";
+  }
+  if (communityAdminBroadcastAttachmentNameEl) {
+    communityAdminBroadcastAttachmentNameEl.textContent = "No attachment selected.";
+  }
+  if (communityAdminBroadcastClearBtn) {
+    communityAdminBroadcastClearBtn.classList.add("hidden");
+  }
+}
+
+async function handleCommunityAdminBroadcastAttachment(file = null) {
+  if (!(file instanceof File)) return;
+  const dataUrl = await readFileAsDataUrl(file);
+  const mimeType = normalizeCommunityUploadMimeType(file.type) || String(file.type || "").trim().toLowerCase();
+  const safeMimeType = mimeType || "application/octet-stream";
+  communityState.adminBroadcastModal = {
+    ...(communityState.adminBroadcastModal || {}),
+    attachment: {
+      dataUrl,
+      fileName: file.name || "attachment",
+      mimeType: safeMimeType,
+    },
+    attachmentName: file.name || "attachment",
+  };
+  syncCommunityAdminBroadcastModal();
+}
+
+async function submitCommunityAdminBroadcast() {
+  const state = communityState.adminBroadcastModal || {};
+  const message = String(communityAdminBroadcastInput?.value || state.message || "").trim();
+  const attachment = state.attachment || null;
+  if (!message && !attachment) {
+    setCommunityFeedback("Add a message or attachment first.", true);
+    return;
+  }
+  communityState.adminBroadcastModal = {
+    ...state,
+    sending: true,
+    message,
+  };
+  syncCommunityAdminBroadcastModal();
+  try {
+    const response = await backendClient.broadcastAdminMessage(message, attachment);
+    closeCommunityAdminBroadcastModal();
+    setCommunityFeedback(`Broadcast sent to ${Math.max(0, Math.round(Number(response?.deliveredTo) || 0))} users.`);
+    communityState.overview = await backendClient.fetchCommunityOverview();
+    communityState.chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
+    renderCommunityView();
+    renderCommunitySummary();
+  } catch (error) {
+    communityState.adminBroadcastModal = {
+      ...(communityState.adminBroadcastModal || {}),
+      sending: false,
+      message,
+    };
+    syncCommunityAdminBroadcastModal();
+    setCommunityFeedback(generalApiErrorMessage(error, "Broadcast could not be sent right now."), true);
+  }
+}
+
+function renderCommunityReportModal() {
+  if (!communityReportModalEl) return;
+  const state = communityState.reportModal || {};
+  const targetType = String(state.targetType || "").trim().toLowerCase();
+  const targetName = String(state.targetName || "").trim() || (targetType === "group" ? "Study Group" : "User");
+  const targetLabel = String(state.targetLabel || "").trim() || (targetType === "group" ? "Group" : "User");
+  const isSending = Boolean(state.sending);
+  const reason = String(state.reason || "");
+  const details = String(state.details || "");
+  if (communityReportTitleEl) {
+    communityReportTitleEl.textContent = `Report ${targetLabel.toLowerCase()}`;
+  }
+  if (communityReportTargetLabelEl) {
+    communityReportTargetLabelEl.textContent = `${targetLabel} to report`;
+  }
+  if (communityReportTargetNameEl) {
+    communityReportTargetNameEl.textContent = targetName;
+  }
+  if (communityReportTargetAvatarEl) {
+    communityReportTargetAvatarEl.innerHTML =
+      String(state.targetAvatar || "").trim() ||
+      `<span class="community-report-avatar-fallback">${escapeHtml(targetName.slice(0, 2).toUpperCase() || "??")}</span>`;
+  }
+  if (communityReportReasonSelectEl) {
+    communityReportReasonSelectEl.value = reason;
+  }
+  if (communityReportDetailsEl) {
+    communityReportDetailsEl.value = details;
+  }
+  if (communityReportHintEl) {
+    communityReportHintEl.textContent =
+      targetType === "group"
+        ? "Pick the closest reason and add a short note if it helps us review the group faster."
+        : "Pick the closest reason and add any context that helps the review.";
+  }
+  if (communityReportSubmitBtn) {
+    communityReportSubmitBtn.textContent = isSending ? "Sending..." : "Send report";
+    communityReportSubmitBtn.disabled =
+      isSending ||
+      !String(reason || "").trim() ||
+      (String(reason || "") === "Other" && !String(details || "").trim());
+  }
+  if (communityReportCancelBtn) {
+    communityReportCancelBtn.disabled = isSending;
+  }
+  communityReportModalEl.classList.remove("hidden");
+}
+
+function openCommunityReportModal({
+  targetType = "user",
+  targetId = "",
+  targetName = "",
+  targetLabel = "",
+  targetAvatar = "",
+} = {}) {
+  const safeTargetType = String(targetType || "").trim().toLowerCase() === "group" ? "group" : "user";
+  communityState.reportModal = {
+    ...communityState.reportModal,
+    open: true,
+    sending: false,
+    targetType: safeTargetType,
+    targetId: String(targetId || "").trim(),
+    targetName: String(targetName || "").trim(),
+    targetLabel: String(targetLabel || (safeTargetType === "group" ? "Group" : "User")).trim(),
+    targetAvatar: String(targetAvatar || "").trim(),
+    reason: "",
+    details: "",
+  };
+  renderCommunityReportModal();
+}
+
+function getCommunityReportSubmissionText() {
+  const state = communityState.reportModal || {};
+  const reason = String(communityReportReasonSelectEl?.value || state.reason || "").trim();
+  const details = String(communityReportDetailsEl?.value || state.details || "").trim();
+  if (!reason) return "";
+  if (!details) return reason;
+  if (reason === "Other") return details;
+  return `${reason}: ${details}`;
+}
+
+async function submitCommunityReportModal() {
+  const state = communityState.reportModal || {};
+  const targetType = String(state.targetType || "").trim().toLowerCase();
+  const targetId = String(state.targetId || "").trim();
+  if (!targetId) return;
+  const reasonText = getCommunityReportSubmissionText();
+  if (!reasonText) {
+    setCommunityFeedback("Please choose a report reason and add details for the custom option.", true);
+    return;
+  }
+  communityState.reportModal.sending = true;
+  renderCommunityReportModal();
+  try {
+    if (targetType === "group") {
+      await backendClient.reportCommunityGroup(targetId, reasonText);
+    } else {
+      await backendClient.reportCommunityUser(targetId, reasonText);
+    }
+    closeCommunityReportModal();
+    setCommunityFeedback(`${String(state.targetLabel || targetType || "Item")} reported. Thanks for helping keep the community safe.`);
+  } catch (error) {
+    communityState.reportModal.sending = false;
+    renderCommunityReportModal();
+    setCommunityFeedback(generalApiErrorMessage(error, "Report could not be sent right now."), true);
+  }
+}
+
+async function shareCommunityGroupInviteToFriends() {
+  const inviteUrl = normalizeCommunityInviteUrl(communityState.groupInviteModal?.inviteUrl || "");
+  if (!inviteUrl) {
+    setCommunityFeedback("Invite link is not ready yet.", true);
+    return;
+  }
+  closeCommunityGroupInviteModal();
+  await startCommunityForwardFlow({ text: inviteUrl });
+}
+
+async function viewCommunityGroupFromInvite() {
+  const groupId = String(communityState.groupInviteModal?.groupId || communityState.groupInviteModal?.group?.id || "").trim();
+  if (!groupId) return;
+  clearPendingCommunityGroupInvite();
+  try {
+    await openCommunityGroupProfile(groupId);
+    closeCommunityGroupInviteModal();
+  } catch (error) {
+    setCommunityFeedback(generalApiErrorMessage(error, "Group info could not load right now."), true);
+  }
+}
+
+async function joinCommunityGroupFromInvite() {
+  const inviteState = communityState.groupInviteModal || {};
+  const groupId = String(inviteState.groupId || inviteState.group?.id || "").trim();
+  const inviteToken = String(inviteState.inviteToken || "").trim();
+  const requiresApproval = Boolean(inviteState.group?.permissions?.adminsMustApproveNewMembers);
+  if (!groupId) return;
+  if (Boolean(inviteState.inviteExpired) && !inviteState.relationship?.isMember) {
+    setCommunityFeedback("This invite has expired.", true);
+    return;
+  }
+  if (inviteState.relationship?.isMember) {
+    await viewCommunityGroupFromInvite();
+    return;
+  }
+  if (!inviteToken) {
+    setCommunityFeedback("Invite token is missing.", true);
+    return;
+  }
+  if (requiresApproval) {
+    setCommunityFeedback("This group requires admin approval before new members can join.", true);
+    return;
+  }
+  communityState.groupInviteModal.loading = true;
+  renderCommunityGroupInviteModal();
+  try {
+    const response = await backendClient.joinCommunityGroupInvite(groupId, inviteToken);
+    clearPendingCommunityGroupInvite();
+    communityState.profile = response;
+    communityState.overview = await backendClient.fetchCommunityOverview();
+    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+    renderCommunityView();
+    communityState.groupInviteModal = {
+      ...communityState.groupInviteModal,
+      loading: false,
+      inviteToken: "",
+      inviteExpired: true,
+      members: Array.isArray(response?.members) ? response.members : communityState.groupInviteModal.members,
+      memberCount: Array.isArray(response?.members)
+        ? response.members.length
+        : communityState.groupInviteModal.memberCount,
+      relationship: {
+        ...communityState.groupInviteModal.relationship,
+        isMember: true,
+      },
+      status: "Joined successfully. Tap View group to continue.",
+      group: response?.group || communityState.groupInviteModal.group,
+    };
+    renderCommunityGroupInviteModal();
+    setCommunityFeedback("Joined the group.");
+  } catch (error) {
+    communityState.groupInviteModal.loading = false;
+    renderCommunityGroupInviteModal();
+    setCommunityFeedback(generalApiErrorMessage(error, "Group could not be joined right now."), true);
+  }
+}
+
+async function loadCommunityGroupInvitePreview(groupId = "", inviteToken = "", { source = "invite", inviteUrl = "" } = {}) {
+  const safeGroupId = String(groupId || "").trim();
+  const safeInviteToken = String(inviteToken || "").trim();
+  if (!safeGroupId || !safeInviteToken) return null;
+  openCommunityGroupInviteModal({
+    groupId: safeGroupId,
+    inviteToken: safeInviteToken,
+    inviteUrl,
+    inviteExpiresAt: "",
+    inviteExpired: false,
+    group: null,
+    members: [],
+    memberCount: 0,
+    relationship: {},
+    status: "Loading invite preview...",
+    source,
+    loading: true,
+  });
+  try {
+    const response = await backendClient.fetchCommunityGroupInvitePreview(safeGroupId, safeInviteToken);
+    openCommunityGroupInviteModal({
+      groupId: safeGroupId,
+      inviteToken: String(response?.invite?.inviteToken || safeInviteToken || "").trim(),
+      inviteUrl: normalizeCommunityInviteUrl(inviteUrl || buildCommunityGroupInviteHref(safeGroupId, safeInviteToken)),
+      inviteExpiresAt: String(response?.invite?.inviteExpiresAt || "").trim(),
+      inviteExpired: Boolean(response?.invite?.expired),
+      group: response?.group || null,
+      members: Array.isArray(response?.members) ? response.members : [],
+      memberCount: Math.max(0, Math.round(Number(response?.memberCount || 0) || 0)),
+      relationship: response?.relationship || {},
+      status: Boolean(response?.invite?.expired) ? "This invite expired." : "",
+      source,
+      loading: false,
+    });
+    if (Boolean(response?.invite?.expired)) {
+      setCommunityFeedback("This invite expired.", true);
+    }
+    return response;
+  } catch (error) {
+    communityState.groupInviteModal.loading = false;
+    renderCommunityGroupInviteModal();
+    setCommunityFeedback(generalApiErrorMessage(error, "Invite preview could not load right now."), true);
+    return null;
+  }
+}
+
+async function shareCommunityGroupInviteLink(groupId = "") {
+  const safeGroupId = String(groupId || "").trim();
+  if (!safeGroupId) return;
+  const payload = communityState.profile?.group ? communityState.profile : null;
+  const canShareInvite = Boolean(payload?.relationship?.isAdmin || payload?.group?.permissions?.membersCanInviteByLink);
+  if (!canShareInvite) {
+    setCommunityFeedback("Invite links are disabled for this group.", true);
+    return;
+  }
+  try {
+    const payload = await backendClient.createCommunityGroupInviteLink(safeGroupId);
+    const inviteToken = String(payload?.inviteToken || "").trim();
+    if (!inviteToken) {
+      throw new Error("invite link could not be generated");
+    }
+    if (communityState.profile?.group) {
+      communityState.profile.group.inviteToken = inviteToken;
+    }
+    const inviteHref = buildCommunityGroupInviteHref(safeGroupId, inviteToken);
+    if (!inviteHref) {
+      throw new Error("invite link could not be built");
+    }
+    const inviteUrl = normalizeCommunityInviteUrl(payload?.inviteUrl || inviteHref);
+    openCommunityGroupInviteModal({
+      groupId: safeGroupId,
+      inviteToken,
+      inviteUrl,
+      inviteExpiresAt: String(payload?.inviteExpiresAt || "").trim(),
+      inviteExpired: false,
+      group: communityState.profile?.group || null,
+      members: Array.isArray(communityState.profile?.members) ? communityState.profile.members : [],
+      memberCount: Array.isArray(communityState.profile?.members) ? communityState.profile.members.length : Number(communityState.profile?.group?.memberIds?.length || 0),
+      relationship: {
+        isMember: false,
+        isOwner: Boolean(communityState.profile?.relationship?.isOwner),
+        isAdmin: Boolean(communityState.profile?.relationship?.isAdmin),
+        isMuted: Boolean(communityState.profile?.relationship?.isMuted),
+      },
+      source: "share",
+    });
+    setCommunityFeedback("Invite link ready.");
+  } catch (error) {
+    setCommunityFeedback(generalApiErrorMessage(error, "Invite link could not be prepared right now."), true);
+  }
+}
+
+async function leaveCommunityGroup(groupId = "") {
+  const safeGroupId = String(groupId || "").trim();
+  if (!safeGroupId) return;
+  openCommunityConfirmModal({
+    title: "Leave group?",
+    text: "Leaving this group will remove you from the member list. If you created it, ownership may move to another member.",
+    confirmLabel: "Leave group",
+    intent: "danger",
+    onConfirm: async () => {
+      closeCommunityConfirmModal();
+      const response = await backendClient.leaveCommunityGroup(safeGroupId);
+      communityState.profile = null;
+      if (String(communityState.activeConversation?.id || "") === safeGroupId) {
+        communityState.activeConversation = null;
+        communityState.activeConversationPartner = null;
+        syncCommunityChatPolling();
+      }
+      communityState.overview = await backendClient.fetchCommunityOverview();
+      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+      renderCommunityView();
+      setCommunityFeedback(response?.removed ? "Group removed." : "You left the group.");
+    },
+  });
+}
+
+async function reportCommunityGroup(groupId = "") {
+  const safeGroupId = String(groupId || "").trim();
+  if (!safeGroupId) return;
+  const profile = communityState.profile || {};
+  openCommunityReportModal({
+    targetType: "group",
+    targetId: safeGroupId,
+    targetName: String(profile.name || "Study Group").trim() || "Study Group",
+    targetLabel: "Group",
+    targetAvatar: getCommunityPlainAvatarMarkup(profile, "community-report-avatar-image"),
+  });
+}
+
+async function reportCommunityUser(userId = "") {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) return;
+  const profile = communityState.profile || {};
+  openCommunityReportModal({
+    targetType: "user",
+    targetId: safeUserId,
+    targetName: String(profile.name || profile.username || "User").trim() || "User",
+    targetLabel: "User",
+    targetAvatar: getCommunityPlainAvatarMarkup(profile, "community-report-avatar-image"),
+  });
+}
+
+function getPendingCommunityGroupInvite() {
+  const params = new URLSearchParams(window.location.search || "");
+  const groupId = String(params.get("groupInvite") || "").trim();
+  const inviteToken = String(params.get("groupToken") || "").trim();
+  if (!groupId || !inviteToken) return null;
+  return { groupId, inviteToken };
+}
+
+function clearPendingCommunityGroupInvite() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    params.delete("groupInvite");
+    params.delete("groupToken");
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname || "index.html"}${query ? `?${query}` : ""}${window.location.hash || ""}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  } catch {}
+  communityState.groupInviteLaunch.groupId = "";
+  communityState.groupInviteLaunch.inviteToken = "";
+  communityState.groupInviteLaunch.handled = true;
+  communityState.groupInviteLaunch.attempting = false;
+}
+
+async function consumePendingCommunityGroupInvite() {
+  const pending = getPendingCommunityGroupInvite();
+  if (!pending || communityState.groupInviteLaunch.handled || communityState.groupInviteLaunch.attempting) return false;
+  communityState.groupInviteLaunch.attempting = true;
+  communityState.groupInviteLaunch.groupId = pending.groupId;
+  communityState.groupInviteLaunch.inviteToken = pending.inviteToken;
+  if (!currentUser) {
+    communityState.groupInviteLaunch.attempting = false;
+    return false;
+  }
+  try {
+    const preview = await loadCommunityGroupInvitePreview(pending.groupId, pending.inviteToken, {
+      source: "invite",
+      inviteUrl: buildCommunityGroupInviteHref(pending.groupId, pending.inviteToken),
+    });
+    communityState.groupInviteLaunch.handled = true;
+    communityState.groupInviteLaunch.attempting = false;
+    return Boolean(preview);
+  } catch (error) {
+    communityState.groupInviteLaunch.attempting = false;
+    setCommunityFeedback(generalApiErrorMessage(error, "Invite link could not be opened right now."), true);
+    return false;
   }
 }
 
@@ -14122,6 +19103,12 @@ async function executeCommunityAction(action = "", payload = {}) {
     } else if (action === "cancel-request" && requestId) {
       await backendClient.cancelFriendRequest(requestId);
     } else if (action === "block-user" && userId) {
+      const targetUserResponse = await backendClient.fetchCommunityProfile(userId).catch(() => null);
+      const targetUser = targetUserResponse?.profile || targetUserResponse?.user || targetUserResponse;
+      if (isCommunityAppAdminUser(targetUser)) {
+        setCommunityFeedback("App admins cannot be blocked.", true);
+        return;
+      }
       openCommunityConfirmModal({
         title: "Block learner?",
         text: "They will no longer be able to message you or view your learning profile based on your privacy rules.",
@@ -14183,16 +19170,19 @@ async function executeCommunityAction(action = "", payload = {}) {
       openCommunityGroupEditModal(groupId);
       return;
     } else if (action === "add-group-members" && groupId) {
-      setCommunityFeedback("Add participants is coming soon.");
+      openCommunityGroupModal({ mode: "add", groupId });
+      return;
+    } else if (action === "share-group-link" && groupId) {
+      await shareCommunityGroupInviteLink(groupId);
       return;
     } else if (action === "report-user" && userId) {
-      setCommunityFeedback("User report options are coming soon.");
+      await reportCommunityUser(userId);
       return;
     } else if (action === "report-group" && groupId) {
-      setCommunityFeedback("Group report options are coming soon.");
+      await reportCommunityGroup(groupId);
       return;
     } else if (action === "exit-group" && groupId) {
-      setCommunityFeedback("Exit group is coming soon.");
+      await leaveCommunityGroup(groupId);
       return;
     } else if (action === "toggle-group-view") {
       communityState.tab = communityState.tab === "groups" ? "chats" : "groups";
@@ -14378,7 +19368,7 @@ function shouldShowAnswerChoiceMotivation() {
 function isDirectSubmitDrillMode() {
   if (mode !== "exam") return false;
   const variant = String(examVariant || "normal").toLowerCase();
-  return variant === "rapid" || variant === "sudden" || variant === "clinical";
+  return variant === "rapid" || variant === "sudden" || variant === "clinical" || variant === "law";
 }
 
 function showDrillEventBanner(message = "", tone = "good") {
@@ -14521,7 +19511,7 @@ function playToneSequence(sequence = [], ctx = null) {
 function playModeCue(variant = "normal", phase = "start", isGoodResult = false) {
   if (uiPrefs?.reduceMotion) return;
   const drill = String(variant || "normal").toLowerCase();
-  if (!["rapid", "sudden", "clinical"].includes(drill)) return;
+  if (!["rapid", "sudden", "clinical", "law"].includes(drill)) return;
 
   const ctx = ensureAudioContext();
   if (!ctx) return;
@@ -14644,6 +19634,7 @@ function getExamVariantLabel(variant = examVariant) {
   if (variant === "rapid") return "Rapid Fire";
   if (variant === "sudden") return "Sudden Death";
   if (variant === "clinical") return "Clinical Judgement";
+  if (variant === "law") return "Pharmacy Law";
   if (variant === "smart") return "Smart Exam";
   return "Exam Mode";
 }
@@ -15258,6 +20249,7 @@ function clearDeviceLocalCache() {
     "quizBestStreak",
     "quizPerformance",
     "quizCategoryPerformance",
+    "quizRotationPerformance",
     "currentStreak",
     "activeStudySessionId",
     "activeExamSessionId",
@@ -15759,6 +20751,7 @@ function renderDailyQuizUi() {
     }
     dailyHistoryOpen = false;
     renderDailyHistoryPanel();
+    renderMenuDashboardStats();
     return;
   }
 
@@ -15898,6 +20891,8 @@ function renderDailyQuizUi() {
       startDailyBtn.textContent = "Start";
     }
   }
+
+  renderMenuDashboardStats();
 }
 
 async function refreshDailyQuizState({ force = false, silent = false } = {}) {
@@ -16074,6 +21069,7 @@ async function startDailyQuizSession() {
 }
 
 loadCommunitySettingsPrefs();
+communityState.chatDrafts = loadCommunityChatDraftStore();
 loadUiPrefs();
 applyUiPrefs();
 populateCommunityEmojiSheets();
@@ -16241,6 +21237,12 @@ if (menuUserHubBtn) {
   });
 }
 
+if (menuMobileHamburgerBtn) {
+  menuMobileHamburgerBtn.addEventListener("click", () => {
+    toggleMenuUserHub();
+  });
+}
+
 if (menuUserHubCloseBtn) {
   menuUserHubCloseBtn.addEventListener("click", () => {
     closeMenuUserHub();
@@ -16394,7 +21396,35 @@ if (communityGroupCancelBtn) {
 
 if (communityGroupCreateBtn) {
   communityGroupCreateBtn.addEventListener("click", () => {
-    void createCommunityStudyGroup();
+    void submitCommunityGroupModal();
+  });
+}
+
+if (communityGroupInviteCloseBtn) {
+  communityGroupInviteCloseBtn.addEventListener("click", () => {
+    closeCommunityGroupInviteModal();
+  });
+}
+
+if (communityGroupInviteCopyBtn) {
+  communityGroupInviteCopyBtn.addEventListener("click", () => {
+    void copyCommunityGroupInviteLink();
+  });
+}
+
+if (communityGroupInvitePrimaryBtn) {
+  communityGroupInvitePrimaryBtn.addEventListener("click", () => {
+    const inviteState = communityState.groupInviteModal || {};
+    if (inviteState.loading) return;
+    if (String(inviteState.source || "").trim().toLowerCase() === "share") {
+      void shareCommunityGroupInviteToFriends();
+      return;
+    }
+    if (inviteState.relationship?.isMember) {
+      void viewCommunityGroupFromInvite();
+      return;
+    }
+    void joinCommunityGroupFromInvite();
   });
 }
 
@@ -16402,6 +21432,18 @@ if (communityAttachmentPreviewCloseBtn) {
   communityAttachmentPreviewCloseBtn.addEventListener("click", () => {
     closeCommunityAttachmentPreviewModal();
   });
+}
+
+function markCommunityComposeTouchAction() {
+  communityState.statusComposeLastTouchActionAt = Date.now();
+}
+
+function shouldIgnoreCommunityComposeClick() {
+  const lastTouchActionAt = Number(communityState.statusComposeLastTouchActionAt || 0);
+  if (!lastTouchActionAt) return false;
+  if (Date.now() - lastTouchActionAt > 500) return false;
+  communityState.statusComposeLastTouchActionAt = 0;
+  return true;
 }
 
 if (communityAttachmentPreviewPrevBtn) {
@@ -16463,6 +21505,57 @@ if (communityAttachmentPreviewEditBtn) {
   communityAttachmentPreviewEditBtn.addEventListener("click", (event) => {
     event.preventDefault();
   });
+}
+
+if (communityAttachmentPreviewVideoEl) {
+  communityAttachmentPreviewVideoEl.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    unlockCommunityMediaAudio(communityAttachmentPreviewVideoEl);
+    setCommunityActiveVideo(communityAttachmentPreviewVideoEl, { scope: "attachment-preview" });
+    communityAttachmentPreviewVideoEl.defaultMuted = false;
+    communityAttachmentPreviewVideoEl.muted = false;
+    communityAttachmentPreviewVideoEl.volume = 1;
+    if (communityAttachmentPreviewVideoEl.paused) {
+      void communityAttachmentPreviewVideoEl.play().catch(() => {});
+    } else {
+      communityAttachmentPreviewVideoEl.pause();
+    }
+  });
+  communityAttachmentPreviewVideoEl.addEventListener("play", () => {
+    setCommunityActiveVideo(communityAttachmentPreviewVideoEl, { scope: "attachment-preview" });
+  });
+  communityAttachmentPreviewVideoEl.addEventListener("click", () => {
+    unlockCommunityMediaAudio(communityAttachmentPreviewVideoEl);
+    setCommunityActiveVideo(communityAttachmentPreviewVideoEl, { scope: "attachment-preview" });
+    communityAttachmentPreviewVideoEl.defaultMuted = false;
+    communityAttachmentPreviewVideoEl.muted = false;
+    communityAttachmentPreviewVideoEl.volume = 1;
+    if (communityAttachmentPreviewVideoEl.paused) {
+      void communityAttachmentPreviewVideoEl.play().catch(() => {});
+    } else {
+      communityAttachmentPreviewVideoEl.pause();
+    }
+  });
+  const attachmentPreviewWrap = communityAttachmentPreviewVideoEl.closest(".community-attachment-preview-stage");
+  if (attachmentPreviewWrap instanceof HTMLElement) {
+    attachmentPreviewWrap.addEventListener("pointerdown", (event) => {
+      if (event.target === communityAttachmentPreviewVideoEl) return;
+      const target = event.target instanceof Element ? event.target.closest("[data-community-status-compose-media='true']") : null;
+      if (target && target !== communityAttachmentPreviewVideoEl) return;
+      event.preventDefault();
+      unlockCommunityMediaAudio(communityAttachmentPreviewVideoEl);
+      setCommunityActiveVideo(communityAttachmentPreviewVideoEl, { scope: "attachment-preview" });
+      communityAttachmentPreviewVideoEl.defaultMuted = false;
+      communityAttachmentPreviewVideoEl.muted = false;
+      communityAttachmentPreviewVideoEl.volume = 1;
+      if (communityAttachmentPreviewVideoEl.paused) {
+        void communityAttachmentPreviewVideoEl.play().catch(() => {});
+      } else {
+        communityAttachmentPreviewVideoEl.pause();
+      }
+    });
+  }
 }
 
 if (communityAttachmentPreviewStageEl) {
@@ -16589,6 +21682,20 @@ if (communitySettingsPanelEl) {
       void openProfileScreen();
       return;
     }
+    const adminActionBtn = target?.closest("[data-community-admin-action]");
+    if (adminActionBtn instanceof HTMLElement) {
+      const action = String(adminActionBtn.dataset.communityAdminAction || "").trim();
+      if (action === "broadcast-message") {
+        openCommunityAdminBroadcastModal();
+      } else if (action === "broadcast-status") {
+        openCommunityStatusCompose(null, {
+          source: {
+            mode: "admin-broadcast-status",
+          },
+        });
+      }
+      return;
+    }
     const navBtn = target?.closest("[data-community-settings-target]");
     if (navBtn instanceof HTMLElement) {
       const nextView = String(navBtn.dataset.communitySettingsTarget || "main").trim() || "main";
@@ -16682,6 +21789,26 @@ if (communitySettingsPanelEl) {
     if (target === communitySettingsStatusRepliesInput) {
       updateCommunitySettingsPref("statusReplies", Boolean(target.checked));
       return;
+    }
+    if (target === communitySettingsAdminKeyInput) {
+      const nextValue = String(target.value || "").trim();
+      if (nextValue) {
+        localStorage.setItem(COMMUNITY_ADMIN_KEY_STORAGE_KEY, nextValue);
+      } else {
+        localStorage.removeItem(COMMUNITY_ADMIN_KEY_STORAGE_KEY);
+      }
+      return;
+    }
+  });
+}
+
+if (communitySettingsAdminKeyInput) {
+  communitySettingsAdminKeyInput.addEventListener("input", () => {
+    const nextValue = String(communitySettingsAdminKeyInput.value || "").trim();
+    if (nextValue) {
+      localStorage.setItem(COMMUNITY_ADMIN_KEY_STORAGE_KEY, nextValue);
+    } else {
+      localStorage.removeItem(COMMUNITY_ADMIN_KEY_STORAGE_KEY);
     }
   });
 }
@@ -16786,21 +21913,7 @@ document.querySelectorAll("[data-community-group-storage-tab]").forEach((button)
 
 if (communityChatBackBtn) {
   communityChatBackBtn.addEventListener("click", () => {
-    if (!communityState.activeCall) {
-      goBackByHistory("community-chat-screen", "community-screen");
-      return;
-    }
-    openCommunityConfirmModal({
-      title: "End call and leave chat?",
-      text: "Leaving this chat will end the current call in this conversation.",
-      confirmLabel: "End Call",
-      intent: "danger",
-      onConfirm: async () => {
-        closeCommunityConfirmModal();
-        await endCommunityConversationCall({ notifyBackend: true, silent: true });
-        goBackByHistory("community-chat-screen", "community-screen");
-      },
-    });
+    goBackByHistory("community-chat-screen", "community-screen");
   });
 }
 
@@ -16885,6 +21998,7 @@ if (communityChatEmojiBtn) {
 if (communityChatAttachBtn) {
   communityChatAttachBtn.addEventListener("click", () => {
     setCommunityChatEmojiPickerOpen(false);
+    communityState.pendingAttachmentMergeMode = "replace";
     communityChatImageInput?.click();
   });
 }
@@ -16892,6 +22006,7 @@ if (communityChatAttachBtn) {
 if (communityChatCameraBtn) {
   communityChatCameraBtn.addEventListener("click", () => {
     setCommunityChatEmojiPickerOpen(false);
+    communityState.pendingAttachmentMergeMode = "replace";
     communityChatCameraInput?.click();
   });
 }
@@ -17065,19 +22180,37 @@ if (communityStatusComposeTextBtn) {
 }
 
 if (communityStatusComposeCancelBtn) {
+  communityStatusComposeCancelBtn.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    markCommunityComposeTouchAction();
+    closeCommunityStatusCompose({ returnToAttachmentPreview: true });
+  });
   communityStatusComposeCancelBtn.addEventListener("click", () => {
-    closeCommunityStatusCompose();
+    if (shouldIgnoreCommunityComposeClick()) return;
+    closeCommunityStatusCompose({ returnToAttachmentPreview: true });
   });
 }
 
 if (communityStatusComposeUploadBtn) {
+  communityStatusComposeUploadBtn.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    markCommunityComposeTouchAction();
+    queuePendingCommunityStatusUpload();
+  });
   communityStatusComposeUploadBtn.addEventListener("click", () => {
+    if (shouldIgnoreCommunityComposeClick()) return;
     queuePendingCommunityStatusUpload();
   });
 }
 
 if (communityStatusComposeSendBtn) {
+  communityStatusComposeSendBtn.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    markCommunityComposeTouchAction();
+    queuePendingCommunityStatusUpload();
+  });
   communityStatusComposeSendBtn.addEventListener("click", () => {
+    if (shouldIgnoreCommunityComposeClick()) return;
     queuePendingCommunityStatusUpload();
   });
 }
@@ -17334,8 +22467,14 @@ if (communityStatusToolTextAlignBtn) {
 }
 
 if (communityStatusComposeCloseBtn) {
+  communityStatusComposeCloseBtn.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    markCommunityComposeTouchAction();
+    closeCommunityStatusCompose({ returnToAttachmentPreview: true });
+  });
   communityStatusComposeCloseBtn.addEventListener("click", () => {
-    closeCommunityStatusCompose();
+    if (shouldIgnoreCommunityComposeClick()) return;
+    closeCommunityStatusCompose({ returnToAttachmentPreview: true });
   });
 }
 
@@ -17420,6 +22559,33 @@ if (communityChatInput) {
 
 if (communityChatMessagesEl) {
   communityChatMessagesEl.addEventListener("click", (event) => {
+    const messageLink = event.target instanceof HTMLElement
+      ? event.target.closest("a.community-message-link")
+      : null;
+    if (messageLink instanceof HTMLElement) {
+      event.preventDefault();
+      event.stopPropagation();
+      const inviteLink = messageLink.dataset.communityGroupInviteLink === "true";
+      if (inviteLink) {
+        void loadCommunityGroupInvitePreview(
+          String(messageLink.dataset.communityGroupId || "").trim(),
+          String(messageLink.dataset.communityGroupToken || "").trim(),
+          {
+            source: "invite",
+            inviteUrl: String(messageLink.dataset.communityGroupInviteUrl || messageLink.href || "").trim(),
+          },
+        );
+      } else {
+        const href = String(messageLink.href || "").trim();
+        if (href) {
+          const nextWindow = window.open(href, "_blank", "noopener");
+          if (!nextWindow) {
+            setCommunityFeedback("Link could not open right now.", true);
+          }
+        }
+      }
+      return;
+    }
     const replySnippet = event.target instanceof HTMLElement
       ? event.target.closest("[data-community-reply-source-id]")
       : null;
@@ -17653,6 +22819,352 @@ if (communityChatMessagesEl) {
 
 }
 
+if (communityResultsEl) {
+  communityResultsEl.addEventListener("pointerdown", (event) => {
+    if (isCommunityForwardMode()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const row = getCommunityConversationRowFromEventTarget(target);
+    if (!(row instanceof HTMLElement)) return;
+    communityConversationActionLastPointerType = String(event.pointerType || "").trim();
+    if (isCommunityConversationActionOpen()) return;
+    if (event.pointerType !== "touch") return;
+    clearCommunityConversationActionTimers();
+    communityConversationActionTouchStart = {
+      x: Number(event.clientX || 0),
+      y: Number(event.clientY || 0),
+      conversationId: String(row.dataset.conversationId || "").trim(),
+    };
+    communityConversationActionHoldHandle = window.setTimeout(() => {
+      communityConversationActionHoldHandle = null;
+      communityConversationActionHoldTriggered = true;
+      communityConversationActionSuppressClickConversationId = String(row.dataset.conversationId || "").trim();
+      communityConversationActionSuppressClickUntil = Date.now() + 1800;
+      communityConversationActionLastTapAt = 0;
+      communityConversationActionLastTapConversationId = "";
+      openCommunityConversationActionsForRow({
+        id: String(row.dataset.conversationId || "").trim(),
+        partner: getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === String(row.dataset.conversationId || ""))?.partner || {},
+        isFavorite: getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === String(row.dataset.conversationId || ""))?.isFavorite || false,
+      }, { pointerType: "touch" });
+    }, 520);
+  }, { passive: false });
+
+  communityResultsEl.addEventListener("pointermove", (event) => {
+    if (isCommunityForwardMode()) return;
+    if (event.pointerType !== "touch") return;
+    const gesture = communityConversationActionTouchStart;
+    if (!gesture) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const row = getCommunityConversationRowFromEventTarget(target);
+    if (!(row instanceof HTMLElement)) {
+      clearCommunityConversationActionTimers();
+      communityConversationActionTouchStart = null;
+      return;
+    }
+    if (String(row.dataset.conversationId || "").trim() !== gesture.conversationId) {
+      clearCommunityConversationActionTimers();
+      communityConversationActionTouchStart = null;
+      return;
+    }
+    const deltaX = Number(event.clientX || 0) - Number(gesture.x || 0);
+    const deltaY = Number(event.clientY || 0) - Number(gesture.y || 0);
+    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+      clearCommunityConversationActionTimers();
+      communityConversationActionTouchStart = null;
+    }
+  }, { passive: true });
+
+  communityResultsEl.addEventListener("pointerup", (event) => {
+    const gesture = communityConversationActionTouchStart;
+    const target = event?.target instanceof HTMLElement ? event.target : null;
+    const row = getCommunityConversationRowFromEventTarget(target);
+    const rowData = row
+      ? getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === String(row.dataset.conversationId || ""))
+      : null;
+    const conversationId = String(row?.dataset.conversationId || "").trim();
+    if (communityConversationActionHoldHandle) {
+      clearTimeout(communityConversationActionHoldHandle);
+      communityConversationActionHoldHandle = null;
+    }
+    if (!gesture || !row || !rowData || String(gesture.conversationId || "") !== conversationId) {
+      communityConversationActionTouchStart = null;
+      return;
+    }
+    const deltaX = Number(event?.clientX || 0) - Number(gesture.x || 0);
+    const deltaY = Number(event?.clientY || 0) - Number(gesture.y || 0);
+    const didMove = Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10;
+    if (didMove) {
+      communityConversationActionTouchStart = null;
+      return;
+    }
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (communityConversationActionHoldTriggered) {
+      communityConversationActionSuppressClickConversationId = conversationId;
+      communityConversationActionSuppressClickUntil = Date.now() + 1800;
+      communityConversationActionLastTapAt = 0;
+      communityConversationActionLastTapConversationId = "";
+      communityConversationActionTouchStart = null;
+      return;
+    }
+    const now = Date.now();
+    const isDoubleTap =
+      communityConversationActionLastTapConversationId === conversationId &&
+      now - Number(communityConversationActionLastTapAt || 0) <= 320;
+    communityConversationActionLastTapAt = now;
+    communityConversationActionLastTapConversationId = conversationId;
+    if (isDoubleTap) {
+      if (communityConversationActionOpenHandle) {
+        clearTimeout(communityConversationActionOpenHandle);
+        communityConversationActionOpenHandle = null;
+      }
+      communityConversationActionHoldTriggered = true;
+      openCommunityConversationActionsForRow(rowData, { pointerType: "touch" });
+    } else {
+      if (communityConversationActionOpenHandle) {
+        clearTimeout(communityConversationActionOpenHandle);
+        communityConversationActionOpenHandle = null;
+      }
+      communityConversationActionOpenHandle = window.setTimeout(() => {
+        communityConversationActionOpenHandle = null;
+        void executeCommunityAction("open-conversation", {
+          userId: String(row.dataset.userId || "").trim(),
+          conversationId,
+        });
+      }, 1000);
+    }
+    communityConversationActionTouchStart = null;
+  }, { passive: false });
+
+  communityResultsEl.addEventListener("pointercancel", () => {
+    if (communityConversationActionHoldHandle) {
+      clearTimeout(communityConversationActionHoldHandle);
+      communityConversationActionHoldHandle = null;
+    }
+    communityConversationActionHoldTriggered = false;
+    communityConversationActionTouchStart = null;
+  }, { passive: true });
+
+  communityResultsEl.addEventListener("dblclick", (event) => {
+    if (isCommunityForwardMode()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const row = getCommunityConversationRowFromEventTarget(target);
+    if (!(row instanceof HTMLElement)) return;
+    clearCommunityConversationActionTimers();
+    const conversationId = String(row.dataset.conversationId || "").trim();
+    const rowData = getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === conversationId);
+    if (!rowData) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openCommunityConversationActionsForRow(rowData, { pointerType: "mouse" });
+  });
+
+  communityResultsEl.addEventListener("click", (event) => {
+    if (isCommunityForwardMode()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const row = getCommunityConversationRowFromEventTarget(target);
+    if (!(row instanceof HTMLElement)) return;
+    const conversationId = String(row.dataset.conversationId || "").trim();
+    const rowData = getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === conversationId);
+    if (!rowData) return;
+    const now = Date.now();
+    if (
+      communityConversationActionSuppressClickConversationId === conversationId &&
+      now <= Number(communityConversationActionSuppressClickUntil || 0)
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (communityConversationActionHoldTriggered) {
+      communityConversationActionHoldTriggered = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (communityConversationActionLastPointerType === "touch" && !isCommunityConversationActionOpen()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (isCommunityConversationActionOpen()) {
+      event.preventDefault();
+      event.stopPropagation();
+      openCommunityConversationActionsForRow(rowData, {
+        addToSelection: true,
+        pointerType: communityConversationActionLastPointerType,
+      });
+      return;
+    }
+    if (communityConversationActionLastPointerType && communityConversationActionLastPointerType !== "touch") {
+      clearCommunityConversationActionTimers();
+      communityConversationActionOpenHandle = window.setTimeout(() => {
+        communityConversationActionOpenHandle = null;
+        void executeCommunityAction("open-conversation", {
+          userId: String(row.dataset.userId || "").trim(),
+          conversationId,
+        });
+      }, 320);
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    communityConversationActionSuppressClickConversationId = conversationId;
+    communityConversationActionSuppressClickUntil = Date.now() + 800;
+    event.preventDefault();
+    event.stopPropagation();
+    void executeCommunityAction("open-conversation", {
+      userId: String(row.dataset.userId || "").trim(),
+      conversationId,
+    });
+  }, true);
+
+  communityResultsEl.addEventListener("pointerdown", (event) => {
+    if (isCommunityForwardMode()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityFriendCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) return;
+    if (isCommunityFriendActionOpen()) return;
+    communityFriendActionLastPointerType = String(event.pointerType || "").trim();
+    if (event.pointerType !== "touch") return;
+    clearCommunityFriendActionTimers({ keepTapState: true });
+    communityFriendActionTouchStart = {
+      x: Number(event.clientX || 0),
+      y: Number(event.clientY || 0),
+      userId: String(card.dataset.userId || "").trim(),
+      moved: false,
+    };
+    const userId = String(card.dataset.userId || "").trim();
+    const relationship = String(card.dataset.communityFriendRelationship || "none").trim();
+    const requestId = String(card.dataset.communityRequestId || "").trim();
+    const user = {
+      ...(communityState.overview?.friends || []).find((entry) => String(entry?.id || "") === userId) || {},
+      ...(communityState.overview?.incoming || []).find((entry) => String(entry?.user?.id || "") === userId)?.user || {},
+      ...(communityState.overview?.sent || []).find((entry) => String(entry?.user?.id || "") === userId)?.user || {},
+      ...(Array.isArray(communityState.searchResults) ? communityState.searchResults : []).find((entry) => String(entry?.id || "") === userId) || {},
+      ...(Array.isArray(communityState.blocked) ? communityState.blocked : []).find((entry) => String(entry?.id || "") === userId) || {},
+      id: userId,
+      relationship,
+      requestId,
+    };
+    communityFriendActionHoldHandle = window.setTimeout(() => {
+      communityFriendActionHoldHandle = null;
+      communityFriendActionHoldTriggered = true;
+      openCommunityFriendActionsForUser(user, {
+        relationship,
+        requestId,
+        pointerType: "touch",
+      });
+    }, 520);
+  }, { passive: false });
+
+  communityResultsEl.addEventListener("pointermove", (event) => {
+    if (isCommunityForwardMode()) return;
+    if (event.pointerType !== "touch") return;
+    const gesture = communityFriendActionTouchStart;
+    if (!gesture) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityFriendCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) {
+      clearCommunityFriendActionTimers();
+      return;
+    }
+    if (String(card.dataset.userId || "").trim() !== gesture.userId) {
+      clearCommunityFriendActionTimers();
+      return;
+    }
+    const deltaX = Number(event.clientX || 0) - Number(gesture.x || 0);
+    const deltaY = Number(event.clientY || 0) - Number(gesture.y || 0);
+    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+      gesture.moved = true;
+      clearCommunityFriendActionTimers();
+    }
+  }, { passive: true });
+
+  communityResultsEl.addEventListener("pointerup", (event) => {
+    if (communityFriendActionHoldHandle) {
+      clearTimeout(communityFriendActionHoldHandle);
+      communityFriendActionHoldHandle = null;
+    }
+    const gesture = communityFriendActionTouchStart;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityFriendCardFromEventTarget(target);
+    if (!gesture || !(card instanceof HTMLElement)) {
+      communityFriendActionTouchStart = null;
+      return;
+    }
+    if (String(card.dataset.userId || "").trim() !== gesture.userId) {
+      communityFriendActionTouchStart = null;
+      return;
+    }
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (communityFriendActionHoldTriggered) {
+      window.setTimeout(() => {
+        communityFriendActionHoldTriggered = false;
+      }, 260);
+      communityFriendActionLastTapAt = 0;
+      communityFriendActionLastTapUserId = "";
+      return;
+    }
+    if (!gesture.moved) {
+      const now = Date.now();
+      const isDoubleTap =
+        communityFriendActionLastTapUserId === gesture.userId &&
+        now - communityFriendActionLastTapAt <= 320;
+      if (isDoubleTap) {
+        const relationship = String(card.dataset.communityFriendRelationship || "none").trim();
+        const requestId = String(card.dataset.communityRequestId || "").trim();
+        const user =
+          (communityState.overview?.friends || []).find((entry) => String(entry?.id || "") === gesture.userId) ||
+          (communityState.overview?.incoming || []).find((entry) => String(entry?.user?.id || "") === gesture.userId)?.user ||
+          (communityState.overview?.sent || []).find((entry) => String(entry?.user?.id || "") === gesture.userId)?.user ||
+          (Array.isArray(communityState.searchResults) ? communityState.searchResults : []).find((entry) => String(entry?.id || "") === gesture.userId) ||
+          (Array.isArray(communityState.blocked) ? communityState.blocked : []).find((entry) => String(entry?.id || "") === gesture.userId) ||
+          null;
+        if (user) {
+          openCommunityFriendActionsForUser({ ...user, id: gesture.userId, relationship, requestId }, { relationship, requestId, pointerType: "touch" });
+        }
+        communityFriendActionLastTapAt = 0;
+        communityFriendActionLastTapUserId = "";
+      } else {
+        communityFriendActionLastTapAt = now;
+        communityFriendActionLastTapUserId = gesture.userId;
+      }
+    }
+    communityFriendActionTouchStart = null;
+  }, { passive: false });
+
+  communityResultsEl.addEventListener("pointercancel", () => {
+    clearCommunityFriendActionTimers();
+  }, { passive: true });
+
+  communityResultsEl.addEventListener("dblclick", (event) => {
+    if (isCommunityForwardMode()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityFriendCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const userId = String(card.dataset.userId || "").trim();
+    const relationship = String(card.dataset.communityFriendRelationship || "none").trim();
+    const requestId = String(card.dataset.communityRequestId || "").trim();
+    const user =
+      (communityState.overview?.friends || []).find((entry) => String(entry?.id || "") === userId) ||
+      (communityState.overview?.incoming || []).find((entry) => String(entry?.user?.id || "") === userId)?.user ||
+      (communityState.overview?.sent || []).find((entry) => String(entry?.user?.id || "") === userId)?.user ||
+      (Array.isArray(communityState.searchResults) ? communityState.searchResults : []).find((entry) => String(entry?.id || "") === userId) ||
+      (Array.isArray(communityState.blocked) ? communityState.blocked : []).find((entry) => String(entry?.id || "") === userId) ||
+      null;
+    if (!user) return;
+    openCommunityFriendActionsForUser({ ...user, id: userId, relationship, requestId }, { relationship, requestId, pointerType: "mouse" });
+  });
+}
+
 if (communityMessageCopyBtn) {
   communityMessageCopyBtn.addEventListener("click", () => {
     void copyCommunityMessageText();
@@ -17776,7 +23288,10 @@ document.addEventListener("click", (event) => {
   }
   const attachmentPreviewTrigger = target.closest("[data-community-preview-attachment]");
   if (attachmentPreviewTrigger instanceof HTMLElement) {
-    const attachmentIndex = Math.max(-1, Number(attachmentPreviewTrigger.dataset.communityPreviewAttachment || -1) || -1);
+    const attachmentIndex = getCommunityNumericIndex(
+      attachmentPreviewTrigger.dataset.communityPreviewAttachment,
+      -1,
+    );
     const previewIndex = getCommunityPreviewablePendingAttachments().findIndex(({ index }) => index === attachmentIndex);
     if (previewIndex >= 0) {
       openCommunityAttachmentPreviewModal(previewIndex);
@@ -17923,6 +23438,10 @@ function findCommunityActionPayload(target) {
   if (!(actionButton instanceof HTMLElement)) return null;
   const avatarTrigger = target.closest("[data-community-avatar-view='true']");
   const actionValue = String(actionButton.dataset.communityAction || "").trim();
+  const chatRow = target.closest(".community-chat-row[data-conversation-id]");
+  if (chatRow instanceof HTMLElement) {
+    return null;
+  }
   if (avatarTrigger instanceof HTMLElement && (actionValue === "open-conversation" || actionValue === "open-chat")) {
     return null;
   }
@@ -17964,6 +23483,14 @@ document.addEventListener("click", (event) => {
     return;
   }
   const target = event.target instanceof Element ? event.target : null;
+  if (target && (isCommunityConversationActionOpen() || isCommunityFriendActionOpen())) {
+    const behindModalRow = target.closest(".community-chat-row[data-conversation-id], .community-user-card[data-user-id]");
+    if (behindModalRow instanceof HTMLElement) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+  }
   const selectedIds = getCommunitySelectedMessageIds();
   const messageBubble = target?.closest("[data-message-id]");
   if (
@@ -18028,11 +23555,10 @@ document.addEventListener("click", (event) => {
       return;
     }
     const mediaSrc = String(mediaTrigger.dataset.communityMediaImage || "").trim();
-    const mediaName = String(mediaTrigger.dataset.communityMediaName || "").trim();
     const mediaKind = String(mediaTrigger.dataset.communityMediaKind || "image").trim();
     const mediaMime = String(mediaTrigger.dataset.communityMediaMime || "").trim();
     queueCommunityPendingAttachmentOpen(() => {
-      openCommunityMediaModal(mediaSrc, mediaName, {
+      openCommunityMediaModal(mediaSrc, "", {
         kind: mediaKind,
         mimeType: mediaMime,
       });
@@ -18793,6 +24319,26 @@ document.addEventListener("change", async (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (!communityGroupInviteModalEl?.classList.contains("hidden") && event.key === "Escape") {
+    event.preventDefault();
+    closeCommunityGroupInviteModal();
+    return;
+  }
+  if (!communityThreadActionsModalEl?.classList.contains("hidden") && event.key === "Escape") {
+    event.preventDefault();
+    closeCommunityConversationActions();
+    return;
+  }
+  if (!communityFriendActionsModalEl?.classList.contains("hidden") && event.key === "Escape") {
+    event.preventDefault();
+    closeCommunityFriendActions();
+    return;
+  }
+  if (!communityReportModalEl?.classList.contains("hidden") && event.key === "Escape") {
+    event.preventDefault();
+    closeCommunityReportModal();
+    return;
+  }
   if (!communityGroupEditModalEl?.classList.contains("hidden") && event.key === "Escape") {
     event.preventDefault();
     closeCommunityGroupEditModal();
@@ -18876,12 +24422,43 @@ if (communityMediaCloseBtn) {
   });
 }
 
+if (communityMediaPrevBtn) {
+  communityMediaPrevBtn.addEventListener("click", () => {
+    if (Date.now() < Number(communityState.mediaViewerSwipeSuppressTapUntil || 0)) return;
+    stepCommunityMediaViewer(-1);
+  });
+}
+
+if (communityMediaNextBtn) {
+  communityMediaNextBtn.addEventListener("click", () => {
+    if (Date.now() < Number(communityState.mediaViewerSwipeSuppressTapUntil || 0)) return;
+    stepCommunityMediaViewer(1);
+  });
+}
+
+if (communityMediaAddBtn) {
+  communityMediaAddBtn.addEventListener("click", () => {
+    communityState.pendingAttachmentMergeMode = "append";
+    communityChatImageInput?.click();
+  });
+}
+
+if (communityMediaRemoveBtn) {
+  communityMediaRemoveBtn.addEventListener("click", () => {
+    void removeCurrentCommunityMediaViewerItem();
+  });
+}
+
 if (communityMediaModalEl) {
   communityMediaModalEl.addEventListener("click", (event) => {
     if (event.target === communityMediaModalEl && !isCommunityCoarsePointer()) {
       closeCommunityMediaModal();
     }
   });
+  communityMediaModalEl.addEventListener("touchstart", handleCommunityMediaViewerTouchStart, { passive: true });
+  communityMediaModalEl.addEventListener("touchmove", handleCommunityMediaViewerTouchMove, { passive: true });
+  communityMediaModalEl.addEventListener("touchend", handleCommunityMediaViewerTouchEnd, { passive: true });
+  communityMediaModalEl.addEventListener("touchcancel", handleCommunityMediaViewerTouchCancel, { passive: true });
 }
 
 if (communityMediaModalVideoEl) {
@@ -19397,7 +24974,9 @@ if (communityStatusModalEl) {
 if (communityStatusComposeModalEl) {
   communityStatusComposeModalEl.addEventListener("click", (event) => {
     if (event.target === communityStatusComposeModalEl) {
-      closeCommunityStatusCompose();
+      closeCommunityStatusCompose({
+        returnToAttachmentPreview: String(communityState.statusComposeSource?.mode || "").trim() === "chat-attachment",
+      });
     }
   });
 }
@@ -19430,6 +25009,14 @@ if (communityGroupModalEl) {
   communityGroupModalEl.addEventListener("click", (event) => {
     if (event.target === communityGroupModalEl) {
       closeCommunityGroupModal();
+    }
+  });
+}
+
+if (communityGroupInviteModalEl) {
+  communityGroupInviteModalEl.addEventListener("click", (event) => {
+    if (event.target === communityGroupInviteModalEl) {
+      closeCommunityGroupInviteModal();
     }
   });
 }
@@ -19474,10 +25061,286 @@ if (communityConfirmOkBtn) {
   });
 }
 
+if (communityThreadActionsCloseBtn) {
+  communityThreadActionsCloseBtn.addEventListener("click", () => {
+    closeCommunityConversationActions();
+  });
+}
+
+document.addEventListener("pointerdown", (event) => {
+  if (!isCommunityConversationActionOpen()) return;
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+  if (communityThreadActionsModalEl?.contains(target)) return;
+  if (communityConfirmModalEl?.contains(target)) return;
+  closeCommunityConversationActions();
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!isCommunityFriendActionOpen()) return;
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+  if (communityFriendActionsModalEl?.contains(target)) return;
+  closeCommunityFriendActions();
+});
+
+if (communityThreadActionsViewBtn) {
+  communityThreadActionsViewBtn.addEventListener("click", () => {
+    void runCommunityConversationAction("view");
+  });
+}
+
+if (communityThreadActionsFavoriteBtn) {
+  communityThreadActionsFavoriteBtn.addEventListener("click", () => {
+    const intent = String(communityThreadActionsFavoriteBtn.dataset.intent || "favorite").trim();
+    void runCommunityConversationAction(intent === "remove-favorite" ? "remove-favorite" : "favorite");
+  });
+}
+
+if (communityThreadActionsClearBtn) {
+  communityThreadActionsClearBtn.addEventListener("click", () => {
+    void runCommunityConversationAction("clear");
+  });
+}
+
+if (communityThreadActionsUnfriendBtn) {
+  communityThreadActionsUnfriendBtn.addEventListener("click", () => {
+    void runCommunityConversationAction("unfriend");
+  });
+}
+
+if (communityThreadActionsDeleteBtn) {
+  communityThreadActionsDeleteBtn.addEventListener("click", () => {
+    const rows = getCommunityConversationActionSelectedRows();
+    const mode = rows.some((row) => Boolean(row?.partner?.isGroup)) ? "group" : "direct";
+    closeCommunityConversationActions({ keepSelection: true });
+    openCommunityConfirmModal({
+      title: mode === "group" ? "Delete group?" : "Delete chat?",
+      text: mode === "group"
+        ? "This removes the selected group for everyone. Use Exit Group if you only want to leave."
+        : "This removes the selected chat from your list.",
+      confirmLabel: mode === "group" ? "Delete Group" : "Delete",
+      intent: "danger",
+      onConfirm: async () => {
+        closeCommunityConfirmModal();
+        await runCommunityConversationAction("delete");
+      },
+    });
+  });
+}
+
+if (communityThreadActionsBlockBtn) {
+  communityThreadActionsBlockBtn.addEventListener("click", () => {
+    closeCommunityConversationActions({ keepSelection: true });
+    openCommunityConfirmModal({
+      title: "Block learner?",
+      text: "This will stop new direct messages from the selected learner(s).",
+      confirmLabel: "Block",
+      intent: "danger",
+      onConfirm: async () => {
+        closeCommunityConfirmModal();
+        await runCommunityConversationAction("block");
+      },
+    });
+  });
+}
+
+if (communityThreadActionsExitBtn) {
+  communityThreadActionsExitBtn.addEventListener("click", () => {
+    closeCommunityConversationActions({ keepSelection: true });
+    openCommunityConfirmModal({
+      title: "Exit group?",
+      text: "You will leave the selected group(s) and stop receiving messages there.",
+      confirmLabel: "Exit",
+      intent: "danger",
+      onConfirm: async () => {
+        closeCommunityConfirmModal();
+        await runCommunityConversationAction("exit-group");
+      },
+    });
+  });
+}
+
+if (communityThreadActionsModalEl) {
+  communityThreadActionsModalEl.addEventListener("pointerdown", (event) => {
+    if (event.target !== communityThreadActionsModalEl) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeCommunityConversationActions();
+  });
+}
+
+if (communityFriendActionsCloseBtn) {
+  communityFriendActionsCloseBtn.addEventListener("click", () => {
+    closeCommunityFriendActions();
+  });
+}
+
+if (communityFriendActionsViewBtn) {
+  communityFriendActionsViewBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("view");
+  });
+}
+
+if (communityFriendActionsMessageBtn) {
+  communityFriendActionsMessageBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("message");
+  });
+}
+
+if (communityFriendActionsUnfriendBtn) {
+  communityFriendActionsUnfriendBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("unfriend");
+  });
+}
+
+if (communityFriendActionsAcceptBtn) {
+  communityFriendActionsAcceptBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("accept");
+  });
+}
+
+if (communityFriendActionsRejectBtn) {
+  communityFriendActionsRejectBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("reject");
+  });
+}
+
+if (communityFriendActionsCancelBtn) {
+  communityFriendActionsCancelBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("cancel");
+  });
+}
+
+if (communityFriendActionsAddBtn) {
+  communityFriendActionsAddBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("add");
+  });
+}
+
+if (communityFriendActionsBlockBtn) {
+  communityFriendActionsBlockBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("block");
+  });
+}
+
+if (communityFriendActionsUnblockBtn) {
+  communityFriendActionsUnblockBtn.addEventListener("click", () => {
+    void runCommunityFriendAction("unblock");
+  });
+}
+
+if (communityFriendActionsModalEl) {
+  communityFriendActionsModalEl.addEventListener("pointerdown", (event) => {
+    if (event.target !== communityFriendActionsModalEl) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeCommunityFriendActions();
+  });
+}
+
+if (communityReportCancelBtn) {
+  communityReportCancelBtn.addEventListener("click", () => {
+    closeCommunityReportModal();
+  });
+}
+
+if (communityReportSubmitBtn) {
+  communityReportSubmitBtn.addEventListener("click", () => {
+    void submitCommunityReportModal();
+  });
+}
+
+if (communityReportReasonSelectEl) {
+  communityReportReasonSelectEl.addEventListener("change", () => {
+    const nextReason = String(communityReportReasonSelectEl.value || "").trim();
+    communityState.reportModal.reason = nextReason;
+    if (nextReason !== "Other" && communityReportDetailsEl) {
+      communityReportDetailsEl.placeholder = nextReason
+        ? `Add context about ${nextReason.toLowerCase()}`
+        : "Add details (optional)";
+    }
+    renderCommunityReportModal();
+  });
+}
+
+if (communityReportDetailsEl) {
+  communityReportDetailsEl.addEventListener("input", () => {
+    communityState.reportModal.details = String(communityReportDetailsEl.value || "");
+  });
+}
+
 if (communityConfirmModalEl) {
   communityConfirmModalEl.addEventListener("click", (event) => {
     if (event.target === communityConfirmModalEl) {
       closeCommunityConfirmModal();
+    }
+  });
+}
+
+if (communityReportModalEl) {
+  communityReportModalEl.addEventListener("click", (event) => {
+    if (event.target === communityReportModalEl) {
+      closeCommunityReportModal();
+    }
+  });
+}
+
+if (communityAdminBroadcastCloseBtn) {
+  communityAdminBroadcastCloseBtn.addEventListener("click", () => {
+    closeCommunityAdminBroadcastModal();
+  });
+}
+
+if (communityAdminBroadcastAttachBtn) {
+  communityAdminBroadcastAttachBtn.addEventListener("click", () => {
+    communityAdminBroadcastFileInput?.click();
+  });
+}
+
+if (communityAdminBroadcastFileInput) {
+  communityAdminBroadcastFileInput.addEventListener("change", (event) => {
+    const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
+    if (file instanceof File) {
+      void handleCommunityAdminBroadcastAttachment(file);
+    }
+    if (event.target instanceof HTMLInputElement) {
+      event.target.value = "";
+    }
+  });
+}
+
+if (communityAdminBroadcastClearBtn) {
+  communityAdminBroadcastClearBtn.addEventListener("click", () => {
+    communityState.adminBroadcastModal = {
+      ...(communityState.adminBroadcastModal || {}),
+      attachment: null,
+      attachmentName: "No attachment selected.",
+    };
+    syncCommunityAdminBroadcastModal();
+  });
+}
+
+if (communityAdminBroadcastInput) {
+  communityAdminBroadcastInput.addEventListener("input", () => {
+    communityState.adminBroadcastModal = {
+      ...(communityState.adminBroadcastModal || {}),
+      message: String(communityAdminBroadcastInput.value || ""),
+    };
+    syncCommunityAdminBroadcastModal();
+  });
+}
+
+if (communityAdminBroadcastSendBtn) {
+  communityAdminBroadcastSendBtn.addEventListener("click", () => {
+    void submitCommunityAdminBroadcast();
+  });
+}
+
+if (communityAdminBroadcastModalEl) {
+  communityAdminBroadcastModalEl.addEventListener("click", (event) => {
+    if (event.target === communityAdminBroadcastModalEl) {
+      closeCommunityAdminBroadcastModal();
     }
   });
 }
@@ -19715,6 +25578,7 @@ document.addEventListener("click", (event) => {
   if (!(target instanceof Node)) return;
   if (menuUserHubPanel.contains(target)) return;
   if (menuUserHubBtn && menuUserHubBtn.contains(target)) return;
+  if (menuMobileHamburgerBtn && menuMobileHamburgerBtn.contains(target)) return;
   closeMenuUserHub();
 });
 
@@ -19773,7 +25637,7 @@ function renderQuestionTopicLink(question) {
   if (!topicLinkWrapEl || !topicLinkBtnEl) return;
 
   const isStudyMode = isStudyLikeMode();
-  if (!isStudyMode) {
+  if (!isStudyMode || isLawStudyMode()) {
     topicLinkWrapEl.classList.add("hidden");
     topicLinkBtnEl.removeAttribute("href");
     return;
@@ -20094,6 +25958,7 @@ function populateTopicLibraryCategories() {
     option.innerText = category;
     topicLibraryCategorySelect.appendChild(option);
   });
+  syncSetupPickerButton(topicLibraryCategorySelect, topicLibraryCategoryPickerBtn);
 }
 
 async function ensureTopicCatalogLoaded() {
@@ -21290,13 +27155,21 @@ function closeMenuUserHub() {
   if (menuUserHubBtn) {
     menuUserHubBtn.setAttribute("aria-expanded", "false");
   }
+  if (menuMobileHamburgerBtn) {
+    menuMobileHamburgerBtn.setAttribute("aria-expanded", "false");
+  }
 }
 
 function toggleMenuUserHub() {
-  if (!menuUserHubPanel || !menuUserHubBtn) return;
+  if (!menuUserHubPanel || (!menuUserHubBtn && !menuMobileHamburgerBtn)) return;
   const opening = menuUserHubPanel.classList.contains("hidden");
   menuUserHubPanel.classList.toggle("hidden", !opening);
-  menuUserHubBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+  if (menuUserHubBtn) {
+    menuUserHubBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+  }
+  if (menuMobileHamburgerBtn) {
+    menuMobileHamburgerBtn.setAttribute("aria-expanded", opening ? "true" : "false");
+  }
 }
 
 function syncTourStep(step) {
@@ -21368,6 +27241,9 @@ function renderAuthState() {
       schedulePendingPointsSync(120);
     }
     void syncOneSignalUserSession();
+    if (getPendingCommunityGroupInvite() && !communityState.groupInviteLaunch.handled) {
+      void consumePendingCommunityGroupInvite();
+    }
     return;
   }
 
@@ -21850,6 +27726,30 @@ async function ensureAuthenticated() {
   if (restored) return true;
   openAuthModal("login");
   return false;
+}
+
+function hasSeenWelcomeIntro() {
+  try {
+    return localStorage.getItem(WELCOME_INTRO_SEEN_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+function markWelcomeIntroSeen() {
+  try {
+    localStorage.setItem(WELCOME_INTRO_SEEN_KEY, "1");
+  } catch {}
+}
+
+function shouldShowWelcomeIntro() {
+  return Boolean(welcomeScreen) && !hasSeenWelcomeIntro();
+}
+
+function openWelcomeRegisterFlow(event) {
+  event?.preventDefault?.();
+  markWelcomeIntroSeen();
+  openAuthModal("register");
 }
 
 async function handlePortalEntry() {
@@ -22784,6 +28684,15 @@ if (sessionResumeNewBtn) {
 if (backBtnQuiz) {
   backBtnQuiz.onclick = function () {
     if (mode === "study") {
+      if (isLawStudyMode()) {
+        persistLawDrillSession();
+        if (getLawDrillView() === "ladder") {
+          goToMenu();
+        } else {
+          returnToLawLadder();
+        }
+        return;
+      }
       saveStudyProgress();
       returnToParentScreen("study-setup");
       return;
@@ -22849,6 +28758,12 @@ if (examBackBtn) {
 const enterBtn = document.getElementById("enter-platform-btn");
 if (enterBtn) {
   enterBtn.onclick = handlePortalEntry;
+}
+
+if (welcomeRegisterCtaBtns.length) {
+  welcomeRegisterCtaBtns.forEach((btn) => {
+    btn.onclick = openWelcomeRegisterFlow;
+  });
 }
 
 const startExamBtn = document.getElementById("start-exam-btn");
@@ -22922,6 +28837,11 @@ function startMenuDrill(variant = "rapid") {
     startExam(String(clinicalTotalQuestions), "clinical");
     return;
   }
+  if (drill === "law") {
+    const savedSession = getSavedLawDrillSession();
+    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+    return;
+  }
 }
 
 if (rapidDrillBtn) {
@@ -22934,6 +28854,10 @@ if (suddenDrillBtn) {
 
 if (clinicalDrillBtn) {
   clinicalDrillBtn.onclick = () => startMenuDrill("clinical");
+}
+
+if (lawDrillBtn) {
+  lawDrillBtn.onclick = () => startMenuDrill("law");
 }
 
 function showCountTooltip() {
@@ -22984,6 +28908,27 @@ if (examBtn) {
 if (dailyQuizBtn) {
   dailyQuizBtn.onclick = () => {
     openDailySetup();
+  };
+}
+
+if (menuStreakCardBtn) {
+  menuStreakCardBtn.onclick = () => {
+    closeMenuUserHub();
+    openDailySetup();
+  };
+}
+
+if (menuPointsCardBtn) {
+  menuPointsCardBtn.onclick = () => {
+    closeMenuUserHub();
+    openLeaderboardModal("alltime");
+  };
+}
+
+if (menuRankCardBtn) {
+  menuRankCardBtn.onclick = () => {
+    closeMenuUserHub();
+    openLeaderboardModal("alltime");
   };
 }
 
@@ -23052,6 +28997,7 @@ function renderDashboardValues({
   weakCount = 0,
   sessionCount = 0,
   categories = [],
+  rotations = [],
 }) {
   document.getElementById("dash-total").innerText = totalAttempts;
   document.getElementById("dash-accuracy").innerText = overallAccuracy + "%";
@@ -23089,6 +29035,7 @@ function renderDashboardValues({
   }
 
   renderDashboardTopSubjects(categories);
+  renderDashboardRotations(rotations);
   renderDashboardRecentResults();
   renderDashboardTrend();
 }
@@ -23119,12 +29066,21 @@ function getLocalDashboardSnapshot() {
     }))
     .sort((a, b) => String(a.category).localeCompare(String(b.category)));
 
+  const rotations = Object.keys(rotationPerformance || {})
+    .map((rotation) => ({
+      rotation,
+      attempts: Math.max(0, Number(rotationPerformance?.[rotation]?.attempts) || 0),
+      accuracy: getRotationAccuracy(rotation),
+    }))
+    .sort((a, b) => String(a.rotation).localeCompare(String(b.rotation)));
+
   return {
     totalAttempts,
     overallAccuracy,
     weakCount,
     sessionCount: Array.isArray(sessionHistory) ? sessionHistory.length : 0,
     categories,
+    rotations,
   };
 }
 
@@ -23135,6 +29091,7 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     weakCount: 0,
     sessionCount: 0,
     categories: [],
+    rotations: [],
   };
   const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
 
@@ -23187,6 +29144,38 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     });
   });
 
+  const mergedRotationMap = new Map();
+  (Array.isArray(local.rotations) ? local.rotations : []).forEach((row) => {
+    const name = String(row?.rotation || "").trim() || "General";
+    mergedRotationMap.set(name, {
+      rotation: name,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
+    });
+  });
+
+  (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
+    const name = String(row?.rotation || "").trim() || "General";
+    const remoteRow = {
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
+    };
+    const existing = mergedRotationMap.get(name);
+    if (!existing) {
+      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
+      return;
+    }
+    if (remoteRow.attempts > existing.attempts) {
+      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
+      return;
+    }
+    mergedRotationMap.set(name, {
+      rotation: name,
+      attempts: existing.attempts,
+      accuracy: existing.accuracy,
+    });
+  });
+
   return {
     totalAttempts: mergedTotalAttempts,
     overallAccuracy: mergedOverallAccuracy,
@@ -23194,6 +29183,9 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     sessionCount: Math.max(0, Number(local.sessionCount) || 0),
     categories: [...mergedCategoryMap.values()].sort((a, b) =>
       String(a.category).localeCompare(String(b.category)),
+    ),
+    rotations: [...mergedRotationMap.values()].sort((a, b) =>
+      String(a.rotation).localeCompare(String(b.rotation)),
     ),
   };
 }
@@ -23314,6 +29306,38 @@ function renderDashboardTopSubjects(categories = []) {
   });
 }
 
+function renderDashboardRotations(rotations = []) {
+  const container = document.getElementById("dash-rotations");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const rows = [...(Array.isArray(rotations) ? rotations : [])]
+    .sort((a, b) => {
+      const accuracyDiff = (Number(b?.accuracy) || 0) - (Number(a?.accuracy) || 0);
+      if (accuracyDiff !== 0) return accuracyDiff;
+      return (Number(b?.attempts) || 0) - (Number(a?.attempts) || 0);
+    })
+    .slice(0, 3);
+
+  if (!rows.length) {
+    container.innerHTML = '<div class="dashboard-empty-state">No rotation data yet.</div>';
+    return;
+  }
+
+  rows.forEach((row) => {
+    const item = document.createElement("div");
+    item.className = "dashboard-topsubject-row";
+    item.innerHTML = `
+      <div class="dashboard-topsubject-copy">
+        <div class="dashboard-topsubject-name">${row.rotation || "General"}</div>
+        <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
+      </div>
+      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+    `;
+    container.appendChild(item);
+  });
+}
+
 function renderDashboardRecentResults() {
   const container = document.getElementById("dash-recent-results");
   if (!container) return;
@@ -23374,6 +29398,7 @@ function saveSession(mode, score, total, duration = null) {
     score,
     total,
     percent,
+    timestamp: new Date().toISOString(),
     date: formatAppDateTime(new Date()),
     duration,
   };
@@ -23535,11 +29560,12 @@ function buildCategorySummary() {
   return summary || "<p>No category data yet.</p>";
 }
 
-function getAdaptiveQuestions(count) {
+function getAdaptiveQuestions(count, { category = "all", rotation = "all" } = {}) {
   const weakCats = getWeakCategories();
   const weighted = [];
+  const pool = filterQuestionsByCategoryAndRotation(questionBank, category, rotation);
 
-  questionBank.forEach((q) => {
+  pool.forEach((q) => {
     let weight = 1;
 
     if (weakCats.includes(q.category)) {
@@ -23622,6 +29648,156 @@ function updateStreak(isCorrect) {
   }
 }
 
+const setupPickerBindings = [
+  {
+    select: studyTypeSelect,
+    button: studyTypePickerBtn,
+    title: "Study Type",
+    subtitle: "Choose how you want to study.",
+  },
+  {
+    select: studyRotationSelect,
+    button: studyRotationPickerBtn,
+    title: "Study Rotation",
+    subtitle: "Choose a training rotation for study mode.",
+  },
+  {
+    select: studyCategorySelect,
+    button: studyCategoryPickerBtn,
+    title: "Study Category",
+    subtitle: "Choose the category you want to practice.",
+  },
+  {
+    select: examTypeSelect,
+    button: examTypePickerBtn,
+    title: "Exam Type",
+    subtitle: "Choose how this exam should run.",
+  },
+  {
+    select: examRotationSelect,
+    button: examRotationPickerBtn,
+    title: "Exam Rotation",
+    subtitle: "Choose a training rotation for exam mode.",
+  },
+  {
+    select: examCategorySelect,
+    button: examCategoryPickerBtn,
+    title: "Exam Category",
+    subtitle: "Choose the category for this exam.",
+  },
+  {
+    select: examCountSelect,
+    button: examCountPickerBtn,
+    title: "Question Count",
+    subtitle: "Choose how many questions to answer.",
+  },
+  {
+    select: topicLibraryCategorySelect,
+    button: topicLibraryCategoryPickerBtn,
+    title: "Topic Category",
+    subtitle: "Filter the topic library by category.",
+  },
+];
+let setupPickerActiveBinding = null;
+
+function getSetupPickerLabel(selectEl = null, value = "") {
+  if (!(selectEl instanceof HTMLSelectElement)) return "";
+  const safeValue = String(value || selectEl.value || "").trim();
+  const option = Array.from(selectEl.options || []).find((item) => String(item.value) === safeValue);
+  return String(option?.textContent || option?.innerText || "").trim();
+}
+
+function syncSetupPickerButton(selectEl = null, buttonEl = null) {
+  if (!(selectEl instanceof HTMLSelectElement) || !(buttonEl instanceof HTMLElement)) return;
+  const label = getSetupPickerLabel(selectEl) || "Select";
+  const labelEl = buttonEl.querySelector(".setup-picker-trigger-label");
+  if (labelEl) {
+    labelEl.textContent = label;
+  } else {
+    buttonEl.textContent = label;
+  }
+  buttonEl.setAttribute("aria-label", `${label} dropdown`);
+  buttonEl.dataset.selectedValue = String(selectEl.value || "");
+}
+
+function syncAllSetupPickerButtons() {
+  setupPickerBindings.forEach(({ select, button }) => syncSetupPickerButton(select, button));
+}
+
+function closeSetupPickerModal({ restoreFocus = true } = {}) {
+  if (!setupPickerModalEl) return;
+  setupPickerModalEl.classList.add("hidden");
+  if (setupPickerActiveBinding?.button instanceof HTMLElement) {
+    setupPickerActiveBinding.button.setAttribute("aria-expanded", "false");
+    if (restoreFocus) {
+      setupPickerActiveBinding.button.focus?.();
+    }
+  }
+  setupPickerActiveBinding = null;
+}
+
+function openSetupPickerModal(selectEl = null, buttonEl = null, title = "Select option", subtitle = "Choose one option.") {
+  if (!(selectEl instanceof HTMLSelectElement) || !(buttonEl instanceof HTMLElement) || !setupPickerModalEl || !setupPickerListEl) return;
+  setupPickerActiveBinding = { select: selectEl, button: buttonEl, title, subtitle };
+  if (setupPickerTitleEl) setupPickerTitleEl.textContent = String(title || "Select option");
+  if (setupPickerSubtitleEl) setupPickerSubtitleEl.textContent = String(subtitle || "Choose one option.");
+  setupPickerListEl.innerHTML = Array.from(selectEl.options || [])
+    .map((option) => {
+      const value = String(option.value || "");
+      const label = String(option.textContent || option.innerText || "").trim();
+      const selected = value === String(selectEl.value || "");
+      return `
+        <button type="button" class="setup-picker-option ${selected ? "is-selected" : ""}" data-setup-picker-value="${escapeHtml(value)}">
+          <span class="setup-picker-option-label">${escapeHtml(label)}</span>
+          ${selected ? '<span class="setup-picker-option-check" aria-hidden="true">&#10003;</span>' : ""}
+        </button>
+      `;
+    })
+    .join("");
+  setupPickerModalEl.classList.remove("hidden");
+  buttonEl.setAttribute("aria-expanded", "true");
+}
+
+function applySetupPickerValue(value = "") {
+  const binding = setupPickerActiveBinding;
+  if (!binding || !(binding.select instanceof HTMLSelectElement)) return;
+  binding.select.value = String(value || "");
+  binding.select.dispatchEvent(new Event("change", { bubbles: true }));
+  syncSetupPickerButton(binding.select, binding.button);
+  closeSetupPickerModal();
+}
+
+function wireSetupPickerModal() {
+  if (!setupPickerModalEl) return;
+  setupPickerModalEl.addEventListener("click", (event) => {
+    if (event.target === setupPickerModalEl) {
+      closeSetupPickerModal();
+    }
+  });
+  setupPickerListEl?.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const optionBtn = target?.closest("[data-setup-picker-value]");
+    if (!(optionBtn instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    applySetupPickerValue(String(optionBtn.dataset.setupPickerValue || ""));
+  });
+  setupPickerCloseBtn?.addEventListener("click", () => closeSetupPickerModal());
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && setupPickerModalEl && !setupPickerModalEl.classList.contains("hidden")) {
+      closeSetupPickerModal();
+    }
+  });
+}
+
+function wireSetupPickerTriggers() {
+  setupPickerBindings.forEach(({ select, button, title, subtitle }) => {
+    if (!(select instanceof HTMLSelectElement) || !(button instanceof HTMLElement)) return;
+    button.addEventListener("click", () => openSetupPickerModal(select, button, title, subtitle));
+    select.addEventListener("change", () => syncSetupPickerButton(select, button));
+  });
+}
+
 function populateExamCategories() {
   const select = document.getElementById("category-select");
   if (!select) return;
@@ -23634,7 +29810,42 @@ function populateExamCategories() {
     option.innerText = cat;
     select.appendChild(option);
   });
+
+  syncSetupPickerButton(select, examCategoryPickerBtn);
 }
+
+function populateStudyRotations() {
+  const select = document.getElementById("study-rotation-select");
+  if (!select) return;
+
+  select.innerHTML = '<option value="all">All Rotations</option>';
+
+  ROTATION_OPTIONS.forEach((rotation) => {
+    const option = document.createElement("option");
+    option.value = rotation;
+    option.innerText = rotation;
+    select.appendChild(option);
+  });
+
+  syncSetupPickerButton(select, studyRotationPickerBtn);
+}
+
+function populateExamRotations() {
+  const select = document.getElementById("rotation-select");
+  if (!select) return;
+
+  select.innerHTML = '<option value="all">All Rotations</option>';
+
+  ROTATION_OPTIONS.forEach((rotation) => {
+    const option = document.createElement("option");
+    option.value = rotation;
+    option.innerText = rotation;
+    select.appendChild(option);
+  });
+
+  syncSetupPickerButton(select, examRotationPickerBtn);
+}
+
 function populateStudyCategories() {
   const select = document.getElementById("study-category-select");
   if (!select) return;
@@ -23644,11 +29855,12 @@ function populateStudyCategories() {
   MAJOR_CATEGORIES.forEach((cat) => {
     const option = document.createElement("option");
     option.value = cat;
-    option.innerText = `Study – ${cat}`;
+    option.innerText = cat;
     select.appendChild(option);
   });
-}
 
+  syncSetupPickerButton(select, studyCategoryPickerBtn);
+}
 function updateModeIndicator(studyType = null) {
   const indicator = document.getElementById("mode-indicator");
   const headerStats = document.getElementById("header-stats");
@@ -23662,6 +29874,7 @@ function updateModeIndicator(studyType = null) {
       "mode-exam",
       "mode-smart",
       "mode-daily",
+      "mode-law",
       "mode-rapid",
       "mode-sudden",
       "mode-clinical",
@@ -23669,16 +29882,30 @@ function updateModeIndicator(studyType = null) {
   }
 
   if (mode === "study") {
-    if (studyType === "weak") {
+    const resolvedStudyType = String(studyType || getCurrentStudyType()).trim().toLowerCase();
+    const lawDrillActive = isLawStudyMode();
+    if (lawDrillActive) {
+      indicator.innerText = "Law Drill";
+    } else if (resolvedStudyType === "weak") {
       indicator.innerText = "📚 Practice Weak Areas";
     } else {
       indicator.innerText = "📚 Study Mode";
     }
 
-    indicator.innerText = studyType === "weak" ? "Practice Weak Areas" : "Study Mode";
+    indicator.innerText =
+      lawDrillActive
+        ? "Law Drill"
+        : resolvedStudyType === "weak"
+          ? "Practice Weak Areas"
+          : "Study Mode";
     if (headerStats) headerStats.style.display = "flex";
     if (timerEl) timerEl.classList.add("hidden");
     if (quizArea) quizArea.classList.add("mode-study");
+    if (lawDrillActive && quizArea) quizArea.classList.add("mode-law");
+    if (lawDrillActive && headerInlineMeta) {
+      headerInlineMeta.innerHTML = renderLawDrillInlineMeta();
+      headerInlineMeta.classList.remove("hidden");
+    }
   } else if (mode === "topic") {
     indicator.innerText = `${getTopicQuizSessionTitle()} Quiz`;
     if (headerStats) headerStats.style.display = "none";
@@ -23692,6 +29919,8 @@ function updateModeIndicator(studyType = null) {
           ? "Sudden Drill"
           : examVariant === "clinical"
             ? "Clinical Drill"
+            : examVariant === "law"
+              ? "Pharmacy Law"
             : "Exam Mode";
     if (headerStats) headerStats.style.display = "none";
     if (timerEl) {
@@ -23727,7 +29956,8 @@ function updateModeIndicator(studyType = null) {
       mode === "daily" ||
       mode === "smart" ||
       (mode === "exam" &&
-        ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal")));
+        ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal"))) ||
+      (mode === "study" && isLawStudyMode());
     headerInlineMeta.classList.toggle("hidden", !compactHeaderMode);
     if (!compactHeaderMode) headerInlineMeta.innerHTML = "";
   }
@@ -23748,10 +29978,19 @@ function startStudy() {
   timerEl.classList.add("hidden");
   timerEl.innerText = "";
 
-  const studyType = document.getElementById("study-type-select").value;
+  const studyType = getCurrentStudyType();
   const selectedCategory = document.getElementById(
     "study-category-select",
   ).value;
+  const selectedRotation = document.getElementById("study-rotation-select").value;
+
+  if (studyType === "law") {
+    const savedSession = getSavedLawDrillSession();
+    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+    return;
+  }
+
+  lawDrillState = null;
 
   const sessionKey = studyType === "weak" ? "practiceSession" : "studySession";
 
@@ -23803,14 +30042,10 @@ function startStudy() {
   if (studyType === "normal") {
     updateModeIndicator("normal");
 
-    if (selectedCategory === "all") {
-      active = JSON.parse(JSON.stringify(questionBank));
-    } else {
-      active = questionBank.filter((q) => q.category === selectedCategory);
-      if (active.length === 0) {
-        alert("No questions available in this category yet.");
-        return;
-      }
+    active = filterQuestionsByCategoryAndRotation(questionBank, selectedCategory, selectedRotation);
+    if (active.length === 0) {
+      alert("No questions available for this category or rotation yet.");
+      return;
     }
 
     // Start attempt on backend if ready
@@ -23819,6 +30054,7 @@ function startStudy() {
         .startAttempt({
           mode: "study",
           category: selectedCategory,
+          rotation: selectedRotation || "all",
           questionIds: active.map((q) => Number(q.id)),
         })
         .then((result) => {
@@ -23833,7 +30069,7 @@ function startStudy() {
     const startNumberInput =
       document.getElementById("study-start-number").value;
 
-    if (startNumberInput && selectedCategory === "all") {
+    if (startNumberInput) {
       const startIndex = parseInt(startNumberInput, 10) - 1;
 
       if (startIndex >= 0 && startIndex < active.length) {
@@ -23861,7 +30097,18 @@ function startStudy() {
       return;
     }
 
-    active = weakIds.map((id) => findQuestionById(id)).filter(Boolean);
+    active = weakIds
+      .map((id) => findQuestionById(id))
+      .filter(Boolean)
+      .filter((question) =>
+        questionMatchesRotation(question, selectedRotation) &&
+        (selectedCategory === "all" ? true : question.category === selectedCategory),
+      );
+
+    if (active.length === 0) {
+      alert("No weak questions available for the selected rotation or category yet.");
+      return;
+    }
 
     current = 0;
   }
@@ -23889,6 +30136,7 @@ function startExam(count, requestedVariant = null) {
   inReview = false;
 
   const selectedCategory = document.getElementById("category-select").value;
+  const selectedRotation = document.getElementById("rotation-select").value;
   const isRapidFire = variant === "rapid";
   const isSuddenDeath = variant === "sudden";
   const isClinical = variant === "clinical";
@@ -23903,11 +30151,16 @@ function startExam(count, requestedVariant = null) {
   let questionPool = [];
 
   if (variant === "smart") {
-    questionPool = getAdaptiveQuestions(targetCount);
+    questionPool = getAdaptiveQuestions(targetCount, {
+      category: selectedCategory || "all",
+      rotation: selectedRotation || "all",
+    });
   } else {
-    const basePool = selectedCategory
-      ? questionBank.filter((q) => q.category === selectedCategory)
-      : [...questionBank];
+    const basePool = filterQuestionsByCategoryAndRotation(
+      questionBank,
+      selectedCategory || "all",
+      selectedRotation || "all",
+    );
 
     if (basePool.length === 0) {
       alert("No questions available in this category yet.");
@@ -23951,6 +30204,7 @@ function startExam(count, requestedVariant = null) {
         mode: variant === "smart" ? "smart" : "exam",
         variant,
         category: selectedCategory || "all",
+        rotation: selectedRotation || "all",
         questionIds: active.map((q) => Number(q.id)),
       })
       .then((result) => {
@@ -24005,8 +30259,9 @@ function showQuestion() {
   }
 
   // 🔥 HARD RESET NAVIGATION STATE
-  prevBtn.classList.remove("hidden");
-  nextBtn.classList.remove("hidden");
+  const isLawLadderView = isLawStudyMode() && getLawDrillView() === "ladder";
+  prevBtn.classList.toggle("hidden", isLawLadderView);
+  nextBtn.classList.toggle("hidden", isLawLadderView);
   if (!inReview) {
     backReviewBtn.classList.add("hidden");
   }
@@ -24025,6 +30280,41 @@ function showQuestion() {
   resetAiExplainPanel();
   answersEl.innerHTML = "";
 
+  if (isLawStudyMode()) {
+    syncLawDrillLayout();
+    if (getLawDrillView() === "ladder") {
+      renderLawDrillRail();
+      showLawDrillLadderView();
+      return;
+    }
+    if (nextBtn) nextBtn.onclick = nextQuestion;
+    if (prevBtn) prevBtn.onclick = previousQuestion;
+  } else {
+    if (quizArea) {
+      quizArea.classList.remove(
+        "law-drill-ladder-view",
+        "law-drill-level-view",
+        "law-drill-review-view",
+        "law-drill-result-view",
+      );
+    }
+    if (questionCardEl) questionCardEl.classList.remove("hidden");
+    if (lawDrillPanelEl) lawDrillPanelEl.classList.add("hidden");
+    if (lawDrillStackEl) {
+      lawDrillStackEl.classList.add("hidden");
+      lawDrillStackEl.innerHTML = "";
+    }
+    if (lawDrillResultStackEl) {
+      lawDrillResultStackEl.classList.add("hidden");
+      lawDrillResultStackEl.innerHTML = "";
+    }
+  }
+
+  if (isLawStudyMode() && (getLawDrillView() === "review" || lawDrillState?.reviewLevelIndex != null)) {
+    renderLawDrillReviewLevelView(lawDrillState.reviewLevelIndex);
+    return;
+  }
+
   const q = active[current];
   applyQuestionCategoryShift(q);
 
@@ -24037,7 +30327,12 @@ function showQuestion() {
 
   // Study Mode Progress
   if (isStudyLikeMode()) {
-    progressEl.innerText = `Q ${current + 1}/${active.length}`;
+    if (isLawStudyMode()) {
+      const currentLevel = lawDrillState?.currentLevelIndex ?? 0;
+      progressEl.innerText = `Level ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS} • Q ${current + 1}/${active.length}`;
+    } else {
+      progressEl.innerText = `Q ${current + 1}/${active.length}`;
+    }
     const answered = Object.keys(userAnswers).length;
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
@@ -24079,18 +30374,29 @@ function showQuestion() {
   renderCompactHeaderMeta();
 
   const endStudyBtn = document.getElementById("end-study-btn");
+  if (isLawStudyMode()) {
+    endStudyBtn.classList.add("hidden");
+  }
 
-  if (isStudyLikeMode() && !inStudyReview) {
+  if (isStudyLikeMode() && !inStudyReview && !isLawStudyMode()) {
     endStudyBtn.classList.remove("hidden");
   } else {
     endStudyBtn.classList.add("hidden");
   }
 
   if (mode === "study") {
-    const questionAccuracy = getAccuracy(q.id);
     const categoryAccuracy = getCategoryAccuracy(q.category);
-
-    progressEl.innerText += ` • Accuracy ${questionAccuracy}% • ${q.category} ${categoryAccuracy}%`;
+    const questionRotation = getQuestionRotationValues(q)[0] || "";
+    const rotationAccuracy = questionRotation ? getRotationAccuracy(questionRotation) : null;
+    const performanceBits = [];
+    if (questionRotation) {
+      performanceBits.push(`${questionRotation} ${rotationAccuracy}%`);
+    }
+    performanceBits.push(`${q.category} ${categoryAccuracy}%`);
+    progressEl.innerText += ` • ${performanceBits.join(" • ")}`;
+    if (isLawStudyMode()) {
+      progressEl.innerText = `Level ${lawDrillState?.currentLevelIndex + 1 || 1}/${LAW_DRILL_TOTAL_LEVELS} • Q ${current + 1}/${active.length}`;
+    }
   } else if (isTopicQuizMode()) {
     progressEl.innerText += ` • Topic Quiz`;
   }
@@ -24106,9 +30412,11 @@ function showQuestion() {
 
   if (mode === "study" || mode === "topic") {
     const chronologicalNumber = current + 1;
-    displayText =
-      `<span class="question-kicker">Question ${chronologicalNumber}</span><br><br>` +
-      stripBankQuestionLabel(displayText);
+    displayText = isLawStudyMode()
+      ? `<span class="question-kicker">Question ${chronologicalNumber}</span><br><br>` +
+        stripBankQuestionLabel(displayText)
+      : `<span class="question-kicker">Question ${chronologicalNumber}</span><br><br>` +
+        stripBankQuestionLabel(displayText);
   }
 
   if (mode === "exam" || mode === "smart" || mode === "daily") {
@@ -24185,6 +30493,12 @@ function showQuestion() {
   }
 
   restoreSelection(q);
+
+  if (isLawStudyMode()) {
+    renderLawDrillStack(lawDrillState?.currentLevelIndex ?? 0);
+    renderLawDrillRail();
+    if (backReviewBtn) backReviewBtn.classList.add("hidden");
+  }
 }
 
 /* ==============================
@@ -24195,6 +30509,15 @@ function selectAnswer(value, q) {
   if (inDetailedReview) return;
   userAnswers[q.id] = value;
   const isCorrect = String(value) === String(q.correct || "");
+  const studyType = getCurrentStudyType();
+
+  if (isPreSubmitReviewMode()) {
+    if (mode === "exam" || mode === "smart") {
+      saveExamSession();
+    }
+    renderDetailedQuestion();
+    return;
+  }
 
   // Sync answer to backend if available
   if (backendReady && backendAttemptId) {
@@ -24203,7 +30526,6 @@ function selectAnswer(value, q) {
 
   if (isStudyLikeMode()) {
     updatePerformance(q.id, isCorrect, value);
-    const studyType = document.getElementById("study-type-select")?.value || "normal";
 
     if (mode === "study" && studyType === "normal") {
       if (!isCorrect) {
@@ -24216,8 +30538,6 @@ function selectAnswer(value, q) {
   // ===============================
   // WEAK ROUND PROGRESSION
   // ===============================
-  const studyType = document.getElementById("study-type-select").value;
-
   if (mode === "study" && studyType === "weak") {
     if (isCorrect) {
       weakTracker[q.id].roundsPassed++;
@@ -24258,6 +30578,13 @@ function selectAnswer(value, q) {
   }
 
   updateStreak(isCorrect);
+
+  if (isLawStudyMode()) {
+    recordLawDrillAnswer(q, value, isCorrect);
+    updateLawDrillHeaderMeta();
+    renderLawDrillRail();
+  }
+
   renderSessionPointsDisplay();
   renderCompactHeaderMeta();
   if (!studySessionEnded) {
@@ -24392,6 +30719,7 @@ function selectAnswer(value, q) {
 
 function nextQuestion() {
   if (inStudyReview) return;
+  if (isLawStudyMode() && lawDrillState?.reviewLevelIndex != null) return;
   if (mode === "exam" || mode === "smart" || mode === "daily") {
     if (mode === "exam" && examVariant === "sudden") {
       showAnswerFeedback("No skips in Sudden Death.", "info");
@@ -24401,7 +30729,7 @@ function nextQuestion() {
       showAnswerFeedback("No skips in Clinical drill.", "info");
       return;
     }
-    nextBtn.innerText = "Skip";
+    nextBtn.innerText = "Next";
 
     // That will count as wrong later
     if (mode === "exam" || mode === "smart") {
@@ -24420,12 +30748,16 @@ function nextQuestion() {
   // STUDY MODE
   if (isStudyLikeMode()) {
     const q = active[current];
+    const studyType = getCurrentStudyType();
 
     // If user skipped without answering
     if (!answeredCurrent && !userAnswers[q.id]) {
       userAnswers[q.id] = "Skipped";
       updatePerformance(q.id, false, "Skipped");
       updateStreak(false);
+      if (isLawStudyMode()) {
+        recordLawDrillAnswer(q, "Skipped", false);
+      }
 
       const buttons = document.querySelectorAll("#answers button");
 
@@ -24461,6 +30793,8 @@ function nextQuestion() {
     if (current < active.length - 1) {
       current++;
       showQuestion();
+    } else if (isLawStudyMode()) {
+      markLawDrillCurrentLevelComplete();
     } else {
       finishStudy();
     }
@@ -24474,6 +30808,7 @@ function nextQuestion() {
 function restoreSelection(q) {
   const saved = userAnswers[q.id];
   if (!saved) return;
+  const editableReview = isPreSubmitReviewMode();
 
   const buttons = document.querySelectorAll("#answers button");
 
@@ -24486,6 +30821,14 @@ function restoreSelection(q) {
     btn.innerText.startsWith("E")
       ? btn.innerText[0]
       : btn.innerText;
+
+    if (editableReview) {
+      btn.disabled = false;
+      if (btnValue === saved) {
+        btn.classList.add("selected-live");
+      }
+      return;
+    }
 
     if (isStudyLikeMode()) {
       btn.disabled = true;
@@ -24543,6 +30886,7 @@ function calculateScore() {
 }
 
 function previousQuestion() {
+  if (isLawStudyMode() && lawDrillState?.reviewLevelIndex != null) return;
   if (current > 0) {
     current--;
     showQuestion();
@@ -24562,6 +30906,8 @@ function goHome() {
 
   clearInterval(examTimer);
   clearInterval(reviewTimer);
+  closeCommunityConversationActions();
+  closeCommunityFriendActions();
 
   if (mode === "study") {
     localStorage.removeItem("studySession");
@@ -24635,15 +30981,83 @@ function getCompactTimerText() {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function renderLawDrillInlineMetaLegacy() {
+  if (!lawDrillState) {
+    return '<span class="header-inline-progress">Law Drill</span>';
+  }
+
+  const totalLevels = lawDrillState.totalLevels || LAW_DRILL_TOTAL_LEVELS;
+  const targetLevelIndex =
+    lawDrillState.reviewLevelIndex != null
+      ? lawDrillState.reviewLevelIndex
+      : lawDrillState.currentLevelIndex || 0;
+  const targetLevel = lawDrillState.levels?.[targetLevelIndex] || null;
+  const questionsInLevel = Array.isArray(targetLevel?.questionIds) && targetLevel.questionIds.length
+    ? targetLevel.questionIds.length
+    : LAW_DRILL_QUESTIONS_PER_LEVEL;
+  const reviewLabel = lawDrillState.reviewLevelIndex != null ? "Review" : "Level";
+  const score = Array.isArray(targetLevel?.history)
+    ? targetLevel.history.filter((entry) => entry?.isCorrect).length
+    : 0;
+  const sessionPoints = getCurrentSessionPoints();
+  const parts = [
+    `<span class="header-inline-progress">Law Drill</span>`,
+    `<span class="header-inline-progress">${reviewLabel} ${targetLevelIndex + 1}/${totalLevels}</span>`,
+    `<span class="header-inline-progress">Score ${score}/${questionsInLevel}</span>`,
+  ];
+
+  if (Array.isArray(active) && active.length) {
+    parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
+  }
+
+  parts.push(`<span class="header-inline-points">🪙 ${sessionPoints}</span>`);
+  return parts.join("");
+}
+
+function renderLawDrillInlineMeta() {
+  const state = lawDrillState;
+  const view = getLawDrillView();
+
+  if (!state) {
+    return '<span class="law-drill-inline-title">Law Drill</span><span class="law-drill-inline-score">Total Score 0</span>';
+  }
+
+  const totalLevels = state.totalLevels || LAW_DRILL_TOTAL_LEVELS;
+  const targetLevelIndex =
+    state.reviewLevelIndex != null
+      ? state.reviewLevelIndex
+      : state.view === "result" && Number.isInteger(state.resultLevelIndex)
+        ? state.resultLevelIndex
+        : state.currentLevelIndex || 0;
+  const targetLevel = state.levels?.[targetLevelIndex] || null;
+  const questionsInLevel = Array.isArray(targetLevel?.questionIds) && targetLevel.questionIds.length
+    ? targetLevel.questionIds.length
+    : LAW_DRILL_QUESTIONS_PER_LEVEL;
+  const levelScore = Math.max(0, Number(getLawDrillLevelScore(targetLevelIndex)) || 0);
+
+  if (view === "ladder") {
+    return `<span class="law-drill-inline-title">Law Drill</span><span class="law-drill-inline-score">Total Score ${getLawDrillCumulativeScore()}</span>`;
+  }
+
+  return `<span class="law-drill-inline-title">Level ${targetLevelIndex + 1}/${totalLevels}</span><span class="law-drill-inline-score">Score ${levelScore}/${questionsInLevel}</span>`;
+}
+
 function renderCompactHeaderMeta() {
   if (!headerInlineMeta) return;
+
+  if (isLawStudyMode()) {
+    headerInlineMeta.innerHTML = renderLawDrillInlineMeta();
+    headerInlineMeta.classList.remove("hidden");
+    return;
+  }
 
   const compactHeaderMode =
     mode === "topic" ||
     mode === "daily" ||
     mode === "smart" ||
     (mode === "exam" &&
-      ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal")));
+      ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal"))) ||
+    isLawStudyMode();
 
   if (!compactHeaderMode) {
     headerInlineMeta.innerHTML = "";
@@ -24683,6 +31097,14 @@ function renderCompactHeaderMeta() {
         `<span class="topic-header-title">${escapeHtml(getTopicQuizSessionTitle())} Quiz</span>` +
       `</span>`,
     );
+  } else if (isLawStudyMode()) {
+    const currentLevel = lawDrillState?.reviewLevelIndex != null
+      ? lawDrillState.reviewLevelIndex
+      : lawDrillState?.currentLevelIndex || 0;
+    const reviewLabel = lawDrillState?.reviewLevelIndex != null ? "Review" : "Level";
+    parts.push(`<span class="header-inline-progress">${reviewLabel} ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS}</span>`);
+    parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
+    parts.push(`<span class="header-inline-points">🪙 ${sessionPoints}</span>`);
   } else if (mode === "exam" || mode === "smart") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
   }
@@ -24983,6 +31405,8 @@ async function finishExam() {
           ? "Sudden Death (" + active.length + ")"
           : finishedVariant === "clinical"
             ? "Clinical Judgement (" + active.length + ")"
+            : finishedVariant === "law"
+              ? "Pharmacy Law Quiz (" + active.length + ")"
             : "Exam (" + active.length + ")";
 
   saveSession(
@@ -25002,6 +31426,8 @@ async function finishExam() {
           ? 15
           : finishedVariant === "clinical"
             ? 18
+            : finishedVariant === "law"
+              ? 14
             : 10;
   const xpVariance =
     finishedVariant === "sudden"
@@ -25024,6 +31450,8 @@ async function finishExam() {
           ? "Sudden Death Complete"
           : finishedVariant === "clinical"
             ? "Clinical Judgement Complete"
+            : finishedVariant === "law"
+              ? "Pharmacy Law Quiz Complete"
             : "Exam Complete";
   if (finishedVariant === "sudden") {
     percentEl.innerText = `Score ${finalScore}`;
@@ -25082,9 +31510,91 @@ async function finishExam() {
                            STUDY FINISH
                         ================================= */
 
+async function finishLawDrill() {
+  if (!lawDrillState) {
+    alert("Law drill session is missing. Start a new law drill from the menu.");
+    return;
+  }
+
+  clearInterval(examTimer);
+  clearInterval(reviewTimer);
+  examTimer = null;
+  reviewTimer = null;
+  inReview = false;
+  inDetailedReview = false;
+  backReviewBtn.classList.add("hidden");
+
+  const levels = Array.isArray(lawDrillState.levels) ? lawDrillState.levels : [];
+  const answers = {};
+  levels.forEach((level) => {
+    (Array.isArray(level.history) ? level.history : []).forEach((entry) => {
+      if (entry?.questionId) {
+        answers[String(entry.questionId)] = String(entry.selectedAnswer || "").trim();
+      }
+    });
+  });
+
+  const totalAnswered = Object.keys(answers).length;
+  const correctAnswers = getLawDrillTotalCorrect();
+  const percent =
+    totalAnswered === 0 ? 0 : Math.round((correctAnswers / totalAnswered) * 100);
+
+  if (backendReady && backendAttemptId) {
+    backendClient.finishAttempt(backendAttemptId, answers);
+    backendAttemptId = null;
+  }
+
+  const finishedState = serializeLawDrillState();
+  clearLawDrillSession();
+  lawDrillState = null;
+  mode = "";
+  examVariant = "normal";
+  examTimeBudget = 0;
+  active = [];
+  current = 0;
+  userAnswers = {};
+  answeredCurrent = false;
+
+  const resultTitle = document.getElementById("result-title");
+  const percentEl = document.getElementById("result-percentage");
+  const scoreEl = document.getElementById("result-score");
+  const feedbackEl = document.getElementById("result-feedback");
+
+  if (resultTitle) resultTitle.innerText = "Law Drill Complete";
+  if (percentEl) percentEl.innerText = `${percent}%`;
+  if (scoreEl) scoreEl.innerText = `${correctAnswers} / ${Math.max(1, totalAnswered)} Correct`;
+  if (feedbackEl) {
+    if (percent >= 80) {
+      feedbackEl.innerText = "Excellent progress. Keep building the ladder.";
+      if (percentEl) percentEl.style.color = "#15803d";
+    } else if (percent >= 60) {
+      feedbackEl.innerText = "Good momentum. Review the harder levels again.";
+      if (percentEl) percentEl.style.color = "#f9a825";
+    } else {
+      feedbackEl.innerText = "Keep going. The stack will sharpen with more reps.";
+      if (percentEl) percentEl.style.color = "#dc2626";
+    }
+  }
+
+  saveSession("Law Drill (" + LAW_DRILL_TOTAL_LEVELS + " Levels)", correctAnswers, totalAnswered);
+  awardXp(10 + Math.round(percent / 20));
+
+  clearDailyResultEnhancements();
+  showScreen("study-result-screen");
+  configureStudyLikeResultActions();
+  renderPoints();
+  renderSessionPointsDisplay();
+  if (finishedState) {
+    sessionHistory = Array.isArray(sessionHistory) ? sessionHistory : [];
+  }
+}
+
 function finishStudy() {
   backReviewBtn.classList.add("hidden");
-  const studyType = document.getElementById("study-type-select")?.value || "normal";
+  if (isLawStudyMode()) {
+    void finishLawDrill();
+    return;
+  }
   studySessionEnded = true;
 
   const totalAnswered = Object.keys(userAnswers).length;
@@ -25139,6 +31649,10 @@ function finishStudy() {
 }
 
 function endStudySession() {
+  if (isLawStudyMode()) {
+    void finishLawDrill();
+    return;
+  }
   studySessionEnded = true;
 
   const totalAnswered = Object.keys(userAnswers).length;
@@ -25220,6 +31734,23 @@ function returnToTopicViewerFromQuiz() {
 function configureStudyLikeResultActions() {
   const reviewBtn = document.getElementById("result-review-btn");
   const menuBtn = document.getElementById("result-menu-btn");
+  const resultTitle = document.getElementById("result-title");
+  const reviewSection = document.getElementById("result-review-section");
+  const reviewContent = document.getElementById("result-review-content");
+  if (resultTitle) {
+    resultTitle.classList.remove("hidden");
+  }
+  if (reviewSection) {
+    reviewSection.classList.add("hidden");
+  }
+  if (reviewContent) {
+    reviewContent.innerHTML = "";
+    reviewContent.classList.remove("analysis-list", "review-palette-grid");
+  }
+  if (resultBadgeEl) {
+    resultBadgeEl.classList.add("hidden");
+    resultBadgeEl.textContent = "";
+  }
   if (reviewBtn) {
     reviewBtn.onclick = showStudyReviewPalette;
   }
@@ -25292,10 +31823,10 @@ function buildReviewPalette() {
     btn.innerText = index + 1;
     btn.classList.add("review-btn");
 
-    if (!userAnswers[q.id]) {
-      btn.classList.add("review-unanswered");
-    } else {
+    if (userAnswers[q.id]) {
       btn.classList.add("review-answered");
+    } else {
+      btn.classList.add("review-unanswered");
     }
 
     btn.onclick = () => openQuestionFromReview(index);
@@ -25372,16 +31903,6 @@ function showDetailedReview() {
     content.appendChild(card);
   });
 
-  document.getElementById("result-back-btn").onclick = function () {
-    document.getElementById("result-review-section").classList.add("hidden");
-    content.classList.remove("analysis-list");
-
-    // Clear dynamic content (important)
-    document.getElementById("result-review-content").innerHTML = "";
-
-    // Ensure main result body is visible
-    document.querySelector(".result-body").scrollTop = 0;
-  };
 }
 
 function openDetailedQuestion(index) {
@@ -25459,6 +31980,7 @@ function renderDetailedQuestion() {
     questionBody;
 
   const savedAnswer = userAnswers[q.id];
+  const editableReview = isPreSubmitReviewMode();
 
   // ==============================
   // SINGLE / MATCH TYPE
@@ -25467,18 +31989,24 @@ function renderDetailedQuestion() {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
       btn.innerText = opt;
-      btn.disabled = true;
+      btn.dataset.value = opt;
+      btn.disabled = !editableReview;
+      if (editableReview) {
+        btn.onclick = () => selectAnswer(opt, q);
+      }
 
       if (savedAnswer === opt) {
         btn.classList.add("selected-live");
       }
 
-      if (opt === q.correct) {
-        btn.classList.add("correct");
-      }
+      if (!editableReview) {
+        if (opt === q.correct) {
+          btn.classList.add("correct");
+        }
 
-      if (savedAnswer === opt && opt !== q.correct) {
-        btn.classList.add("wrong");
+        if (savedAnswer === opt && opt !== q.correct) {
+          btn.classList.add("wrong");
+        }
       }
 
       answersEl.appendChild(btn);
@@ -25516,18 +32044,24 @@ function renderDetailedQuestion() {
     comboOptions.forEach((option) => {
       const btn = document.createElement("button");
       btn.innerText = option.text;
-      btn.disabled = true;
+      btn.dataset.value = option.letter;
+      btn.disabled = !editableReview;
+      if (editableReview) {
+        btn.onclick = () => selectAnswer(option.letter, q);
+      }
 
       if (savedAnswer === option.letter) {
         btn.classList.add("selected-live");
       }
 
-      if (option.letter === q.correct) {
-        btn.classList.add("correct");
-      }
+      if (!editableReview) {
+        if (option.letter === q.correct) {
+          btn.classList.add("correct");
+        }
 
-      if (savedAnswer === option.letter && option.letter !== q.correct) {
-        btn.classList.add("wrong");
+        if (savedAnswer === option.letter && option.letter !== q.correct) {
+          btn.classList.add("wrong");
+        }
       }
 
       answersEl.appendChild(btn);
@@ -25541,18 +32075,24 @@ function renderDetailedQuestion() {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
       btn.innerText = opt;
-      btn.disabled = true;
+      btn.dataset.value = opt;
+      btn.disabled = !editableReview;
+      if (editableReview) {
+        btn.onclick = () => selectAnswer(opt, q);
+      }
 
       if (savedAnswer === opt) {
         btn.classList.add("selected-live");
       }
 
-      if (opt === q.correct) {
-        btn.classList.add("correct");
-      }
+      if (!editableReview) {
+        if (opt === q.correct) {
+          btn.classList.add("correct");
+        }
 
-      if (savedAnswer === opt && opt !== q.correct) {
-        btn.classList.add("wrong");
+        if (savedAnswer === opt && opt !== q.correct) {
+          btn.classList.add("wrong");
+        }
       }
 
       answersEl.appendChild(btn);
@@ -25560,10 +32100,12 @@ function renderDetailedQuestion() {
   }
 
   // Always show explanation
-  renderQuestionExplanation(q);
-  renderQuestionTopicLink(q);
-  loadAnswerInsightForQuestion(q);
-  refreshAiExplainAvailability();
+  if (!editableReview) {
+    renderQuestionExplanation(q);
+    renderQuestionTopicLink(q);
+    loadAnswerInsightForQuestion(q);
+    refreshAiExplainAvailability();
+  }
 }
 
 function showQuestionDetailedMode() {
@@ -25717,6 +32259,11 @@ function loadExamSession() {
 function saveStudyProgress() {
   if (mode !== "study" || studySessionEnded) return;
 
+  if (isLawStudyMode()) {
+    persistLawDrillSession();
+    return;
+  }
+
   const studyState = {
     current,
     userAnswers,
@@ -25744,6 +32291,8 @@ window.addEventListener("load", function () {
   refreshProfilePhotoDeleteVisibility();
   renderAuthState();
   restoreAuthSession();
+  closeCommunityConversationActions();
+  closeCommunityFriendActions();
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
   }, 900);
@@ -25762,8 +32311,13 @@ window.addEventListener("load", function () {
   });
 
   populateStudyCategories();
+  populateStudyRotations();
   populateExamCategories();
+  populateExamRotations();
   populateTopicLibraryCategories();
+  syncAllSetupPickerButtons();
+  wireSetupPickerModal();
+  wireSetupPickerTriggers();
 
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
@@ -25824,8 +32378,17 @@ window.addEventListener("load", function () {
   }
 
   if (!pendingTopicQuizLaunch) {
-    showScreen("home-screen");
+    if (shouldShowWelcomeIntro()) {
+      markWelcomeIntroSeen();
+      showScreen("welcome-screen", { recordHistory: false });
+    } else {
+      showScreen("home-screen", { recordHistory: false });
+    }
   }
+});
+
+window.addEventListener("resize", () => {
+  syncLawDrillRailForViewport();
 });
 function showStudyReviewPalette() {
   const reviewSection = document.getElementById("result-review-section");
@@ -25856,16 +32419,6 @@ function showStudyReviewPalette() {
     content.appendChild(btn);
   });
 
-  document.getElementById("result-back-btn").onclick = function () {
-    document.getElementById("result-review-section").classList.add("hidden");
-    content.classList.remove("review-palette-grid");
-
-    // Clear dynamic content (important)
-    document.getElementById("result-review-content").innerHTML = "";
-
-    // Ensure main result body is visible
-    document.querySelector(".result-body").scrollTop = 0;
-  };
 }
 
 function openStudyReviewQuestion(index) {
@@ -25971,6 +32524,7 @@ function toggleModeHistory(containerId) {
 function showScreen(id, options = {}) {
   const { recordHistory = true } = options;
   const screens = [
+    "welcome-screen",
     "home-screen",
     "quiz-menu",
     "profile-screen",
@@ -25994,6 +32548,10 @@ function showScreen(id, options = {}) {
   const currentActiveId = getActiveScreenId();
   const wasCommunityScreen = isCommunityScreenId(currentActiveId);
   const nextCommunityScreen = isCommunityScreenId(id);
+  if (wasCommunityScreen && !nextCommunityScreen) {
+    closeCommunityConversationActions();
+    closeCommunityFriendActions();
+  }
   if (wasCommunityScreen && !nextCommunityScreen && isCommunityLockEnabled()) {
     communityState.communityLockSessionUnlocked = false;
   }
@@ -26015,6 +32573,7 @@ function showScreen(id, options = {}) {
 
   updateMenuBottomNavState(id);
   renderCommunityNotificationBadges();
+  syncAppNotificationBannerVisibility();
 
   if (nextCommunityScreen && !wasCommunityScreen && isCommunityLockEnabled() && !communityState.communityLockSessionUnlocked) {
     const fallbackScreen = currentActiveId && document.getElementById(currentActiveId) ? currentActiveId : "quiz-menu";
@@ -26040,10 +32599,12 @@ function showScreen(id, options = {}) {
     clearCommunityTypingTimers();
     void sendCommunityTypingState(false);
     stopCommunityChatPolling();
-    stopCommunityConversationRealtimeSubscription();
     if (communityState.activeCall) {
-      void endCommunityConversationCall({ notifyBackend: true, silent: true });
+      setCommunityChatActiveCallBar(null);
+      void ensureCommunityConversationRealtimeSubscription();
+      void refreshCommunityConversationActiveCall({ silent: true });
     } else {
+      stopCommunityConversationRealtimeSubscription();
       setCommunityChatActiveCallBar(null);
     }
   } else {
@@ -26120,6 +32681,10 @@ document.addEventListener("keydown", function (e) {
     if (!Boolean(appUpdateCurrentPayload?.forceUpdate)) {
       closeAppUpdateModal();
     }
+    return;
+  }
+  if (communityReportModalEl && !communityReportModalEl.classList.contains("hidden") && e.key === "Escape") {
+    closeCommunityReportModal();
     return;
   }
   if (authModal && !authModal.classList.contains("hidden") && e.key === "Escape") {
@@ -26215,6 +32780,7 @@ function registerNativeBackButtonHandler() {
 }
 
 registerNativeBackButtonHandler();
+void registerCommunityNativeCallBridge();
 
 window.addEventListener("popstate", function (event) {
   const state = event?.state || {};
@@ -26406,20 +32972,6 @@ window.addEventListener("popstate", function (event) {
   }
 
   if (activeId === "community-chat-screen") {
-    if (communityState.activeCall) {
-      openCommunityConfirmModal({
-        title: "End call and leave chat?",
-        text: "Leaving this chat will end the current call in this conversation.",
-        confirmLabel: "End Call",
-        intent: "danger",
-        onConfirm: async () => {
-          closeCommunityConfirmModal();
-          await endCommunityConversationCall({ notifyBackend: true, silent: true });
-          goBackByHistory("community-chat-screen", "community-screen");
-        },
-      });
-      return;
-    }
     goBackByHistory("community-chat-screen", "community-screen");
     return;
   }

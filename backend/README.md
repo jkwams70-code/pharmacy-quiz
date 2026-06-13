@@ -60,7 +60,7 @@ Then reload the quiz page.
 ```bash
 npm run backup          # Create timestamped backup of data files
 npm run cleanup         # Remove old runtime logs/backups
-npm run cleanup:users   # Remove inactive users with no activity history
+npm run cleanup:users   # Audit inactive users; no accounts are deleted automatically
 npm run validate:data   # Validate user/question/sync data references
 npm run repair:data     # Repair orphaned user/question references in stored data
 npm run renumber:questions        # Dry-run one-time question ID remap plan

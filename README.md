@@ -260,7 +260,7 @@ npm run start           # Start production mode
 npm run seed            # Re-seed questions from Quiz/data.js
 npm run backup          # Backup backend/data/*.json with timestamp
 npm run cleanup         # Remove old logs/backups by retention policy
-npm run cleanup:users   # Remove inactive users (no activity history, retention-based)
+npm run cleanup:users   # Audit inactive users (no automatic deletes)
 npm run validate:data   # Validate user/question references in JSON data
 npm run smoke           # Run API smoke tests
 npm run smoke:ui        # Run headless UI smoke test (quiz + admin flows)

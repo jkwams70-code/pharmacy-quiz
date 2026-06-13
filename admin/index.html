@@ -133,6 +133,26 @@
         background: #4b5563;
       }
 
+      .icon-btn {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        padding: 0;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 24px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .icon-btn:hover {
+        background: #e0e7ff;
+        color: #312e81;
+      }
+
       .dashboard {
         display: none;
         max-width: 1200px;
@@ -174,6 +194,22 @@
         width: auto;
       }
 
+      .admin-notification-banner {
+        margin: -12px 0 18px;
+        padding: 14px 18px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(15, 63, 127, 0.98), rgba(15, 118, 110, 0.96));
+        color: #ffffff;
+        box-shadow: 0 14px 28px rgba(10, 25, 45, 0.18);
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.45;
+      }
+
+      .admin-notification-banner.hidden {
+        display: none;
+      }
+
       .tabs {
         display: flex;
         gap: 10px;
@@ -210,6 +246,30 @@
 
       .tab-btn.active:hover {
         background: var(--theme-primary-strong);
+      }
+
+      .tab-btn .admin-tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        margin-left: 8px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: #dc2626;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .tab-btn .admin-tab-badge.hidden {
+        display: none;
+      }
+
+      #reports-tab-badge {
+        display: none !important;
       }
 
       .content {
@@ -288,6 +348,133 @@
         gap: 8px;
       }
 
+      .user-row {
+        cursor: pointer;
+      }
+
+      .user-row:hover {
+        background: #eff6ff;
+      }
+
+      .users-toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      .users-search {
+        flex: 1 1 360px;
+        position: relative;
+      }
+
+      .users-search input {
+        width: 100%;
+        padding: 12px 14px;
+        padding-left: 42px;
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        background: #fff;
+        color: #0f172a;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+
+      .users-search input::placeholder {
+        color: #94a3b8;
+      }
+
+      .users-search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: #64748b;
+        pointer-events: none;
+      }
+
+      .users-summary {
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .users-summary strong {
+        color: #ffffff;
+      }
+
+      .toolbar-button {
+        width: auto;
+        min-width: 160px;
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .toolbar-button.active {
+        background: #0f3f7f;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+      }
+
+      .archive-panel {
+        margin-top: 30px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      .archive-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+
+      .archive-title {
+        margin: 0;
+        font-size: 18px;
+        color: #fff;
+      }
+
+      .archive-subtitle {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .archive-summary {
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .archive-summary strong {
+        color: #ffffff;
+      }
+
+      .archive-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .archive-status-restored {
+        background: #ecfdf5;
+        color: #047857;
+      }
+
+      .archive-action-cell {
+        width: 120px;
+      }
+
       .btn-small {
         padding: 6px 12px;
         font-size: 12px;
@@ -359,6 +546,143 @@
         justify-content: center;
       }
 
+      .user-details-modal {
+        max-width: 760px;
+      }
+
+      .delete-confirm-modal {
+        max-width: 460px;
+      }
+
+      .user-details-hero {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .user-detail-avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        border: 1px solid #cbd5e1;
+        object-fit: cover;
+        background: #e2e8f0;
+        flex-shrink: 0;
+      }
+
+      .user-detail-avatar-fallback {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        border: 1px solid #cbd5e1;
+        background: #dbeafe;
+        color: #0f3f7f;
+        font-size: 22px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .user-details-name {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 4px;
+      }
+
+      .user-details-subtitle {
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+
+      .user-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+
+      .detail-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 12px;
+      }
+
+      .detail-label {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+
+      .detail-value {
+        color: #0f172a;
+        font-size: 14px;
+        line-height: 1.45;
+        word-break: break-word;
+      }
+
+      .detail-value.preformatted {
+        white-space: pre-wrap;
+        font-family:
+          ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      }
+
+      .confirm-warning {
+        background: #fff7ed;
+        border-left: 4px solid #f59e0b;
+        color: #9a3412;
+        padding: 14px 16px;
+        border-radius: 8px;
+        line-height: 1.5;
+      }
+
+      .privacy-explainer {
+        color: #475569;
+        margin-bottom: 14px;
+        line-height: 1.5;
+        font-size: 14px;
+      }
+
+      .privacy-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .privacy-pill {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        padding: 12px;
+      }
+
+      .privacy-pill-label {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+
+      .privacy-pill-value {
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.4;
+      }
+
       .question-options-list {
         display: grid;
         gap: 4px;
@@ -421,6 +745,1011 @@
 
       .modal-actions button {
         flex: 1;
+      }
+
+      .deleted-users-modal {
+        max-width: 980px;
+      }
+
+      .deleted-groups-modal {
+        max-width: 980px;
+      }
+
+      .deleted-users-toolbar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+
+      .deleted-users-toolbar .users-search {
+        flex: 1 1 360px;
+      }
+
+      .deleted-users-summary {
+        color: #475569;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .deleted-users-summary strong {
+        color: #0f172a;
+      }
+
+      .deleted-users-explainer {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+
+      .reports-switch {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .reports-switch .toolbar-button {
+        min-width: 140px;
+      }
+
+      .group-table th,
+      .group-table td,
+      .report-table th,
+      .report-table td {
+        white-space: nowrap;
+        vertical-align: top;
+      }
+
+      .group-table .cell-wrap,
+      .report-table .cell-wrap {
+        max-width: 280px;
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      .group-row,
+      .report-row {
+        cursor: pointer;
+      }
+
+      .group-row:hover,
+      .report-row:hover {
+        background: #eff6ff;
+      }
+
+      .group-avatar-cell {
+        width: 46px;
+      }
+
+      .group-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        object-fit: cover;
+        background: #e2e8f0;
+        display: block;
+      }
+
+      .group-avatar-fallback {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #dcfce7;
+        color: #166534;
+        font-size: 11px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .group-details-modal {
+        max-width: 920px;
+      }
+
+      .report-details-modal {
+        max-width: 760px;
+      }
+
+      .group-details-hero {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+
+      .group-details-avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        border: 1px solid #cbd5e1;
+        object-fit: cover;
+        background: #e2e8f0;
+        flex-shrink: 0;
+      }
+
+      .group-details-avatar-fallback {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        border: 1px solid #cbd5e1;
+        background: #dbeafe;
+        color: #0f3f7f;
+        font-size: 22px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .group-details-name {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 4px;
+      }
+
+      .group-details-subtitle {
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+
+      .group-details-grid,
+      .report-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .group-details-members {
+        border-top: 1px solid #e5e7eb;
+        padding-top: 16px;
+      }
+
+      .group-details-members-title,
+      .report-warning-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 8px;
+      }
+
+      .group-details-members-list {
+        display: grid;
+        gap: 10px;
+        max-height: 320px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      .group-member-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: #f8fafc;
+      }
+
+      .group-member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        object-fit: cover;
+        background: #e2e8f0;
+      }
+
+      .group-member-avatar-fallback {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #0f3f7f;
+        font-size: 11px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .group-member-name {
+        color: #0f172a;
+        font-weight: 600;
+      }
+
+      .group-member-meta,
+      .report-member-meta {
+        color: #64748b;
+        font-size: 12px;
+      }
+
+      .group-member-role {
+        color: #0f3f7f;
+        background: #dbeafe;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 999px;
+      }
+
+      .report-warning-panel {
+        margin-top: 14px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      .admin-message-panel {
+        margin-top: 14px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+      }
+
+      .admin-message-panel-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 6px;
+      }
+
+      .admin-message-panel-copy {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 12px;
+      }
+
+      .broadcast-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-height: calc(100vh - 150px);
+      }
+
+      #broadcast.content.active {
+        min-height: calc(100vh - 150px);
+      }
+
+      .broadcast-status-panel,
+      .broadcast-thread-list-panel,
+      .broadcast-thread-panel,
+      .broadcast-status-modal,
+      .broadcast-status-viewer-modal {
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(99, 102, 241, 0.12);
+        box-shadow: 0 18px 60px rgba(78, 54, 140, 0.08);
+      }
+
+      .broadcast-status-modal,
+      .broadcast-status-viewer-modal {
+        max-width: 720px;
+        width: min(720px, calc(100vw - 24px));
+      }
+
+      .broadcast-status-panel {
+        padding: 16px;
+      }
+
+      .broadcast-panel-heading,
+      .broadcast-thread-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .broadcast-panel-kicker {
+        color: #7c3aed;
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .broadcast-panel-title,
+      .broadcast-thread-title {
+        color: #0f172a;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .broadcast-thread-title {
+        font-size: 22px;
+      }
+
+      .broadcast-thread-subtitle,
+      .broadcast-thread-meta,
+      .broadcast-thread-composer-label {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .broadcast-thread-meta {
+        text-align: right;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        white-space: nowrap;
+      }
+
+      .broadcast-status-strip {
+        margin-top: 14px;
+        display: flex;
+        gap: 12px;
+        align-items: stretch;
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+
+      .broadcast-status-strip::-webkit-scrollbar {
+        height: 8px;
+      }
+
+      .broadcast-status-strip::-webkit-scrollbar-thumb {
+        background: rgba(124, 58, 237, 0.2);
+        border-radius: 999px;
+      }
+
+      .broadcast-status-card,
+      .broadcast-status-add {
+        width: 80px;
+        min-width: 80px;
+        max-width: 80px;
+        height: 80px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        padding: 9px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: linear-gradient(180deg, rgba(244, 235, 255, 0.95), rgba(255, 255, 255, 0.95));
+        box-shadow: 0 10px 24px rgba(103, 80, 164, 0.08);
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        overflow: hidden;
+      }
+
+      .broadcast-status-card:hover,
+      .broadcast-status-add:hover {
+        background: linear-gradient(180deg, rgba(244, 235, 255, 0.98), rgba(255, 255, 255, 0.98));
+      }
+
+      .broadcast-status-add {
+        color: #7c3aed;
+        font-weight: 800;
+        border-style: dashed;
+        font-size: 10px;
+        line-height: 1;
+        text-align: center;
+        white-space: normal;
+        padding-inline: 12px;
+      }
+
+      .broadcast-status-card-title {
+        color: #4c1d95;
+        font-weight: 800;
+        font-size: 10px;
+        line-height: 1.1;
+        margin: 0;
+        text-align: center;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .broadcast-status-card-meta {
+        display: none;
+      }
+
+      .broadcast-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        min-height: 0;
+        flex: 1 1 auto;
+      }
+
+      .broadcast-main.thread-open {
+        grid-template-columns: 320px minmax(0, 1fr);
+        align-items: stretch;
+        min-height: calc(100vh - 240px);
+      }
+
+      .broadcast-thread-list-panel,
+      .broadcast-thread-panel {
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .broadcast-thread-list-panel {
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        height: calc(100vh - 240px);
+      }
+
+      .broadcast-thread-list-heading {
+        margin-bottom: 12px;
+      }
+
+      .broadcast-thread-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      .broadcast-thread-row {
+        width: 100%;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 12px;
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        background: rgba(248, 250, 252, 0.95);
+        cursor: pointer;
+        transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+      }
+
+      .broadcast-thread-row:hover {
+        transform: translateY(-1px);
+        border-color: rgba(124, 58, 237, 0.24);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+      }
+
+      .broadcast-thread-row.active {
+        border-color: rgba(124, 58, 237, 0.4);
+        background: linear-gradient(180deg, rgba(243, 232, 255, 0.95), rgba(255, 255, 255, 0.98));
+        box-shadow: 0 18px 32px rgba(124, 58, 237, 0.12);
+      }
+
+      .broadcast-thread-row-badge {
+        flex: 0 0 auto;
+        min-width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(180deg, #7c3aed, #5b21b6);
+        color: #fff;
+        font-weight: 900;
+        font-size: 15px;
+        box-shadow: 0 12px 18px rgba(124, 58, 237, 0.22);
+      }
+
+      .broadcast-thread-row-body {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .broadcast-thread-row-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 4px;
+      }
+
+      .broadcast-thread-row-title {
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 14px;
+        line-height: 1.35;
+        min-width: 0;
+      }
+
+      .broadcast-thread-row-preview {
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.45;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        text-align: left;
+        width: 100%;
+      }
+
+      .broadcast-thread-row-time {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+
+      .broadcast-thread-panel {
+        display: none;
+        flex-direction: column;
+        min-height: 0;
+        flex: 1 1 auto;
+        height: calc(100vh - 150px);
+        max-height: none;
+        padding: 16px;
+      }
+
+      .broadcast-main.thread-open .broadcast-thread-panel {
+        display: flex;
+      }
+
+      .broadcast-thread-header {
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+        margin-bottom: 14px;
+        justify-content: flex-start;
+      }
+
+      .broadcast-thread-back-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        border: 1px solid rgba(124, 58, 237, 0.18);
+        background: rgba(255, 255, 255, 0.9);
+        color: #4c1d95;
+        font-size: 20px;
+        font-weight: 900;
+        flex: 0 0 auto;
+        box-shadow: 0 8px 20px rgba(124, 58, 237, 0.08);
+      }
+
+      .broadcast-thread-back-btn:hover {
+        background: rgba(243, 232, 255, 0.95);
+      }
+
+      .broadcast-thread-header-main {
+        min-width: 0;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .broadcast-thread-messages {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow-y: auto;
+        min-height: 0;
+        padding-right: 4px;
+      }
+
+      .broadcast-thread-empty {
+        flex: 1 1 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        font-size: 14px;
+        text-align: center;
+        padding: 24px;
+      }
+
+      .broadcast-message-row {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .broadcast-message-date-divider {
+        display: flex;
+        justify-content: center;
+        margin: 4px 0 2px;
+      }
+
+      .broadcast-message-date-divider span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(224, 231, 255, 0.92);
+        border: 1px solid rgba(99, 102, 241, 0.16);
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .broadcast-message-bubble {
+        max-width: min(720px, 92%);
+        border-radius: 20px 20px 8px 20px;
+        padding: 14px 16px;
+        background: linear-gradient(180deg, #eef2ff, #ffffff);
+        border: 1px solid rgba(124, 58, 237, 0.14);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+      }
+
+      .broadcast-message-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: #64748b;
+        font-size: 11px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+      }
+
+      .broadcast-message-text {
+        color: #0f172a;
+        font-size: 14px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .broadcast-message-attachment {
+        margin-top: 10px;
+      }
+
+      .broadcast-message-attachment-preview {
+        appearance: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        background: rgba(248, 250, 252, 0.96);
+        overflow: hidden;
+        padding: 0;
+        cursor: pointer;
+        max-width: 150px;
+        max-height: 150px;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .broadcast-message-attachment-preview img,
+      .broadcast-message-attachment-preview video {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .broadcast-message-attachment-preview.broadcast-message-file-preview,
+      .broadcast-message-attachment-preview.broadcast-message-audio-preview {
+        width: auto;
+        min-width: 160px;
+        min-height: 56px;
+        padding: 10px 12px;
+        gap: 10px;
+        justify-content: flex-start;
+        text-align: left;
+      }
+
+      .broadcast-message-file-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(180deg, rgba(47, 128, 208, 0.16), rgba(20, 150, 133, 0.16));
+        color: #0f172a;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .broadcast-message-file-text {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .broadcast-message-file-name {
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 210px;
+      }
+
+      .broadcast-message-file-meta {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+
+      .broadcast-message-attachment audio {
+        width: 220px;
+        max-width: 100%;
+      }
+
+      .broadcast-attachment-viewer-body {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .broadcast-attachment-viewer-stage {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 280px;
+        padding: 10px;
+        border-radius: 22px;
+        background: rgba(248, 250, 252, 0.95);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+      }
+
+      .broadcast-attachment-viewer-stage img,
+      .broadcast-attachment-viewer-stage video {
+        max-width: 100%;
+        max-height: 70vh;
+        border-radius: 18px;
+        display: block;
+      }
+
+      .broadcast-attachment-viewer-stage audio {
+        width: min(100%, 520px);
+      }
+
+      .broadcast-attachment-viewer-file {
+        width: 100%;
+        max-width: 520px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px;
+        border-radius: 20px;
+        background: rgba(224, 234, 250, 0.95);
+        border: 1px solid rgba(47, 128, 208, 0.16);
+      }
+
+      .broadcast-attachment-viewer-file-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(180deg, rgba(47, 128, 208, 0.18), rgba(20, 150, 133, 0.18));
+        color: #0f172a;
+        font-size: 20px;
+        font-weight: 900;
+        flex: 0 0 auto;
+      }
+
+      .broadcast-attachment-viewer-file-name {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .broadcast-attachment-viewer-file-meta {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .broadcast-attachment-viewer-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .broadcast-attachment-viewer-modal {
+        max-width: 760px;
+        width: min(760px, calc(100vw - 24px));
+      }
+
+      .broadcast-thread-composer {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(148, 163, 184, 0.16);
+      }
+
+      .broadcast-compose-row {
+        display: flex;
+        align-items: end;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .broadcast-input-shell {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 8px;
+        flex: 1 1 auto;
+        padding: 8px 10px 8px 8px;
+        background: rgba(255, 255, 255, 0.99);
+        border: 1px solid rgba(196, 207, 216, 0.98);
+        border-radius: 26px;
+        box-shadow: 0 12px 22px rgba(17, 27, 33, 0.06);
+        transition:
+          border-color 180ms ease,
+          box-shadow 180ms ease,
+          transform 180ms ease,
+          background-color 180ms ease;
+      }
+
+      .broadcast-input-shell:focus-within {
+        border-color: rgba(18, 140, 126, 0.3);
+        background: #ffffff;
+        box-shadow:
+          0 14px 28px rgba(17, 27, 33, 0.08),
+          0 0 0 4px rgba(18, 140, 126, 0.08);
+        transform: translateY(-1px);
+      }
+
+      .broadcast-tool-btn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        min-height: 36px;
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        color: #667781;
+        transition:
+          background-color 160ms ease,
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .broadcast-tool-btn svg {
+        width: 20px;
+        height: 20px;
+        stroke: currentColor;
+      }
+
+      .broadcast-tool-btn:hover,
+      .broadcast-tool-btn:focus-visible {
+        background: transparent;
+        color: #128c7e;
+        outline: none;
+      }
+
+      .broadcast-tool-btn:active {
+        transform: scale(0.94);
+      }
+
+      .broadcast-thread-composer textarea {
+        min-height: 36px;
+        max-height: 120px;
+        border-radius: 0;
+        background: transparent;
+        color: #111b21;
+        padding: 8px 2px 8px 0;
+        font:
+          400 0.96rem/1.45 "Inter",
+          sans-serif;
+        letter-spacing: -0.01em;
+        resize: none;
+        border: 0;
+        box-shadow: none;
+      }
+
+      .broadcast-thread-composer textarea:focus {
+        outline: none;
+      }
+
+      .broadcast-attachment-name {
+        flex: 1 1 100%;
+        color: #17314d;
+        font-size: 0.78rem;
+        line-height: 1.3;
+        padding: 8px 12px;
+        border-radius: 14px;
+        background: rgba(224, 234, 250, 0.95);
+        border: 1px solid rgba(47, 128, 208, 0.14);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      .broadcast-attachment-name.hidden {
+        display: none !important;
+      }
+
+      .broadcast-send-btn {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        min-height: 48px;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #149685 0%, #128c7e 100%);
+        color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 14px 28px rgba(18, 140, 126, 0.24);
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease,
+          filter 180ms ease;
+      }
+
+      .broadcast-send-btn:hover {
+        filter: brightness(1.03);
+      }
+
+      .broadcast-send-btn:active {
+        transform: scale(0.96);
+        box-shadow: 0 8px 18px rgba(18, 140, 126, 0.2);
+      }
+
+      .broadcast-send-btn svg {
+        width: 22px;
+        height: 22px;
+        fill: currentColor;
+        stroke: none;
+      }
+
+      .broadcast-composer-actions {
+        display: contents;
+      }
+
+      .broadcast-composer-actions .hidden {
+        display: none !important;
+      }
+
+      .broadcast-status-viewer-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .broadcast-status-viewer-card {
+        border-radius: 22px;
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+      }
+
+      .broadcast-status-viewer-card img,
+      .broadcast-status-viewer-card video {
+        max-width: 100%;
+        display: block;
+        border-radius: 18px;
+      }
+
+      .report-warning-copy {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 12px;
       }
 
       .alert {
@@ -618,13 +1947,85 @@
           padding: 6px 10px !important;
         }
 
+        .tabs {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          padding: 10px;
+          margin-bottom: 16px;
+        }
+
+        .tab-btn {
+          min-width: 0;
+          width: 100%;
+          padding: 10px 8px;
+          font-size: 13px;
+          line-height: 1.1;
+        }
+
+        .tab-btn .admin-tab-badge {
+          min-width: 18px;
+          height: 18px;
+          margin-left: 6px;
+          padding: 0 5px;
+          font-size: 11px;
+        }
+
+        .users-toolbar {
+          align-items: stretch;
+        }
+
+        .stats-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+
+        .stat-card {
+          padding: 12px;
+          border-radius: 8px;
+        }
+
+        .stat-label {
+          font-size: 11px !important;
+          margin-bottom: 4px;
+          line-height: 1.1;
+        }
+
+        .stat-value {
+          font-size: 22px;
+          line-height: 1;
+        }
+
+        #category-performance {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        #category-performance > div {
+          margin-bottom: 0 !important;
+          padding: 10px !important;
+          border-radius: 8px !important;
+        }
+
+        #category-performance > div strong,
+        #category-performance > div span {
+          font-size: 12px !important;
+        }
+
+        .accuracy-bar {
+          height: 14px;
+          border-radius: 8px;
+        }
+
         #users .table-container {
           overflow-x: auto;
         }
 
         #users table {
           table-layout: auto;
-          min-width: 1280px;
+          min-width: 680px;
         }
 
         #users th,
@@ -719,6 +2120,111 @@
           font-size: 12px;
           padding: 6px 8px;
         }
+
+        .broadcast-main {
+          grid-template-columns: 1fr;
+        }
+
+        .broadcast-main.thread-open {
+          grid-template-columns: 1fr;
+        }
+
+        .broadcast-thread-list {
+          max-height: none;
+        }
+
+        .broadcast-thread-panel {
+          min-height: 560px;
+        }
+
+        .broadcast-main.thread-open .broadcast-thread-list-panel {
+          display: none;
+        }
+
+        .broadcast-main.thread-open .broadcast-thread-panel {
+          display: flex;
+        }
+
+        .broadcast-status-card,
+        .broadcast-status-add {
+          width: 56px;
+          min-width: 56px;
+          max-width: 56px;
+          height: 56px;
+        }
+
+        .broadcast-status-add {
+          font-size: 4px;
+          letter-spacing: 0.03em;
+          padding: 2px;
+          line-height: 0.95;
+        }
+
+        .broadcast-panel-heading,
+        .broadcast-composer-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .broadcast-thread-header {
+          flex-direction: row;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .broadcast-thread-header-main {
+          align-items: flex-start;
+        }
+
+        .broadcast-thread-meta {
+          align-items: flex-start;
+          text-align: left;
+        }
+
+        .broadcast-message-bubble {
+          max-width: 100%;
+        }
+
+        .broadcast-attachment-name {
+          flex-basis: 100%;
+        }
+
+        .broadcast-thread-composer {
+          padding-bottom: 2px;
+        }
+
+        .broadcast-compose-row {
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .broadcast-input-shell {
+          min-width: 0;
+          flex: 1 1 auto;
+          gap: 6px;
+          padding: 6px 8px 6px 8px;
+        }
+
+        .broadcast-thread-composer textarea {
+          min-height: 34px;
+          font-size: 0.92rem;
+          padding-top: 6px;
+          padding-bottom: 6px;
+        }
+
+        .broadcast-send-btn {
+          width: 42px;
+          height: 42px;
+          min-width: 42px;
+          min-height: 42px;
+          flex: 0 0 auto;
+        }
+
+        .broadcast-send-btn svg {
+          width: 20px;
+          height: 20px;
+        }
       }
     </style>
   </head>
@@ -771,11 +2277,16 @@
         </div>
       </div>
 
+      <div id="admin-notification-banner" class="admin-notification-banner hidden" aria-live="polite" aria-atomic="true"></div>
+
       <div class="tabs">
         <button class="tab-btn active" data-tab="stats">
           Statistics
         </button>
         <button class="tab-btn" data-tab="users">Users</button>
+        <button class="tab-btn" data-tab="groups">Groups</button>
+        <button class="tab-btn" data-tab="reports">Reports <span id="reports-tab-badge" class="admin-tab-badge hidden">0</span></button>
+        <button class="tab-btn" data-tab="broadcast">Broadcast</button>
         <button class="tab-btn" data-tab="questions">
           Questions
         </button>
@@ -793,6 +2304,14 @@
           <div class="stat-card">
             <div class="stat-label">Total Users</div>
             <div class="stat-value" id="stat-users">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Groups</div>
+            <div class="stat-value" id="stat-groups">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Reports</div>
+            <div class="stat-value" id="stat-reports">0</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Total Questions</div>
@@ -825,30 +2344,44 @@
       <!-- USERS TAB -->
       <div id="users" class="content">
         <div style="margin-bottom: 20px">
-          <button id="add-user-btn">Add User</button>
+          <button id="add-user-btn" class="toolbar-button">Add User</button>
+        </div>
+        <div class="users-toolbar">
+          <div class="users-search">
+            <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+                fill="currentColor"
+              />
+            </svg>
+            <input
+              type="search"
+              id="users-search"
+              placeholder="Search by username, name, school, email, or contact..."
+              autocomplete="off"
+            />
+          </div>
+          <button id="open-deleted-users-btn" class="toolbar-button">
+            Archived Accounts
+          </button>
+          <div class="users-summary" id="users-summary">
+            Showing <strong id="users-result-count">0</strong> users
+          </div>
         </div>
         <div id="users-alerts"></div>
         <div class="table-container">
           <table class="user-table">
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Avatar</th>
-                <th>Full Name</th>
                 <th>Username</th>
-                <th>Contact</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Professional Type</th>
-                <th>Country</th>
                 <th>Institution</th>
                 <th>Created</th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="users-table">
               <tr>
-                <td colspan="12" style="text-align: center; color: #ccc">
+                <td colspan="4" style="text-align: center; color: #ccc">
                   Loading...
                 </td>
               </tr>
@@ -857,10 +2390,231 @@
         </div>
       </div>
 
+      <!-- GROUPS TAB -->
+      <div id="groups" class="content">
+        <div class="users-toolbar">
+          <div class="users-search">
+            <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+                fill="currentColor"
+              />
+            </svg>
+            <input
+              type="search"
+              id="groups-search"
+              placeholder="Search by group name, owner, member count, or description..."
+              autocomplete="off"
+            />
+          </div>
+          <button id="open-deleted-groups-btn" class="toolbar-button">
+            Archived Groups
+          </button>
+          <div class="users-summary" id="groups-summary">
+            Showing <strong id="groups-result-count">0</strong> groups
+          </div>
+        </div>
+        <div id="groups-alerts"></div>
+        <div class="table-container">
+          <table class="user-table group-table">
+            <thead>
+              <tr>
+                <th>Avatar</th>
+                <th>Group</th>
+                <th>Owner</th>
+                <th>Members</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="groups-table">
+              <tr>
+                <td colspan="5" style="text-align: center; color: #ccc">
+                  Loading groups...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REPORTS TAB -->
+      <div id="reports" class="content">
+        <div class="users-toolbar">
+          <div class="users-search">
+            <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+                fill="currentColor"
+              />
+            </svg>
+            <input
+              type="search"
+              id="reports-search"
+              placeholder="Search by reporter, target, reason, or status..."
+              autocomplete="off"
+            />
+          </div>
+          <div class="reports-switch">
+            <button id="reports-group-btn" class="toolbar-button">Group reports</button>
+            <button id="reports-user-btn" class="toolbar-button">User reports</button>
+          </div>
+          <div class="users-summary" id="reports-summary">
+            Showing <strong id="reports-result-count">0</strong> reports
+          </div>
+        </div>
+        <div id="reports-alerts"></div>
+        <div class="table-container">
+          <table class="user-table report-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Reporter</th>
+                <th>Target</th>
+                <th>Reported</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="reports-table">
+              <tr>
+                <td colspan="5" style="text-align: center; color: #ccc">
+                  Loading reports...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BROADCAST TAB -->
+      <div id="broadcast" class="content">
+        <div id="broadcast-alerts"></div>
+        <div class="broadcast-shell">
+          <section class="broadcast-status-panel">
+            <div id="broadcast-status-strip" class="broadcast-status-strip"></div>
+          </section>
+
+          <div id="broadcast-main" class="broadcast-main">
+            <aside class="broadcast-thread-list-panel">
+              <div id="broadcast-thread-list" class="broadcast-thread-list"></div>
+            </aside>
+
+            <section id="broadcast-thread-panel" class="broadcast-thread-panel hidden">
+              <div class="broadcast-thread-header">
+                <button type="button" id="broadcast-thread-back-btn" class="broadcast-thread-back-btn" aria-label="Back to broadcast list">‹</button>
+                <div class="broadcast-thread-header-main">
+                  <div id="broadcast-thread-title" class="broadcast-thread-title">Announcement</div>
+                  <div id="broadcast-thread-subtitle" class="broadcast-thread-subtitle">Broadcast to everyone</div>
+                </div>
+              </div>
+
+              <div id="broadcast-thread-empty" class="broadcast-thread-empty hidden">
+                Select a broadcast thread to view its history.
+              </div>
+              <div id="broadcast-thread-messages" class="broadcast-thread-messages"></div>
+
+              <div class="broadcast-thread-composer">
+                <div class="broadcast-compose-row">
+                  <div class="broadcast-input-shell">
+                    <button id="broadcast-chat-attach-btn" type="button" class="broadcast-tool-btn" aria-label="Attach file" title="Attach file">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 12.5 14.5 6a3 3 0 1 1 4.2 4.2L10 18.9a5 5 0 1 1-7-7l8-8"></path>
+                      </svg>
+                    </button>
+                    <textarea id="broadcast-chat-message" rows="1" placeholder="Type a message" enterkeyhint="enter"></textarea>
+                    <button id="broadcast-chat-clear-btn" type="button" class="broadcast-tool-btn hidden" aria-label="Remove attachment" title="Remove attachment">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6 6 18"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <button id="broadcast-chat-send-btn" class="broadcast-send-btn" aria-label="Send" title="Send">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 12 19.5 4.5 15.5 19.5 11.9 12.9 4 12Z"></path>
+                    </svg>
+                  </button>
+                  <input id="broadcast-chat-file" type="file" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.ppt,.pptx,.txt" hidden />
+                  <div id="broadcast-chat-attachment-name" class="broadcast-attachment-name hidden">No attachment selected.</div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <div id="broadcast-status-modal" class="modal">
+        <div class="modal-content broadcast-status-modal">
+          <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h2 class="modal-title" style="margin: 0;">Add Status</h2>
+              <p class="modal-subtitle" style="margin: 4px 0 0;">Publish an admin status to every user.</p>
+            </div>
+            <button id="broadcast-status-close-btn" type="button" class="icon-btn" aria-label="Close status composer">×</button>
+          </div>
+          <div class="form-group">
+            <label for="broadcast-status-message">Status text / caption</label>
+            <textarea id="broadcast-status-message" rows="4" placeholder="Write the broadcast status text or caption..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="broadcast-status-background">Text background</label>
+            <input id="broadcast-status-background" type="color" value="#2f80d0" />
+          </div>
+          <div class="broadcast-file-row">
+            <input id="broadcast-status-file" type="file" accept="image/*,video/*" hidden />
+            <button id="broadcast-status-attach-btn" type="button" class="secondary">Attach image/video</button>
+            <div id="broadcast-status-attachment-name" class="broadcast-attachment-name">No media selected.</div>
+            <button id="broadcast-status-clear-btn" type="button" class="secondary hidden">Remove</button>
+          </div>
+          <div class="modal-actions">
+            <button id="broadcast-status-send-btn" class="primary">Publish status</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="broadcast-status-viewer-modal" class="modal">
+        <div class="modal-content broadcast-status-viewer-modal">
+          <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h2 class="modal-title" id="broadcast-status-viewer-title" style="margin: 0;">Status</h2>
+              <p class="modal-subtitle" id="broadcast-status-viewer-subtitle" style="margin: 4px 0 0;">Admin broadcast status</p>
+            </div>
+            <button id="broadcast-status-viewer-close-btn" type="button" class="icon-btn" aria-label="Close status viewer">×</button>
+          </div>
+          <div id="broadcast-status-viewer-body" class="broadcast-status-viewer-body"></div>
+        </div>
+      </div>
+
+      <div id="broadcast-attachment-viewer-modal" class="modal">
+        <div class="modal-content broadcast-attachment-viewer-modal">
+          <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h2 class="modal-title" id="broadcast-attachment-viewer-title" style="margin: 0;">Attachment</h2>
+              <p class="modal-subtitle" id="broadcast-attachment-viewer-subtitle" style="margin: 4px 0 0;">Preview broadcast attachment</p>
+            </div>
+            <button id="broadcast-attachment-viewer-close-btn" type="button" class="icon-btn" aria-label="Close attachment viewer">Ã—</button>
+          </div>
+          <div id="broadcast-attachment-viewer-body" class="broadcast-attachment-viewer-body"></div>
+        </div>
+      </div>
+
       <!-- QUESTIONS TAB -->
       <div id="questions" class="content">
         <div style="margin-bottom: 20px">
           <button id="add-question-btn">Add Question</button>
+        </div>
+        <div class="users-search" style="margin-bottom: 20px">
+          <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+              fill="currentColor"
+            />
+          </svg>
+          <input
+            type="search"
+            id="questions-search"
+            placeholder="Search by question number or text..."
+            autocomplete="off"
+          />
         </div>
         <div id="questions-alerts"></div>
         <div class="table-container">
@@ -984,6 +2738,206 @@
     </div>
 
     <!-- MODALS -->
+    <div id="user-details-modal" class="modal">
+      <div class="modal-content user-details-modal">
+        <div class="modal-title">User Details</div>
+        <div id="user-details-body"></div>
+        <div class="admin-message-panel">
+          <div class="admin-message-panel-title">Send message</div>
+          <div class="admin-message-panel-copy">This will appear in the user's inbox as an admin notice.</div>
+          <div class="form-group">
+            <label for="user-message-body">Message</label>
+            <textarea id="user-message-body" rows="4" placeholder="Write a message to this user..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button id="user-message-send-btn" class="primary">Send Message</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="user-details-close-btn" class="secondary">Close</button>
+          <button id="user-details-delete-btn" class="danger">Archive User</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="delete-user-confirm-modal" class="modal">
+      <div class="modal-content delete-confirm-modal">
+        <div class="modal-title">Confirm Archive</div>
+        <div id="delete-user-confirm-text" class="confirm-warning"></div>
+        <div class="modal-actions">
+          <button id="delete-user-confirm-cancel-btn" class="secondary">
+            Cancel
+          </button>
+          <button id="delete-user-confirm-btn" class="danger">Archive</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deleted-users-modal" class="modal">
+      <div class="modal-content deleted-users-modal">
+        <div class="modal-title">Deleted Accounts Archive</div>
+        <div class="deleted-users-toolbar">
+          <div class="users-search">
+            <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+                fill="currentColor"
+              />
+            </svg>
+            <input
+              type="search"
+              id="deleted-users-search"
+              placeholder="Search archived users..."
+              autocomplete="off"
+            />
+          </div>
+          <div class="deleted-users-summary" id="deleted-users-summary">
+            Showing <strong id="deleted-users-result-count">0</strong> archived accounts
+          </div>
+        </div>
+        <div class="deleted-users-explainer">
+          Deleted accounts stay here until they are restored. Search by username, name, school, email, contact, country, or other profile data.
+        </div>
+        <div id="deleted-users-alerts"></div>
+        <div class="table-container">
+          <table class="user-table archive-table">
+            <thead>
+              <tr>
+                <th>Avatar</th>
+                <th>Username</th>
+                <th>Institution</th>
+                <th>Deleted</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="deleted-users-table">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #ccc">
+                  Loading archived accounts...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-actions">
+          <button id="deleted-users-close-btn" class="secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deleted-groups-modal" class="modal">
+      <div class="modal-content deleted-groups-modal">
+        <div class="modal-title">Deleted Groups Archive</div>
+        <div class="deleted-users-toolbar">
+          <div class="users-search">
+            <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+                fill="currentColor"
+              />
+            </svg>
+            <input
+              type="search"
+              id="deleted-groups-search"
+              placeholder="Search archived groups..."
+              autocomplete="off"
+            />
+          </div>
+          <div class="deleted-users-summary" id="deleted-groups-summary">
+            Showing <strong id="deleted-groups-result-count">0</strong> archived groups
+          </div>
+        </div>
+        <div class="deleted-users-explainer">
+          Deleted groups stay here until they are restored. Search by group name, owner, description, or created date.
+        </div>
+        <div id="deleted-groups-alerts"></div>
+        <div class="table-container">
+          <table class="user-table archive-table">
+            <thead>
+              <tr>
+                <th>Avatar</th>
+                <th>Group</th>
+                <th>Owner</th>
+                <th>Members</th>
+                <th>Deleted</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="deleted-groups-table">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #ccc">
+                  Loading archived groups...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-actions">
+          <button id="deleted-groups-close-btn" class="secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="group-details-modal" class="modal">
+      <div class="modal-content group-details-modal">
+        <div class="modal-title">Group Details</div>
+        <div id="group-details-body"></div>
+        <div class="admin-message-panel">
+          <div class="admin-message-panel-title">Send group message</div>
+          <div class="admin-message-panel-copy">This goes to the group owner and admins in their inboxes.</div>
+          <div class="form-group">
+            <label for="group-message-body">Message</label>
+            <textarea id="group-message-body" rows="4" placeholder="Write a message to the group owner and admins..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button id="group-message-send-btn" class="primary">Send Message</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="group-details-close-btn" class="secondary">Close</button>
+          <button id="group-details-archive-btn" class="danger">Archive Group</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="report-details-modal" class="modal">
+      <div class="modal-content report-details-modal">
+        <div class="modal-title">Report Details</div>
+        <div id="report-details-body"></div>
+        <div class="report-warning-panel">
+          <div class="report-warning-title">Warning</div>
+          <div class="report-warning-copy">
+            Draft a serious warning notice before sending. It will land in the recipient inbox as an official admin message.
+          </div>
+          <div class="form-group">
+            <label for="report-warning-preset">Warning title</label>
+            <select id="report-warning-preset">
+              <option value="Community rules reminder">Community rules reminder</option>
+              <option value="Please keep the discussion respectful">Please keep the discussion respectful</option>
+              <option value="No spam, scams, or impersonation">No spam, scams, or impersonation</option>
+              <option value="Follow the group guidelines">Follow the group guidelines</option>
+              <option value="custom">Custom warning</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="report-warning-message">Warning message</label>
+            <textarea
+              id="report-warning-message"
+              rows="5"
+              placeholder="The full warning message will be sent to the recipient inbox"
+            ></textarea>
+          </div>
+          <div class="modal-actions">
+            <button id="report-warning-send-btn" class="danger">Send Warning</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="report-details-close-btn" class="secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
     <div id="user-modal" class="modal">
       <div class="modal-content">
         <div class="modal-title">Add User</div>
@@ -1037,7 +2991,22 @@
             <option value="Rheumatology & Pain">Rheumatology & Pain</option>
             <option value="Women's & Men's Health">Women's & Men's Health</option>
             <option value="Immunizations">Immunizations</option>
-            <option value="Pharmacy Law & Ethics">Pharmacy Law & Ethics</option>
+            <option value="Pharmacy Practice">Pharmacy Practice</option>
+            <option value="Manufacturing and Calculation">Manufacturing and Calculation</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rotation</label>
+          <select id="q-rotation">
+            <option value="">No rotation</option>
+            <option value="Internal Medicine">Internal Medicine</option>
+            <option value="Paediatrics">Paediatrics</option>
+            <option value="Maternal and Child Health">Maternal and Child Health</option>
+            <option value="Accident & Emergency">Accident & Emergency</option>
+            <option value="Surgery">Surgery</option>
+            <option value="Mental Health">Mental Health</option>
+            <option value="Oncology">Oncology</option>
+            <option value="ENT/Dental">ENT/Dental</option>
           </select>
         </div>
         <div class="form-group">
@@ -1086,7 +3055,7 @@
       </div>
     </div>
 
-    <script src="admin.js?v=20260227-qmobile2"></script>
+    <script src="admin.js?v=20260612-rotation-filter1"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

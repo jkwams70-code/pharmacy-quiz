@@ -13,6 +13,8 @@ const dataDir = path.isAbsolute(config.dbPath)
 
 const defaults = {
   users: [],
+  deletedUsers: [],
+  deletedGroups: [],
   questions: [],
   attempts: [],
   pointEvents: [],
@@ -20,7 +22,9 @@ const defaults = {
   friendships: [],
   blocks: [],
   conversations: [],
+  communityConversationStates: [],
   messages: [],
+  adminBroadcastMessages: [],
   uploads: [],
   statuses: [],
   reports: [],

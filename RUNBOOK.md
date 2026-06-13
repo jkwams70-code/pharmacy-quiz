@@ -15,7 +15,7 @@
 - Rotate `JWT_SECRET` (planned maintenance)
 - Run backup restore drill in staging/local
 - Review CORS allowlist
-- Review inactive-user cleanup results (`logs/maintenance.log`)
+- Review inactive-user audit results (`logs/maintenance.log`)
 
 ## Quarterly Tasks
 - Dependency updates and security patches

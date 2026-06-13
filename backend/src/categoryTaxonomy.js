@@ -11,6 +11,8 @@ export const MAJOR_CATEGORIES = [
   "Rheumatology & Pain",
   "Women's & Men's Health",
   "Immunizations",
+  "Pharmacy Practice",
+  "Manufacturing and Calculation",
   "Pharmacy Law & Ethics",
 ];
 
@@ -174,8 +176,13 @@ export function normalizeMajorCategory(category, context = "") {
     hasAny(combined, [
       "hemat",
       "haemat",
+      "iron",
       "anemia",
       "anaemia",
+      "ferrous",
+      "ferric",
+      "hemoglobin",
+      "haemoglobin",
       "warfarin",
       "doac",
       "heparin",
@@ -232,6 +239,8 @@ export function normalizeMajorCategory(category, context = "") {
       "bph",
       "erectile dysfunction",
       "gyne",
+      "breast",
+      "prostate",
       "women",
       "men's",
       "mens health",
@@ -255,23 +264,58 @@ export function normalizeMajorCategory(category, context = "") {
     return "Immunizations";
   }
 
-  if (hasAny(combined, ["law", "ethic", "regulation", "legal"])) {
-    return "Pharmacy Law & Ethics";
+  if (
+    hasAny(combined, [
+      "professional practice",
+      "pharmacy practice",
+      "pharmaceutical care",
+      "pharmaceutical technology",
+      "pharmacology",
+      "dose",
+      "calculation",
+      "poison",
+      "toxicol",
+      "overdose",
+      "antidote",
+      "pesticide",
+      "pralidoxime",
+      "atropine",
+      "glaucoma",
+      "counsel",
+      "therapeutic use",
+      "pack years",
+      "alcohol limit",
+      "drug interaction",
+      "adverse drug",
+    ])
+  ) {
+    return "Pharmacy Practice";
   }
 
   if (
     hasAny(combined, [
-      "clinical pharmacology",
-      "pharmacology",
-      "dose",
-      "drug interaction",
-      "adverse drug",
+      "manufactur",
+    ])
+  ) {
+    return "Manufacturing and Calculation";
+  }
+
+  if (
+    hasAny(combined, [
+      "sectionid:gppqe-law-drill",
+      "sectionid:law-drill",
+      "drilltags:law",
+      "lawdrill:true",
     ])
   ) {
     return "Pharmacy Law & Ethics";
   }
 
-  return "Pharmacy Law & Ethics";
+  if (hasAny(combined, ["law", "ethic", "regulation", "legal"])) {
+    return "Pharmacy Law & Ethics";
+  }
+
+  return "Pharmacy Practice";
 }
 
 export function isMajorCategory(value) {

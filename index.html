@@ -100,11 +100,12 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260414-livefix1" />
+    <link rel="stylesheet" href="styles.css?v=20260611-lawdrill22" />
   </head>
 
   <body>
     <div id="boot-error-banner" style="display:none; position:fixed; left:12px; right:12px; bottom:12px; z-index:4000; padding:10px 12px; border-radius:12px; background:#7f1d1d; color:#fff; font:600 13px/1.4 Inter, sans-serif; box-shadow:0 10px 24px rgba(0,0,0,0.22);"></div>
+    <div id="app-notification-banner" class="app-notification-banner hidden" aria-live="polite" aria-atomic="true"></div>
     <div id="exam-exit-modal" class="modal hidden">
       <div class="modal-card">
         <div id="exam-exit-title" class="modal-title">End Exam?</div>
@@ -489,6 +490,36 @@
                   </span>
                   <span class="menu-modern-drill-label">Clinical</span>
                 </button>
+
+                <button
+                  id="law-drill-btn"
+                  type="button"
+                  class="menu-modern-drill-tile"
+                  style="position:relative;overflow:hidden;"
+                  aria-label="Start pharmacy law quiz"
+                  title="Pharmacy Law Quiz"
+                >
+                  <span
+                    class="menu-modern-card-points-badge is-drill"
+                    style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;"
+                    title="Law points"
+                  >
+                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
+                    <span id="menu-law-points-badge">0</span>
+                  </span>
+                  <span class="menu-modern-drill-icon is-law" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3v18"></path>
+                      <path d="M5 7h14"></path>
+                      <path d="M6 7 3 12h6L6 7Z"></path>
+                      <path d="M18 7 15 12h6L18 7Z"></path>
+                      <path d="M6 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
+                      <path d="M21 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
+                      <path d="M8 21h8"></path>
+                    </svg>
+                  </span>
+                  <span class="menu-modern-drill-label">Law</span>
+                </button>
               </div>
             </section>
 
@@ -759,15 +790,40 @@
             <section class="study-reference-card">
               <label class="study-reference-field">
                 <span class="study-reference-label">Study Type</span>
-                <select id="study-type-select" class="setup-select study-reference-select">
+                <button id="study-type-picker-btn" type="button" class="setup-picker-trigger study-reference-select" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="setup-picker-trigger-label">Normal Study</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 9 5 5 5-5"></path>
+                  </svg>
+                </button>
+                <select id="study-type-select" class="setup-select study-reference-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
                   <option value="normal">Normal Study</option>
                   <option value="weak">Practice Weak Areas</option>
                 </select>
               </label>
 
               <label class="study-reference-field">
+                <span class="study-reference-label">Rotation</span>
+                <button id="study-rotation-picker-btn" type="button" class="setup-picker-trigger study-reference-select" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="setup-picker-trigger-label">All Rotations</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 9 5 5 5-5"></path>
+                  </svg>
+                </button>
+                <select id="study-rotation-select" class="setup-select study-reference-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
+                  <option value="all">All Rotations</option>
+                </select>
+              </label>
+
+              <label class="study-reference-field">
                 <span class="study-reference-label">Category</span>
-                <select id="study-category-select" class="setup-select study-reference-select">
+                <button id="study-category-picker-btn" type="button" class="setup-picker-trigger study-reference-select" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="setup-picker-trigger-label">All Categories</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 9 5 5 5-5"></path>
+                  </svg>
+                </button>
+                <select id="study-category-select" class="setup-select study-reference-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
                   <option value="all">All Categories</option>
                 </select>
               </label>
@@ -862,22 +918,53 @@
             <section class="study-reference-card exam-reference-card">
               <label class="study-reference-field">
                 <span class="study-reference-label">Exam Type</span>
-                <select id="exam-type-select" class="setup-select study-reference-select">
+                <button id="exam-type-picker-btn" type="button" class="setup-picker-trigger study-reference-select" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="setup-picker-trigger-label">Normal Exam</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 9 5 5 5-5"></path>
+                  </svg>
+                </button>
+                <select id="exam-type-select" class="setup-select study-reference-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
                   <option value="normal">Normal Exam</option>
                   <option value="smart">Smart Exam (Adaptive)</option>
                 </select>
               </label>
 
               <label class="study-reference-field">
+                <span class="study-reference-label">Rotation</span>
+                <button id="exam-rotation-picker-btn" type="button" class="setup-picker-trigger study-reference-select" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="setup-picker-trigger-label">All Rotations</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 9 5 5 5-5"></path>
+                  </svg>
+                </button>
+                <select id="rotation-select" class="setup-select study-reference-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
+                  <option value="all">All Rotations</option>
+                </select>
+              </label>
+
+              <label class="study-reference-field">
                 <span class="study-reference-label">Category</span>
-                <select id="category-select" class="setup-select study-reference-select">
+                <button id="exam-category-picker-btn" type="button" class="setup-picker-trigger study-reference-select" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="setup-picker-trigger-label">All Categories</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 9 5 5 5-5"></path>
+                  </svg>
+                </button>
+                <select id="category-select" class="setup-select study-reference-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
                   <option value="">All Categories</option>
                 </select>
               </label>
 
               <label class="study-reference-field">
                 <span class="study-reference-label">Question Count</span>
-                <select id="exam-count-select" class="setup-select study-reference-select">
+                <button id="exam-count-picker-btn" type="button" class="setup-picker-trigger study-reference-select" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="setup-picker-trigger-label">Select count</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 9 5 5 5-5"></path>
+                  </svg>
+                </button>
+                <select id="exam-count-select" class="setup-select study-reference-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
                   <option value="">Select count</option>
                   <option value="30">30 Questions</option>
                   <option value="50">50 Questions</option>
@@ -1104,7 +1191,13 @@
                 <div id="topic-library-controls" class="topic-library-controls hidden">
                   <label id="topic-library-category-field" class="topic-library-field hidden">
                     <span class="topic-library-field-label">Category</span>
-                    <select id="topic-library-category" class="setup-select topic-library-select">
+                    <button id="topic-library-category-picker-btn" type="button" class="setup-picker-trigger topic-library-select" aria-haspopup="dialog" aria-expanded="false">
+                      <span class="setup-picker-trigger-label">All Categories</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m7 9 5 5 5-5"></path>
+                      </svg>
+                    </button>
+                    <select id="topic-library-category" class="setup-select topic-library-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
                       <option value="all">All Categories</option>
                     </select>
                   </label>
@@ -1931,6 +2024,42 @@
                       </label>
                     </div>
                   </section>
+                  <section id="community-settings-admin-section" class="community-settings-view hidden" data-community-settings-view="admin" data-settings-title="Admin Broadcasts" data-settings-copy="Send announcements to everyone.">
+                    <div class="community-settings-section">
+                      <div class="community-settings-section-label">Admin</div>
+                      <label class="community-settings-item is-select">
+                        <span class="community-settings-item-copy">
+                          <span class="community-settings-item-label">Admin key</span>
+                          <span class="community-settings-item-note">Stored locally to authorize broadcast tools.</span>
+                        </span>
+                        <input id="community-settings-admin-key" class="community-settings-item-input" type="password" autocomplete="off" placeholder="Enter admin key" />
+                      </label>
+                      <button type="button" class="community-settings-item is-link" data-community-admin-action="broadcast-message">
+                        <span class="community-settings-item-copy">
+                          <span class="community-settings-item-label">Broadcast chat</span>
+                          <span class="community-settings-item-note">Send a read-only announcement to every user.</span>
+                        </span>
+                        <span class="community-settings-item-value">Compose</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">â€º</span>
+                      </button>
+                      <button type="button" class="community-settings-item is-link" data-community-admin-action="broadcast-status">
+                        <span class="community-settings-item-copy">
+                          <span class="community-settings-item-label">Broadcast status</span>
+                          <span class="community-settings-item-note">Publish an announcement status with no replies.</span>
+                        </span>
+                        <span class="community-settings-item-value">Compose</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">â€º</span>
+                      </button>
+                      <button type="button" id="community-settings-admin-target-btn" class="community-settings-item is-link hidden" data-community-settings-target="admin">
+                        <span class="community-settings-item-copy">
+                          <span class="community-settings-item-label">Admin broadcasts</span>
+                          <span class="community-settings-item-note">Send announcements to everyone.</span>
+                        </span>
+                        <span class="community-settings-item-value">Open</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                      </button>
+                    </div>
+                  </section>
                 </div>
               </div>
             </div>
@@ -2086,6 +2215,15 @@
         <div id="community-chat-active-call-bar" class="community-chat-active-call-bar hidden" aria-hidden="true">
           <span id="community-chat-active-call-text" class="community-chat-active-call-text">Active voice call</span>
           <button id="community-chat-active-call-join-btn" type="button" class="community-chat-active-call-join-btn">Join</button>
+        </div>
+        <div id="community-chat-readonly-banner" class="community-chat-readonly-banner hidden" aria-hidden="true">
+          <span class="community-chat-readonly-banner-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3.5a8 8 0 0 0-8 8V16l-1.8 2H21.8L20 16v-4.5a8 8 0 0 0-8-8Z"></path>
+              <path d="M12 20.5a2.2 2.2 0 0 1-2.2-2.2h4.4A2.2 2.2 0 0 1 12 20.5Z"></path>
+            </svg>
+          </span>
+          <span class="community-chat-readonly-banner-text">Read only. Admin notices cannot be replied to.</span>
         </div>
         <div class="community-chat-composer">
           <input id="community-chat-image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,audio/webm,audio/ogg,audio/mp4,audio/mpeg,audio/wav,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain" multiple hidden />
@@ -2762,11 +2900,24 @@
           </div>
         </div>
 
-        <!-- MAIN CONTENT -->
-        <div class="quiz-content">
-          <div class="question-card-modern">
-            <div id="answer-checkmark" class="answer-checkmark hidden" aria-hidden="true">
-              &#10003;
+          <!-- MAIN CONTENT -->
+          <div class="quiz-content">
+            <div id="law-drill-panel" class="law-drill-panel hidden" aria-live="polite">
+              <div class="law-drill-panel-head">
+                <div>
+                  <div class="law-drill-panel-eyebrow">Law Drill Ladder</div>
+                  <div class="law-drill-panel-title">100 levels, 5 questions per level</div>
+                </div>
+                <div class="law-drill-panel-note">Tap the yellow level to start. Completed levels open their stack.</div>
+              </div>
+              <div class="law-drill-board">
+                <div id="law-drill-rail" class="law-drill-rail" aria-label="Law drill levels"></div>
+              </div>
+            </div>
+
+            <div class="question-card-modern">
+              <div id="answer-checkmark" class="answer-checkmark hidden" aria-hidden="true">
+                &#10003;
             </div>
             <div id="answer-feedback" class="answer-feedback hidden" aria-live="polite"></div>
             <div id="drill-event-banner" class="drill-event-banner hidden" aria-live="polite"></div>
@@ -2776,9 +2927,10 @@
 
             <div id="answers" class="answers-grid-modern"></div>
 
-            <div id="explanation" class="explanation-modern hidden"></div>
-            <div id="memory-trick-box" class="memory-trick-box hidden" aria-live="polite"></div>
-            <div id="ai-explain-wrap" class="ai-explain-wrap hidden">
+              <div id="explanation" class="explanation-modern hidden"></div>
+              <div id="law-drill-stack" class="law-drill-stack hidden"></div>
+              <div id="memory-trick-box" class="memory-trick-box hidden" aria-live="polite"></div>
+              <div id="ai-explain-wrap" class="ai-explain-wrap hidden">
               <div class="ai-explain-actions">
                 <button
                   id="ai-explain-btn"
@@ -2944,6 +3096,15 @@
                   <div class="dashboard-category-list" id="dash-categories"></div>
                 </section>
 
+                <section class="dashboard-panel dashboard-breakdown-panel">
+                  <div class="dashboard-panel-head">
+                    <div class="dashboard-section-title">Rotation Breakdown</div>
+                    <div class="dashboard-section-subtitle">Accuracy by rotation</div>
+                  </div>
+
+                  <div class="dashboard-category-list" id="dash-rotations"></div>
+                </section>
+
                 <section class="dashboard-panel dashboard-recent-panel">
                   <div class="dashboard-panel-head">
                     <div class="dashboard-section-title">Recent Results</div>
@@ -2960,6 +3121,7 @@
         <div class="result-wrapper">
           <div class="result-card">
             <div class="result-title" id="result-title"></div>
+            <div id="result-badge" class="result-badge hidden"></div>
 
             <div class="result-body">
               <div class="result-score-block">
@@ -2969,13 +3131,9 @@
 
               <div class="result-feedback" id="result-feedback"></div>
               <div id="daily-social-card" class="daily-social-card hidden"></div>
-
               <div id="result-review-section" class="hidden">
                 <div class="review-section-title">Detailed Review</div>
                 <div id="result-review-content"></div>
-                <button id="result-back-btn" class="result-btn secondary-btn">
-                  Close
-                </button>
               </div>
             </div>
 
@@ -3085,27 +3243,46 @@
       </div>
 
       <div id="community-media-modal" class="modal hidden">
-        <div class="modal-card community-media-modal-card">
+        <div class="community-media-modal-card">
           <button id="community-media-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn community-media-desktop-close" aria-label="Close media">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M7 7 17 17"></path>
               <path d="M17 7 7 17"></path>
             </svg>
           </button>
+          <div id="community-media-modal-count" class="community-media-modal-count hidden">1 of 1</div>
+          <button id="community-media-remove-btn" type="button" class="community-status-delete-btn hidden" aria-label="Remove this attachment" title="Remove this attachment">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 7.5h8"></path>
+              <path d="M9 7.5V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5"></path>
+              <path d="M7.5 7.5 8.2 18a1.5 1.5 0 0 0 1.5 1.4h4.6a1.5 1.5 0 0 0 1.5-1.4l.7-10.5"></path>
+              <path d="M10.5 11v5"></path>
+              <path d="M13.5 11v5"></path>
+            </svg>
+          </button>
+          <button id="community-media-add-btn" type="button" class="community-status-action-btn" aria-label="Add more attachments" title="Add more attachments">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </button>
           <div class="community-media-modal-body">
             <img id="community-media-modal-image" class="community-media-modal-image" alt="Expanded media view" />
             <video id="community-media-modal-video" class="community-media-modal-video hidden" playsinline controls preload="metadata"></video>
             <div id="community-media-modal-name" class="community-media-modal-name hidden"></div>
+            <div class="community-status-tap-zones" aria-hidden="true">
+              <button id="community-media-prev-btn" type="button" class="community-status-tap-zone is-left" aria-label="Previous attachment"></button>
+              <button id="community-media-next-btn" type="button" class="community-status-tap-zone is-right" aria-label="Next attachment"></button>
+            </div>
           </div>
         </div>
       </div>
 
       <div id="community-attachment-preview-modal" class="modal hidden">
-        <div class="modal-card community-attachment-preview-card">
-          <button id="community-attachment-preview-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close upload preview">
+        <div class="community-attachment-preview-card">
+          <button type="button" class="community-attachment-preview-close-btn" aria-label="Back to queue" title="Back to queue">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 7 17 17"></path>
-              <path d="M17 7 7 17"></path>
+              <path d="M15 18 9 12l6-6"></path>
             </svg>
           </button>
           <button id="community-attachment-preview-edit-btn" type="button" class="community-status-delete-btn community-status-action-btn hidden" aria-label="Edit image" title="Edit image">
@@ -3164,6 +3341,60 @@
         </div>
       </div>
 
+      <div id="community-report-modal" class="modal hidden">
+        <div class="modal-card community-report-modal-card">
+          <button id="community-report-cancel-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close report">&times;</button>
+          <div id="community-report-title" class="modal-title">Report user</div>
+          <div id="community-report-target" class="community-report-target">
+            <div id="community-report-target-avatar" class="community-report-target-avatar"></div>
+            <div class="community-report-target-copy">
+              <div id="community-report-target-label" class="community-report-target-label">User to report</div>
+              <div id="community-report-target-name" class="community-report-target-name">User</div>
+            </div>
+          </div>
+          <div id="community-report-hint" class="modal-text">Pick the closest reason and add any context that helps the review.</div>
+          <label class="community-report-field">
+            <span class="community-report-field-label">Reason</span>
+            <select id="community-report-reason-select" class="community-report-select">
+              <option value="" selected disabled>Select a reason</option>
+              <option value="Spam or scam">Spam or scam</option>
+              <option value="Harassment or bullying">Harassment or bullying</option>
+              <option value="Inappropriate content">Inappropriate content</option>
+              <option value="Impersonation or fake account">Impersonation or fake account</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label class="community-report-field">
+            <span class="community-report-field-label">Details</span>
+            <textarea id="community-report-details" class="community-report-textarea" rows="4" maxlength="240" placeholder="Add details (optional)"></textarea>
+          </label>
+          <div class="modal-actions">
+            <button id="community-report-submit-btn" type="button" class="modal-btn primary">Send report</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="community-admin-broadcast-modal" class="modal hidden">
+        <div class="modal-card community-admin-broadcast-card">
+          <button id="community-admin-broadcast-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close broadcast">&times;</button>
+          <div class="modal-title">Broadcast Message</div>
+          <div class="modal-text">Send a read-only announcement to every user in the app.</div>
+          <label class="community-admin-broadcast-field">
+            <span class="community-admin-broadcast-label">Message</span>
+            <textarea id="community-admin-broadcast-input" class="community-report-textarea community-admin-broadcast-textarea" rows="5" maxlength="2000" placeholder="Write your announcement..."></textarea>
+          </label>
+          <div class="community-admin-broadcast-attachment">
+            <button id="community-admin-broadcast-attach-btn" type="button" class="modal-btn secondary">Attach file</button>
+            <div id="community-admin-broadcast-attachment-name" class="community-admin-broadcast-attachment-name">No attachment selected.</div>
+            <button id="community-admin-broadcast-clear-btn" type="button" class="modal-btn secondary hidden">Remove</button>
+          </div>
+          <input id="community-admin-broadcast-file-input" type="file" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.ppt,.pptx,.txt" hidden />
+          <div class="modal-actions">
+            <button id="community-admin-broadcast-send-btn" type="button" class="modal-btn primary">Send to all</button>
+          </div>
+        </div>
+      </div>
+
       <div id="community-confirm-modal" class="modal hidden">
         <div class="modal-card community-confirm-modal-card">
           <div id="community-confirm-title" class="modal-title">Confirm action</div>
@@ -3171,6 +3402,63 @@
           <div class="modal-actions">
             <button id="community-confirm-cancel-btn" type="button" class="modal-btn secondary">Cancel</button>
             <button id="community-confirm-ok-btn" type="button" class="modal-btn primary">Confirm</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="setup-picker-modal" class="modal hidden">
+        <div class="setup-picker-modal-card">
+          <button id="setup-picker-close-btn" type="button" class="dashboard-close-btn setup-picker-close-btn" aria-label="Close picker">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 7 17 17"></path>
+              <path d="M17 7 7 17"></path>
+            </svg>
+          </button>
+          <div class="setup-picker-header">
+            <div class="setup-picker-kicker">Choose an option</div>
+            <div id="setup-picker-title" class="setup-picker-title">Select</div>
+            <div id="setup-picker-subtitle" class="setup-picker-subtitle">Pick the option you want to use.</div>
+          </div>
+          <div id="setup-picker-list" class="setup-picker-list"></div>
+        </div>
+      </div>
+
+      <div id="community-thread-actions-modal" class="modal hidden">
+        <div class="modal-card community-thread-actions-card">
+          <button id="community-thread-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Conversation actions</div>
+          <div id="community-thread-actions-title" class="modal-title">Select action</div>
+          <div id="community-thread-actions-summary" class="modal-text">Choose what you want to do with the selected threads.</div>
+          <div id="community-thread-actions-selected" class="community-thread-actions-selected"></div>
+          <div class="community-thread-actions-grid">
+            <button id="community-thread-actions-view-btn" type="button" class="modal-btn secondary">View</button>
+            <button id="community-thread-actions-favorite-btn" type="button" class="modal-btn secondary">Favorite</button>
+            <button id="community-thread-actions-clear-btn" type="button" class="modal-btn secondary">Clear Chat</button>
+            <button id="community-thread-actions-unfriend-btn" type="button" class="modal-btn secondary">Unfriend</button>
+            <button id="community-thread-actions-delete-btn" type="button" class="modal-btn secondary is-danger">Delete</button>
+            <button id="community-thread-actions-block-btn" type="button" class="modal-btn secondary is-danger">Block</button>
+            <button id="community-thread-actions-exit-btn" type="button" class="modal-btn secondary is-danger">Exit Group</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="community-friend-actions-modal" class="modal hidden">
+        <div class="modal-card community-friend-actions-card">
+          <button id="community-friend-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Friend actions</div>
+          <div id="community-friend-actions-title" class="modal-title">Select action</div>
+          <div id="community-friend-actions-summary" class="modal-text">Choose what you want to do with this learner.</div>
+          <div id="community-friend-actions-selected" class="community-thread-actions-selected"></div>
+          <div class="community-friend-actions-grid">
+            <button id="community-friend-actions-view-btn" type="button" class="modal-btn secondary">View Profile</button>
+            <button id="community-friend-actions-message-btn" type="button" class="modal-btn primary">Message</button>
+            <button id="community-friend-actions-unfriend-btn" type="button" class="modal-btn secondary">Unfriend</button>
+            <button id="community-friend-actions-accept-btn" type="button" class="modal-btn primary">Accept</button>
+            <button id="community-friend-actions-reject-btn" type="button" class="modal-btn secondary">Reject</button>
+            <button id="community-friend-actions-cancel-btn" type="button" class="modal-btn secondary">Cancel Request</button>
+            <button id="community-friend-actions-add-btn" type="button" class="modal-btn primary">Add Friend</button>
+            <button id="community-friend-actions-block-btn" type="button" class="modal-btn secondary">Block</button>
+            <button id="community-friend-actions-unblock-btn" type="button" class="modal-btn primary">Unblock</button>
           </div>
         </div>
       </div>
@@ -3333,10 +3621,9 @@
       <div id="community-status-compose-modal" class="modal hidden">
         <div class="modal-card community-status-compose-card">
           <div class="community-status-compose-toolbar">
-            <button id="community-status-compose-close-btn" type="button" class="community-status-compose-close-btn" aria-label="Close" title="Close">
+            <button id="community-status-compose-close-btn" type="button" class="community-status-compose-close-btn" aria-label="Back to preview" title="Back to preview">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M7 7 17 17"></path>
-                <path d="M17 7 7 17"></path>
+                <path d="M15 18 9 12l6-6"></path>
               </svg>
             </button>
             <div class="community-status-compose-toolbar-actions" aria-label="Status editing tools">
@@ -3494,6 +3781,7 @@
             <path d="M20 18c0-4.5-3.8-7-10-7H4"></path>
           </svg>
         </button>
+        <span id="community-message-readonly-label" class="community-message-readonly-label hidden" aria-hidden="true">Read only</span>
         <button id="community-message-share-btn" type="button" class="community-message-tool-btn" aria-label="Forward" title="Forward">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14 8 20 12 14 16"></path>
@@ -3619,10 +3907,10 @@
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="engine.js?v=20260414-livefix1"></script>
+    <script type="module" src="engine.js?v=20260613-manufacturing-set2"></script>
     <script>
-      const APP_BUILD_ID = "20260414-livefix1";
-      const APP_STANDALONE_BUILD = "20260414-livefix1";
+      const APP_BUILD_ID = "20260611-lawdrill13";
+      const APP_STANDALONE_BUILD = "20260611-lawdrill13";
       const APP_NATIVE_VERSION = "1.0.1";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
       document.documentElement.dataset.nativeAppVersion = APP_NATIVE_VERSION;

@@ -1,3 +1,17 @@
+import { firstBatchQuestions } from "./question-batches/set1.js?v=20260612-manufacturing-set1";
+import { secondBatchQuestions } from "./question-batches/set2.js?v=20260612-manufacturing-set1";
+import { thirdBatchQuestions } from "./question-batches/set3.js?v=20260612-manufacturing-set1";
+import { fourthBatchQuestions } from "./question-batches/set4.js?v=20260612-manufacturing-set1";
+import { fifthBatchQuestions } from "./question-batches/set5.js?v=20260612-manufacturing-set1";
+import { sixthBatchQuestions } from "./question-batches/set6.js?v=20260612-manufacturing-set1";
+import { seventhBatchQuestions } from "./question-batches/set7.js?v=20260612-manufacturing-set1";
+import { eighthBatchQuestions } from "./question-batches/set8.js?v=20260612-manufacturing-set1";
+import { ninthBatchQuestions } from "./question-batches/set9.js?v=20260612-manufacturing-set1";
+import { tenthBatchQuestions } from "./question-batches/set10.js?v=20260612-manufacturing-set1";
+import { eleventhBatchQuestions } from "./question-batches/set11.js?v=20260612-manufacturing-set1";
+import { twelfthBatchQuestions } from "./question-batches/set12.js?v=20260613-manufacturing-set2";
+import { inferQuestionRotation } from "./rotationTaxonomy.js";
+
 export const baseQuestions = [
   {
     "id": 1,
@@ -662,7 +676,7 @@ export const baseQuestions = [
   {
     "id": 32,
     "type": "single",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "caseId": "t2_case4",
     "question": "Q32. The maximum adult daily dose of paracetamol is:",
     "options": [
@@ -1078,7 +1092,7 @@ export const baseQuestions = [
   {
     "id": 53,
     "type": "match",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "question": "Q53. Which ONE of the following best describes the primary mechanism of Isoniazid?",
     "options": [
       "Reduces hepatic glucose output and improves insulin sensitivity.",
@@ -2279,7 +2293,7 @@ export const baseQuestions = [
   {
     "id": 112,
     "type": "match",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "question": "Q112. Which ONE of the following is the MOST important safety point to counsel or monitor when using Lactulose?",
     "options": [
       "INR monitoring and clear documentation of target range are essential.",
@@ -2930,7 +2944,7 @@ export const baseQuestions = [
   {
     "id": 145,
     "type": "combo",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "correct": "B",
     "question": "Q145. Regarding creatinine clearance:",
     "statements": [
@@ -3238,7 +3252,7 @@ export const baseQuestions = [
   {
     "id": 160,
     "type": "match",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "question": "Q160. Which ONE of the following best describes the primary mechanism of Lactulose?",
     "options": [
       "Inhibits voltage-sensitive sodium channels and glutamate release.",
@@ -3662,7 +3676,7 @@ export const baseQuestions = [
   {
     "id": 182,
     "type": "match",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "question": "Q182. Which abbreviation refers to findings on examination of the patient?",
     "options": [
       "PMH",
@@ -4801,7 +4815,7 @@ export const baseQuestions = [
   {
     "id": 238,
     "type": "match",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "question": "Q238. Which ONE of the following best describes the primary mechanism of Mesalazine?",
     "options": [
       "Topical anti-inflammatory action in colonic mucosa via 5-ASA.",
@@ -4973,7 +4987,7 @@ export const baseQuestions = [
   {
     "id": 246,
     "type": "match",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "question": "Q246. Which abbreviation refers to symptoms presented by the patient?",
     "options": [
       "PMH",
@@ -6185,7 +6199,7 @@ export const baseQuestions = [
   {
     "id": 306,
     "type": "match",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "question": "Q306. Which ONE of the following is the MOST important safety point to counsel or monitor when using Epoetin alfa?",
     "options": [
       "Hemoglobin should not rise too quickly; monitor Hb to reduce thrombotic risk.",
@@ -6340,7 +6354,7 @@ export const baseQuestions = [
   {
     "id": 314,
     "type": "combo",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "correct": "B",
     "question": "Q314. Regarding parenteral sodium bicarbonate:",
     "statements": [
@@ -6361,7 +6375,7 @@ export const baseQuestions = [
   {
     "id": 315,
     "type": "combo",
-    "category": "Pharmacy Law & Ethics",
+    "category": "Pharmacy Practice",
     "caseId": "t2_case11",
     "question": "Q315. What measures need to be undertaken during parenteral rehydration?",
     "statements": [
@@ -14914,5 +14928,2187 @@ export const baseQuestions = [
     ],
     "correct": "Sotalol",
     "explanation": "Sotalol combines potassium channel blockade with beta-blocking effects, which is why QT monitoring is so important."
+  },
+  {
+    "id": 733,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q733. The primary legislation governing the practice of pharmacy in Ghana is the:",
+    "options": [
+      "Food and Drugs Act, 1992 (PNDCL 305B)",
+      "Health Professions Regulatory Bodies Act, 2013 (Act 857)",
+      "Pharmacy Act, 1964 (Act 243)",
+      "Public Health Act, 2012 (Act 851)"
+    ],
+    "correct": "Health Professions Regulatory Bodies Act, 2013 (Act 857)",
+    "explanation": "Act 857 is the core law that regulates pharmacy practice in Ghana.",
+    "explainCorrect": "Option B is correct because Act 857 established the modern regulatory framework for pharmacy practice in Ghana.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 734,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q734. Under the Health Professions Regulatory Bodies Act, 2013 (Act 857), the Pharmacy Council is mandated to:",
+    "options": [
+      "Manufacture all pharmaceutical products in Ghana",
+      "Regulate the wholesale prices of medicines",
+      "Control the standard of pharmacy education, training, and practice",
+      "Prosecute all drug offenders in court"
+    ],
+    "correct": "Control the standard of pharmacy education, training, and practice",
+    "explanation": "The Pharmacy Council oversees standards for education, training, registration, licensing, and practice.",
+    "explainCorrect": "Option C is correct because the Council is responsible for regulating professional standards and practice.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 735,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q735. A person commits an offence and is liable on summary conviction if they practice as a pharmacist without:",
+    "options": [
+      "A valid license from the FDA",
+      "Registration with the Ghana National Chamber of Pharmacy",
+      "A current practicing certificate from the Pharmacy Council",
+      "A degree in pharmacology"
+    ],
+    "correct": "A current practicing certificate from the Pharmacy Council",
+    "explanation": "Practising without a valid annual certificate is unlawful.",
+    "explainCorrect": "Option C is correct because pharmacy practice requires a current practicing certificate issued by the Pharmacy Council.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 736,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q736. The professional body responsible for issuing a License to Operate a Pharmacy in Ghana is the:",
+    "options": [
+      "Food and Drugs Authority (FDA)",
+      "Ministry of Health",
+      "Pharmacy Council",
+      "Ghana Health Service"
+    ],
+    "correct": "Pharmacy Council",
+    "explanation": "The Pharmacy Council licenses pharmacy premises after inspection and compliance checks.",
+    "explainCorrect": "Option C is correct because the Pharmacy Council issues the licence to operate a pharmacy premises.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 737,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q737. According to the Pharmacy (Premises) Standards, 2018, a pharmacist must be physically present in a licensed pharmacy for a minimum of:",
+    "options": [
+      "20 hours per week",
+      "30 hours per week",
+      "40 hours per week",
+      "Full time during all opening hours"
+    ],
+    "correct": "Full time during all opening hours",
+    "explanation": "The pharmacist in charge must be present throughout the hours the pharmacy is open to the public.",
+    "explainCorrect": "Option D is correct because the pharmacist must be present for all public opening hours.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 738,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q738. Which of the following is NOT a function of the Food and Drugs Authority (FDA) in relation to pharmacy?",
+    "options": [
+      "Issuing wholesale license for medicines",
+      "Conducting registration of pharmaceutical products",
+      "Approving the curriculum for pharmacy schools",
+      "Post-market surveillance of medicines"
+    ],
+    "correct": "Approving the curriculum for pharmacy schools",
+    "explanation": "Curriculum approval is not an FDA role.",
+    "explainCorrect": "Option C is correct because pharmacy curriculum approval is handled through education and professional regulators, not the FDA.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 739,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q739. Under the Narcotics Control Commission Act, 2020 (Act 1019), which schedule lists drugs with high abuse potential but some medical use, such as morphine?",
+    "options": [
+      "Schedule 1",
+      "Schedule 2",
+      "Schedule 3",
+      "Schedule 4"
+    ],
+    "correct": "Schedule 2",
+    "explanation": "Schedule 2 covers substances with medical use but high abuse potential.",
+    "explainCorrect": "Option B is correct because Schedule 2 includes medicinal narcotics such as morphine.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 740,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q740. A pharmacist dispenses a prescription without a valid prescription from a registered medical practitioner. This constitutes:",
+    "options": [
+      "A minor administrative error",
+      "Professional misconduct under Act 857",
+      "Acceptable in rural areas",
+      "A drug regulatory issue only"
+    ],
+    "correct": "Professional misconduct under Act 857",
+    "explanation": "Dispensing without a valid prescription is unprofessional conduct.",
+    "explainCorrect": "Option B is correct because dispensing prescription medicines without a valid prescription breaches professional standards.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 741,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q741. The maximum jail term for unlawful sale of a narcotic drug such as cocaine under Act 1019 is:",
+    "options": [
+      "5 years",
+      "10 years",
+      "25 years",
+      "Life imprisonment"
+    ],
+    "correct": "Life imprisonment",
+    "explanation": "Serious narcotic trafficking offences attract the heaviest penalties.",
+    "explainCorrect": "Option D is correct because unlawful trafficking or supply of narcotics can attract life imprisonment.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 742,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q742. Continuing Professional Development (CPD) for pharmacists in Ghana is:",
+    "options": [
+      "Voluntary",
+      "Mandatory for annual practicing certificate renewal",
+      "Required only for hospital pharmacists",
+      "Organized only by the FDA"
+    ],
+    "correct": "Mandatory for annual practicing certificate renewal",
+    "explanation": "CPD is a renewal requirement for practising pharmacists.",
+    "explainCorrect": "Option B is correct because CPD is required for annual renewal of the practising certificate.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 743,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q743. The Code of Ethics for pharmacists in Ghana emphasizes all the following EXCEPT:",
+    "options": [
+      "Patient confidentiality",
+      "Maximizing personal profit at all costs",
+      "Professional competence",
+      "Honesty in dealing with patients"
+    ],
+    "correct": "Maximizing personal profit at all costs",
+    "explanation": "Ethics prioritise patient welfare, competence, and honesty.",
+    "explainCorrect": "Option B is correct because the code of ethics does not support putting profit above patient welfare.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 744,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q744. Which document must be kept in a pharmacy for at least two years for controlled drugs?",
+    "options": [
+      "Register of Pharmacists",
+      "Controlled Drugs Register (CD Register)",
+      "Invoice book only",
+      "Customer feedback log"
+    ],
+    "correct": "Controlled Drugs Register (CD Register)",
+    "explanation": "Controlled drug transactions must be recorded and retained.",
+    "explainCorrect": "Option B is correct because controlled drug records must be maintained in a dedicated register.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 745,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q745. A pharmacy technician working without direct supervision of a pharmacist violates:",
+    "options": [
+      "Public Health Act only",
+      "Pharmacy Council scope of practice regulations",
+      "The Wholesale Drug Code",
+      "FDA marketing rules"
+    ],
+    "correct": "Pharmacy Council scope of practice regulations",
+    "explanation": "Pharmacy support staff must work under supervision where required.",
+    "explainCorrect": "Option B is correct because pharmacy technicians must practise within supervised scope requirements.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 746,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q746. Advertising of prescription-only medicines to the general public in Ghana is:",
+    "options": [
+      "Allowed with FDA approval",
+      "Prohibited",
+      "Allowed only on television",
+      "Allowed if no price is mentioned"
+    ],
+    "correct": "Prohibited",
+    "explanation": "Prescription-only medicines are not to be advertised to the public.",
+    "explainCorrect": "Option B is correct because public advertising of prescription-only medicines is prohibited.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 747,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q747. The legal age for a person to purchase over-the-counter medicines from a pharmacy in Ghana is:",
+    "options": [
+      "12 years",
+      "14 years",
+      "16 years",
+      "18 years"
+    ],
+    "correct": "18 years",
+    "explanation": "Sales should be made to an adult or with adult consent.",
+    "explainCorrect": "Option D is correct because purchase of medicines is restricted to adults.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 748,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q748. In Ghana, a pharmacist who changes place of employment must notify the Pharmacy Council within:",
+    "options": [
+      "7 days",
+      "14 days",
+      "30 days",
+      "60 days"
+    ],
+    "correct": "14 days",
+    "explanation": "The Council should be informed promptly when employment details change.",
+    "explainCorrect": "Option B is correct because employment changes must be reported within 14 days.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 749,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q749. Which of the following is a disciplinary committee established under Act 857?",
+    "options": [
+      "Ethics and Disciplinary Committee",
+      "Parliamentary Health Committee",
+      "FDA Disciplinary Board",
+      "Ghana Medical and Dental Council"
+    ],
+    "correct": "Ethics and Disciplinary Committee",
+    "explanation": "Act 857 provides for an ethics and disciplinary body.",
+    "explainCorrect": "Option A is correct because the Act establishes an Ethics and Disciplinary Committee to handle misconduct.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 750,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q750. A pharmacist dispenses amoxicillin capsules from bulk without repackaging into an appropriately labelled container. This:",
+    "options": [
+      "Is acceptable if the patient is known",
+      "Saves cost and is ethical",
+      "Violates labelling and safety requirements",
+      "Is allowed in emergencies only"
+    ],
+    "correct": "Violates labelling and safety requirements",
+    "explanation": "Dispensed medicines must be properly labelled and safely packaged.",
+    "explainCorrect": "Option C is correct because dispensing from bulk without suitable labelling and packaging breaches safety requirements.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 751,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q751. The Wholesale Licence for pharmaceutical products in Ghana is issued by the:",
+    "options": [
+      "Pharmacy Council",
+      "FDA",
+      "Ghana Revenue Authority",
+      "Ministry of Trade"
+    ],
+    "correct": "FDA",
+    "explanation": "The FDA issues wholesale licences under the food and drugs regulatory framework.",
+    "explainCorrect": "Option B is correct because wholesale licensing of medicines is handled by the FDA.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 752,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q752. A pharmacist's primary ethical duty in case of a dispensing error that reaches the patient is to:",
+    "options": [
+      "Ignore it if no harm occurs",
+      "Blame the prescriber",
+      "Immediately inform the patient and take corrective action",
+      "Only report to the police"
+    ],
+    "correct": "Immediately inform the patient and take corrective action",
+    "explanation": "Patient safety and transparency come first after a dispensing error.",
+    "explainCorrect": "Option C is correct because the ethical response is immediate disclosure and corrective action.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 753,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q753. Under Act 857, a person whose name has been struck off the register of pharmacists may apply for restoration after a period of not less than:",
+    "options": [
+      "6 months",
+      "1 year",
+      "2 years",
+      "5 years"
+    ],
+    "correct": "2 years",
+    "explanation": "An erased pharmacist must wait before applying for restoration.",
+    "explainCorrect": "Option C is correct because restoration may be sought after 2 years from the date of erasure.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 754,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q754. Which of the following is a schedule of poisons under Ghanaian law?",
+    "options": [
+      "General Sales List",
+      "Pharmacy Only List",
+      "Schedule of Restricted and Non-Restricted Poisons",
+      "Ethical Category List"
+    ],
+    "correct": "Schedule of Restricted and Non-Restricted Poisons",
+    "explanation": "Poisons are classified into restricted and non-restricted categories.",
+    "explainCorrect": "Option C is correct because Ghanaian law recognizes restricted and non-restricted poison schedules.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 755,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q755. The maximum period for which a pharmacist's temporary practicing permit is valid is:",
+    "options": [
+      "30 days",
+      "90 days",
+      "6 months",
+      "1 year"
+    ],
+    "correct": "90 days",
+    "explanation": "Temporary permits are issued for a limited period.",
+    "explainCorrect": "Option B is correct because temporary permits may be issued for up to 90 days.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 756,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q756. A pharmacist who reveals a patient's HIV status to a third party without consent commits:",
+    "options": [
+      "No offence if done in good faith",
+      "A breach of confidentiality and professional misconduct",
+      "A criminal offence only under criminal code",
+      "Only a civil wrong"
+    ],
+    "correct": "A breach of confidentiality and professional misconduct",
+    "explanation": "Patient confidentiality must be protected.",
+    "explainCorrect": "Option B is correct because unauthorized disclosure breaches confidentiality and professional ethics.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 757,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q757. The Pharmacy Council may refuse to issue a licence to operate a pharmacy if:",
+    "options": [
+      "The premises is located near a hospital",
+      "The pharmacist in charge is already in full-time employment elsewhere",
+      "The pharmacy has a parking lot",
+      "The premises is air-conditioned"
+    ],
+    "correct": "The pharmacist in charge is already in full-time employment elsewhere",
+    "explanation": "A pharmacist cannot be in charge of more than one pharmacy at a time.",
+    "explainCorrect": "Option B is correct because dual full-time charge conflicts with supervision rules.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 758,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q758. Under the Code of Ethics, a pharmacist dispensing an oral contraceptive pill must:",
+    "options": [
+      "Provide only the medication without advice",
+      "Offer written information only",
+      "Counsel on correct use, side effects, and missed doses",
+      "Refer all patients to a doctor"
+    ],
+    "correct": "Counsel on correct use, side effects, and missed doses",
+    "explanation": "Counselling is required for safe and effective use.",
+    "explainCorrect": "Option C is correct because ethical practice requires counselling on use and adverse effects.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 759,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q759. Which of the following is not a ground for disciplinary action against a pharmacist?",
+    "options": [
+      "Conviction for a felony involving dishonesty",
+      "Practicing while under the influence of alcohol",
+      "Refusing to sell a prescription-only medicine without a prescription",
+      "Fraudulently obtaining a practicing certificate"
+    ],
+    "correct": "Refusing to sell a prescription-only medicine without a prescription",
+    "explanation": "Refusing unlawful supply is lawful and ethical.",
+    "explainCorrect": "Option C is correct because declining to dispense without a valid prescription is appropriate conduct.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 760,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q760. The minimum approved floor space for a licensed retail pharmacy in Ghana is:",
+    "options": [
+      "10 square metres",
+      "15 square metres",
+      "20 square metres",
+      "30 square metres"
+    ],
+    "correct": "15 square metres",
+    "explanation": "Premises standards specify the minimum floor area.",
+    "explainCorrect": "Option B is correct because the minimum floor space is 15 square metres.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 761,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q761. A pharmacist may refuse to dispense a prescription if:",
+    "options": [
+      "The patient cannot afford the medicine",
+      "The prescription appears illegible or altered",
+      "The patient prefers a different brand",
+      "The pharmacist is busy with another customer"
+    ],
+    "correct": "The prescription appears illegible or altered",
+    "explanation": "Unclear or altered prescriptions must be clarified before supply.",
+    "explainCorrect": "Option B is correct because the pharmacist must verify legibility and authenticity.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 762,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q762. The legal framework for clinical trials in Ghana is primarily governed by:",
+    "options": [
+      "Act 857 only",
+      "FDA Act, 2012 (Act 858) and FDA Clinical Trials Regulations",
+      "Narcotics Control Commission Act",
+      "Criminal Code"
+    ],
+    "correct": "FDA Act, 2012 (Act 858) and FDA Clinical Trials Regulations",
+    "explanation": "Clinical trials are regulated by the FDA under its legal framework.",
+    "explainCorrect": "Option B is correct because the FDA regulates clinical trials under Act 858 and the relevant regulations.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 763,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q763. Continuing Professional Development (CPD) points required per year for a practicing pharmacist in Ghana is:",
+    "options": [
+      "5 points",
+      "10 points",
+      "15 points",
+      "25 points"
+    ],
+    "correct": "15 points",
+    "explanation": "CPD credits are required annually for renewal.",
+    "explainCorrect": "Option C is correct because pharmacists must complete 15 CPD credits each year.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 764,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q764. A pharmacist who dispenses a lower strength of a prescribed drug without prescriber consent is:",
+    "options": [
+      "Practising cost-effective medicine",
+      "Liable for professional misconduct",
+      "Allowed if the patient agrees",
+      "Acceptable in a shortage"
+    ],
+    "correct": "Liable for professional misconduct",
+    "explanation": "Changing the strength without consultation is unsafe.",
+    "explainCorrect": "Option B is correct because altering strength without prescriber approval is professional misconduct.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 765,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q765. The Wholesale Licence for pharmaceuticals issued by FDA must be renewed:",
+    "options": [
+      "Every 6 months",
+      "Annually",
+      "Every 2 years",
+      "Every 5 years"
+    ],
+    "correct": "Annually",
+    "explanation": "Wholesale licences are renewed yearly subject to inspection and fee payment.",
+    "explainCorrect": "Option B is correct because FDA wholesale licences are renewed every year.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 766,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q766. A pharmacy may dispense a prescription for a controlled drug only if it is written on:",
+    "options": [
+      "Any plain paper",
+      "A computer printout without signature",
+      "A tamper-resistant prescription pad with prescriber's signature and licence number",
+      "A verbal order from a nurse"
+    ],
+    "correct": "A tamper-resistant prescription pad with prescriber's signature and licence number",
+    "explanation": "Controlled drugs require secure prescription documentation.",
+    "explainCorrect": "Option C is correct because controlled drugs need a proper secure prescription form.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 767,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q767. A pharmacist's responsibility when a patient presents a prescription with a likely drug-drug interaction is to:",
+    "options": [
+      "Dispense as written and ignore",
+      "Call the prescriber to discuss and document",
+      "Change the medication himself",
+      "Refuse to dispense without explanation"
+    ],
+    "correct": "Call the prescriber to discuss and document",
+    "explanation": "Potential interactions must be clarified and documented.",
+    "explainCorrect": "Option B is correct because the pharmacist should contact the prescriber and document the intervention.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 768,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q768. Which document is required for the importation of a pharmaceutical product into Ghana?",
+    "options": [
+      "Free sale certificate from country of origin",
+      "FDA import permit",
+      "WHO prequalification status",
+      "Pharmacy Council endorsement"
+    ],
+    "correct": "FDA import permit",
+    "explanation": "The FDA issues import permits for pharmaceutical products.",
+    "explainCorrect": "Option B is correct because pharmaceutical imports require an FDA import permit.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 769,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q769. The penalty for operating a pharmacy without a valid licence includes:",
+    "options": [
+      "A warning letter",
+      "Fine only",
+      "Fine and/or imprisonment under Act 857",
+      "Suspension of drug licence only"
+    ],
+    "correct": "Fine and/or imprisonment under Act 857",
+    "explanation": "Operating without a licence attracts legal sanctions.",
+    "explainCorrect": "Option C is correct because Act 857 provides for fine and/or imprisonment.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 770,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q770. A pharmacist must display in the pharmacy all of the following EXCEPT:",
+    "options": [
+      "The licence to operate a pharmacy",
+      "The personal practising certificate of the pharmacist in charge",
+      "The pharmacy's profit margin list",
+      "Opening hours"
+    ],
+    "correct": "The pharmacy's profit margin list",
+    "explanation": "Profit margins are not required to be displayed.",
+    "explainCorrect": "Option C is correct because display requirements do not include profit margin lists.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 771,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q771. Which Act establishes the Food and Drugs Authority (FDA)?",
+    "options": [
+      "Act 857",
+      "Act 851",
+      "Act 858 (Food and Drugs Act, 2012)",
+      "PNDCL 305B"
+    ],
+    "correct": "Act 858 (Food and Drugs Act, 2012)",
+    "explanation": "Act 858 established the FDA as the regulator for food and drugs.",
+    "explainCorrect": "Option C is correct because Act 858 established the FDA.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 772,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q772. The ethical principle that requires a pharmacist to respect a patient's right to make their own health decisions is:",
+    "options": [
+      "Beneficence",
+      "Non-maleficence",
+      "Autonomy",
+      "Justice"
+    ],
+    "correct": "Autonomy",
+    "explanation": "Autonomy means respecting informed choice.",
+    "explainCorrect": "Option C is correct because autonomy protects the patient's right to decide.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 773,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q773. Under Act 857, the Registrar of the Pharmacy Council is appointed by:",
+    "options": [
+      "The President of Ghana",
+      "The Minister of Health",
+      "The Pharmacy Council",
+      "The Public Services Commission"
+    ],
+    "correct": "The Pharmacy Council",
+    "explanation": "Section 12 of Act 857 states that the Council appoints the Registrar, who serves as secretary to the Council.",
+    "explainCorrect": "Option C is correct because the Pharmacy Council appoints the Registrar under Act 857.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 774,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q774. A pharmacist who dispenses a refill of a prescription for a controlled drug without a new prescription from the prescriber:",
+    "options": [
+      "Is allowed if the patient has been on it for years",
+      "Commits an offence under the Narcotics Control Commission Act",
+      "Is acceptable in emergencies",
+      "Only needs verbal approval"
+    ],
+    "correct": "Commits an offence under the Narcotics Control Commission Act",
+    "explanation": "Controlled drugs cannot be refilled without a new written prescription.",
+    "explainCorrect": "Option B is correct because controlled drugs require a valid new prescription before refilling.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 775,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q775. The maximum fine for a first offence of unlawful dispensing of a prescription-only medicine under Act 857 is:",
+    "options": [
+      "GHS 1,000",
+      "GHS 2,500",
+      "GHS 5,000",
+      "GHS 10,000"
+    ],
+    "correct": "GHS 5,000",
+    "explanation": "Act 857 prescribes a fine of up to 5,000 penalty units for a first offence.",
+    "explainCorrect": "Option C is correct because the law provides for a fine of 5,000 penalty units for the first offence.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 776,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q776. Which of the following is required in a pharmacy's refrigerator used for storing vaccines?",
+    "options": [
+      "Lock and key",
+      "Daily temperature chart and functioning thermometer",
+      "Ultraviolet light",
+      "Pharmacist's log of all visitors"
+    ],
+    "correct": "Daily temperature chart and functioning thermometer",
+    "explanation": "Cold chain integrity requires daily temperature monitoring and recording to ensure vaccine potency.",
+    "explainCorrect": "Option B is correct because vaccine storage requires daily temperature monitoring and a working thermometer.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 777,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q777. A pharmacy student on internship may dispense medicines only:",
+    "options": [
+      "Independently after 3 months",
+      "Under the direct supervision of a registered pharmacist",
+      "If the pharmacist is on lunch break",
+      "During weekends only"
+    ],
+    "correct": "Under the direct supervision of a registered pharmacist",
+    "explanation": "Interns and students must always work under direct supervision of a licensed pharmacist.",
+    "explainCorrect": "Option B is correct because interns may only dispense under direct pharmacist supervision.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 778,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q778. The Pharmacy Council may inspect a pharmacy without prior notice:",
+    "options": [
+      "Only with a court order",
+      "At any reasonable time",
+      "Only once per year",
+      "Only if a complaint is filed"
+    ],
+    "correct": "At any reasonable time",
+    "explanation": "Act 857 empowers Council inspectors to enter and inspect pharmacy premises at any reasonable time without prior notice.",
+    "explainCorrect": "Option B is correct because inspectors may enter and inspect at any reasonable time without prior notice.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 779,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q779. Which of the following is not a condition for issuing a retail pharmacy licence?",
+    "options": [
+      "Presence of a sink with running water",
+      "Presence of a refrigerator",
+      "Presence of a television for patient entertainment",
+      "Adequate lighting and ventilation"
+    ],
+    "correct": "Presence of a television for patient entertainment",
+    "explanation": "Entertainment equipment is not a regulatory requirement; essential facilities are water, fridge, light, and ventilation.",
+    "explainCorrect": "Option C is correct because a television is not part of the licensing requirements.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 780,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q780. The Code of Ethics requires a pharmacist to refuse to dispense a prescription if:",
+    "options": [
+      "The patient is rude",
+      "The pharmacist suspects it is forged or for abuse",
+      "The patient has insurance",
+      "The pharmacy is closing in 5 minutes"
+    ],
+    "correct": "The pharmacist suspects it is forged or for abuse",
+    "explanation": "Suspected forgery or abuse triggers an ethical duty to refuse and report appropriately.",
+    "explainCorrect": "Option B is correct because suspected forgery or abuse requires refusal and proper action.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 781,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q781. A pharmacist who sells antibiotics without a prescription is:",
+    "options": [
+      "Helping patients save time",
+      "Practicing good public health",
+      "Contributing to antimicrobial resistance and violating the law",
+      "Allowed for amoxicillin only"
+    ],
+    "correct": "Contributing to antimicrobial resistance and violating the law",
+    "explanation": "Antibiotics are prescription-only medicines; dispensing without a prescription promotes resistance and breaches regulations.",
+    "explainCorrect": "Option C is correct because antibiotics must not be supplied without a valid prescription.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 782,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q782. The retail licence for a pharmacy must be prominently displayed:",
+    "options": [
+      "In the pharmacist's office",
+      "At the point of sale or patient waiting area",
+      "Only at the back of the shop",
+      "It does not need to be displayed"
+    ],
+    "correct": "At the point of sale or patient waiting area",
+    "explanation": "Licences must be displayed in public view, typically at the dispensing counter or waiting area.",
+    "explainCorrect": "Option B is correct because the licence should be displayed where the public can easily see it.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 783,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q783. Under the Health Professions Regulatory Bodies Act, an appeal against a decision of the Pharmacy Council lies to:",
+    "options": [
+      "The FDA",
+      "The Minister of Health",
+      "The High Court",
+      "The National Media Commission"
+    ],
+    "correct": "The High Court",
+    "explanation": "Section 58 of Act 857 allows appeal to the High Court against Council decisions.",
+    "explainCorrect": "Option C is correct because appeals from the Council lie to the High Court.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 784,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q784. A pharmacist must report any adverse drug reaction (ADR) to:",
+    "options": [
+      "The Pharmacy Council only",
+      "The FDA National Pharmacovigilance Centre",
+      "The patient's employer",
+      "The police"
+    ],
+    "correct": "The FDA National Pharmacovigilance Centre",
+    "explanation": "FDA's pharmacovigilance system monitors ADRs, and pharmacists are mandated reporters.",
+    "explainCorrect": "Option B is correct because ADRs should be reported through the FDA pharmacovigilance system.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 785,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q785. Which schedule under the Narcotics Control Commission Act, 2020 (Act 1019) contains drugs with no accepted medical use (e.g., heroin, cannabis)?",
+    "options": [
+      "Schedule 1",
+      "Schedule 2",
+      "Schedule 3",
+      "Schedule 4"
+    ],
+    "correct": "Schedule 1",
+    "explanation": "Schedule 1 lists narcotics with high abuse potential and no recognized therapeutic use.",
+    "explainCorrect": "Option A is correct because Schedule 1 lists drugs with no accepted medical use.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 786,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q786. The minimum number of staff required in a class A retail pharmacy in Ghana is:",
+    "options": [
+      "0",
+      "1",
+      "2",
+      "3"
+    ],
+    "correct": "2",
+    "explanation": "A class A pharmacy (full-service) requires the pharmacist in charge and two support staff.",
+    "explainCorrect": "Option C is correct because class A pharmacies require at least two support staff.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 787,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q787. A pharmacist who fails to maintain the cold chain for a thermolabile vaccine commits:",
+    "options": [
+      "A civil wrong only",
+      "Professional misconduct and public health violation",
+      "No offence if unused",
+      "Only an internal error"
+    ],
+    "correct": "Professional misconduct and public health violation",
+    "explanation": "Cold chain breach risks vaccine failure and patient harm.",
+    "explainCorrect": "Option B is correct because failing to maintain cold chain is both unethical and a regulatory breach.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 788,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q788. The Pharmacy Council's Quality Assurance Committee is responsible for:",
+    "options": [
+      "Setting drug prices",
+      "Monitoring professional standards and practice quality",
+      "Issuing import permits",
+      "Registering drug products"
+    ],
+    "correct": "Monitoring professional standards and practice quality",
+    "explanation": "The committee inspects and enforces quality of practice and premises standards.",
+    "explainCorrect": "Option B is correct because the committee monitors standards and quality of practice.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 789,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q789. Under Ghanaian law, a pharmacist may administer an injection (e.g., depot contraceptive) if:",
+    "options": [
+      "They have completed an approved training and competency assessment",
+      "Any pharmacist may do so",
+      "Only medical doctors can",
+      "Only in a hospital"
+    ],
+    "correct": "They have completed an approved training and competency assessment",
+    "explanation": "Pharmacists must have additional certified training to administer injectables per Pharmacy Council guidelines.",
+    "explainCorrect": "Option A is correct because injection administration requires approved training and competency assessment.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 790,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q790. The expiry date of a dispensed medicine in a repackaged container should be:",
+    "options": [
+      "The manufacturer's original expiry date",
+      "One year from repackaging or manufacturer's date, whichever is earlier",
+      "Forever if kept in fridge",
+      "No expiry needed for repackaged meds"
+    ],
+    "correct": "One year from repackaging or manufacturer's date, whichever is earlier",
+    "explanation": "Repackaged drugs take a shortened expiry based on stability risk.",
+    "explainCorrect": "Option B is correct because repackaged medicines must carry a shortened expiry date.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 791,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q791. A pharmacist who is found guilty of professional misconduct may be:",
+    "options": [
+      "Fined only",
+      "Struck off the register, suspended, or reprimanded",
+      "Sentenced to community service only",
+      "Required to pay the patient directly"
+    ],
+    "correct": "Struck off the register, suspended, or reprimanded",
+    "explanation": "Section 46 of Act 857 lists penalties including erasure, suspension, reprimand, or fine.",
+    "explainCorrect": "Option B is correct because professional misconduct may lead to suspension, erasure, or reprimand.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 792,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "gppqe-law-drill",
+    "topicSlug": "professional-practice",
+    "question": "Q792. The first port of call for a patient who has a complaint against a pharmacist is:",
+    "options": [
+      "The police",
+      "The Pharmacy Council's Complaints Unit",
+      "The FDA",
+      "The court"
+    ],
+    "correct": "The Pharmacy Council's Complaints Unit",
+    "explanation": "The Pharmacy Council has a statutory complaints unit to investigate professional complaints.",
+    "explainCorrect": "Option B is correct because complaints should be directed first to the Pharmacy Council's Complaints Unit.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 793,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q793. A 16-year-old student walks into a pharmacy and requests emergency contraceptive pills without an adult. The pharmacist should:",
+    "options": [
+      "Sell immediately because it is OTC",
+      "Refuse to sell because the customer is a minor",
+      "Counsel and sell only if the minor appears mature enough",
+      "Call the police"
+    ],
+    "correct": "Refuse to sell because the customer is a minor",
+    "explanation": "Sale of medicine to a person under 18 without parental or guardian consent is not allowed.",
+    "explainCorrect": "Option B is correct because dispensing to a minor without guardian consent is prohibited.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 794,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q794. A pharmacist notices that a colleague is frequently arriving late and appears drowsy, with slurred speech. The most appropriate first action is:",
+    "options": [
+      "Ignore it to avoid conflict",
+      "Report immediately to the police",
+      "Privately discuss concerns with the colleague and advise seeking help",
+      "Take over all controlled drug duties quietly"
+    ],
+    "correct": "Privately discuss concerns with the colleague and advise seeking help",
+    "explanation": "Ethical duty includes peer support and addressing impairment confidentially before escalation.",
+    "explainCorrect": "Option C is correct because the first step is a private, supportive conversation and advice to seek help.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 795,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q795. A patient demands a refund for a dispensed medicine that they did not like the taste of after taking half the course. The pharmacist should:",
+    "options": [
+      "Refund immediately to avoid bad publicity",
+      "Explain that medicines cannot be re-dispensed and decline refund",
+      "Refund half the price",
+      "Blame the prescriber"
+    ],
+    "correct": "Explain that medicines cannot be re-dispensed and decline refund",
+    "explanation": "Returned dispensed medicines cannot be reused because of safety and stability risks.",
+    "explainCorrect": "Option B is correct because ethical refusal is required for returned medicines.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 796,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q796. A prescriber writes a prescription for Lasix 40 mg BD, but the pharmacist knows the patient has a sulfa allergy. The pharmacist should:",
+    "options": [
+      "Dispense as written",
+      "Substitute with a different diuretic without asking",
+      "Contact the prescriber to discuss and suggest an alternative",
+      "Ask the patient to buy an antihistamine as well"
+    ],
+    "correct": "Contact the prescriber to discuss and suggest an alternative",
+    "explanation": "The pharmacist must prevent potential harm and clarify the prescription before dispensing.",
+    "explainCorrect": "Option C is correct because the prescriber should be contacted before any change is made.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 797,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q797. A pharmacy receives a verbal prescription for morphine from a nurse in an emergency. Under Ghanaian law, this is:",
+    "options": [
+      "Acceptable if documented within 24 hours",
+      "Not permitted for controlled drugs; requires written prescription only",
+      "Acceptable for all drugs",
+      "Allowed only for inpatients"
+    ],
+    "correct": "Not permitted for controlled drugs; requires written prescription only",
+    "explanation": "Controlled drugs require an original written prescription.",
+    "explainCorrect": "Option B is correct because narcotics and psychotropics require written prescriptions.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 798,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q798. Which of the following is an unethical marketing practice by a pharmacist?",
+    "options": [
+      "Offering a loyalty card that gives 10% off OTC products",
+      "Advertising a free blood pressure check to attract patients",
+      "Giving a financial incentive to a doctor for referring prescriptions",
+      "Displaying opening hours on the door"
+    ],
+    "correct": "Giving a financial incentive to a doctor for referring prescriptions",
+    "explanation": "Offering inducements to prescribers violates professional independence and ethical rules.",
+    "explainCorrect": "Option C is correct because financial inducements for referrals are unethical.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 799,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q799. A pharmacist discovers that a dispensed medicine was incorrectly labelled with the wrong strength but the patient has already left. The pharmacist should:",
+    "options": [
+      "Wait for the patient to notice and return",
+      "Immediately contact the patient, apologise, and correct the error",
+      "Record the error but take no further action",
+      "Blame the dispenser"
+    ],
+    "correct": "Immediately contact the patient, apologise, and correct the error",
+    "explanation": "Ethical and legal duty requires prompt disclosure and correction to prevent harm.",
+    "explainCorrect": "Option B is correct because the patient must be informed and the error corrected immediately.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 800,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q800. Under the Pharmacy Council's Premises Standards, a pharmacy must have a separate consultation area for:",
+    "options": [
+      "Eating meals",
+      "Confidential patient counselling",
+      "Staking drugs",
+      "Staff meetings"
+    ],
+    "correct": "Confidential patient counselling",
+    "explanation": "A private area is required for confidential counselling and clinical services.",
+    "explainCorrect": "Option B is correct because private patient counselling space is required.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 801,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q801. A pharmacist in a rural area is offered a large bribe by a drug company representative to stock only their brand of antibiotics. The pharmacist should:",
+    "options": [
+      "Accept and stock only that brand",
+      "Accept but also stock others secretly",
+      "Refuse and report the offer to the Pharmacy Council",
+      "Negotiate for a higher bribe"
+    ],
+    "correct": "Refuse and report the offer to the Pharmacy Council",
+    "explanation": "Accepting bribes violates professional ethics and anti-corruption rules.",
+    "explainCorrect": "Option C is correct because the offer should be refused and reported.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 802,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q802. The maximum duration for which a locum pharmacist can work in a pharmacy without the permanent pharmacist in charge being present is:",
+    "options": [
+      "24 hours",
+      "72 hours (3 days)",
+      "14 days",
+      "30 days"
+    ],
+    "correct": "14 days",
+    "explanation": "A locum may cover for up to 14 consecutive days under the rules.",
+    "explainCorrect": "Option C is correct because the locum period is limited to 14 days.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 803,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q803. A pharmacist suspects that a prescription is forged because the signature looks different from usual. The best action is:",
+    "options": [
+      "Dispense and note the file",
+      "Call the prescriber using a verified number to confirm",
+      "Confront the patient aggressively",
+      "Call the police immediately without any check"
+    ],
+    "correct": "Call the prescriber using a verified number to confirm",
+    "explanation": "The first step is to verify the prescription with the prescriber.",
+    "explainCorrect": "Option B is correct because the prescriber should be verified before dispensing.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 804,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q804. Which of the following is a restricted poison under Ghanaian poisons laws?",
+    "options": [
+      "Paracetamol tablets",
+      "Atropine injection",
+      "Vitamin C syrup",
+      "Calamine lotion"
+    ],
+    "correct": "Atropine injection",
+    "explanation": "Atropine is a restricted poison because of its toxicity and potential for misuse.",
+    "explainCorrect": "Option B is correct because atropine is classified as a restricted poison.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 805,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q805. A pharmacist who closes the pharmacy for 2 weeks for renovation without notifying the Pharmacy Council commits:",
+    "options": [
+      "No offence",
+      "An offence if no alternative pharmacy is accessible",
+      "An offence because change of operational status requires notification",
+      "Only a civil matter"
+    ],
+    "correct": "An offence because change of operational status requires notification",
+    "explanation": "Temporary closure beyond the reporting threshold must be notified to the Council.",
+    "explainCorrect": "Option C is correct because the Council must be informed of the closure.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 806,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q806. The Code of Ethics requires a pharmacist to respect a patient's religious objection to a medicine such as gelatin capsules. The pharmacist should:",
+    "options": [
+      "Refuse to dispense at all",
+      "Call the prescriber to discuss alternative formulations such as a liquid or tablet",
+      "Force the patient to accept it",
+      "Hide the ingredient information"
+    ],
+    "correct": "Call the prescriber to discuss alternative formulations such as a liquid or tablet",
+    "explanation": "Ethical duty includes respecting patient beliefs and finding a clinically acceptable alternative.",
+    "explainCorrect": "Option B is correct because an alternative formulation should be discussed.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 807,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q807. A pharmacist is asked by a patient to provide a refill of a chronic medication, but the prescription has expired. The pharmacist should:",
+    "options": [
+      "Refill once as an emergency",
+      "Refuse and advise the patient to see their doctor for a new prescription",
+      "Sell the same drug without labelling",
+      "Refill if the patient promises to get a prescription later"
+    ],
+    "correct": "Refuse and advise the patient to see their doctor for a new prescription",
+    "explanation": "Expired prescriptions are invalid and should not be used for dispensing.",
+    "explainCorrect": "Option B is correct because a new prescription is required.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 808,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q808. Under Act 857, the Pharmacy Council may enter into mutual recognition agreements with foreign pharmacy regulatory bodies for the purpose of:",
+    "options": [
+      "Lowering standards",
+      "Facilitating foreign pharmacist registration without examination",
+      "Importing all drugs",
+      "Setting drug prices"
+    ],
+    "correct": "Facilitating foreign pharmacist registration without examination",
+    "explanation": "Mutual recognition agreements support reciprocal recognition of qualifications from approved jurisdictions.",
+    "explainCorrect": "Option B is correct because the purpose is reciprocal recognition for qualified pharmacists.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 809,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q809. A pharmacist who sells codeine-containing cough syrup without a prescription violates:",
+    "options": [
+      "Only ethical guidelines",
+      "The Narcotics Control Commission Act, 2020 (Act 1019)",
+      "No law if the quantity is small",
+      "Only FDA rules"
+    ],
+    "correct": "The Narcotics Control Commission Act, 2020 (Act 1019)",
+    "explanation": "Codeine is a controlled narcotic and cannot be sold without a prescription.",
+    "explainCorrect": "Option B is correct because codeine-containing products are controlled drugs.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 810,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q810. A pharmacy's daily controlled drug register must be balanced and signed off by the pharmacist:",
+    "options": [
+      "Every week",
+      "Every day",
+      "Every month",
+      "Only when the book is full"
+    ],
+    "correct": "Every day",
+    "explanation": "Daily reconciliation helps ensure accountability and early detection of discrepancies.",
+    "explainCorrect": "Option B is correct because the register must be balanced daily.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 811,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q811. A pharmacist receives a prescription from a doctor who is not registered with the Medical and Dental Council. The pharmacist should:",
+    "options": [
+      "Dispense as usual",
+      "Verify the doctor's registration status and refuse if unregistered",
+      "Ignore because the prescription looks fine",
+      "Charge the patient double for the risk"
+    ],
+    "correct": "Verify the doctor's registration status and refuse if unregistered",
+    "explanation": "A valid prescription must come from a legally registered practitioner.",
+    "explainCorrect": "Option B is correct because the prescriber must be verified.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 812,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q812. The ultimate sanction against a pharmacist by the Pharmacy Council is:",
+    "options": [
+      "A fine of GHS 10,000",
+      "Suspension for 6 months",
+      "Erasure from the register",
+      "Mandatory community service"
+    ],
+    "correct": "Erasure from the register",
+    "explanation": "Erasure permanently removes the right to practise and is the most severe disciplinary penalty.",
+    "explainCorrect": "Option C is correct because erasure from the register is the ultimate sanction.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 813,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q81. During an inspection, the Pharmacy Council inspector notes that a pharmacy does not have a refrigerator thermometer. This constitutes:",
+    "options": [
+      "A minor issue with no penalty",
+      "A breach of cold chain storage standards",
+      "Acceptable if the fridge is new",
+      "Only a recommendation"
+    ],
+    "correct": "A breach of cold chain storage standards",
+    "explanation": "Pharmacy Premises Standards require a working thermometer in every refrigerator storing medicines or vaccines.",
+    "explainCorrect": "Option B is correct because a refrigerator thermometer is required for safe storage.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 814,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q82. A pharmacist must retain prescription records for controlled drugs for a minimum of:",
+    "options": [
+      "1 year",
+      "2 years",
+      "5 years",
+      "10 years"
+    ],
+    "correct": "5 years",
+    "explanation": "Controlled drug prescriptions and registers must be kept for 5 years per narcotics regulations.",
+    "explainCorrect": "Option C is correct because controlled drug records are retained for five years.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 815,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q83. Which of the following is a mandatory entry in a pharmacy's Controlled Drugs Register?",
+    "options": [
+      "Patient's favourite colour",
+      "Name and address of the prescriber",
+      "Patient's occupation",
+      "Pharmacist's shoe size"
+    ],
+    "correct": "Name and address of the prescriber",
+    "explanation": "Prescriber details, patient name, drug, strength, quantity, date, and running balance are mandatory.",
+    "explainCorrect": "Option B is correct because prescriber details are required in the register.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 816,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q84. A pharmacy that sells a medicine past its expiry date commits:",
+    "options": [
+      "No offence if patient agrees",
+      "An offence under the Food and Drugs Act (Act 858)",
+      "Only an ethical violation",
+      "Acceptable for non-prescription drugs"
+    ],
+    "correct": "An offence under the Food and Drugs Act (Act 858)",
+    "explanation": "Sale of expired medicines is illegal under Act 858 as it constitutes an adulterated or substandard product.",
+    "explainCorrect": "Option B is correct because expired medicines must not be sold.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 817,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q85. The minimum security requirement for storage of Schedule 1 narcotics in a pharmacy is:",
+    "options": [
+      "Open shelf behind counter",
+      "Locked cabinet within a locked safe or double-locked cupboard",
+      "Under the counter",
+      "Any drawer with a label"
+    ],
+    "correct": "Locked cabinet within a locked safe or double-locked cupboard",
+    "explanation": "Schedule 1 drugs require double-lock storage.",
+    "explainCorrect": "Option B is correct because Schedule 1 narcotics require secure double-lock storage.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 818,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q86. A pharmacist who fails to report a known dispensing error that reached a patient, even if no harm occurred, is:",
+    "options": [
+      "Acting ethically",
+      "Guilty of concealment and professional misconduct",
+      "Protected by patient confidentiality",
+      "Not required to report"
+    ],
+    "correct": "Guilty of concealment and professional misconduct",
+    "explanation": "Concealment of errors violates ethical codes and can lead to disciplinary action.",
+    "explainCorrect": "Option B is correct because dispensing errors must be reported, not hidden.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 819,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q87. Under Act 857, the discipline committee must give a pharmacist facing allegations at least how many days' notice of a hearing?",
+    "options": [
+      "7 days",
+      "14 days",
+      "21 days",
+      "30 days"
+    ],
+    "correct": "21 days",
+    "explanation": "Section 47 requires at least 21 days' written notice of disciplinary proceedings.",
+    "explainCorrect": "Option C is correct because the law requires 21 days' notice.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 820,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q88. A pharmacist dispenses 100 tablets of metformin instead of the prescribed 30 tablets due to misreading. The patient takes 3 tablets daily as instructed. The pharmacist should:",
+    "options": [
+      "Say nothing to avoid panic",
+      "Contact the patient immediately to correct the quantity and check for overdose risk",
+      "Wait for the next refill",
+      "Only correct the stock record"
+    ],
+    "correct": "Contact the patient immediately to correct the quantity and check for overdose risk",
+    "explanation": "Immediate patient contact is required to assess potential harm and correct the error.",
+    "explainCorrect": "Option B is correct because the patient must be contacted immediately.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 821,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q89. A class B pharmacy (limited service) differs from class A in that it:",
+    "options": [
+      "Can dispense all drugs including narcotics",
+      "May only stock and sell over-the-counter (OTC) medicines",
+      "Does not require a pharmacist",
+      "Requires a doctor on site"
+    ],
+    "correct": "May only stock and sell over-the-counter (OTC) medicines",
+    "explanation": "Class B pharmacies are restricted to OTC medicines and do not dispense prescription-only medicines.",
+    "explainCorrect": "Option B is correct because class B outlets are OTC-only.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 822,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q90. A pharmacist receives an urgent request from a hospital to supply 10 ampoules of diazepam after hours. The hospital has no written prescription yet. The pharmacist may:",
+    "options": [
+      "Supply without documentation",
+      "Supply on a verbal order only if followed by a written prescription within 72 hours",
+      "Refuse absolutely",
+      "Supply only to a doctor personally"
+    ],
+    "correct": "Supply on a verbal order only if followed by a written prescription within 72 hours",
+    "explanation": "Emergency supply of controlled drugs is allowed on verbal order but must be followed by written prescription within 72 hours.",
+    "explainCorrect": "Option B is correct because emergency supply requires follow-up documentation.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 823,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q91. A pharmacist who discovers a stock discrepancy of morphine tablets (2 tablets missing) must:",
+    "options": [
+      "Ignore if once-off",
+      "Record in the CD register and report immediately to the Pharmacy Council and police",
+      "Replace from own pocket quietly",
+      "Wait to see if it happens again"
+    ],
+    "correct": "Record in the CD register and report immediately to the Pharmacy Council and police",
+    "explanation": "Any unexplained loss of controlled drugs must be reported immediately.",
+    "explainCorrect": "Option B is correct because missing controlled drugs require immediate reporting.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 824,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q92. The Pharmacy Council's seal on a pharmacy premises indicates:",
+    "options": [
+      "That the pharmacy sells cheap medicines",
+      "That the premises has been inspected and approved for operation",
+      "That the pharmacist won an award",
+      "That the premises is for sale"
+    ],
+    "correct": "That the premises has been inspected and approved for operation",
+    "explanation": "The seal signifies official licensing and compliance with standards.",
+    "explainCorrect": "Option B is correct because the seal indicates inspection and approval.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 825,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q93. A pharmacist may legally sell needles and syringes to a person without a prescription:",
+    "options": [
+      "Never",
+      "Yes, as a harm reduction measure for injecting drug users, using professional judgement",
+      "Only if the person shows ID",
+      "Only to healthcare workers"
+    ],
+    "correct": "Yes, as a harm reduction measure for injecting drug users, using professional judgement",
+    "explanation": "Professional discretion may allow sale of injection equipment to prevent disease transmission.",
+    "explainCorrect": "Option B is correct because harm reduction and professional judgement may apply.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 826,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q94. A patient asks the pharmacist to change the brand of their prescribed medicine because the prescribed brand is unavailable. The pharmacist should:",
+    "options": [
+      "Change to any available brand",
+      "Contact the prescriber for approval of generic substitution unless the product is narrow therapeutic index",
+      "Refuse to dispense anything",
+      "Give the patient a discount"
+    ],
+    "correct": "Contact the prescriber for approval of generic substitution unless the product is narrow therapeutic index",
+    "explanation": "Brand substitution requires prescriber consent except where substitution is legally allowed.",
+    "explainCorrect": "Option B is correct because approval should be obtained before brand substitution.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 827,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q95. The maximum quantity of a Schedule 2 narcotic that may be prescribed on a single prescription in Ghana is:",
+    "options": [
+      "7 days' supply",
+      "14 days' supply",
+      "30 days' supply",
+      "No legal limit"
+    ],
+    "correct": "30 days' supply",
+    "explanation": "Prescriptions for Schedule 2 narcotics are limited to 30 days' supply.",
+    "explainCorrect": "Option C is correct because the maximum supply is 30 days.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 828,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q96. A pharmacist who observes a colleague stealing controlled drugs for personal use should:",
+    "options": [
+      "Ignore to protect the colleague",
+      "Report the colleague to the Pharmacy Council and police immediately",
+      "Confront and let the colleague resign",
+      "Take over the drugs themselves"
+    ],
+    "correct": "Report the colleague to the Pharmacy Council and police immediately",
+    "explanation": "Theft of controlled drugs is a criminal offence and must be reported.",
+    "explainCorrect": "Option B is correct because theft of controlled drugs requires immediate reporting.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 829,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q97. Under the Code of Ethics, a pharmacist's primary responsibility is to:",
+    "options": [
+      "Maximize pharmacy profits",
+      "Follow all doctor's orders without question",
+      "Ensure patient safety and well-being",
+      "Promote only expensive brands"
+    ],
+    "correct": "Ensure patient safety and well-being",
+    "explanation": "Patient welfare is the paramount duty, above business or other interests.",
+    "explainCorrect": "Option C is correct because patient safety comes first.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 830,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q98. A pharmacy's emergency first aid kit is a requirement under which standard?",
+    "options": [
+      "FDA drug registration rules",
+      "Pharmacy Premises Standards (workplace safety)",
+      "Fire safety regulations only",
+      "No requirement"
+    ],
+    "correct": "Pharmacy Premises Standards (workplace safety)",
+    "explanation": "Premises Standards require a basic first aid kit for staff and patient emergencies.",
+    "explainCorrect": "Option B is correct because the premises standards require a first aid kit.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 831,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q99. A pharmacist receives a prescription written in a language other than English. The pharmacist should:",
+    "options": [
+      "Dispense without translation",
+      "Refuse to dispense unless translated into English by a certified translator or the prescriber",
+      "Guess the meaning",
+      "Ask the patient to translate"
+    ],
+    "correct": "Refuse to dispense unless translated into English by a certified translator or the prescriber",
+    "explanation": "Prescriptions must be legible and in English to avoid dispensing errors.",
+    "explainCorrect": "Option B is correct because the prescription must be properly translated.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 832,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q100. The final responsibility for safe dispensing in a pharmacy rests with:",
+    "options": [
+      "The pharmacy technician",
+      "The pharmacy cashier",
+      "The pharmacist in charge",
+      "The patient"
+    ],
+    "correct": "The pharmacist in charge",
+    "explanation": "The licensed pharmacist in charge bears ultimate legal and ethical responsibility for all dispensing.",
+    "explainCorrect": "Option C is correct because the pharmacist in charge is responsible for safe dispensing.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 833,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q101. A hospital pharmacist who dispenses a medicine without labeling it with the patient's name commits:",
+    "options": [
+      "No offence if used in the ward",
+      "A breach of labeling regulations under Act 857",
+      "Acceptable for inpatients only",
+      "Only an administrative error"
+    ],
+    "correct": "A breach of labeling regulations under Act 857",
+    "explanation": "All dispensed medicines, including for inpatients, must bear patient-specific labeling.",
+    "explainCorrect": "Option B is correct because patient-specific labeling is required for every dispense.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 834,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q102. The veterinary pharmacy in Ghana is regulated by:",
+    "options": [
+      "Veterinary Council only",
+      "Pharmacy Council in collaboration with Veterinary Council",
+      "Ministry of Food and Agriculture alone",
+      "FDA only"
+    ],
+    "correct": "Pharmacy Council in collaboration with Veterinary Council",
+    "explanation": "Act 857 gives the Pharmacy Council authority over veterinary pharmacy practice, jointly with the Veterinary Council.",
+    "explainCorrect": "Option B is correct because veterinary pharmacy regulation is shared between the two councils.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 835,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q103. A pharmacist who manufactures and sells their own herbal preparation without FDA registration commits:",
+    "options": [
+      "No offence if herbal",
+      "An offence under the Food and Drugs Act (Act 858)",
+      "Acceptable if labelled traditional",
+      "Only an ethical breach"
+    ],
+    "correct": "An offence under the Food and Drugs Act (Act 858)",
+    "explanation": "All herbal medicinal products require FDA registration and marketing authorization.",
+    "explainCorrect": "Option B is correct because herbal products still require FDA registration.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 836,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q104. The maximum daily dose of a Schedule 2 narcotic that a pharmacist may dispense without a new prescription is:",
+    "options": [
+      "Not applicable; each dispensing requires a valid prescription",
+      "30 days' supply",
+      "7 days' supply",
+      "60 days' supply"
+    ],
+    "correct": "Not applicable; each dispensing requires a valid prescription",
+    "explanation": "No dispensing of Schedule 2 narcotics is permitted without a valid, current written prescription.",
+    "explainCorrect": "Option A is correct because each supply must be backed by a valid prescription.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 837,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q105. A pharmacy that fails to maintain a temperature log for its drug storage area is:",
+    "options": [
+      "Compliant if air-conditioned",
+      "Breaching Good Storage Practice guidelines",
+      "Acceptable in cold season",
+      "Only an issue for biologicals"
+    ],
+    "correct": "Breaching Good Storage Practice guidelines",
+    "explanation": "Daily temperature monitoring and logging is mandatory for all drug storage areas.",
+    "explainCorrect": "Option B is correct because temperature logging is required.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 838,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q106. A pharmacist who delegates the final check of a dispensed prescription to a pharmacy technician is:",
+    "options": [
+      "Practising good teamwork",
+      "Guilty of professional misconduct and negligence",
+      "Allowed if the technician is experienced",
+      "Acceptable in busy periods"
+    ],
+    "correct": "Guilty of professional misconduct and negligence",
+    "explanation": "The final clinical check is the pharmacist's non-delegable legal and ethical duty.",
+    "explainCorrect": "Option B is correct because the final check cannot be delegated.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 839,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q107. Under Act 857, the Pharmacy Council has the power to enter and inspect:",
+    "options": [
+      "Only retail pharmacies",
+      "Any premises where pharmacy practice occurs, including hospitals and warehouses",
+      "Only hospital pharmacies",
+      "Only manufacturing sites"
+    ],
+    "correct": "Any premises where pharmacy practice occurs, including hospitals and warehouses",
+    "explanation": "Council inspectors may enter any premises where pharmaceutical activities are conducted.",
+    "explainCorrect": "Option B is correct because the Council may inspect all relevant pharmacy premises.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 840,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q108. A pharmacist who dispenses a teratogenic drug to a woman of childbearing age without pregnancy screening or counselling:",
+    "options": [
+      "Has no duty",
+      "May be liable for negligence and misconduct",
+      "Is protected by patient confidentiality",
+      "Only the prescriber is responsible"
+    ],
+    "correct": "May be liable for negligence and misconduct",
+    "explanation": "The pharmacist has a duty to counsel on risks and verify pregnancy status for high-risk medicines.",
+    "explainCorrect": "Option B is correct because counselling and risk assessment are required.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 841,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q109. The minimum ceiling height for a licensed pharmacy premises in Ghana is:",
+    "options": [
+      "2.0 metres",
+      "2.5 metres",
+      "3.0 metres",
+      "No specified requirement"
+    ],
+    "correct": "2.5 metres",
+    "explanation": "Pharmacy Premises Standards specify a minimum ceiling height of 2.5 metres for adequate ventilation.",
+    "explainCorrect": "Option B is correct because the minimum ceiling height is 2.5 metres.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 842,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q110. A pharmacist who accepts a prescription written by a foreign doctor not registered in Ghana:",
+    "options": [
+      "May dispense if the doctor is known",
+      "Must refuse unless the prescription is validated by a Ghana-registered practitioner",
+      "May dispense for emergency only",
+      "Acceptable for tourists"
+    ],
+    "correct": "Must refuse unless the prescription is validated by a Ghana-registered practitioner",
+    "explanation": "Only prescriptions from Ghana-registered practitioners are valid; foreign prescriptions require local validation.",
+    "explainCorrect": "Option B is correct because local validation is required.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 843,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q111. The poisons licence in Ghana is issued by:",
+    "options": [
+      "FDA",
+      "Pharmacy Council",
+      "Environmental Protection Agency",
+      "Ghana Police Service"
+    ],
+    "correct": "Pharmacy Council",
+    "explanation": "The Pharmacy Council issues poisons licences for handling and sale of scheduled poisons.",
+    "explainCorrect": "Option B is correct because the Pharmacy Council issues the poisons licence.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 844,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q112. A pharmacist who fails to provide patient counselling on warfarin dispensing:",
+    "options": [
+      "Has no legal duty",
+      "May be liable for harm from drug interactions or missed monitoring",
+      "Only the prescriber should counsel",
+      "Acceptable for chronic patients"
+    ],
+    "correct": "May be liable for harm from drug interactions or missed monitoring",
+    "explanation": "The pharmacist has a duty to counsel on high-risk drugs to ensure safe use and monitoring.",
+    "explainCorrect": "Option B is correct because warfarin counselling is a pharmacist duty.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 845,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q113. A registered pharmacy technician may perform all the following EXCEPT:",
+    "options": [
+      "Receive and store drug supplies",
+      "Prepare labels under supervision",
+      "Independently prescribe or change drug therapy",
+      "Count and pour liquids"
+    ],
+    "correct": "Independently prescribe or change drug therapy",
+    "explanation": "Prescribing and therapeutic changes are the sole responsibility of a pharmacist.",
+    "explainCorrect": "Option C is correct because only pharmacists may prescribe or alter therapy.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 846,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q114. A pharmacy whose License to Operate has expired continues to operate. This is:",
+    "options": [
+      "Acceptable while renewal is processing",
+      "An illegal practice punishable under Act 857",
+      "Allowed for 30 days grace period",
+      "Only an administrative oversight"
+    ],
+    "correct": "An illegal practice punishable under Act 857",
+    "explanation": "Operating without a current licence is unlawful unless explicit renewal cover is granted.",
+    "explainCorrect": "Option B is correct because an expired licence cannot support operation.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 847,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q115. The code of ethics requires a pharmacist to maintain competence through:",
+    "options": [
+      "Reading only",
+      "Continuing Professional Development (CPD)",
+      "Annual exams",
+      "Watching online videos"
+    ],
+    "correct": "Continuing Professional Development (CPD)",
+    "explanation": "Mandatory CPD is the mechanism for maintaining professional competence.",
+    "explainCorrect": "Option B is correct because CPD maintains competence.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 848,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q116. A pharmacist who receives a prescription for misoprostol without a pregnancy test result should:",
+    "options": [
+      "Dispense as written",
+      "Verify that the indication is not for abortion and document",
+      "Refuse absolutely",
+      "Sell half the quantity"
+    ],
+    "correct": "Verify that the indication is not for abortion and document",
+    "explanation": "Misoprostol is restricted; the pharmacist must verify a legitimate medical indication.",
+    "explainCorrect": "Option B is correct because the indication must be verified and documented.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 849,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q117. The maximum fine for a corporate body found guilty of unlawful pharmacy operation under Act 857 is:",
+    "options": [
+      "GHS 5,000",
+      "GHS 10,000",
+      "GHS 25,000",
+      "GHS 50,000"
+    ],
+    "correct": "GHS 25,000",
+    "explanation": "Section 50(3) provides higher fines for corporate offenders.",
+    "explainCorrect": "Option C is correct because corporate offenders face the higher fine.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 850,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q118. A pharmacist who discloses a patient's medical condition to the patient's employer without consent:",
+    "options": [
+      "Is protected if the employer asked",
+      "Commits breach of confidentiality and misconduct",
+      "Is allowed for contagious diseases",
+      "Only a civil matter"
+    ],
+    "correct": "Commits breach of confidentiality and misconduct",
+    "explanation": "Disclosure without consent is a serious ethical and legal breach, with limited public health exceptions.",
+    "explainCorrect": "Option B is correct because employer disclosure without consent is prohibited.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 851,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q119. The minimum distance required between two licensed pharmacies under previous regulations was:",
+    "options": [
+      "100 metres",
+      "200 metres",
+      "500 metres",
+      "1 kilometre"
+    ],
+    "correct": "200 metres",
+    "explanation": "Historical regulations specified 200 metres, though current policy emphasises population needs over rigid distance.",
+    "explainCorrect": "Option B is correct because the historical minimum distance was 200 metres.",
+    "drillTags": ["law"]
+  },
+  {
+    "id": 852,
+    "type": "single",
+    "category": "Pharmacy Law & Ethics",
+    "sectionId": "comprehensive-question-bank",
+    "topicSlug": "professional-practice",
+    "question": "Q120. A pharmacist's duty to report a notifiable disease such as yellow fever to health authorities:",
+    "options": [
+      "Does not exist for pharmacists",
+      "Overrides patient confidentiality under public health law",
+      "Requires patient consent first",
+      "Is optional"
+    ],
+    "correct": "Overrides patient confidentiality under public health law",
+    "explanation": "Public health law mandates reporting of notifiable diseases, which overrides usual confidentiality.",
+    "explainCorrect": "Option B is correct because public health reporting takes priority over confidentiality.",
+    "drillTags": ["law"]
   }
 ];
+
+baseQuestions.push(...firstBatchQuestions);
+baseQuestions.push(...secondBatchQuestions);
+baseQuestions.push(...thirdBatchQuestions);
+baseQuestions.push(...fourthBatchQuestions);
+baseQuestions.push(...fifthBatchQuestions);
+baseQuestions.push(...sixthBatchQuestions);
+baseQuestions.push(...seventhBatchQuestions);
+baseQuestions.push(...eighthBatchQuestions);
+baseQuestions.push(...ninthBatchQuestions);
+baseQuestions.push(...tenthBatchQuestions);
+baseQuestions.push(...eleventhBatchQuestions);
+baseQuestions.push(...twelfthBatchQuestions);
+
+baseQuestions.forEach((question, index) => {
+  if (!question || typeof question !== "object") return;
+  if (question.rotation || Array.isArray(question.rotations)) return;
+  const rotation = inferQuestionRotation(question);
+  if (rotation) {
+    baseQuestions[index] = { ...question, rotation };
+  }
+});

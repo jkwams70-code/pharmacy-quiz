@@ -517,7 +517,7 @@ pm2 logs quiz-api --lines 200
 
 ```bash
 npm run cleanup
-npm run cleanup:users
+npm run cleanup:users   # Audit only; no account deletion
 npm run validate:data
 ```
 

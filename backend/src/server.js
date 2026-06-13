@@ -36,10 +36,22 @@ import {
   MAJOR_CATEGORIES,
   normalizeMajorCategory,
 } from "./categoryTaxonomy.js";
+import { inferQuestionRotation } from "../../rotationTaxonomy.js";
 
 const app = express();
 const execFileAsync = promisify(execFile);
 const { RtcRole, RtcTokenBuilder } = agoraAccessTokenPackage;
+const ALLOWED_ROTATIONS = new Set([
+  "Internal Medicine",
+  "Paediatrics",
+  "Maternal and Child Health",
+  "Accident & Emergency",
+  "Emergency",
+  "Surgery",
+  "Mental Health",
+  "Oncology",
+  "ENT/Dental",
+]);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -237,7 +249,13 @@ const FRIEND_REQUEST_STATUS_VALUES = new Set([
 ]);
 const MESSAGE_TYPE_VALUES = new Set(["text", "image", "video", "audio", "file", "document", "call"]);
 const MESSAGE_DELETED_PLACEHOLDER = "message deleted";
-const CONVERSATION_TYPE_VALUES = new Set(["direct", "group"]);
+const ADMIN_NOTICE_SENDER_ID = "__admin_notice__";
+const ADMIN_NOTICE_SENDER_NAME = "AJIXPHARMACY Admin";
+const ADMIN_NOTICE_PROFILE_IMAGE = "/icons/icon-512-s3.png?v=20260324-applogo1";
+const ADMIN_BROADCAST_STATUS_TITLE = "AJIXPHARMACY Admin";
+const ADMIN_BROADCAST_CONVERSATION_ID = "__admin_broadcast__";
+const ADMIN_BROADCAST_THREAD_KEY = "broadcast";
+const CONVERSATION_TYPE_VALUES = new Set(["direct", "group", "notice"]);
 const UPLOAD_KIND_VALUES = new Set(["chat-image", "chat-video", "chat-audio", "chat-file", "status-image", "status-video", "group-avatar"]);
 const STATUS_VISIBILITY_VALUES = new Set(["friends", "everyone"]);
 const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -275,6 +293,7 @@ const STRUCTURED_STORAGE_FOLDERS = {
   document: "ajix-documents",
 };
 const MAX_GROUP_MEMBERS = 50;
+const COMMUNITY_GROUP_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_ACTIVE_STATUSES_PER_USER = 20;
 const COMMUNITY_STATUS_MAX_VIDEO_SECONDS = 30;
 const STATUS_TTL_MS = 24 * 60 * 60 * 1000;
@@ -462,6 +481,76 @@ async function getCommunityConversationForMember(conversationId = "", memberId =
   return conversation;
 }
 
+function getCommunityConversationStateKey(userId = "", conversationId = "") {
+  return `${String(userId || "").trim()}::${String(conversationId || "").trim()}`;
+}
+
+function getCommunityConversationStateForViewer(states = [], userId = "", conversationId = "") {
+  const safeUserId = String(userId || "").trim();
+  const safeConversationId = String(conversationId || "").trim();
+  if (!safeUserId || !safeConversationId) return null;
+  return states.find(
+    (entry) =>
+      String(entry?.userId || "") === safeUserId &&
+      String(entry?.conversationId || "") === safeConversationId,
+  ) || null;
+}
+
+function isCommunityConversationHiddenForViewer(state = null) {
+  return Boolean(String(state?.hiddenAt || "").trim());
+}
+
+function buildConversationStateRecord(existing = null, patch = {}) {
+  const base = normalizeCommunityConversationState(existing || {});
+  const next = normalizeCommunityConversationState({
+    ...base,
+    ...patch,
+    userId: base.userId || String(patch.userId || "").trim(),
+    conversationId: base.conversationId || String(patch.conversationId || "").trim(),
+    createdAt: base.createdAt,
+    updatedAt: new Date().toISOString(),
+  });
+  return next;
+}
+
+async function upsertCommunityConversationState({
+  userId = "",
+  conversationId = "",
+  patch = {},
+  removeIfEmpty = false,
+} = {}) {
+  const safeUserId = String(userId || "").trim();
+  const safeConversationId = String(conversationId || "").trim();
+  if (!safeUserId || !safeConversationId) return null;
+  const states = (await readCollection("communityConversationStates")).map(normalizeCommunityConversationState);
+  const index = states.findIndex(
+    (entry) =>
+      String(entry?.userId || "") === safeUserId &&
+      String(entry?.conversationId || "") === safeConversationId,
+  );
+  const existing = index >= 0 ? states[index] : null;
+  const next = buildConversationStateRecord(existing, {
+    ...patch,
+    userId: safeUserId,
+    conversationId: safeConversationId,
+  });
+  const hasMeaningfulState = Boolean(next.isFavorite || String(next.hiddenAt || "").trim());
+  if (!hasMeaningfulState && removeIfEmpty) {
+    if (index >= 0) {
+      states.splice(index, 1);
+      await writeCollection("communityConversationStates", states);
+    }
+    return null;
+  }
+  if (index >= 0) {
+    states[index] = next;
+  } else {
+    states.push(next);
+  }
+  await writeCollection("communityConversationStates", states);
+  return next;
+}
+
 function normalizePrivacySettings(raw = {}) {
   const profileVisibility = String(raw?.profileVisibility || "everyone").trim().toLowerCase();
   const bioVisibility = String(raw?.bioVisibility || profileVisibility || "everyone")
@@ -547,6 +636,19 @@ function normalizeBlock(raw = {}) {
   };
 }
 
+function normalizeCommunityConversationState(raw = {}) {
+  const createdAt = String(raw.createdAt || new Date().toISOString());
+  return {
+    id: String(raw.id || crypto.randomUUID()),
+    userId: String(raw.userId || "").trim(),
+    conversationId: String(raw.conversationId || "").trim(),
+    isFavorite: raw.isFavorite === true,
+    hiddenAt: String(raw.hiddenAt || "").trim(),
+    createdAt,
+    updatedAt: String(raw.updatedAt || createdAt),
+  };
+}
+
 function normalizeConversation(raw = {}) {
   const memberIds = Array.isArray(raw.memberIds)
     ? [...new Set(raw.memberIds.map((value) => String(value || "").trim()).filter(Boolean))].sort(
@@ -566,6 +668,24 @@ function normalizeConversation(raw = {}) {
       )
     : [];
   const permissions = normalizeGroupPermissions(raw.permissions || {});
+  const inviteToken = normalizeWhitespace(raw.inviteToken).replace(/\s+/g, "");
+  const inviteTokenCreatedAt = String(raw.inviteTokenCreatedAt || createdAt);
+  const noticeTitle = normalizeWhitespace(raw.noticeTitle).slice(0, 72);
+  const noticeSubtitle = normalizeWhitespace(raw.noticeSubtitle).slice(0, 180);
+  const noticeBody = normalizeWhitespace(raw.noticeBody).slice(0, 240);
+  const noticeAvatarUploadId = String(raw.noticeAvatarUploadId || "").trim();
+  const noticeOriginType = normalizeWhitespace(raw.noticeOriginType).slice(0, 32);
+  const noticeOriginId = String(raw.noticeOriginId || "").trim();
+  const noticeOriginName = normalizeWhitespace(raw.noticeOriginName).slice(0, 120);
+  const noticeSenderId = String(raw.noticeSenderId || "").trim();
+  const noticeSenderName = normalizeWhitespace(raw.noticeSenderName).slice(0, 80);
+  const noticeThreadKey = normalizeWhitespace(raw.noticeThreadKey || "").slice(0, 120);
+  const noticeBatchId = String(raw.noticeBatchId || "").trim();
+  const hiddenForUserIds = Array.isArray(raw.hiddenForUserIds)
+    ? [...new Set(raw.hiddenForUserIds.map((value) => String(value || "").trim()).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b),
+      )
+    : [];
   return {
     id: String(raw.id || crypto.randomUUID()),
     type: CONVERSATION_TYPE_VALUES.has(type) ? type : "direct",
@@ -577,6 +697,20 @@ function normalizeConversation(raw = {}) {
     bio: normalizeWhitespace(raw.bio).slice(0, 180),
     permissions,
     avatarUploadId: String(raw.avatarUploadId || ""),
+    inviteToken: inviteToken || "",
+    inviteTokenCreatedAt,
+    noticeTitle,
+    noticeSubtitle,
+    noticeBody,
+    noticeAvatarUploadId,
+    noticeOriginType,
+    noticeOriginId,
+    noticeOriginName,
+    noticeSenderId,
+    noticeSenderName,
+    noticeThreadKey,
+    noticeBatchId,
+    hiddenForUserIds,
     lastMessageId: String(raw.lastMessageId || ""),
     lastMessageAt: String(raw.lastMessageAt || createdAt),
     createdAt,
@@ -592,6 +726,539 @@ function normalizeGroupPermissions(raw = {}) {
     membersCanInviteByLink: raw?.membersCanInviteByLink !== false,
     adminsMustApproveNewMembers: Boolean(raw?.adminsMustApproveNewMembers),
   };
+}
+
+function getAdminNoticeThreadKeyFromConversation(conversation = {}) {
+  const normalized = normalizeConversation(conversation);
+  const explicitKey = normalizeWhitespace(normalized.noticeThreadKey || "");
+  if (explicitKey) return explicitKey;
+  const originType = normalizeWhitespace(normalized.noticeOriginType || "").toLowerCase();
+  const originId = String(normalized.noticeOriginId || "").trim();
+  if (originType === "broadcast" || originId === "all-users") return "broadcast";
+  if (originType && originId) return `notice:${originType}:${originId}`;
+  if (normalized.noticeSenderId === ADMIN_NOTICE_SENDER_ID) return `notice:${normalized.id}`;
+  return `notice:${normalized.id}`;
+}
+
+function getAdminNoticeThreadTitle(conversation = {}) {
+  const normalized = normalizeConversation(conversation);
+  const threadKey = getAdminNoticeThreadKeyFromConversation(normalized);
+  if (threadKey === "broadcast") return "Announcement";
+  const originType = normalizeWhitespace(normalized.noticeOriginType || "").toLowerCase();
+  const originName = normalizeWhitespace(normalized.noticeOriginName || "").slice(0, 120);
+  if ((originType === "user" || originType === "group" || originType === "report") && originName) {
+    return originName;
+  }
+  const title = normalizeWhitespace(normalized.noticeTitle || "").slice(0, 72);
+  if (title) return title;
+  if (originName) return originName;
+  if (originType === "report") return "Warning";
+  if (originType === "group") return "Group notice";
+  if (originType === "user") return "User notice";
+  return "Admin Notice";
+}
+
+function getAdminNoticeThreadSubtitle(conversation = {}) {
+  const normalized = normalizeConversation(conversation);
+  const originType = normalizeWhitespace(normalized.noticeOriginType || "").toLowerCase();
+  const originName = normalizeWhitespace(normalized.noticeOriginName || "").slice(0, 120);
+  const recipient = normalized.memberIds?.length === 1 ? normalized.memberIds[0] : "";
+  if (originType === "broadcast" || normalizeWhitespace(normalized.noticeThreadKey || "") === "broadcast") {
+    return "Broadcast to everyone";
+  }
+  if (originType === "report") {
+    return originName ? `Warning for ${originName}` : "Warning notice";
+  }
+  if (originType === "group") {
+    return originName ? `Group: ${originName}` : "Group notice";
+  }
+  if (originType === "user") {
+    return originName ? `User: ${originName}` : "User notice";
+  }
+  return recipient ? `To ${recipient}` : "Admin notice";
+}
+
+function buildAdminNoticeThreadKey(originType = "", originId = "") {
+  const safeOriginType = normalizeWhitespace(originType).toLowerCase();
+  const safeOriginId = normalizeWhitespace(originId);
+  if (safeOriginType === "broadcast" || safeOriginId === "all-users") {
+    return "broadcast";
+  }
+  if (!safeOriginType || !safeOriginId) {
+    return "";
+  }
+  return `notice:${safeOriginType}:${safeOriginId}`;
+}
+
+function parseAdminNoticeThreadKey(threadKey = "") {
+  const safeThreadKey = normalizeWhitespace(threadKey);
+  if (!safeThreadKey) return null;
+  if (safeThreadKey === "broadcast") {
+    return {
+      threadKey: "broadcast",
+      originType: "broadcast",
+      originId: "all-users",
+    };
+  }
+  const match = safeThreadKey.match(/^notice:([^:]+):(.+)$/i);
+  if (!match) return null;
+  return {
+    threadKey: safeThreadKey,
+    originType: normalizeWhitespace(match[1]).toLowerCase(),
+    originId: normalizeWhitespace(match[2]),
+  };
+}
+
+function getAdminNoticeThreadKeyFromMessage(message = {}, conversation = {}) {
+  const explicitKey = normalizeWhitespace(message.noticeThreadKey || "");
+  if (explicitKey) return explicitKey;
+  const conversationKey = normalizeWhitespace(conversation.noticeThreadKey || "");
+  if (conversationKey) return conversationKey;
+  return getAdminNoticeThreadKeyFromConversation(conversation);
+}
+
+function getAdminNoticeThreadBatchIdFromMessage(message = {}, conversation = {}) {
+  const explicitBatchId = String(message.noticeBatchId || "").trim();
+  if (explicitBatchId) return explicitBatchId;
+  const conversationBatchId = String(conversation.noticeBatchId || "").trim();
+  if (conversationBatchId) return conversationBatchId;
+  return String(message.id || crypto.randomUUID()).trim();
+}
+
+function resolveAdminNoticeAttachment(message = {}, uploads = []) {
+  const attachment = message?.attachment && typeof message.attachment === "object" ? message.attachment : null;
+  if (!attachment) return null;
+  const upload = uploads.find((entry) => entry.id === attachment.uploadId) || null;
+  return {
+    ...attachment,
+    upload: upload ? resolveUploadPublicView(upload) : null,
+    dataUrl: upload ? resolveUploadPublicView(upload).dataUrl : "",
+  };
+}
+
+function buildAdminNoticeMessagePayload(message = {}, { uploads = [] } = {}) {
+  const normalized = sanitizeDeletedCommunityMessage(normalizeMessage(message));
+  return {
+    id: normalized.id,
+    conversationId: normalized.conversationId,
+    senderUserId: normalized.senderUserId,
+    senderName: normalizeWhitespace(normalized.senderName || ADMIN_NOTICE_SENDER_NAME).slice(0, 80) || ADMIN_NOTICE_SENDER_NAME,
+    text: normalized.text,
+    type: normalized.type,
+    attachment: resolveAdminNoticeAttachment(normalized, uploads),
+    replyTo: normalized.replyTo,
+    deliveredAt: normalized.deliveredAt,
+    readAt: normalized.readAt,
+    seenByUserIds: Array.isArray(normalized.seenByUserIds) ? [...normalized.seenByUserIds] : [],
+    editedAt: normalized.editedAt,
+    deletedAt: normalized.deletedAt,
+    deletedForUserIds: Array.isArray(normalized.deletedForUserIds) ? [...normalized.deletedForUserIds] : [],
+    hiddenForUserIds: Array.isArray(normalized.hiddenForUserIds) ? [...normalized.hiddenForUserIds] : [],
+    noticeThreadKey: normalizeWhitespace(normalized.noticeThreadKey || ""),
+    noticeBatchId: String(normalized.noticeBatchId || "").trim(),
+    createdAt: normalized.createdAt,
+    updatedAt: normalized.updatedAt,
+    isDeletedForEveryone: Boolean(normalized.deletedAt),
+  };
+}
+
+function buildAdminBroadcastThreadCollections({
+  conversations = [],
+  messages = [],
+  uploads = [],
+  broadcastMessages = [],
+  broadcastRecipientCount = 0,
+  reports = [],
+} = {}) {
+  const normalizedConversations = Array.isArray(conversations)
+    ? conversations.map((conversation) => normalizeConversation(conversation))
+    : [];
+  const normalizedReports = Array.isArray(reports)
+    ? reports.map((report) => normalizeAdminReport(report))
+    : [];
+  const existingThreadKeys = new Set(
+    normalizedConversations
+      .map((conversation) => getAdminNoticeThreadKeyFromConversation(conversation))
+      .filter(Boolean),
+  );
+  const syntheticNoticeConversations = [];
+  const syntheticNoticeMessages = [];
+  normalizedReports.forEach((report) => {
+    const warningMessage = normalizeWhitespace(report.warningMessage || "");
+    if (!warningMessage) return;
+    const threadKey = buildAdminNoticeThreadKey("report", report.id);
+    if (!threadKey || existingThreadKeys.has(threadKey)) return;
+    const createdAt = String(report.warningIssuedAt || report.updatedAt || report.createdAt || new Date().toISOString());
+    const conversationId = `__admin_notice_report_${report.id}`;
+    const targetLabel = normalizeWhitespace(report.targetName || report.targetUsername || report.targetId || "").slice(0, 120);
+    const warningPreset = normalizeWhitespace(report.warningPreset || "Community rules reminder") || "Community rules reminder";
+    syntheticNoticeConversations.push({
+      id: conversationId,
+      type: "notice",
+      memberIds: [String(report.targetId || "").trim()].filter(Boolean),
+      ownerUserId: ADMIN_NOTICE_SENDER_ID,
+      adminIds: [],
+      lastMessageId: `__admin_notice_report_message_${report.id}`,
+      lastMessageAt: createdAt,
+      updatedAt: createdAt,
+      createdAt,
+      noticeTitle: warningPreset,
+      noticeSubtitle:
+        report.type === "group"
+          ? `Report warning for group ${targetLabel || "this group"}`
+          : `Report warning for ${targetLabel || "this account"}`,
+      noticeBody: warningMessage,
+      noticeOriginType: "report",
+      noticeOriginId: report.id,
+      noticeOriginName: targetLabel,
+      noticeSenderId: ADMIN_NOTICE_SENDER_ID,
+      noticeSenderName: ADMIN_NOTICE_SENDER_NAME,
+      noticeThreadKey: threadKey,
+      noticeBatchId: String(report.warningIssuedAt || report.updatedAt || report.createdAt || report.id || ""),
+    });
+    syntheticNoticeMessages.push({
+      id: `__admin_notice_report_message_${report.id}`,
+      conversationId,
+      senderUserId: ADMIN_NOTICE_SENDER_ID,
+      senderName: ADMIN_NOTICE_SENDER_NAME,
+      text: warningMessage,
+      type: "text",
+      attachment: null,
+      replyTo: null,
+      deliveredAt: createdAt,
+      readAt: "",
+      seenByUserIds: [],
+      editedAt: "",
+      deletedAt: "",
+      deletedForUserIds: [],
+      hiddenForUserIds: [],
+      noticeThreadKey: threadKey,
+      noticeBatchId: String(report.warningIssuedAt || report.updatedAt || report.createdAt || report.id || ""),
+      createdAt,
+      updatedAt: createdAt,
+    });
+    existingThreadKeys.add(threadKey);
+  });
+  const conversationById = new Map(
+    [...normalizedConversations, ...syntheticNoticeConversations].map((conversation) => {
+      return [conversation.id, conversation];
+    }),
+  );
+  const threads = new Map();
+  const archivedBroadcastMessages = Array.isArray(broadcastMessages)
+    ? broadcastMessages.map(normalizeAdminBroadcastMessage)
+    : [];
+  const normalizedMessages = [
+    ...(Array.isArray(messages) ? messages : []),
+    ...syntheticNoticeMessages,
+  ].map(normalizeMessage);
+  const fallbackBroadcastMessages = normalizedMessages
+    .filter(
+      (message) =>
+        getAdminNoticeThreadKeyFromMessage(message, conversationById.get(message.conversationId) || {}) ===
+        ADMIN_BROADCAST_THREAD_KEY,
+    )
+    .map(normalizeAdminBroadcastMessage);
+  const normalizedBroadcastMessages = archivedBroadcastMessages.length
+    ? archivedBroadcastMessages
+    : [...new Map(fallbackBroadcastMessages.map((message) => [message.noticeBatchId || message.id, message])).values()];
+
+  const thread = {
+    threadKey: ADMIN_BROADCAST_THREAD_KEY,
+    conversationIds: new Set([ADMIN_BROADCAST_CONVERSATION_ID]),
+    recipientIds: new Set(),
+    batchMap: new Map(),
+    latestAt: "",
+    latestConversationId: ADMIN_BROADCAST_CONVERSATION_ID,
+    broadcastMessages: normalizedBroadcastMessages,
+  };
+  normalizedBroadcastMessages.forEach((message) => {
+    const batchId = getAdminNoticeThreadBatchIdFromMessage(message, {
+      noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+      noticeBatchId: message.noticeBatchId,
+    });
+    const batch = thread.batchMap.get(batchId) || {
+      id: batchId,
+      messageIds: new Set(),
+      conversationIds: new Set([ADMIN_BROADCAST_CONVERSATION_ID]),
+      latestAt: "",
+      firstAt: "",
+    };
+    batch.messageIds.add(message.id);
+    batch.conversationIds.add(ADMIN_BROADCAST_CONVERSATION_ID);
+    batch.latestAt = [batch.latestAt, message.createdAt].filter(Boolean).sort().slice(-1)[0] || message.createdAt;
+    batch.firstAt = batch.firstAt ? [batch.firstAt, message.createdAt].filter(Boolean).sort()[0] : message.createdAt;
+    thread.batchMap.set(batchId, batch);
+    if (!thread.latestAt || String(message.createdAt || "").localeCompare(String(thread.latestAt || "")) > 0) {
+      thread.latestAt = message.createdAt;
+    }
+  });
+  threads.set(ADMIN_BROADCAST_THREAD_KEY, thread);
+
+  normalizedMessages
+    .filter((message) => {
+      const conversation = conversationById.get(message.conversationId);
+      return conversation && conversation.type === "notice";
+    })
+    .filter((message) => getAdminNoticeThreadKeyFromMessage(message, conversationById.get(message.conversationId) || {}) !== ADMIN_BROADCAST_THREAD_KEY)
+    .forEach((message) => {
+      const conversation = conversationById.get(message.conversationId) || {};
+      const threadKey = getAdminNoticeThreadKeyFromMessage(message, conversation);
+      if (!threadKey) return;
+      const thread = threads.get(threadKey) || {
+        threadKey,
+        conversationIds: new Set(),
+        recipientIds: new Set(),
+        batchMap: new Map(),
+        latestAt: "",
+        latestConversationId: "",
+      };
+      thread.conversationIds.add(message.conversationId);
+      const conversationMemberId = Array.isArray(conversation.memberIds) ? conversation.memberIds[0] : "";
+      if (conversationMemberId) {
+        thread.recipientIds.add(conversationMemberId);
+      }
+      const batchId = getAdminNoticeThreadBatchIdFromMessage(message, conversation);
+      const batch = thread.batchMap.get(batchId) || {
+        id: batchId,
+        messageIds: new Set(),
+        conversationIds: new Set(),
+        latestAt: "",
+        firstAt: "",
+      };
+      batch.messageIds.add(message.id);
+      batch.conversationIds.add(message.conversationId);
+      batch.latestAt = [batch.latestAt, message.createdAt].filter(Boolean).sort().slice(-1)[0] || message.createdAt;
+      batch.firstAt = batch.firstAt ? [batch.firstAt, message.createdAt].filter(Boolean).sort()[0] : message.createdAt;
+      thread.batchMap.set(batchId, batch);
+      if (!thread.latestAt || String(message.createdAt || "").localeCompare(String(thread.latestAt || "")) > 0) {
+        thread.latestAt = message.createdAt;
+        thread.latestConversationId = message.conversationId;
+      }
+      threads.set(threadKey, thread);
+    });
+
+  const sortThreads = (a, b) => {
+    if (a.threadKey === "broadcast" && b.threadKey !== "broadcast") return -1;
+    if (b.threadKey === "broadcast" && a.threadKey !== "broadcast") return 1;
+    return String(b.latestAt || "").localeCompare(String(a.latestAt || ""));
+  };
+
+  const renderedThreads = [...threads.values()]
+    .map((thread) => {
+      const batches = [...thread.batchMap.values()]
+        .map((batch) => {
+          const sourceMessages =
+            thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
+              ? normalizedBroadcastMessages
+              : normalizedMessages;
+          const batchMessages = [...batch.messageIds]
+            .map((messageId) => sourceMessages.find((entry) => String(entry.id || "") === String(messageId)) || null)
+            .filter(Boolean)
+            .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+          const representativeMessage = batchMessages[batchMessages.length - 1] || batchMessages[0] || null;
+          const representativeConversation = batch.conversationIds.size
+            ? conversationById.get([...batch.conversationIds][batch.conversationIds.size - 1] || "")
+            : conversationById.get(thread.latestConversationId) || null;
+          const attachment = representativeMessage
+            ? resolveAdminNoticeAttachment(representativeMessage, uploads)
+            : null;
+          return {
+            id: batch.id,
+            createdAt: representativeMessage?.createdAt || batch.latestAt || batch.firstAt || "",
+            latestAt: batch.latestAt || representativeMessage?.createdAt || batch.firstAt || "",
+            senderUserId: representativeMessage?.senderUserId || ADMIN_NOTICE_SENDER_ID,
+            senderName: normalizeWhitespace(representativeMessage?.senderName || ADMIN_NOTICE_SENDER_NAME).slice(0, 80) || ADMIN_NOTICE_SENDER_NAME,
+            text: representativeMessage?.text || "",
+            type: representativeMessage?.type || "text",
+            attachment,
+            conversationIds: [...batch.conversationIds],
+            recipientCount: batch.conversationIds.size,
+            noticeThreadKey: thread.threadKey,
+            noticeBatchId: batch.id,
+            replyTo: representativeMessage?.replyTo || null,
+            representativeConversationId: representativeConversation?.id || "",
+          };
+        })
+        .sort((a, b) => String(b.latestAt || "").localeCompare(String(a.latestAt || "")));
+      const latestBatch = batches[0] || null;
+      const latestConversation = thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
+        ? null
+        : latestBatch?.representativeConversationId
+        ? conversationById.get(latestBatch.representativeConversationId)
+        : thread.latestConversationId
+          ? conversationById.get(thread.latestConversationId)
+          : null;
+      const recipientCount = thread.threadKey === ADMIN_BROADCAST_THREAD_KEY ? broadcastRecipientCount : thread.recipientIds.size;
+      const title = thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
+        ? "Announcement"
+        : latestConversation
+          ? getAdminNoticeThreadTitle(latestConversation)
+          : getAdminNoticeThreadTitle({ noticeThreadKey: thread.threadKey });
+      const subtitle = thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
+        ? "Broadcast to everyone"
+        : latestConversation
+          ? getAdminNoticeThreadSubtitle(latestConversation)
+          : getAdminNoticeThreadSubtitle({ noticeThreadKey: thread.threadKey });
+      return {
+        threadKey: thread.threadKey,
+        title,
+        subtitle,
+        originType: thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
+          ? "broadcast"
+          : normalizeWhitespace(latestConversation?.noticeOriginType || parseAdminNoticeThreadKey(thread.threadKey)?.originType || "").toLowerCase(),
+        originId: thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
+          ? "all-users"
+          : normalizeWhitespace(latestConversation?.noticeOriginId || parseAdminNoticeThreadKey(thread.threadKey)?.originId || ""),
+        originName: thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
+          ? "All users"
+          : normalizeWhitespace(latestConversation?.noticeOriginName || "").slice(0, 120),
+        latestAt: latestBatch?.latestAt || thread.latestAt || "",
+        recipientCount,
+        batchCount: batches.length,
+        previewText: latestBatch?.text || latestBatch?.attachment?.fileName || latestBatch?.attachment?.kind || (
+          thread.threadKey === ADMIN_BROADCAST_THREAD_KEY ? "Broadcast to everyone" : ""
+        ),
+        lastMessage: latestBatch,
+        batches,
+      };
+    })
+    .sort(sortThreads);
+
+  return renderedThreads;
+}
+
+function buildAdminBroadcastThreadDetail(threadKey = "", collections = {}) {
+  const safeThreadKey = normalizeWhitespace(threadKey || "");
+  const threads = buildAdminBroadcastThreadCollections(collections);
+  const thread = threads.find((entry) => entry.threadKey === safeThreadKey) || null;
+  if (!thread) return null;
+  return thread;
+}
+
+function buildAdminBroadcastCommunityConversationView({
+  viewerId = "",
+  broadcastMessages = [],
+  uploads = [],
+} = {}) {
+  const safeViewerId = String(viewerId || "").trim();
+  const normalizedBroadcastMessages = Array.isArray(broadcastMessages)
+    ? broadcastMessages.map(normalizeAdminBroadcastMessage)
+    : [];
+  if (!normalizedBroadcastMessages.length) return null;
+
+  const lastMessage = normalizedBroadcastMessages
+    .slice()
+    .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")))
+    .at(-1) || null;
+  const unreadCount = normalizedBroadcastMessages.filter(
+    (message) =>
+      message.senderUserId !== safeViewerId &&
+      !hasMessageBeenSeenByUser(message, safeViewerId) &&
+      !message.deletedForUserIds?.includes(safeViewerId) &&
+      !message.hiddenForUserIds?.includes(safeViewerId),
+  ).length;
+  const conversation = {
+    id: ADMIN_BROADCAST_CONVERSATION_ID,
+    type: "notice",
+    memberIds: [safeViewerId],
+    ownerUserId: ADMIN_NOTICE_SENDER_ID,
+    adminIds: [],
+    lastMessageId: lastMessage?.id || "",
+    lastMessageAt: lastMessage?.createdAt || "",
+    updatedAt: lastMessage?.createdAt || "",
+    createdAt: normalizedBroadcastMessages[0]?.createdAt || "",
+    noticeTitle: "Announcement",
+    noticeSubtitle: "Broadcast to everyone",
+    noticeBody: "",
+    noticeOriginType: "broadcast",
+    noticeOriginId: "all-users",
+    noticeOriginName: "All users",
+    noticeSenderId: ADMIN_NOTICE_SENDER_ID,
+    noticeSenderName: ADMIN_NOTICE_SENDER_NAME,
+  };
+
+  return {
+    id: ADMIN_BROADCAST_CONVERSATION_ID,
+    updatedAt: lastMessage?.createdAt || "",
+    unreadCount,
+    isFavorite: false,
+    partner: getConversationDisplayPayload(conversation, {
+      viewerId: safeViewerId,
+      uploads,
+    }),
+    lastMessage: buildConversationLastMessagePayload(lastMessage),
+    conversation,
+    messages: normalizedBroadcastMessages,
+  };
+}
+
+function ensureConversationInviteToken(conversation = {}) {
+  const normalized = normalizeConversation(conversation);
+  const inviteToken = String(normalized.inviteToken || "").trim();
+  if (inviteToken && !isConversationInviteExpired(normalized)) {
+    return {
+      ...normalized,
+      inviteToken,
+      inviteTokenCreatedAt: normalized.inviteTokenCreatedAt || normalized.createdAt || new Date().toISOString(),
+    };
+  }
+  return {
+    ...normalized,
+    inviteToken: crypto.randomUUID().replace(/-/g, ""),
+    inviteTokenCreatedAt: new Date().toISOString(),
+  };
+}
+
+function getConversationInviteCreatedAt(conversation = {}) {
+  const normalized = normalizeConversation(conversation);
+  const raw = String(normalized.inviteTokenCreatedAt || normalized.createdAt || "").trim();
+  const createdAt = Date.parse(raw);
+  return Number.isFinite(createdAt) ? createdAt : 0;
+}
+
+function getConversationInviteExpiresAt(conversation = {}) {
+  const createdAt = getConversationInviteCreatedAt(conversation);
+  if (!createdAt) return "";
+  return new Date(createdAt + COMMUNITY_GROUP_INVITE_TTL_MS).toISOString();
+}
+
+function isConversationInviteExpired(conversation = {}, now = Date.now()) {
+  const normalized = normalizeConversation(conversation);
+  const token = String(normalized.inviteToken || "").trim();
+  if (!token) return true;
+  const createdAt = getConversationInviteCreatedAt(normalized);
+  if (!createdAt) return true;
+  return now - createdAt >= COMMUNITY_GROUP_INVITE_TTL_MS;
+}
+
+function buildCommunityGroupInviteUrl(inviteToken = "", groupId = "") {
+  const token = String(inviteToken || "").trim();
+  const id = String(groupId || "").trim();
+  if (!token || !id) return "";
+  const params = new URLSearchParams();
+  params.set("groupInvite", id);
+  params.set("groupToken", token);
+  const pathname = typeof window !== "undefined" && window.location?.pathname
+    ? window.location.pathname
+    : "/index.html";
+  return `${pathname}?${params.toString()}`;
+}
+
+function getConversationMemberSet(conversation = {}) {
+  return new Set((Array.isArray(conversation?.memberIds) ? conversation.memberIds : []).map((value) => String(value || "").trim()).filter(Boolean));
+}
+
+function getNextGroupOwnerId(conversation = {}, excludeUserId = "") {
+  const excluded = String(excludeUserId || "").trim();
+  const memberIds = Array.isArray(conversation?.memberIds)
+    ? conversation.memberIds.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  const adminIds = Array.isArray(conversation?.adminIds)
+    ? conversation.adminIds.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  const candidates = [...new Set([...adminIds, ...memberIds])].filter((value) => value !== excluded);
+  return candidates[0] || "";
 }
 
 function normalizeUpload(raw = {}) {
@@ -684,11 +1351,36 @@ function normalizeStatus(raw = {}) {
     durationSeconds: videoTrimSpan,
     visibility: STATUS_VISIBILITY_VALUES.has(visibility) ? visibility : "friends",
     allowReplies: raw?.allowReplies !== false,
+    isAdminBroadcast: raw?.isAdminBroadcast === true || String(raw?.isAdminBroadcast || "").trim().toLowerCase() === "true",
     viewers: normalizeStatusActorEntries(raw.viewers, createdAt),
     likes: normalizeStatusActorEntries(raw.likes, createdAt),
     createdAt,
     expiresAt,
     updatedAt: String(raw.updatedAt || createdAt),
+  };
+}
+
+function buildAdminBroadcastStatusOwnerView() {
+  return {
+    id: ADMIN_NOTICE_SENDER_ID,
+    title: ADMIN_BROADCAST_STATUS_TITLE,
+    name: ADMIN_BROADCAST_STATUS_TITLE,
+    displayName: ADMIN_BROADCAST_STATUS_TITLE,
+    username: "",
+    profileImage: ADMIN_NOTICE_PROFILE_IMAGE,
+    institution: "Admin broadcast",
+    country: "",
+    professionalType: "Admin broadcast",
+    bio: "Messages from the admin team",
+    contact: "",
+    points: 0,
+    privacy: {},
+    lastSeenAt: "",
+    onlineNow: false,
+    isGroup: false,
+    isNotice: false,
+    isReadOnly: true,
+    ownerUserId: ADMIN_NOTICE_SENDER_ID,
   };
 }
 
@@ -747,6 +1439,7 @@ function normalizeMessage(raw = {}) {
     id: String(raw.id || crypto.randomUUID()),
     conversationId: String(raw.conversationId || ""),
     senderUserId: String(raw.senderUserId || ""),
+    senderName: normalizeWhitespace(raw.senderName || raw.senderDisplayName || raw.senderLabel || "").slice(0, 80),
     type: MESSAGE_TYPE_VALUES.has(type) ? type : "text",
     text: String(raw.text || "").trim(),
     attachment: raw.attachment && typeof raw.attachment === "object" ? raw.attachment : null,
@@ -765,8 +1458,29 @@ function normalizeMessage(raw = {}) {
     hiddenForUserIds: Array.isArray(raw.hiddenForUserIds)
       ? [...new Set(raw.hiddenForUserIds.map((value) => String(value || "").trim()).filter(Boolean))]
       : [],
+    noticeThreadKey: normalizeWhitespace(raw.noticeThreadKey || "").slice(0, 120),
+    noticeBatchId: String(raw.noticeBatchId || "").trim(),
     createdAt,
     updatedAt: String(raw.updatedAt || createdAt),
+  };
+}
+
+function normalizeAdminBroadcastMessage(raw = {}) {
+  const normalized = normalizeMessage({
+    ...raw,
+    conversationId: ADMIN_BROADCAST_CONVERSATION_ID,
+    senderUserId: raw.senderUserId || ADMIN_NOTICE_SENDER_ID,
+    senderName: raw.senderName || ADMIN_NOTICE_SENDER_NAME,
+    noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+    noticeBatchId: raw.noticeBatchId || "",
+  });
+  return {
+    ...normalized,
+    conversationId: ADMIN_BROADCAST_CONVERSATION_ID,
+    senderUserId: ADMIN_NOTICE_SENDER_ID,
+    senderName: normalizeWhitespace(normalized.senderName || ADMIN_NOTICE_SENDER_NAME).slice(0, 80) || ADMIN_NOTICE_SENDER_NAME,
+    noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+    noticeBatchId: String(normalized.noticeBatchId || raw.noticeBatchId || "").trim(),
   };
 }
 
@@ -1409,6 +2123,9 @@ async function persistCommunityConversationMessage({
   if (conversation.type === "direct" && isBlocked(blocks, viewerId, partnerId)) {
     throw new Error("unblock user first");
   }
+  if (conversation.type === "notice") {
+    throw new Error("admin notices are read only");
+  }
   if (!safeText && !upload) {
     throw new Error("message text or attachment is required");
   }
@@ -1464,6 +2181,132 @@ async function persistCommunityConversationMessage({
     }),
   );
   return message;
+}
+
+async function persistAdminNoticeMessage({
+  recipientId = "",
+  text = "",
+  title = "Admin Notice",
+  subtitle = "Messages from the admin team",
+  originType = "",
+  originId = "",
+  originName = "",
+  senderName = ADMIN_NOTICE_SENDER_NAME,
+  upload = null,
+  storedUpload = null,
+  noticeThreadKey = "",
+  noticeBatchId = "",
+} = {}) {
+  const safeRecipientId = String(recipientId || "").trim();
+  const safeText = String(text || "").trim();
+  const safeTitle = normalizeWhitespace(title).slice(0, 72) || "Admin Notice";
+  const safeSubtitle = normalizeWhitespace(subtitle).slice(0, 180) || "Messages from the admin team";
+  const safeOriginType = normalizeWhitespace(originType).slice(0, 32);
+  const safeOriginId = String(originId || "").trim();
+  const safeOriginName = normalizeWhitespace(originName).slice(0, 120);
+  const safeSenderName = normalizeWhitespace(senderName).slice(0, 80) || ADMIN_NOTICE_SENDER_NAME;
+  const safeThreadKey = normalizeWhitespace(noticeThreadKey || "").slice(0, 120);
+  const safeBatchId = String(noticeBatchId || "").trim() || crypto.randomUUID();
+  if (!safeRecipientId) {
+    throw new Error("recipient required");
+  }
+
+  const conversations = (await readCollection("conversations")).map(normalizeConversation);
+  const messages = (await readCollection("messages")).map(normalizeMessage);
+  let nextStoredUpload = storedUpload ? normalizeUpload(storedUpload) : null;
+  if (!nextStoredUpload && upload) {
+    const uploadRecords = (await readCollection("uploads")).map(normalizeUpload);
+    const persistedUploadResult = persistUploadRecord(uploadRecords, upload);
+    nextStoredUpload = persistedUploadResult.upload;
+    if (nextStoredUpload) {
+      await writeCollection("uploads", persistedUploadResult.uploads);
+    }
+  }
+  if (!safeText && !nextStoredUpload) {
+    throw new Error("message text or attachment is required");
+  }
+  const nowIso = new Date().toISOString();
+  let conversationIndex = conversations.findIndex(
+    (entry) =>
+      entry.type === "notice" &&
+      entry.memberIds.length === 1 &&
+      entry.memberIds.includes(safeRecipientId),
+  );
+  const currentConversation = conversationIndex >= 0 ? conversations[conversationIndex] : null;
+  const nextConversation = normalizeConversation({
+    ...(currentConversation || {}),
+    type: "notice",
+    memberIds: [safeRecipientId],
+    ownerUserId: safeRecipientId,
+    name: safeTitle,
+    bio: safeSubtitle,
+    noticeTitle: safeTitle,
+    noticeSubtitle: safeSubtitle,
+    noticeBody: (safeText.slice(0, 240) || nextStoredUpload?.originalName || nextStoredUpload?.fileName || "").slice(0, 240),
+    noticeOriginType: safeOriginType,
+    noticeOriginId: safeOriginId,
+    noticeOriginName: safeOriginName,
+    noticeSenderId: ADMIN_NOTICE_SENDER_ID,
+    noticeSenderName: safeSenderName,
+    noticeThreadKey: safeThreadKey || (safeOriginType === "broadcast" || safeOriginId === "all-users" ? "broadcast" : `notice:${safeOriginType || "notice"}:${safeOriginId || safeRecipientId}`),
+    noticeBatchId: safeBatchId,
+    updatedAt: nowIso,
+    createdAt: currentConversation?.createdAt || nowIso,
+  });
+  if (conversationIndex >= 0) {
+    conversations[conversationIndex] = nextConversation;
+  } else {
+    conversations.push(nextConversation);
+    conversationIndex = conversations.length - 1;
+  }
+
+  const message = normalizeMessage({
+    conversationId: nextConversation.id,
+    senderUserId: ADMIN_NOTICE_SENDER_ID,
+    senderName: safeSenderName,
+    type: nextStoredUpload ? getMessageTypeFromUpload(nextStoredUpload) : "text",
+    text: safeText.slice(0, 2000),
+    deliveredAt: nowIso,
+    readAt: null,
+    seenByUserIds: [],
+    hiddenForUserIds: [],
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    attachment: nextStoredUpload
+      ? {
+          uploadId: nextStoredUpload.id,
+          kind: getMessageTypeFromUpload(nextStoredUpload),
+          fileName: nextStoredUpload.fileName,
+          mimeType: nextStoredUpload.mimeType,
+        }
+      : null,
+    noticeThreadKey: nextConversation.noticeThreadKey,
+    noticeBatchId: safeBatchId,
+  });
+  messages.push(message);
+  conversations[conversationIndex] = {
+    ...nextConversation,
+    lastMessageId: message.id,
+    lastMessageAt: message.createdAt,
+    updatedAt: message.createdAt,
+  };
+  await writeCollection("messages", messages);
+  await writeCollection("conversations", conversations);
+  fireCommunityRealtimeMessages([
+    ...buildCommunityConversationRealtimeMessages(nextConversation.id, {
+      reason: "message-created",
+      messageId: message.id,
+    }),
+    buildCommunityOverviewRealtimeMessage("conversations", {
+      reason: "admin-notice-created",
+      conversationId: nextConversation.id,
+      recipientUserId: safeRecipientId,
+    }),
+  ]);
+  return {
+    conversation: conversations[conversationIndex],
+    message,
+  };
 }
 
 async function persistCommunityCallLogMessage({
@@ -1533,6 +2376,7 @@ async function persistCommunityStatus({
   visibility = "friends",
   style = {},
   upload = null,
+  isAdminBroadcast = false,
 } = {}) {
   const statuses = (await purgeExpiredStatuses()).map(normalizeStatus);
   const activeOwnCount = statuses.filter((entry) => entry.ownerUserId === viewerId).length;
@@ -1568,12 +2412,15 @@ async function persistCommunityStatus({
     videoTrimStart: Number(style?.videoTrimStart || 0) || 0,
     videoTrimEnd: Number(style?.videoTrimEnd || 0) || 0,
     durationSeconds: Math.max(1, Math.min(30, Number(style?.durationSeconds || 30) || 30)),
-    allowReplies: style?.allowReplies !== false,
+    allowReplies: isAdminBroadcast ? false : style?.allowReplies !== false,
     caption,
-    visibility: STATUS_VISIBILITY_VALUES.has(String(visibility || "").trim().toLowerCase())
-      ? String(visibility || "").trim().toLowerCase()
-      : "friends",
+    visibility: isAdminBroadcast
+      ? "everyone"
+      : STATUS_VISIBILITY_VALUES.has(String(visibility || "").trim().toLowerCase())
+        ? String(visibility || "").trim().toLowerCase()
+        : "friends",
     expiresAt: new Date(Date.now() + STATUS_TTL_MS).toISOString(),
+    isAdminBroadcast: Boolean(isAdminBroadcast),
   });
   statuses.push(status);
   await writeCollection("statuses", statuses);
@@ -1644,12 +2491,13 @@ function isCommunityModerationQuotaFallbackError(message = "") {
 
 function isUnsafeVisionLikelihood(value = "") {
   const safeValue = String(value || "").trim().toUpperCase();
-  return safeValue === "LIKELY" || safeValue === "VERY_LIKELY";
+  // Treat anything beyond "UNLIKELY" as unsafe so explicit images do not slip through.
+  return safeValue === "POSSIBLE" || safeValue === "LIKELY" || safeValue === "VERY_LIKELY";
 }
 
 async function requestGoogleVisionSafeSearch(buffer = Buffer.alloc(0)) {
   if (!isCommunityGoogleVisionConfigured()) {
-    throw new Error("moderation_unavailable");
+    return null;
   }
   const safeBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || []);
   const { controller, clear } = createTimeoutController(config.aiRequestTimeoutMs);
@@ -1709,9 +2557,7 @@ async function moderateCommunityImageBuffer(buffer = Buffer.alloc(0), mimeType =
       throw error;
     }
     errorLogStream.write(`${new Date().toISOString()} COMMUNITY_IMAGE_MODERATION_FALLBACK ${message || "unknown"}\n`);
-    if (!isCommunityModerationQuotaFallbackError(message)) {
-      return;
-    }
+    return;
   }
 }
 
@@ -1751,6 +2597,9 @@ async function extractCommunityModerationVideoFrames(videoBuffer = Buffer.alloc(
       const frameBuffer = await fs.promises.readFile(framePath);
       if (frameBuffer.length) frames.push(frameBuffer);
     }
+    if (!frames.length) {
+      throwCommunityModerationBlocked();
+    }
     return frames;
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {});
@@ -1758,9 +2607,21 @@ async function extractCommunityModerationVideoFrames(videoBuffer = Buffer.alloc(
 }
 
 async function moderateCommunityVideoBuffer(buffer = Buffer.alloc(0), mimeType = "video/mp4") {
-  const frames = await extractCommunityModerationVideoFrames(buffer, mimeType);
-  for (const frame of frames) {
-    await moderateCommunityImageBuffer(frame, "image/jpeg");
+  try {
+    const frames = await extractCommunityModerationVideoFrames(buffer, mimeType);
+    if (!frames.length) {
+      errorLogStream.write(`${new Date().toISOString()} COMMUNITY_VIDEO_MODERATION_FALLBACK no_frames\n`);
+      return;
+    }
+    for (const frame of frames) {
+      await moderateCommunityImageBuffer(frame, "image/jpeg");
+    }
+  } catch (error) {
+    const message = String(error?.message || "").trim();
+    if (message === COMMUNITY_MODERATION_BLOCK_MESSAGE) {
+      throw error;
+    }
+    errorLogStream.write(`${new Date().toISOString()} COMMUNITY_VIDEO_MODERATION_FALLBACK ${message || "unknown"}\n`);
   }
 }
 
@@ -1864,6 +2725,7 @@ function buildConversationLastMessagePayload(message = null) {
     id: safeMessage.id,
     text: safeMessage.text,
     senderUserId: safeMessage.senderUserId,
+    senderName: String(safeMessage.senderName || "").trim(),
     createdAt: safeMessage.createdAt,
     type: safeMessage.type,
     attachment: safeMessage.attachment || null,
@@ -1996,6 +2858,7 @@ function applyCommunityProfileView(
   if (restrictedBySubject) {
     return {
       id: normalized.id,
+      role: normalized.role,
       title: "",
       firstName: "",
       lastName: "",
@@ -2021,6 +2884,7 @@ function applyCommunityProfileView(
 
   return {
     id: normalized.id,
+    role: normalized.role,
     title: canSeeProfile || sameUser ? normalized.title : "",
     firstName: canSeeProfile || sameUser ? normalized.firstName : "",
     lastName: canSeeProfile || sameUser ? normalized.lastName : "",
@@ -2052,6 +2916,52 @@ function getConversationDisplayPayload(conversation, {
   uploads = [],
 } = {}) {
   const normalizedConversation = normalizeConversation(conversation);
+  if (normalizedConversation.type === "notice") {
+    const avatarUpload = uploads.find((entry) => entry.id === normalizedConversation.noticeAvatarUploadId) || null;
+    const isBroadcastNotice =
+      String(normalizedConversation.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+      String(normalizedConversation.noticeThreadKey || "").trim().toLowerCase() === "broadcast";
+    const noticeSubtitle = normalizedConversation.noticeSubtitle || (isBroadcastNotice
+      ? "Announcement sent to all users"
+      : "Messages from the admin team");
+    return {
+      id: normalizedConversation.id,
+      kind: "notice",
+      type: "notice",
+      name: normalizedConversation.noticeTitle || "Admin Notice",
+      displayName: normalizedConversation.noticeTitle || "Admin Notice",
+      title: normalizedConversation.noticeTitle || "Admin Notice",
+      username: "",
+      profileImage: avatarUpload ? resolveUploadPublicView(avatarUpload).dataUrl : ADMIN_NOTICE_PROFILE_IMAGE,
+      institution: noticeSubtitle,
+      country: "",
+      professionalType: "Admin Notice",
+      bio: normalizedConversation.noticeBody || "",
+      contact: "",
+      points: 0,
+      privacy: {},
+      lastSeenAt: "",
+      onlineNow: false,
+      isGroup: false,
+      isNotice: true,
+      isReadOnly: true,
+      ownerUserId: normalizedConversation.ownerUserId,
+      adminIds: [],
+      memberIds: normalizedConversation.memberIds,
+      permissions: {},
+      inviteToken: "",
+      createdAt: normalizedConversation.createdAt,
+      noticeTitle: normalizedConversation.noticeTitle || "Admin Notice",
+      noticeSubtitle,
+      noticeBody: normalizedConversation.noticeBody || "",
+      noticeOriginType: normalizedConversation.noticeOriginType || "",
+      noticeOriginId: normalizedConversation.noticeOriginId || "",
+      noticeOriginName: normalizedConversation.noticeOriginName || "",
+      noticeSenderId: normalizedConversation.noticeSenderId || ADMIN_NOTICE_SENDER_ID,
+      noticeSenderName: normalizedConversation.noticeSenderName || ADMIN_NOTICE_SENDER_NAME,
+      conversationType: "notice",
+    };
+  }
   if (normalizedConversation.type === "group") {
     const avatarUpload = uploads.find((entry) => entry.id === normalizedConversation.avatarUploadId);
     return {
@@ -2074,6 +2984,8 @@ function getConversationDisplayPayload(conversation, {
       adminIds: normalizedConversation.adminIds,
       memberIds: normalizedConversation.memberIds,
       permissions: normalizeGroupPermissions(normalizedConversation.permissions || {}),
+      isMuted: Array.isArray(normalizedConversation.mutedMemberIds) && normalizedConversation.mutedMemberIds.includes(viewerId),
+      inviteToken: normalizedConversation.inviteToken || "",
       createdAt: normalizedConversation.createdAt,
     };
   }
@@ -2088,6 +3000,78 @@ function getConversationDisplayPayload(conversation, {
     : null;
 }
 
+function buildCommunityConversationRows({
+  viewerId = "",
+  users = [],
+  friendships = [],
+  blocks = [],
+  uploads = [],
+  conversations = [],
+  messages = [],
+  conversationStates = [],
+} = {}) {
+  const safeViewerId = String(viewerId || "").trim();
+  const states = Array.isArray(conversationStates)
+    ? conversationStates.map(normalizeCommunityConversationState)
+    : [];
+  const normalizedMessages = Array.isArray(messages) ? messages.map(normalizeMessage) : [];
+  const conversationRows = conversations
+    .filter((entry) => Array.isArray(entry?.memberIds) && entry.memberIds.includes(safeViewerId))
+    .filter((entry) => {
+      if (entry.type !== "direct") return true;
+      const partnerId = entry.memberIds.find((memberId) => memberId !== safeViewerId) || "";
+      if (!partnerId) return false;
+      return !isBlocked(blocks, safeViewerId, partnerId) && !isBlocked(blocks, partnerId, safeViewerId);
+    })
+    .filter((entry) => {
+      const state = getCommunityConversationStateForViewer(states, safeViewerId, entry.id);
+      const hiddenInConversation = Array.isArray(entry.hiddenForUserIds)
+        && entry.hiddenForUserIds.includes(safeViewerId);
+      return !hiddenInConversation && !isCommunityConversationHiddenForViewer(state);
+    })
+    .map((entry) => {
+      const state = getCommunityConversationStateForViewer(states, safeViewerId, entry.id);
+      const entryMessages = normalizedMessages.filter((message) => message.conversationId === entry.id);
+      const lastMessage =
+        normalizedMessages.find(
+          (message) =>
+            message.id === entry.lastMessageId &&
+            !message.deletedForUserIds?.includes(safeViewerId) &&
+            !message.hiddenForUserIds?.includes(safeViewerId),
+        ) || getConversationLastVisibleMessage(normalizedMessages, entry.id, safeViewerId);
+      const unreadCount = entryMessages.filter(
+        (message) =>
+          message.senderUserId !== safeViewerId &&
+          !message.deletedAt &&
+          !hasMessageBeenSeenByUser(message, safeViewerId) &&
+          !message.deletedForUserIds?.includes(safeViewerId) &&
+          !message.hiddenForUserIds?.includes(safeViewerId),
+      ).length;
+      return {
+        id: entry.id,
+        updatedAt: lastMessage?.createdAt || entry.updatedAt,
+        unreadCount,
+        isFavorite: Boolean(state?.isFavorite),
+        partner: getConversationDisplayPayload(entry, {
+          viewerId: safeViewerId,
+          users,
+          friendships,
+          blocks,
+          uploads,
+        }),
+        lastMessage: buildConversationLastMessagePayload(lastMessage),
+      };
+    });
+  return conversationRows
+    .filter((entry) => entry.partner)
+    .sort((a, b) => {
+      const aFavorite = Boolean(a.isFavorite);
+      const bFavorite = Boolean(b.isFavorite);
+      if (aFavorite !== bFavorite) return bFavorite ? 1 : -1;
+      return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+    });
+}
+
 function canViewerSeeStatus(status, {
   viewerId = "",
   owner = null,
@@ -2095,6 +3079,9 @@ function canViewerSeeStatus(status, {
   blocks = [],
 } = {}) {
   const normalizedStatus = normalizeStatus(status);
+  if (normalizedStatus.isAdminBroadcast) {
+    return !isStatusExpired(normalizedStatus);
+  }
   const normalizedOwner = normalizeExistingUser(owner || {});
   if (!viewerId || !normalizedOwner.id) return false;
   if (viewerId === normalizedOwner.id) return !isStatusExpired(normalizedStatus);
@@ -2112,6 +3099,15 @@ function isValidEmail(value) {
 
 function normalizeWhitespace(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeMultilineText(value) {
+  return String(value || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim().replace(/\s+/g, " "))
+    .join("\n")
+    .trim();
 }
 
 function normalizeUsername(value) {
@@ -2246,9 +3242,11 @@ function buildPointsLeaderboardSnapshot({
   pointEvents = [],
   requestUserId = "",
   scope = "daily",
-  limit = 20,
+  limit = null,
 }) {
-  const safeLimit = Math.max(3, Math.min(50, Math.round(Number(limit) || 20)));
+  const safeLimit = Number.isFinite(Number(limit)) && Number(limit) > 0
+    ? Math.max(3, Math.round(Number(limit)))
+    : null;
   const normalizedUsers = users
     .map(normalizeExistingUser)
     .filter((user) => !isUserCurrentlyDeactivated(user));
@@ -2290,7 +3288,7 @@ function buildPointsLeaderboardSnapshot({
     }));
 
   const topThree = ranked.slice(0, 3);
-  const leaderboard = ranked.slice(0, safeLimit);
+  const leaderboard = safeLimit ? ranked.slice(0, safeLimit) : ranked;
   const yourEntry =
     requestUserId && ranked.find((row) => String(row.userId) === String(requestUserId))
       ? ranked.find((row) => String(row.userId) === String(requestUserId))
@@ -2409,6 +3407,628 @@ function toPublicUser(user) {
     points: normalizePointsValue(normalized.points),
     dailyQuiz: summarizeDailyQuizState(normalized.dailyQuiz),
   };
+}
+
+function normalizeDeletedUserArchive(rawArchive = {}) {
+  const user = normalizeExistingUser(rawArchive.user || {});
+  return {
+    archiveId: String(rawArchive.archiveId || rawArchive.id || crypto.randomUUID()),
+    user,
+    userId: user.id,
+    deletedAt: String(rawArchive.deletedAt || new Date().toISOString()),
+    deletedByType: normalizeWhitespace(rawArchive.deletedByType),
+    deletedById: normalizeWhitespace(rawArchive.deletedById),
+    deletedByName: normalizeWhitespace(rawArchive.deletedByName),
+    deletionReason: normalizeWhitespace(rawArchive.deletionReason),
+    restoredAt: rawArchive.restoredAt ? String(rawArchive.restoredAt) : null,
+    restoredByType: normalizeWhitespace(rawArchive.restoredByType),
+    restoredById: normalizeWhitespace(rawArchive.restoredById),
+    restoredByName: normalizeWhitespace(rawArchive.restoredByName),
+  };
+}
+
+function toPublicDeletedUserArchive(rawArchive) {
+  const archive = normalizeDeletedUserArchive(rawArchive);
+  const user = toPublicUser(archive.user);
+  return {
+    ...user,
+    archiveId: archive.archiveId,
+    deletedAt: archive.deletedAt,
+    deletedByType: archive.deletedByType,
+    deletedById: archive.deletedById,
+    deletedByName: archive.deletedByName,
+    deletionReason: archive.deletionReason,
+    restoredAt: archive.restoredAt,
+    restoredByType: archive.restoredByType,
+    restoredById: archive.restoredById,
+    restoredByName: archive.restoredByName,
+  };
+}
+
+function buildAdminGroupSummary(conversation = {}, { users = [], uploads = [] } = {}) {
+  const normalized = normalizeConversation(conversation);
+  const owner = users.find((entry) => entry.id === normalized.ownerUserId) || null;
+  const avatarUpload = uploads.find((entry) => entry.id === normalized.avatarUploadId) || null;
+  return {
+    id: normalized.id,
+    name: normalized.name || "Study Group",
+    bio: normalized.bio || "",
+    ownerId: normalized.ownerUserId || "",
+    ownerName: owner?.name || owner?.username || "Unknown",
+    ownerUsername: owner?.username || "",
+    ownerProfileImage: owner?.profileImage || "",
+    avatarUrl: avatarUpload ? resolveUploadPublicView(avatarUpload).dataUrl : "",
+    memberCount: normalized.memberIds.length,
+    adminCount: normalized.adminIds.length,
+    createdAt: normalized.createdAt,
+    updatedAt: normalized.updatedAt,
+    inviteToken: normalized.inviteToken || "",
+    inviteExpiresAt: getConversationInviteExpiresAt(normalized),
+    inviteExpired: isConversationInviteExpired(normalized),
+    permissions: normalizeGroupPermissions(normalized.permissions || {}),
+  };
+}
+
+function buildAdminGroupDetail(conversation = {}, { users = [], uploads = [] } = {}) {
+  const normalized = normalizeConversation(conversation);
+  const group = buildAdminGroupSummary(normalized, { users, uploads });
+  const members = normalized.memberIds
+    .map((memberId) => {
+      const member = users.find((entry) => entry.id === memberId);
+      if (!member) {
+        return {
+          id: memberId,
+          title: "",
+          firstName: "",
+          lastName: "",
+          surname: "",
+          name: "Unknown member",
+          username: "",
+          contact: "",
+          contactType: "",
+          email: "",
+          role:
+            memberId === normalized.ownerUserId
+              ? "owner"
+              : normalized.adminIds.includes(memberId)
+                ? "admin"
+                : "member",
+          subscriptionTier: "",
+          professionalType: "",
+          country: "",
+          institution: "",
+          bio: "",
+          profileImage: "",
+          privacy: {},
+          createdAt: "",
+          updatedAt: "",
+          lastSeenAt: "",
+          deactivatedAt: "",
+          deactivatedUntil: "",
+          points: 0,
+          dailyQuiz: null,
+        };
+      }
+      return {
+        ...toPublicUser(member),
+        role:
+          memberId === normalized.ownerUserId
+            ? "owner"
+            : normalized.adminIds.includes(memberId)
+              ? "admin"
+              : "member",
+      };
+    })
+    .filter(Boolean);
+  return {
+    ...group,
+    members,
+  };
+}
+
+function getAdminNoticeRecipientIdsForGroup(conversation = {}, { users = [] } = {}) {
+  const normalized = normalizeConversation(conversation);
+  const candidateIds = [...new Set([normalized.ownerUserId, ...normalized.adminIds])]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  return candidateIds.filter((userId) => users.some((entry) => entry.id === userId));
+}
+
+function normalizeAdminWarningTitle(value = "") {
+  const title = normalizeWhitespace(value);
+  if (!title || title.toLowerCase() === "custom") {
+    return "Community rules reminder";
+  }
+  return title.slice(0, 120);
+}
+
+function buildAdminWarningNoticeBody(report = {}, warningTitle = "") {
+  const normalizedReport = normalizeAdminReport(report);
+  const title = normalizeAdminWarningTitle(warningTitle);
+  const targetLabel =
+    normalizedReport.type === "group"
+      ? `the group "${normalizeWhitespace(normalizedReport.targetName || normalizedReport.targetId || "this group").slice(0, 120)}"`
+      : normalizedReport.targetUsername
+        ? `@${normalizeWhitespace(normalizedReport.targetUsername).slice(0, 120)}`
+        : `the account "${normalizeWhitespace(normalizedReport.targetName || normalizedReport.targetId || "this user").slice(0, 120)}"`;
+  const reportDate = normalizedReport.createdAt ? new Date(normalizedReport.createdAt) : null;
+  const formattedDate =
+    reportDate && !Number.isNaN(reportDate.getTime())
+      ? reportDate.toLocaleString("en-US", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
+      : "the reported time";
+  const reason = normalizeWhitespace(normalizedReport.reason || "a community standards concern").slice(0, 240);
+  const closingLineByTitle = {
+    "Community rules reminder":
+      "Please take this warning seriously to avoid suspension or permanent deletion of your account.",
+    "Please keep the discussion respectful": "Please keep all communication respectful and avoid harassment, threats, or abuse.",
+    "No spam, scams, or impersonation": "Do not send spam, scams, deceptive links, or impersonate other people.",
+    "Follow the group guidelines": "Please follow the group guidelines immediately and avoid any further violations.",
+  };
+  const closingLine =
+    closingLineByTitle[title] || "Please review this warning carefully and correct the reported conduct immediately.";
+  return [
+    `We received a report on ${formattedDate} concerning ${targetLabel}.`,
+    `Reported concern: ${reason}.`,
+    "This appears to violate our community guidelines and requires immediate attention.",
+    "Please review this notice carefully and ensure all future activity follows the rules.",
+    closingLine,
+  ].join("\n\n");
+}
+
+async function sendAdminNoticeToRecipients(
+  recipientIds = [],
+  {
+    text = "",
+    title = "Admin Notice",
+    subtitle = "Messages from the admin team",
+    originType = "",
+    originId = "",
+    originName = "",
+    senderName = ADMIN_NOTICE_SENDER_NAME,
+    upload = null,
+    noticeThreadKey = "",
+    noticeBatchId = "",
+  } = {},
+) {
+  const uniqueRecipientIds = [...new Set(
+    Array.isArray(recipientIds)
+      ? recipientIds.map((value) => String(value || "").trim()).filter(Boolean)
+      : [],
+  )];
+  if (!uniqueRecipientIds.length) {
+    throw new Error("recipient required");
+  }
+  if (!String(text || "").trim()) {
+    if (!upload) {
+      throw new Error("message text is required");
+    }
+  }
+
+  let storedUpload = null;
+  if (upload) {
+    const uploadRecords = (await readCollection("uploads")).map(normalizeUpload);
+    const persistedUploadResult = persistUploadRecord(uploadRecords, upload);
+    storedUpload = persistedUploadResult.upload;
+    if (storedUpload) {
+      await writeCollection("uploads", persistedUploadResult.uploads);
+    }
+  }
+
+  const results = [];
+  const safeThreadKey = normalizeWhitespace(noticeThreadKey || "").slice(0, 120);
+  const safeBatchId = String(noticeBatchId || "").trim() || crypto.randomUUID();
+  for (const recipientId of uniqueRecipientIds) {
+    // Send each recipient their own inbox thread so notices stay private and readable.
+    // eslint-disable-next-line no-await-in-loop
+    results.push(await persistAdminNoticeMessage({
+      recipientId,
+      text,
+      title,
+      subtitle,
+      originType,
+      originId,
+      originName,
+      senderName,
+      storedUpload,
+      noticeThreadKey: safeThreadKey,
+      noticeBatchId: safeBatchId,
+    }));
+  }
+  return results;
+}
+
+async function persistGlobalAdminBroadcastMessage({
+  text = "",
+  senderName = ADMIN_NOTICE_SENDER_NAME,
+  upload = null,
+  noticeBatchId = "",
+} = {}) {
+  const safeText = String(text || "").trim();
+  const safeSenderName = normalizeWhitespace(senderName).slice(0, 80) || ADMIN_NOTICE_SENDER_NAME;
+  const safeBatchId = String(noticeBatchId || "").trim() || crypto.randomUUID();
+  let storedUpload = null;
+  if (upload) {
+    const uploadRecords = (await readCollection("uploads")).map(normalizeUpload);
+    const persistedUploadResult = persistUploadRecord(uploadRecords, upload);
+    storedUpload = persistedUploadResult.upload;
+    if (storedUpload) {
+      await writeCollection("uploads", persistedUploadResult.uploads);
+    }
+  }
+  if (!safeText && !storedUpload) {
+    throw new Error("message text or attachment is required");
+  }
+  const broadcastMessages = (await readCollection("adminBroadcastMessages")).map(normalizeAdminBroadcastMessage);
+  const message = normalizeAdminBroadcastMessage({
+    conversationId: ADMIN_BROADCAST_CONVERSATION_ID,
+    senderUserId: ADMIN_NOTICE_SENDER_ID,
+    senderName: safeSenderName,
+    text: safeText,
+    type: storedUpload ? getMessageTypeFromUpload(storedUpload) : "text",
+    attachment: storedUpload
+      ? {
+          uploadId: storedUpload.id,
+          kind: getMessageTypeFromUpload(storedUpload),
+          fileName: storedUpload.fileName,
+          mimeType: storedUpload.mimeType,
+        }
+      : null,
+    deliveredAt: null,
+    readAt: null,
+    seenByUserIds: [],
+    hiddenForUserIds: [],
+    noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+    noticeBatchId: safeBatchId,
+  });
+  broadcastMessages.push(message);
+  await writeCollection("adminBroadcastMessages", broadcastMessages);
+  fireCommunityRealtimeMessages([
+    buildCommunityOverviewRealtimeMessage("conversations", {
+      reason: "admin-broadcast-message-created",
+      conversationId: ADMIN_BROADCAST_CONVERSATION_ID,
+      messageId: message.id,
+    }),
+  ]);
+  return message;
+}
+
+async function createAdminNoticeAttachmentUpload({
+  attachmentDataUrl = "",
+  attachmentFileName = "",
+} = {}) {
+  const safeAttachmentDataUrl = String(attachmentDataUrl || "").trim();
+  if (!safeAttachmentDataUrl) {
+    return null;
+  }
+  const parsedAttachment = parseDataUrlByMime(safeAttachmentDataUrl);
+  if (!parsedAttachment) {
+    throw new Error("Invalid attachment.");
+  }
+  try {
+    await moderateCommunityUploadBuffer(
+      Buffer.from(parsedAttachment.dataUrl.split(";base64,")[1] || "", "base64"),
+      parsedAttachment.mimeType,
+    );
+    const attachmentKind = ALLOWED_IMAGE_MIME_TYPES.has(parsedAttachment.mimeType)
+      ? "chat-image"
+      : ALLOWED_VIDEO_MIME_TYPES.has(parsedAttachment.mimeType)
+        ? "chat-video"
+        : ALLOWED_AUDIO_MIME_TYPES.has(parsedAttachment.mimeType)
+          ? "chat-audio"
+          : "chat-file";
+    return createStoredUploadFromDataUrl({
+      ownerUserId: ADMIN_NOTICE_SENDER_ID,
+      kind: attachmentKind,
+      fileName: attachmentFileName || "attachment",
+      dataUrl: parsedAttachment.dataUrl,
+    });
+  } catch (error) {
+    throw new Error(String(error?.message || "Invalid attachment."));
+  }
+}
+
+function getAdminNoticeThreadSendMetadata(threadKey = "", { users = [], conversations = [], reports = [] } = {}) {
+  const parsed = parseAdminNoticeThreadKey(threadKey);
+  if (!parsed) return null;
+  const { originType, originId } = parsed;
+  if (originType === "broadcast") {
+    return {
+      recipientIds: users.filter((entry) => !isUserCurrentlyDeactivated(entry)).map((entry) => entry.id),
+      title: "Broadcast",
+      subtitle: "Announcement sent to all users",
+      originType: "broadcast",
+      originId: "all-users",
+      originName: "All users",
+      threadKey: "broadcast",
+    };
+  }
+  if (originType === "user") {
+    const targetUser = users.find((entry) => entry.id === originId) || null;
+    if (!targetUser) return null;
+    return {
+      recipientIds: [targetUser.id],
+      title: "Admin Message",
+      subtitle: `Direct message for ${targetUser.name || targetUser.username || "this user"}`,
+      originType: "user",
+      originId: targetUser.id,
+      originName: targetUser.name || targetUser.username || targetUser.id,
+      threadKey: buildAdminNoticeThreadKey("user", targetUser.id),
+    };
+  }
+  if (originType === "group") {
+    const conversation = conversations.find((entry) => entry.id === originId && entry.type === "group") || null;
+    if (!conversation) return null;
+    const recipientIds = getAdminNoticeRecipientIdsForGroup(conversation, { users });
+    if (!recipientIds.length) return null;
+    return {
+      recipientIds,
+      title: "Group Notice",
+      subtitle: `Group: ${conversation.name || conversation.id}`,
+      originType: "group",
+      originId: conversation.id,
+      originName: conversation.name || conversation.id,
+      threadKey: buildAdminNoticeThreadKey("group", conversation.id),
+    };
+  }
+  if (originType === "report") {
+    const report = reports.find((entry) => entry.id === originId) || null;
+    if (!report) return null;
+    const recipientIds =
+      report.type === "group"
+        ? getAdminNoticeRecipientIdsForGroup(
+            conversations.find((entry) => entry.id === report.targetId && entry.type === "group") || {},
+            { users },
+          )
+        : [report.targetId];
+    const safeRecipients = [...new Set(recipientIds.map((value) => String(value || "").trim()).filter(Boolean))];
+    if (!safeRecipients.length) return null;
+    return {
+      recipientIds: safeRecipients,
+      title: report.warningPreset || "Community rules reminder",
+      subtitle: `Report warning for ${report.targetName || report.targetUsername || report.targetId || "this account"}`,
+      originType: "report",
+      originId: report.id,
+      originName: report.targetName || report.targetUsername || report.targetId || "",
+      threadKey: buildAdminNoticeThreadKey("report", report.id),
+    };
+  }
+  return null;
+}
+
+function buildAdminBroadcastThreadOverview(thread = {}) {
+  const latestMessage = thread?.lastMessage || null;
+  return {
+    threadKey: thread.threadKey,
+    title: thread.title,
+    subtitle: thread.subtitle,
+    originType: thread.originType,
+    originId: thread.originId,
+    originName: thread.originName,
+    latestAt: thread.latestAt,
+    recipientCount: thread.recipientCount || 0,
+    batchCount: thread.batchCount || 0,
+    previewText: thread.previewText || "",
+    lastMessage: latestMessage,
+  };
+}
+
+function normalizeAdminReport(rawReport = {}) {
+  const type = String(rawReport.type || "group").trim().toLowerCase();
+  return {
+    id: String(rawReport.id || crypto.randomUUID()),
+    type: type === "user" ? "user" : "group",
+    status: normalizeWhitespace(rawReport.status) || "open",
+    targetId: String(rawReport.targetId || ""),
+    targetName: normalizeWhitespace(rawReport.targetName),
+    targetUsername: normalizeWhitespace(rawReport.targetUsername),
+    reporterUserId: String(rawReport.reporterUserId || ""),
+    reporterName: normalizeWhitespace(rawReport.reporterName),
+    reason: normalizeWhitespace(rawReport.reason),
+    warningMessage: normalizeMultilineText(rawReport.warningMessage),
+    warningPreset: normalizeWhitespace(rawReport.warningPreset),
+    warningById: String(rawReport.warningById || ""),
+    warningByName: normalizeWhitespace(rawReport.warningByName),
+    warningIssuedAt: String(rawReport.warningIssuedAt || ""),
+    createdAt: String(rawReport.createdAt || new Date().toISOString()),
+    updatedAt: String(rawReport.updatedAt || rawReport.createdAt || new Date().toISOString()),
+  };
+}
+
+function buildAdminReportSnapshot(
+  rawReport = {},
+  { users = [], conversations = [], uploads = [], includeTargetDetails = true } = {},
+) {
+  const report = normalizeAdminReport(rawReport);
+  const reporter = users.find((entry) => entry.id === report.reporterUserId) || null;
+  let target = null;
+  if (report.type === "group") {
+    const conversation = conversations.find((entry) => entry.id === report.targetId && entry.type === "group") || null;
+    target = conversation
+      ? includeTargetDetails
+        ? buildAdminGroupDetail(conversation, { users, uploads })
+        : buildAdminGroupSummary(conversation, { users, uploads })
+      : {
+          id: report.targetId,
+          name: report.targetName || "Study Group",
+          bio: "",
+          ownerId: "",
+          ownerName: "",
+          ownerUsername: "",
+          ownerProfileImage: "",
+          avatarUrl: "",
+          memberCount: 0,
+          adminCount: 0,
+          createdAt: "",
+          updatedAt: "",
+          inviteToken: "",
+          inviteExpiresAt: "",
+          inviteExpired: true,
+          permissions: normalizeGroupPermissions({}),
+          members: [],
+        };
+  } else if (report.type === "user") {
+    const user = users.find((entry) => entry.id === report.targetId) || null;
+    target = user
+      ? toPublicUser(user)
+      : {
+          id: report.targetId,
+          name: report.targetName || "",
+          username: report.targetUsername || "",
+          profileImage: "",
+        };
+  }
+  return {
+    ...report,
+    reporter: reporter
+      ? toPublicUser(reporter)
+      : {
+          id: report.reporterUserId,
+          name: report.reporterName || "",
+          username: "",
+          profileImage: "",
+        },
+    target,
+  };
+}
+
+async function archiveDeletedUser(user, metadata = {}) {
+  const normalizedUser = normalizeExistingUser(user);
+  const nowIso = new Date().toISOString();
+  const archiveRecord = {
+    archiveId: crypto.randomUUID(),
+    userId: normalizedUser.id,
+    deletedAt: nowIso,
+    deletedByType: normalizeWhitespace(metadata.deletedByType),
+    deletedById: normalizeWhitespace(metadata.deletedById),
+    deletedByName: normalizeWhitespace(metadata.deletedByName),
+    deletionReason: normalizeWhitespace(metadata.deletionReason),
+    restoredAt: null,
+    restoredByType: "",
+    restoredById: "",
+    restoredByName: "",
+    user: {
+      ...normalizedUser,
+      deactivatedAt: normalizedUser.deactivatedAt || null,
+      deactivatedUntil: normalizedUser.deactivatedUntil || null,
+    },
+  };
+
+  await updateCollection("deletedUsers", async (items) => [...items, archiveRecord]);
+  return archiveRecord;
+}
+
+async function appendAdminReportRecord(reportRecord = {}) {
+  const reports = await readCollection("reports");
+  reports.push(reportRecord);
+  await writeCollection("reports", reports);
+  return reportRecord;
+}
+
+function normalizeDeletedGroupArchive(rawArchive = {}) {
+  const group = normalizeConversation(rawArchive.group || {});
+  return {
+    archiveId: String(rawArchive.archiveId || rawArchive.id || crypto.randomUUID()),
+    group,
+    groupId: group.id,
+    deletedAt: String(rawArchive.deletedAt || new Date().toISOString()),
+    deletedByType: normalizeWhitespace(rawArchive.deletedByType),
+    deletedById: normalizeWhitespace(rawArchive.deletedById),
+    deletedByName: normalizeWhitespace(rawArchive.deletedByName),
+    deletionReason: normalizeWhitespace(rawArchive.deletionReason),
+    restoredAt: rawArchive.restoredAt ? String(rawArchive.restoredAt) : null,
+    restoredByType: normalizeWhitespace(rawArchive.restoredByType),
+    restoredById: normalizeWhitespace(rawArchive.restoredById),
+    restoredByName: normalizeWhitespace(rawArchive.restoredByName),
+  };
+}
+
+function toPublicDeletedGroupArchive(rawArchive, { users = [], uploads = [] } = {}) {
+  const archive = normalizeDeletedGroupArchive(rawArchive);
+  const summary = buildAdminGroupSummary(archive.group, { users, uploads });
+  return {
+    ...summary,
+    archiveId: archive.archiveId,
+    deletedAt: archive.deletedAt,
+    deletedByType: archive.deletedByType,
+    deletedById: archive.deletedById,
+    deletedByName: archive.deletedByName,
+    deletionReason: archive.deletionReason,
+    restoredAt: archive.restoredAt,
+    restoredByType: archive.restoredByType,
+    restoredById: archive.restoredById,
+    restoredByName: archive.restoredByName,
+  };
+}
+
+async function archiveDeletedGroup(group, metadata = {}) {
+  const normalizedGroup = normalizeConversation(group);
+  const nowIso = new Date().toISOString();
+  const archiveRecord = {
+    archiveId: crypto.randomUUID(),
+    groupId: normalizedGroup.id,
+    deletedAt: nowIso,
+    deletedByType: normalizeWhitespace(metadata.deletedByType),
+    deletedById: normalizeWhitespace(metadata.deletedById),
+    deletedByName: normalizeWhitespace(metadata.deletedByName),
+    deletionReason: normalizeWhitespace(metadata.deletionReason),
+    restoredAt: null,
+    restoredByType: "",
+    restoredById: "",
+    restoredByName: "",
+    group: {
+      ...normalizedGroup,
+      updatedAt: normalizedGroup.updatedAt || nowIso,
+    },
+  };
+
+  await updateCollection("deletedGroups", async (items) => [...items, archiveRecord]);
+  return archiveRecord;
+}
+
+function buildRestoredGroupFromArchive(archive) {
+  const restoredGroup = normalizeConversation(archive.group);
+  return {
+    ...restoredGroup,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function buildRestoredUserFromArchive(archive) {
+  const nowIso = new Date().toISOString();
+  const restoredUser = normalizeExistingUser(archive.user);
+  return {
+    ...restoredUser,
+    deactivatedAt: null,
+    deactivatedUntil: null,
+    updatedAt: nowIso,
+  };
+}
+
+function findRestoreConflicts(activeUsers, restoredUser) {
+  const normalizedUsername = normalizeIdentifier(restoredUser.username);
+  const normalizedEmail = normalizeIdentifier(restoredUser.email);
+  const normalizedContact = normalizeIdentifier(restoredUser.contact);
+  const contactDigits = normalizePhoneComparable(restoredUser.contact);
+
+  return activeUsers.filter((candidate) => {
+    if (candidate.id === restoredUser.id) return true;
+    if (normalizedUsername && normalizeIdentifier(candidate.username) === normalizedUsername) {
+      return true;
+    }
+    if (normalizedEmail && normalizeIdentifier(candidate.email) === normalizedEmail) {
+      return true;
+    }
+    if (normalizedContact && normalizeIdentifier(candidate.contact) === normalizedContact) {
+      return true;
+    }
+    if (contactDigits && normalizePhoneComparable(candidate.contact) === contactDigits) {
+      return true;
+    }
+    return false;
+  });
 }
 
 function normalizeIdentifier(value) {
@@ -2801,28 +4421,40 @@ function validateProfileImageValue(value) {
 }
 
 async function purgeExpiredDeactivatedUsers() {
+  const users = await readCollection("users");
+  if (!Array.isArray(users) || users.length === 0) {
+    return 0;
+  }
+
   const now = Date.now();
-  let removed = 0;
+  const nowIso = new Date(now).toISOString();
+  let cleared = 0;
+  const next = users.map((user) => {
+    const normalized = normalizeExistingUser(user);
+    const untilMs = Date.parse(String(normalized.deactivatedUntil || ""));
+    if (!Number.isFinite(untilMs) || untilMs > now) return normalized;
+
+    cleared += 1;
+    return {
+      ...normalized,
+      deactivatedUntil: null,
+      updatedAt: nowIso,
+    };
+  });
+
+  if (cleared === 0) {
+    return 0;
+  }
+
   try {
-    await updateCollection("users", async (users) => {
-      const next = users
-        .map(normalizeExistingUser)
-        .filter((user) => {
-          const untilMs = Date.parse(String(user.deactivatedUntil || ""));
-          if (!Number.isFinite(untilMs)) return true;
-          if (untilMs > now) return true;
-          removed += 1;
-          return false;
-        });
-      return next;
-    });
+    await writeCollection("users", next);
   } catch (error) {
     if (!isSkippableUsersWriteError(error)) {
       throw error;
     }
   }
 
-  return removed;
+  return cleared;
 }
 
 async function normalizeStoredUsers() {
@@ -2863,9 +4495,21 @@ function normalizeQuestionForApi(rawQuestion) {
   const text = String(rawQuestion?.text ?? rawQuestion?.question ?? "").trim();
   const topicSlug = normalizeSlugValue(rawQuestion?.topicSlug);
   const sectionId = normalizeSlugValue(rawQuestion?.sectionId);
+  const drillTags = Array.isArray(rawQuestion?.drillTags)
+    ? rawQuestion.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
+    : [];
   const normalizedCategory = normalizeMajorCategory(
     rawQuestion?.category,
-    `${text} ${String(rawQuestion?.explanation || "")}`,
+    [
+      text,
+      String(rawQuestion?.explanation || ""),
+      `sectionid:${sectionId || ""}`,
+      `topic:${topicSlug || ""}`,
+      `drilltags:${drillTags.join(",")}`,
+      `lawdrill:${rawQuestion?.lawDrill === true ? "true" : "false"}`,
+    ]
+      .filter(Boolean)
+      .join(" "),
   );
 
   return {
@@ -2879,6 +4523,11 @@ function normalizeQuestionForApi(rawQuestion) {
     explanation: String(rawQuestion?.explanation || ""),
     topicSlug: topicSlug || undefined,
     sectionId: sectionId || undefined,
+    drillTags: drillTags.length > 0 ? drillTags : undefined,
+    lawDrill:
+      rawQuestion?.lawDrill === true ||
+      drillTags.includes("law") ||
+      String(sectionId || "").includes("law-drill"),
   };
 }
 
@@ -3697,7 +5346,8 @@ app.get(
       return;
     }
 
-    const limit = Math.max(3, Math.min(50, Math.round(Number(req.query?.limit) || 20)));
+    const rawLimit = Number(req.query?.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.round(rawLimit) : null;
     const users = await readCollection("users");
     const pointEvents = await readCollection("pointEvents");
     const snapshot = buildPointsLeaderboardSnapshot({
@@ -4099,6 +5749,9 @@ app.get(
     const conversations = (await readCollection("conversations")).map(normalizeConversation);
     const messages = (await readCollection("messages")).map(normalizeMessage);
     const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const conversationStates = (await readCollection("communityConversationStates")).map(
+      normalizeCommunityConversationState,
+    );
     const visibleUsers = users.filter(
       (entry) =>
         entry.id !== viewerId &&
@@ -4140,42 +5793,16 @@ app.get(
       })
       .filter(Boolean);
 
-    const chats = conversations
-      .filter((entry) => entry.memberIds.includes(viewerId))
-      .map((entry) => {
-        const partnerId = entry.memberIds.find((memberId) => memberId !== viewerId) || "";
-        const lastMessage =
-          messages.find(
-            (msg) =>
-              msg.id === entry.lastMessageId &&
-              !msg.deletedForUserIds?.includes(viewerId) &&
-              !msg.hiddenForUserIds?.includes(viewerId),
-          ) || getConversationLastVisibleMessage(messages, entry.id, viewerId);
-        const unreadCount = messages.filter(
-          (msg) =>
-            msg.conversationId === entry.id &&
-            msg.senderUserId !== viewerId &&
-            !msg.deletedAt &&
-            !hasMessageBeenSeenByUser(msg, viewerId) &&
-            !msg.deletedForUserIds?.includes(viewerId) &&
-            !msg.hiddenForUserIds?.includes(viewerId),
-        ).length;
-        return {
-          id: entry.id,
-          updatedAt: lastMessage?.createdAt || entry.updatedAt,
-          unreadCount,
-          partner: getConversationDisplayPayload(entry, {
-            viewerId,
-            users,
-            friendships,
-            blocks,
-            uploads,
-          }),
-          lastMessage: buildConversationLastMessagePayload(lastMessage),
-        };
-      })
-      .filter((entry) => entry.partner)
-      .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+    const chats = buildCommunityConversationRows({
+      viewerId,
+      users,
+      friendships,
+      blocks,
+      uploads,
+      conversations,
+      messages,
+      conversationStates,
+    });
 
     const statuses = users
       .map((owner) => {
@@ -4220,6 +5847,8 @@ app.get(
               textItalic: entry.textItalic === true,
               textUnderline: entry.textUnderline === true,
               caption: entry.caption,
+              allowReplies: entry.allowReplies !== false,
+              isAdminBroadcast: entry.isAdminBroadcast === true,
               imageFit: entry.imageFit,
               imageFilter: entry.imageFilter,
               imageRotate: entry.imageRotate,
@@ -4239,6 +5868,52 @@ app.get(
       })
       .filter((entry) => entry?.user)
       .sort((a, b) => String(b.latestAt || "").localeCompare(String(a.latestAt || "")));
+
+    const adminBroadcastStatuses = activeStatuses
+      .filter((entry) => entry.isAdminBroadcast === true)
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    if (adminBroadcastStatuses.length) {
+      statuses.push({
+        user: buildAdminBroadcastStatusOwnerView(),
+        latestAt: adminBroadcastStatuses[0].createdAt,
+        hasUnseen: adminBroadcastStatuses.some((entry) => !hasStatusActor(entry.viewers, viewerId)),
+        items: adminBroadcastStatuses.map((entry) => {
+          const upload = uploads.find((candidate) => candidate.id === entry.uploadId);
+          return {
+            id: entry.id,
+            type: entry.type,
+            text: entry.text,
+            background: entry.background,
+            textColor: entry.textColor,
+            textStyle: entry.textStyle,
+            textAlign: entry.textAlign,
+            textScale: entry.textScale,
+            textX: entry.textX,
+            textY: entry.textY,
+            textBold: entry.textBold === true,
+            textItalic: entry.textItalic === true,
+            textUnderline: entry.textUnderline === true,
+            caption: entry.caption,
+            allowReplies: false,
+            isAdminBroadcast: true,
+            imageFit: entry.imageFit,
+            imageFilter: entry.imageFilter,
+            imageRotate: entry.imageRotate,
+            videoTrimStart: entry.videoTrimStart,
+            videoTrimEnd: entry.videoTrimEnd,
+            durationSeconds: entry.durationSeconds,
+            createdAt: entry.createdAt,
+            expiresAt: entry.expiresAt,
+            viewed: hasStatusActor(entry.viewers, viewerId),
+            likedByViewer: hasStatusActor(entry.likes, viewerId),
+            likesCount: entry.likes.length,
+            viewsCount: entry.viewers.length,
+            upload: upload ? resolveUploadPublicView(upload) : null,
+          };
+        }),
+      });
+    }
+    statuses.sort((a, b) => String(b.latestAt || "").localeCompare(String(a.latestAt || "")));
 
     res.json({
       incoming,
@@ -4352,7 +6027,7 @@ app.get(
       pointEvents,
       requestUserId: targetId,
       scope: "alltime",
-      limit: Math.max(20, users.length || 20),
+      limit: users.length || null,
     });
     const leaderboardStats =
       leaderboardSnapshot.topThree.find((entry) => entry.userId === targetId) ||
@@ -4390,6 +6065,43 @@ app.get(
   }),
 );
 
+app.post(
+  "/api/community/users/:userId/report",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const targetId = String(req.params.userId || "").trim();
+    const reason = normalizeWhitespace(req.body?.reason || "").slice(0, 240);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const target = users.find((entry) => entry.id === targetId);
+    if (!target) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+    const reporter = users.find((entry) => entry.id === viewerId) || null;
+    await appendAdminReportRecord({
+      id: crypto.randomUUID(),
+      type: "user",
+      status: "open",
+      targetId,
+      targetName: target.name || target.username || "",
+      targetUsername: target.username || "",
+      reporterUserId: viewerId,
+      reporterName: reporter?.name || reporter?.username || "",
+      reason: reason || "reported from community",
+      warningMessage: "",
+      warningPreset: "",
+      warningById: "",
+      warningByName: "",
+      warningIssuedAt: "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    res.json({ ok: true });
+  }),
+);
+
 app.get(
   "/api/community/friends",
   requireAuth,
@@ -4414,6 +6126,30 @@ app.get(
       })
       .filter(Boolean);
     res.json({ friends: rows });
+  }),
+);
+
+app.delete(
+  "/api/community/friends/:userId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "").trim();
+    const targetId = String(req.params.userId || "").trim();
+    if (!viewerId || !targetId) {
+      res.status(400).json({ error: "user not found" });
+      return;
+    }
+    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
+    const friendshipKey = getFriendshipKey(viewerId, targetId);
+    const nextFriendships = friendships.filter(
+      (entry) => getFriendshipKey(entry.userA, entry.userB) !== friendshipKey,
+    );
+    if (nextFriendships.length === friendships.length) {
+      res.status(404).json({ error: "friendship not found" });
+      return;
+    }
+    await writeCollection("friendships", nextFriendships);
+    res.json({ ok: true });
   }),
 );
 
@@ -4505,6 +6241,16 @@ app.post(
     });
     friendRequests.push(requestEntry);
     await writeCollection("friendRequests", friendRequests);
+    const requester = users.find((entry) => entry.id === viewerId) || null;
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("requests", {
+        reason: "request-created",
+        requestId: requestEntry.id,
+        actorUserId: viewerId,
+        targetUserId: toUserId,
+        requesterName: requester?.name || requester?.username || "",
+      }),
+    ]);
     res.status(201).json({ ok: true, request: requestEntry });
   }),
 );
@@ -4547,6 +6293,14 @@ app.post(
     }
     await writeCollection("friendRequests", friendRequests);
     await writeCollection("friendships", friendships);
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("requests", {
+        reason: "request-updated",
+        requestId,
+        actorUserId: viewerId,
+        targetUserId: requestEntry.fromUserId === viewerId ? requestEntry.toUserId : requestEntry.fromUserId,
+      }),
+    ]);
     res.json({ ok: true, request: friendRequests[requestIndex] });
   }),
 );
@@ -4577,6 +6331,14 @@ app.delete(
       updatedAt: new Date().toISOString(),
     };
     await writeCollection("friendRequests", friendRequests);
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("requests", {
+        reason: "request-updated",
+        requestId,
+        actorUserId: viewerId,
+        targetUserId: requestEntry.fromUserId === viewerId ? requestEntry.toUserId : requestEntry.fromUserId,
+      }),
+    ]);
     res.json({ ok: true });
   }),
 );
@@ -4651,6 +6413,12 @@ app.post(
       res.status(400).json({ error: "valid user required" });
       return;
     }
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const target = users.find((entry) => entry.id === targetId) || null;
+    if (target?.role === "admin") {
+      res.status(403).json({ error: "admin users cannot be blocked" });
+      return;
+    }
     const blocks = (await readCollection("blocks")).map(normalizeBlock);
     if (!isBlocked(blocks, viewerId, targetId)) {
       blocks.push(normalizeBlock({ blockerUserId: viewerId, blockedUserId: targetId }));
@@ -4691,43 +6459,20 @@ app.get(
     const conversations = (await readCollection("conversations")).map(normalizeConversation);
     const messages = (await readCollection("messages")).map(normalizeMessage);
     const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const rows = conversations
-      .filter((entry) => entry.memberIds.includes(viewerId))
-      .map((entry) => {
-        const partnerId = entry.memberIds.find((memberId) => memberId !== viewerId) || "";
-        const partner = users.find((user) => user.id === partnerId);
-        const lastMessage =
-          messages.find(
-            (message) =>
-              message.id === entry.lastMessageId &&
-              !message.deletedForUserIds?.includes(viewerId) &&
-              !message.hiddenForUserIds?.includes(viewerId),
-          ) || getConversationLastVisibleMessage(messages, entry.id, viewerId);
-        const unreadCount = messages.filter(
-          (message) =>
-            message.conversationId === entry.id &&
-            message.senderUserId !== viewerId &&
-            !message.deletedAt &&
-            !hasMessageBeenSeenByUser(message, viewerId) &&
-            !message.deletedForUserIds?.includes(viewerId) &&
-            !message.hiddenForUserIds?.includes(viewerId),
-        ).length;
-        return {
-          id: entry.id,
-          updatedAt: lastMessage?.createdAt || entry.updatedAt,
-          unreadCount,
-          partner: partner
-            ? applyCommunityProfileView(partner, {
-                viewerId,
-                isFriend: areFriends(friendships, viewerId, partner.id),
-                ...getCommunityBlockState(blocks, viewerId, partner.id),
-              })
-            : null,
-          lastMessage: buildConversationLastMessagePayload(lastMessage),
-        };
-      })
-      .filter((entry) => entry.partner)
-      .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const conversationStates = (await readCollection("communityConversationStates")).map(
+      normalizeCommunityConversationState,
+    );
+    const rows = buildCommunityConversationRows({
+      viewerId,
+      users,
+      friendships,
+      blocks,
+      uploads,
+      conversations,
+      messages,
+      conversationStates,
+    });
     res.json({ conversations: rows });
   }),
 );
@@ -4785,8 +6530,217 @@ app.post(
           conversationId: conversation.id,
         }),
       ]);
+    } else {
+      const hiddenForUserIds = Array.isArray(conversation.hiddenForUserIds)
+        ? [...conversation.hiddenForUserIds]
+        : [];
+      const hiddenIndex = hiddenForUserIds.indexOf(viewerId);
+      if (hiddenIndex >= 0) {
+        hiddenForUserIds.splice(hiddenIndex, 1);
+        const conversationIndex = conversations.findIndex((entry) => entry.id === conversation.id);
+        if (conversationIndex >= 0) {
+          conversations[conversationIndex] = {
+            ...conversations[conversationIndex],
+            hiddenForUserIds,
+            updatedAt: new Date().toISOString(),
+          };
+          await writeCollection("conversations", conversations);
+          fireCommunityRealtimeMessages([
+            buildCommunityOverviewRealtimeMessage("conversations", {
+              reason: "conversation-unhidden",
+              conversationId: conversation.id,
+              actorUserId: viewerId,
+            }),
+          ]);
+        }
+      }
     }
     res.status(201).json({ ok: true, conversation });
+  }),
+);
+
+app.post(
+  "/api/community/conversations/:conversationId/favorite",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    const states = (await readCollection("communityConversationStates")).map(
+      normalizeCommunityConversationState,
+    );
+    const favoriteCount = states.filter(
+      (entry) =>
+        entry.userId === viewerId &&
+        entry.isFavorite &&
+        !isCommunityConversationHiddenForViewer(entry),
+    ).length;
+    const existingState = getCommunityConversationStateForViewer(states, viewerId, conversationId);
+    if (!existingState?.isFavorite && favoriteCount >= 5) {
+      res.status(409).json({ error: "You can only keep 5 favorites." });
+      return;
+    }
+    const nextState = await upsertCommunityConversationState({
+      userId: viewerId,
+      conversationId,
+      patch: {
+        isFavorite: true,
+      },
+    });
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("conversations", {
+        reason: "conversation-favorited",
+        conversationId,
+        viewerUserId: viewerId,
+        isFavorite: true,
+      }),
+    ]);
+    res.json({ ok: true, state: nextState });
+  }),
+);
+
+app.delete(
+  "/api/community/conversations/:conversationId/favorite",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    const nextState = await upsertCommunityConversationState({
+      userId: viewerId,
+      conversationId,
+      patch: {
+        isFavorite: false,
+      },
+      removeIfEmpty: true,
+    });
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("conversations", {
+        reason: "conversation-unfavorited",
+        conversationId,
+        viewerUserId: viewerId,
+        isFavorite: false,
+      }),
+    ]);
+    res.json({ ok: true, state: nextState });
+  }),
+);
+
+app.post(
+  "/api/community/conversations/:conversationId/clear",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const messages = (await readCollection("messages")).map(normalizeMessage);
+    const nextMessages = messages.map((message) => {
+      if (String(message.conversationId || "") !== conversationId) return message;
+      const deletedForUserIds = Array.isArray(message.deletedForUserIds)
+        ? [...message.deletedForUserIds]
+        : [];
+      if (!deletedForUserIds.includes(viewerId)) {
+        deletedForUserIds.push(viewerId);
+      }
+      return {
+        ...message,
+        deletedForUserIds,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    const latestVisible = getConversationLastVisibleMessage(nextMessages, conversationId, viewerId);
+    const conversationIndex = conversations.findIndex((entry) => entry.id === conversationId);
+    if (conversationIndex >= 0) {
+      conversations[conversationIndex] = {
+        ...conversations[conversationIndex],
+        lastMessageId: latestVisible?.id || conversations[conversationIndex].lastMessageId || "",
+        lastMessageAt: latestVisible?.createdAt || conversations[conversationIndex].createdAt,
+        updatedAt: latestVisible?.createdAt || conversations[conversationIndex].updatedAt,
+      };
+    }
+    await writeCollection("messages", nextMessages);
+    await writeCollection("conversations", conversations);
+    fireCommunityRealtimeMessages([
+      ...buildCommunityConversationRealtimeMessages(conversationId, {
+        reason: "conversation-cleared",
+        viewerUserId: viewerId,
+      }),
+      buildCommunityOverviewRealtimeMessage("conversations", {
+        reason: "conversation-cleared",
+        conversationId,
+        viewerUserId: viewerId,
+      }),
+    ]);
+    res.json({ ok: true });
+  }),
+);
+
+app.delete(
+  "/api/community/conversations/:conversationId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const conversationId = String(req.params.conversationId || "").trim();
+    const conversation = await getCommunityConversationForMember(conversationId, viewerId);
+    if (!conversation) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    if (String(conversation.type || "").trim().toLowerCase() !== "direct") {
+      res.status(400).json({ error: "only direct chats can be deleted from the list" });
+      return;
+    }
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const conversationIndex = conversations.findIndex((entry) => entry.id === conversationId);
+    if (conversationIndex < 0) {
+      res.status(404).json({ error: "conversation not found" });
+      return;
+    }
+    const hiddenForUserIds = Array.isArray(conversations[conversationIndex].hiddenForUserIds)
+      ? [...conversations[conversationIndex].hiddenForUserIds]
+      : [];
+    if (!hiddenForUserIds.includes(viewerId)) {
+      hiddenForUserIds.push(viewerId);
+    }
+    conversations[conversationIndex] = {
+      ...conversations[conversationIndex],
+      hiddenForUserIds,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeCollection("conversations", conversations);
+    await upsertCommunityConversationState({
+      userId: viewerId,
+      conversationId,
+      patch: {
+        isFavorite: false,
+      },
+      removeIfEmpty: true,
+    });
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("conversations", {
+        reason: "conversation-hidden",
+        conversationId,
+        viewerUserId: viewerId,
+      }),
+    ]);
+    res.json({ ok: true });
   }),
 );
 
@@ -5053,7 +7007,7 @@ app.post(
       }
     }
     const conversations = (await readCollection("conversations")).map(normalizeConversation);
-    const conversation = normalizeConversation({
+    const conversation = ensureConversationInviteToken({
       type: "group",
       name,
       memberIds,
@@ -5135,6 +7089,461 @@ app.get(
 );
 
 app.post(
+  "/api/community/groups/:groupId/invite-link",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const groupId = String(req.params.groupId || "").trim();
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const index = conversations.findIndex((entry) => entry.id === groupId && entry.type === "group");
+    if (index < 0 || !conversations[index].memberIds.includes(viewerId)) {
+      res.status(404).json({ error: "group not found" });
+      return;
+    }
+    const conversation = conversations[index];
+    const viewerIsOwner = String(conversation.ownerUserId || "") === viewerId;
+    const viewerIsAdmin = viewerIsOwner || conversation.adminIds.includes(viewerId);
+    const permissions = normalizeGroupPermissions(conversation.permissions || {});
+    if (!viewerIsAdmin && !permissions.membersCanInviteByLink) {
+      res.status(403).json({ error: "invite links are disabled for this group" });
+      return;
+    }
+    const nextConversation = ensureConversationInviteToken(conversation);
+    conversations[index] = nextConversation;
+    await writeCollection("conversations", conversations);
+    const requestOrigin = `${String(req.protocol || "https").trim()}://${String(req.get("host") || "").trim()}`.replace(/\/+$/g, "");
+    res.json({
+      ok: true,
+      groupId: nextConversation.id,
+      inviteToken: nextConversation.inviteToken,
+      inviteExpiresAt: getConversationInviteExpiresAt(nextConversation),
+      inviteUrl: requestOrigin
+        ? `${requestOrigin}${buildCommunityGroupInviteUrl(nextConversation.inviteToken, nextConversation.id)}`
+        : buildCommunityGroupInviteUrl(nextConversation.inviteToken, nextConversation.id),
+    });
+  }),
+);
+
+app.get(
+  "/api/community/groups/:groupId/invite-preview",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user?.sub || "");
+    if (viewerId) {
+      await touchUserLastSeen(viewerId);
+    }
+    const groupId = String(req.params.groupId || "").trim();
+    const inviteToken = String(req.query?.inviteToken || "").trim();
+    if (!groupId || !inviteToken) {
+      res.status(400).json({ error: "inviteToken is required" });
+      return;
+    }
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
+    const blocks = (await readCollection("blocks")).map(normalizeBlock);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const conversation = conversations.find((entry) => entry.id === groupId && entry.type === "group");
+    if (!conversation) {
+      res.status(404).json({ error: "group not found" });
+      return;
+    }
+    const normalized = normalizeConversation(conversation);
+    if (normalized.inviteToken !== inviteToken) {
+      res.status(403).json({ error: "invite link is invalid or expired" });
+      return;
+    }
+    const expired = isConversationInviteExpired(normalized);
+    const group = getConversationDisplayPayload(normalized, {
+      viewerId,
+      users,
+      friendships,
+      blocks,
+      uploads,
+    });
+    const members = normalized.memberIds
+      .slice(0, 5)
+      .map((memberId) => {
+        const member = users.find((entry) => entry.id === memberId);
+        if (!member) return null;
+        return {
+          ...applyCommunityProfileView(member, {
+            viewerId,
+            isFriend: areFriends(friendships, viewerId, member.id),
+            ...getCommunityBlockState(blocks, viewerId, member.id),
+          }),
+          role:
+            memberId === normalized.ownerUserId
+              ? "owner"
+              : normalized.adminIds.includes(memberId)
+                ? "admin"
+                : "member",
+        };
+      })
+      .filter(Boolean);
+    const isMember = Boolean(viewerId && normalized.memberIds.includes(viewerId));
+    const isOwner = Boolean(viewerId && String(normalized.ownerUserId || "") === viewerId);
+    const isAdmin = Boolean(viewerId && (isOwner || normalized.adminIds.includes(viewerId)));
+    res.json({
+      ok: true,
+      group,
+      members,
+      memberCount: normalized.memberIds.length,
+      invite: {
+        inviteToken: normalized.inviteToken,
+        inviteExpiresAt: getConversationInviteExpiresAt(normalized),
+        expired,
+      },
+      relationship: {
+        isMember,
+        isOwner,
+        isAdmin,
+        isMuted: Boolean(viewerId && Array.isArray(normalized.mutedMemberIds) && normalized.mutedMemberIds.includes(viewerId)),
+      },
+    });
+  }),
+);
+
+app.post(
+  "/api/community/groups/:groupId/join",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const groupId = String(req.params.groupId || "").trim();
+    const inviteToken = String(req.body?.inviteToken || "").trim();
+    if (!groupId || !inviteToken) {
+      res.status(400).json({ error: "inviteToken is required" });
+      return;
+    }
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
+    const blocks = (await readCollection("blocks")).map(normalizeBlock);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const index = conversations.findIndex((entry) => entry.id === groupId && entry.type === "group");
+    if (index < 0) {
+      res.status(404).json({ error: "group not found" });
+      return;
+    }
+    const conversation = conversations[index];
+    const normalized = ensureConversationInviteToken(conversation);
+    if (normalized.inviteToken !== inviteToken) {
+      res.status(403).json({ error: "invite link is invalid or expired" });
+      return;
+    }
+    if (isConversationInviteExpired(normalized)) {
+      res.status(403).json({ error: "invite link is invalid or expired" });
+      return;
+    }
+    if (!normalized.memberIds.includes(viewerId)) {
+      if (normalized.memberIds.length >= MAX_GROUP_MEMBERS) {
+        res.status(400).json({ error: "group is full" });
+        return;
+      }
+      normalized.memberIds = [...new Set([...normalized.memberIds, viewerId])].sort((a, b) => a.localeCompare(b));
+      if (!normalized.ownerUserId) {
+        normalized.ownerUserId = viewerId;
+      }
+      normalized.inviteToken = "";
+      normalized.inviteTokenCreatedAt = "";
+      normalized.updatedAt = new Date().toISOString();
+      conversations[index] = normalized;
+      await writeCollection("conversations", conversations);
+      fireCommunityRealtimeMessages([
+        buildCommunityOverviewRealtimeMessage("groups", {
+          reason: "group-joined",
+          conversationId: normalized.id,
+          actorUserId: viewerId,
+        }),
+        ...buildCommunityConversationRealtimeMessages(normalized.id, {
+          reason: "group-joined",
+          actorUserId: viewerId,
+        }),
+      ]);
+    }
+    const group = getConversationDisplayPayload(normalized, { viewerId, users, friendships, blocks, uploads });
+    const members = normalized.memberIds
+      .map((memberId) => {
+        const member = users.find((entry) => entry.id === memberId);
+        if (!member) return null;
+        return {
+          ...applyCommunityProfileView(member, {
+            viewerId,
+            isFriend: areFriends(friendships, viewerId, member.id),
+            ...getCommunityBlockState(blocks, viewerId, member.id),
+          }),
+          role:
+            memberId === normalized.ownerUserId
+              ? "owner"
+              : normalized.adminIds.includes(memberId)
+                ? "admin"
+                : "member",
+        };
+      })
+      .filter(Boolean);
+    res.json({
+      ok: true,
+      group,
+      members,
+      relationship: {
+        isOwner: String(normalized.ownerUserId || "") === viewerId,
+        isAdmin: normalized.adminIds.includes(viewerId),
+        isMuted: Array.isArray(normalized.mutedMemberIds) && normalized.mutedMemberIds.includes(viewerId),
+      },
+    });
+  }),
+);
+
+app.post(
+  "/api/community/groups/:groupId/members",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const groupId = String(req.params.groupId || "").trim();
+    const requestedMembers = Array.isArray(req.body?.memberIds) ? req.body.memberIds : [];
+    const memberIds = [...new Set(requestedMembers.map((value) => String(value || "").trim()).filter(Boolean))];
+    if (!groupId || !memberIds.length) {
+      res.status(400).json({ error: "memberIds are required" });
+      return;
+    }
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
+    const blocks = (await readCollection("blocks")).map(normalizeBlock);
+    const index = conversations.findIndex((entry) => entry.id === groupId && entry.type === "group");
+    if (index < 0 || !conversations[index].memberIds.includes(viewerId)) {
+      res.status(404).json({ error: "group not found" });
+      return;
+    }
+    const conversation = conversations[index];
+    const viewerIsOwner = String(conversation.ownerUserId || "") === viewerId;
+    const viewerIsAdmin = viewerIsOwner || conversation.adminIds.includes(viewerId);
+    const permissions = normalizeGroupPermissions(conversation.permissions || {});
+    if (!viewerIsAdmin && !permissions.membersCanAddMembers) {
+      res.status(403).json({ error: "you cannot add participants to this group" });
+      return;
+    }
+    const existingMembers = getConversationMemberSet(conversation);
+    const additions = [];
+    for (const candidateId of memberIds) {
+      if (candidateId === viewerId || existingMembers.has(candidateId)) continue;
+      const user = users.find((entry) => entry.id === candidateId);
+      if (!user) {
+        res.status(404).json({ error: "one or more selected users do not exist" });
+        return;
+      }
+      if (!areFriends(friendships, viewerId, candidateId)) {
+        res.status(403).json({ error: "study groups can only add friends" });
+        return;
+      }
+      const memberPrivacy = normalizePrivacySettings(user.privacy || {});
+      if (memberPrivacy.groupAddVisibility === "nobody") {
+        res.status(403).json({ error: "one or more selected users do not allow group adds" });
+        return;
+      }
+      if (isBlocked(blocks, viewerId, candidateId) || isBlocked(blocks, candidateId, viewerId)) {
+        res.status(403).json({ error: "blocked users cannot be added to a study group" });
+        return;
+      }
+      additions.push(candidateId);
+    }
+    if (!additions.length) {
+      res.status(400).json({ error: "no eligible friends were selected" });
+      return;
+    }
+    if (conversation.memberIds.length + additions.length > MAX_GROUP_MEMBERS) {
+      res.status(400).json({ error: `group can have at most ${MAX_GROUP_MEMBERS} members` });
+      return;
+    }
+    conversation.memberIds = [...new Set([...conversation.memberIds, ...additions])].sort((a, b) => a.localeCompare(b));
+    conversation.updatedAt = new Date().toISOString();
+    conversations[index] = normalizeConversation(conversation);
+    await writeCollection("conversations", conversations);
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("groups", {
+        reason: "group-members-added",
+        conversationId: conversation.id,
+        actorUserId: viewerId,
+        memberIds: additions,
+      }),
+      ...buildCommunityConversationRealtimeMessages(conversation.id, {
+        reason: "group-members-added",
+        actorUserId: viewerId,
+        memberIds: additions,
+      }),
+    ]);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const group = getConversationDisplayPayload(conversation, { viewerId, users, friendships, blocks, uploads });
+    const members = conversation.memberIds
+      .map((memberId) => {
+        const member = users.find((entry) => entry.id === memberId);
+        if (!member) return null;
+        return {
+          ...applyCommunityProfileView(member, {
+            viewerId,
+            isFriend: areFriends(friendships, viewerId, member.id),
+            ...getCommunityBlockState(blocks, viewerId, member.id),
+          }),
+          role:
+            memberId === conversation.ownerUserId
+              ? "owner"
+              : conversation.adminIds.includes(memberId)
+                ? "admin"
+                : "member",
+        };
+      })
+      .filter(Boolean);
+    res.status(201).json({ ok: true, group, members });
+  }),
+);
+
+app.post(
+  "/api/community/groups/:groupId/leave",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const groupId = String(req.params.groupId || "").trim();
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const index = conversations.findIndex((entry) => entry.id === groupId && entry.type === "group");
+    if (index < 0 || !conversations[index].memberIds.includes(viewerId)) {
+      res.status(404).json({ error: "group not found" });
+      return;
+    }
+    const conversation = conversations[index];
+    const remainingMembers = conversation.memberIds.filter((memberId) => memberId !== viewerId);
+    if (remainingMembers.length === 0) {
+      conversations.splice(index, 1);
+      await writeCollection("conversations", conversations);
+      fireCommunityRealtimeMessages([
+        buildCommunityOverviewRealtimeMessage("groups", {
+          reason: "group-deleted",
+          conversationId: groupId,
+          actorUserId: viewerId,
+        }),
+      ]);
+      res.json({ ok: true, removed: true });
+      return;
+    }
+    const nextOwnerId = String(conversation.ownerUserId || "") === viewerId
+      ? getNextGroupOwnerId(conversation, viewerId)
+      : String(conversation.ownerUserId || "");
+    const nextAdminIds = Array.isArray(conversation.adminIds)
+      ? conversation.adminIds.filter((memberId) => memberId !== viewerId)
+      : [];
+    if (nextOwnerId && !nextAdminIds.includes(nextOwnerId)) {
+      nextAdminIds.push(nextOwnerId);
+    }
+    conversation.memberIds = remainingMembers.sort((a, b) => a.localeCompare(b));
+    conversation.adminIds = [...new Set(nextAdminIds)].sort((a, b) => a.localeCompare(b));
+    conversation.ownerUserId = nextOwnerId || remainingMembers[0] || "";
+    conversation.mutedMemberIds = Array.isArray(conversation.mutedMemberIds)
+      ? conversation.mutedMemberIds.filter((memberId) => memberId !== viewerId)
+      : [];
+    conversation.updatedAt = new Date().toISOString();
+    conversations[index] = normalizeConversation(conversation);
+    await writeCollection("conversations", conversations);
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("groups", {
+        reason: "group-member-left",
+        conversationId: groupId,
+        actorUserId: viewerId,
+      }),
+      ...buildCommunityConversationRealtimeMessages(groupId, {
+        reason: "group-member-left",
+        actorUserId: viewerId,
+      }),
+    ]);
+    res.json({ ok: true });
+  }),
+);
+
+app.delete(
+  "/api/community/groups/:groupId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const groupId = String(req.params.groupId || "").trim();
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const conversationIndex = conversations.findIndex((entry) => entry.id === groupId && entry.type === "group");
+    if (conversationIndex < 0 || !conversations[conversationIndex].memberIds.includes(viewerId)) {
+      res.status(404).json({ error: "group not found" });
+      return;
+    }
+    const conversation = conversations[conversationIndex];
+    const viewerIsOwner = String(conversation.ownerUserId || "") === viewerId;
+    const viewerIsAdmin = viewerIsOwner || conversation.adminIds.includes(viewerId);
+    if (!viewerIsOwner && !viewerIsAdmin) {
+      res.status(403).json({ error: "only group owners or admins can delete groups" });
+      return;
+    }
+    conversations.splice(conversationIndex, 1);
+    const messages = (await readCollection("messages")).map(normalizeMessage);
+    const conversationStates = (await readCollection("communityConversationStates")).map(
+      normalizeCommunityConversationState,
+    );
+    await writeCollection(
+      "messages",
+      messages.filter((message) => String(message.conversationId || "") !== groupId),
+    );
+    await writeCollection(
+      "communityConversationStates",
+      conversationStates.filter((state) => String(state.conversationId || "") !== groupId),
+    );
+    await writeCollection("conversations", conversations);
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("groups", {
+        reason: "group-deleted",
+        conversationId: groupId,
+        actorUserId: viewerId,
+      }),
+    ]);
+    res.json({ ok: true, deleted: true });
+  }),
+);
+
+app.post(
+  "/api/community/groups/:groupId/report",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user.sub || "");
+    await touchUserLastSeen(viewerId);
+    const groupId = String(req.params.groupId || "").trim();
+    const reason = normalizeWhitespace(req.body?.reason || "").slice(0, 240);
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const group = conversations.find((entry) => entry.id === groupId && entry.type === "group");
+    if (!group) {
+      res.status(404).json({ error: "group not found" });
+      return;
+    }
+    const reporter = users.find((entry) => entry.id === viewerId) || null;
+    await appendAdminReportRecord({
+      id: crypto.randomUUID(),
+      type: "group",
+      status: "open",
+      targetId: groupId,
+      targetName: group.name || "Study Group",
+      reporterUserId: viewerId,
+      reporterName: reporter?.name || reporter?.username || "",
+      reason: reason || "reported from community",
+      warningMessage: "",
+      warningPreset: "",
+      warningById: "",
+      warningByName: "",
+      warningIssuedAt: "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    res.json({ ok: true });
+  }),
+);
+
+app.post(
   "/api/community/groups/:groupId/avatar/file",
   requireAuth,
   express.raw({
@@ -5180,6 +7589,7 @@ app.post(
       return;
     }
     try {
+      await moderateCommunityUploadBuffer(bodyBuffer, effectiveMimeType);
       const upload = await createStoredUploadFromBuffer({
         ownerUserId: viewerId,
         kind: "group-avatar",
@@ -5318,6 +7728,13 @@ app.post(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const viewer = users.find((entry) => entry.id === viewerId) || null;
+    const isAdminBroadcast = req.body?.isAdminBroadcast === true || String(req.body?.isAdminBroadcast || "").trim().toLowerCase() === "true";
+    if (isAdminBroadcast && String(viewer?.role || "").trim().toLowerCase() !== "admin") {
+      res.status(403).json({ error: "admin broadcast is restricted" });
+      return;
+    }
     const caption = normalizeWhitespace(req.body?.caption || "").slice(0, 140);
     const imageDataUrl = String(req.body?.imageDataUrl || req.body?.mediaDataUrl || "").trim();
     const text = normalizeWhitespace(req.body?.text || "").slice(0, 280);
@@ -5367,6 +7784,7 @@ app.post(
         visibility,
         style,
         upload,
+        isAdminBroadcast,
       });
       res.status(201).json({ ok: true, status });
     } catch (error) {
@@ -5395,6 +7813,13 @@ app.post(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const meta = parseStatusMetaHeader(req.get("x-status-meta"));
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const viewer = users.find((entry) => entry.id === viewerId) || null;
+    const isAdminBroadcast = meta?.isAdminBroadcast === true || String(meta?.isAdminBroadcast || "").trim().toLowerCase() === "true";
+    if (isAdminBroadcast && String(viewer?.role || "").trim().toLowerCase() !== "admin") {
+      res.status(403).json({ error: "admin broadcast is restricted" });
+      return;
+    }
     const caption = normalizeWhitespace(meta?.caption || "").slice(0, 140);
     const visibility = String(meta?.visibility || "friends").trim().toLowerCase();
     const fileName = String(meta?.fileName || "status-media").trim().slice(0, 160) || "status-media";
@@ -5461,6 +7886,7 @@ app.post(
         visibility,
         style: nextStyle,
         upload,
+        isAdminBroadcast,
       });
       res.status(201).json({ ok: true, status });
     } catch (error) {
@@ -5480,6 +7906,13 @@ app.post(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const meta = parseStatusMetaHeader(req.get("x-status-meta"));
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const viewer = users.find((entry) => entry.id === viewerId) || null;
+    const isAdminBroadcast = meta?.isAdminBroadcast === true || String(meta?.isAdminBroadcast || "").trim().toLowerCase() === "true";
+    if (isAdminBroadcast && String(viewer?.role || "").trim().toLowerCase() !== "admin") {
+      res.status(403).json({ error: "admin broadcast is restricted" });
+      return;
+    }
     const caption = normalizeWhitespace(meta?.caption || "").slice(0, 140);
     const visibility = String(meta?.visibility || "friends").trim().toLowerCase();
     const fileName = String(meta?.fileName || "status-video").trim().slice(0, 160) || "status-video";
@@ -5528,6 +7961,7 @@ app.post(
           durationSeconds: Math.max(1, Math.min(COMMUNITY_STATUS_MAX_VIDEO_SECONDS, processed.durationSeconds || COMMUNITY_STATUS_MAX_VIDEO_SECONDS)),
         },
         upload,
+        isAdminBroadcast,
       });
       res.status(201).json({ ok: true, status, processed: processed.trimmed });
     } catch (error) {
@@ -5553,7 +7987,7 @@ app.post(
       return;
     }
     const status = statuses[statusIndex];
-    const owner = users.find((entry) => entry.id === status.ownerUserId);
+    const owner = users.find((entry) => entry.id === status.ownerUserId) || (status.isAdminBroadcast ? buildAdminBroadcastStatusOwnerView() : null);
     if (!owner || !canViewerSeeStatus(status, { viewerId, owner, isFriend: areFriends(friendships, viewerId, owner.id), blocks })) {
       res.status(403).json({ error: "status unavailable" });
       return;
@@ -5594,7 +8028,7 @@ app.post(
       return;
     }
     const status = statuses[statusIndex];
-    const owner = users.find((entry) => entry.id === status.ownerUserId);
+    const owner = users.find((entry) => entry.id === status.ownerUserId) || (status.isAdminBroadcast ? buildAdminBroadcastStatusOwnerView() : null);
     if (!owner || !canViewerSeeStatus(status, { viewerId, owner, isFriend: areFriends(friendships, viewerId, owner.id), blocks })) {
       res.status(403).json({ error: "status unavailable" });
       return;
@@ -5808,17 +8242,22 @@ app.get(
         .map((entry) => {
           const safeEntry = sanitizeDeletedCommunityMessage(entry);
           const sender = users.find((candidate) => candidate.id === entry.senderUserId);
+          const fallbackSenderName =
+            safeEntry.senderName ||
+            sender?.name ||
+            sender?.username ||
+            (String(safeEntry.senderUserId || "") === ADMIN_NOTICE_SENDER_ID ? ADMIN_NOTICE_SENDER_NAME : "");
           if (!safeEntry.attachment?.uploadId) {
             return {
               ...safeEntry,
-              senderName: sender ? sender.name || sender.username : "",
+              senderName: fallbackSenderName,
               isDeletedForEveryone: Boolean(safeEntry.deletedAt),
             };
           }
           const upload = uploads.find((candidate) => candidate.id === safeEntry.attachment.uploadId);
           return {
             ...safeEntry,
-            senderName: sender ? sender.name || sender.username : "",
+            senderName: fallbackSenderName,
             attachment: {
               ...safeEntry.attachment,
               upload: upload ? resolveUploadPublicView(upload) : null,
@@ -5848,6 +8287,7 @@ app.post(
     const attachmentMimeType = String(req.body?.attachmentMimeType || "").trim().toLowerCase();
     const conversations = (await readCollection("conversations")).map(normalizeConversation);
     const messages = (await readCollection("messages")).map(normalizeMessage);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
     const blocks = (await readCollection("blocks")).map(normalizeBlock);
     const uploads = (await readCollection("uploads")).map(normalizeUpload);
     const conversationIndex = conversations.findIndex((entry) => entry.id === conversationId);
@@ -5856,6 +8296,10 @@ app.post(
       return;
     }
     const conversation = conversations[conversationIndex];
+    if (conversation.type === "notice") {
+      res.status(403).json({ error: "admin notices are read only" });
+      return;
+    }
     const partnerId =
       conversation.type === "direct"
         ? conversations[conversationIndex].memberIds.find((memberId) => memberId !== viewerId) || ""
@@ -5947,10 +8391,15 @@ app.post(
     }
     await writeCollection("messages", messages);
     await writeCollection("conversations", conversations);
+    const sender = users.find((entry) => entry.id === viewerId) || null;
     fireCommunityRealtimeMessages(
       buildCommunityConversationRealtimeMessages(conversationId, {
         reason: "message-created",
         messageId: message.id,
+        actorUserId: viewerId,
+        actorName: sender?.name || sender?.username || "",
+        conversationType: conversation.type,
+        conversationName: conversation.type === "group" ? conversation.name || "Study Group" : "",
       }),
     );
     res.status(201).json({ ok: true, message });
@@ -6052,7 +8501,7 @@ app.post(
       const messageText = String(error?.message || "Message could not send right now.");
       const statusCode =
         messageText === "conversation not found" ? 404
-          : messageText === "unblock user first" || messageText.includes("only admins can send messages") ? 403
+          : messageText === "unblock user first" || messageText.includes("only admins can send messages") || messageText === "admin notices are read only" ? 403
             : messageText.includes("message text or attachment is required") ? 400
               : 400;
       res.status(statusCode).json({ error: messageText });
@@ -6248,26 +8697,35 @@ app.delete(
     }
 
     const userId = req.user.sub;
-    const actorId = `user:${userId}`;
     const users = (await readCollection("users")).map(normalizeExistingUser);
-    const filteredUsers = users.filter((entry) => entry.id !== userId);
-    if (filteredUsers.length === users.length) {
+    const user = users.find((entry) => entry.id === userId);
+    if (!user) {
       res.status(404).json({ error: "user not found" });
       return;
     }
 
-    await writeCollection("users", filteredUsers);
-    await updateCollection("attempts", async (items) =>
-      items.filter((item) => item.userId !== userId && item.actorId !== actorId),
-    );
-    await updateCollection("syncSessions", async (items) =>
-      items.filter((item) => item.actorId !== actorId),
-    );
-    await updateCollection("syncPerformance", async (items) =>
-      items.filter((item) => item.actorId !== actorId),
-    );
+    const archiveRecord = await archiveDeletedUser(user, {
+      deletedByType: "self",
+      deletedById: userId,
+      deletedByName: user.username || user.name || userId,
+      deletionReason: "self-delete",
+    });
 
-    res.json({ ok: true, message: "Account deleted permanently." });
+    const filteredUsers = users.filter((entry) => entry.id !== userId);
+    try {
+      await writeCollection("users", filteredUsers);
+    } catch (error) {
+      await updateCollection("deletedUsers", async (items) =>
+        items.filter((entry) => entry.archiveId !== archiveRecord.archiveId),
+      );
+      throw error;
+    }
+
+    res.json({
+      ok: true,
+      message: "Account moved to archive.",
+      archiveId: archiveRecord.archiveId,
+    });
   }),
 );
 
@@ -6877,6 +9335,13 @@ app.post(
     const questionId = safeNumber(req.body?.questionId);
     const isCorrect = Boolean(req.body?.isCorrect);
     const category = normalizeMajorCategory(req.body?.category, "");
+    const rotation = inferQuestionRotation({
+      rotation: req.body?.rotation,
+      rotations: Array.isArray(req.body?.rotations) ? req.body.rotations : [],
+      category: req.body?.category,
+      question: "",
+      explanation: "",
+    }) || String(req.body?.rotation || "").trim();
     const selectedAnswer = String(req.body?.selectedAnswer || "")
       .trim()
       .slice(0, 220);
@@ -6892,6 +9357,7 @@ app.post(
       questionId,
       isCorrect,
       category,
+      rotation: String(rotation || "").trim() || undefined,
       selectedAnswer,
       createdAt: new Date().toISOString(),
     };
@@ -7235,9 +9701,13 @@ app.get(
       professionalType: u.professionalType,
       country: u.country,
       institution: u.institution,
+      bio: u.bio,
       profileImage: u.profileImage,
+      privacy: u.privacy,
+      lastSeenAt: u.lastSeenAt,
       deactivatedAt: u.deactivatedAt,
       deactivatedUntil: u.deactivatedUntil,
+      points: u.points,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
     }));
@@ -7245,6 +9715,896 @@ app.get(
     res.json({
       total: sanitized.length,
       users: sanitized,
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/deleted-users",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const deletedUsers = (await readCollection("deletedUsers"))
+      .map(normalizeDeletedUserArchive)
+      .sort((a, b) => String(b.deletedAt || "").localeCompare(String(a.deletedAt || "")));
+
+    res.json({
+      total: deletedUsers.length,
+      deletedUsers: deletedUsers.map(toPublicDeletedUserArchive),
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/deleted-users/:archiveId/restore",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const archiveId = String(req.params.archiveId || "").trim();
+    if (!archiveId) {
+      res.status(400).json({ error: "archiveId is required" });
+      return;
+    }
+
+    const deletedUsers = (await readCollection("deletedUsers")).map(
+      normalizeDeletedUserArchive,
+    );
+    const archiveIndex = deletedUsers.findIndex((entry) => entry.archiveId === archiveId);
+    if (archiveIndex < 0) {
+      res.status(404).json({ error: "Archived user not found" });
+      return;
+    }
+
+    const archive = deletedUsers[archiveIndex];
+    if (archive.restoredAt) {
+      res.status(409).json({ error: "This archive entry has already been restored" });
+      return;
+    }
+
+    const activeUsers = (await readCollection("users")).map(normalizeExistingUser);
+    const restoredUser = buildRestoredUserFromArchive(archive);
+    const conflicts = findRestoreConflicts(activeUsers, restoredUser);
+    if (conflicts.length > 0) {
+      const conflictLabels = [];
+      if (
+        restoredUser.username &&
+        conflicts.some((entry) => normalizeIdentifier(entry.username) === normalizeIdentifier(restoredUser.username))
+      ) {
+        conflictLabels.push("username");
+      }
+      if (
+        restoredUser.email &&
+        conflicts.some((entry) => normalizeIdentifier(entry.email) === normalizeIdentifier(restoredUser.email))
+      ) {
+        conflictLabels.push("email");
+      }
+      if (
+        restoredUser.contact &&
+        conflicts.some((entry) => normalizeIdentifier(entry.contact) === normalizeIdentifier(restoredUser.contact))
+      ) {
+        conflictLabels.push("contact");
+      }
+
+      res.status(409).json({
+        error: "Cannot restore this account because an active account already uses the same identifier.",
+        conflictFields: [...new Set(conflictLabels)],
+      });
+      return;
+    }
+
+    const restoredAt = new Date().toISOString();
+    const restoredArchive = {
+      ...archive,
+      restoredAt,
+      restoredByType: "admin",
+      restoredById: "admin-dashboard",
+      restoredByName: "Admin dashboard",
+    };
+    const nextUsers = [...activeUsers, restoredUser];
+    const nextDeletedUsers = [...deletedUsers];
+    nextDeletedUsers[archiveIndex] = restoredArchive;
+
+    try {
+      await writeCollection("users", nextUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to restore archived user" });
+      return;
+    }
+
+    try {
+      await writeCollection("deletedUsers", nextDeletedUsers);
+    } catch (error) {
+      await writeCollection("users", activeUsers);
+      throw error;
+    }
+
+    res.json({
+      ok: true,
+      message: "Archived user restored",
+      user: toPublicUser(restoredUser),
+      archive: toPublicDeletedUserArchive(restoredArchive),
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/deleted-groups",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const deletedGroups = (await readCollection("deletedGroups"))
+      .map(normalizeDeletedGroupArchive)
+      .sort((a, b) => String(b.deletedAt || "").localeCompare(String(a.deletedAt || "")));
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+
+    res.json({
+      total: deletedGroups.length,
+      deletedGroups: deletedGroups.map((archive) => toPublicDeletedGroupArchive(archive, { users, uploads })),
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/deleted-groups/:archiveId/restore",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const archiveId = String(req.params.archiveId || "").trim();
+    if (!archiveId) {
+      res.status(400).json({ error: "archiveId is required" });
+      return;
+    }
+
+    const deletedGroups = (await readCollection("deletedGroups")).map(normalizeDeletedGroupArchive);
+    const archiveIndex = deletedGroups.findIndex((entry) => entry.archiveId === archiveId);
+    if (archiveIndex < 0) {
+      res.status(404).json({ error: "Archive entry not found" });
+      return;
+    }
+
+    const archive = deletedGroups[archiveIndex];
+    if (archive.restoredAt) {
+      res.status(409).json({ error: "This archive entry has already been restored" });
+      return;
+    }
+
+    const restoredGroup = buildRestoredGroupFromArchive(archive);
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const existingIndex = conversations.findIndex((entry) => entry.id === restoredGroup.id);
+    if (existingIndex >= 0) {
+      res.status(409).json({ error: "A group with this id already exists" });
+      return;
+    }
+
+    conversations.push(restoredGroup);
+    await writeCollection("conversations", conversations);
+
+    const restoredArchive = {
+      ...archive,
+      restoredAt: new Date().toISOString(),
+      restoredByType: "admin",
+      restoredById: req.headers["x-admin-key"] ? "admin" : "",
+      restoredByName: "Administrator",
+    };
+    const nextDeletedGroups = [...deletedGroups];
+    nextDeletedGroups[archiveIndex] = restoredArchive;
+    await writeCollection("deletedGroups", nextDeletedGroups);
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("groups", {
+        reason: "group-restored",
+        conversationId: restoredGroup.id,
+      }),
+    ]);
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+
+    res.json({
+      ok: true,
+      archive: toPublicDeletedGroupArchive(restoredArchive, { users, uploads }),
+      group: buildAdminGroupSummary(restoredGroup, { users, uploads }),
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/groups",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const groups = conversations
+      .filter((conversation) => conversation.type === "group")
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      .map((conversation) => buildAdminGroupSummary(conversation, { users, uploads }));
+
+    res.json({
+      total: groups.length,
+      groups,
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/groups/:groupId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const groupId = String(req.params.groupId || "").trim();
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const conversation = conversations.find((entry) => entry.id === groupId && entry.type === "group");
+    if (!conversation) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      group: buildAdminGroupDetail(conversation, { users, uploads }),
+    });
+  }),
+);
+
+app.delete(
+  "/api/admin/groups/:groupId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const groupId = String(req.params.groupId || "").trim();
+    if (!groupId) {
+      res.status(400).json({ error: "groupId is required" });
+      return;
+    }
+
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const index = conversations.findIndex((entry) => entry.id === groupId && entry.type === "group");
+    if (index < 0) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+
+    const group = conversations[index];
+    const archiveRecord = await archiveDeletedGroup(group, {
+      deletedByType: "admin",
+      deletedById: "admin",
+      deletedByName: "Administrator",
+      deletionReason: "Archived from admin dashboard",
+    });
+
+    conversations.splice(index, 1);
+    await writeCollection("conversations", conversations);
+    fireCommunityRealtimeMessages([
+      buildCommunityOverviewRealtimeMessage("groups", {
+        reason: "group-archived",
+        conversationId: groupId,
+      }),
+    ]);
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    res.json({
+      ok: true,
+      message: "Group archived.",
+      archive: toPublicDeletedGroupArchive(archiveRecord, { users, uploads }),
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/users/:userId/message",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const userId = String(req.params.userId || "").trim();
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    if (!userId) {
+      res.status(400).json({ error: "userId is required" });
+      return;
+    }
+    if (!message) {
+      res.status(400).json({ error: "message is required" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const targetUser = users.find((entry) => entry.id === userId);
+    if (!targetUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const results = await sendAdminNoticeToRecipients([targetUser.id], {
+      text: message,
+      title: "Admin Message",
+      subtitle: `Direct message for ${targetUser.name || targetUser.username || "this user"}`,
+      originType: "user",
+      originId: targetUser.id,
+      originName: targetUser.name || targetUser.username || targetUser.id,
+      noticeThreadKey: buildAdminNoticeThreadKey("user", targetUser.id),
+    });
+
+    res.json({
+      ok: true,
+      deliveredTo: results.length,
+      conversationId: results[0]?.conversation?.id || "",
+      messageId: results[0]?.message?.id || "",
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/groups/:groupId/message",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const groupId = String(req.params.groupId || "").trim();
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    if (!groupId) {
+      res.status(400).json({ error: "groupId is required" });
+      return;
+    }
+    if (!message) {
+      res.status(400).json({ error: "message is required" });
+      return;
+    }
+
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const conversation = conversations.find((entry) => entry.id === groupId && entry.type === "group");
+    if (!conversation) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+
+    const recipientIds = getAdminNoticeRecipientIdsForGroup(conversation, { users });
+    if (!recipientIds.length) {
+      res.status(400).json({ error: "No group owners or admins found to receive this message" });
+      return;
+    }
+
+    const results = await sendAdminNoticeToRecipients(recipientIds, {
+      text: message,
+      title: "Group Notice",
+      subtitle: `Group: ${buildAdminGroupSummary(conversation, { users, uploads }).name}`,
+      originType: "group",
+      originId: conversation.id,
+      originName: conversation.name || conversation.id,
+      noticeThreadKey: buildAdminNoticeThreadKey("group", conversation.id),
+    });
+
+    res.json({
+      ok: true,
+      deliveredTo: results.length,
+      conversationIds: results.map((entry) => entry.conversation?.id || "").filter(Boolean),
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/broadcast/message",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
+    const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
+    const attachmentMimeType = String(req.body?.attachmentMimeType || "").trim().toLowerCase();
+    if (!message && !attachmentDataUrl) {
+      res.status(400).json({ error: "message text or attachment is required" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const recipientIds = users.filter((entry) => !isUserCurrentlyDeactivated(entry)).map((entry) => entry.id);
+    if (!recipientIds.length) {
+      res.status(400).json({ error: "No users found to receive this message" });
+      return;
+    }
+
+    let upload = null;
+    if (attachmentDataUrl) {
+      const parsedAttachment = parseDataUrlByMime(attachmentDataUrl);
+      if (!parsedAttachment) {
+        res.status(400).json({ error: "Invalid attachment." });
+        return;
+      }
+      try {
+        await moderateCommunityUploadBuffer(
+          Buffer.from(parsedAttachment.dataUrl.split(";base64,")[1] || "", "base64"),
+          parsedAttachment.mimeType,
+        );
+        const attachmentKind = ALLOWED_IMAGE_MIME_TYPES.has(parsedAttachment.mimeType)
+          ? "chat-image"
+          : ALLOWED_VIDEO_MIME_TYPES.has(parsedAttachment.mimeType)
+            ? "chat-video"
+            : ALLOWED_AUDIO_MIME_TYPES.has(parsedAttachment.mimeType)
+              ? "chat-audio"
+              : "chat-file";
+        upload = await createStoredUploadFromDataUrl({
+          ownerUserId: ADMIN_NOTICE_SENDER_ID,
+          kind: attachmentKind,
+          fileName: attachmentFileName || "attachment",
+          dataUrl: parsedAttachment.dataUrl,
+        });
+      } catch (error) {
+        res.status(400).json({ error: String(error?.message || "Invalid attachment.") });
+        return;
+      }
+    }
+
+    const noticeBatchId = crypto.randomUUID();
+    const deliveryResults = await sendAdminNoticeToRecipients(recipientIds, {
+      text: message,
+      title: "Broadcast",
+      subtitle: "Announcement sent to all users",
+      originType: "broadcast",
+      originId: "all-users",
+      originName: "All users",
+      senderName: ADMIN_NOTICE_SENDER_NAME,
+      upload,
+      noticeThreadKey: buildAdminNoticeThreadKey("broadcast", "all-users"),
+      noticeBatchId,
+    });
+    const storedMessage = await persistGlobalAdminBroadcastMessage({
+      text: message,
+      senderName: ADMIN_NOTICE_SENDER_NAME,
+      upload,
+      noticeBatchId,
+    });
+
+    res.json({
+      ok: true,
+      deliveredTo: deliveryResults.length,
+      conversationIds: deliveryResults.map((entry) => entry.conversation?.id || "").filter(Boolean),
+      messageId: storedMessage.id,
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/broadcast/status",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const caption = normalizeWhitespace(req.body?.caption || "").slice(0, 140);
+    const text = normalizeWhitespace(req.body?.text || "").slice(0, 280);
+    const background = String(req.body?.background || "#2f80d0").trim().slice(0, 160);
+    const style = req.body?.style && typeof req.body.style === "object" ? req.body.style : {};
+    const attachmentDataUrl = String(req.body?.attachmentDataUrl || req.body?.mediaDataUrl || "").trim();
+    const attachmentFileName = String(req.body?.attachmentFileName || req.body?.fileName || "").trim();
+    if (!text && !attachmentDataUrl) {
+      res.status(400).json({ error: "status text or attachment is required" });
+      return;
+    }
+
+    let upload = null;
+    if (attachmentDataUrl) {
+      const parsedAttachment = parseDataUrlByMime(attachmentDataUrl);
+      if (!parsedAttachment) {
+        res.status(400).json({ error: "Invalid status attachment." });
+        return;
+      }
+      if (!ALLOWED_IMAGE_MIME_TYPES.has(parsedAttachment.mimeType) && !ALLOWED_VIDEO_MIME_TYPES.has(parsedAttachment.mimeType)) {
+        res.status(400).json({ error: "Only image or video files are allowed for broadcast status." });
+        return;
+      }
+      try {
+        await moderateCommunityUploadBuffer(
+          Buffer.from(parsedAttachment.dataUrl.split(";base64,")[1] || "", "base64"),
+          parsedAttachment.mimeType,
+        );
+        const attachmentKind = ALLOWED_VIDEO_MIME_TYPES.has(parsedAttachment.mimeType)
+          ? "status-video"
+          : "status-image";
+        upload = await createStoredUploadFromDataUrl({
+          ownerUserId: ADMIN_NOTICE_SENDER_ID,
+          kind: attachmentKind,
+          fileName: attachmentFileName || (attachmentKind === "status-video" ? "broadcast-status.mp4" : "broadcast-status.jpg"),
+          dataUrl: parsedAttachment.dataUrl,
+        });
+      } catch (error) {
+        res.status(400).json({ error: String(error?.message || "Invalid status attachment.") });
+        return;
+      }
+    }
+
+    try {
+      const status = await persistCommunityStatus({
+        viewerId: ADMIN_NOTICE_SENDER_ID,
+        caption,
+        text,
+        background,
+        style,
+        upload,
+        isAdminBroadcast: true,
+      });
+      res.status(201).json({ ok: true, status });
+    } catch (error) {
+      res.status(400).json({ error: String(error?.message || "Status could not be created.") });
+    }
+  }),
+);
+
+app.get(
+  "/api/admin/broadcast/overview",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const messages = (await readCollection("messages")).map(normalizeMessage);
+    const broadcastMessages = (await readCollection("adminBroadcastMessages")).map(normalizeAdminBroadcastMessage);
+    const reports = (await readCollection("reports")).map(normalizeAdminReport);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const activeStatuses = await purgeExpiredStatuses();
+    const activeUsers = (await readCollection("users")).map(normalizeExistingUser).filter((entry) => !isUserCurrentlyDeactivated(entry));
+
+    const threads = buildAdminBroadcastThreadCollections({
+      conversations,
+      messages,
+      uploads,
+      broadcastMessages,
+      broadcastRecipientCount: activeUsers.length,
+      reports,
+    }).map(buildAdminBroadcastThreadOverview);
+
+    const statuses = activeStatuses
+      .filter((entry) => entry.isAdminBroadcast === true)
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      .map((entry) => {
+        const upload = uploads.find((candidate) => candidate.id === entry.uploadId);
+        return {
+          id: entry.id,
+          type: entry.type,
+          text: entry.text,
+          background: entry.background,
+          textColor: entry.textColor,
+          textStyle: entry.textStyle,
+          textAlign: entry.textAlign,
+          textScale: entry.textScale,
+          textX: entry.textX,
+          textY: entry.textY,
+          textBold: entry.textBold === true,
+          textItalic: entry.textItalic === true,
+          textUnderline: entry.textUnderline === true,
+          caption: entry.caption,
+          allowReplies: false,
+          isAdminBroadcast: true,
+          imageFit: entry.imageFit,
+          imageFilter: entry.imageFilter,
+          imageRotate: entry.imageRotate,
+          videoTrimStart: entry.videoTrimStart,
+          videoTrimEnd: entry.videoTrimEnd,
+          durationSeconds: entry.durationSeconds,
+          createdAt: entry.createdAt,
+          expiresAt: entry.expiresAt,
+          owner: buildAdminBroadcastStatusOwnerView(),
+          upload: upload ? resolveUploadPublicView(upload) : null,
+        };
+      });
+
+    res.json({
+      ok: true,
+      threads,
+      statuses,
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/broadcast/threads/:threadKey",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const threadKey = String(req.params.threadKey || "").trim();
+    if (!threadKey) {
+      res.status(400).json({ error: "threadKey is required" });
+      return;
+    }
+
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const messages = (await readCollection("messages")).map(normalizeMessage);
+    const broadcastMessages = (await readCollection("adminBroadcastMessages")).map(normalizeAdminBroadcastMessage);
+    const reports = (await readCollection("reports")).map(normalizeAdminReport);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const thread = buildAdminBroadcastThreadDetail(threadKey, {
+      conversations,
+      messages,
+      uploads,
+      broadcastMessages,
+      reports,
+      broadcastRecipientCount: (await readCollection("users")).map(normalizeExistingUser).filter((entry) => !isUserCurrentlyDeactivated(entry)).length,
+    });
+
+    if (!thread) {
+      res.status(404).json({ error: "Thread not found" });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      thread: buildAdminBroadcastThreadOverview(thread),
+      batches: thread.batches,
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/broadcast/threads/:threadKey/message",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const threadKey = String(req.params.threadKey || "").trim();
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
+    const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
+    if (!threadKey) {
+      res.status(400).json({ error: "threadKey is required" });
+      return;
+    }
+    if (!message && !attachmentDataUrl) {
+      res.status(400).json({ error: "message text or attachment is required" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const reports = (await readCollection("reports")).map(normalizeAdminReport);
+    const metadata = getAdminNoticeThreadSendMetadata(threadKey, {
+      users,
+      conversations,
+      reports,
+    });
+    if (!metadata) {
+      res.status(404).json({ error: "Thread not found" });
+      return;
+    }
+
+    let upload = null;
+    if (attachmentDataUrl) {
+      try {
+        upload = await createAdminNoticeAttachmentUpload({
+          attachmentDataUrl,
+          attachmentFileName,
+        });
+      } catch (error) {
+        res.status(400).json({ error: String(error?.message || "Invalid attachment.") });
+        return;
+      }
+    }
+
+    if (metadata.threadKey === ADMIN_BROADCAST_THREAD_KEY) {
+      const noticeBatchId = crypto.randomUUID();
+      const deliveryResults = await sendAdminNoticeToRecipients(
+        users.filter((entry) => !isUserCurrentlyDeactivated(entry)).map((entry) => entry.id),
+        {
+          text: message,
+          title: "Broadcast",
+          subtitle: "Announcement sent to all users",
+          originType: "broadcast",
+          originId: "all-users",
+          originName: "All users",
+          senderName: ADMIN_NOTICE_SENDER_NAME,
+          upload,
+          noticeThreadKey: metadata.threadKey,
+          noticeBatchId,
+        },
+      );
+      const storedMessage = await persistGlobalAdminBroadcastMessage({
+        text: message,
+        senderName: ADMIN_NOTICE_SENDER_NAME,
+        upload,
+        noticeBatchId,
+      });
+      res.json({
+        ok: true,
+        deliveredTo: deliveryResults.length,
+        threadKey: metadata.threadKey,
+        conversationIds: deliveryResults.map((entry) => entry.conversation?.id || "").filter(Boolean),
+        messageId: storedMessage.id,
+      });
+      return;
+    }
+
+    const results = await sendAdminNoticeToRecipients(metadata.recipientIds, {
+      text: message,
+      title: metadata.title,
+      subtitle: metadata.subtitle,
+      originType: metadata.originType,
+      originId: metadata.originId,
+      originName: metadata.originName,
+      senderName: ADMIN_NOTICE_SENDER_NAME,
+      upload,
+      noticeThreadKey: metadata.threadKey,
+    });
+
+    res.json({
+      ok: true,
+      deliveredTo: results.length,
+      threadKey: metadata.threadKey,
+      conversationIds: results.map((entry) => entry.conversation?.id || "").filter(Boolean),
+      messageId: results[0]?.message?.id || "",
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/reports",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const typeFilter = String(req.query.type || "").trim().toLowerCase();
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const reports = (await readCollection("reports"))
+      .map(normalizeAdminReport)
+      .filter((report) => {
+        if (typeFilter !== "group" && typeFilter !== "user") return true;
+        return report.type === typeFilter;
+      })
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      .map((report) =>
+        buildAdminReportSnapshot(report, {
+          users,
+          conversations,
+          uploads,
+          includeTargetDetails: false,
+        }),
+      );
+
+    res.json({
+      total: reports.length,
+      reports,
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/reports/:reportId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const reportId = String(req.params.reportId || "").trim();
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const reports = (await readCollection("reports")).map(normalizeAdminReport);
+    const report = reports.find((entry) => entry.id === reportId);
+    if (!report) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      report: buildAdminReportSnapshot(report, { users, conversations, uploads }),
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/reports/:reportId/warn",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const reportId = String(req.params.reportId || "").trim();
+    const preset = normalizeAdminWarningTitle(req.body?.preset || "");
+    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
+
+    const reports = (await readCollection("reports")).map(normalizeAdminReport);
+    const reportIndex = reports.findIndex((entry) => entry.id === reportId);
+    if (reportIndex < 0) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+
+    reports[reportIndex] = {
+      ...reports[reportIndex],
+      status: "warned",
+      warningMessage: message || buildAdminWarningNoticeBody(reports[reportIndex], preset),
+      warningPreset: preset,
+      warningById: "admin",
+      warningByName: ADMIN_NOTICE_SENDER_NAME,
+      warningIssuedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await writeCollection("reports", reports);
+
+    const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const report = reports[reportIndex];
+    let deliveredTo = 0;
+    try {
+      const targetRecipients =
+        report.type === "group"
+          ? getAdminNoticeRecipientIdsForGroup(
+              conversations.find((entry) => entry.id === report.targetId && entry.type === "group") || {},
+              { users },
+            )
+          : [report.targetId];
+      if (!targetRecipients.length) {
+        res.status(400).json({ error: "No recipients found for this warning" });
+        return;
+      }
+      const warningMessage = reports[reportIndex].warningMessage || buildAdminWarningNoticeBody(report, preset);
+      const noticeResults = await sendAdminNoticeToRecipients(targetRecipients, {
+        text: warningMessage,
+        title: preset || "Community rules reminder",
+        subtitle: `Report warning for ${report.targetName || report.targetUsername || report.targetId || "this account"}`,
+        originType: "report",
+        originId: report.id,
+        originName: report.targetName || report.targetUsername || report.targetId || "",
+        senderName: ADMIN_NOTICE_SENDER_NAME,
+        noticeThreadKey: buildAdminNoticeThreadKey("report", report.id),
+      });
+      deliveredTo = noticeResults.length;
+    } catch (error) {
+      res.status(500).json({ error: String(error?.message || "Failed to send warning") });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      deliveredTo,
+      report: buildAdminReportSnapshot(report, { users, conversations, uploads }),
     });
   }),
 );
@@ -7259,16 +10619,35 @@ app.delete(
     }
 
     const userId = req.params.userId;
-    const users = await readCollection("users");
-    const filtered = users.filter((u) => u.id !== userId);
-
-    if (filtered.length === users.length) {
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === userId);
+    if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
     }
 
-    await writeCollection("users", filtered);
-    res.json({ ok: true, message: "User deleted" });
+    const archiveRecord = await archiveDeletedUser(user, {
+      deletedByType: "admin",
+      deletedById: "admin-dashboard",
+      deletedByName: "Admin dashboard",
+      deletionReason: "admin-delete",
+    });
+
+    const filtered = users.filter((entry) => entry.id !== userId);
+    try {
+      await writeCollection("users", filtered);
+    } catch (error) {
+      await updateCollection("deletedUsers", async (items) =>
+        items.filter((entry) => entry.archiveId !== archiveRecord.archiveId),
+      );
+      throw error;
+    }
+
+    res.json({
+      ok: true,
+      message: "User moved to archive",
+      archiveId: archiveRecord.archiveId,
+    });
   }),
 );
 
@@ -7343,13 +10722,29 @@ app.post(
 
     const text = String(req.body?.text || req.body?.question || "").trim();
     const rawCategory = String(req.body?.category || "").trim();
-    const category = normalizeMajorCategory(rawCategory, text);
+    const topicSlug = normalizeSlugValue(req.body?.topicSlug);
+    const sectionId = normalizeSlugValue(req.body?.sectionId);
+    const rotation = String(req.body?.rotation || "").trim();
+    const drillTags = Array.isArray(req.body?.drillTags)
+      ? req.body.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
+      : [];
+    const category = normalizeMajorCategory(
+      rawCategory,
+      [
+        text,
+        String(req.body?.explanation || ""),
+        `sectionid:${sectionId || ""}`,
+        `topic:${topicSlug || ""}`,
+        `drilltags:${drillTags.join(",")}`,
+        `lawdrill:${req.body?.lawDrill === true ? "true" : "false"}`,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
     const options = Array.isArray(req.body?.options)
       ? req.body.options.map((opt) => String(opt || "").trim()).filter(Boolean)
       : [];
     const correct = req.body?.correct;
-    const topicSlug = normalizeSlugValue(req.body?.topicSlug);
-    const sectionId = normalizeSlugValue(req.body?.sectionId);
 
     if (!text || !rawCategory || options.length < 2 || correct === undefined) {
       res.status(400).json({
@@ -7371,6 +10766,12 @@ app.post(
     if (sectionId === null) {
       res.status(400).json({
         error: "sectionId must use lowercase kebab-case (a-z, 0-9, -)",
+      });
+      return;
+    }
+    if (rotation && !ALLOWED_ROTATIONS.has(rotation)) {
+      res.status(400).json({
+        error: "rotation must be one of the supported rotation names",
       });
       return;
     }
@@ -7400,7 +10801,13 @@ app.post(
       explanation: String(req.body?.explanation || ""),
       topicSlug: topicSlug || undefined,
       sectionId: sectionId || undefined,
+      drillTags: drillTags.length > 0 ? drillTags : undefined,
+      lawDrill:
+        req.body?.lawDrill === true ||
+        drillTags.includes("law") ||
+        String(sectionId || "").includes("law-drill"),
     };
+    newQuestion.rotation = rotation || inferQuestionRotation(newQuestion) || undefined;
 
     questions.push(newQuestion);
     await writeCollection("questions", questions);
@@ -7436,6 +10843,8 @@ app.put(
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionIdProvided = req.body?.sectionId !== undefined;
     const sectionId = normalizeSlugValue(req.body?.sectionId);
+    const rotationProvided = req.body?.rotation !== undefined;
+    const rotation = String(req.body?.rotation || "").trim();
 
     const questions = await readCollection("questions");
     const idx = questions.findIndex((q) => String(q.id) === questionId);
@@ -7456,6 +10865,12 @@ app.put(
       });
       return;
     }
+    if (rotationProvided && rotation && !ALLOWED_ROTATIONS.has(rotation)) {
+      res.status(400).json({
+        error: "rotation must be one of the supported rotation names",
+      });
+      return;
+    }
 
     if (textProvided) {
       if (!text) {
@@ -7470,9 +10885,19 @@ app.put(
         res.status(400).json({ error: "category cannot be empty" });
         return;
       }
-      const categoryContext = textProvided
-        ? text
-        : String(questions[idx].question || questions[idx].text || "");
+      const existingDrillTags = Array.isArray(questions[idx].drillTags)
+        ? questions[idx].drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
+        : [];
+      const categoryContext = [
+        textProvided ? text : String(questions[idx].question || questions[idx].text || ""),
+        String(questions[idx].explanation || ""),
+        `sectionid:${String(questions[idx].sectionId || "").trim().toLowerCase()}`,
+        `topic:${String(questions[idx].topicSlug || "").trim().toLowerCase()}`,
+        `drilltags:${existingDrillTags.join(",")}`,
+        `lawdrill:${questions[idx].lawDrill === true ? "true" : "false"}`,
+      ]
+        .filter(Boolean)
+        .join(" ");
       questions[idx].category = normalizeMajorCategory(rawCategory, categoryContext);
     }
     if (optionsProvided) {
@@ -7509,6 +10934,10 @@ app.put(
     if (sectionIdProvided) {
       questions[idx].sectionId = sectionId || undefined;
     }
+    questions[idx].rotation =
+      (rotationProvided ? rotation : String(questions[idx].rotation || "").trim()) ||
+      inferQuestionRotation(questions[idx]) ||
+      undefined;
 
     await writeCollection("questions", questions);
     res.json({ ok: true, question: questions[idx] });
@@ -7548,6 +10977,8 @@ app.get(
     }
 
     const users = await readCollection("users");
+    const conversations = await readCollection("conversations");
+    const reports = await readCollection("reports");
     const questions = await readCollection("questions");
     const attempts = await readCollection("attempts");
     const syncPerformance = await readCollection("syncPerformance");
@@ -7591,6 +11022,8 @@ app.get(
 
     res.json({
       totalUsers: users.length,
+      totalGroups: conversations.filter((conversation) => String(conversation?.type || "").toLowerCase() === "group").length,
+      totalReports: reports.length,
       totalQuestions: questions.length,
       totalCategories: MAJOR_CATEGORIES.length,
       categories,
@@ -7605,6 +11038,8 @@ app.get(
       averageScore: avgScore,
       storageUsage: {
         users: users.length,
+        groups: conversations.filter((conversation) => String(conversation?.type || "").toLowerCase() === "group").length,
+        reports: reports.length,
         questions: questions.length,
         attempts: attempts.length,
         syncEvents: syncPerformance.length,
@@ -7779,7 +11214,9 @@ async function start() {
     );
   }
   if (purgedDeactivatedUsers > 0) {
-    console.log(`[users] deleted ${purgedDeactivatedUsers} expired deactivated account(s)`);
+    console.log(
+      `[users] cleared ${purgedDeactivatedUsers} expired deactivation(s) without deleting accounts`,
+    );
   }
   if (seedInfo.seeded) {
     console.log(
@@ -7788,7 +11225,7 @@ async function start() {
   }
   if (categoryNormalizeInfo.changed > 0) {
     console.log(
-      `[taxonomy] normalized ${categoryNormalizeInfo.changed}/${categoryNormalizeInfo.total} question categories to 13 major categories`,
+      `[taxonomy] normalized ${categoryNormalizeInfo.changed}/${categoryNormalizeInfo.total} question categories and rotation tags`,
     );
   }
 
@@ -7796,7 +11233,9 @@ async function start() {
     try {
       const removed = await purgeExpiredDeactivatedUsers();
       if (removed > 0) {
-        console.log(`[users] deleted ${removed} expired deactivated account(s)`);
+        console.log(
+          `[users] cleared ${removed} expired deactivation(s) without deleting accounts`,
+        );
       }
     } catch (error) {
       errorLogStream.write(

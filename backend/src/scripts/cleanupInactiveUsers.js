@@ -1,4 +1,4 @@
-import { ensureStore, readCollection, writeCollection } from "../store.js";
+import { ensureStore, readCollection } from "../store.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -86,9 +86,6 @@ async function run() {
     return latestSeenMs <= cutoffMs;
   });
 
-  const removeIds = new Set(usersToRemove.map((user) => user.id));
-  const cleanedUsers = users.filter((user) => !removeIds.has(user.id));
-
   console.log(
     JSON.stringify(
       {
@@ -96,22 +93,19 @@ async function run() {
         inactivityDays,
         cutoffIso: new Date(cutoffMs).toISOString(),
         totalUsers: users.length,
-        removableUsers: usersToRemove.length,
-        usersAfterCleanup: cleanedUsers.length,
-        removedUserIds: usersToRemove.map((user) => user.id),
+        inactiveUserCandidates: usersToRemove.length,
+        usersAfterAudit: users.length,
+        candidateUserIds: usersToRemove.map((user) => user.id),
       },
       null,
       2,
     ),
   );
 
-  if (!dryRun && usersToRemove.length > 0) {
-    await writeCollection("users", cleanedUsers);
-    console.log("Inactive user cleanup applied.");
-  } else if (dryRun) {
-    console.log("Dry run only; no files were changed.");
+  if (usersToRemove.length > 0) {
+    console.log("Inactive user audit complete. No accounts were deleted.");
   } else {
-    console.log("No inactive users matched cleanup criteria.");
+    console.log("No inactive users matched audit criteria.");
   }
 }
 

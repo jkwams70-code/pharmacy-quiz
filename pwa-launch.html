@@ -72,11 +72,7 @@
           console.warn("PWA launch cleanup failed:", error);
         }
 
-        const next = new URL("/", window.location.origin);
-        next.searchParams.set("source", "pwa-quiz");
-        next.searchParams.set("build", "20260324-pwaforce2");
-        next.searchParams.set("launch", "1");
-        window.location.replace(next.toString());
+        window.location.replace("/");
       })();
     </script>
   </body>

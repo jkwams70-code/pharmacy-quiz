@@ -13696,7 +13696,6 @@ async function openAppUpdateDownloadUrl(url = "") {
 }
 
 async function checkForNativeAppUpdate({ force = false } = {}) {
-  if (!isNativeAndroidAppRuntime()) return null;
   const now = Date.now();
   if (!force && now - appUpdateLastCheckedAt < APP_UPDATE_CHECK_COOLDOWN_MS) return null;
   if (appUpdateCheckInFlight) return null;

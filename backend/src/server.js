@@ -5064,6 +5064,20 @@ app.use("/backend", (_req, res) => {
 app.use(
   express.static(frontendPath, {
     dotfiles: "ignore",
+    setHeaders(res, filePath) {
+      const lowered = String(filePath || "").toLowerCase();
+      if (
+        lowered.endsWith(".html") ||
+        lowered.endsWith(".js") ||
+        lowered.endsWith(".css") ||
+        lowered.endsWith(".webmanifest") ||
+        lowered.endsWith(".json")
+      ) {
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+      }
+    },
   }),
 );
 
@@ -11187,6 +11201,9 @@ app.use("/api/*", (_req, res) => {
 
 // Serve index.html for all non-API routes (SPA support)
 app.get("*", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   res.sendFile(path.join(frontendPath, "index.html"));
 });
 

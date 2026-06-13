@@ -84,6 +84,9 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let selectedReportSnapshot = null;
       let selectedReportWarningDraft = "";
       let broadcastChatAttachment = null;
+      let broadcastChatEmojiPickerOpen = false;
+      let broadcastChatAttachmentViewerMode = "sent";
+      let broadcastChatAttachmentViewerAttachment = null;
       let broadcastStatusAttachment = null;
       let broadcastStatusBackground = "#2f80d0";
       let cachedBroadcastThreads = [];
@@ -188,6 +191,143 @@ async function ensureAdminApiBase({ force = false } = {}) {
           reader.onerror = () => reject(new Error("Could not read the selected file."));
           reader.readAsDataURL(file);
         });
+      }
+
+      function autoSizeBroadcastChatMessage() {
+        const messageEl = document.getElementById("broadcast-chat-message");
+        if (!(messageEl instanceof HTMLTextAreaElement)) return;
+        messageEl.style.height = "0px";
+        const safeMax = 180;
+        const nextHeight = Math.min(safeMax, Math.max(36, messageEl.scrollHeight || 36));
+        messageEl.style.height = `${nextHeight}px`;
+        messageEl.style.overflowY = messageEl.scrollHeight > safeMax ? "auto" : "hidden";
+      }
+
+      function syncBroadcastViewportFrame() {
+        const root = document.documentElement;
+        if (!root) return;
+        const vv = window.visualViewport;
+        const bottomInset = vv
+          ? Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)))
+          : 0;
+        root.style.setProperty("--broadcast-vv-bottom", `${bottomInset}px`);
+      }
+
+      function insertBroadcastChatEmoji(emoji = "") {
+        const messageEl = document.getElementById("broadcast-chat-message");
+        const safeEmoji = String(emoji || "").trim();
+        if (!(messageEl instanceof HTMLTextAreaElement) || !safeEmoji) return;
+        const start = Number(messageEl.selectionStart ?? messageEl.value.length);
+        const end = Number(messageEl.selectionEnd ?? messageEl.value.length);
+        const value = String(messageEl.value || "");
+        const nextValue = `${value.slice(0, start)}${safeEmoji}${value.slice(end)}`;
+        messageEl.value = nextValue;
+        const cursor = start + safeEmoji.length;
+        try {
+          messageEl.setSelectionRange(cursor, cursor);
+        } catch {}
+        autoSizeBroadcastChatMessage();
+        messageEl.focus();
+      }
+
+      function setBroadcastChatEmojiPickerOpen(open = false) {
+        broadcastChatEmojiPickerOpen = Boolean(open);
+        const panelEl = document.getElementById("broadcast-chat-emoji-panel");
+        panelEl?.classList.toggle("hidden", !broadcastChatEmojiPickerOpen);
+        const emojiBtn = document.getElementById("broadcast-chat-emoji-btn");
+        emojiBtn?.classList.toggle("is-active", broadcastChatEmojiPickerOpen);
+      }
+
+      function syncBroadcastMobileComposerDock(open = false) {
+        const composerEl = document.querySelector(".broadcast-thread-composer");
+        if (!(composerEl instanceof HTMLElement)) return;
+        const panelEl = composerEl.closest(".broadcast-thread-panel");
+        if (panelEl instanceof HTMLElement && composerEl.parentElement !== panelEl) {
+          panelEl.appendChild(composerEl);
+        }
+      }
+
+      function buildBroadcastComposerAttachmentMarkup(attachment = {}) {
+        const dataUrl = String(attachment?.dataUrl || "").trim();
+        const mimeType = String(attachment?.mimeType || "").toLowerCase();
+        const fileName = String(attachment?.fileName || "attachment").trim();
+        if (!dataUrl) return "";
+        const safeDataUrl = escapeHtml(dataUrl);
+        const safeFileName = escapeHtml(fileName);
+        const safeMimeType = escapeHtml(mimeType || "application/octet-stream");
+        if (mimeType.startsWith("image/")) {
+          return `
+            <img
+              class="broadcast-chat-attachment-preview-media"
+              src="${safeDataUrl}"
+              alt="${safeFileName}"
+              loading="lazy"
+            />
+          `;
+        }
+        if (mimeType.startsWith("video/")) {
+          return `
+            <video
+              class="broadcast-chat-attachment-preview-media"
+              muted
+              playsinline
+              preload="metadata"
+              src="${safeDataUrl}"
+            ></video>
+          `;
+        }
+        if (mimeType.startsWith("audio/")) {
+          return `
+            <div class="broadcast-chat-attachment-file">A</div>
+            <div class="broadcast-chat-attachment-meta">
+              <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
+              <div class="broadcast-chat-attachment-type-text">Audio</div>
+            </div>
+            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+          `;
+        }
+        return `
+          <div class="broadcast-chat-attachment-file">F</div>
+          <div class="broadcast-chat-attachment-meta">
+            <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
+            <div class="broadcast-chat-attachment-type-text">${safeMimeType}</div>
+          </div>
+          <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+        `;
+      }
+
+      function renderBroadcastChatAttachmentPreview() {
+        const previewEl = document.getElementById("broadcast-chat-attachment-preview");
+        const clearBtn = document.getElementById("broadcast-chat-clear-btn");
+        if (clearBtn instanceof HTMLButtonElement) {
+          clearBtn.classList.toggle("hidden", !broadcastChatAttachment);
+        }
+        if (!(previewEl instanceof HTMLElement)) return;
+        if (!broadcastChatAttachment) {
+          previewEl.innerHTML = "";
+          previewEl.classList.add("hidden");
+          return;
+        }
+        const dataUrl = String(broadcastChatAttachment.dataUrl || "").trim();
+        const mimeType = String(broadcastChatAttachment.mimeType || "").toLowerCase();
+        const fileName = String(broadcastChatAttachment.fileName || "attachment").trim();
+        const safeFileName = escapeHtml(fileName);
+        const safeMimeType = escapeHtml(mimeType || "application/octet-stream");
+        const isImage = mimeType.startsWith("image/");
+        const isVideo = mimeType.startsWith("video/");
+        if (isImage || isVideo) {
+          previewEl.innerHTML = `
+            ${buildBroadcastComposerAttachmentMarkup(broadcastChatAttachment)}
+            <div class="broadcast-chat-attachment-meta">
+              <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
+              <div class="broadcast-chat-attachment-type-text">${safeMimeType}</div>
+            </div>
+            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+          `;
+        } else {
+          previewEl.innerHTML = buildBroadcastComposerAttachmentMarkup(broadcastChatAttachment);
+        }
+        previewEl.classList.remove("hidden");
       }
 
       function formatDate(value) {
@@ -1166,6 +1306,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         adminKey = null;
         hideAdminNotificationBanner();
         broadcastChatAttachment = null;
+        broadcastChatEmojiPickerOpen = false;
         broadcastStatusAttachment = null;
         cachedBroadcastThreads = [];
         cachedBroadcastStatuses = [];
@@ -1878,6 +2019,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         if (panelEl) {
           panelEl.classList.toggle("hidden", !(broadcastThreadOpen && hasSelectedThread));
         }
+        syncBroadcastMobileComposerDock(broadcastThreadOpen && hasSelectedThread);
       }
 
       function buildBroadcastAttachmentMarkup(attachment = {}, { compact = false } = {}) {
@@ -2000,11 +2142,111 @@ async function ensureAdminApiBase({ force = false } = {}) {
             </div>
           `;
         }
+        document.getElementById("broadcast-attachment-viewer-actions")?.replaceChildren();
         document.getElementById("broadcast-attachment-viewer-modal")?.classList.add("active");
       }
 
       function closeBroadcastAttachmentViewer() {
         document.getElementById("broadcast-attachment-viewer-modal")?.classList.remove("active");
+        broadcastChatAttachmentViewerMode = "sent";
+        broadcastChatAttachmentViewerAttachment = null;
+      }
+
+      function renderBroadcastComposerAttachmentViewerBody(attachment = {}, { mode = "sent" } = {}) {
+        const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
+        const actionsEl = document.getElementById("broadcast-attachment-viewer-actions");
+        if (!(bodyEl instanceof HTMLElement)) return;
+        const dataUrl = String(attachment?.dataUrl || attachment?.upload?.dataUrl || "").trim();
+        const mimeType = String(attachment?.mimeType || attachment?.upload?.mimeType || "").toLowerCase();
+        const fileName = String(attachment?.fileName || attachment?.upload?.fileName || "attachment").trim();
+        const safeDataUrl = escapeHtml(dataUrl);
+        const safeFileName = escapeHtml(fileName);
+        const safeMimeType = escapeHtml(mimeType || "application/octet-stream");
+        if (mimeType.startsWith("image/")) {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <img src="${safeDataUrl}" alt="${safeFileName}" loading="lazy" />
+            </div>
+          `;
+        } else if (mimeType.startsWith("video/")) {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <video controls playsinline src="${safeDataUrl}"></video>
+            </div>
+          `;
+        } else if (mimeType.startsWith("audio/")) {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <audio controls src="${safeDataUrl}"></audio>
+            </div>
+          `;
+        } else {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <div class="broadcast-attachment-viewer-file">
+                <div class="broadcast-attachment-viewer-file-icon">⧉</div>
+                <div class="broadcast-attachment-viewer-file-text">
+                  <div class="broadcast-attachment-viewer-file-name">${safeFileName}</div>
+                  <div class="broadcast-attachment-viewer-file-meta">${safeMimeType}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        if (actionsEl instanceof HTMLElement) {
+          const isComposer = String(mode || "sent").toLowerCase() === "composer";
+          actionsEl.innerHTML = isComposer
+            ? `
+              <button type="button" class="secondary" id="broadcast-attachment-viewer-replace-btn">Replace attachment</button>
+              <button type="button" class="secondary" id="broadcast-attachment-viewer-remove-btn">Remove attachment</button>
+              <a class="primary" href="${safeDataUrl}" download="${safeFileName}" target="_blank" rel="noreferrer">Download</a>
+            `
+            : `
+              <a class="primary" href="${safeDataUrl}" download="${safeFileName}" target="_blank" rel="noreferrer">Download</a>
+            `;
+          document.getElementById("broadcast-attachment-viewer-replace-btn")?.addEventListener("click", () => {
+            closeBroadcastComposerAttachmentViewer();
+            const fileInput = document.getElementById("broadcast-chat-file");
+            if (fileInput instanceof HTMLInputElement) {
+              fileInput.value = "";
+              fileInput.click();
+            }
+          });
+          document.getElementById("broadcast-attachment-viewer-remove-btn")?.addEventListener("click", () => {
+            broadcastChatAttachment = null;
+            syncBroadcastAttachmentUi("chat");
+            closeBroadcastComposerAttachmentViewer();
+          });
+        }
+      }
+
+      function openBroadcastComposerAttachmentViewer(attachment = {}, { mode = "sent" } = {}) {
+        const dataUrl = String(attachment?.dataUrl || attachment?.upload?.dataUrl || "").trim();
+        const mimeType = String(attachment?.mimeType || attachment?.upload?.mimeType || "").toLowerCase();
+        const fileName = String(attachment?.fileName || attachment?.upload?.fileName || "attachment").trim();
+        if (!dataUrl) return;
+        const titleEl = document.getElementById("broadcast-attachment-viewer-title");
+        const subtitleEl = document.getElementById("broadcast-attachment-viewer-subtitle");
+        const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
+        if (!titleEl || !subtitleEl || !bodyEl) return;
+        titleEl.textContent = fileName || "Attachment";
+        subtitleEl.textContent = String(mode || "sent").toLowerCase() === "composer"
+          ? "Preview and edit the selected attachment"
+          : mimeType || "Broadcast attachment";
+        broadcastChatAttachmentViewerMode = String(mode || "sent").toLowerCase() === "composer" ? "composer" : "sent";
+        broadcastChatAttachmentViewerAttachment = {
+          dataUrl,
+          fileName,
+          mimeType,
+        };
+        renderBroadcastComposerAttachmentViewerBody(broadcastChatAttachmentViewerAttachment, { mode: broadcastChatAttachmentViewerMode });
+        document.getElementById("broadcast-attachment-viewer-modal")?.classList.add("active");
+      }
+
+      function closeBroadcastComposerAttachmentViewer() {
+        document.getElementById("broadcast-attachment-viewer-modal")?.classList.remove("active");
+        broadcastChatAttachmentViewerMode = "sent";
+        broadcastChatAttachmentViewerAttachment = null;
       }
 
       function syncBroadcastAttachmentUi(kind = "chat") {
@@ -2016,12 +2258,21 @@ async function ensureAdminApiBase({ force = false } = {}) {
         const clearBtn = document.getElementById(
           safeKind === "status" ? "broadcast-status-clear-btn" : "broadcast-chat-clear-btn",
         );
+        const previewEl = safeKind === "status" ? null : document.getElementById("broadcast-chat-attachment-preview");
         if (nameEl) {
           nameEl.textContent = attachment?.fileName || (safeKind === "status" ? "No media selected." : "No attachment selected.");
           nameEl.classList.toggle("hidden", !attachment);
         }
         if (clearBtn) {
           clearBtn.classList.toggle("hidden", !attachment);
+        }
+        if (safeKind === "chat" && previewEl instanceof HTMLElement) {
+          if (attachment) {
+            renderBroadcastChatAttachmentPreview();
+          } else {
+            previewEl.innerHTML = "";
+            previewEl.classList.add("hidden");
+          }
         }
       }
 
@@ -2290,6 +2541,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         syncBroadcastThreadUi();
         renderBroadcastThreadList();
         renderBroadcastThreadMessages();
+        autoSizeBroadcastChatMessage();
         if (!getBroadcastThreadDetail(safeThreadKey)) {
           await loadBroadcastThreadDetail(safeThreadKey);
         }
@@ -2301,6 +2553,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         syncBroadcastThreadUi();
         renderBroadcastThreadList();
         renderBroadcastThreadMessages();
+        setBroadcastChatEmojiPickerOpen(false);
       }
 
       function openBroadcastStatusComposer() {
@@ -2370,11 +2623,15 @@ async function ensureAdminApiBase({ force = false } = {}) {
           if (!res.ok) {
             throw new Error(data.error || "Failed to send notice");
           }
-          if (messageEl) messageEl.value = "";
+          if (messageEl instanceof HTMLTextAreaElement) {
+            messageEl.value = "";
+            autoSizeBroadcastChatMessage();
+          }
           broadcastChatAttachment = null;
           const fileInput = document.getElementById("broadcast-chat-file");
           if (fileInput) fileInput.value = "";
           syncBroadcastAttachmentUi("chat");
+          setBroadcastChatEmojiPickerOpen(false);
           await Promise.all([
             loadBroadcastOverview(),
             loadBroadcastThreadDetail(threadKey),
@@ -3008,9 +3265,54 @@ async function ensureAdminApiBase({ force = false } = {}) {
             void sendAdminGroupMessage(selectedGroupId || "");
           });
         document
+          .getElementById("broadcast-chat-emoji-btn")
+          ?.addEventListener("click", () => {
+            setBroadcastChatEmojiPickerOpen(!broadcastChatEmojiPickerOpen);
+          });
+        document
           .getElementById("broadcast-chat-attach-btn")
           ?.addEventListener("click", () => {
+            setBroadcastChatEmojiPickerOpen(false);
             document.getElementById("broadcast-chat-file")?.click();
+          });
+        document
+          .getElementById("broadcast-chat-message")
+          ?.addEventListener("input", () => {
+            requestAnimationFrame(() => {
+              autoSizeBroadcastChatMessage();
+            });
+          });
+        document
+          .getElementById("broadcast-chat-message")
+          ?.addEventListener("keyup", () => {
+            requestAnimationFrame(() => {
+              autoSizeBroadcastChatMessage();
+            });
+          });
+        document
+          .getElementById("broadcast-chat-message")
+          ?.addEventListener("compositionend", () => {
+            requestAnimationFrame(() => {
+              autoSizeBroadcastChatMessage();
+            });
+          });
+        document
+          .getElementById("broadcast-chat-message")
+          ?.addEventListener("focus", () => {
+            setBroadcastChatEmojiPickerOpen(false);
+            requestAnimationFrame(() => {
+              autoSizeBroadcastChatMessage();
+            });
+          });
+        document
+          .getElementById("broadcast-chat-emoji-panel")
+          ?.addEventListener("click", (event) => {
+            const option = event.target instanceof HTMLElement ? event.target.closest("[data-broadcast-emoji]") : null;
+            if (!(option instanceof HTMLElement)) return;
+            const emoji = String(option.dataset.broadcastEmoji || "").trim();
+            if (!emoji) return;
+            insertBroadcastChatEmoji(emoji);
+            setBroadcastChatEmojiPickerOpen(false);
           });
         document
           .getElementById("broadcast-chat-file")
@@ -3031,6 +3333,19 @@ async function ensureAdminApiBase({ force = false } = {}) {
             }
           });
         document
+          .getElementById("broadcast-chat-attachment-preview")
+          ?.addEventListener("click", (event) => {
+            const removeBtn = event.target instanceof HTMLElement ? event.target.closest("[data-broadcast-chat-remove-attachment]") : null;
+            if (removeBtn instanceof HTMLElement) {
+              broadcastChatAttachment = null;
+              syncBroadcastAttachmentUi("chat");
+              return;
+            }
+            if (broadcastChatAttachment) {
+              openBroadcastComposerAttachmentViewer(broadcastChatAttachment);
+            }
+          });
+        document
           .getElementById("broadcast-chat-clear-btn")
           ?.addEventListener("click", () => {
             broadcastChatAttachment = null;
@@ -3039,6 +3354,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         document
           .getElementById("broadcast-chat-send-btn")
           ?.addEventListener("click", () => {
+            setBroadcastChatEmojiPickerOpen(false);
             void sendAdminBroadcastMessage();
           });
         document
@@ -3090,6 +3406,30 @@ async function ensureAdminApiBase({ force = false } = {}) {
         document
           .getElementById("broadcast-thread-back-btn")
           ?.addEventListener("click", closeBroadcastThread);
+        document.addEventListener("pointerdown", (event) => {
+          if (!broadcastChatEmojiPickerOpen) return;
+          const target = event.target instanceof HTMLElement ? event.target : null;
+          if (!target) {
+            setBroadcastChatEmojiPickerOpen(false);
+            return;
+          }
+          if (
+            target.closest("#broadcast-chat-emoji-panel") ||
+            target.closest("#broadcast-chat-emoji-btn")
+          ) {
+            return;
+          }
+          setBroadcastChatEmojiPickerOpen(false);
+        });
+        autoSizeBroadcastChatMessage();
+        requestAnimationFrame(() => {
+          autoSizeBroadcastChatMessage();
+        });
+        syncBroadcastViewportFrame();
+        window.addEventListener("resize", syncBroadcastViewportFrame);
+        window.visualViewport?.addEventListener("resize", syncBroadcastViewportFrame);
+        window.visualViewport?.addEventListener("scroll", syncBroadcastViewportFrame);
+        syncBroadcastMobileComposerDock(Boolean(selectedBroadcastThreadKey && getBroadcastThreadSummary(selectedBroadcastThreadKey)));
         document
           .getElementById("broadcast-status-background")
           ?.addEventListener("input", (event) => {

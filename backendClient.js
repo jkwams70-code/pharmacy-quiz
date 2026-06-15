@@ -748,16 +748,29 @@ export const backendClient = {
     fireAndForget(post("/sync/performance", event));
   },
 
+  syncWeakTracker(weakTracker = {}) {
+    return post("/sync/weak-tracker", { weakTracker });
+  },
+
   syncSession(entry) {
     fireAndForget(post("/sync/sessions", entry));
+  },
+
+  clearSyncedHistory() {
+    return del("/sync/history");
   },
 
   fetchSyncedDashboard() {
     return get("/sync/dashboard");
   },
 
-  fetchSyncedHistory(mode) {
-    const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
+  fetchSyncedPerformanceState(limit = 5000) {
+    const query = toQuery({ limit });
+    return get(`/sync/performance-state${query}`);
+  },
+
+  fetchSyncedHistory(mode, limit = null) {
+    const query = toQuery({ mode, limit });
     return get(`/sync/history${query}`);
   },
 

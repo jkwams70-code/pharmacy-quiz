@@ -296,7 +296,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         `;
       }
 
-      function renderBroadcastChatAttachmentPreview() {
+      function renderBroadcastChatAttachmentPreviewModern() {
         const previewEl = document.getElementById("broadcast-chat-attachment-preview");
         const clearBtn = document.getElementById("broadcast-chat-clear-btn");
         if (clearBtn instanceof HTMLButtonElement) {
@@ -2142,7 +2142,11 @@ async function ensureAdminApiBase({ force = false } = {}) {
             </div>
           `;
         }
-        document.getElementById("broadcast-attachment-viewer-actions")?.replaceChildren();
+        const actionsEl = document.getElementById("broadcast-attachment-viewer-actions");
+        if (actionsEl instanceof HTMLElement) {
+          actionsEl.replaceChildren();
+          actionsEl.classList.add("hidden");
+        }
         document.getElementById("broadcast-attachment-viewer-modal")?.classList.add("active");
       }
 
@@ -2152,7 +2156,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         broadcastChatAttachmentViewerAttachment = null;
       }
 
-      function renderBroadcastComposerAttachmentViewerBody(attachment = {}, { mode = "sent" } = {}) {
+      function renderBroadcastComposerAttachmentViewerBodyModern(attachment = {}, { mode = "sent" } = {}) {
         const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
         const actionsEl = document.getElementById("broadcast-attachment-viewer-actions");
         if (!(bodyEl instanceof HTMLElement)) return;
@@ -2239,7 +2243,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
           fileName,
           mimeType,
         };
-        renderBroadcastComposerAttachmentViewerBody(broadcastChatAttachmentViewerAttachment, { mode: broadcastChatAttachmentViewerMode });
+        renderBroadcastComposerAttachmentViewerBodyModern(broadcastChatAttachmentViewerAttachment, { mode: broadcastChatAttachmentViewerMode });
         document.getElementById("broadcast-attachment-viewer-modal")?.classList.add("active");
       }
 
@@ -2268,11 +2272,103 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
         if (safeKind === "chat" && previewEl instanceof HTMLElement) {
           if (attachment) {
-            renderBroadcastChatAttachmentPreview();
+            renderBroadcastChatAttachmentPreviewModern();
           } else {
             previewEl.innerHTML = "";
             previewEl.classList.add("hidden");
           }
+        }
+      }
+
+      function renderBroadcastChatAttachmentPreview() {
+        const previewEl = document.getElementById("broadcast-chat-attachment-preview");
+        const clearBtn = document.getElementById("broadcast-chat-clear-btn");
+        if (clearBtn instanceof HTMLButtonElement) {
+          clearBtn.classList.toggle("hidden", !broadcastChatAttachment);
+        }
+        if (!(previewEl instanceof HTMLElement)) return;
+        if (!broadcastChatAttachment) {
+          previewEl.innerHTML = "";
+          previewEl.classList.add("hidden");
+          return;
+        }
+        previewEl.innerHTML = buildBroadcastComposerAttachmentMarkup(broadcastChatAttachment);
+        previewEl.classList.remove("hidden");
+      }
+
+      function renderBroadcastComposerAttachmentViewerBody(attachment = {}, { mode = "sent" } = {}) {
+        const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
+        const actionsEl = document.getElementById("broadcast-attachment-viewer-actions");
+        if (!(bodyEl instanceof HTMLElement)) return;
+        const dataUrl = String(attachment?.dataUrl || attachment?.upload?.dataUrl || "").trim();
+        const mimeType = String(attachment?.mimeType || attachment?.upload?.mimeType || "").toLowerCase();
+        const fileName = String(attachment?.fileName || attachment?.upload?.fileName || "attachment").trim();
+        const safeDataUrl = escapeHtml(dataUrl);
+        const safeFileName = escapeHtml(fileName);
+        const safeMimeType = escapeHtml(mimeType || "application/octet-stream");
+        const isMedia = mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/");
+
+        if (mimeType.startsWith("image/")) {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <img src="${safeDataUrl}" alt="${safeFileName}" loading="lazy" />
+            </div>
+          `;
+        } else if (mimeType.startsWith("video/")) {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <video controls playsinline src="${safeDataUrl}"></video>
+            </div>
+          `;
+        } else if (mimeType.startsWith("audio/")) {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <audio controls src="${safeDataUrl}"></audio>
+            </div>
+          `;
+        } else {
+          bodyEl.innerHTML = `
+            <div class="broadcast-attachment-viewer-stage">
+              <div class="broadcast-attachment-viewer-file">
+                <div class="broadcast-attachment-viewer-file-icon">⧉</div>
+                <div class="broadcast-attachment-viewer-file-text">
+                  <div class="broadcast-attachment-viewer-file-name">${safeFileName}</div>
+                  <div class="broadcast-attachment-viewer-file-meta">${safeMimeType}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        if (actionsEl instanceof HTMLElement) {
+          actionsEl.classList.toggle("hidden", isMedia);
+          if (isMedia) {
+            actionsEl.innerHTML = "";
+            return;
+          }
+          const isComposer = String(mode || "sent").toLowerCase() === "composer";
+          actionsEl.innerHTML = isComposer
+            ? `
+              <button type="button" class="secondary" id="broadcast-attachment-viewer-replace-btn">Replace attachment</button>
+              <button type="button" class="secondary" id="broadcast-attachment-viewer-remove-btn">Remove attachment</button>
+              <a class="primary" href="${safeDataUrl}" download="${safeFileName}" target="_blank" rel="noreferrer">Download</a>
+            `
+            : `
+              <a class="primary" href="${safeDataUrl}" download="${safeFileName}" target="_blank" rel="noreferrer">Download</a>
+            `;
+          document.getElementById("broadcast-attachment-viewer-replace-btn")?.addEventListener("click", () => {
+            closeBroadcastComposerAttachmentViewer();
+            const fileInput = document.getElementById("broadcast-chat-file");
+            if (fileInput instanceof HTMLInputElement) {
+              fileInput.value = "";
+              fileInput.click();
+            }
+          });
+          document.getElementById("broadcast-attachment-viewer-remove-btn")?.addEventListener("click", () => {
+            broadcastChatAttachment = null;
+            syncBroadcastAttachmentUi("chat");
+            closeBroadcastComposerAttachmentViewer();
+          });
         }
       }
 

@@ -2882,6 +2882,11 @@ function applyCommunityProfileView(
     };
   }
 
+  const leaderboardPoints = Math.max(
+    normalizePointsValue(normalized.points),
+    normalizePointsValue(leaderboardStats?.points),
+  );
+
   return {
     id: normalized.id,
     role: normalized.role,
@@ -2901,7 +2906,7 @@ function applyCommunityProfileView(
     updatedAt: normalized.updatedAt,
     lastSeenAt: canSeeLastSeen || sameUser ? normalized.lastSeenAt : "",
     onlineNow: sameUser ? rawOnlineNow : onlineNow,
-    points: normalizePointsValue(normalized.points),
+    points: leaderboardPoints,
     privacy,
     viewerBlockedSubject: Boolean(viewerBlockedSubject),
     subjectBlockedViewer: Boolean(subjectBlockedViewer),
@@ -3189,6 +3194,69 @@ function normalizePointEvent(rawEvent = {}) {
   };
 }
 
+function normalizeWeakTrackerState(rawState = {}) {
+  const source =
+    rawState && typeof rawState === "object" && !Array.isArray(rawState)
+      ? rawState.weakTracker && typeof rawState.weakTracker === "object"
+        ? rawState.weakTracker
+        : rawState
+      : {};
+
+  return Object.fromEntries(
+    Object.entries(source)
+      .map(([rawId, row]) => {
+        const key = String(rawId || "").trim();
+        if (!key) return null;
+        const roundsPassed = Math.max(0, Math.round(Number(row?.roundsPassed) || 0));
+        return [key, { roundsPassed }];
+      })
+      .filter(Boolean),
+  );
+}
+
+function buildPointEventTotals(pointEvents = []) {
+  const totals = new Map();
+  pointEvents
+    .map(normalizePointEvent)
+    .filter((row) => row.userId && row.delta > 0)
+    .forEach((row) => {
+      totals.set(row.userId, (totals.get(row.userId) || 0) + row.delta);
+    });
+  return totals;
+}
+
+function getLifetimePointTotal(user = {}, pointTotals = null) {
+  const storedPoints = normalizePointsValue(user?.points);
+  const eventPoints = pointTotals
+    ? Math.max(0, Math.round(Number(pointTotals.get(String(user?.id || ""))) || 0))
+    : 0;
+  return Math.max(storedPoints, eventPoints);
+}
+
+function reconcileUsersWithPointHistory(users = [], pointEvents = []) {
+  const pointTotals = buildPointEventTotals(pointEvents);
+  let changed = false;
+
+  const nextUsers = users.map((user) => {
+    const normalized = normalizeExistingUser(user);
+    const nextPoints = getLifetimePointTotal(normalized, pointTotals);
+    if (nextPoints !== normalized.points) {
+      changed = true;
+      return {
+        ...normalized,
+        points: nextPoints,
+      };
+    }
+    return normalized;
+  });
+
+  return {
+    users: nextUsers,
+    pointTotals,
+    changed,
+  };
+}
+
 function getPointsScopeMeta(scope = "daily", nowKey = dateKeyInTimeZone(new Date())) {
   const safeScope = String(scope || "daily").trim().toLowerCase();
   const todayKey = String(nowKey || dateKeyInTimeZone(new Date()));
@@ -3253,10 +3321,11 @@ function buildPointsLeaderboardSnapshot({
   const nowKey = dateKeyInTimeZone(new Date(), DAILY_QUIZ_SEASON.timezone);
   const scopeMeta = getPointsScopeMeta(scope, nowKey);
   const totals = new Map();
+  const pointTotals = buildPointEventTotals(pointEvents);
 
   if (scopeMeta.scope === "alltime") {
     normalizedUsers.forEach((user) => {
-      totals.set(user.id, normalizePointsValue(user.points));
+      totals.set(user.id, getLifetimePointTotal(user, pointTotals));
     });
   } else {
     pointEvents
@@ -5265,10 +5334,16 @@ app.post(
       return;
     }
 
-    const token = createToken(user);
+    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
+    if (changed) {
+      await writeCollection("users", reconciledUsers);
+    }
+    const reconciledUser = reconciledUsers.find((entry) => entry.id === user.id) || user;
+    const token = createToken(reconciledUser);
     res.json({
       token,
-      user: toPublicUser(user),
+      user: toPublicUser(reconciledUser),
     });
   }),
 );
@@ -5279,7 +5354,12 @@ app.get(
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
     const users = (await readCollection("users")).map(normalizeExistingUser);
-    const user = users.find((u) => u.id === req.user.sub);
+    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
+    if (changed) {
+      await writeCollection("users", reconciledUsers);
+    }
+    const user = reconciledUsers.find((u) => u.id === req.user.sub);
 
     if (!user) {
       res.status(404).json({ error: "user not found" });
@@ -5311,6 +5391,7 @@ app.post(
 
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
 
     if (userIndex === -1) {
@@ -5318,7 +5399,11 @@ app.post(
       return;
     }
 
-    const currentUser = users[userIndex];
+    if (changed) {
+      await writeCollection("users", reconciledUsers);
+    }
+
+    const currentUser = reconciledUsers[userIndex];
     if (isUserCurrentlyDeactivated(currentUser)) {
       res.status(403).json({ error: "Account is deactivated." });
       return;
@@ -5335,8 +5420,8 @@ app.post(
       createdAt: new Date().toISOString(),
     });
 
-    users[userIndex] = nextUser;
-    await writeCollection("users", users);
+    reconciledUsers[userIndex] = nextUser;
+    await writeCollection("users", reconciledUsers);
     pointEvents.push(nextPointEvent);
     await writeCollection("pointEvents", pointEvents);
 
@@ -5362,10 +5447,14 @@ app.get(
 
     const rawLimit = Number(req.query?.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.round(rawLimit) : null;
-    const users = await readCollection("users");
-    const pointEvents = await readCollection("pointEvents");
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
+    if (changed) {
+      await writeCollection("users", reconciledUsers);
+    }
     const snapshot = buildPointsLeaderboardSnapshot({
-      users,
+      users: reconciledUsers,
       pointEvents,
       requestUserId: req.user?.sub || "",
       scope,
@@ -6024,10 +6113,14 @@ app.get(
     await touchUserLastSeen(viewerId);
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
+    if (changed) {
+      await writeCollection("users", reconciledUsers);
+    }
     const friendships = (await readCollection("friendships")).map(normalizeFriendship);
     const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
     const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const target = users.find((entry) => entry.id === targetId);
+    const target = reconciledUsers.find((entry) => entry.id === targetId);
 
     if (!target) {
       res.status(404).json({ error: "user not found" });
@@ -6037,11 +6130,11 @@ app.get(
     const viewerBlockedTarget = isBlocked(blocks, viewerId, targetId);
     const targetBlockedViewer = isBlocked(blocks, targetId, viewerId);
     const leaderboardSnapshot = buildPointsLeaderboardSnapshot({
-      users,
+      users: reconciledUsers,
       pointEvents,
       requestUserId: targetId,
       scope: "alltime",
-      limit: users.length || null,
+      limit: reconciledUsers.length || null,
     });
     const leaderboardStats =
       leaderboardSnapshot.topThree.find((entry) => entry.userId === targetId) ||
@@ -9390,6 +9483,7 @@ app.post(
   optionalAuth,
   asyncHandler(async (req, res) => {
     const actorId = getActorId(req);
+    const sessionId = String(req.body?.id || "").trim() || crypto.randomUUID();
     const score = safeNumber(req.body?.score) || 0;
     const total = safeNumber(req.body?.total) || 0;
     const percent = safeNumber(req.body?.percent) || 0;
@@ -9402,13 +9496,25 @@ app.post(
     }
 
     const session = {
-      id: crypto.randomUUID(),
+      id: sessionId,
       actorId,
       mode: String(req.body?.mode || "").trim() || "Unknown",
       score,
       total,
       percent,
       duration: req.body?.duration || null,
+      studyType: String(req.body?.studyType || "").trim() || null,
+      current: Number.isFinite(Number(req.body?.current)) ? Math.max(0, Math.round(Number(req.body.current))) : null,
+      currentStreak: Number.isFinite(Number(req.body?.currentStreak))
+        ? Math.max(0, Math.round(Number(req.body.currentStreak)))
+        : null,
+      userAnswers:
+        req.body?.userAnswers && typeof req.body.userAnswers === "object" ? req.body.userAnswers : null,
+      active: Array.isArray(req.body?.active) ? req.body.active : null,
+      lawDrillState:
+        req.body?.lawDrillState && typeof req.body.lawDrillState === "object"
+          ? req.body.lawDrillState
+          : null,
       date: req.body?.date || new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "2-digit",
@@ -9420,11 +9526,72 @@ app.post(
     };
 
     await updateCollection("syncSessions", async (sessions) => {
-      sessions.push(session);
-      return sessions;
+      return [...sessions.filter((entry) => String(entry?.id || "") !== sessionId), session];
     });
 
     res.status(201).json({ ok: true });
+  }),
+);
+
+app.post(
+  "/api/sync/weak-tracker",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+    const weakTracker = normalizeWeakTrackerState(req.body?.weakTracker || req.body || {});
+
+    await updateCollection("syncWeakTracker", async (rows) => [
+      ...rows.filter((entry) => entry.actorId !== actorId),
+      {
+        actorId,
+        weakTracker,
+        updatedAt: new Date().toISOString(),
+      },
+    ]);
+
+    res.status(201).json({ ok: true, weakTracker });
+  }),
+);
+
+app.get(
+  "/api/sync/performance-state",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+    const limit = Math.min(5000, Math.max(1, Math.round(Number(req.query.limit) || 5000)));
+
+    const events = (await readCollection("syncPerformance"))
+      .filter((event) => event.actorId === actorId)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, limit);
+
+    const weakTrackerRows = (await readCollection("syncWeakTracker")).filter(
+      (entry) => entry.actorId === actorId,
+    );
+    const latestWeakTracker = weakTrackerRows
+      .slice()
+      .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+
+    res.json({
+      ok: true,
+      events,
+      weakTracker: normalizeWeakTrackerState(latestWeakTracker?.weakTracker || {}),
+      weakTrackerUpdatedAt: latestWeakTracker?.updatedAt || null,
+    });
+  }),
+);
+
+app.delete(
+  "/api/sync/history",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+
+    await updateCollection("syncSessions", async (sessions) =>
+      sessions.filter((entry) => entry.actorId !== actorId),
+    );
+
+    res.json({ ok: true });
   }),
 );
 

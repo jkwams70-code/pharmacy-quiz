@@ -1495,86 +1495,147 @@
         max-width: 100%;
       }
 
-      .broadcast-attachment-viewer-body {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        align-items: center;
+      #broadcast-attachment-viewer-modal.modal {
+        background: #000000 !important;
+        overflow: hidden !important;
       }
 
-      .broadcast-attachment-viewer-stage {
+      #broadcast-attachment-viewer-modal .modal-content.broadcast-attachment-viewer-modal {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-width: none !important;
+        max-height: none !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #000000 !important;
+        overflow: hidden !important;
+      }
+
+      #broadcast-attachment-viewer-modal .modal-header {
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 12px);
+        left: 0;
+        right: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin: 0;
+        padding: 0 12px;
+        pointer-events: none;
+      }
+
+      #broadcast-attachment-viewer-modal .modal-header > div {
+        display: none;
+      }
+
+      #broadcast-attachment-viewer-modal .modal-header .icon-btn {
+        pointer-events: auto;
+      }
+
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-body {
         width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 280px;
-        padding: 10px;
-        border-radius: 22px;
-        background: rgba(248, 250, 252, 0.95);
-        border: 1px solid rgba(148, 163, 184, 0.16);
+        height: 100%;
+        min-height: 100%;
+        padding: calc(env(safe-area-inset-top, 0px) + 14px) 0
+          calc(env(safe-area-inset-bottom, 0px) + 14px);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
       }
 
-      .broadcast-attachment-viewer-stage img,
-      .broadcast-attachment-viewer-stage video {
-        max-width: 100%;
-        max-height: 70vh;
-        border-radius: 18px;
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-stage {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-stage img,
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-stage video {
+        width: 100vw;
+        height: 100%;
+        max-width: 100vw;
+        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 28px);
+        object-fit: contain;
+        object-position: center center;
+        border-radius: 0;
         display: block;
       }
 
-      .broadcast-attachment-viewer-stage audio {
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-stage audio {
         width: min(100%, 520px);
       }
 
-      .broadcast-attachment-viewer-file {
-        width: 100%;
-        max-width: 520px;
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-file {
+        width: min(92vw, 420px);
         display: flex;
         align-items: center;
         gap: 14px;
         padding: 16px;
         border-radius: 20px;
-        background: rgba(224, 234, 250, 0.95);
-        border: 1px solid rgba(47, 128, 208, 0.16);
+        background: rgba(18, 24, 33, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #f5fbff;
       }
 
-      .broadcast-attachment-viewer-file-icon {
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-file-icon {
         width: 48px;
         height: 48px;
         border-radius: 16px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(180deg, rgba(47, 128, 208, 0.18), rgba(20, 150, 133, 0.18));
-        color: #0f172a;
+        background: linear-gradient(180deg, rgba(47, 128, 208, 0.3), rgba(20, 150, 133, 0.3));
+        color: #f5fbff;
         font-size: 20px;
         font-weight: 900;
         flex: 0 0 auto;
       }
 
-      .broadcast-attachment-viewer-file-name {
-        color: #0f172a;
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-file-name {
+        color: #f5fbff;
         font-size: 15px;
         font-weight: 800;
         line-height: 1.35;
       }
 
-      .broadcast-attachment-viewer-file-meta {
-        color: #64748b;
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-file-meta {
+        color: rgba(245, 251, 255, 0.72);
         font-size: 13px;
         line-height: 1.4;
       }
 
-      .broadcast-attachment-viewer-actions {
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-actions {
+        position: fixed;
+        left: 50%;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+        transform: translateX(-50%);
+        z-index: 5;
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
         justify-content: center;
+        pointer-events: auto;
+      }
+
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-actions.hidden {
+        display: none !important;
+      }
+
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-actions .primary,
+      #broadcast-attachment-viewer-modal .broadcast-attachment-viewer-actions .secondary {
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
       }
 
       .broadcast-attachment-viewer-modal {
-        max-width: 760px;
-        width: min(760px, calc(100vw - 24px));
+        width: 100%;
+        height: 100%;
       }
 
       .broadcast-thread-composer {
@@ -1635,15 +1696,14 @@
       }
 
       .broadcast-chat-attachment-preview {
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        display: block;
+        width: min(100%, 360px);
         margin-bottom: 10px;
-        padding: 10px 12px;
         border-radius: 18px;
         background: rgba(255, 255, 255, 0.96);
         border: 1px solid rgba(196, 207, 216, 0.94);
         box-shadow: 0 10px 18px rgba(17, 27, 33, 0.06);
+        overflow: hidden;
         cursor: pointer;
       }
 
@@ -1652,12 +1712,12 @@
       }
 
       .broadcast-chat-attachment-preview-media {
-        width: 56px;
-        height: 56px;
+        width: 100%;
+        height: auto;
+        max-height: 260px;
         object-fit: cover;
-        border-radius: 14px;
+        display: block;
         background: rgba(224, 234, 250, 0.95);
-        flex: 0 0 auto;
       }
 
       .broadcast-chat-attachment-file {
@@ -2189,6 +2249,20 @@
           min-width: 680px;
         }
 
+        #groups .table-container,
+        #reports .table-container {
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        #groups table,
+        #reports table {
+          table-layout: auto;
+          width: max-content;
+          min-width: 720px;
+        }
+
         #users th,
         #users td {
           padding: 8px 6px;
@@ -2462,6 +2536,26 @@
           width: 20px;
           height: 20px;
         }
+
+      }
+
+      html,
+      body,
+      * {
+        scrollbar-width: none;
+        scrollbar-color: transparent transparent;
+        -ms-overflow-style: none;
+      }
+
+      *::-webkit-scrollbar,
+      *::-webkit-scrollbar-track,
+      *::-webkit-scrollbar-thumb {
+        width: 0;
+        height: 0;
+        display: none;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
       }
     </style>
   </head>

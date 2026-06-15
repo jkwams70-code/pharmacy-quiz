@@ -30,6 +30,7 @@ const defaults = {
   reports: [],
   syncSessions: [],
   syncPerformance: [],
+  syncWeakTracker: [],
   aiUsage: [],
 };
 

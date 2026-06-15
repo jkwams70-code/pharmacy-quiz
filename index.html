@@ -479,8 +479,8 @@
                   type="button"
                   class="menu-modern-drill-tile"
                   style="position:relative;overflow:hidden;"
-                  aria-label="Start pharmacy law quiz"
-                  title="Pharmacy Law Quiz"
+                  aria-label="Start law drill"
+                  title="Law Drill"
                 >
                   <span
                     class="menu-modern-card-points-badge is-drill"
@@ -3051,12 +3051,23 @@
                 </section>
 
                 <section class="dashboard-panel dashboard-trend-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-section-title">Score Trend</div>
-                    <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent sessions</div>
+                  <div class="dashboard-trend-top">
+                    <div class="dashboard-trend-headline">
+                      <div class="dashboard-trend-copy-block">
+                        <div class="dashboard-section-title">Score Trend</div>
+                        <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent sessions</div>
+                      </div>
+                      <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
+                    </div>
+                    <div class="dashboard-trend-scopes" role="tablist" aria-label="Trend scope">
+                      <button type="button" class="dashboard-trend-scope is-active" data-trend-scope="session">Session</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="daily">Daily</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="weekly">Weekly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="monthly">Monthly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="yearly">Yearly</button>
+                    </div>
                   </div>
                   <div class="dashboard-trend-stage">
-                    <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
                     <div class="dashboard-trend-chart" id="dash-trend-chart"></div>
                   </div>
                 </section>
@@ -3518,6 +3529,44 @@
             <button id="community-group-edit-save-btn" type="button" class="modal-btn primary">Save</button>
           </div>
           <input id="community-group-edit-photo-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+        </div>
+      </div>
+
+      <div id="community-group-invite-modal" class="modal hidden">
+        <div class="modal-card community-group-invite-card">
+          <div class="community-group-invite-header">
+            <div>
+              <div id="community-group-invite-name" class="modal-title">Study Group</div>
+              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready to share.</div>
+            </div>
+            <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-group-invite-close-btn" aria-label="Close invite">
+              &times;
+            </button>
+          </div>
+
+          <div class="community-group-invite-body">
+            <div class="community-group-invite-top">
+              <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
+              <div class="community-group-invite-copy">
+                <div class="community-group-invite-label">Members</div>
+                <div id="community-group-invite-members" class="community-group-invite-members"></div>
+              </div>
+            </div>
+
+            <div class="community-group-invite-link-card">
+              <div class="community-group-invite-label">Invite link</div>
+              <div class="community-group-invite-link-row">
+                <button id="community-group-invite-short-link" type="button" class="community-group-invite-short-link" aria-label="Invite link"></button>
+                <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
+              </div>
+            </div>
+
+            <div id="community-group-invite-note" class="community-group-invite-note"></div>
+          </div>
+
+          <div class="modal-actions community-group-invite-actions">
+            <button id="community-group-invite-primary-btn" type="button" class="modal-btn resume-primary">Share link</button>
+          </div>
         </div>
       </div>
 

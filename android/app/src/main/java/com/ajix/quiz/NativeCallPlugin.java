@@ -74,9 +74,12 @@ public class NativeCallPlugin extends Plugin {
 
     @PluginMethod
     public void endCall(PluginCall call) {
-        Intent intent = new Intent(getContext(), NativeCallService.class);
-        intent.setAction(NativeCallService.ACTION_END);
-        ContextCompat.startForegroundService(getContext(), intent);
+        try {
+            NativeCallStore.clearStatus(getContext());
+            Intent intent = new Intent(getContext(), NativeCallService.class);
+            intent.setAction(NativeCallService.ACTION_END);
+            getContext().stopService(intent);
+        } catch (Exception ignored) {}
         call.resolve(buildStatusPayload());
     }
 

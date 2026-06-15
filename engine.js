@@ -131,7 +131,6 @@ function clearQuestionIdDependentLocalCache() {
     LAW_DRILL_STORAGE_KEY,
     "quizExamSession",
     "examAbandoned",
-    "quizSessionHistory",
     "weakTracker",
     "quizPerformance",
     "quizCategoryPerformance",
@@ -876,6 +875,63 @@ function serializeLawDrillState() {
   };
 }
 
+function normalizeLawDrillSessionPayload(raw = null) {
+  if (!raw || typeof raw !== "object") return null;
+  const lawState = normalizeLawDrillState(raw.lawDrillState || raw);
+  if (!lawState) return null;
+  return {
+    mode: String(raw.mode || "study"),
+    studyType: String(raw.studyType || "law"),
+    current: Math.max(0, Math.round(Number(raw.current) || 0)),
+    currentStreak: Math.max(0, Math.round(Number(raw.currentStreak) || 0)),
+    userAnswers: raw.userAnswers && typeof raw.userAnswers === "object" ? { ...raw.userAnswers } : {},
+    active: Array.isArray(raw.active) ? [...raw.active] : [],
+    lawDrillState: lawState,
+    timestamp: String(raw.timestamp || ""),
+  };
+}
+
+function readLawDrillSessionState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LAW_DRILL_STORAGE_KEY) || "{}");
+    if (parsed && typeof parsed === "object" && parsed.owners && typeof parsed.owners === "object") {
+      const owners = Object.fromEntries(
+        Object.entries(parsed.owners)
+          .map(([ownerKey, value]) => {
+            const session = normalizeLawDrillSessionPayload(value);
+            return session ? [ownerKey, session] : null;
+          })
+          .filter(Boolean),
+      );
+      return { owners };
+    }
+
+    const legacy = normalizeLawDrillSessionPayload(parsed);
+    return legacy
+      ? {
+          owners: {
+            legacy: legacy,
+          },
+        }
+      : { owners: {} };
+  } catch {
+    return { owners: {} };
+  }
+}
+
+function writeLawDrillSessionState(state = {}) {
+  const safeOwners = Object.fromEntries(
+    Object.entries(state?.owners || {})
+      .map(([ownerKey, value]) => {
+        const session = normalizeLawDrillSessionPayload(value);
+        return session ? [ownerKey, session] : null;
+      })
+      .filter(Boolean),
+  );
+  localStorage.setItem(LAW_DRILL_STORAGE_KEY, JSON.stringify({ owners: safeOwners }));
+  return { owners: safeOwners };
+}
+
 function persistLawDrillSession() {
   if (!lawDrillState) return;
   const payload = {
@@ -888,11 +944,35 @@ function persistLawDrillSession() {
     lawDrillState: serializeLawDrillState(),
     timestamp: Date.now(),
   };
-  localStorage.setItem(LAW_DRILL_STORAGE_KEY, JSON.stringify(payload));
+  const ownerKey = getSetupPointsOwnerKey();
+  const state = readLawDrillSessionState();
+  state.owners[ownerKey] = payload;
+  delete state.owners.legacy;
+  writeLawDrillSessionState(state);
+  if (backendClient.isAuthenticated()) {
+    backendClient.syncSession(payload);
+  }
 }
 
 function clearLawDrillSession() {
+  const ownerKey = getSetupPointsOwnerKey();
+  const state = readLawDrillSessionState();
+  if (state.owners && Object.prototype.hasOwnProperty.call(state.owners, ownerKey)) {
+    delete state.owners[ownerKey];
+    writeLawDrillSessionState(state);
+    return;
+  }
   localStorage.removeItem(LAW_DRILL_STORAGE_KEY);
+}
+
+function resetLawDrillRuntimeState() {
+  lawDrillState = null;
+  active = [];
+  current = 0;
+  userAnswers = {};
+  currentStreak = 0;
+  answeredCurrent = false;
+  inDetailedReview = false;
 }
 
 function updateLawDrillCurrentLevelScore() {
@@ -1552,31 +1632,409 @@ async function startLawDrillSession({ resumeState = null } = {}) {
   persistLawDrillSession();
 }
 
-function getSavedLawDrillSession() {
+async function getSavedLawDrillSession() {
   try {
-    const raw = localStorage.getItem(LAW_DRILL_STORAGE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw);
-    if (!saved || typeof saved !== "object") return null;
-    return saved;
+    const ownerKey = getSetupPointsOwnerKey();
+    const state = readLawDrillSessionState();
+    const ownerSession = normalizeLawDrillSessionPayload(state.owners?.[ownerKey]);
+    const legacySession = normalizeLawDrillSessionPayload(state.owners?.legacy);
+    let remoteSession = null;
+
+    if (currentUser && backendClient.isAuthenticated()) {
+      const response = await backendClient.fetchSyncedHistory("study", SETUP_POINTS_HISTORY_SYNC_LIMIT);
+      const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
+      const remoteCandidate = remoteSessions.find((session) => {
+        const mode = String(session?.mode || "").trim().toLowerCase();
+        const studyType = String(session?.studyType || "").trim().toLowerCase();
+        return mode === "study" && (studyType === "law" || Boolean(session?.lawDrillState));
+      });
+      remoteSession = normalizeLawDrillSessionPayload(remoteCandidate);
+    }
+
+    const candidates = [ownerSession, remoteSession, legacySession].filter(Boolean);
+    const bestSession =
+      candidates.reduce((best, candidate) => preferLawDrillSession(best, candidate)) || null;
+    if (!bestSession) return null;
+
+    if (currentUser?.id) {
+      const nextState = readLawDrillSessionState();
+      nextState.owners[ownerKey] = bestSession;
+      delete nextState.owners.legacy;
+      writeLawDrillSessionState(nextState);
+    }
+
+    return bestSession;
   } catch {
     return null;
   }
+}
+
+async function openSavedLawDrillSession() {
+  const savedSession = await getSavedLawDrillSession();
+  await startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+}
+
+function getLawDrillRestoreRank(session = null) {
+  const normalized = normalizeLawDrillSessionPayload(session?.lawDrillState || session);
+  if (!normalized?.lawDrillState) {
+    return { progress: -1, timestamp: 0 };
+  }
+  const progress = Math.max(0, Math.round(Number(normalized.lawDrillState.currentLevelIndex) || 0));
+  const timestamp = new Date(session?.timestamp || session?.createdAt || normalized.timestamp || 0).getTime();
+  return {
+    progress,
+    timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+  };
+}
+
+function preferLawDrillSession(candidateA = null, candidateB = null) {
+  const a = normalizeLawDrillSessionPayload(candidateA?.lawDrillState || candidateA);
+  const b = normalizeLawDrillSessionPayload(candidateB?.lawDrillState || candidateB);
+  if (!a && !b) return null;
+  if (a && !b) return candidateA;
+  if (!a && b) return candidateB;
+
+  const rankA = getLawDrillRestoreRank(candidateA);
+  const rankB = getLawDrillRestoreRank(candidateB);
+  if (rankA.progress !== rankB.progress) {
+    return rankA.progress > rankB.progress ? candidateA : candidateB;
+  }
+  if (rankA.timestamp !== rankB.timestamp) {
+    return rankA.timestamp > rankB.timestamp ? candidateA : candidateB;
+  }
+  return candidateA;
 }
 // ==============================
 // WEAK PRACTICE TRACKER (Persistent)
 // ==============================
 
 let weakTracker = JSON.parse(localStorage.getItem("weakTracker")) || {};
+const PERFORMANCE_STATE_SYNC_LIMIT = 5000;
+let weakTrackerSyncHandle = null;
+let weakTrackerSyncInFlight = null;
+let performanceStateHydrationInFlight = null;
 
-function saveWeakTracker() {
+function saveWeakTracker({ sync = true } = {}) {
   localStorage.setItem("weakTracker", JSON.stringify(weakTracker));
+  if (sync) {
+    scheduleWeakTrackerSync();
+  }
 }
 
 let bestStreak = parseInt(localStorage.getItem("quizBestStreak")) || 0;
 
 let sessionHistory =
   JSON.parse(localStorage.getItem("quizSessionHistory")) || [];
+
+const DASHBOARD_TREND_LIMIT = 12;
+const SESSION_HISTORY_SYNC_LIMIT = 5000;
+const DASHBOARD_TREND_SCOPE_COPY = {
+  session: "Recent sessions",
+  daily: "Past 12 days",
+  weekly: "Past 12 weeks",
+  monthly: "Past 12 months",
+  yearly: "Past 12 years",
+};
+let dashboardTrendState = {
+  scope: "session",
+};
+let sessionHistorySyncInFlight = null;
+
+function getTrendDateValue(rawValue = "") {
+  const parsed = parseMenuSessionDate(rawValue);
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+}
+
+function getTrendDateKey(date = new Date()) {
+  const safe = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(safe.getTime())) return "";
+  const year = safe.getFullYear();
+  const month = String(safe.getMonth() + 1).padStart(2, "0");
+  const day = String(safe.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTrendWeekStart(date = new Date()) {
+  const safe = new Date(date);
+  safe.setHours(0, 0, 0, 0);
+  safe.setDate(safe.getDate() - safe.getDay());
+  return safe;
+}
+
+function getTrendMonthStart(date = new Date()) {
+  const safe = new Date(date);
+  safe.setHours(0, 0, 0, 0);
+  safe.setDate(1);
+  return safe;
+}
+
+function getTrendYearStart(date = new Date()) {
+  const safe = new Date(date);
+  safe.setHours(0, 0, 0, 0);
+  safe.setMonth(0, 1);
+  return safe;
+}
+
+function normalizeSessionHistoryEntry(entry = {}) {
+  const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+  const total = Math.max(0, Math.round(Number(entry?.total) || 0));
+  const percentValue = Number(entry?.percent);
+  const percent = Number.isFinite(percentValue)
+    ? Math.max(0, Math.min(100, Math.round(percentValue)))
+    : total > 0
+      ? Math.max(0, Math.min(100, Math.round((score / total) * 100)))
+      : 0;
+  const mode = String(entry?.mode || "Session").trim() || "Session";
+  const timestamp = String(entry?.timestamp || entry?.createdAt || entry?.date || "").trim();
+  const date = String(entry?.date || entry?.timestamp || entry?.createdAt || "").trim();
+  return {
+    id: String(entry?.id || "").trim(),
+    mode,
+    score,
+    total,
+    percent,
+    timestamp,
+    date,
+    duration: entry?.duration === null || entry?.duration === undefined ? null : String(entry.duration),
+  };
+}
+
+function getSessionHistoryEntryKey(entry = {}) {
+  const id = String(entry?.id || "").trim();
+  if (id) return `id:${id}`;
+
+  const normalized = normalizeSessionHistoryEntry(entry);
+  return [
+    "legacy",
+    normalized.mode.toLowerCase(),
+    normalized.score,
+    normalized.total,
+    normalized.percent,
+    normalized.date,
+    normalized.duration || "",
+  ].join("|");
+}
+
+function sortSessionHistoryEntries(entries = []) {
+  return [...entries].sort((a, b) => {
+    const timeA = getTrendDateValue(a?.timestamp || a?.createdAt || a?.date)?.getTime() || 0;
+    const timeB = getTrendDateValue(b?.timestamp || b?.createdAt || b?.date)?.getTime() || 0;
+    if (timeB !== timeA) return timeB - timeA;
+    const scoreDiff = (Number(b?.score) || 0) - (Number(a?.score) || 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return String(b?.id || "").localeCompare(String(a?.id || ""));
+  });
+}
+
+function mergeSessionHistoryEntries(...groups) {
+  const merged = new Map();
+  groups.flat().forEach((entry) => {
+    const normalized = normalizeSessionHistoryEntry(entry);
+    const key = getSessionHistoryEntryKey(normalized);
+    if (!key) return;
+    if (!merged.has(key)) {
+      merged.set(key, normalized);
+    }
+  });
+  return sortSessionHistoryEntries([...merged.values()]);
+}
+
+function getTrendScopeCopy(scope = "session") {
+  return DASHBOARD_TREND_SCOPE_COPY[String(scope || "session").trim().toLowerCase()] ||
+    DASHBOARD_TREND_SCOPE_COPY.session;
+}
+
+function buildTrendBuckets(scope = "session", limit = DASHBOARD_TREND_LIMIT) {
+  const safeLimit = Math.max(1, Math.round(Number(limit) || DASHBOARD_TREND_LIMIT));
+  const safeScope = String(scope || "session").trim().toLowerCase();
+
+  if (safeScope === "daily") {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (safeLimit - 1));
+    return Array.from({ length: safeLimit }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      return {
+        key: getTrendDateKey(date),
+        label: new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric" }).format(date),
+        score: 0,
+        total: 0,
+        count: 0,
+      };
+    });
+  }
+
+  if (safeScope === "weekly") {
+    const start = getTrendWeekStart();
+    start.setDate(start.getDate() - (safeLimit - 1) * 7);
+    return Array.from({ length: safeLimit }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index * 7);
+      return {
+        key: getTrendDateKey(date),
+        label: new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric" }).format(date),
+        score: 0,
+        total: 0,
+        count: 0,
+      };
+    });
+  }
+
+  if (safeScope === "monthly") {
+    const start = getTrendMonthStart();
+    start.setMonth(start.getMonth() - (safeLimit - 1));
+    return Array.from({ length: safeLimit }, (_, index) => {
+      const date = new Date(start);
+      date.setMonth(start.getMonth() + index, 1);
+      return {
+        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+        label: new Intl.DateTimeFormat("en-US", { month: "short" }).format(date),
+        title: new Intl.DateTimeFormat("en-US", { month: "short" }).format(date),
+        score: 0,
+        total: 0,
+        count: 0,
+      };
+    });
+  }
+
+  if (safeScope === "yearly") {
+    const start = getTrendYearStart();
+    start.setFullYear(start.getFullYear() - (safeLimit - 1));
+    return Array.from({ length: safeLimit }, (_, index) => {
+      const date = new Date(start);
+      date.setFullYear(start.getFullYear() + index, 0, 1);
+      return {
+        key: String(date.getFullYear()),
+        label: String(date.getFullYear()),
+        score: 0,
+        total: 0,
+        count: 0,
+      };
+    });
+  }
+
+  return Array.from({ length: safeLimit }, (_, index) => ({
+    key: String(index + 1),
+    label: String(index + 1),
+    score: 0,
+    total: 0,
+    count: 0,
+  }));
+}
+
+function buildTrendSeries(scope = "session", entries = [], limit = DASHBOARD_TREND_LIMIT) {
+  const safeScope = String(scope || "session").trim().toLowerCase();
+  const safeLimit = Math.max(1, Math.round(Number(limit) || DASHBOARD_TREND_LIMIT));
+  const normalizedEntries = sortSessionHistoryEntries(Array.isArray(entries) ? entries : []);
+
+  if (safeScope === "session") {
+    const visible = normalizedEntries.slice(0, safeLimit).reverse();
+    const padCount = Math.max(0, safeLimit - visible.length);
+    const padded = Array.from({ length: padCount }, (_, index) => ({
+      key: `pad-${index}`,
+      label: String(index + 1),
+      score: 0,
+      total: 0,
+      count: 0,
+      percent: 0,
+    }));
+    const series = visible.map((entry, index) => {
+      const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+      const total = Math.max(0, Math.round(Number(entry?.total) || 0));
+      const percent = Math.max(0, Math.min(100, Math.round(Number(entry?.percent) || (total > 0 ? (score / total) * 100 : 0))));
+      return {
+        key: getSessionHistoryEntryKey(entry) || `session-${index}`,
+        label: String(padCount + index + 1),
+        score,
+        total,
+        count: 1,
+        percent,
+      };
+    });
+    return [...padded, ...series].slice(-safeLimit);
+  }
+
+  const buckets = buildTrendBuckets(safeScope, safeLimit);
+  const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+
+  normalizedEntries.forEach((entry) => {
+    const date = getTrendDateValue(entry.timestamp || entry.createdAt || entry.date);
+    if (!date) return;
+
+    let key = "";
+    if (safeScope === "daily") {
+      key = getTrendDateKey(date);
+    } else if (safeScope === "weekly") {
+      key = getTrendDateKey(getTrendWeekStart(date));
+    } else if (safeScope === "monthly") {
+      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    } else if (safeScope === "yearly") {
+      key = String(date.getFullYear());
+    }
+
+    const bucket = bucketMap.get(key);
+    if (!bucket) return;
+
+    bucket.score += Math.max(0, Math.round(Number(entry.score) || 0));
+    bucket.total += Math.max(0, Math.round(Number(entry.total) || 0));
+    bucket.count += 1;
+  });
+
+  return buckets.map((bucket, index) => {
+    const percent =
+      bucket.total > 0
+        ? Math.max(0, Math.min(100, Math.round((bucket.score / bucket.total) * 100)))
+        : 0;
+    return {
+      key: bucket.key,
+      label: bucket.label || String(index + 1),
+      score: bucket.score,
+      total: bucket.total,
+      count: bucket.count,
+      percent,
+    };
+  });
+}
+
+async function syncSessionHistoryFromBackend({ force = false } = {}) {
+  if (sessionHistorySyncInFlight) return sessionHistorySyncInFlight;
+
+  const task = (async () => {
+    let remoteEntries = [];
+    try {
+      const response = await backendClient.fetchSyncedHistory("", SESSION_HISTORY_SYNC_LIMIT);
+      remoteEntries = Array.isArray(response?.sessions)
+        ? response.sessions.map((entry) => normalizeSessionHistoryEntry({
+            ...entry,
+            timestamp: entry?.timestamp || entry?.createdAt || entry?.date || "",
+          }))
+        : [];
+    } catch {
+      remoteEntries = [];
+    }
+
+    const merged = force
+      ? mergeSessionHistoryEntries([], sessionHistory, remoteEntries)
+      : mergeSessionHistoryEntries(sessionHistory, remoteEntries);
+
+    sessionHistory = merged;
+    localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
+
+    if (document.getElementById("dashboard")?.classList.contains("screen-active")) {
+      renderDashboardValues(getLocalDashboardSnapshot());
+    }
+
+    return sessionHistory;
+  })();
+
+  sessionHistorySyncInFlight = task;
+  try {
+    return await task;
+  } finally {
+    sessionHistorySyncInFlight = null;
+  }
+}
 
 function byQuestionIdAscending(a, b) {
   return Number(a?.id || 0) - Number(b?.id || 0);
@@ -2000,6 +2458,199 @@ function reconcileLocalQuestionStats() {
 }
 
 reconcileLocalQuestionStats();
+
+function normalizePerformanceRowMap(rawRows = {}, { allowEmptyKeys = false } = {}) {
+  const rows = {};
+  Object.entries(rawRows || {}).forEach(([rawKey, value]) => {
+    const key = allowEmptyKeys ? String(rawKey || "").trim() : normalizeQuestionIdKey(rawKey);
+    if (!key) return;
+    const attempts = Math.max(0, Math.round(Number(value?.attempts) || 0));
+    const correct = Math.max(0, Math.min(attempts, Math.round(Number(value?.correct) || 0)));
+    if (attempts <= 0 && correct <= 0) return;
+    rows[key] = { attempts, correct };
+  });
+  return rows;
+}
+
+function normalizeWeakTrackerMap(rawRows = {}) {
+  const rows = {};
+  Object.entries(rawRows || {}).forEach(([rawKey, value]) => {
+    const key = normalizeQuestionIdKey(rawKey);
+    if (!key) return;
+    rows[key] = {
+      roundsPassed: Math.max(0, Math.round(Number(value?.roundsPassed) || 0)),
+    };
+  });
+  return rows;
+}
+
+function buildPerformanceStateFromEvents(events = []) {
+  const nextPerformanceData = {};
+  const nextCategoryPerformance = {};
+  const nextRotationPerformance = {};
+
+  (Array.isArray(events) ? events : []).forEach((event) => {
+    const questionId = normalizeQuestionIdKey(event?.questionId);
+    if (!questionId) return;
+
+    const isCorrect = Boolean(event?.isCorrect);
+    const category = String(event?.category || "General").trim() || "General";
+    const rotation = String(event?.rotation || "").trim();
+
+    if (!nextPerformanceData[questionId]) {
+      nextPerformanceData[questionId] = { attempts: 0, correct: 0 };
+    }
+    nextPerformanceData[questionId].attempts += 1;
+    if (isCorrect) {
+      nextPerformanceData[questionId].correct += 1;
+    }
+
+    if (!nextCategoryPerformance[category]) {
+      nextCategoryPerformance[category] = { attempts: 0, correct: 0 };
+    }
+    nextCategoryPerformance[category].attempts += 1;
+    if (isCorrect) {
+      nextCategoryPerformance[category].correct += 1;
+    }
+
+    if (rotation) {
+      if (!nextRotationPerformance[rotation]) {
+        nextRotationPerformance[rotation] = { attempts: 0, correct: 0 };
+      }
+      nextRotationPerformance[rotation].attempts += 1;
+      if (isCorrect) {
+        nextRotationPerformance[rotation].correct += 1;
+      }
+    }
+  });
+
+  const derivedWeakTracker = {};
+  Object.entries(nextPerformanceData).forEach(([questionId, row]) => {
+    const attempts = Math.max(0, Math.round(Number(row?.attempts) || 0));
+    const correct = Math.max(0, Math.min(attempts, Math.round(Number(row?.correct) || 0)));
+    const accuracy = attempts <= 0 ? 100 : Math.round((correct / attempts) * 100);
+    if (attempts > 0 && accuracy < 60) {
+      derivedWeakTracker[questionId] = { roundsPassed: 0 };
+    }
+  });
+
+  return {
+    performanceData: nextPerformanceData,
+    categoryPerformance: nextCategoryPerformance,
+    rotationPerformance: nextRotationPerformance,
+    weakTracker: derivedWeakTracker,
+  };
+}
+
+function mergePerformanceRows(localRows = {}, remoteRows = {}, { allowEmptyKeys = false } = {}) {
+  const merged = {};
+  const local = normalizePerformanceRowMap(localRows, { allowEmptyKeys });
+  const remote = normalizePerformanceRowMap(remoteRows, { allowEmptyKeys });
+  const keys = new Set([...Object.keys(local), ...Object.keys(remote)]);
+
+  keys.forEach((key) => {
+    const localRow = local[key] || { attempts: 0, correct: 0 };
+    const remoteRow = remote[key] || { attempts: 0, correct: 0 };
+    const attempts = Math.max(localRow.attempts, remoteRow.attempts);
+    const correct = Math.max(localRow.correct, remoteRow.correct);
+    if (attempts <= 0 && correct <= 0) return;
+    merged[key] = {
+      attempts,
+      correct: Math.min(attempts, correct),
+    };
+  });
+
+  return merged;
+}
+
+function scheduleWeakTrackerSync(delayMs = 600) {
+  if (weakTrackerSyncHandle) {
+    clearTimeout(weakTrackerSyncHandle);
+  }
+  weakTrackerSyncHandle = setTimeout(() => {
+    weakTrackerSyncHandle = null;
+    void flushWeakTrackerSync();
+  }, delayMs);
+}
+
+async function flushWeakTrackerSync() {
+  if (weakTrackerSyncInFlight) return weakTrackerSyncInFlight;
+
+  const task = (async () => {
+    try {
+      await backendClient.syncWeakTracker(weakTracker);
+    } catch {
+      // Keep local weak tracker even when sync is unavailable.
+    }
+  })();
+
+  weakTrackerSyncInFlight = task;
+  try {
+    return await task;
+  } finally {
+    weakTrackerSyncInFlight = null;
+  }
+}
+
+async function hydratePerformanceStateFromBackend({ force = false } = {}) {
+  if (performanceStateHydrationInFlight) return performanceStateHydrationInFlight;
+
+  const task = (async () => {
+    let remote = null;
+    try {
+      remote = await backendClient.fetchSyncedPerformanceState(PERFORMANCE_STATE_SYNC_LIMIT);
+    } catch {
+      remote = null;
+    }
+
+    if (!remote) return null;
+
+    const built = buildPerformanceStateFromEvents(Array.isArray(remote.events) ? remote.events : []);
+    const nextPerformanceData = mergePerformanceRows(performanceData, built.performanceData);
+    const nextCategoryPerformance = mergePerformanceRows(categoryPerformance, built.categoryPerformance, {
+      allowEmptyKeys: true,
+    });
+    const nextRotationPerformance = mergePerformanceRows(rotationPerformance, built.rotationPerformance, {
+      allowEmptyKeys: true,
+    });
+    const remoteWeakTracker = normalizeWeakTrackerMap(remote.weakTracker || {});
+    const derivedWeakTracker = normalizeWeakTrackerMap(built.weakTracker || {});
+    const nextWeakTracker =
+      Object.keys(remoteWeakTracker).length > 0
+        ? remoteWeakTracker
+        : Object.keys(derivedWeakTracker).length > 0
+          ? derivedWeakTracker
+          : normalizeWeakTrackerMap(weakTracker);
+
+    performanceData = nextPerformanceData;
+    categoryPerformance = nextCategoryPerformance;
+    rotationPerformance = nextRotationPerformance;
+    weakTracker = nextWeakTracker;
+
+    localStorage.setItem("quizPerformance", JSON.stringify(performanceData));
+    localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
+    localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
+    saveWeakTracker({ sync: false });
+
+    if (document.getElementById("dashboard")?.classList.contains("screen-active")) {
+      renderDashboardValues(getLocalDashboardSnapshot());
+    }
+
+    return {
+      performanceData,
+      categoryPerformance,
+      rotationPerformance,
+      weakTracker,
+    };
+  })();
+
+  performanceStateHydrationInFlight = task;
+  try {
+    return await task;
+  } finally {
+    performanceStateHydrationInFlight = null;
+  }
+}
 
 function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (!performanceData[questionId]) {
@@ -2796,6 +3447,7 @@ const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
 const POINTS_STORAGE_KEY = "quizPointsV1";
 const POINTS_PENDING_STORAGE_KEY = "quizPointsPendingV1";
 const SETUP_POINTS_STORAGE_KEY = "quizSetupPointsV1";
+const SETUP_POINTS_HISTORY_SYNC_LIMIT = 5000;
 const APP_UPDATE_FEED_URL = "https://ajixpharmacy.online/app-update.json";
 const APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY = "quizAppUpdateDismissedVersionV1";
 const APP_UPDATE_CHECK_COOLDOWN_MS = 2 * 60 * 1000;
@@ -3104,7 +3756,6 @@ function syncCommunityChatComposerState() {
     communityChatScreenEl.classList.toggle("is-recording-voice", isRecording);
     communityChatScreenEl.classList.toggle("is-emoji-open", Boolean(communityState.emojiPickerOpen));
     communityChatScreenEl.classList.toggle("is-compose-text", hasText);
-    communityChatScreenEl.classList.toggle("is-notice-thread", isNoticeThread);
     communityChatScreenEl.classList.toggle("is-chat-readonly", isReadOnly && !isNoticeThread);
   }
   if (communityChatComposerEl) {
@@ -4474,6 +5125,8 @@ let tourStepIndex = 0;
 let dailyHistoryOpen = false;
 let pointsSyncHandle = null;
 let pointsSyncInFlight = false;
+let setupPointsRestoreInFlight = null;
+let setupPointsRestoreCompletedForOwnerKey = "";
 let appUpdateResumeListenersRegistered = false;
 const leaderboardState = {
   open: false,
@@ -4824,6 +5477,79 @@ function addPointsToCurrentSetupBucket(delta = 1) {
   writeCurrentSetupPoints(current);
 }
 
+function getSetupPointsBucketFromSessionMode(mode = "") {
+  const safeMode = String(mode || "").trim().toLowerCase();
+  if (!safeMode) return "";
+  if (safeMode.startsWith("law drill") || safeMode.includes("law quiz")) return "law";
+  if (safeMode.startsWith("daily")) return "daily";
+  if (safeMode.startsWith("rapid")) return "rapid";
+  if (safeMode.startsWith("sudden")) return "sudden";
+  if (safeMode.startsWith("clinical")) return "clinical";
+  if (safeMode.startsWith("smart") || safeMode.startsWith("exam")) return "exam";
+  if (safeMode.startsWith("study") || safeMode.includes("topic quiz")) return "study";
+  return "";
+}
+
+function summarizeSetupPointsFromSessions(sessions = []) {
+  const totals = createEmptySetupPoints();
+  (Array.isArray(sessions) ? sessions : []).forEach((session) => {
+    const bucket = getSetupPointsBucketFromSessionMode(session?.mode || "");
+    if (!bucket) return;
+    const score = Math.max(0, Math.round(Number(session?.score) || 0));
+    totals[bucket] += score;
+  });
+  return sanitizeSetupPoints(totals);
+}
+
+async function restoreSetupPointsFromSyncedHistory({ force = false } = {}) {
+  if (!currentUser || !backendClient.isAuthenticated()) return null;
+  if (setupPointsRestoreInFlight) return setupPointsRestoreInFlight;
+
+  const ownerKey = getSetupPointsOwnerKey();
+  if (!force && setupPointsRestoreCompletedForOwnerKey === ownerKey) {
+    return sanitizeSetupPoints(readSetupPointsState().owners?.[ownerKey] || createEmptySetupPoints());
+  }
+  const task = (async () => {
+    const state = readSetupPointsState();
+    const current = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+    const next = { ...current };
+
+    let remoteDerived = null;
+    try {
+      const response = await backendClient.fetchSyncedHistory("", SETUP_POINTS_HISTORY_SYNC_LIMIT);
+      remoteDerived = summarizeSetupPointsFromSessions(response?.sessions || []);
+    } catch {
+      remoteDerived = null;
+    }
+
+    if (remoteDerived) {
+      Object.keys(next).forEach((key) => {
+        next[key] = Math.max(next[key], remoteDerived[key] || 0);
+      });
+    } else {
+      const localDerived = summarizeSetupPointsFromSessions(sessionHistory);
+      Object.keys(next).forEach((key) => {
+        next[key] = Math.max(next[key], localDerived[key] || 0);
+      });
+    }
+
+    const changed = force || Object.keys(next).some((key) => next[key] !== current[key]);
+    if (changed) {
+      writeCurrentSetupPoints(next);
+      renderPoints();
+    }
+    setupPointsRestoreCompletedForOwnerKey = ownerKey;
+    return next;
+  })();
+
+  setupPointsRestoreInFlight = task;
+  try {
+    return await task;
+  } finally {
+    setupPointsRestoreInFlight = null;
+  }
+}
+
 function shouldCountCorrectAnswerTowardLeaderboard() {
   return isLawStudyMode() || !(mode === "study" || isTopicQuizMode());
 }
@@ -4926,8 +5652,18 @@ function getMenuWeeklyPercent() {
   return Math.max(0, Math.min(100, Math.round((totalScore / totalQuestions) * 100)));
 }
 
+function getMenuAllTimePoints() {
+  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
+  const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
+  const cachedAllTimePoints = Math.max(
+    0,
+    Math.round(Number(leaderboardState?.cache?.alltime?.yourEntry?.points) || 0),
+  );
+  return Math.max(localPoints, remotePoints, cachedAllTimePoints);
+}
+
 function renderMenuDashboardStats() {
-  const points = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
+  const points = getMenuAllTimePoints();
   const dailyStreak = Math.max(
     0,
     Math.round(
@@ -4981,7 +5717,7 @@ function renderSetupPoints() {
 
 function renderPoints() {
   if (!menuPointsValueEl) return;
-  menuPointsValueEl.textContent = String(readStoredPoints());
+  menuPointsValueEl.textContent = String(getMenuAllTimePoints());
   renderMenuDashboardStats();
   renderSetupPoints();
 }
@@ -4990,6 +5726,39 @@ function getCurrentSessionPoints() {
   if (!Array.isArray(active) || active.length === 0) return 0;
   if (!mode) return 0;
   return Math.max(0, calculateScore());
+}
+
+function getCurrentQuizTilePoints() {
+  const points = readCurrentSetupPoints();
+  if (isLawStudyMode() || (mode === "exam" && String(examVariant || "").trim().toLowerCase() === "law")) {
+    return getLawDrillCumulativeScore();
+  }
+  if (mode === "daily") return Math.max(0, Math.round(Number(points.daily) || 0));
+  if (mode === "smart") return Math.max(0, Math.round(Number(points.exam) || 0));
+  if (mode === "exam") {
+    const variant = String(examVariant || "normal").trim().toLowerCase();
+    if (variant === "rapid") return Math.max(0, Math.round(Number(points.rapid) || 0));
+    if (variant === "sudden") return Math.max(0, Math.round(Number(points.sudden) || 0));
+    if (variant === "clinical") return Math.max(0, Math.round(Number(points.clinical) || 0));
+    return Math.max(0, Math.round(Number(points.exam) || 0));
+  }
+  if (mode === "study" || mode === "topic") {
+    return Math.max(0, Math.round(Number(points.study) || 0));
+  }
+  return 0;
+}
+
+function getHeaderPointsBadgeMarkup(points = 0) {
+  const safePoints = Math.max(0, Math.round(Number(points) || 0));
+  return `
+    <span class="header-inline-points-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M4 8.25 7.5 12l3-5.5 1.5 2.5 1.5-2.5 3 5.5L20 8.25V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.25Z"></path>
+        <path d="M7 17.5h10"></path>
+      </svg>
+    </span>
+    <span class="header-inline-points-value">${safePoints}</span>
+  `;
 }
 
 function renderSessionPointsDisplay() {
@@ -5014,6 +5783,7 @@ function renderSessionPointsDisplay() {
 function resetPointsState() {
   writeStoredPoints(0);
   writePendingPoints(0);
+  setupPointsRestoreCompletedForOwnerKey = "";
   renderPoints();
 }
 
@@ -5024,6 +5794,7 @@ function syncPointsFromCurrentUser() {
   writeStoredPoints(Math.max(localPoints, remotePoints + pending));
   leaderboardState.cache = Object.create(null);
   renderPoints();
+  void restoreSetupPointsFromSyncedHistory();
 }
 
 async function flushPendingPoints() {
@@ -7138,7 +7909,6 @@ async function syncCommunityNativeCallState() {
     ? communityState.activeCall
     : null;
   if (!activeCall) {
-    await runCommunityNativeCallCommand("endCall", {}, { silent: true });
     return;
   }
   const screenMode = String(communityState.callScreenMode || "").trim().toLowerCase();
@@ -17202,9 +17972,6 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
   communityState.messageMetaSignature = getCommunityMessageMetaSignature(visibleMessages);
   const noticePartner = communityState.activeConversationPartner || {};
   const isNoticeThread = Boolean(noticePartner?.isNotice);
-  const isWarningNotice =
-    isNoticeThread && String(noticePartner?.noticeOriginType || "").trim().toLowerCase() === "report";
-  const noticeTitle = String(noticePartner?.noticeTitle || noticePartner?.name || "Admin Notice").trim() || "Admin Notice";
   communityChatMessagesEl.innerHTML = visibleMessages
     .map((message, index) => {
       const previousMessage = visibleMessages[index - 1] || null;
@@ -17234,12 +18001,7 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
       const imageOnly = attachmentKind === "image" && !String(messageText || "").trim();
       const audioOnly = hasAudioAttachment && !String(messageText || "").trim();
       const senderMarkup = showSender
-        ? isNoticeThread
-          ? `
-              ${isWarningNotice ? '<div class="community-message-notice-label">Warning</div>' : ""}
-              <div class="community-message-sender is-notice-title">${escapeHtml(truncateWithEllipsis(noticeTitle, 26))}</div>
-            `
-          : `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || "Member"), 18))}</div>`
+        ? `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || noticePartner?.noticeSenderName || noticePartner?.name || "Member"), 18))}</div>`
         : "";
       return `
         ${startsDay ? renderCommunityDateDivider(formatCommunityChatDateLabel(message.createdAt || "")) : ""}
@@ -25453,7 +26215,7 @@ if (appUpdateModalEl) {
 if (menuPointsBtn) {
   menuPointsBtn.addEventListener("click", () => {
     closeMenuUserHub();
-    openLeaderboardModal("daily");
+    openLeaderboardModal("alltime");
   });
 }
 
@@ -25475,6 +26237,15 @@ leaderboardTabEls.forEach((tab) => {
   tab.addEventListener("click", () => {
     const scope = String(tab.dataset.leaderboardScope || "daily").trim().toLowerCase();
     void loadLeaderboard(scope);
+  });
+});
+
+Array.from(document.querySelectorAll("[data-trend-scope]")).forEach((button) => {
+  button.addEventListener("click", () => {
+    const scope = String(button.dataset.trendScope || "session").trim().toLowerCase();
+    setDashboardTrendScope(scope);
+    renderDashboardTrend();
+    void syncSessionHistoryFromBackend({ force: true });
   });
 });
 
@@ -27236,6 +28007,8 @@ function renderAuthState() {
     refreshProfilePhotoDeleteVisibility();
     syncPointsFromCurrentUser();
     renderDailyQuizUi();
+    void syncSessionHistoryFromBackend();
+    void hydratePerformanceStateFromBackend();
     if (readPendingPoints() > 0) {
       schedulePendingPointsSync(120);
     }
@@ -27254,6 +28027,8 @@ function renderAuthState() {
   if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = "Tap to sign in";
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
+  void syncSessionHistoryFromBackend();
+  void hydratePerformanceStateFromBackend();
   renderPoints();
   renderDailyQuizUi();
   void syncOneSignalUserSession();
@@ -27968,6 +28743,7 @@ if (logoutBtn) {
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
+    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
     renderAuthState();
     closeAuthModal();
@@ -27994,6 +28770,7 @@ if (logoutConfirmBtn) {
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
+    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
     renderAuthState();
     closeAuthModal();
@@ -28289,6 +29066,7 @@ async function deactivateProfileAccount() {
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
+    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
@@ -28311,6 +29089,7 @@ async function deleteProfileAccount() {
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
+    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
@@ -28837,8 +29616,7 @@ function startMenuDrill(variant = "rapid") {
     return;
   }
   if (drill === "law") {
-    const savedSession = getSavedLawDrillSession();
-    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+    void openSavedLawDrillSession();
     return;
   }
 }
@@ -29189,14 +29967,15 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
   };
 }
 
-function getDashboardTrendEntries(limit = 8) {
-  return (Array.isArray(sessionHistory) ? sessionHistory : [])
-    .slice(0, limit)
-    .reverse()
-    .map((entry) => ({
-      label: String(entry?.mode || "Session"),
-      percent: Math.max(0, Math.min(100, Number(entry?.percent) || 0)),
-    }));
+function setDashboardTrendScope(scope = "session") {
+  const safeScope = String(scope || "session").trim().toLowerCase();
+  dashboardTrendState.scope = safeScope;
+  Array.from(document.querySelectorAll("[data-trend-scope]")).forEach((button) => {
+    const buttonScope = String(button?.dataset?.trendScope || "session").trim().toLowerCase();
+    const isActive = buttonScope === safeScope;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
 }
 
 function renderDashboardTrend() {
@@ -29205,26 +29984,12 @@ function renderDashboardTrend() {
   const copyEl = document.getElementById("dash-trend-copy");
   if (!chartEl || !rateEl || !copyEl) return;
 
-  const entries = getDashboardTrendEntries(8);
-  if (!entries.length) {
-    rateEl.textContent = "0%";
-    copyEl.textContent = "No recent sessions";
-    chartEl.innerHTML = '<div class="dashboard-empty-state">Complete a session to populate the trend.</div>';
-    return;
-  }
-
-  const latest = entries[entries.length - 1]?.percent || 0;
-  rateEl.textContent = `${latest}%`;
-  copyEl.textContent = `Last ${entries.length} sessions`;
-
-  if (entries.length === 1) {
-    chartEl.innerHTML = `
-      <div class="dashboard-single-point">
-        <div class="dashboard-single-point-value">${latest}%</div>
-      </div>
-    `;
-    return;
-  }
+  const scope = String(dashboardTrendState.scope || "session").trim().toLowerCase();
+  setDashboardTrendScope(scope);
+  const entries = buildTrendSeries(scope, Array.isArray(sessionHistory) ? sessionHistory : [], DASHBOARD_TREND_LIMIT);
+  const latest = entries[entries.length - 1] || { percent: 0 };
+  rateEl.textContent = `${Math.max(0, Math.round(Number(latest.percent) || 0))}%`;
+  copyEl.textContent = getTrendScopeCopy(scope);
 
   const width = 520;
   const height = 220;
@@ -29251,13 +30016,18 @@ function renderDashboardTrend() {
     .join("");
   const labels = points
     .map((point, index) => {
-      const shortLabel = index + 1;
-      return `<text x="${point.x}" y="${height - 8}" text-anchor="middle">${shortLabel}</text>`;
+      const showLabel =
+        scope !== "monthly" || index === 0 || index === points.length - 1 || index % 2 === 0;
+      if (!showLabel) return "";
+      const shortLabel = escapeHtml(String(point.label || index + 1));
+      const fullLabel = escapeHtml(String(point.title || point.label || index + 1));
+      const labelClass = scope === "monthly" ? "dashboard-trend-label-monthly" : "";
+      return `<text x="${point.x}" y="${height - 8}" text-anchor="middle" class="${labelClass}" title="${fullLabel}">${shortLabel}</text>`;
     })
     .join("");
 
   chartEl.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Recent score trend">
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(`${getTrendScopeCopy(scope)} score trend`)}">
       <defs>
         <linearGradient id="dashboardTrendFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="rgba(79, 133, 196, 0.34)"></stop>
@@ -29368,6 +30138,8 @@ function showDashboard() {
 
   const localSnapshot = getLocalDashboardSnapshot();
   renderDashboardValues(localSnapshot);
+  void syncSessionHistoryFromBackend();
+  void hydratePerformanceStateFromBackend();
 
   backendClient
     .fetchSyncedDashboard()
@@ -29393,6 +30165,10 @@ function saveSession(mode, score, total, duration = null) {
   const percent = Math.round((score / total) * 100);
 
   const entry = {
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     mode,
     score,
     total,
@@ -29404,11 +30180,6 @@ function saveSession(mode, score, total, duration = null) {
 
   // Add to top
   sessionHistory.unshift(entry);
-
-  // Keep only last 20 sessions
-  if (sessionHistory.length > 20) {
-    sessionHistory.pop();
-  }
 
   localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
 
@@ -29496,7 +30267,7 @@ function renderModeHistory(modeName, containerId) {
   renderEntries(localEntries);
 
   backendClient
-    .fetchSyncedHistory(modeName)
+    .fetchSyncedHistory(modeName, SESSION_HISTORY_SYNC_LIMIT)
     .then((data) => {
       if (!Array.isArray(data?.sessions) || data.sessions.length === 0) return;
 
@@ -29534,10 +30305,14 @@ function clearHistory() {
   sessionHistory = [];
 
   localStorage.removeItem("quizSessionHistory");
+  void backendClient.clearSyncedHistory();
 
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
   renderModeHistory("Smart", "smart-history");
+  if (document.getElementById("dashboard")?.classList.contains("screen-active")) {
+    renderDashboardValues(getLocalDashboardSnapshot());
+  }
 }
 
 function backToMenu() {
@@ -29984,8 +30759,7 @@ function startStudy() {
   const selectedRotation = document.getElementById("study-rotation-select").value;
 
   if (studyType === "law") {
-    const savedSession = getSavedLawDrillSession();
-    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+    void openSavedLawDrillSession();
     return;
   }
 
@@ -30998,7 +31772,7 @@ function renderLawDrillInlineMetaLegacy() {
   const score = Array.isArray(targetLevel?.history)
     ? targetLevel.history.filter((entry) => entry?.isCorrect).length
     : 0;
-  const sessionPoints = getCurrentSessionPoints();
+  const tilePoints = getCurrentQuizTilePoints();
   const parts = [
     `<span class="header-inline-progress">Law Drill</span>`,
     `<span class="header-inline-progress">${reviewLabel} ${targetLevelIndex + 1}/${totalLevels}</span>`,
@@ -31009,7 +31783,7 @@ function renderLawDrillInlineMetaLegacy() {
     parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
   }
 
-  parts.push(`<span class="header-inline-points">🪙 ${sessionPoints}</span>`);
+  parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
   return parts.join("");
 }
 
@@ -31064,7 +31838,7 @@ function renderCompactHeaderMeta() {
   }
 
   const parts = [];
-  const sessionPoints = getCurrentSessionPoints();
+  const tilePoints = getCurrentQuizTilePoints();
   const timerVisible =
     timerEl &&
     !timerEl.classList.contains("hidden") &&
@@ -31072,16 +31846,16 @@ function renderCompactHeaderMeta() {
 
   if (mode === "exam" && examVariant === "sudden") {
     parts.push(`<span class="header-inline-progress">${calculateScore()}</span>`);
-    parts.push(`<span class="header-inline-points">👑 ${sessionPoints}</span>`);
+    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
   } else if (mode === "exam" && examVariant === "rapid") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
-    parts.push(`<span class="header-inline-points">👑 ${sessionPoints}</span>`);
+    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
   } else if (mode === "exam" && examVariant === "clinical") {
     const correctSoFar = calculateScore();
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
     parts.push(`<span class="header-inline-progress">${buildClinicalLivesMarkup(clinicalLives, 3)}</span>`);
     parts.push(`<span class="header-inline-progress">${correctSoFar}</span>`);
-    parts.push(`<span class="header-inline-points">👑 ${sessionPoints}</span>`);
+    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
   } else if (mode === "daily") {
     parts.push(`<span class="header-inline-progress">Daily Quiz</span>`);
   } else if (mode === "topic") {
@@ -31103,7 +31877,7 @@ function renderCompactHeaderMeta() {
     const reviewLabel = lawDrillState?.reviewLevelIndex != null ? "Review" : "Level";
     parts.push(`<span class="header-inline-progress">${reviewLabel} ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS}</span>`);
     parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
-    parts.push(`<span class="header-inline-points">🪙 ${sessionPoints}</span>`);
+    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
   } else if (mode === "exam" || mode === "smart") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
   }
@@ -31405,7 +32179,7 @@ async function finishExam() {
           : finishedVariant === "clinical"
             ? "Clinical Judgement (" + active.length + ")"
             : finishedVariant === "law"
-              ? "Pharmacy Law Quiz (" + active.length + ")"
+              ? "Law Drill (" + active.length + ")"
             : "Exam (" + active.length + ")";
 
   saveSession(
@@ -31450,7 +32224,7 @@ async function finishExam() {
           : finishedVariant === "clinical"
             ? "Clinical Judgement Complete"
             : finishedVariant === "law"
-              ? "Pharmacy Law Quiz Complete"
+              ? "Law Drill Complete"
             : "Exam Complete";
   if (finishedVariant === "sudden") {
     percentEl.innerText = `Score ${finalScore}`;

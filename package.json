@@ -1,6 +1,7 @@
 {
   "name": "quiz",
   "version": "1.0.1",
+  "type": "module",
   "description": "A comprehensive, full-stack pharmacy examination and study platform with real-time performance tracking and admin management.",
   "main": "backendClient.js",
   "scripts": {

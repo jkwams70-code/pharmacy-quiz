@@ -1,8 +1,31 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
 <!doctype html>
+=======
+﻿<!doctype html>
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+﻿<!doctype html>
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<<<<<<< HEAD
+<<<<<<< HEAD
+    <title>Ajix Pharmacy</title>
+    <meta http-equiv="refresh" content="0; url=/www/index.html" />
+    <script>
+      location.replace("/www/index.html");
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to the current Ajix Pharmacy app...</p>
+  </body>
+</html>
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
     <title>Pharmacy Quiz</title>
 
     <link rel="stylesheet" href="styles.css" />
@@ -45,6 +68,166 @@
             End Session
           </button>
         </div>
+      </div>
+    </div>
+    <div id="auth-modal" class="modal hidden">
+      <div class="modal-card auth-modal-card">
+        <div class="modal-title">Account Required</div>
+        <div class="modal-text">
+          Sign in or create an account to access quiz modules and save progress.
+        </div>
+
+        <div class="auth-tabs">
+          <button
+            id="auth-tab-login"
+            type="button"
+            class="auth-tab-btn active"
+          >
+            Sign In
+          </button>
+          <button id="auth-tab-register" type="button" class="auth-tab-btn">
+            Register
+          </button>
+        </div>
+
+        <form id="auth-form" class="auth-form" novalidate>
+          <label id="auth-identifier-wrap" class="auth-field">
+            <span>Username / Email / Contact</span>
+            <input id="auth-identifier" type="text" autocomplete="username" />
+          </label>
+
+          <label id="auth-title-wrap" class="auth-field hidden">
+            <span>Title</span>
+            <select id="auth-title">
+              <option value="">Select title</option>
+              <option value="Mr">Mr</option>
+              <option value="Mrs">Mrs</option>
+              <option value="Ms">Ms</option>
+              <option value="Dr">Dr</option>
+              <option value="Pharm">Pharm</option>
+            </select>
+          </label>
+
+          <label id="auth-first-name-wrap" class="auth-field hidden">
+            <span>First Name</span>
+            <input id="auth-first-name" type="text" autocomplete="given-name" />
+          </label>
+
+          <label id="auth-last-name-wrap" class="auth-field hidden">
+            <span>Surname</span>
+            <input id="auth-last-name" type="text" autocomplete="family-name" />
+          </label>
+
+          <label id="auth-username-wrap" class="auth-field hidden">
+            <span>Username</span>
+            <input id="auth-username" type="text" autocomplete="username" />
+          </label>
+
+          <label id="auth-contact-wrap" class="auth-field hidden">
+            <span>Contact (Email or Phone)</span>
+            <input id="auth-contact" type="text" autocomplete="email" />
+          </label>
+
+          <div id="auth-role-wrap" class="auth-field hidden">
+            <span>Role</span>
+            <div class="auth-inline-options">
+              <label><input type="radio" name="auth-role" value="student" checked /> Student</label>
+              <label><input type="radio" name="auth-role" value="worker" /> Worker</label>
+            </div>
+          </div>
+
+          <label id="auth-prof-type-wrap" class="auth-field hidden">
+            <span>Professional Type</span>
+            <select id="auth-professional-type">
+              <option value="">Select type</option>
+              <option value="Doctor of Pharmacy">Doctor of Pharmacy</option>
+              <option value="Pharmacy Technician">Pharmacy Technician</option>
+              <option value="MCA">MCA</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label id="auth-country-wrap" class="auth-field hidden">
+            <span>Country</span>
+            <select id="auth-country">
+              <option value="">Select country</option>
+              <option value="United States">United States</option>
+              <option value="Canada">Canada</option>
+              <option value="United Kingdom">United Kingdom</option>
+              <option value="Nigeria">Nigeria</option>
+              <option value="Ghana">Ghana</option>
+              <option value="Kenya">Kenya</option>
+              <option value="India">India</option>
+              <option value="Pakistan">Pakistan</option>
+              <option value="Philippines">Philippines</option>
+              <option value="Australia">Australia</option>
+              <option value="South Africa">South Africa</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label id="auth-institution-wrap" class="auth-field hidden">
+            <span>Institution</span>
+            <input id="auth-institution" type="text" autocomplete="organization" />
+          </label>
+
+          <label id="auth-reset-code-wrap" class="auth-field hidden">
+            <span>Reset Code</span>
+            <input id="auth-reset-code" type="text" inputmode="numeric" maxlength="6" />
+          </label>
+
+          <label id="auth-password-wrap" class="auth-field">
+            <span>Password</span>
+            <div class="auth-password-wrap">
+              <input
+                id="auth-password"
+                type="password"
+                autocomplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                id="auth-password-toggle"
+                class="auth-password-toggle"
+                aria-label="Show password"
+                aria-pressed="false"
+              >
+                <span class="icon-eye" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M1 12C2.7 8.4 6.3 6 12 6s9.3 2.4 11 6c-1.7 3.6-5.3 6-11 6S2.7 15.6 1 12z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </span>
+                <span class="icon-eye-off hidden" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M3 3l18 18"></path>
+                    <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4"></path>
+                    <path d="M9.9 5.2A12.3 12.3 0 0 1 12 5c5.7 0 9.3 2.4 11 6a11.8 11.8 0 0 1-4 4.7"></path>
+                    <path d="M6.6 6.6A11.8 11.8 0 0 0 1 12c1.7 3.6 5.3 6 11 6a12.4 12.4 0 0 0 3.4-.5"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </label>
+
+          <div class="auth-link-row">
+            <button id="auth-forgot-link" type="button" class="auth-link-btn">Forgot password?</button>
+            <button id="auth-reset-link" type="button" class="auth-link-btn">Have reset code?</button>
+            <button id="auth-back-login-link" type="button" class="auth-link-btn hidden">Back to sign in</button>
+          </div>
+
+          <div id="auth-reset-code-preview" class="auth-info hidden"></div>
+          <div id="auth-error" class="auth-error hidden"></div>
+
+          <div class="modal-actions">
+            <button id="auth-cancel-btn" type="button" class="modal-btn secondary">
+              Cancel
+            </button>
+            <button id="auth-submit-btn" type="submit" class="modal-btn primary">
+              Sign In
+            </button>
+          </div>
+        </form>
       </div>
     </div>
     <div class="quiz-container">
@@ -92,10 +275,31 @@
               <h2 class="menu-title">QUIZ CONTROL PANEL</h2>
               <div class="menu-subtitle">Select a module to begin</div>
             </div>
-
-            <button id="back-home-btn" class="portal-button menu-portal-btn">
-              &#8962; HOME
-            </button>
+            <div class="menu-profile-stack">
+              <button
+                id="quiz-profile-btn"
+                class="menu-profile-btn hidden"
+                type="button"
+                aria-label="Open profile"
+                title="Profile"
+              >
+                <span class="menu-profile-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="8" r="4"></circle>
+                    <path d="M4 20a8 8 0 0 1 16 0"></path>
+                  </svg>
+                </span>
+              </button>
+              <div id="quiz-auth-user" class="menu-auth-user hidden"></div>
+            </div>
+            <div class="menu-header-actions">
+              <button id="back-home-btn" class="portal-button menu-portal-btn">
+                &#8962; HOME
+              </button>
+              <button id="quiz-logout-btn" class="menu-logout-btn hidden">
+                Logout
+              </button>
+            </div>
           </div>
         </div>
         <!-- ===== END FIXED HEADER AREA ===== -->
@@ -116,7 +320,7 @@
                     <span>Study Mode</span>
                   </div>
                 </div>
-                <div class="tile-arrow">→</div>
+                <div class="tile-arrow">&rarr;</div>
               </div>
 
               <div
@@ -129,7 +333,7 @@
                     <span>Exam Mode</span>
                   </div>
                 </div>
-                <div class="tile-arrow">→</div>
+                <div class="tile-arrow">&rarr;</div>
               </div>
 
               <div class="menu-divider"></div>
@@ -146,8 +350,22 @@
                     <span>Performance Dashboard</span>
                   </div>
                 </div>
-                <div class="tile-arrow">→</div>
+                <div class="tile-arrow">&rarr;</div>
               </div>
+              <button
+                id="open-topic-library-btn"
+                type="button"
+                class="menu-tile topic-library-btn analytics-btn"
+                data-tooltip="Open structured study notes by category and topic."
+              >
+                <div class="tile-content">
+                  <div class="tile-title">
+                    <span class="tile-icon" aria-hidden="true">&#128193;</span>
+                    <span>Topic Library</span>
+                  </div>
+                </div>
+                <div class="tile-arrow">&rarr;</div>
+              </button>
             </div>
           </div>
         </div>
@@ -160,7 +378,7 @@
           <!-- Main Header Row -->
           <div class="study-main-header">
             <h2 class="setup-page-title">&#128218; Study Mode</h2>
-            <button id="study-back-btn" class="study-menu-btn">☰ Menu</button>
+            <button id="study-back-btn" class="study-menu-btn">&#9776; Menu</button>
           </div>
         </div>
 
@@ -210,7 +428,7 @@
           <div class="study-footer">
             <div class="history-dropdown">
               <div class="history-toggle" id="study-history-toggle">
-                Study History ▼
+                Study History &#9660;
               </div>
               <div id="study-history" class="history-content hidden"></div>
             </div>
@@ -225,9 +443,9 @@
 
           <!-- Main Header Row -->
           <div class="study-main-header exam-header-layout">
-            <h2 class="setup-page-title">📝 Exam Mode</h2>
+            <h2 class="setup-page-title">&#128221; Exam Mode</h2>
 
-            <button id="exam-back-btn" class="study-menu-btn">☰ Menu</button>
+            <button id="exam-back-btn" class="study-menu-btn">&#9776; Menu</button>
           </div>
         </div>
 
@@ -264,10 +482,210 @@
           <div class="study-footer">
             <div class="history-dropdown">
               <div class="history-toggle" id="exam-history-toggle">
-                Exam History ▼
+                Exam History &#9660;
               </div>
               <div id="exam-history" class="history-content hidden"></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="topic-library" class="setup-page">
+        <div class="study-fixed-header">
+          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+          <div class="study-main-header exam-header-layout">
+            <h2 class="setup-page-title">&#128193; Topic Library</h2>
+            <div class="topic-screen-actions">
+              <button id="topic-library-back-btn" class="study-menu-btn">
+                &#8592; Back
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="setup-card topic-library-card">
+            <div class="topic-library-controls">
+              <div class="study-control-block">
+                <label for="topic-library-category">Category</label>
+                <select id="topic-library-category" class="setup-select">
+                  <option value="all">All Categories</option>
+                </select>
+              </div>
+              <div class="study-control-block">
+                <label for="topic-library-search">Search Topic</label>
+                <input
+                  id="topic-library-search"
+                  type="search"
+                  class="setup-input"
+                  placeholder="Type a topic name (e.g., hypertension)"
+                />
+              </div>
+            </div>
+            <div id="topic-library-count" class="topic-library-count"></div>
+            <div id="topic-library-list" class="topic-library-list"></div>
+            <div id="topic-library-empty" class="no-data hidden">
+              No topics found for this filter.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="profile-screen" class="setup-page">
+        <div class="study-fixed-header">
+          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+          <div class="study-main-header exam-header-layout">
+            <h2 class="setup-page-title">&#128100; User Profile</h2>
+            <button id="profile-back-btn" class="study-menu-btn">&#8592; Back</button>
+          </div>
+        </div>
+        <div class="study-scroll-content">
+          <div class="setup-card profile-card">
+            <div class="profile-avatar-row">
+              <img id="profile-avatar-preview" alt="Profile picture" class="profile-avatar" />
+              <div class="profile-avatar-controls">
+                <label class="auth-field">
+                  <span>Upload Profile Picture</span>
+                  <input id="profile-photo-file" type="file" accept="image/*" />
+                </label>
+                <label class="auth-field">
+                  <span>Or Image URL</span>
+                  <input id="profile-photo-url" type="url" placeholder="https://..." />
+                </label>
+              </div>
+            </div>
+
+            <div class="profile-grid">
+              <label class="auth-field">
+                <span>Title</span>
+                <select id="profile-title">
+                  <option value="">Select title</option>
+                  <option value="Mr">Mr</option>
+                  <option value="Mrs">Mrs</option>
+                  <option value="Ms">Ms</option>
+                  <option value="Dr">Dr</option>
+                  <option value="Pharm">Pharm</option>
+                </select>
+              </label>
+              <label class="auth-field">
+                <span>First Name</span>
+                <input id="profile-first-name" type="text" />
+              </label>
+              <label class="auth-field">
+                <span>Surname</span>
+                <input id="profile-last-name" type="text" />
+              </label>
+              <label class="auth-field">
+                <span>Username</span>
+                <input id="profile-username" type="text" />
+              </label>
+              <label class="auth-field">
+                <span>Contact</span>
+                <input id="profile-contact" type="text" />
+              </label>
+              <label class="auth-field">
+                <span>Professional Type</span>
+                <select id="profile-professional-type">
+                  <option value="Doctor of Pharmacy">Doctor of Pharmacy</option>
+                  <option value="Pharmacy Technician">Pharmacy Technician</option>
+                  <option value="MCA">MCA</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label class="auth-field">
+                <span>Country</span>
+                <select id="profile-country">
+                  <option value="">Select country</option>
+                  <option value="United States">United States</option>
+                  <option value="Canada">Canada</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="Nigeria">Nigeria</option>
+                  <option value="Ghana">Ghana</option>
+                  <option value="Kenya">Kenya</option>
+                  <option value="India">India</option>
+                  <option value="Pakistan">Pakistan</option>
+                  <option value="Philippines">Philippines</option>
+                  <option value="Australia">Australia</option>
+                  <option value="South Africa">South Africa</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label class="auth-field">
+                <span>Institution</span>
+                <input id="profile-institution" type="text" />
+              </label>
+            </div>
+
+            <div class="auth-field">
+              <span>Role</span>
+              <div class="auth-inline-options">
+                <label><input type="radio" name="profile-role" value="student" /> Student</label>
+                <label><input type="radio" name="profile-role" value="worker" /> Worker</label>
+              </div>
+            </div>
+
+            <div class="modal-actions">
+              <button id="profile-save-btn" type="button" class="modal-btn primary">Save Profile</button>
+            </div>
+
+            <div class="profile-divider"></div>
+
+            <h3 class="menu-section-title">Reset Password</h3>
+            <div class="profile-grid">
+              <label class="auth-field">
+                <span>Current Password</span>
+                <input id="profile-current-password" type="password" autocomplete="current-password" />
+              </label>
+              <label class="auth-field">
+                <span>New Password</span>
+                <input id="profile-new-password" type="password" autocomplete="new-password" />
+              </label>
+            </div>
+            <div class="modal-actions">
+              <button id="profile-change-password-btn" type="button" class="modal-btn primary">Change Password</button>
+            </div>
+
+            <div class="profile-divider"></div>
+
+            <h3 class="menu-section-title">Account Controls</h3>
+            <label class="auth-field">
+              <span>Deactivate for Days (max 30)</span>
+              <input id="profile-deactivate-days" type="number" min="1" max="30" value="30" />
+            </label>
+            <div class="modal-actions profile-danger-actions">
+              <button id="profile-deactivate-btn" type="button" class="modal-btn secondary">Deactivate Account</button>
+              <button id="profile-delete-btn" type="button" class="modal-btn primary">Delete Account</button>
+            </div>
+
+            <div id="profile-feedback" class="auth-info hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="topic-viewer" class="setup-page">
+        <div class="study-fixed-header">
+          <div class="study-identity-bar">PHARMACY EXAMINATION AUTHORITY</div>
+          <div class="study-main-header exam-header-layout">
+            <h2 id="topic-viewer-title" class="setup-page-title">
+              &#128218; Study Note
+            </h2>
+            <div class="topic-screen-actions">
+              <button id="topic-viewer-back-btn" class="study-menu-btn">
+                &#8592; Back
+              </button>
+              <button id="topic-viewer-menu-btn" class="study-menu-btn">
+                &#9776; Menu
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content topic-viewer-scroll">
+          <div class="topic-viewer-frame-wrap">
+            <iframe
+              id="topic-viewer-frame"
+              title="Topic note content"
+              loading="lazy"
+            ></iframe>
           </div>
         </div>
       </div>
@@ -301,9 +719,9 @@
 
             <!-- RIGHT (Icons only) -->
             <div class="header-right">
-              <button id="back-btn-quiz" class="header-btn">←</button>
+              <button id="back-btn-quiz" class="header-btn">&larr;</button>
               <button id="end-study-btn" class="header-btn danger hidden">
-                ✕
+                &#10005;
               </button>
             </div>
           </div>
@@ -324,6 +742,15 @@
             <div id="answers" class="answers-grid-modern"></div>
 
             <div id="explanation" class="explanation-modern hidden"></div>
+            <div id="question-topic-link-wrap" class="question-topic-link-wrap hidden">
+              <a
+                id="topic-link-btn"
+                class="topic-link-btn"
+                href="#"
+              >
+                Review Topic
+              </a>
+            </div>
           </div>
         </div>
         <!-- END CONTENT -->
@@ -369,7 +796,7 @@
                 </div>
               </div>
               <button id="dashboard-close-btn" class="dashboard-close-btn">
-                ✕
+                &#10005;
               </button>
             </div>
 
@@ -433,6 +860,11 @@
       </div>
     </div>
 
-    <script type="module" src="engine.js"></script>
+    <script type="module" src="engine.js?v=20260224-topicmap1"></script>
   </body>
 </html>
+
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)

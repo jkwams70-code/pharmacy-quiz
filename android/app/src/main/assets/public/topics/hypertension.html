@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hypertension - Comprehensive Lecture Note</title>
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16-s3.png?v=20260324-applogo1" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180-s3.png?v=20260324-applogo1" />
+    <style>
+      :root {
+        --bg: #f3f8ff;
+        --surface: #ffffff;
+        --ink: #10233d;
+        --muted: #516174;
+        --line: #d8e3f0;
+        --brand: #0f3f7f;
+        --brand-soft: #e7f0ff;
+        --warn-soft: #fff6e8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 85% 6%, #cfe4ff 0%, transparent 30%),
+          radial-gradient(circle at 8% 24%, #d5f5ff 0%, transparent 22%),
+          var(--bg);
+      }
+      .wrap {
+        width: min(1200px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 16px;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(12, 36, 68, 0.06);
+      }
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #34465e;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+      .toc a:hover {
+        background: #eef4ff;
+        color: #17385f;
+      }
+      .content { padding: 0 0 18px; }
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fbfdff 0%, #f0f6ff 62%, #ebf9f6 100%);
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      h1 {
+        margin: 0;
+        color: #082848;
+        font-size: clamp(1.4rem, 2.4vw, 2.05rem);
+      }
+      .subtitle {
+        margin: 8px 0 0;
+        color: #365f8b;
+        font-family: "Montserrat", "Segoe UI", Tahoma, Arial, sans-serif;
+        font-size: 0.98rem;
+        font-weight: 500;
+        line-height: 1.5;
+      }
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .metric, .box {
+        border: 1px solid #cfe0f6;
+        border-radius: 12px;
+        background: #fff;
+        padding: 12px;
+      }
+      .metric .k {
+        font-size: 11px;
+        color: #58708a;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      .metric .v {
+        font-size: 14px;
+        color: #1f3b5e;
+        font-weight: 700;
+      }
+      .section {
+        padding: 18px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+      .section:last-child { border-bottom: none; }
+      .section h2 {
+        margin: 0 0 10px;
+        color: #0f3f7f;
+        font-size: 1.12rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .section h3 {
+        margin: 0 0 8px;
+        color: #31506f;
+        font-size: 0.98rem;
+        font-weight: 700;
+        text-transform: none;
+        letter-spacing: normal;
+      }
+      .section p {
+        margin: 0;
+        color: #32465d;
+        line-height: 1.62;
+      }
+      .stack { margin-top: 12px; display: grid; gap: 12px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .box ul, .section ul, .section ol { margin: 0 0 0 18px; padding: 0; }
+      .box li, .section li { margin: 6px 0; color: #2e4661; line-height: 1.55; }
+      .table {
+        margin-top: 10px;
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .table th, .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        vertical-align: top;
+        border-bottom: 1px solid #e8eff8;
+      }
+      .table thead th {
+        background: #f5f9ff;
+        color: #163b63;
+        font-weight: 700;
+      }
+      .table tr:last-child td { border-bottom: none; }
+      .callout {
+        border-radius: 12px;
+        padding: 12px 14px;
+        border: 1px solid #d9e7fb;
+        background: #f8fbff;
+        color: #284764;
+      }
+      .callout.warn {
+        background: var(--warn-soft);
+        border-color: #f0dfc0;
+      }
+      .topic-quiz-actions {
+        margin-top: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-start;
+      }
+      .topic-quiz-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 1px solid #c7d9f2;
+        background: #0f3f7f;
+        color: #fff;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        pointer-events: auto;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 10px 22px rgba(15, 63, 127, 0.22);
+      }
+      .topic-quiz-cta:visited {
+        color: #fff;
+      }
+      .topic-quiz-cta:hover,
+      .topic-quiz-cta:focus-visible {
+        background: #0b3264;
+        color: #fff;
+        border-color: #9ebde4;
+      }
+      .topic-quiz-cta.secondary {
+        background: #f7fbff;
+        color: #123e73;
+      }
+      .guideline-list {
+        display: grid;
+        gap: 10px;
+      }
+      .guideline-line {
+        color: #304863;
+        line-height: 1.7;
+      }
+      .guideline-line strong {
+        color: #153c67;
+      }
+      .note-quiz-footer {
+        padding: 18px 20px 24px;
+      }
+      a { color: #0f3f7f; }
+      @media (max-width: 860px) {
+        .wrap { width: min(100%, 100vw); margin: 0; display: block; }
+        .panel { border-radius: 0; box-shadow: none; border-left: none; border-right: none; }
+        .hero-grid, .grid-2 { grid-template-columns: 1fr; }
+        .section { padding: 16px 14px; }
+        .table th, .table td { padding: 8px; font-size: 12px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#learning-objectives">1. Learning Objectives</a>
+        <a href="#introduction">2. Introduction</a>
+        <a href="#classification-of-blood-pressure">3. Classification of Blood Pressure</a>
+        <a href="#pathophysiology">4. Pathophysiology</a>
+        <a href="#risk-factors-and-target-organ-damage">5. Risk Factors and Target Organ Damage</a>
+        <a href="#non-pharmacological-therapy">6. Non-Pharmacological Therapy</a>
+        <a href="#pharmacological-therapy">7. Pharmacological Therapy</a>
+        <a href="#special-populations">8. Hypertension in Special Populations</a>
+        <a href="#hypertensive-crises">9. Hypertensive Crises</a>
+        <a href="#patient-counseling-points">10. Patient Counseling Points</a>
+        <a href="#summary-for-exam-preparation">11. Summary for Exam Preparation</a>
+        <a href="#key-guidelines-links">12. Key Guidelines Links</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Therapeutics</span>
+          <h1>Hypertension</h1>
+          <p class="subtitle">
+            A comprehensive lecture note covering diagnosis, pathophysiology, lifestyle intervention,
+            pharmacologic treatment, special populations, hypertensive crises, and exam-focused review.
+          </p>
+          <div class="hero-grid">
+            <div class="metric"><div class="k">Core Identity</div><div class="v">The "Silent Killer"</div></div>
+            <div class="metric"><div class="k">Key Formula</div><div class="v">BP = CO x SVR</div></div>
+            <div class="metric"><div class="k">Foundation</div><div class="v">Lifestyle for all patients</div></div>
+            <div class="metric"><div class="k">First-Line Set</div><div class="v">Thiazide, ACEI, ARB, CCB</div></div>
+          </div>
+        </header>
+
+        <section class="section" id="learning-objectives">
+          <h2>1. Learning Objectives</h2>
+          <div class="stack">
+            <div class="box">
+              <ol>
+                <li>Define hypertension and classify blood pressure categories based on current guidelines.</li>
+                <li>Explain the pathophysiology of primary (essential) hypertension.</li>
+                <li>Identify major risk factors for hypertension and its target organ damage.</li>
+                <li>List non-pharmacological interventions and their expected impact.</li>
+                <li>Select appropriate pharmacotherapy based on patient-specific factors using a stepwise approach.</li>
+                <li>Identify major drug classes, their mechanisms, key side effects, and monitoring parameters.</li>
+                <li>Recognize and manage hypertensive emergencies and urgencies.</li>
+                <li>Provide patient-centered counseling points to improve adherence and outcomes.</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="introduction">
+          <h2>2. Introduction: The Silent Killer</h2>
+          <div class="stack">
+            <p>
+              Hypertension (HTN), or high blood pressure, is a chronic medical condition where the force of
+              blood against the artery walls is persistently elevated. It is often called the
+              <strong>"silent killer"</strong> because it is largely asymptomatic until significant organ
+              damage has already occurred.
+            </p>
+            <div class="grid-2">
+              <div class="box">
+                <h3>Clinical Significance</h3>
+                <p>
+                  Hypertension is a primary risk factor for cardiovascular disease, including myocardial
+                  infarction, heart failure, stroke, and chronic kidney disease. It is one of the most common
+                  conditions managed in pharmacy practice.
+                </p>
+              </div>
+              <div class="box">
+                <h3>Why Guidelines Matter</h3>
+                <p>
+                  Treatment decisions are guided by evidence-based recommendations from the ACC/AHA and the
+                  ESC/ESH. Their treatment thresholds and targets may vary slightly, but the major drug
+                  classes and treatment logic are closely aligned.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="classification-of-blood-pressure">
+          <h2>3. Classification of Blood Pressure</h2>
+          <p>
+            Blood pressure is measured in millimeters of mercury (mmHg) and recorded as systolic blood
+            pressure (SBP) over diastolic blood pressure (DBP). This note primarily uses the 2017 ACC/AHA
+            classification.
+          </p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>BP Category</th>
+                <th>Systolic BP</th>
+                <th>Connector</th>
+                <th>Diastolic BP</th>
+                <th>Management Approach</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Normal</strong></td>
+                <td>&lt; 120 mmHg</td>
+                <td>AND</td>
+                <td>&lt; 80 mmHg</td>
+                <td>Promote healthy lifestyle.</td>
+              </tr>
+              <tr>
+                <td><strong>Elevated</strong></td>
+                <td>120 - 129 mmHg</td>
+                <td>AND</td>
+                <td>&lt; 80 mmHg</td>
+                <td>Non-pharmacologic therapy.</td>
+              </tr>
+              <tr>
+                <td><strong>Stage 1 HTN</strong></td>
+                <td>130 - 139 mmHg</td>
+                <td>OR</td>
+                <td>80 - 89 mmHg</td>
+                <td>Assess ASCVD risk; lifestyle plus consider drug therapy.</td>
+              </tr>
+              <tr>
+                <td><strong>Stage 2 HTN</strong></td>
+                <td>&gt;= 140 mmHg</td>
+                <td>OR</td>
+                <td>&gt;= 90 mmHg</td>
+                <td>Lifestyle modification plus pharmacotherapy.</td>
+              </tr>
+              <tr>
+                <td><strong>Hypertensive Crisis</strong></td>
+                <td>&gt; 180 mmHg</td>
+                <td>and/or</td>
+                <td>&gt; 120 mmHg</td>
+                <td>Immediate medical assessment.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="pathophysiology">
+          <h2>4. Pathophysiology: Why Does BP Rise?</h2>
+          <div class="callout"><strong>Core formula:</strong> Blood pressure = Cardiac Output x Systemic Vascular Resistance.</div>
+          <div class="stack">
+            <p>
+              In primary (essential) hypertension, the exact cause is unknown, but blood pressure rises
+              through a combination of increased cardiac output, increased systemic vascular resistance, or
+              both.
+            </p>
+            <div class="box">
+              <h3>Major Drivers</h3>
+              <ul>
+                <li><strong>Sympathetic nervous system overactivity:</strong> increases heart rate and vasoconstriction.</li>
+                <li><strong>RAAS activation:</strong> angiotensin II causes vasoconstriction and aldosterone promotes sodium and water retention.</li>
+                <li><strong>Endothelial dysfunction:</strong> less nitric oxide, more vasoconstrictors.</li>
+                <li><strong>Sodium and water retention:</strong> expands plasma volume and raises cardiac output.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="risk-factors-and-target-organ-damage">
+          <h2>5. Risk Factors and Target Organ Damage</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Risk Factors</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Non-modifiable</th>
+                    <th>Modifiable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Age</td>
+                    <td>High sodium diet</td>
+                  </tr>
+                  <tr>
+                    <td>Family history</td>
+                    <td>Low potassium diet</td>
+                  </tr>
+                  <tr>
+                    <td>Genetics</td>
+                    <td>Physical inactivity</td>
+                  </tr>
+                  <tr>
+                    <td>Male sex or post-menopausal female</td>
+                    <td>Obesity, alcohol, tobacco, dyslipidemia, diabetes</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h3>Target Organ Damage</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Organ</th>
+                    <th>Damage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Heart</td>
+                    <td>LVH, myocardial infarction, heart failure</td>
+                  </tr>
+                  <tr>
+                    <td>Brain</td>
+                    <td>Stroke, TIA, vascular dementia</td>
+                  </tr>
+                  <tr>
+                    <td>Kidneys</td>
+                    <td>CKD, ESRD</td>
+                  </tr>
+                  <tr>
+                    <td>Eyes</td>
+                    <td>Hypertensive retinopathy</td>
+                  </tr>
+                  <tr>
+                    <td>Arteries</td>
+                    <td>Atherosclerosis, PAD, aneurysm</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="non-pharmacological-therapy">
+          <h2>6. Non-Pharmacological Therapy (Lifestyle Modification)</h2>
+          <div class="callout"><strong>S-ABCDE:</strong> Sodium, Alcohol, Body weight, Cigarette cessation, Dietary change, Exercise.</div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Intervention</th>
+                <th>Recommendation</th>
+                <th>Expected SBP Reduction</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sodium restriction</td>
+                <td>&lt; 1500 mg/day; avoid processed foods.</td>
+                <td>5-10 mmHg</td>
+              </tr>
+              <tr>
+                <td>Alcohol limitation</td>
+                <td>&lt;= 2 drinks/day for men, &lt;= 1 drink/day for women.</td>
+                <td>3-5 mmHg</td>
+              </tr>
+              <tr>
+                <td>Body weight reduction</td>
+                <td>Aim for BMI &lt; 25 kg/m&sup2;.</td>
+                <td>5-20 mmHg per 10 kg loss</td>
+              </tr>
+              <tr>
+                <td>Cigarette cessation</td>
+                <td>Complete cessation.</td>
+                <td>Indirect BP benefit, major CV benefit</td>
+              </tr>
+              <tr>
+                <td>DASH diet</td>
+                <td>High in fruits, vegetables, whole grains, low-fat dairy.</td>
+                <td>10-15 mmHg</td>
+              </tr>
+              <tr>
+                <td>Exercise</td>
+                <td>90-150 minutes/week of aerobic activity.</td>
+                <td>5-8 mmHg</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="pharmacological-therapy">
+          <h2>7. Pharmacological Therapy: A Stepwise Approach</h2>
+          <div class="stack">
+            <div class="box">
+              <h3>7.1. First-Line Drug Classes (The "Big Five")</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Class</th>
+                    <th>Examples</th>
+                    <th>High-Yield Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Thiazide-like diuretics</td>
+                    <td>Chlorthalidone, HCTZ, Indapamide</td>
+                    <td>Hypokalemia, hyperglycemia, hyperuricemia; take in the morning.</td>
+                  </tr>
+                  <tr>
+                    <td>ACE inhibitors</td>
+                    <td>Lisinopril, Enalapril, Ramipril</td>
+                    <td>Cough, angioedema, hyperkalemia, teratogenicity.</td>
+                  </tr>
+                  <tr>
+                    <td>ARBs</td>
+                    <td>Losartan, Valsartan, Olmesartan</td>
+                    <td>No cough; still monitor potassium and pregnancy risk.</td>
+                  </tr>
+                  <tr>
+                    <td>Dihydropyridine CCBs</td>
+                    <td>Amlodipine, long-acting nifedipine</td>
+                    <td>Peripheral edema, headache, flushing.</td>
+                  </tr>
+                  <tr>
+                    <td>Non-dihydropyridine CCBs</td>
+                    <td>Verapamil, Diltiazem</td>
+                    <td>Bradycardia, heart block, constipation with verapamil.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h3>7.2. Stepwise Treatment Algorithm</h3>
+              <ul>
+                <li><strong>Step 1:</strong> Start one first-line drug for low-risk Stage 1 HTN, or a two-drug combination for Stage 2 HTN or high-risk patients.</li>
+                <li><strong>Preferred combinations:</strong> ACEi/ARB + thiazide or ACEi/ARB + CCB.</li>
+                <li><strong>Step 2:</strong> Titrate to full dose if not at goal after 2-4 weeks.</li>
+                <li><strong>Step 3:</strong> Add a third complementary drug if still uncontrolled.</li>
+                <li><strong>Step 4:</strong> Consider resistant hypertension; spironolactone is the classic fourth-line agent.</li>
+                <li><strong>Avoid:</strong> ACE inhibitor + ARB combination due to hyperkalemia and kidney injury risk.</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>7.3. Other Drug Classes (Not First-Line)</h3>
+              <ul>
+                <li><strong>Beta-blockers:</strong> still valuable post-MI, in HFrEF, angina, and AF, but not first-line for uncomplicated HTN.</li>
+                <li><strong>Alpha-blockers:</strong> useful when BPH coexists.</li>
+                <li><strong>Central alpha agonists:</strong> reserved for resistant cases; watch for rebound hypertension.</li>
+                <li><strong>Aldosterone antagonists:</strong> especially useful in resistant HTN and HFrEF.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="special-populations">
+          <h2>8. Hypertension in Special Populations (Compelling Indications)</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Comorbidity</th>
+                <th>Preferred Drug Class(es)</th>
+                <th>Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Diabetes mellitus</td>
+                <td>ACEi or ARB</td>
+                <td>Renoprotective and slows diabetic nephropathy progression.</td>
+              </tr>
+              <tr>
+                <td>Chronic kidney disease</td>
+                <td>ACEi or ARB</td>
+                <td>Reduces intraglomerular pressure; monitor creatinine and potassium.</td>
+              </tr>
+              <tr>
+                <td>HFrEF</td>
+                <td>Beta-blocker, ACEi/ARB/ARNI, spironolactone</td>
+                <td>Guideline-directed foundational therapy.</td>
+              </tr>
+              <tr>
+                <td>Post-myocardial infarction</td>
+                <td>Beta-blocker, ACEi/ARB</td>
+                <td>Reduces mortality and remodeling.</td>
+              </tr>
+              <tr>
+                <td>Black/African American patients</td>
+                <td>Thiazide or CCB</td>
+                <td>Often lower-renin hypertension; better monotherapy response.</td>
+              </tr>
+              <tr>
+                <td>Pregnancy</td>
+                <td>Methyldopa, labetalol, long-acting nifedipine</td>
+                <td>ACEi and ARBs are contraindicated.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="hypertensive-crises">
+          <h2>9. Hypertensive Crises</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Definition</th>
+                <th>Key Feature</th>
+                <th>Management</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Hypertensive emergency</td>
+                <td>BP &gt; 180/120 mmHg with acute target organ damage</td>
+                <td>End-organ damage is present.</td>
+                <td>Admit, use IV antihypertensives, lower BP carefully by no more than 20-25% in the first hour.</td>
+              </tr>
+              <tr>
+                <td>Hypertensive urgency</td>
+                <td>BP &gt; 180/120 mmHg without acute target organ damage</td>
+                <td>Severely elevated BP without emergency complications.</td>
+                <td>Use oral therapy or reinitiate home therapy; lower BP over 24-48 hours.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="patient-counseling-points">
+          <h2>10. Patient Counseling Points: The Key to Adherence</h2>
+          <div class="stack">
+            <div class="box">
+              <ul>
+                <li><strong>Hypertension is chronic:</strong> treatment is long-term even when the patient feels well.</li>
+                <li><strong>Asymptomatic does not mean harmless:</strong> control prevents silent damage to the heart, brain, kidneys, and eyes.</li>
+                <li><strong>Take medicines consistently:</strong> same time daily, do not stop abruptly.</li>
+                <li><strong>ACEi cough:</strong> report it; switching to an ARB is often appropriate.</li>
+                <li><strong>CCB edema:</strong> this is from vasodilation, not always fluid overload.</li>
+                <li><strong>Home BP monitoring:</strong> measure after 5 minutes of rest with the arm supported at heart level.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="summary-for-exam-preparation">
+          <h2>11. Summary for Exam Preparation</h2>
+          <div class="callout warn">
+            <strong>High-yield memory anchors:</strong> memorize BP categories, know the "Big Five",
+            remember ACEi cough versus ARB tolerance, thiazide metabolic effects, CCB edema, resistant
+            hypertension on spironolactone, hypertensive emergency versus urgency, and pregnancy
+            contraindications for ACE inhibitors and ARBs.
+          </div>
+          <div class="stack">
+            <div class="box">
+              <ul>
+                <li><strong>ABCD memory anchor:</strong> ACEi/ARB, Beta-blocker (only with compelling indication), CCB, Diuretic.</li>
+                <li><strong>Preferred combinations:</strong> ACEi/ARB + CCB or ACEi/ARB + thiazide.</li>
+                <li><strong>Do not combine:</strong> ACEi + ARB.</li>
+                <li><strong>Black patients:</strong> thiazide or CCB is usually the best initial monotherapy.</li>
+                <li><strong>Pregnancy:</strong> ACE inhibitors and ARBs are contraindicated.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="key-guidelines-links">
+          <h2>12. Key Guidelines Links</h2>
+          <div class="guideline-list">
+            <p class="guideline-line">
+              <strong>ACC/AHA Guideline 2017:</strong>
+              <a href="https://www.ahajournals.org/doi/10.1161/HYP.0000000000000065" target="_blank" rel="noreferrer">https://www.ahajournals.org/doi/10.1161/HYP.0000000000000065</a>
+            </p>
+            <p class="guideline-line">
+              <strong>ESC/ESH Guideline 2023:</strong>
+              <a href="https://academic.oup.com/eurheartj/article/44/38/3620/7241370" target="_blank" rel="noreferrer">https://academic.oup.com/eurheartj/article/44/38/3620/7241370</a>
+            </p>
+            <p class="guideline-line">
+              <strong>JNC 8 Guideline 2014:</strong>
+              <a href="https://jamanetwork.com/journals/jama/fullarticle/1791497" target="_blank" rel="noreferrer">https://jamanetwork.com/journals/jama/fullarticle/1791497</a>
+            </p>
+            <p class="guideline-line">
+              <strong>ASH/ISH Guidance 2014:</strong>
+              <a href="https://www.ash-us.org/guidelines/" target="_blank" rel="noreferrer">https://www.ash-us.org/guidelines/</a>
+            </p>
+            <p class="guideline-line">
+              <strong>KDIGO BP Management in CKD 2021:</strong>
+              <a href="https://kdigo.org/guidelines/blood-pressure/" target="_blank" rel="noreferrer">https://kdigo.org/guidelines/blood-pressure/</a>
+            </p>
+          </div>
+        </section>
+        <div class="note-quiz-footer">
+          <div class="topic-quiz-actions">
+            <a
+              class="topic-quiz-cta"
+              href="../index.html?topicQuiz=hypertension&topicTitle=Hypertension"
+              target="_top"
+              onclick="if(window.top&&typeof window.top.startTopicQuizSession==='function'){window.top.startTopicQuizSession('hypertension','Hypertension'); return false;} return true;"
+            >
+              Start Topic Quiz
+            </a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </body>
+</html>

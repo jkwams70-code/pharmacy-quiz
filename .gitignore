@@ -1,0 +1,43 @@
+# Dependencies and local installs
+node_modules/
+
+# Android and local build outputs
+.gradle-local/
+android/.gradle/
+android/.gradle-local/
+android/build/
+android/**/build/
+android/local.properties
+android/keystore.properties
+android/keystore/
+*.apk
+*.aab
+
+# Local preview certificates and keys
+certs/local-preview.pfx
+certs/*.pfx
+certs/*.pem
+certs/*.key
+backend/certs/
+backend/backups/
+backend/data_backup_*/
+backend/.env
+backend/certs/*.pfx
+backend/certs/*.pem
+backend/certs/*.key
+backend/setup-scheduled-backup.ps1
+archive/
+downloads/
+
+# Temporary preview and scratch files
+menu-desktop-*.png
+_pdf_extracted.txt
+*.log
+*.tmp
+*.bak
+*.swp
+*.orig
+
+# OS noise
+.DS_Store
+Thumbs.db

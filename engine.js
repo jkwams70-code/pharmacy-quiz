@@ -1,6 +1,112 @@
-console.log("JS LOADED");
+<<<<<<< HEAD
+<<<<<<< HEAD
+import "./www/engine.js";
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 import { baseQuestions } from "./data.js";
 import { backendClient } from "./backendClient.js";
+
+const MAJOR_CATEGORIES = [
+  "Cardiovascular Disorders",
+  "Infectious Diseases",
+  "Endocrinology",
+  "Respiratory Disorders",
+  "Renal & Electrolyte Disorders",
+  "Gastrointestinal Disorders",
+  "Neurology & Psychiatry",
+  "Hematology",
+  "Oncology",
+  "Rheumatology & Pain",
+  "Women's & Men's Health",
+  "Immunizations",
+  "Pharmacy Law & Ethics",
+];
+
+const LEGACY_CATEGORY_MAP = {
+  Cardiology: "Cardiovascular Disorders",
+  "Clinical Pharmacology": "Pharmacy Law & Ethics",
+  Haematology: "Hematology",
+  Hematology: "Hematology",
+  Endocrinology: "Endocrinology",
+  Oncology: "Oncology",
+  Neurology: "Neurology & Psychiatry",
+  Psychiatry: "Neurology & Psychiatry",
+  Respiratory: "Respiratory Disorders",
+  Gastroenterology: "Gastrointestinal Disorders",
+  Rheumatology: "Rheumatology & Pain",
+  Dermatology: "Rheumatology & Pain",
+  Obstetrics: "Women's & Men's Health",
+  "Allergy and Immunology": "Respiratory Disorders",
+  "Infectious Diseases": "Infectious Diseases",
+};
+
+function normalizeMajorCategory(category, context = "") {
+  const raw = String(category || "").trim();
+  if (LEGACY_CATEGORY_MAP[raw]) return LEGACY_CATEGORY_MAP[raw];
+
+  const combined = `${raw} ${String(context || "")}`.toLowerCase();
+  if (combined.includes("cardio") || combined.includes("hypertens")) {
+    return "Cardiovascular Disorders";
+  }
+  if (combined.includes("infect") || combined.includes("antibiotic")) {
+    return "Infectious Diseases";
+  }
+  if (combined.includes("diabet") || combined.includes("thyroid")) {
+    return "Endocrinology";
+  }
+  if (
+    combined.includes("respir") ||
+    combined.includes("asthma") ||
+    combined.includes("allergic rhinitis")
+  ) {
+    return "Respiratory Disorders";
+  }
+  if (combined.includes("renal") || combined.includes("kidney")) {
+    return "Renal & Electrolyte Disorders";
+  }
+  if (combined.includes("gastro") || combined.includes("hepat")) {
+    return "Gastrointestinal Disorders";
+  }
+  if (combined.includes("neuro") || combined.includes("psy") || combined.includes("seizure")) {
+    return "Neurology & Psychiatry";
+  }
+  if (combined.includes("haemat") || combined.includes("hemat") || combined.includes("anemia")) {
+    return "Hematology";
+  }
+  if (combined.includes("onco") || combined.includes("cancer")) {
+    return "Oncology";
+  }
+  if (
+    combined.includes("rheuma") ||
+    combined.includes("arthritis") ||
+    combined.includes("gout") ||
+    combined.includes("pain") ||
+    combined.includes("dermat")
+  ) {
+    return "Rheumatology & Pain";
+  }
+  if (combined.includes("pregnan") || combined.includes("contraception") || combined.includes("bph")) {
+    return "Women's & Men's Health";
+  }
+  if (combined.includes("vaccine") || combined.includes("immunization")) {
+    return "Immunizations";
+  }
+  if (combined.includes("law") || combined.includes("ethic")) {
+    return "Pharmacy Law & Ethics";
+  }
+
+  return "Pharmacy Law & Ethics";
+}
+
+function withMajorCategory(question) {
+  const questionText = String(question?.question || question?.text || "");
+  const explanation = String(question?.explanation || "");
+  return {
+    ...question,
+    category: normalizeMajorCategory(question?.category, `${questionText} ${explanation}`),
+  };
+}
 
 let current = 0;
 let score = 0;
@@ -33,10 +139,16 @@ let bestStreak = parseInt(localStorage.getItem("quizBestStreak")) || 0;
 let sessionHistory =
   JSON.parse(localStorage.getItem("quizSessionHistory")) || [];
 
-let questionBank = [...baseQuestions];
+let questionBank = baseQuestions.map(withMajorCategory);
 const caseMap = {};
 let backendReady = false;
 let backendAttemptId = null;
+let currentUser = null;
+let authMode = "login";
+let topicCatalog = { topics: [], categories: [] };
+let topicCatalogLoaded = false;
+let topicLibraryReturnScreen = "quiz-menu";
+let topicViewerReturnScreen = "topic-library";
 
 // Load questions from backend if available
 async function loadQuestionsFromBackend() {
@@ -46,13 +158,21 @@ async function loadQuestionsFromBackend() {
       // Map backend format to local format for compatibility
       questionBank = questions.map((q) => ({
         id: q.id,
-        text: q.text,
-        category: q.category,
+        text: q.text || q.question || "",
+        question: q.question || q.text || "",
+        category: normalizeMajorCategory(
+          q.category,
+          `${String(q.question || q.text || "")} ${String(q.explanation || "")}`,
+        ),
         options: q.options,
         correct: q.correct,
+        explanation: q.explanation || "",
+        type: q.type || "single",
+        topicSlug: q.topicSlug || "",
+        sectionId: q.sectionId || "",
       }));
       backendReady = true;
-      console.log(`✓ Loaded ${questionBank.length} questions from backend`);
+      console.info(`Loaded ${questionBank.length} questions from backend`);
     }
   } catch (error) {
     console.warn("Backend unavailable, using local questions:", error);
@@ -168,6 +288,7 @@ function getWeakCategories(threshold = 80) {
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");
 const dashboardBtn = document.querySelector(".dashboard-mode");
+const topicLibraryBtn = document.getElementById("open-topic-library-btn");
 const historyBtn = document.querySelector(".history-mode");
 if (historyBtn) {
   historyBtn.onclick = () => {
@@ -179,6 +300,9 @@ const answersEl = document.getElementById("answers");
 const nextBtn = document.getElementById("next-btn");
 const prevBtn = document.getElementById("prev-btn");
 const timerEl = document.getElementById("timer");
+const explanationEl = document.getElementById("explanation");
+const topicLinkWrapEl = document.getElementById("question-topic-link-wrap");
+const topicLinkBtnEl = document.getElementById("topic-link-btn");
 const quizArea = document.getElementById("quiz-area");
 const progressEl = document.getElementById("progress");
 const liveScore = document.getElementById("live-score");
@@ -192,8 +316,77 @@ const comboBlock = document.getElementById("combo-block");
 const examExitModal = document.getElementById("exam-exit-modal");
 const cancelExitBtn = document.getElementById("cancel-exit-btn");
 const confirmExitBtn = document.getElementById("confirm-exit-btn");
+const authModal = document.getElementById("auth-modal");
+const authForm = document.getElementById("auth-form");
+const authTabLoginBtn = document.getElementById("auth-tab-login");
+const authTabRegisterBtn = document.getElementById("auth-tab-register");
+const authIdentifierWrap = document.getElementById("auth-identifier-wrap");
+const authIdentifierInput = document.getElementById("auth-identifier");
+const authTitleWrap = document.getElementById("auth-title-wrap");
+const authTitleInput = document.getElementById("auth-title");
+const authFirstNameWrap = document.getElementById("auth-first-name-wrap");
+const authFirstNameInput = document.getElementById("auth-first-name");
+const authLastNameWrap = document.getElementById("auth-last-name-wrap");
+const authLastNameInput = document.getElementById("auth-last-name");
+const authUsernameWrap = document.getElementById("auth-username-wrap");
+const authUsernameInput = document.getElementById("auth-username");
+const authContactWrap = document.getElementById("auth-contact-wrap");
+const authContactInput = document.getElementById("auth-contact");
+const authRoleWrap = document.getElementById("auth-role-wrap");
+const authProfTypeWrap = document.getElementById("auth-prof-type-wrap");
+const authProfessionalTypeInput = document.getElementById("auth-professional-type");
+const authCountryWrap = document.getElementById("auth-country-wrap");
+const authCountryInput = document.getElementById("auth-country");
+const authInstitutionWrap = document.getElementById("auth-institution-wrap");
+const authInstitutionInput = document.getElementById("auth-institution");
+const authResetCodeWrap = document.getElementById("auth-reset-code-wrap");
+const authResetCodeInput = document.getElementById("auth-reset-code");
+const authPasswordWrap = document.getElementById("auth-password-wrap");
+const authPasswordInput = document.getElementById("auth-password");
+const authPasswordToggleBtn = document.getElementById("auth-password-toggle");
+const authForgotLinkBtn = document.getElementById("auth-forgot-link");
+const authResetLinkBtn = document.getElementById("auth-reset-link");
+const authBackLoginLinkBtn = document.getElementById("auth-back-login-link");
+const authResetCodePreviewEl = document.getElementById("auth-reset-code-preview");
+const authErrorEl = document.getElementById("auth-error");
+const authSubmitBtn = document.getElementById("auth-submit-btn");
+const authCancelBtn = document.getElementById("auth-cancel-btn");
+const authUserLabel = document.getElementById("quiz-auth-user");
+const profileBtn = document.getElementById("quiz-profile-btn");
+const profileBtnIcon = profileBtn?.querySelector(".menu-profile-icon");
+const logoutBtn = document.getElementById("quiz-logout-btn");
+const profileBackBtn = document.getElementById("profile-back-btn");
+const profileSaveBtn = document.getElementById("profile-save-btn");
+const profileChangePasswordBtn = document.getElementById("profile-change-password-btn");
+const profileDeactivateBtn = document.getElementById("profile-deactivate-btn");
+const profileDeleteBtn = document.getElementById("profile-delete-btn");
+const profileFeedbackEl = document.getElementById("profile-feedback");
+const profileAvatarPreviewEl = document.getElementById("profile-avatar-preview");
+const profilePhotoFileInput = document.getElementById("profile-photo-file");
+const profilePhotoUrlInput = document.getElementById("profile-photo-url");
+const profileTitleInput = document.getElementById("profile-title");
+const profileFirstNameInput = document.getElementById("profile-first-name");
+const profileLastNameInput = document.getElementById("profile-last-name");
+const profileUsernameInput = document.getElementById("profile-username");
+const profileContactInput = document.getElementById("profile-contact");
+const profileProfessionalTypeInput = document.getElementById("profile-professional-type");
+const profileCountryInput = document.getElementById("profile-country");
+const profileInstitutionInput = document.getElementById("profile-institution");
+const profileCurrentPasswordInput = document.getElementById("profile-current-password");
+const profileNewPasswordInput = document.getElementById("profile-new-password");
+const profileDeactivateDaysInput = document.getElementById("profile-deactivate-days");
 const studyHistoryToggle = document.getElementById("study-history-toggle");
 const studyHistoryBox = document.getElementById("study-history");
+const topicLibraryCategorySelect = document.getElementById("topic-library-category");
+const topicLibrarySearchInput = document.getElementById("topic-library-search");
+const topicLibraryListEl = document.getElementById("topic-library-list");
+const topicLibraryCountEl = document.getElementById("topic-library-count");
+const topicLibraryEmptyEl = document.getElementById("topic-library-empty");
+const topicLibraryBackBtn = document.getElementById("topic-library-back-btn");
+const topicViewerBackBtn = document.getElementById("topic-viewer-back-btn");
+const topicViewerMenuBtn = document.getElementById("topic-viewer-menu-btn");
+const topicViewerTitleEl = document.getElementById("topic-viewer-title");
+const topicViewerFrameEl = document.getElementById("topic-viewer-frame");
 
 if (studyHistoryToggle && studyHistoryBox) {
   studyHistoryToggle.addEventListener("click", () => {
@@ -211,6 +404,972 @@ if (examHistoryToggle && examHistoryBox) {
     examHistoryToggle.classList.toggle("open");
   });
 }
+
+if (topicLibraryCategorySelect) {
+  topicLibraryCategorySelect.addEventListener("change", renderTopicLibrary);
+}
+
+if (topicLibrarySearchInput) {
+  topicLibrarySearchInput.addEventListener("input", renderTopicLibrary);
+}
+
+if (topicLibraryBtn) {
+  topicLibraryBtn.addEventListener("click", () => {
+    openTopicLibrary("quiz-menu");
+  });
+}
+
+if (topicLibraryBackBtn) {
+  topicLibraryBackBtn.addEventListener("click", () => {
+    showScreen(topicLibraryReturnScreen || "quiz-menu");
+  });
+}
+
+if (topicViewerBackBtn) {
+  topicViewerBackBtn.addEventListener("click", () => {
+    showScreen(topicViewerReturnScreen || "topic-library");
+  });
+}
+
+if (topicViewerMenuBtn) {
+  topicViewerMenuBtn.addEventListener("click", () => {
+    showScreen("quiz-menu");
+  });
+}
+
+function setAuthPasswordVisibility(visible) {
+  if (!authPasswordInput || !authPasswordToggleBtn) return;
+  const show = Boolean(visible);
+  authPasswordInput.type = show ? "text" : "password";
+  authPasswordToggleBtn.setAttribute(
+    "aria-label",
+    show ? "Hide password" : "Show password",
+  );
+  authPasswordToggleBtn.setAttribute("aria-pressed", show ? "true" : "false");
+
+  const eyeIcon = authPasswordToggleBtn.querySelector(".icon-eye");
+  const eyeOffIcon = authPasswordToggleBtn.querySelector(".icon-eye-off");
+  if (eyeIcon) eyeIcon.classList.toggle("hidden", show);
+  if (eyeOffIcon) eyeOffIcon.classList.toggle("hidden", !show);
+}
+
+function toggleAuthPasswordVisibility() {
+  if (!authPasswordInput) return;
+  setAuthPasswordVisibility(authPasswordInput.type === "password");
+}
+
+function normalizeTopicPathToken(value) {
+  const token = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(token) ? token : "";
+}
+
+function buildTopicUrl(question) {
+  const slug = normalizeTopicPathToken(question?.topicSlug);
+  if (!slug) return "";
+
+  const sectionId = normalizeTopicPathToken(question?.sectionId);
+  const hash = sectionId ? `#${sectionId}` : "";
+  return `topics/${slug}.html${hash}`;
+}
+
+function renderQuestionTopicLink(question) {
+  if (!topicLinkWrapEl || !topicLinkBtnEl) return;
+
+  const isStudyMode = mode === "study";
+  if (!isStudyMode) {
+    topicLinkWrapEl.classList.add("hidden");
+    topicLinkBtnEl.removeAttribute("href");
+    return;
+  }
+
+  const url = buildTopicUrl(question);
+  if (!url) {
+    topicLinkWrapEl.classList.add("hidden");
+    topicLinkBtnEl.removeAttribute("href");
+    return;
+  }
+
+  topicLinkBtnEl.href = url;
+  topicLinkWrapEl.classList.remove("hidden");
+}
+
+function prettifyTopicSlug(slug) {
+  return String(slug || "")
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function normalizeTopicNotePath(pathValue) {
+  const raw = String(pathValue || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (!/^[a-z0-9-]+\.html(?:#[a-z0-9-]+)?$/.test(raw)) return "";
+  return `topics/${raw}`;
+}
+
+function topicSearchText(topic) {
+  const sectionTitles = Array.isArray(topic?.sections)
+    ? topic.sections.map((section) => section.title || "")
+    : [];
+  return [
+    topic?.title,
+    topic?.slug,
+    topic?.summary,
+    topic?.category,
+    ...(Array.isArray(topic?.tags) ? topic.tags : []),
+    ...sectionTitles,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function topicTitle(topic) {
+  return (
+    String(topic?.title || "").trim() ||
+    prettifyTopicSlug(topic?.slug) ||
+    "Study Note"
+  );
+}
+
+function getFilteredTopicsForLibrary() {
+  const rawTopics = Array.isArray(topicCatalog?.topics) ? topicCatalog.topics : [];
+  const category = String(topicLibraryCategorySelect?.value || "all");
+  const search = String(topicLibrarySearchInput?.value || "").trim().toLowerCase();
+
+  return rawTopics
+    .filter((topic) => {
+      if (category !== "all" && topic.category !== category) {
+        return false;
+      }
+      if (!search) return true;
+      return topicSearchText(topic).includes(search);
+    })
+    .sort((a, b) => topicTitle(a).localeCompare(topicTitle(b)));
+}
+
+function renderTopicLibrary() {
+  if (!topicLibraryListEl || !topicLibraryEmptyEl || !topicLibraryCountEl) return;
+
+  const filteredTopics = getFilteredTopicsForLibrary();
+  topicLibraryListEl.innerHTML = "";
+
+  filteredTopics.forEach((topic) => {
+    const notePath =
+      normalizeTopicNotePath(topic.notePath) ||
+      normalizeTopicNotePath(`${String(topic.slug || "").toLowerCase()}.html`);
+    if (!notePath) return;
+
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "topic-library-item";
+    item.innerHTML = `
+      <span class="topic-library-item-title">${topicTitle(topic)}</span>
+      <span class="topic-library-item-meta">${topic.category || "General"}</span>
+    `;
+    item.addEventListener("click", () => {
+      openTopicViewer(notePath, topicTitle(topic), "topic-library");
+    });
+    topicLibraryListEl.appendChild(item);
+  });
+
+  topicLibraryCountEl.textContent = `${filteredTopics.length} topic(s)`;
+  topicLibraryEmptyEl.classList.toggle("hidden", filteredTopics.length > 0);
+}
+
+function populateTopicLibraryCategories() {
+  if (!topicLibraryCategorySelect) return;
+
+  topicLibraryCategorySelect.innerHTML = '<option value="all">All Categories</option>';
+  MAJOR_CATEGORIES.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.innerText = category;
+    topicLibraryCategorySelect.appendChild(option);
+  });
+}
+
+async function ensureTopicCatalogLoaded() {
+  if (topicCatalogLoaded) return;
+
+  try {
+    const response = await fetch("topics/topics.json", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`topics.json failed (${response.status})`);
+    }
+    topicCatalog = await response.json();
+  } catch (error) {
+    console.warn("Topic catalog fallback enabled:", error);
+    topicCatalog = {
+      topics: [
+        {
+          slug: "heart-failure",
+          title: "Heart Failure",
+          category: "Cardiovascular Disorders",
+          summary:
+            "HFrEF/HFpEF classification, four-pillar HFrEF therapy, and acute decompensation.",
+          notePath: "heart-failure.html",
+        },
+        {
+          slug: "hypertension",
+          title: "Hypertension",
+          category: "Cardiovascular Disorders",
+          summary:
+            "Blood pressure classification, first-line treatment, and hypertensive crisis.",
+          notePath: "hypertension.html",
+        },
+      ],
+      categories: [...MAJOR_CATEGORIES],
+    };
+  } finally {
+    topicCatalogLoaded = true;
+    renderTopicLibrary();
+  }
+}
+
+function openTopicLibrary(returnScreen = "quiz-menu") {
+  topicLibraryReturnScreen = returnScreen;
+  showScreen("topic-library");
+  ensureTopicCatalogLoaded();
+  renderTopicLibrary();
+}
+
+function openTopicViewer(notePath, title = "Study Note", returnScreen = "topic-library") {
+  if (!topicViewerFrameEl) return;
+  topicViewerReturnScreen = returnScreen;
+  topicViewerFrameEl.src = notePath;
+  if (topicViewerTitleEl) {
+    topicViewerTitleEl.innerText = `Study Note: ${title}`;
+  }
+  showScreen("topic-viewer");
+}
+
+function setAuthError(message = "") {
+  if (!authErrorEl) return;
+  const text = String(message || "").trim();
+  authErrorEl.textContent = text;
+  authErrorEl.classList.toggle("hidden", !text);
+}
+
+function setAuthInfo(message = "", isError = false) {
+  if (!authResetCodePreviewEl) return;
+  const text = String(message || "").trim();
+  authResetCodePreviewEl.textContent = text;
+  authResetCodePreviewEl.classList.toggle("hidden", !text);
+  authResetCodePreviewEl.classList.remove("auth-error", "auth-info");
+  if (text) {
+    authResetCodePreviewEl.classList.add(isError ? "auth-error" : "auth-info");
+  }
+}
+
+function readSelectedRadioValue(name, fallback = "") {
+  const selected = document.querySelector(`input[name="${name}"]:checked`);
+  return selected ? String(selected.value || "").trim() : fallback;
+}
+
+function setSelectedRadioValue(name, value) {
+  const next = String(value || "").trim();
+  document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+    input.checked = String(input.value) === next;
+  });
+}
+
+let pendingProfileImage = "";
+
+function defaultProfileAvatarDataUri() {
+  const label = String(
+    currentUser?.username || currentUser?.firstName || currentUser?.name || "U",
+  )
+    .trim()
+    .slice(0, 2)
+    .toUpperCase();
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' rx='18' fill='#0f3f7f'/><text x='60' y='72' text-anchor='middle' font-size='42' font-family='Arial' fill='#fff'>${label || "U"}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function setProfileAvatarPreview(src = "") {
+  if (!profileAvatarPreviewEl) return;
+  const cleaned = String(src || "").trim();
+  profileAvatarPreviewEl.src = cleaned || defaultProfileAvatarDataUri();
+}
+
+function updateProfileButtonAvatar(src = "") {
+  if (!profileBtn) return;
+  const cleaned = String(src || "").trim();
+
+  if (cleaned) {
+    profileBtn.style.backgroundImage = `url("${cleaned}")`;
+    profileBtn.style.backgroundSize = "cover";
+    profileBtn.style.backgroundPosition = "center";
+    profileBtn.style.backgroundRepeat = "no-repeat";
+    profileBtn.classList.add("has-avatar");
+    if (profileBtnIcon) profileBtnIcon.classList.add("hidden");
+    return;
+  }
+
+  profileBtn.style.backgroundImage = "";
+  profileBtn.style.backgroundSize = "";
+  profileBtn.style.backgroundPosition = "";
+  profileBtn.style.backgroundRepeat = "";
+  profileBtn.classList.remove("has-avatar");
+  if (profileBtnIcon) profileBtnIcon.classList.remove("hidden");
+}
+
+function setProfileFeedback(message = "", isError = false) {
+  if (!profileFeedbackEl) return;
+  const text = String(message || "").trim();
+  profileFeedbackEl.textContent = text;
+  profileFeedbackEl.classList.toggle("hidden", !text);
+  profileFeedbackEl.classList.remove("auth-error", "auth-info");
+  if (text) {
+    profileFeedbackEl.classList.add(isError ? "auth-error" : "auth-info");
+  }
+}
+
+function fillProfileForm() {
+  if (!currentUser) return;
+  if (profileTitleInput) profileTitleInput.value = currentUser.title || "";
+  if (profileFirstNameInput) profileFirstNameInput.value = currentUser.firstName || "";
+  if (profileLastNameInput) profileLastNameInput.value = currentUser.lastName || "";
+  if (profileUsernameInput) profileUsernameInput.value = currentUser.username || "";
+  if (profileContactInput) profileContactInput.value = currentUser.contact || "";
+  if (profileProfessionalTypeInput) {
+    profileProfessionalTypeInput.value = currentUser.professionalType || "Other";
+  }
+  if (profileCountryInput) profileCountryInput.value = currentUser.country || "";
+  if (profileInstitutionInput) profileInstitutionInput.value = currentUser.institution || "";
+  setSelectedRadioValue("profile-role", currentUser.role || "student");
+
+  pendingProfileImage = String(currentUser.profileImage || "").trim();
+  if (profilePhotoUrlInput) profilePhotoUrlInput.value = pendingProfileImage;
+  setProfileAvatarPreview(pendingProfileImage);
+  updateProfileButtonAvatar(pendingProfileImage);
+}
+
+function renderAuthState() {
+  if (!authUserLabel || !logoutBtn || !profileBtn) return;
+
+  if (currentUser) {
+    const username = String(currentUser.username || "").trim();
+    const fallbackLabel =
+      currentUser.name || currentUser.contact || "User";
+    authUserLabel.textContent = username ? `@${username}` : fallbackLabel;
+    authUserLabel.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
+    profileBtn.classList.remove("hidden");
+    updateProfileButtonAvatar(currentUser.profileImage || "");
+    fillProfileForm();
+    return;
+  }
+
+  authUserLabel.textContent = "";
+  authUserLabel.classList.add("hidden");
+  logoutBtn.classList.add("hidden");
+  profileBtn.classList.add("hidden");
+  updateProfileButtonAvatar("");
+}
+
+function setAuthMode(nextMode = "login") {
+  const allowedModes = new Set(["login", "register", "forgot", "reset"]);
+  authMode = allowedModes.has(nextMode) ? nextMode : "login";
+
+  const isLogin = authMode === "login";
+  const isRegister = authMode === "register";
+  const isForgot = authMode === "forgot";
+  const isReset = authMode === "reset";
+
+  if (authTabLoginBtn) {
+    authTabLoginBtn.classList.toggle("active", isLogin);
+  }
+  if (authTabRegisterBtn) {
+    authTabRegisterBtn.classList.toggle("active", isRegister);
+  }
+
+  if (authIdentifierWrap) authIdentifierWrap.classList.toggle("hidden", isRegister);
+  if (authTitleWrap) authTitleWrap.classList.toggle("hidden", !isRegister);
+  if (authFirstNameWrap) authFirstNameWrap.classList.toggle("hidden", !isRegister);
+  if (authLastNameWrap) authLastNameWrap.classList.toggle("hidden", !isRegister);
+  if (authUsernameWrap) authUsernameWrap.classList.toggle("hidden", !isRegister);
+  if (authContactWrap) authContactWrap.classList.toggle("hidden", !isRegister);
+  if (authRoleWrap) authRoleWrap.classList.toggle("hidden", !isRegister);
+  if (authProfTypeWrap) authProfTypeWrap.classList.toggle("hidden", !isRegister);
+  if (authCountryWrap) authCountryWrap.classList.toggle("hidden", !isRegister);
+  if (authInstitutionWrap) authInstitutionWrap.classList.toggle("hidden", !isRegister);
+  if (authResetCodeWrap) authResetCodeWrap.classList.toggle("hidden", !isReset);
+  if (authPasswordWrap) authPasswordWrap.classList.toggle("hidden", isForgot);
+  if (authForgotLinkBtn) authForgotLinkBtn.classList.toggle("hidden", !isLogin);
+  if (authResetLinkBtn) authResetLinkBtn.classList.toggle("hidden", !isLogin);
+  if (authBackLoginLinkBtn) authBackLoginLinkBtn.classList.toggle("hidden", isLogin);
+
+  if (authPasswordInput) {
+    authPasswordInput.setAttribute(
+      "autocomplete",
+      isLogin ? "current-password" : "new-password",
+    );
+  }
+
+  if (authSubmitBtn) {
+    if (isRegister) authSubmitBtn.textContent = "Create Account";
+    if (isLogin) authSubmitBtn.textContent = "Sign In";
+    if (isForgot) authSubmitBtn.textContent = "Send Reset Code";
+    if (isReset) authSubmitBtn.textContent = "Reset Password";
+  }
+
+  setAuthPasswordVisibility(false);
+  setAuthError("");
+  setAuthInfo("");
+}
+
+function openAuthModal(nextMode = "login") {
+  if (!authModal) return;
+  setAuthMode(nextMode);
+  setAuthError("");
+  setAuthInfo("");
+  authModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+
+  if (authMode === "register" && authTitleInput) {
+    authTitleInput.focus();
+    return;
+  }
+  if (authMode === "reset" && authResetCodeInput) {
+    authResetCodeInput.focus();
+    return;
+  }
+  if (authIdentifierInput) authIdentifierInput.focus();
+}
+
+function closeAuthModal() {
+  if (!authModal) return;
+  authModal.classList.add("hidden");
+  setAuthPasswordVisibility(false);
+  setAuthInfo("");
+  document.body.style.overflow = "";
+}
+
+function authErrorMessage(error) {
+  const message = String(error?.message || "");
+  if (message.includes("invalid credentials") || message.includes("(401)")) {
+    return "Invalid username/contact/email or password.";
+  }
+  if (message.includes("deactivated") || message.includes("(403)")) {
+    return message.replace(/\s+\(\d+\)\s*$/, "");
+  }
+  if (message.includes("(409)")) return message.replace(/\s+\(\d+\)\s*$/, "");
+  if (message.includes("(400)")) return message.replace(/\s+\(\d+\)\s*$/, "");
+  return "Unable to sign in right now. Please try again.";
+}
+
+async function restoreAuthSession() {
+  if (!backendClient.isAuthenticated()) {
+    currentUser = null;
+    renderAuthState();
+    return false;
+  }
+
+  try {
+    currentUser = await backendClient.fetchMe();
+    renderAuthState();
+    return true;
+  } catch {
+    backendClient.clearToken();
+    currentUser = null;
+    renderAuthState();
+    return false;
+  }
+}
+
+async function ensureAuthenticated() {
+  if (currentUser) return true;
+  const restored = await restoreAuthSession();
+  if (restored) return true;
+  openAuthModal("login");
+  return false;
+}
+
+async function handlePortalEntry() {
+  const allowed = await ensureAuthenticated();
+  if (!allowed) return;
+  showScreen("quiz-menu");
+}
+
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+
+  const identifier = String(authIdentifierInput?.value || "").trim();
+  const title = String(authTitleInput?.value || "").trim();
+  const firstName = String(authFirstNameInput?.value || "").trim();
+  const lastName = String(authLastNameInput?.value || "").trim();
+  const username = String(authUsernameInput?.value || "").trim().toLowerCase();
+  const contact = String(authContactInput?.value || "").trim();
+  const role = readSelectedRadioValue("auth-role", "student");
+  const professionalType = String(authProfessionalTypeInput?.value || "").trim();
+  const country = String(authCountryInput?.value || "").trim();
+  const institution = String(authInstitutionInput?.value || "").trim();
+  const code = String(authResetCodeInput?.value || "").trim();
+  const password = String(authPasswordInput?.value || "");
+
+  if (authMode === "login") {
+    if (!identifier) {
+      setAuthError("Username/contact/email is required.");
+      return;
+    }
+    if (!password || password.length < 6) {
+      setAuthError("Password must be at least 6 characters.");
+      return;
+    }
+  }
+
+  if (authMode === "register") {
+    if (!title || !firstName || !lastName) {
+      setAuthError("Title, first name and surname are required.");
+      return;
+    }
+    if (!username || username.length < 3) {
+      setAuthError("Username must be at least 3 characters.");
+      return;
+    }
+    if (!contact) {
+      setAuthError("Contact is required.");
+      return;
+    }
+    if (!professionalType || !country || !institution) {
+      setAuthError("Professional type, country and institution are required.");
+      return;
+    }
+    if (!password || password.length < 6) {
+      setAuthError("Password must be at least 6 characters.");
+      return;
+    }
+  }
+
+  if (authMode === "forgot" && !identifier) {
+    setAuthError("Enter your username/contact/email first.");
+    return;
+  }
+
+  if (authMode === "reset") {
+    if (!identifier || !code) {
+      setAuthError("Identifier and reset code are required.");
+      return;
+    }
+    if (!password || password.length < 6) {
+      setAuthError("New password must be at least 6 characters.");
+      return;
+    }
+  }
+
+  if (authSubmitBtn) authSubmitBtn.disabled = true;
+  if (authCancelBtn) authCancelBtn.disabled = true;
+  if (authTabLoginBtn) authTabLoginBtn.disabled = true;
+  if (authTabRegisterBtn) authTabRegisterBtn.disabled = true;
+  setAuthError("");
+
+  try {
+    if (authMode === "login") {
+      const response = await backendClient.login({ identifier, password });
+      currentUser = response?.user || (await backendClient.fetchMe());
+      renderAuthState();
+      closeAuthModal();
+      showScreen("quiz-menu");
+      return;
+    }
+
+    if (authMode === "register") {
+      const response = await backendClient.register({
+        title,
+        firstName,
+        lastName,
+        username,
+        contact,
+        role,
+        professionalType,
+        country,
+        institution,
+        password,
+      });
+      currentUser = response?.user || (await backendClient.fetchMe());
+      renderAuthState();
+      closeAuthModal();
+      showScreen("quiz-menu");
+      return;
+    }
+
+    if (authMode === "forgot") {
+      const response = await backendClient.forgotPassword({ identifier });
+      const codePreview = String(response?.code || "").trim();
+      setAuthMode("reset");
+      setAuthInfo(
+        codePreview
+          ? `Reset code: ${codePreview}. Use it now to set a new password.`
+          : String(response?.message || "Reset code sent."),
+      );
+      if (authResetCodeInput && codePreview) authResetCodeInput.value = codePreview;
+      return;
+    }
+
+    if (authMode === "reset") {
+      await backendClient.resetPassword({
+        identifier,
+        code,
+        newPassword: password,
+      });
+      setAuthMode("login");
+      setAuthInfo("Password reset complete. Sign in with your new password.");
+      if (authPasswordInput) authPasswordInput.value = "";
+      return;
+    }
+  } catch (error) {
+    setAuthInfo("");
+    setAuthError(authErrorMessage(error));
+  } finally {
+    if (authSubmitBtn) authSubmitBtn.disabled = false;
+    if (authCancelBtn) authCancelBtn.disabled = false;
+    if (authTabLoginBtn) authTabLoginBtn.disabled = false;
+    if (authTabRegisterBtn) authTabRegisterBtn.disabled = false;
+  }
+}
+
+if (authForm) {
+  authForm.addEventListener("submit", handleAuthSubmit);
+}
+
+if (authPasswordToggleBtn) {
+  authPasswordToggleBtn.onclick = toggleAuthPasswordVisibility;
+}
+
+if (authTabLoginBtn) {
+  authTabLoginBtn.onclick = () => setAuthMode("login");
+}
+
+if (authTabRegisterBtn) {
+  authTabRegisterBtn.onclick = () => setAuthMode("register");
+}
+
+if (authForgotLinkBtn) {
+  authForgotLinkBtn.onclick = () => setAuthMode("forgot");
+}
+
+if (authResetLinkBtn) {
+  authResetLinkBtn.onclick = () => setAuthMode("reset");
+}
+
+if (authBackLoginLinkBtn) {
+  authBackLoginLinkBtn.onclick = () => setAuthMode("login");
+}
+
+if (authCancelBtn) {
+  authCancelBtn.onclick = () => {
+    closeAuthModal();
+    showScreen("home-screen");
+  };
+}
+
+if (logoutBtn) {
+  logoutBtn.onclick = () => {
+    backendClient.clearToken();
+    pendingProfileImage = "";
+    currentUser = null;
+    renderAuthState();
+    closeAuthModal();
+    showScreen("home-screen");
+  };
+}
+
+async function loadProfilePhotoFromFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    setProfileFeedback("Please choose an image file.", true);
+    return;
+  }
+  if (file.size > 15 * 1024 * 1024) {
+    setProfileFeedback("Image is too large. Use a file under 15MB.", true);
+    return;
+  }
+
+  const readAsDataUrl = (sourceFile) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsDataURL(sourceFile);
+    });
+
+  const loadImageFromDataUrl = (dataUrl) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+  const originalDataUrl = await readAsDataUrl(file);
+  let dataUrl = originalDataUrl;
+
+  // Optimize local images so typical phone/camera files can be used reliably.
+  if (!/^data:image\/gif;base64,/i.test(originalDataUrl)) {
+    try {
+      const img = await loadImageFromDataUrl(originalDataUrl);
+      const canvas = document.createElement("canvas");
+      let width = Number(img.naturalWidth || img.width || 0);
+      let height = Number(img.naturalHeight || img.height || 0);
+
+      if (width > 0 && height > 0) {
+        const maxDim = 720;
+        const scale = Math.min(1, maxDim / Math.max(width, height));
+        width = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          const targetChars = 2400000; // Keep below backend ceiling.
+          let quality = 0.9;
+          let pass = 0;
+          let workingW = width;
+          let workingH = height;
+
+          do {
+            canvas.width = workingW;
+            canvas.height = workingH;
+            ctx.clearRect(0, 0, workingW, workingH);
+            ctx.drawImage(img, 0, 0, workingW, workingH);
+            const candidateWebp = canvas.toDataURL("image/webp", quality);
+            const candidateJpeg = canvas.toDataURL("image/jpeg", quality);
+            dataUrl =
+              candidateWebp.length <= candidateJpeg.length
+                ? candidateWebp
+                : candidateJpeg;
+
+            if (dataUrl.length <= targetChars) break;
+            quality = Math.max(0.55, quality - 0.1);
+            workingW = Math.max(220, Math.round(workingW * 0.88));
+            workingH = Math.max(220, Math.round(workingH * 0.88));
+            pass += 1;
+          } while (pass < 6);
+        }
+      }
+    } catch {
+      // Keep original data URL if optimization fails.
+      dataUrl = originalDataUrl;
+    }
+  }
+
+  if (dataUrl.length > 2900000) {
+    setProfileFeedback(
+      "This image format/size is still too large. Try JPG/PNG under ~5MB.",
+      true,
+    );
+    return;
+  }
+
+  pendingProfileImage = dataUrl;
+  if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
+  setProfileAvatarPreview(dataUrl);
+  updateProfileButtonAvatar(dataUrl);
+  setProfileFeedback("Profile picture ready. Click Save Profile to apply.");
+}
+
+async function saveProfile() {
+  if (!currentUser) return;
+
+  const currentImage = String(currentUser.profileImage || "").trim();
+  const typedImageUrl = String(profilePhotoUrlInput?.value || "").trim();
+  const resolvedImage = typedImageUrl || pendingProfileImage || currentImage;
+  const payload = {
+    title: String(profileTitleInput?.value || "").trim() || String(currentUser.title || "").trim() || "Mr",
+    firstName:
+      String(profileFirstNameInput?.value || "").trim() ||
+      String(currentUser.firstName || "").trim(),
+    lastName:
+      String(profileLastNameInput?.value || "").trim() ||
+      String(currentUser.lastName || "").trim(),
+    username:
+      String(profileUsernameInput?.value || "").trim().toLowerCase() ||
+      String(currentUser.username || "").trim().toLowerCase(),
+    contact:
+      String(profileContactInput?.value || "").trim() ||
+      String(currentUser.contact || currentUser.email || "").trim(),
+    role:
+      readSelectedRadioValue("profile-role", String(currentUser.role || "student").trim().toLowerCase()),
+    professionalType:
+      String(profileProfessionalTypeInput?.value || "").trim() ||
+      String(currentUser.professionalType || "Other").trim(),
+    country:
+      String(profileCountryInput?.value || "").trim() ||
+      String(currentUser.country || "").trim() ||
+      "Not Set",
+    institution:
+      String(profileInstitutionInput?.value || "").trim() ||
+      String(currentUser.institution || "").trim() ||
+      "Not Set",
+    profileImage: resolvedImage,
+  };
+
+  if (
+    !payload.firstName ||
+    !payload.lastName ||
+    !payload.username ||
+    !payload.contact
+  ) {
+    setProfileFeedback(
+      "First name, surname, username and contact are required.",
+      true,
+    );
+    return;
+  }
+
+  try {
+    const response = await backendClient.updateProfile(payload);
+    currentUser = response?.user || (await backendClient.fetchMe());
+    pendingProfileImage = String(currentUser.profileImage || "").trim();
+    if (profilePhotoUrlInput) {
+      profilePhotoUrlInput.value = pendingProfileImage;
+    }
+    renderAuthState();
+    setProfileFeedback("Profile updated successfully.");
+  } catch (error) {
+    setProfileFeedback(authErrorMessage(error), true);
+  }
+}
+
+async function changeProfilePassword() {
+  const currentPassword = String(profileCurrentPasswordInput?.value || "");
+  const newPassword = String(profileNewPasswordInput?.value || "");
+  if (!currentPassword || !newPassword) {
+    setProfileFeedback("Enter current and new password.", true);
+    return;
+  }
+  if (newPassword.length < 6) {
+    setProfileFeedback("New password must be at least 6 characters.", true);
+    return;
+  }
+
+  try {
+    await backendClient.changePassword({ currentPassword, newPassword });
+    if (profileCurrentPasswordInput) profileCurrentPasswordInput.value = "";
+    if (profileNewPasswordInput) profileNewPasswordInput.value = "";
+    setProfileFeedback("Password changed successfully.");
+  } catch (error) {
+    setProfileFeedback(authErrorMessage(error), true);
+  }
+}
+
+async function deactivateProfileAccount() {
+  const days = Number(profileDeactivateDaysInput?.value || 30);
+  if (!Number.isInteger(days) || days < 1 || days > 30) {
+    setProfileFeedback("Deactivate days must be between 1 and 30.", true);
+    return;
+  }
+  if (
+    !confirm(
+      `Deactivate this account for ${days} day(s)? It will be auto-deleted after that window.`,
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await backendClient.deactivateAccount(days);
+    backendClient.clearToken();
+    pendingProfileImage = "";
+    currentUser = null;
+    renderAuthState();
+    showScreen("home-screen");
+    alert("Account deactivated. It will be deleted automatically after the selected period.");
+  } catch (error) {
+    setProfileFeedback(authErrorMessage(error), true);
+  }
+}
+
+async function deleteProfileAccount() {
+  if (!confirm("Delete account permanently? This cannot be undone.")) return;
+  if (!confirm("Final warning: this will delete your account and history forever.")) return;
+
+  try {
+    await backendClient.deleteAccount();
+    backendClient.clearToken();
+    pendingProfileImage = "";
+    currentUser = null;
+    renderAuthState();
+    showScreen("home-screen");
+    alert("Account deleted.");
+  } catch (error) {
+    setProfileFeedback(authErrorMessage(error), true);
+  }
+}
+
+async function openProfileScreen() {
+  const ok = await ensureAuthenticated();
+  if (!ok || !currentUser) return;
+  setProfileFeedback("");
+  fillProfileForm();
+  showScreen("profile-screen");
+}
+
+if (profileBtn) {
+  profileBtn.onclick = () => {
+    openProfileScreen();
+  };
+}
+
+if (profileBackBtn) {
+  profileBackBtn.onclick = () => showScreen("quiz-menu");
+}
+
+if (profileSaveBtn) {
+  profileSaveBtn.onclick = saveProfile;
+}
+
+if (profileChangePasswordBtn) {
+  profileChangePasswordBtn.onclick = changeProfilePassword;
+}
+
+if (profileDeactivateBtn) {
+  profileDeactivateBtn.onclick = deactivateProfileAccount;
+}
+
+if (profileDeleteBtn) {
+  profileDeleteBtn.onclick = deleteProfileAccount;
+}
+
+if (profilePhotoUrlInput) {
+  profilePhotoUrlInput.addEventListener("input", () => {
+    const next = String(profilePhotoUrlInput.value || "").trim();
+    pendingProfileImage = next;
+    setProfileAvatarPreview(next);
+    updateProfileButtonAvatar(next);
+  });
+}
+
+if (profilePhotoFileInput) {
+  profilePhotoFileInput.addEventListener("change", () => {
+    const file = profilePhotoFileInput.files?.[0];
+    loadProfilePhotoFromFile(file).catch(() => {
+      setProfileFeedback("Failed to read selected image.", true);
+    });
+  });
+}
+
+if (topicLinkBtnEl) {
+  topicLinkBtnEl.addEventListener("click", (event) => {
+    const href = String(topicLinkBtnEl.getAttribute("href") || "").trim();
+    if (!href || href === "#") return;
+
+    event.preventDefault();
+    const currentQuestion = Array.isArray(active) ? active[current] : null;
+    const title = currentQuestion?.topicSlug
+      ? prettifyTopicSlug(currentQuestion.topicSlug)
+      : "Study Note";
+    openTopicViewer(href, title, "quiz-area");
+  });
+}
+
 function openExamExitModal() {
   confirmExitBtn.disabled = false; // 🔥 reset button every time modal opens
   examExitModal.classList.remove("hidden");
@@ -288,6 +1447,7 @@ if (menuBtnQuiz) {
 
 if (backHomeBtn) {
   backHomeBtn.onclick = () => {
+    closeAuthModal();
     showScreen("home-screen");
   };
 }
@@ -301,9 +1461,7 @@ document.getElementById("exam-back-btn").onclick = () => {
 
 const enterBtn = document.getElementById("enter-platform-btn");
 if (enterBtn) {
-  enterBtn.onclick = () => {
-    showScreen("quiz-menu");
-  };
+  enterBtn.onclick = handlePortalEntry;
 }
 
 document.getElementById("start-exam-btn").onclick = async function () {
@@ -725,9 +1883,11 @@ function updateStreak(isCorrect) {
 
 function populateExamCategories() {
   const select = document.getElementById("category-select");
-  const categories = [...new Set(questionBank.map((q) => q.category))];
+  if (!select) return;
 
-  categories.forEach((cat) => {
+  select.innerHTML = '<option value="">All Categories</option>';
+
+  MAJOR_CATEGORIES.forEach((cat) => {
     const option = document.createElement("option");
     option.value = cat;
     option.innerText = cat;
@@ -736,9 +1896,11 @@ function populateExamCategories() {
 }
 function populateStudyCategories() {
   const select = document.getElementById("study-category-select");
-  const categories = [...new Set(questionBank.map((q) => q.category))];
+  if (!select) return;
 
-  categories.forEach((cat) => {
+  select.innerHTML = '<option value="all">All Categories</option>';
+
+  MAJOR_CATEGORIES.forEach((cat) => {
     const option = document.createElement("option");
     option.value = cat;
     option.innerText = `Study – ${cat}`;
@@ -851,6 +2013,10 @@ function startStudy() {
       // chronological
     } else {
       active = questionBank.filter((q) => q.category === selectedCategory);
+      if (active.length === 0) {
+        alert("No questions available in this category yet.");
+        return;
+      }
     }
 
     // Start attempt on backend if ready
@@ -863,7 +2029,7 @@ function startStudy() {
         })
         .then((result) => {
           backendAttemptId = result.attemptId;
-          console.log("✓ Backend study attempt started:", backendAttemptId);
+          console.info("Backend study attempt started:", backendAttemptId);
         })
         .catch((err) => {
           console.warn("Failed to start backend attempt:", err);
@@ -962,7 +2128,7 @@ function startExam(count) {
       })
       .then((result) => {
         backendAttemptId = result.attemptId;
-        console.log("✓ Backend attempt started:", backendAttemptId);
+        console.info("Backend attempt started:", backendAttemptId);
       })
       .catch((err) => {
         console.warn("Failed to start backend attempt:", err);
@@ -996,7 +2162,13 @@ function showQuestion() {
   answersEl.innerHTML = "";
   document.getElementById("combo-block").innerHTML = "";
 
-  document.getElementById("explanation").classList.add("hidden");
+  if (explanationEl) {
+    explanationEl.classList.add("hidden");
+    explanationEl.innerText = "";
+  }
+  if (topicLinkWrapEl) {
+    topicLinkWrapEl.classList.add("hidden");
+  }
   answersEl.innerHTML = "";
 
   const q = active[current];
@@ -1055,8 +2227,11 @@ function showQuestion() {
     questionEl.innerHTML = displayText;
   }
 
+  const optionList = Array.isArray(q.options) ? q.options : [];
+  const statementList = Array.isArray(q.statements) ? q.statements : [];
+
   if (q.type === "match" || q.type === "single") {
-    q.options.forEach((opt) => {
+    optionList.forEach((opt) => {
       const btn = document.createElement("button");
       btn.innerText = opt;
       btn.dataset.value = opt;
@@ -1066,7 +2241,7 @@ function showQuestion() {
   }
 
   if (q.type === "combo") {
-    q.statements.forEach((s, index) => {
+    statementList.forEach((s, index) => {
       const p = document.createElement("p");
 
       // Auto-number if not already numbered
@@ -1094,6 +2269,13 @@ function showQuestion() {
       btn.onclick = () => selectAnswer(option.letter, q);
       answersEl.appendChild(btn);
     });
+  }
+
+  if (answersEl.children.length === 0) {
+    const fallback = document.createElement("div");
+    fallback.className = "no-options-fallback";
+    fallback.innerText = "This question has no answer options configured yet.";
+    answersEl.appendChild(fallback);
   }
 
   restoreSelection(q);
@@ -1198,8 +2380,11 @@ function selectAnswer(value, q) {
   const answered = Object.keys(userAnswers).length;
   const correctNow = calculateScore();
   liveScore.innerText = `${correctNow}/${answered}`;
-  document.getElementById("explanation").innerText = q.explanation;
-  document.getElementById("explanation").classList.remove("hidden");
+  if (explanationEl) {
+    explanationEl.innerText = q.explanation;
+    explanationEl.classList.remove("hidden");
+  }
+  renderQuestionTopicLink(q);
   answeredCurrent = true;
   nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
 }
@@ -1254,8 +2439,11 @@ function nextQuestion() {
         }
       });
 
-      document.getElementById("explanation").innerText = q.explanation;
-      document.getElementById("explanation").classList.remove("hidden");
+      if (explanationEl) {
+        explanationEl.innerText = q.explanation;
+        explanationEl.classList.remove("hidden");
+      }
+      renderQuestionTopicLink(q);
 
       answeredCurrent = true;
       nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
@@ -1314,9 +2502,11 @@ function restoreSelection(q) {
   });
   // Show explanation again in study mode
   if (mode === "study") {
-    const explanationBox = document.getElementById("explanation");
-    explanationBox.innerText = q.explanation;
-    explanationBox.classList.remove("hidden");
+    if (explanationEl) {
+      explanationEl.innerText = q.explanation;
+      explanationEl.classList.remove("hidden");
+    }
+    renderQuestionTopicLink(q);
   }
 
   if (mode === "study") {
@@ -1938,9 +3128,11 @@ function renderDetailedQuestion() {
   }
 
   // Always show explanation
-  const explanationBox = document.getElementById("explanation");
-  explanationBox.innerText = q.explanation || "No explanation provided.";
-  explanationBox.classList.remove("hidden");
+  if (explanationEl) {
+    explanationEl.innerText = q.explanation || "No explanation provided.";
+    explanationEl.classList.remove("hidden");
+  }
+  renderQuestionTopicLink(q);
 }
 
 function showQuestionDetailedMode() {
@@ -2069,6 +3261,12 @@ function saveStudyProgress() {
                   ================================= */
 
 window.addEventListener("load", function () {
+  setAuthMode("login");
+  setProfileAvatarPreview("");
+  updateProfileButtonAvatar("");
+  renderAuthState();
+  restoreAuthSession();
+
   // Load questions from backend first
   loadQuestionsFromBackend().then(() => {
     rebuildCaseMap();
@@ -2080,6 +3278,7 @@ window.addEventListener("load", function () {
 
   populateStudyCategories();
   populateExamCategories();
+  populateTopicLibraryCategories();
 
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
@@ -2318,8 +3517,11 @@ function showScreen(id) {
   const screens = [
     "home-screen",
     "quiz-menu",
+    "profile-screen",
     "study-setup",
     "exam-setup",
+    "topic-library",
+    "topic-viewer",
     "quiz-area",
     "review-screen",
     "dashboard",
@@ -2389,6 +3591,10 @@ function shuffle(array) {
 }
 
 document.addEventListener("keydown", function (e) {
+  if (authModal && !authModal.classList.contains("hidden") && e.key === "Escape") {
+    closeAuthModal();
+    return;
+  }
   if (!examExitModal.classList.contains("hidden") && e.key === "Escape") {
     closeExamExitModal();
   }
@@ -2415,6 +3621,11 @@ window.addEventListener("beforeunload", function () {
 window.addEventListener("popstate", function () {
   const activeScreen = document.querySelector(".screen-active");
   const activeId = activeScreen ? activeScreen.id : null;
+
+  if (authModal && !authModal.classList.contains("hidden")) {
+    closeAuthModal();
+    return;
+  }
 
   // 1️⃣ If Study exit modal is open → close it
   const studyModal = document.getElementById("study-exit-modal");
@@ -2450,8 +3661,28 @@ window.addEventListener("popstate", function () {
     return;
   }
 
+  if (activeId === "profile-screen") {
+    showScreen("quiz-menu");
+    return;
+  }
+
+  if (activeId === "topic-viewer") {
+    showScreen(topicViewerReturnScreen || "topic-library");
+    return;
+  }
+
+  if (activeId === "topic-library") {
+    showScreen(topicLibraryReturnScreen || "quiz-menu");
+    return;
+  }
+
   if (activeId === "quiz-menu") {
     showScreen("home-screen");
     return;
   }
 });
+
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)

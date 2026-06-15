@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aortic Disease - Comprehensive Lecture Note</title>
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16-s3.png?v=20260324-applogo1" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180-s3.png?v=20260324-applogo1" />
+    <style>
+      :root {
+        --bg: #f3f8ff;
+        --surface: #ffffff;
+        --ink: #10233d;
+        --muted: #516174;
+        --line: #d8e3f0;
+        --brand: #0f3f7f;
+        --brand-soft: #e7f0ff;
+        --warn-soft: #fff6e8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 85% 6%, #cfe4ff 0%, transparent 30%),
+          radial-gradient(circle at 8% 24%, #d5f5ff 0%, transparent 22%),
+          var(--bg);
+      }
+      .wrap {
+        width: min(1200px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 16px;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(12, 36, 68, 0.06);
+      }
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #34465e;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+      .toc a:hover {
+        background: #eef4ff;
+        color: #17385f;
+      }
+      .content { padding: 0 0 18px; }
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #fbfdff 0%, #f0f6ff 62%, #eef8ff 100%);
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      h1 {
+        margin: 0;
+        color: #082848;
+        font-size: clamp(1.4rem, 2.4vw, 2.05rem);
+      }
+      .subtitle {
+        margin: 8px 0 0;
+        color: #365f8b;
+        font-family: "Montserrat", "Segoe UI", Tahoma, Arial, sans-serif;
+        font-size: 0.98rem;
+        font-weight: 500;
+        line-height: 1.5;
+      }
+      .hero-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .metric, .box {
+        border: 1px solid #cfe0f6;
+        border-radius: 12px;
+        background: #fff;
+        padding: 12px;
+      }
+      .metric .k {
+        font-size: 11px;
+        color: #58708a;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      .metric .v {
+        font-size: 14px;
+        color: #1f3b5e;
+        font-weight: 700;
+      }
+      .section {
+        padding: 18px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+      .section:last-child { border-bottom: none; }
+      .section h2 {
+        margin: 0 0 10px;
+        color: #0f3f7f;
+        font-size: 1.12rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .section h3 {
+        margin: 0 0 8px;
+        color: #31506f;
+        font-size: 0.98rem;
+        font-weight: 700;
+      }
+      .section p {
+        margin: 0;
+        color: #32465d;
+        line-height: 1.62;
+      }
+      .stack { margin-top: 12px; display: grid; gap: 12px; }
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .box ul, .section ul, .section ol { margin: 0 0 0 18px; padding: 0; }
+      .box li, .section li { margin: 6px 0; color: #2e4661; line-height: 1.55; }
+      .table {
+        margin-top: 10px;
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .table th, .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        vertical-align: top;
+        border-bottom: 1px solid #e8eff8;
+      }
+      .table thead th {
+        background: #f5f9ff;
+        color: #163b63;
+        font-weight: 700;
+      }
+      .table tr:last-child td { border-bottom: none; }
+      .callout {
+        border-radius: 12px;
+        padding: 12px 14px;
+        border: 1px solid #d9e7fb;
+        background: #f8fbff;
+        color: #284764;
+      }
+      .callout.warn {
+        background: var(--warn-soft);
+        border-color: #f0dfc0;
+      }
+      .topic-quiz-actions {
+        margin-top: 18px;
+        display: flex;
+        gap: 10px;
+      }
+      .topic-quiz-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 1px solid #c7d9f2;
+        background: #0f3f7f;
+        color: #fff;
+        font-weight: 700;
+        text-decoration: none;
+        box-shadow: 0 10px 22px rgba(15, 63, 127, 0.22);
+      }
+      .topic-quiz-cta:visited {
+        color: #fff;
+      }
+      .topic-quiz-cta:hover,
+      .topic-quiz-cta:focus-visible {
+        background: #0b3264;
+        color: #fff;
+        border-color: #9ebde4;
+      }
+      .guideline-list {
+        display: grid;
+        gap: 10px;
+      }
+      .guideline-line {
+        color: #304863;
+        line-height: 1.7;
+      }
+      .guideline-line strong {
+        color: #153c67;
+      }
+      .note-quiz-footer {
+        padding: 18px 20px 24px;
+      }
+      a { color: #0f3f7f; }
+      @media (max-width: 860px) {
+        .wrap { width: min(100%, 100vw); margin: 0; display: block; }
+        .panel { border-radius: 0; box-shadow: none; border-left: none; border-right: none; }
+        .hero-grid, .grid-2 { grid-template-columns: 1fr; }
+        .section { padding: 16px 14px; }
+        .table th, .table td { padding: 8px; font-size: 12px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#learning-objectives">1. Learning Objectives</a>
+        <a href="#anatomy-of-the-aorta">2. Anatomy of the Aorta</a>
+        <a href="#classification-of-aortic-diseases">3. Classification of Aortic Diseases</a>
+        <a href="#aortic-aneurysm">4. Aortic Aneurysm</a>
+        <a href="#aortic-dissection">5. Aortic Dissection</a>
+        <a href="#aortic-ulcer-and-intramural-hematoma">6. Aortic Ulcer and Intramural Hematoma</a>
+        <a href="#traumatic-aortic-injury">7. Traumatic Aortic Injury</a>
+        <a href="#aortitis">8. Aortitis</a>
+        <a href="#pharmacological-management">9. Pharmacological Management</a>
+        <a href="#surgical-and-endovascular-management">10. Surgical and Endovascular Management</a>
+        <a href="#patient-counseling-points">11. Patient Counseling Points</a>
+        <a href="#summary-for-exam-preparation">12. Summary for Exam Preparation</a>
+        <a href="#key-guidelines-links">13. Key Guidelines Links</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Cardiovascular Therapeutics</span>
+          <h1>Aortic Disease</h1>
+          <p class="subtitle">
+            A comprehensive lecture note covering aneurysm and dissection classification, emergency blood
+            pressure control, surveillance intervals, repair thresholds, special inflammatory and traumatic
+            syndromes, and exam-focused management.
+          </p>
+          <div class="hero-grid">
+            <div class="metric"><div class="k">Aortic Emergency</div><div class="v">Type A dissection</div></div>
+            <div class="metric"><div class="k">Core Drug Sequence</div><div class="v">Beta-blocker before vasodilator</div></div>
+            <div class="metric"><div class="k">AAA Screen</div><div class="v">One-time US in men 65-75 who smoked</div></div>
+            <div class="metric"><div class="k">Repair Trigger</div><div class="v">Size, symptoms, or rapid growth</div></div>
+          </div>
+        </header>
+
+        <section class="section" id="learning-objectives">
+          <h2>1. Learning Objectives</h2>
+          <div class="stack">
+            <div class="box">
+              <ol>
+                <li>Describe the anatomy of the aorta and classify aortic diseases by location and etiology.</li>
+                <li>Differentiate between abdominal and thoracic aortic aneurysm in risk factors, presentation, and management.</li>
+                <li>Recognize acute aortic dissection and distinguish Stanford Type A from Type B.</li>
+                <li>Identify major risk factors for aneurysm and dissection, including inherited syndromes.</li>
+                <li>Apply abdominal aortic aneurysm screening recommendations in at-risk populations.</li>
+                <li>Select pharmacological therapies that reduce aortic wall stress and slow progression.</li>
+                <li>Differentiate medical management, surgery, and endovascular repair based on size, symptoms, and complications.</li>
+                <li>Provide counseling on surveillance imaging, blood pressure control, and safe activity choices.</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="anatomy-of-the-aorta">
+          <h2>2. Anatomy of the Aorta</h2>
+          <p>
+            The aorta is the largest artery in the body. It begins at the left ventricle, rises through the
+            chest, arches, descends through the thorax and abdomen, and bifurcates into the common iliac arteries.
+          </p>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Segment</th>
+                <th>Location</th>
+                <th>Major Branches</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ascending aorta</td>
+                <td>Aortic valve to brachiocephalic origin</td>
+                <td>Coronary arteries</td>
+              </tr>
+              <tr>
+                <td>Aortic arch</td>
+                <td>Curves over the heart</td>
+                <td>Brachiocephalic, left common carotid, left subclavian</td>
+              </tr>
+              <tr>
+                <td>Descending thoracic aorta</td>
+                <td>Arch to diaphragm</td>
+                <td>Intercostal, esophageal, bronchial branches</td>
+              </tr>
+              <tr>
+                <td>Abdominal aorta</td>
+                <td>Diaphragm to bifurcation</td>
+                <td>Celiac, superior mesenteric, renal, inferior mesenteric, lumbar branches</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="stack">
+            <div class="box">
+              <h3>Normal Diameters</h3>
+              <ul>
+                <li><strong>Ascending aorta:</strong> usually less than 3.5-4.0 cm</li>
+                <li><strong>Descending thoracic aorta:</strong> usually less than 3.0-3.5 cm</li>
+                <li><strong>Abdominal aorta:</strong> usually less than 3.0 cm</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="classification-of-aortic-diseases">
+          <h2>3. Classification of Aortic Diseases</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Conditions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Degenerative</td>
+                <td>Atherosclerotic aneurysm, aortic dissection, aortic rupture</td>
+              </tr>
+              <tr>
+                <td>Genetic or connective tissue</td>
+                <td>Marfan syndrome, Ehlers-Danlos syndrome, Loeys-Dietz syndrome, bicuspid aortic valve, Turner syndrome</td>
+              </tr>
+              <tr>
+                <td>Inflammatory</td>
+                <td>Takayasu arteritis, giant cell arteritis, Behcet disease, IgG4-related disease</td>
+              </tr>
+              <tr>
+                <td>Infectious</td>
+                <td>Mycotic aneurysm, syphilitic disease, tuberculosis-related disease</td>
+              </tr>
+              <tr>
+                <td>Traumatic</td>
+                <td>Blunt aortic injury and iatrogenic catheter or surgical injury</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="aortic-aneurysm">
+          <h2>4. Aortic Aneurysm</h2>
+          <p>
+            An aortic aneurysm is a permanent localized dilation of the aorta that reaches at least 1.5 times
+            the expected normal diameter. Clinically, abdominal aneurysm usually means an aorta above 3.0 cm,
+            while thoracic aneurysm generally begins above 4.0 cm.
+          </p>
+          <div class="stack">
+            <div class="box">
+              <h3>4.1. Abdominal Aortic Aneurysm</h3>
+              <ul>
+                <li>Usually infrarenal and more common than thoracic aneurysm.</li>
+                <li>Seen most often in older men with smoking history and atherosclerotic risk factors.</li>
+                <li>Rupture risk rises sharply as diameter increases.</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>4.2. Thoracic Aortic Aneurysm</h3>
+              <ul>
+                <li>May involve the ascending aorta, arch, or descending thoracic aorta.</li>
+                <li>Ascending aneurysm is the most common thoracic phenotype.</li>
+                <li>More often linked to bicuspid aortic valve and inherited syndromes.</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>4.3. Pathophysiology</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Mechanism</th>
+                    <th>How It Promotes Aneurysm</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Inflammation</td>
+                    <td>Macrophages and lymphocytes release matrix metalloproteinases that degrade elastin and collagen.</td>
+                  </tr>
+                  <tr>
+                    <td>Oxidative stress</td>
+                    <td>Reactive oxygen species promote smooth muscle loss and extracellular matrix injury.</td>
+                  </tr>
+                  <tr>
+                    <td>Hemodynamic stress</td>
+                    <td>Higher pressure and wider radius raise wall tension and speed dilation.</td>
+                  </tr>
+                  <tr>
+                    <td>Genetic mutations</td>
+                    <td>Defects in fibrillin, collagen, smooth muscle contractile proteins, or TGF-beta signaling weaken the wall.</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="callout warn">
+                <strong>LaPlace's law:</strong> wall tension rises as pressure and radius rise. As the aorta enlarges,
+                the wall is exposed to even more tension, creating a self-reinforcing cycle toward rupture.
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="box">
+                <h3>4.4. Risk Factors</h3>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Modifiable</th>
+                      <th>Non-Modifiable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Hypertension</td>
+                      <td>Age 65 years and above</td>
+                    </tr>
+                    <tr>
+                      <td>Smoking, especially for AAA</td>
+                      <td>Male sex</td>
+                    </tr>
+                    <tr>
+                      <td>Hyperlipidemia</td>
+                      <td>Family history of aneurysm or dissection</td>
+                    </tr>
+                    <tr>
+                      <td>Atherosclerosis</td>
+                      <td>Marfan, Ehlers-Danlos, Loeys-Dietz, bicuspid aortic valve</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="box">
+                <h3>4.5. Clinical Presentation</h3>
+                <ul>
+                  <li><strong>Most aneurysms are asymptomatic</strong> and found incidentally on imaging.</li>
+                  <li><strong>Expanding or leaking aneurysm:</strong> deep abdominal, flank, chest, or back pain.</li>
+                  <li><strong>AAA exam clue:</strong> pulsatile abdominal mass may be palpable.</li>
+                  <li><strong>Distal embolization:</strong> blue toe syndrome or ischemic symptoms can occur.</li>
+                  <li><strong>Rupture:</strong> sudden severe pain, hypotension, syncope, and shock.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="box">
+              <h3>4.6. Screening and Diagnosis</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Population</th>
+                    <th>Recommendation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Men 65-75 with smoking history</td>
+                    <td>One-time screening abdominal ultrasound</td>
+                  </tr>
+                  <tr>
+                    <td>Men 65-75 without smoking history</td>
+                    <td>Selective screening</td>
+                  </tr>
+                  <tr>
+                    <td>Women 65-75 with smoking history</td>
+                    <td>Evidence is insufficient for routine screening</td>
+                  </tr>
+                </tbody>
+              </table>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Modality</th>
+                    <th>Use</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Abdominal ultrasound</td>
+                    <td>Best for AAA screening and surveillance</td>
+                  </tr>
+                  <tr>
+                    <td>CT angiography</td>
+                    <td>Pre-operative planning, precise measurement, rupture or extent assessment</td>
+                  </tr>
+                  <tr>
+                    <td>Magnetic resonance angiography</td>
+                    <td>Alternative without radiation, useful in selected younger or contrast-allergic patients</td>
+                  </tr>
+                </tbody>
+              </table>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Aneurysm Size</th>
+                    <th>Surveillance Interval</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Less than 3.0 cm</td>
+                    <td>No further screening</td>
+                  </tr>
+                  <tr>
+                    <td>3.0-3.9 cm</td>
+                    <td>Every 3 years</td>
+                  </tr>
+                  <tr>
+                    <td>4.0-4.9 cm</td>
+                    <td>Every 12 months</td>
+                  </tr>
+                  <tr>
+                    <td>5.0-5.4 cm</td>
+                    <td>Every 6 months</td>
+                  </tr>
+                  <tr>
+                    <td>At least 5.5 cm or rapidly expanding</td>
+                    <td>Consider repair</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h3>4.7. Management</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Trigger for Repair</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Size threshold</td>
+                    <td>AAA at least 5.5 cm in men, 5.0 cm in women, or thoracic aneurysm about 5.5-6.0 cm depending on site and cause</td>
+                  </tr>
+                  <tr>
+                    <td>Rapid growth</td>
+                    <td>More than 0.5 cm in 6 months or more than 1.0 cm in 1 year</td>
+                  </tr>
+                  <tr>
+                    <td>Symptoms</td>
+                    <td>Pain, tenderness, embolization, or leak concern</td>
+                  </tr>
+                  <tr>
+                    <td>Rupture</td>
+                    <td>Immediate emergency repair</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="grid-2">
+                <div class="box">
+                  <h3>Repair Options</h3>
+                  <ul>
+                    <li><strong>Open surgical repair:</strong> resection with graft replacement, often used in younger patients or complex anatomy.</li>
+                    <li><strong>EVAR:</strong> stent graft via femoral access for suitable infrarenal AAA anatomy.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <h3>Medical Management During Surveillance</h3>
+                  <ul>
+                    <li>Control blood pressure, usually to less than 130/80 mmHg.</li>
+                    <li>Use beta-blockers to reduce aortic wall stress, especially in thoracic disease.</li>
+                    <li>Use ARBs such as losartan in Marfan syndrome and related aortopathies.</li>
+                    <li>Use statins for vascular risk reduction and possible anti-inflammatory benefit.</li>
+                    <li>Promote complete smoking cessation and avoid heavy straining.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="aortic-dissection">
+          <h2>5. Aortic Dissection</h2>
+          <p>
+            Aortic dissection begins when an intimal tear allows blood to track into the media, creating a
+            false lumen that can extend along the aorta and compromise branch vessels.
+          </p>
+          <div class="stack">
+            <div class="grid-2">
+              <div class="box">
+                <h3>5.1. Definition and Classification</h3>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>System</th>
+                      <th>Type</th>
+                      <th>Description</th>
+                      <th>Management</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Stanford</td>
+                      <td>Type A</td>
+                      <td>Any dissection involving the ascending aorta</td>
+                      <td>Emergency surgery</td>
+                    </tr>
+                    <tr>
+                      <td>Stanford</td>
+                      <td>Type B</td>
+                      <td>Descending aorta only, without ascending involvement</td>
+                      <td>Medical unless complicated</td>
+                    </tr>
+                    <tr>
+                      <td>DeBakey</td>
+                      <td>Type I</td>
+                      <td>Starts in ascending aorta and extends beyond it</td>
+                      <td>Usually treated as Stanford A</td>
+                    </tr>
+                    <tr>
+                      <td>DeBakey</td>
+                      <td>Type II</td>
+                      <td>Confined to ascending aorta</td>
+                      <td>Usually treated as Stanford A</td>
+                    </tr>
+                    <tr>
+                      <td>DeBakey</td>
+                      <td>Type III</td>
+                      <td>Starts in descending aorta</td>
+                      <td>Usually treated as Stanford B</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="box">
+                <h3>5.2. Pathophysiology</h3>
+                <ol>
+                  <li>An intimal tear forms, often in the ascending aorta or just distal to the left subclavian artery.</li>
+                  <li>Blood enters the media and creates a false lumen.</li>
+                  <li>The dissection propagates distally or proximally.</li>
+                  <li>Complications can include malperfusion, aortic regurgitation, tamponade, and rupture.</li>
+                </ol>
+              </div>
+            </div>
+            <div class="box">
+              <h3>5.3. Risk Factors</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Risk Factors</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Hemodynamic</td>
+                    <td>Hypertension is the most important modifiable risk factor</td>
+                  </tr>
+                  <tr>
+                    <td>Structural or genetic</td>
+                    <td>Marfan syndrome, Ehlers-Danlos syndrome, Loeys-Dietz syndrome, bicuspid aortic valve</td>
+                  </tr>
+                  <tr>
+                    <td>Inflammatory</td>
+                    <td>Takayasu arteritis, giant cell arteritis</td>
+                  </tr>
+                  <tr>
+                    <td>Other triggers</td>
+                    <td>Trauma, cardiac surgery, catheterization, cocaine use, late pregnancy, family history</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="grid-2">
+              <div class="box">
+                <h3>5.4. Clinical Presentation</h3>
+                <ul>
+                  <li>Sudden severe chest, back, or abdominal pain with tearing or ripping quality.</li>
+                  <li>Pain may migrate as the dissection propagates.</li>
+                  <li>Syncope may indicate tamponade or severe malperfusion.</li>
+                  <li>Type A often causes anterior chest pain, aortic regurgitation murmur, MI pattern, or stroke signs.</li>
+                  <li>Type B often causes interscapular back pain, pulse deficits, renal ischemia, mesenteric ischemia, or spinal ischemia.</li>
+                </ul>
+              </div>
+              <div class="box">
+                <h3>Key Examination Clues</h3>
+                <ul>
+                  <li>Blood pressure difference greater than 20 mmHg between arms</li>
+                  <li>Pulse deficit in carotid, brachial, or femoral distribution</li>
+                  <li>New diastolic murmur from acute aortic regurgitation</li>
+                  <li>Beck's triad if tamponade develops</li>
+                  <li>Focal neurologic deficit or paraplegia from branch vessel involvement</li>
+                </ul>
+              </div>
+            </div>
+            <div class="box">
+              <h3>5.5. Diagnosis</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Modality</th>
+                    <th>Use</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>CT angiography</td>
+                    <td>First-line in stable patients; rapidly defines flap, extent, branch involvement, and complications</td>
+                  </tr>
+                  <tr>
+                    <td>Transesophageal echocardiography</td>
+                    <td>Excellent for ascending aorta and useful at bedside in unstable patients</td>
+                  </tr>
+                  <tr>
+                    <td>Magnetic resonance angiography</td>
+                    <td>Very accurate but not ideal for unstable emergencies</td>
+                  </tr>
+                  <tr>
+                    <td>Chest X-ray</td>
+                    <td>May show widened mediastinum but cannot rule out dissection</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h3>5.6. Management</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Immediate Step</th>
+                    <th>Purpose</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Secure ABCs and monitoring</td>
+                    <td>Stabilize airway, circulation, and obtain IV access</td>
+                  </tr>
+                  <tr>
+                    <td>IV opioids</td>
+                    <td>Reduce pain and sympathetic surge</td>
+                  </tr>
+                  <tr>
+                    <td>IV beta-blocker first</td>
+                    <td>Reduce heart rate and dP/dt before any vasodilator is added</td>
+                  </tr>
+                  <tr>
+                    <td>Add vasodilator only after beta-blockade</td>
+                    <td>Lower systolic blood pressure without provoking reflex tachycardia</td>
+                  </tr>
+                </tbody>
+              </table>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Drug</th>
+                    <th>Typical Role</th>
+                    <th>Target</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Esmolol or labetalol</td>
+                    <td>First-line acute therapy</td>
+                    <td>Heart rate 50-60 bpm</td>
+                  </tr>
+                  <tr>
+                    <td>Nitroprusside or nicardipine</td>
+                    <td>Add if systolic pressure remains high after beta-blockade</td>
+                    <td>SBP 100-120 mmHg</td>
+                  </tr>
+                  <tr>
+                    <td>Verapamil or diltiazem</td>
+                    <td>Alternative if beta-blocker cannot be used</td>
+                    <td>Rate and blood pressure control</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="callout warn">
+                <strong>Critical warning:</strong> never give vasodilators alone in acute aortic dissection.
+                Reflex tachycardia increases aortic wall stress and may worsen propagation.
+              </div>
+              <div class="grid-2">
+                <div class="box">
+                  <h3>Type A Dissection</h3>
+                  <ul>
+                    <li>Any ascending aortic involvement makes this a surgical emergency.</li>
+                    <li>Urgent surgery prevents tamponade, coronary malperfusion, stroke, and rupture.</li>
+                    <li>Procedures may include ascending aortic replacement, root replacement, or valve work.</li>
+                  </ul>
+                </div>
+                <div class="box">
+                  <h3>Type B Dissection</h3>
+                  <ul>
+                    <li>Uncomplicated disease is treated medically with lifelong blood pressure control.</li>
+                    <li>Complicated disease with malperfusion, rupture, refractory pain, refractory hypertension, or rapid expansion usually requires TEVAR.</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="box">
+                <h3>Long-Term Follow-Up</h3>
+                <ul>
+                  <li>Continue beta-blockers lifelong unless contraindicated.</li>
+                  <li>Consider ARBs in connective tissue disease and chronic aortopathy.</li>
+                  <li>Typical imaging surveillance is at 1, 3, 6, and 12 months after discharge, then annually.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="aortic-ulcer-and-intramural-hematoma">
+          <h2>6. Aortic Ulcer and Intramural Hematoma</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Penetrating Aortic Ulcer</h3>
+              <p>
+                Penetrating aortic ulcer arises when an atherosclerotic plaque ulcerates through the internal
+                elastic lamina and can progress to intramural hematoma, dissection, pseudoaneurysm, or rupture.
+              </p>
+              <ul>
+                <li>Often occurs in older patients with heavy atherosclerotic burden.</li>
+                <li>Medical therapy is reasonable for asymptomatic stable disease.</li>
+                <li>TEVAR is favored for enlarging or symptomatic disease.</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Intramural Hematoma</h3>
+              <p>
+                Intramural hematoma is bleeding into the media without a clear intimal flap. It behaves like a
+                dissection precursor and can progress to rupture.
+              </p>
+              <ul>
+                <li>Type A intramural hematoma is managed like Type A dissection.</li>
+                <li>Type B intramural hematoma is usually managed like uncomplicated Type B dissection unless complications develop.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="traumatic-aortic-injury">
+          <h2>7. Traumatic Aortic Injury</h2>
+          <p>
+            Blunt thoracic trauma, especially from motor vehicle collisions or falls from height, can injure
+            the aorta most often at the isthmus just distal to the left subclavian artery.
+          </p>
+          <div class="stack">
+            <div class="box">
+              <h3>Typical Clues</h3>
+              <ul>
+                <li>High-energy chest trauma mechanism</li>
+                <li>Widened mediastinum or hemothorax on chest imaging</li>
+                <li>Hypotension or associated multisystem injury</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Management Overview</h3>
+              <ul>
+                <li>Lower-grade injuries may be managed medically with blood pressure control.</li>
+                <li>Pseudoaneurysm or rupture generally requires urgent TEVAR or open repair.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="aortitis">
+          <h2>8. Aortitis</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Takayasu Arteritis</h3>
+              <ul>
+                <li>Large-vessel vasculitis in younger women.</li>
+                <li>Early systemic inflammatory phase may progress to pulseless or occlusive disease.</li>
+                <li>Treatment relies on glucocorticoids and steroid-sparing immunosuppressive therapy.</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Giant Cell Arteritis</h3>
+              <ul>
+                <li>Affects older adults, often with polymyalgia rheumatica overlap.</li>
+                <li>Can involve the aorta and major branches beyond classic cranial symptoms.</li>
+                <li>Managed with high-dose glucocorticoids, often with tocilizumab.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="pharmacological-management">
+          <h2>9. Pharmacological Management</h2>
+          <div class="stack">
+            <div class="box">
+              <h3>9.1. Beta-Blockers</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Aspect</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Rationale</td>
+                    <td>Reduce heart rate, contractility, and aortic wall shear stress</td>
+                  </tr>
+                  <tr>
+                    <td>Common agents</td>
+                    <td>Atenolol, metoprolol, propranolol, bisoprolol; esmolol and labetalol are major acute IV choices</td>
+                  </tr>
+                  <tr>
+                    <td>Main uses</td>
+                    <td>First-line in acute dissection and long-term aortopathy management</td>
+                  </tr>
+                  <tr>
+                    <td>Target</td>
+                    <td>Heart rate often 50-60 bpm in acute dissection</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h3>9.2. Angiotensin Receptor Blockers</h3>
+              <p>
+                Losartan is important in Marfan syndrome and related genetic aortopathies because it lowers
+                blood pressure and may reduce maladaptive TGF-beta signaling that drives aortic root dilation.
+              </p>
+            </div>
+            <div class="box">
+              <h3>9.3. Calcium Channel Blockers</h3>
+              <p>
+                Verapamil or diltiazem can be used when beta-blockers cannot be used. They may also support
+                acute blood pressure control after the core anti-impulse strategy is established.
+              </p>
+            </div>
+            <div class="box">
+              <h3>9.4. Statins</h3>
+              <p>
+                Statins are favored in aneurysm patients because they improve overall vascular risk and may
+                slow aneurysm expansion through anti-inflammatory effects in observational studies.
+              </p>
+            </div>
+            <div class="box">
+              <h3>9.5. Antiplatelet and Anticoagulation</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Agent Group</th>
+                    <th>Role</th>
+                    <th>Key Reminder</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Aspirin</td>
+                    <td>Secondary prevention when atherosclerotic disease indication exists</td>
+                    <td>Not a primary treatment for aneurysm itself</td>
+                  </tr>
+                  <tr>
+                    <td>Warfarin or DOACs</td>
+                    <td>Use only for separate indications such as AF, valve disease, or VTE</td>
+                    <td>No routine anticoagulation for aneurysm alone</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="surgical-and-endovascular-management">
+          <h2>10. Surgical and Endovascular Management</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Procedure</th>
+                <th>Description</th>
+                <th>Typical Indications</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Open surgical repair</td>
+                <td>Resection of diseased aorta with synthetic graft replacement</td>
+                <td>Younger fit patients, complex anatomy, many ascending repairs</td>
+              </tr>
+              <tr>
+                <td>EVAR</td>
+                <td>Endovascular repair of infrarenal abdominal aneurysm</td>
+                <td>Suitable AAA anatomy, especially in older or higher-risk patients</td>
+              </tr>
+              <tr>
+                <td>TEVAR</td>
+                <td>Thoracic endovascular stent graft</td>
+                <td>Descending thoracic aneurysm or complicated Type B dissection</td>
+              </tr>
+              <tr>
+                <td>Bentall procedure</td>
+                <td>Composite graft with aortic valve replacement</td>
+                <td>Ascending root disease with root and valve involvement</td>
+              </tr>
+              <tr>
+                <td>Valve-sparing root replacement</td>
+                <td>Root replacement while preserving the native valve</td>
+                <td>Selected connective tissue patients with suitable valve anatomy</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="patient-counseling-points">
+          <h2>11. Patient Counseling Points</h2>
+          <div class="stack">
+            <div class="box">
+              <ul>
+                <li><strong>Blood pressure matters every day:</strong> high pressure increases stress on the aortic wall.</li>
+                <li><strong>Do not skip beta-blockers:</strong> they protect the aorta by reducing the force and speed of ejection.</li>
+                <li><strong>Keep imaging appointments:</strong> surveillance detects growth before rupture or dissection occurs.</li>
+                <li><strong>Avoid heavy lifting and straining:</strong> Valsalva-type maneuvers can sharply raise aortic pressure.</li>
+                <li><strong>Seek emergency care immediately</strong> for sudden tearing chest pain, severe back pain, syncope, abdominal pain, new weakness, or shortness of breath.</li>
+                <li><strong>Family screening matters:</strong> first-degree relatives may need imaging in inherited or familial disease.</li>
+                <li><strong>Smoking cessation is essential:</strong> smoking is the strongest modifiable risk factor for AAA expansion and rupture.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="summary-for-exam-preparation">
+          <h2>12. Summary for Exam Preparation</h2>
+          <div class="callout warn">
+            <strong>High-yield memory anchors:</strong> men 65-75 who smoked need one AAA ultrasound, Type A
+            dissection goes to surgery, Type B is medical unless complicated, beta-blockers come before
+            vasodilators, and repair decisions are driven by size, symptoms, and growth rate.
+          </div>
+          <div class="stack">
+            <div class="box">
+              <h3>Aneurysm Comparison</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th>AAA</th>
+                    <th>TAA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Typical location</td>
+                    <td>Infrarenal</td>
+                    <td>Ascending more common than descending</td>
+                  </tr>
+                  <tr>
+                    <td>Major population clue</td>
+                    <td>Older male smoker</td>
+                    <td>Often genetic or valve-related</td>
+                  </tr>
+                  <tr>
+                    <td>Common management emphasis</td>
+                    <td>Screening and surveillance</td>
+                    <td>Beta-blockade and inherited syndrome surveillance</td>
+                  </tr>
+                  <tr>
+                    <td>Repair threshold</td>
+                    <td>Usually 5.5 cm in men, 5.0 cm in women</td>
+                    <td>Usually 5.5-6.0 cm, lower in selected syndromes</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h3>Dissection Comparison</h3>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th>Type A</th>
+                    <th>Type B</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Involvement</td>
+                    <td>Ascending aorta involved</td>
+                    <td>No ascending involvement</td>
+                  </tr>
+                  <tr>
+                    <td>Initial definitive plan</td>
+                    <td>Emergency surgery</td>
+                    <td>Medical unless complicated</td>
+                  </tr>
+                  <tr>
+                    <td>Medical sequence</td>
+                    <td>Beta-blocker then vasodilator if needed</td>
+                    <td>Beta-blocker then vasodilator if needed</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="box">
+              <h3>Quick Mnemonics</h3>
+              <ul>
+                <li><strong>AAA screening:</strong> men 65-75 who smoked need 1 ultrasound.</li>
+                <li><strong>Beck's triad:</strong> hypotension, JVD, muffled heart sounds.</li>
+                <li><strong>Acute dissection sequence:</strong> pain control, beta-blocker, then vasodilator if needed.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="key-guidelines-links">
+          <h2>13. Key Guidelines Links</h2>
+          <div class="guideline-list">
+            <p class="guideline-line">
+              <strong>ACC/AHA Guideline for the Diagnosis and Management of Aortic Disease 2022:</strong>
+              <a href="https://www.ahajournals.org/doi/10.1161/CIR.0000000000001106" target="_blank" rel="noreferrer">https://www.ahajournals.org/doi/10.1161/CIR.0000000000001106</a>
+            </p>
+            <p class="guideline-line">
+              <strong>ESVS Clinical Practice Guidelines on the Management of Abdominal Aorto-Iliac Artery Aneurysms 2024:</strong>
+              <a href="https://www.ejves.com/article/S1078-5884(23)00764-2/fulltext" target="_blank" rel="noreferrer">https://www.ejves.com/article/S1078-5884(23)00764-2/fulltext</a>
+            </p>
+            <p class="guideline-line">
+              <strong>ESC Guidelines for the Diagnosis and Treatment of Aortic Diseases 2014:</strong>
+              <a href="https://academic.oup.com/eurheartj/article/35/41/2873/2394236" target="_blank" rel="noreferrer">https://academic.oup.com/eurheartj/article/35/41/2873/2394236</a>
+            </p>
+            <p class="guideline-line">
+              <strong>SVS Clinical Practice Guidelines on Thoracic Aortic Aneurysm 2015:</strong>
+              <a href="https://www.jvascsurg.org/article/S0741-5214(15)00033-5/fulltext" target="_blank" rel="noreferrer">https://www.jvascsurg.org/article/S0741-5214(15)00033-5/fulltext</a>
+            </p>
+            <p class="guideline-line">
+              <strong>USPSTF AAA Screening Recommendations 2019:</strong>
+              <a href="https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/abdominal-aortic-aneurysm-screening" target="_blank" rel="noreferrer">https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/abdominal-aortic-aneurysm-screening</a>
+            </p>
+          </div>
+        </section>
+
+        <div class="note-quiz-footer">
+          <div class="topic-quiz-actions">
+            <a
+              class="topic-quiz-cta"
+              href="../index.html?topicQuiz=aortic-diseases&topicTitle=Aortic%20Disease"
+              target="_top"
+              onclick="if(window.top&&typeof window.top.startTopicQuizSession==='function'){window.top.startTopicQuizSession('aortic-diseases','Aortic Disease'); return false;} return true;"
+            >
+              Start Topic Quiz
+            </a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </body>
+</html>

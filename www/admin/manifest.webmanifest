@@ -1,0 +1,26 @@
+{
+  "name": "Ajix Pharmacy Admin",
+  "short_name": "Ajix Admin",
+  "id": "/admin/?app=admin",
+  "description": "Administrative dashboard for Ajix Pharmacy Quiz.",
+  "start_url": "/admin/?source=pwa-admin",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f3f7f",
+  "icons": [
+    {
+      "src": "/icons/icon-192-f1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512-f1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

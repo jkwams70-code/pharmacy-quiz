@@ -5290,17 +5290,44 @@ function hasAnySetupPoints(points = {}) {
   return Object.values(sanitizeSetupPoints(points)).some((value) => Number(value) > 0);
 }
 
+function getSetupPointsBucketFromDashboardSessionMode(mode = "") {
+  const normalized = normalizeDashboardSessionMode(mode).trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized.startsWith("daily")) return "daily";
+  if (normalized.startsWith("study")) return "study";
+  if (normalized.startsWith("smart")) return "exam";
+  if (normalized.startsWith("exam")) return "exam";
+  if (normalized.includes("rapid fire")) return "rapid";
+  if (normalized.includes("sudden death")) return "sudden";
+  if (normalized.includes("clinical judgement")) return "clinical";
+  if (normalized.includes("law drill") || normalized.includes("pharmacy law quiz")) return "law";
+  return "";
+}
+
+function deriveSetupPointsFromDashboardSessions(entries = []) {
+  const totals = createEmptySetupPoints();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const bucket = getSetupPointsBucketFromDashboardSessionMode(entry?.mode || "");
+    const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+    if (!bucket || score <= 0) continue;
+    totals[bucket] += score;
+  }
+  return totals;
+}
+
 function readCurrentSetupPoints() {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
   const primary = mergeSetupPoints(local, remote);
-  if (ownerKey === "guest" || hasAnySetupPoints(primary)) {
-    return primary;
+  const historyDerived = deriveSetupPointsFromDashboardSessions(getDashboardSessionEntries());
+  const merged = mergeSetupPoints(primary, historyDerived);
+  if (ownerKey === "guest" || hasAnySetupPoints(merged)) {
+    return merged;
   }
   const guest = sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints());
-  return mergeSetupPoints(primary, guest);
+  return mergeSetupPoints(merged, guest);
 }
 
 function writeCurrentSetupPoints(nextValue = {}) {
@@ -5358,6 +5385,7 @@ async function flushSetupPointsSync() {
     state.owners[ownerKey] = merged;
     writeSetupPointsState(state);
     currentUser = { ...(currentUser || {}), setupPoints: merged };
+    renderPoints();
     return;
   }
 
@@ -5368,9 +5396,11 @@ async function flushSetupPointsSync() {
     state.owners[ownerKey] = synced;
     writeSetupPointsState(state);
     currentUser = response?.user || { ...(currentUser || {}), setupPoints: synced };
+    renderPoints();
   } catch {
     state.owners[ownerKey] = merged;
     writeSetupPointsState(state);
+    renderPoints();
   } finally {
     setupPointsSyncInFlight = false;
   }
@@ -28763,6 +28793,7 @@ async function restoreAuthSession() {
     await flushSetupPointsSync();
     await flushLawDrillSessionSync();
     await refreshDailyQuizState({ force: true, silent: true });
+    void loadDashboardTrendData({ force: true });
     void loadCommunityOverview({ silent: true });
     return true;
   } catch {
@@ -28913,6 +28944,7 @@ async function handleAuthSubmit(event) {
       await flushSetupPointsSync();
       await flushLawDrillSessionSync();
       await refreshDailyQuizState({ force: true, silent: true });
+      void loadDashboardTrendData({ force: true });
       await loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
@@ -28932,6 +28964,7 @@ async function handleAuthSubmit(event) {
       await flushSetupPointsSync();
       await flushLawDrillSessionSync();
       await refreshDailyQuizState({ force: true, silent: true });
+      void loadDashboardTrendData({ force: true });
       await loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
@@ -30624,6 +30657,7 @@ async function loadDashboardTrendData({ force = false } = {}) {
       ...dashboardTrendSessionsCache,
       ...remoteSessions,
     ]);
+    renderPoints();
     renderDashboardTrend(dashboardTrendScope);
     if (dashboardDiv?.classList.contains("screen-active")) {
       renderDashboardRecentResults();

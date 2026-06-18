@@ -175,14 +175,21 @@ async function request(method, path, payload = undefined) {
       continue;
     }
 
-    if (response?.ok) {
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const isAuthOrValidationError = [400, 401, 403, 409].includes(response.status);
+    const looksLikeJson = contentType.includes("application/json");
+    const looksLikeWrongEndpoint =
+      response.status === 404 || contentType.includes("text/html") || !looksLikeJson;
+
+    if (response.ok && looksLikeJson) {
       break;
     }
 
-    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-    const isAuthOrValidationError = [400, 401, 403, 409].includes(response.status);
-    const looksLikeWrongEndpoint = response.status === 404 || contentType.includes("text/html");
-    if (!looksLikeWrongEndpoint || isAuthOrValidationError) {
+    if (isAuthOrValidationError) {
+      break;
+    }
+
+    if (!looksLikeWrongEndpoint) {
       break;
     }
     response = null;

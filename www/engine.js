@@ -21799,8 +21799,13 @@ function renderDailyQuizUi() {
 
   const streak = Number(state?.stats?.streak ?? userSummary.streak) || 0;
   const gems = Number(state?.stats?.gems ?? userSummary.gems) || 0;
-  const completedDays =
-    Number(state?.stats?.completedDays ?? userSummary.completedDays) || 0;
+  const completedSessions =
+    Number(
+      state?.stats?.totalCompleted ??
+        userSummary.totalCompleted ??
+        state?.stats?.completedDays ??
+        userSummary.completedDays,
+    ) || 0;
   const season = state?.season || {};
   const today = state?.today || {};
   const rules = state?.rewardRules || {};
@@ -21862,7 +21867,7 @@ function renderDailyQuizUi() {
 
   if (dailyStreakValueEl) dailyStreakValueEl.textContent = String(streak);
   if (!dailyGemsAnimationActive) setDailyGemsValue(gems);
-  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedDays);
+  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedSessions);
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =

@@ -4374,21 +4374,21 @@ app.get(
       Number(attemptDashboard.overallAccuracy) > 0 ||
       (Array.isArray(attemptDashboard.categories) && attemptDashboard.categories.some((row) => Number(row?.attempts) > 0)) ||
       (Array.isArray(attemptDashboard.rotations) && attemptDashboard.rotations.some((row) => Number(row?.attempts) > 0));
-    const sourceDashboard = syncHasData ? syncDashboard : attemptHasData ? attemptDashboard : syncDashboard;
-    const sourceCategories = Array.isArray(sourceDashboard.categories)
-      ? sourceDashboard.categories.filter((row) => Number(row?.attempts) > 0)
-      : [];
-    const sourceRotations = Array.isArray(sourceDashboard.rotations)
-      ? sourceDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
-      : [];
+    const sourceDashboard = attemptHasData ? attemptDashboard : syncDashboard;
     const attemptCategories = Array.isArray(attemptDashboard.categories)
       ? attemptDashboard.categories.filter((row) => Number(row?.attempts) > 0)
       : [];
     const attemptRotations = Array.isArray(attemptDashboard.rotations)
       ? attemptDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
       : [];
-    const categories = sourceCategories.length > 0 ? sourceCategories : attemptCategories;
-    const rotations = sourceRotations.length > 0 ? sourceRotations : attemptRotations;
+    const syncCategories = Array.isArray(syncDashboard.categories)
+      ? syncDashboard.categories.filter((row) => Number(row?.attempts) > 0)
+      : [];
+    const syncRotations = Array.isArray(syncDashboard.rotations)
+      ? syncDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
+      : [];
+    const categories = attemptCategories.length > 0 ? attemptCategories : syncCategories;
+    const rotations = attemptRotations.length > 0 ? attemptRotations : syncRotations;
 
     res.json({
       totalSessions: Math.max(0, Number(sourceDashboard.totalSessions) || 0),

@@ -42,13 +42,13 @@ const inferredApiBase = shouldUseLocalApi
     : isProductionHost
       ? sameOriginApiBase || productionFallbackApiBase
       : productionFallbackApiBase;
+const productionApiBaseCandidates = [sameOriginApiBase, productionFallbackApiBase].filter(Boolean);
 const apiBaseCandidates = Array.from(
   new Set(
     [
-      storedApiBase,
+      isProductionHost ? "" : storedApiBase,
       inferredApiBase,
-      isProductionHost ? sameOriginApiBase : "",
-      isProductionHost ? productionFallbackApiBase : "",
+      ...productionApiBaseCandidates,
     ].filter(Boolean),
   ),
 );
@@ -63,7 +63,11 @@ const hasStaleStoredApiBase =
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }
-const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || inferredApiBase;
+const API_BASE = hasStaleStoredApiBase
+  ? inferredApiBase
+  : isProductionHost
+    ? sameOriginApiBase || productionFallbackApiBase
+    : storedApiBase || inferredApiBase;
 
 const CLIENT_ID_KEY = "quizClientId";
 const AUTH_TOKEN_KEY = "quizAuthToken";

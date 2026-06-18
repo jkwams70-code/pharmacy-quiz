@@ -30408,45 +30408,37 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
   };
   const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
 
-  const remoteAttempts = Math.max(
-    0,
-    Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
-  );
-  const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
-  const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
+  const remoteHasData =
+    Number(remote.totalAttempts ?? remote.totalQuestionAttempts) > 0 ||
+    Number(remote.totalSessions ?? remote.sessionCount) > 0 ||
+    (Array.isArray(remote.categories) && remote.categories.length > 0) ||
+    (Array.isArray(remote.rotations) && remote.rotations.length > 0);
 
-  const mergedTotalAttempts = Math.max(
-    Math.max(0, Number(local.totalAttempts) || 0),
-    remoteAttempts,
-  );
-  const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
-  const mergedOverallAccuracy =
-    remoteAttempts > (Number(local.totalAttempts) || 0)
-      ? remoteAccuracy
-      : Math.max(0, Number(local.overallAccuracy) || 0);
-
-  const remoteCategories = Array.isArray(remote.categories) ? remote.categories : [];
-  const remoteRotations = Array.isArray(remote.rotations) ? remote.rotations : [];
-  const localCategories = Array.isArray(local.categories) ? local.categories : [];
-  const localRotations = Array.isArray(local.rotations) ? local.rotations : [];
-  const hasUsefulLocalCategories = localCategories.some((row) => Number(row?.attempts) > 0);
-  const hasUsefulLocalRotations = localRotations.some((row) => Number(row?.attempts) > 0);
-  const hasUsefulRemoteCategories = remoteCategories.some((row) => Number(row?.attempts) > 0);
-  const hasUsefulRemoteRotations = remoteRotations.some((row) => Number(row?.attempts) > 0);
+  if (remoteHasData) {
+    return {
+      totalAttempts: Math.max(0, Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0),
+      overallAccuracy: Math.max(0, Number(remote.overallAccuracy) || 0),
+      weakCount: Math.max(0, Number(remote.weakQuestions) || 0),
+      sessionCount: Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
+      categories: (Array.isArray(remote.categories) ? remote.categories : []).sort((a, b) =>
+        String(a.category).localeCompare(String(b.category)),
+      ),
+      rotations: (Array.isArray(remote.rotations) ? remote.rotations : []).sort((a, b) =>
+        String(a.rotation).localeCompare(String(b.rotation)),
+      ),
+    };
+  }
 
   return {
-    totalAttempts: mergedTotalAttempts,
-    overallAccuracy: mergedOverallAccuracy,
-    weakCount: mergedWeakCount,
-    sessionCount: Math.max(
-      Math.max(0, Number(local.sessionCount) || 0),
-      Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
+    totalAttempts: Math.max(0, Number(local.totalAttempts) || 0),
+    overallAccuracy: Math.max(0, Number(local.overallAccuracy) || 0),
+    weakCount: Math.max(0, Number(local.weakCount) || 0),
+    sessionCount: Math.max(0, Number(local.sessionCount) || 0),
+    categories: (Array.isArray(local.categories) ? local.categories : []).sort((a, b) =>
+      String(a.category).localeCompare(String(b.category)),
     ),
-    categories: (hasUsefulRemoteCategories ? remoteCategories : hasUsefulLocalCategories ? localCategories : []).sort(
-      (a, b) => String(a.category).localeCompare(String(b.category)),
-    ),
-    rotations: (hasUsefulRemoteRotations ? remoteRotations : hasUsefulLocalRotations ? localRotations : []).sort(
-      (a, b) => String(a.rotation).localeCompare(String(b.rotation)),
+    rotations: (Array.isArray(local.rotations) ? local.rotations : []).sort((a, b) =>
+      String(a.rotation).localeCompare(String(b.rotation)),
     ),
   };
 }

@@ -2460,13 +2460,9 @@ function buildDashboardFromAttempts(attempts, questions) {
       attempts: stats.attempts,
       correct: Math.max(0, Math.round(Number(stats.correct) || 0)),
       accuracy:
-        (categorySessionStats.get(category)?.attempts || 0) === 0
+        stats.attempts === 0
           ? 0
-          : Math.round(
-              ((categorySessionStats.get(category)?.percentSum || 0) /
-                (categorySessionStats.get(category)?.attempts || 1)) *
-                10,
-            ) / 10,
+          : Math.round(((stats.correct / stats.attempts) * 100) * 10) / 10,
     }))
     .sort((a, b) => a.category.localeCompare(b.category));
 
@@ -2476,13 +2472,9 @@ function buildDashboardFromAttempts(attempts, questions) {
       attempts: stats.attempts,
       correct: Math.max(0, Math.round(Number(stats.correct) || 0)),
       accuracy:
-        (rotationSessionStats.get(rotation)?.attempts || 0) === 0
+        stats.attempts === 0
           ? 0
-          : Math.round(
-              ((rotationSessionStats.get(rotation)?.percentSum || 0) /
-                (rotationSessionStats.get(rotation)?.attempts || 1)) *
-                10,
-            ) / 10,
+          : Math.round(((stats.correct / stats.attempts) * 100) * 10) / 10,
     }))
     .sort((a, b) => a.rotation.localeCompare(b.rotation));
 
@@ -4370,30 +4362,19 @@ app.get(
 
     const syncDashboard = buildDashboardFromSync(events, sessions, performanceState);
     const attemptDashboard = buildDashboardFromAttempts(attempts, questions);
-    const categories =
-      attemptDashboard.categories.length > 0 ? attemptDashboard.categories : syncDashboard.categories;
-    const rotations =
-      attemptDashboard.rotations.length > 0 ? attemptDashboard.rotations : syncDashboard.rotations;
+    const useAttemptDashboard =
+      Number(attemptDashboard.totalQuestionAttempts) > 0 ||
+      Number(attemptDashboard.totalSessions) > 0;
+    const sourceDashboard = useAttemptDashboard ? attemptDashboard : syncDashboard;
 
     res.json({
-      totalSessions: Math.max(
-        Math.max(0, Number(syncDashboard.totalSessions) || 0),
-        Math.max(0, Number(attemptDashboard.totalSessions) || 0),
-      ),
-      totalAttempts: Math.max(
-        Math.max(0, Number(syncDashboard.totalAttempts) || 0),
-        Math.max(0, Number(attemptDashboard.totalQuestionAttempts) || 0),
-      ),
-      overallAccuracy:
-        Math.max(0, Number(syncDashboard.totalAttempts) || 0) > 0
-          ? Math.max(0, Number(syncDashboard.overallAccuracy) || 0)
-          : Math.max(0, Number(attemptDashboard.overallAccuracy) || 0),
-      weakQuestions: Math.max(
-        Math.max(0, Number(syncDashboard.weakQuestions) || 0),
-        Math.max(0, Number(attemptDashboard.weakQuestions) || 0),
-      ),
-      categories,
-      rotations,
+      totalSessions: Math.max(0, Number(sourceDashboard.totalSessions) || 0),
+      totalAttempts:
+        Number(sourceDashboard.totalAttempts ?? sourceDashboard.totalQuestionAttempts) || 0,
+      overallAccuracy: Math.max(0, Number(sourceDashboard.overallAccuracy) || 0),
+      weakQuestions: Math.max(0, Number(sourceDashboard.weakQuestions) || 0),
+      categories: Array.isArray(sourceDashboard.categories) ? sourceDashboard.categories : [],
+      rotations: Array.isArray(sourceDashboard.rotations) ? sourceDashboard.rotations : [],
     });
   }),
 );

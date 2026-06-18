@@ -40,9 +40,9 @@ const inferredApiBase = shouldUseLocalApi
   : isLanPreview
     ? `http://${currentHost}:4000/api`
     : isProductionHost
-      ? sameOriginApiBase || productionFallbackApiBase
+      ? productionFallbackApiBase || sameOriginApiBase
       : productionFallbackApiBase;
-const productionApiBaseCandidates = [sameOriginApiBase, productionFallbackApiBase].filter(Boolean);
+const productionApiBaseCandidates = [productionFallbackApiBase, sameOriginApiBase].filter(Boolean);
 const apiBaseCandidates = Array.from(
   new Set(
     [
@@ -66,7 +66,7 @@ if (hasStaleStoredApiBase) {
 const API_BASE = hasStaleStoredApiBase
   ? inferredApiBase
   : isProductionHost
-    ? sameOriginApiBase || productionFallbackApiBase
+    ? productionFallbackApiBase || sameOriginApiBase
     : storedApiBase || inferredApiBase;
 
 const CLIENT_ID_KEY = "quizClientId";

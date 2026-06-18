@@ -2358,6 +2358,9 @@ function buildDashboardFromAttempts(attempts, questions) {
   let totalCorrect = 0;
 
   for (const attempt of attempts) {
+    const attemptCategoryStats = new Map();
+    const attemptRotationStats = new Map();
+
     for (const rawId of attempt.questionIds || []) {
       const id = Number(rawId);
       const question = questionById.get(id);
@@ -2387,21 +2390,49 @@ function buildDashboardFromAttempts(attempts, questions) {
       questionStats.set(id, stat);
 
       const category = mappedCategory;
+      const attemptCategoryRow = attemptCategoryStats.get(category) || {
+        attempts: 0,
+        correct: 0,
+      };
+      attemptCategoryRow.attempts += 1;
+      if (isCorrect) attemptCategoryRow.correct += 1;
+      attemptCategoryStats.set(category, attemptCategoryRow);
+
+      const attemptRotationRow = attemptRotationStats.get(mappedRotation) || {
+        attempts: 0,
+        correct: 0,
+      };
+      attemptRotationRow.attempts += 1;
+      if (isCorrect) attemptRotationRow.correct += 1;
+      attemptRotationStats.set(mappedRotation, attemptRotationRow);
+    }
+
+    for (const [category, stats] of attemptCategoryStats.entries()) {
       const categoryRow = categoryStats.get(category) || {
         attempts: 0,
-        correct: 0,
+        percentSum: 0,
       };
+      const percent =
+        stats.attempts === 0
+          ? 0
+          : (stats.correct / stats.attempts) * 100;
       categoryRow.attempts += 1;
-      if (isCorrect) categoryRow.correct += 1;
+      categoryRow.percentSum += percent;
       categoryStats.set(category, categoryRow);
+    }
 
-      const rotationRow = rotationStats.get(mappedRotation) || {
+    for (const [rotation, stats] of attemptRotationStats.entries()) {
+      const rotationRow = rotationStats.get(rotation) || {
         attempts: 0,
-        correct: 0,
+        percentSum: 0,
       };
+      const percent =
+        stats.attempts === 0
+          ? 0
+          : (stats.correct / stats.attempts) * 100;
       rotationRow.attempts += 1;
-      if (isCorrect) rotationRow.correct += 1;
-      rotationStats.set(mappedRotation, rotationRow);
+      rotationRow.percentSum += percent;
+      rotationStats.set(rotation, rotationRow);
     }
   }
 
@@ -2415,11 +2446,11 @@ function buildDashboardFromAttempts(attempts, questions) {
     .map(([category, stats]) => ({
       category,
       attempts: stats.attempts,
-      correct: stats.correct,
+      correct: Math.max(0, Math.round(Number(stats.correct) || 0)),
       accuracy:
         stats.attempts === 0
           ? 0
-          : Math.round((stats.correct / stats.attempts) * 100),
+          : Math.round((stats.percentSum / stats.attempts) * 10) / 10,
     }))
     .sort((a, b) => a.category.localeCompare(b.category));
 
@@ -2427,11 +2458,11 @@ function buildDashboardFromAttempts(attempts, questions) {
     .map(([rotation, stats]) => ({
       rotation,
       attempts: stats.attempts,
-      correct: stats.correct,
+      correct: Math.max(0, Math.round(Number(stats.correct) || 0)),
       accuracy:
         stats.attempts === 0
           ? 0
-          : Math.round((stats.correct / stats.attempts) * 100),
+          : Math.round((stats.percentSum / stats.attempts) * 10) / 10,
     }))
     .sort((a, b) => a.rotation.localeCompare(b.rotation));
 
@@ -4319,16 +4350,10 @@ app.get(
 
     const syncDashboard = buildDashboardFromSync(events, sessions, performanceState);
     const attemptDashboard = buildDashboardFromAttempts(attempts, questions);
-    const categories = mergeDashboardStatRows(
-      syncDashboard.categories,
-      attemptDashboard.categories,
-      "category",
-    );
-    const rotations = mergeDashboardStatRows(
-      syncDashboard.rotations,
-      attemptDashboard.rotations,
-      "rotation",
-    );
+    const categories =
+      attemptDashboard.categories.length > 0 ? attemptDashboard.categories : syncDashboard.categories;
+    const rotations =
+      attemptDashboard.rotations.length > 0 ? attemptDashboard.rotations : syncDashboard.rotations;
 
     res.json({
       totalSessions: Math.max(

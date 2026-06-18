@@ -4409,14 +4409,6 @@ app.get(
     const syncRotations = Array.isArray(syncDashboard.rotations)
       ? syncDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
       : [];
-    const stateCategories =
-      performanceState?.categoryPerformance && typeof performanceState.categoryPerformance === "object"
-        ? syncedPerformanceStatsMapToRows(performanceState.categoryPerformance, "category")
-        : [];
-    const stateRotations =
-      performanceState?.rotationPerformance && typeof performanceState.rotationPerformance === "object"
-        ? syncedPerformanceStatsMapToRows(performanceState.rotationPerformance, "rotation")
-        : [];
     const attemptCategories = Array.isArray(attemptDashboard.categories)
       ? attemptDashboard.categories.filter((row) => Number(row?.attempts) > 0)
       : [];
@@ -4424,21 +4416,17 @@ app.get(
       ? attemptDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
       : [];
     const categories =
-      stateCategories.length > 0
-        ? stateCategories
+      attemptCategories.length > 0
+        ? attemptCategories
         : syncCategories.length > 0
         ? syncCategories
-        : attemptCategories.length > 0
-          ? attemptCategories
-          : [];
+        : [];
     const rotations =
-      stateRotations.length > 0
-        ? stateRotations
+      attemptRotations.length > 0
+        ? attemptRotations
         : syncRotations.length > 0
         ? syncRotations
-        : attemptRotations.length > 0
-          ? attemptRotations
-          : [];
+        : [];
 
     res.json({
       totalSessions: Math.max(0, Number(sourceDashboard.totalSessions) || 0),

@@ -30614,12 +30614,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
 
   (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
     const name = String(row?.category || "").trim() || "General";
-    const existing = mergedCategoryMap.get(name);
-    const chosen = chooseBetterRow(existing, row, "category");
+    if (mergedCategoryMap.has(name)) return;
     mergedCategoryMap.set(name, {
       category: name,
-      attempts: chosen.attempts,
-      accuracy: chosen.accuracy,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
@@ -30635,12 +30634,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
 
   (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
     const name = String(row?.rotation || "").trim() || "General";
-    const existing = mergedRotationMap.get(name);
-    const chosen = chooseBetterRow(existing, row, "rotation");
+    if (mergedRotationMap.has(name)) return;
     mergedRotationMap.set(name, {
       rotation: name,
-      attempts: chosen.attempts,
-      accuracy: chosen.accuracy,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 

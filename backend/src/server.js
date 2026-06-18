@@ -36,15 +36,7 @@ const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-<<<<<<< HEAD
-<<<<<<< HEAD
 const frontendPath = path.join(__dirname, "..", "..", "www");
-=======
-const frontendPath = path.join(__dirname, "..", "..");
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-const frontendPath = path.join(__dirname, "..", "..");
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 const logPath = path.join(__dirname, "..", config.logDir);
 fs.mkdirSync(logPath, { recursive: true });
 const accessLogStream = fs.createWriteStream(path.join(logPath, "access.log"), {
@@ -218,8 +210,6 @@ function normalizeExistingUser(rawUser = {}) {
 
 function toPublicUser(user) {
   const normalized = normalizeExistingUser(user);
-<<<<<<< HEAD
-<<<<<<< HEAD
   const dailyQuizSummary = buildDailyQuizSummary(
     normalizeDailyQuizState(normalized.dailyQuiz),
     getLocalSeasonKey(),
@@ -227,10 +217,6 @@ function toPublicUser(user) {
   const setupPoints = normalized.setupPoints && typeof normalized.setupPoints === "object"
     ? normalized.setupPoints
     : {};
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   return {
     id: normalized.id,
     title: normalized.title,
@@ -247,18 +233,12 @@ function toPublicUser(user) {
     country: normalized.country,
     institution: normalized.institution,
     profileImage: normalized.profileImage,
-<<<<<<< HEAD
-<<<<<<< HEAD
     points: Math.max(0, Math.round(Number(normalized.points) || 0)),
     setupPoints: normalizeSetupPoints(setupPoints),
     dailyQuiz: {
       ...dailyQuizSummary,
       dailyStreak: dailyQuizSummary.streak,
     },
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
     createdAt: normalized.createdAt,
     updatedAt: normalized.updatedAt,
     deactivatedAt: normalized.deactivatedAt,
@@ -266,8 +246,6 @@ function toPublicUser(user) {
   };
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 function normalizeLawDrillLevelStatus(levelStatus, index, currentLevelIndex, reviewLevelIndex) {
   const safeStatus = String(levelStatus || "").trim().toLowerCase();
   if (index < currentLevelIndex) return "completed";
@@ -1772,10 +1750,6 @@ async function buildCommunityConversationMessagesPayload(req, conversationId, { 
 }
 
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 function normalizeIdentifier(value) {
   return normalizeWhitespace(value).toLowerCase();
 }
@@ -1972,8 +1946,6 @@ function summarizeAttempt(attempt) {
   };
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 function padTwoDigits(value) {
   return String(value).padStart(2, "0");
 }
@@ -2198,10 +2170,6 @@ function calculateDailyQuizRewards(score, total) {
   };
 }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 function buildDashboardFromAttempts(attempts, questions) {
   const questionById = new Map(questions.map((q) => [Number(q.id), q]));
   const questionStats = new Map();
@@ -2333,8 +2301,6 @@ function buildDashboardFromSync(events, sessions) {
   };
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 function getPointScopeLabel(scope = "daily") {
   const normalized = String(scope || "daily").trim().toLowerCase();
   if (normalized === "weekly") return "Weekly";
@@ -2508,10 +2474,6 @@ async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) 
   };
 }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 function createCorsOptions() {
   if (config.corsOrigins.includes("*")) {
     return { origin: true };
@@ -2579,8 +2541,6 @@ if (config.trustProxy) {
 app.use(
   cors(createCorsOptions()),
 );
-<<<<<<< HEAD
-<<<<<<< HEAD
 app.use(
   helmet(
     process.env.NODE_ENV === "production"
@@ -2614,17 +2574,10 @@ if (process.env.NODE_ENV !== "production") {
     res.redirect(302, cacheBusted);
   });
 }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 app.use(helmet());
 if (config.enableGzip) {
   app.use(compression());
 }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 app.use(express.json({ limit: "1mb" }));
 app.use(createRateLimiter(config.rateLimitWindowMs, config.rateLimitMax));
 if (config.logLevel === "debug") {
@@ -2643,14 +2596,8 @@ app.use("/backend", (_req, res) => {
 app.use(
   express.static(frontendPath, {
     dotfiles: "ignore",
-<<<<<<< HEAD
-<<<<<<< HEAD
     etag: false,
     maxAge: process.env.NODE_ENV === "production" ? "1y" : 0,
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   }),
 );
 
@@ -2785,15 +2732,7 @@ app.post(
     const token = createToken(user);
     res.status(201).json({
       token,
-<<<<<<< HEAD
-<<<<<<< HEAD
       user: toCurrentUser(user),
-=======
-      user: toPublicUser(user),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-      user: toPublicUser(user),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
     });
   }),
 );
@@ -2844,15 +2783,7 @@ app.post(
     const token = createToken(user);
     res.json({
       token,
-<<<<<<< HEAD
-<<<<<<< HEAD
       user: toCurrentUser(user),
-=======
-      user: toPublicUser(user),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-      user: toPublicUser(user),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
     });
   }),
 );
@@ -2862,17 +2793,7 @@ app.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-<<<<<<< HEAD
-<<<<<<< HEAD
     const user = await syncUserPointsFromEvents(req.user.sub);
-=======
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const user = users.find((u) => u.id === req.user.sub);
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const user = users.find((u) => u.id === req.user.sub);
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 
     if (!user) {
       res.status(404).json({ error: "user not found" });
@@ -2886,8 +2807,6 @@ app.get(
       return;
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     res.json(toCurrentUser(user));
   }),
 );
@@ -3012,12 +2931,6 @@ app.post(
       lawDrillSession: nextLawDrillSession,
       user: toCurrentUser(users[userIndex]),
     });
-=======
-    res.json(toPublicUser(user));
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-    res.json(toPublicUser(user));
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   }),
 );
 
@@ -3348,15 +3261,7 @@ app.put(
 
     users[userIndex] = nextUser;
     await writeCollection("users", users);
-<<<<<<< HEAD
-<<<<<<< HEAD
     res.json({ ok: true, user: toCurrentUser(nextUser) });
-=======
-    res.json({ ok: true, user: toPublicUser(nextUser) });
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-    res.json({ ok: true, user: toPublicUser(nextUser) });
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   }),
 );
 
@@ -3487,8 +3392,6 @@ app.get(
   }),
 );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 app.get(
   "/api/daily-quiz/today",
   requireAuth,
@@ -3637,10 +3540,6 @@ app.post(
   }),
 );
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 app.post(
   "/api/attempts/start",
   optionalAuth,
@@ -3936,13 +3835,7 @@ app.post(
 
     const session = {
       id: crypto.randomUUID(),
-<<<<<<< HEAD
-<<<<<<< HEAD
       sessionId: String(req.body?.sessionId || req.body?.clientSessionId || "").trim(),
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       actorId,
       mode: String(req.body?.mode || "").trim() || "Unknown",
       score,
@@ -4003,8 +3896,6 @@ app.get(
   }),
 );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 app.get(
   "/api/points/leaderboard",
   optionalAuth,
@@ -4016,10 +3907,6 @@ app.get(
   }),
 );
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 app.post(
   "/api/admin/seed-questions",
   asyncHandler(async (req, res) => {
@@ -4074,31 +3961,15 @@ app.delete(
       return;
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     const userId = String(req.params.userId || "").trim();
     const users = await readCollection("users");
     const target = users.find((u) => String(u?.id || "").trim() === userId);
 
     if (!target) {
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-    const userId = req.params.userId;
-    const users = await readCollection("users");
-    const filtered = users.filter((u) => u.id !== userId);
-
-    if (filtered.length === users.length) {
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       res.status(404).json({ error: "User not found" });
       return;
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     const now = new Date().toISOString();
     const normalized = normalizeExistingUser(target);
     const archiveRecord = {
@@ -4225,14 +4096,6 @@ app.post(
       },
       user: snapshot,
     });
-=======
-    await writeCollection("users", filtered);
-    res.json({ ok: true, message: "User deleted" });
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-    await writeCollection("users", filtered);
-    res.json({ ok: true, message: "User deleted" });
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   }),
 );
 
@@ -4461,8 +4324,6 @@ app.delete(
   }),
 );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 // Admin: Get archived groups
 app.get(
   "/api/admin/deleted-groups",
@@ -5071,10 +4932,6 @@ app.post(
   }),
 );
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 // Admin: Get platform statistics
 app.get(
   "/api/admin/stats",
@@ -5089,8 +4946,6 @@ app.get(
     const attempts = await readCollection("attempts");
     const syncPerformance = await readCollection("syncPerformance");
     const syncSessions = await readCollection("syncSessions");
-<<<<<<< HEAD
-<<<<<<< HEAD
     const conversations = await readCollection("conversations");
     const reports = await readCollection("reports");
 
@@ -5098,14 +4953,6 @@ app.get(
     const totalGroups = conversations.filter(
       (conversation) => String(conversation?.type || "").trim().toLowerCase() === "group",
     ).length;
-=======
-
-    const categories = [...MAJOR_CATEGORIES];
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-
-    const categories = [...MAJOR_CATEGORIES];
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 
     const totalAttempts = attempts.filter((a) => a.finishedAt).length;
     const avgScore =
@@ -5119,14 +4966,8 @@ app.get(
 
     res.json({
       totalUsers: users.length,
-<<<<<<< HEAD
-<<<<<<< HEAD
       totalGroups,
       totalReports: reports.length,
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       totalQuestions: questions.length,
       totalCategories: MAJOR_CATEGORIES.length,
       categories,
@@ -5269,8 +5110,6 @@ app.post(
   }),
 );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 app.get("/api/push/config", (_req, res) => {
   res.json(COMMUNITY_DEFAULT_PUSH_CONFIG);
 });
@@ -7021,10 +6860,6 @@ app.all("/api/community/*", (_req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 // Serve index.html for all non-API routes (SPA support)
 app.get("*", (_req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));

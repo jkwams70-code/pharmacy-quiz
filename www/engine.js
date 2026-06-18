@@ -30171,6 +30171,27 @@ function getLocalDashboardSnapshot() {
   const overallAccuracy =
     totalAttempts === 0 ? 0 : Math.round((totalCorrect / totalAttempts) * 100);
 
+  const sessionEntries = getDashboardSessionEntries();
+  const sessionTotals = sessionEntries.reduce(
+    (acc, entry) => {
+      const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+      const total = Math.max(0, Math.round(Number(entry?.total) || 0));
+      if (total <= 0) return acc;
+      acc.attempts += total;
+      acc.correct += Math.min(score, total);
+      if (Math.round((score / total) * 100) < 60) {
+        acc.weakCount += 1;
+      }
+      return acc;
+    },
+    { attempts: 0, correct: 0, weakCount: 0 },
+  );
+
+  const sessionFallbackAccuracy =
+    sessionTotals.attempts === 0
+      ? 0
+      : Math.round((sessionTotals.correct / sessionTotals.attempts) * 100);
+
   const categories = Object.keys(categoryPerformance || {})
     .map((cat) => ({
       category: cat,
@@ -30188,10 +30209,10 @@ function getLocalDashboardSnapshot() {
     .sort((a, b) => String(a.rotation).localeCompare(String(b.rotation)));
 
   return {
-    totalAttempts,
-    overallAccuracy,
-    weakCount,
-    sessionCount: getDashboardSessionEntries().length,
+    totalAttempts: totalAttempts > 0 ? totalAttempts : sessionTotals.attempts,
+    overallAccuracy: totalAttempts > 0 ? overallAccuracy : sessionFallbackAccuracy,
+    weakCount: weakCount > 0 ? weakCount : sessionTotals.weakCount,
+    sessionCount: sessionEntries.length,
     categories,
     rotations,
   };

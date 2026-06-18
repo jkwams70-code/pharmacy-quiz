@@ -2372,6 +2372,8 @@ function mergePerformanceStatsMap(left = {}, right = {}) {
 }
 
 function captureCurrentPerformanceState() {
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
   return {
     performanceData: JSON.parse(JSON.stringify(performanceData || {})),
     categoryPerformance: JSON.parse(JSON.stringify(categoryPerformance || {})),
@@ -2388,10 +2390,11 @@ function applySyncedPerformanceState(state = {}) {
   categoryPerformance = mergePerformanceStatsMap(categoryPerformance, nextCategoryPerformance);
   rotationPerformance = mergePerformanceStatsMap(rotationPerformance, nextRotationPerformance);
 
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
   savePerformance();
   localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
   localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
-  rebuildRotationPerformanceFromQuestionStats();
   renderPoints();
 }
 
@@ -2447,6 +2450,8 @@ function reconcileLocalQuestionStats() {
 }
 
 reconcileLocalQuestionStats();
+rebuildCategoryPerformanceFromQuestionStats();
+rebuildRotationPerformanceFromQuestionStats();
 
 function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (!performanceData[questionId]) {
@@ -2520,6 +2525,29 @@ function updateCategoryPerformance(category, isCorrect) {
     "quizCategoryPerformance",
     JSON.stringify(categoryPerformance),
   );
+}
+
+function rebuildCategoryPerformanceFromQuestionStats() {
+  const rebuilt = {};
+
+  Object.entries(performanceData || {}).forEach(([questionId, row]) => {
+    const question = findQuestionById(questionId);
+    const category = normalizeMajorCategory(
+      question?.category || "",
+      `${String(question?.question || "")} ${String(question?.explanation || "")}`,
+    );
+    if (!category || category === "all") return;
+
+    const attempts = Math.max(0, Number(row?.attempts) || 0);
+    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
+    const existing = rebuilt[category] || { attempts: 0, correct: 0 };
+    existing.attempts += attempts;
+    existing.correct += correct;
+    rebuilt[category] = existing;
+  });
+
+  categoryPerformance = rebuilt;
+  localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
 }
 
 function getCategoryAccuracy(category) {
@@ -30417,17 +30445,9 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     const existing = mergedCategoryMap.get(name);
     if (!existing) {
       mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
+    } else if (existing.attempts <= 0 && remoteRow.attempts > 0) {
       mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
     }
-    mergedCategoryMap.set(name, {
-      category: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
-    });
   });
 
   const mergedRotationMap = new Map();
@@ -30449,17 +30469,9 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     const existing = mergedRotationMap.get(name);
     if (!existing) {
       mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
+    } else if (existing.attempts <= 0 && remoteRow.attempts > 0) {
       mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
     }
-    mergedRotationMap.set(name, {
-      rotation: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
-    });
   });
 
   return {
@@ -30950,6 +30962,8 @@ function renderDashboardRecentResults() {
 function showDashboard() {
   showScreen("dashboard");
 
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
   const localSnapshot = getLocalDashboardSnapshot();
   renderDashboardValues(localSnapshot);
   void loadSyncedPerformanceState({ force: true });

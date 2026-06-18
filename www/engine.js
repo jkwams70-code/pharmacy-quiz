@@ -2552,7 +2552,7 @@ function getCategoryAccuracy(category) {
   const data = categoryPerformance[category];
   if (!data || data.attempts === 0) return 100;
 
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakCategories(threshold = 80) {
@@ -2613,7 +2613,7 @@ function getRotationAccuracy(rotation) {
   const key = normalizeRotationValue(rotation);
   const data = rotationPerformance[key];
   if (!key || !data || data.attempts === 0) return 100;
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakRotations(threshold = 80) {
@@ -30872,6 +30872,7 @@ function renderDashboardTopSubjects(categories = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30879,7 +30880,7 @@ function renderDashboardTopSubjects(categories = []) {
         <div class="dashboard-topsubject-name">${row.category || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });
@@ -30904,6 +30905,7 @@ function renderDashboardRotations(rotations = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30911,7 +30913,7 @@ function renderDashboardRotations(rotations = []) {
         <div class="dashboard-topsubject-name">${row.rotation || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });

@@ -2484,7 +2484,9 @@ function mergeDashboardStatRows(leftRows = [], rightRows = [], keyField = "categ
     .map((row) => ({
       ...row,
       accuracy:
-        row.attempts === 0 ? 0 : Math.round((row.correct / row.attempts) * 100),
+        row.attempts === 0
+          ? 0
+          : Math.round(((row.correct / row.attempts) * 100) * 10) / 10,
     }))
     .sort((a, b) => String(a[keyField]).localeCompare(String(b[keyField])));
 }
@@ -2591,7 +2593,7 @@ function buildDashboardFromSync(events, sessions, performanceState = null) {
       accuracy:
         stats.attempts === 0
           ? 0
-          : Math.round((stats.correct / stats.attempts) * 100),
+          : Math.round(((stats.correct / stats.attempts) * 100) * 10) / 10,
     }))
     .sort((a, b) => a.rotation.localeCompare(b.rotation));
 
@@ -2609,7 +2611,7 @@ function buildDashboardFromSync(events, sessions, performanceState = null) {
       accuracy:
         stats.attempts === 0
           ? 0
-          : Math.round((stats.correct / stats.attempts) * 100),
+          : Math.round(((stats.correct / stats.attempts) * 100) * 10) / 10,
     }))
     .sort((a, b) => a.category.localeCompare(b.category));
 

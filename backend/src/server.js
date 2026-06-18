@@ -2606,7 +2606,6 @@ async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) 
   const { users, pointEvents } = await repairStoredUserPointTotals();
   const viewerId = getViewerIdFromReq(req);
   const safeScope = String(scope || "daily").trim().toLowerCase();
-  const safeLimit = Math.max(1, Math.min(100, Math.round(Number(limit) || 20)));
   const now = new Date();
   const periodTotals = safeScope === "alltime"
     ? null
@@ -2638,6 +2637,7 @@ async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) 
       };
     })
     .filter((entry) => Boolean(entry.userId))
+    .filter((entry) => Number(entry.points) > 0)
     .sort((left, right) => {
       if ((right.points || 0) !== (left.points || 0)) return (right.points || 0) - (left.points || 0);
       if ((right.allTimePoints || 0) !== (left.allTimePoints || 0)) {
@@ -2650,7 +2650,7 @@ async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) 
       rank: index + 1,
     }));
 
-  const leaderboard = rows.slice(0, safeLimit);
+  const leaderboard = rows;
   const yourEntry = viewerId ? rows.find((entry) => entry.userId === viewerId) || null : null;
   if (yourEntry && !leaderboard.some((entry) => entry.userId === yourEntry.userId)) {
     leaderboard.push(yourEntry);

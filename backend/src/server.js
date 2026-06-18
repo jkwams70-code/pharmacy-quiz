@@ -2358,9 +2358,6 @@ function buildDashboardFromAttempts(attempts, questions) {
   let totalCorrect = 0;
 
   for (const attempt of attempts) {
-    const attemptCategoryStats = new Map();
-    const attemptRotationStats = new Map();
-
     for (const rawId of attempt.questionIds || []) {
       const id = Number(rawId);
       const question = questionById.get(id);
@@ -2390,49 +2387,21 @@ function buildDashboardFromAttempts(attempts, questions) {
       questionStats.set(id, stat);
 
       const category = mappedCategory;
-      const attemptCategoryRow = attemptCategoryStats.get(category) || {
-        attempts: 0,
-        correct: 0,
-      };
-      attemptCategoryRow.attempts += 1;
-      if (isCorrect) attemptCategoryRow.correct += 1;
-      attemptCategoryStats.set(category, attemptCategoryRow);
-
-      const attemptRotationRow = attemptRotationStats.get(mappedRotation) || {
-        attempts: 0,
-        correct: 0,
-      };
-      attemptRotationRow.attempts += 1;
-      if (isCorrect) attemptRotationRow.correct += 1;
-      attemptRotationStats.set(mappedRotation, attemptRotationRow);
-    }
-
-    for (const [category, stats] of attemptCategoryStats.entries()) {
       const categoryRow = categoryStats.get(category) || {
         attempts: 0,
-        percentSum: 0,
+        correct: 0,
       };
-      const percent =
-        stats.attempts === 0
-          ? 0
-          : (stats.correct / stats.attempts) * 100;
       categoryRow.attempts += 1;
-      categoryRow.percentSum += percent;
+      if (isCorrect) categoryRow.correct += 1;
       categoryStats.set(category, categoryRow);
-    }
 
-    for (const [rotation, stats] of attemptRotationStats.entries()) {
-      const rotationRow = rotationStats.get(rotation) || {
+      const rotationRow = rotationStats.get(mappedRotation) || {
         attempts: 0,
-        percentSum: 0,
+        correct: 0,
       };
-      const percent =
-        stats.attempts === 0
-          ? 0
-          : (stats.correct / stats.attempts) * 100;
       rotationRow.attempts += 1;
-      rotationRow.percentSum += percent;
-      rotationStats.set(rotation, rotationRow);
+      if (isCorrect) rotationRow.correct += 1;
+      rotationStats.set(mappedRotation, rotationRow);
     }
   }
 
@@ -2450,7 +2419,7 @@ function buildDashboardFromAttempts(attempts, questions) {
       accuracy:
         stats.attempts === 0
           ? 0
-          : Math.round((stats.percentSum / stats.attempts) * 10) / 10,
+          : Math.round(((stats.correct / stats.attempts) * 100) * 10) / 10,
     }))
     .sort((a, b) => a.category.localeCompare(b.category));
 
@@ -2462,7 +2431,7 @@ function buildDashboardFromAttempts(attempts, questions) {
       accuracy:
         stats.attempts === 0
           ? 0
-          : Math.round((stats.percentSum / stats.attempts) * 10) / 10,
+          : Math.round(((stats.correct / stats.attempts) * 100) * 10) / 10,
     }))
     .sort((a, b) => a.rotation.localeCompare(b.rotation));
 

@@ -2371,6 +2371,101 @@ function mergePerformanceStatsMap(left = {}, right = {}) {
   return Object.fromEntries(merged.entries());
 }
 
+function normalizeWeakTrackerMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => {
+        const normalizedKey = String(key || "").trim();
+        if (!normalizedKey) return null;
+        const roundsPassed = Math.max(0, Math.round(Number(value?.roundsPassed) || 0));
+        return [normalizedKey, { roundsPassed }];
+      })
+      .filter(Boolean),
+  );
+}
+
+function mergeWeakTrackerMap(left = {}, right = {}) {
+  const safeLeft = normalizeWeakTrackerMap(left);
+  const safeRight = normalizeWeakTrackerMap(right);
+  const merged = new Map();
+
+  Object.entries(safeLeft).forEach(([key, value]) => {
+    merged.set(key, { roundsPassed: value.roundsPassed });
+  });
+
+  Object.entries(safeRight).forEach(([key, value]) => {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { roundsPassed: value.roundsPassed });
+      return;
+    }
+    merged.set(key, {
+      roundsPassed: Math.max(existing.roundsPassed, value.roundsPassed),
+    });
+  });
+
+  return Object.fromEntries(merged.entries());
+}
+
+function buildPerformanceStateFromEvents(events = []) {
+  const nextPerformanceData = {};
+  const nextCategoryPerformance = {};
+  const nextRotationPerformance = {};
+
+  (Array.isArray(events) ? events : []).forEach((event) => {
+    const questionId = normalizeQuestionIdKey(event?.questionId);
+    if (!questionId) return;
+
+    const isCorrect = Boolean(event?.isCorrect);
+    const category = normalizeMajorCategory(event?.category || "", "");
+    const rotation = String(event?.rotation || "").trim();
+
+    if (!nextPerformanceData[questionId]) {
+      nextPerformanceData[questionId] = { attempts: 0, correct: 0 };
+    }
+    nextPerformanceData[questionId].attempts += 1;
+    if (isCorrect) {
+      nextPerformanceData[questionId].correct += 1;
+    }
+
+    if (!nextCategoryPerformance[category]) {
+      nextCategoryPerformance[category] = { attempts: 0, correct: 0 };
+    }
+    nextCategoryPerformance[category].attempts += 1;
+    if (isCorrect) {
+      nextCategoryPerformance[category].correct += 1;
+    }
+
+    if (rotation) {
+      if (!nextRotationPerformance[rotation]) {
+        nextRotationPerformance[rotation] = { attempts: 0, correct: 0 };
+      }
+      nextRotationPerformance[rotation].attempts += 1;
+      if (isCorrect) {
+        nextRotationPerformance[rotation].correct += 1;
+      }
+    }
+  });
+
+  const derivedWeakTracker = {};
+  Object.entries(nextPerformanceData).forEach(([questionId, row]) => {
+    const attempts = Math.max(0, Math.round(Number(row?.attempts) || 0));
+    const correct = Math.max(0, Math.min(attempts, Math.round(Number(row?.correct) || 0)));
+    const accuracy = attempts <= 0 ? 100 : Math.round((correct / attempts) * 100);
+    if (attempts > 0 && accuracy < 60) {
+      derivedWeakTracker[questionId] = { roundsPassed: 0 };
+    }
+  });
+
+  return {
+    performanceData: nextPerformanceData,
+    categoryPerformance: nextCategoryPerformance,
+    rotationPerformance: nextRotationPerformance,
+    weakTracker: derivedWeakTracker,
+  };
+}
+
 function captureCurrentPerformanceState() {
   rebuildCategoryPerformanceFromQuestionStats();
   rebuildRotationPerformanceFromQuestionStats();
@@ -2385,10 +2480,14 @@ function applySyncedPerformanceState(state = {}) {
   const nextPerformanceData = normalizePerformanceStatsMap(state?.performanceData || {});
   const nextCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
   const nextRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
+  const nextWeakTracker = normalizeWeakTrackerMap(state?.weakTracker || {});
 
   performanceData = mergePerformanceStatsMap(performanceData, nextPerformanceData);
   categoryPerformance = mergePerformanceStatsMap(categoryPerformance, nextCategoryPerformance);
   rotationPerformance = mergePerformanceStatsMap(rotationPerformance, nextRotationPerformance);
+  if (Object.keys(nextWeakTracker).length > 0) {
+    weakTracker = mergeWeakTrackerMap(weakTracker, nextWeakTracker);
+  }
 
   rebuildCategoryPerformanceFromQuestionStats();
   rebuildRotationPerformanceFromQuestionStats();
@@ -2406,9 +2505,19 @@ async function loadSyncedPerformanceState({ force = false } = {}) {
 
   try {
     const response = await backendClient.fetchSyncedPerformanceState(5000);
+    const events = Array.isArray(response?.events) ? response.events : [];
     const state = response?.state && typeof response.state === "object" ? response.state : null;
-    syncedPerformanceStateCache = state;
-    if (state) {
+    const built = buildPerformanceStateFromEvents(events);
+    const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || state?.weakTracker || {});
+    const nextState = {
+      performanceData: mergePerformanceStatsMap(performanceData, built.performanceData),
+      categoryPerformance: mergePerformanceStatsMap(categoryPerformance, built.categoryPerformance),
+      rotationPerformance: mergePerformanceStatsMap(rotationPerformance, built.rotationPerformance),
+      weakTracker: Object.keys(remoteWeakTracker).length > 0 ? remoteWeakTracker : built.weakTracker,
+    };
+    syncedPerformanceStateCache = nextState;
+    applySyncedPerformanceState(nextState);
+    if (!events.length && state) {
       applySyncedPerformanceState(state);
     }
   } catch {

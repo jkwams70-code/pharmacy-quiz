@@ -2574,6 +2574,7 @@ function mergeSyncedPerformanceStatsMap(left = {}, right = {}) {
 function buildDashboardFromSync(events, sessions, performanceState = null) {
   const questionStats = new Map();
   const categoryStats = new Map();
+  const rotationStats = new Map();
 
   let totalAttempts = 0;
   let totalCorrect = 0;
@@ -2582,6 +2583,7 @@ function buildDashboardFromSync(events, sessions, performanceState = null) {
     const id = Number(event.questionId);
     const isCorrect = Boolean(event.isCorrect);
     const category = normalizeMajorCategory(event.category, "");
+    const rotation = String(event.rotation || "").trim() || "General";
 
     totalAttempts += 1;
     if (isCorrect) totalCorrect += 1;
@@ -2595,19 +2597,11 @@ function buildDashboardFromSync(events, sessions, performanceState = null) {
     cat.attempts += 1;
     if (isCorrect) cat.correct += 1;
     categoryStats.set(category, cat);
-  }
 
-  const syncedCategoryStats = normalizeSyncedPerformanceStatsMap(
-    performanceState?.categoryPerformance || {},
-  );
-  for (const [category, stats] of Object.entries(syncedCategoryStats)) {
-    const existing = categoryStats.get(category) || { attempts: 0, correct: 0 };
-    const attempts = Math.max(existing.attempts, stats.attempts);
-    const correct = Math.max(existing.correct, stats.correct);
-    categoryStats.set(category, {
-      attempts,
-      correct: Math.min(attempts, correct),
-    });
+    const rot = rotationStats.get(rotation) || { attempts: 0, correct: 0 };
+    rot.attempts += 1;
+    if (isCorrect) rot.correct += 1;
+    rotationStats.set(rotation, rot);
   }
 
   const sessionTotals = (Array.isArray(sessions) ? sessions : []).reduce(
@@ -2625,10 +2619,7 @@ function buildDashboardFromSync(events, sessions, performanceState = null) {
     { attempts: 0, correct: 0, weakCount: 0 },
   );
 
-  const syncedRotationStats = normalizeSyncedPerformanceStatsMap(
-    performanceState?.rotationPerformance || {},
-  );
-  const rotations = Object.entries(syncedRotationStats)
+  const rotations = [...rotationStats.entries()]
     .map(([rotation, stats]) => ({
       rotation,
       attempts: stats.attempts,
@@ -4198,6 +4189,7 @@ app.post(
     const questionId = safeNumber(req.body?.questionId);
     const isCorrect = Boolean(req.body?.isCorrect);
     const category = normalizeMajorCategory(req.body?.category, "");
+    const rotation = String(req.body?.rotation || "").trim();
 
     if (!questionId) {
       res.status(400).json({ error: "questionId is required" });
@@ -4210,6 +4202,7 @@ app.post(
       questionId,
       isCorrect,
       category,
+      rotation,
       createdAt: new Date().toISOString(),
     };
 
@@ -4264,11 +4257,26 @@ app.get(
   optionalAuth,
   asyncHandler(async (req, res) => {
     const actorIds = getActorIdCandidates(req);
+    const events = (await readCollection("syncPerformance")).filter(
+      (item) => actorIds.includes(String(item?.actorId || "").trim()),
+    );
+    const weakTrackerRows = (await readCollection("syncWeakTracker")).filter(
+      (item) => actorIds.includes(String(item?.actorId || "").trim()),
+    );
+    const latestWeakTracker = weakTrackerRows
+      .slice()
+      .sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || "")))
+      .at(-1) || null;
     const states = (await readCollection("syncPerformanceState")).filter(
       (item) => actorIds.includes(String(item?.actorId || "").trim()),
     );
     const state = states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) || null;
-    res.json({ state });
+    res.json({
+      state,
+      events,
+      weakTracker: latestWeakTracker?.weakTracker || {},
+      weakTrackerUpdatedAt: latestWeakTracker?.updatedAt || null,
+    });
   }),
 );
 
@@ -4375,20 +4383,12 @@ app.get(
       (Array.isArray(attemptDashboard.categories) && attemptDashboard.categories.some((row) => Number(row?.attempts) > 0)) ||
       (Array.isArray(attemptDashboard.rotations) && attemptDashboard.rotations.some((row) => Number(row?.attempts) > 0));
     const sourceDashboard = syncHasData ? syncDashboard : attemptHasData ? attemptDashboard : syncDashboard;
-    const sourceCategories = Array.isArray(sourceDashboard.categories)
+    const categories = Array.isArray(sourceDashboard.categories)
       ? sourceDashboard.categories.filter((row) => Number(row?.attempts) > 0)
       : [];
-    const sourceRotations = Array.isArray(sourceDashboard.rotations)
+    const rotations = Array.isArray(sourceDashboard.rotations)
       ? sourceDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
       : [];
-    const attemptCategories = Array.isArray(attemptDashboard.categories)
-      ? attemptDashboard.categories.filter((row) => Number(row?.attempts) > 0)
-      : [];
-    const attemptRotations = Array.isArray(attemptDashboard.rotations)
-      ? attemptDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
-      : [];
-    const categories = sourceCategories.length > 0 ? sourceCategories : attemptCategories;
-    const rotations = sourceRotations.length > 0 ? sourceRotations : attemptRotations;
 
     res.json({
       totalSessions: Math.max(0, Number(sourceDashboard.totalSessions) || 0),

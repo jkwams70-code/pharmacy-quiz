@@ -2002,6 +2002,25 @@ function getActorId(req) {
   return "client:anonymous";
 }
 
+function getActorIdCandidates(req) {
+  const candidates = [];
+  const userId = String(req.user?.sub || "").trim();
+  if (userId) {
+    candidates.push(`user:${userId}`);
+  }
+
+  const clientId = req.headers["x-client-id"];
+  if (typeof clientId === "string" && clientId.trim()) {
+    candidates.push(`client:${clientId.trim()}`);
+  }
+
+  if (!candidates.length) {
+    candidates.push("client:anonymous");
+  }
+
+  return [...new Set(candidates)];
+}
+
 function shuffle(items) {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -4158,9 +4177,9 @@ app.get(
   "/api/sync/performance-state",
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const actorId = getActorId(req);
+    const actorIds = getActorIdCandidates(req);
     const states = (await readCollection("syncPerformanceState")).filter(
-      (item) => String(item?.actorId || "").trim() === actorId,
+      (item) => actorIds.includes(String(item?.actorId || "").trim()),
     );
     const state = states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) || null;
     res.json({ state });
@@ -4209,12 +4228,12 @@ app.get(
   "/api/sync/history",
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const actorId = getActorId(req);
+    const actorIds = getActorIdCandidates(req);
     const mode = String(req.query.mode || "").trim();
     const limit = safeNumber(req.query.limit) || 20;
 
     let sessions = (await readCollection("syncSessions")).filter(
-      (s) => s.actorId === actorId,
+      (s) => actorIds.includes(String(s.actorId || "").trim()),
     );
 
     if (mode) {
@@ -4233,16 +4252,16 @@ app.get(
   "/api/sync/dashboard",
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const actorId = getActorId(req);
+    const actorIds = getActorIdCandidates(req);
 
     const sessions = (await readCollection("syncSessions")).filter(
-      (s) => s.actorId === actorId,
+      (s) => actorIds.includes(String(s.actorId || "").trim()),
     );
     const events = (await readCollection("syncPerformance")).filter(
-      (e) => e.actorId === actorId,
+      (e) => actorIds.includes(String(e.actorId || "").trim()),
     );
     const states = (await readCollection("syncPerformanceState")).filter(
-      (item) => String(item?.actorId || "").trim() === actorId,
+      (item) => actorIds.includes(String(item?.actorId || "").trim()),
     );
     const performanceState =
       states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) ||

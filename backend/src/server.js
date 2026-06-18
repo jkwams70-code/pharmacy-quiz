@@ -2324,7 +2324,44 @@ function buildDashboardFromAttempts(attempts, questions) {
   };
 }
 
-function buildDashboardFromSync(events, sessions) {
+function normalizeSyncedPerformanceStatsMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw).map(([key, value]) => {
+      const attempts = Math.max(0, Math.round(Number(value?.attempts) || 0));
+      const correct = Math.max(0, Math.min(attempts, Math.round(Number(value?.correct) || 0)));
+      return [String(key || "").trim(), { attempts, correct }];
+    }).filter(([key]) => Boolean(key)),
+  );
+}
+
+function mergeSyncedPerformanceStatsMap(left = {}, right = {}) {
+  const safeLeft = normalizeSyncedPerformanceStatsMap(left);
+  const safeRight = normalizeSyncedPerformanceStatsMap(right);
+  const merged = new Map();
+
+  for (const [key, value] of Object.entries(safeLeft)) {
+    merged.set(key, { attempts: value.attempts, correct: value.correct });
+  }
+
+  for (const [key, value] of Object.entries(safeRight)) {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { attempts: value.attempts, correct: value.correct });
+      continue;
+    }
+    const attempts = Math.max(existing.attempts, value.attempts);
+    const correct = Math.max(existing.correct, value.correct);
+    merged.set(key, {
+      attempts,
+      correct: Math.min(attempts, correct),
+    });
+  }
+
+  return Object.fromEntries(merged.entries());
+}
+
+function buildDashboardFromSync(events, sessions, performanceState = null) {
   const questionStats = new Map();
   const categoryStats = new Map();
 
@@ -2350,6 +2387,19 @@ function buildDashboardFromSync(events, sessions) {
     categoryStats.set(category, cat);
   }
 
+  const syncedCategoryStats = normalizeSyncedPerformanceStatsMap(
+    performanceState?.categoryPerformance || {},
+  );
+  for (const [category, stats] of Object.entries(syncedCategoryStats)) {
+    const existing = categoryStats.get(category) || { attempts: 0, correct: 0 };
+    const attempts = Math.max(existing.attempts, stats.attempts);
+    const correct = Math.max(existing.correct, stats.correct);
+    categoryStats.set(category, {
+      attempts,
+      correct: Math.min(attempts, correct),
+    });
+  }
+
   const sessionTotals = (Array.isArray(sessions) ? sessions : []).reduce(
     (acc, session) => {
       const score = Math.max(0, Math.round(Number(session?.score) || 0));
@@ -2364,6 +2414,21 @@ function buildDashboardFromSync(events, sessions) {
     },
     { attempts: 0, correct: 0, weakCount: 0 },
   );
+
+  const syncedRotationStats = normalizeSyncedPerformanceStatsMap(
+    performanceState?.rotationPerformance || {},
+  );
+  const rotations = Object.entries(syncedRotationStats)
+    .map(([rotation, stats]) => ({
+      rotation,
+      attempts: stats.attempts,
+      correct: stats.correct,
+      accuracy:
+        stats.attempts === 0
+          ? 0
+          : Math.round((stats.correct / stats.attempts) * 100),
+    }))
+    .sort((a, b) => a.rotation.localeCompare(b.rotation));
 
   const weakQuestions = [...questionStats.values()].filter((row) => {
     const accuracy =
@@ -2394,6 +2459,7 @@ function buildDashboardFromSync(events, sessions) {
         : Math.round((totalCorrect / totalAttempts) * 100),
     weakQuestions: weakQuestions > 0 ? weakQuestions : sessionTotals.weakCount,
     categories,
+    rotations,
   };
 }
 
@@ -3947,6 +4013,56 @@ app.post(
 );
 
 app.post(
+  "/api/sync/performance-state",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+    const performanceData =
+      req.body && typeof req.body.performanceData === "object" && !Array.isArray(req.body.performanceData)
+        ? req.body.performanceData
+        : {};
+    const categoryPerformance =
+      req.body && typeof req.body.categoryPerformance === "object" && !Array.isArray(req.body.categoryPerformance)
+        ? req.body.categoryPerformance
+        : {};
+    const rotationPerformance =
+      req.body && typeof req.body.rotationPerformance === "object" && !Array.isArray(req.body.rotationPerformance)
+        ? req.body.rotationPerformance
+        : {};
+
+    const state = {
+      id: crypto.randomUUID(),
+      actorId,
+      performanceData,
+      categoryPerformance,
+      rotationPerformance,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await updateCollection("syncPerformanceState", async (items) => {
+      const next = Array.isArray(items) ? items.filter((item) => String(item?.actorId || "").trim() !== actorId) : [];
+      next.push(state);
+      return next;
+    });
+
+    res.status(201).json({ ok: true, state });
+  }),
+);
+
+app.get(
+  "/api/sync/performance-state",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+    const states = (await readCollection("syncPerformanceState")).filter(
+      (item) => String(item?.actorId || "").trim() === actorId,
+    );
+    const state = states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) || null;
+    res.json({ state });
+  }),
+);
+
+app.post(
   "/api/sync/sessions",
   optionalAuth,
   asyncHandler(async (req, res) => {
@@ -4020,8 +4136,14 @@ app.get(
     const events = (await readCollection("syncPerformance")).filter(
       (e) => e.actorId === actorId,
     );
+    const states = (await readCollection("syncPerformanceState")).filter(
+      (item) => String(item?.actorId || "").trim() === actorId,
+    );
+    const performanceState =
+      states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) ||
+      null;
 
-    res.json(buildDashboardFromSync(events, sessions));
+    res.json(buildDashboardFromSync(events, sessions, performanceState));
   }),
 );
 

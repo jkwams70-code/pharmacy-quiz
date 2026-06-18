@@ -792,6 +792,10 @@ export const backendClient = {
     fireAndForget(post("/sync/performance", event));
   },
 
+  syncPerformanceState(state = {}) {
+    fireAndForget(post("/sync/performance-state", state));
+  },
+
   syncWeakTracker(weakTracker = {}) {
     return post("/sync/weak-tracker", { weakTracker });
   },

@@ -30425,54 +30425,6 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
       ? remoteAccuracy
       : Math.max(0, Number(local.overallAccuracy) || 0);
 
-  const mergedCategoryMap = new Map();
-  (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
-    const name = String(row?.category || "").trim() || "General";
-    mergedCategoryMap.set(name, {
-      category: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
-    const name = String(row?.category || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedCategoryMap.get(name);
-    if (!existing) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-    } else if (existing.attempts <= 0 && remoteRow.attempts > 0) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-    }
-  });
-
-  const mergedRotationMap = new Map();
-  (Array.isArray(local.rotations) ? local.rotations : []).forEach((row) => {
-    const name = String(row?.rotation || "").trim() || "General";
-    mergedRotationMap.set(name, {
-      rotation: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
-    const name = String(row?.rotation || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedRotationMap.get(name);
-    if (!existing) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-    } else if (existing.attempts <= 0 && remoteRow.attempts > 0) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-    }
-  });
-
   const remoteCategories = Array.isArray(remote.categories) ? remote.categories : [];
   const remoteRotations = Array.isArray(remote.rotations) ? remote.rotations : [];
   const localCategories = Array.isArray(local.categories) ? local.categories : [];
@@ -30490,10 +30442,10 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
       Math.max(0, Number(local.sessionCount) || 0),
       Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
     ),
-    categories: (hasUsefulLocalCategories ? localCategories : hasUsefulRemoteCategories ? remoteCategories : [...mergedCategoryMap.values()]).sort(
+    categories: (hasUsefulRemoteCategories ? remoteCategories : hasUsefulLocalCategories ? localCategories : []).sort(
       (a, b) => String(a.category).localeCompare(String(b.category)),
     ),
-    rotations: (hasUsefulLocalRotations ? localRotations : hasUsefulRemoteRotations ? remoteRotations : [...mergedRotationMap.values()]).sort(
+    rotations: (hasUsefulRemoteRotations ? remoteRotations : hasUsefulLocalRotations ? localRotations : []).sort(
       (a, b) => String(a.rotation).localeCompare(String(b.rotation)),
     ),
   };

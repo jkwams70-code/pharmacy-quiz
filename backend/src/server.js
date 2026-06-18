@@ -2545,6 +2545,26 @@ function normalizeSyncedPerformanceStatsMap(raw = {}) {
   );
 }
 
+function syncedPerformanceStatsMapToRows(raw = {}, keyField = "category") {
+  const normalized = normalizeSyncedPerformanceStatsMap(raw);
+  return Object.entries(normalized)
+    .map(([key, stats]) => {
+      const attempts = Math.max(0, Math.round(Number(stats?.attempts) || 0));
+      const correct = Math.max(0, Math.min(attempts, Math.round(Number(stats?.correct) || 0)));
+      return {
+        [keyField]: key,
+        attempts,
+        correct,
+        accuracy:
+          attempts === 0
+            ? 0
+            : Math.round(((correct / attempts) * 100) * 10) / 10,
+      };
+    })
+    .filter((row) => Boolean(String(row?.[keyField] || "").trim()))
+    .sort((a, b) => String(a[keyField]).localeCompare(String(b[keyField])));
+}
+
 function mergeSyncedPerformanceStatsMap(left = {}, right = {}) {
   const safeLeft = normalizeSyncedPerformanceStatsMap(left);
   const safeRight = normalizeSyncedPerformanceStatsMap(right);
@@ -4389,6 +4409,14 @@ app.get(
     const syncRotations = Array.isArray(syncDashboard.rotations)
       ? syncDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
       : [];
+    const stateCategories =
+      performanceState?.categoryPerformance && typeof performanceState.categoryPerformance === "object"
+        ? syncedPerformanceStatsMapToRows(performanceState.categoryPerformance, "category")
+        : [];
+    const stateRotations =
+      performanceState?.rotationPerformance && typeof performanceState.rotationPerformance === "object"
+        ? syncedPerformanceStatsMapToRows(performanceState.rotationPerformance, "rotation")
+        : [];
     const attemptCategories = Array.isArray(attemptDashboard.categories)
       ? attemptDashboard.categories.filter((row) => Number(row?.attempts) > 0)
       : [];
@@ -4396,13 +4424,17 @@ app.get(
       ? attemptDashboard.rotations.filter((row) => Number(row?.attempts) > 0)
       : [];
     const categories =
-      syncCategories.length > 0
+      stateCategories.length > 0
+        ? stateCategories
+        : syncCategories.length > 0
         ? syncCategories
         : attemptCategories.length > 0
           ? attemptCategories
           : [];
     const rotations =
-      syncRotations.length > 0
+      stateRotations.length > 0
+        ? stateRotations
+        : syncRotations.length > 0
         ? syncRotations
         : attemptRotations.length > 0
           ? attemptRotations

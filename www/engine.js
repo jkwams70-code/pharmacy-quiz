@@ -2481,6 +2481,8 @@ function applySyncedPerformanceState(state = {}) {
   const nextCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
   const nextRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
   const nextWeakTracker = normalizeWeakTrackerMap(state?.weakTracker || {});
+  const hasSyncedCategoryPerformance = Object.keys(nextCategoryPerformance).length > 0;
+  const hasSyncedRotationPerformance = Object.keys(nextRotationPerformance).length > 0;
 
   performanceData = mergePerformanceStatsMap(performanceData, nextPerformanceData);
   categoryPerformance = mergePerformanceStatsMap(categoryPerformance, nextCategoryPerformance);
@@ -2489,8 +2491,12 @@ function applySyncedPerformanceState(state = {}) {
     weakTracker = mergeWeakTrackerMap(weakTracker, nextWeakTracker);
   }
 
-  rebuildCategoryPerformanceFromQuestionStats();
-  rebuildRotationPerformanceFromQuestionStats();
+  if (!hasSyncedCategoryPerformance) {
+    rebuildCategoryPerformanceFromQuestionStats();
+  }
+  if (!hasSyncedRotationPerformance) {
+    rebuildRotationPerformanceFromQuestionStats();
+  }
   savePerformance();
   localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
   localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
@@ -2509,10 +2515,22 @@ async function loadSyncedPerformanceState({ force = false } = {}) {
     const state = response?.state && typeof response.state === "object" ? response.state : null;
     const built = buildPerformanceStateFromEvents(events);
     const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || state?.weakTracker || {});
+    const stateCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
+    const stateRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
     const nextState = {
       performanceData: mergePerformanceStatsMap(performanceData, built.performanceData),
-      categoryPerformance: mergePerformanceStatsMap(categoryPerformance, built.categoryPerformance),
-      rotationPerformance: mergePerformanceStatsMap(rotationPerformance, built.rotationPerformance),
+      categoryPerformance: mergePerformanceStatsMap(
+        categoryPerformance,
+        Object.keys(stateCategoryPerformance).length > 0
+          ? stateCategoryPerformance
+          : built.categoryPerformance,
+      ),
+      rotationPerformance: mergePerformanceStatsMap(
+        rotationPerformance,
+        Object.keys(stateRotationPerformance).length > 0
+          ? stateRotationPerformance
+          : built.rotationPerformance,
+      ),
       weakTracker: Object.keys(remoteWeakTracker).length > 0 ? remoteWeakTracker : built.weakTracker,
     };
     syncedPerformanceStateCache = nextState;
@@ -30522,13 +30540,67 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
   );
   const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
   const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
+  const localAttempts = Math.max(0, Number(local.totalAttempts) || 0);
+  const localAccuracy = Math.max(0, Number(local.overallAccuracy) || 0);
 
-  const mergedTotalAttempts = Math.max(Math.max(0, Number(local.totalAttempts) || 0), remoteAttempts);
+  const mergedTotalAttempts = Math.max(localAttempts, remoteAttempts);
   const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
   const mergedOverallAccuracy =
-    remoteAttempts > (Number(local.totalAttempts) || 0)
+    remoteAccuracy > localAccuracy
       ? remoteAccuracy
-      : Math.max(0, Number(local.overallAccuracy) || 0);
+      : localAccuracy;
+
+  const chooseBetterRow = (localRow, remoteRow, keyField) => {
+    const localAttemptsValue = Math.max(0, Number(localRow?.attempts) || 0);
+    const localAccuracyValue = Math.max(0, Number(localRow?.accuracy) || 0);
+    const remoteAttemptsValue = Math.max(0, Number(remoteRow?.attempts) || 0);
+    const remoteAccuracyValue = Math.max(0, Number(remoteRow?.accuracy) || 0);
+    const keyName = keyField === "rotation" ? "rotation" : "category";
+
+    if (!localRow && remoteRow) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+    if (localRow && !remoteRow) {
+      return {
+        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+        attempts: localAttemptsValue,
+        accuracy: localAccuracyValue,
+      };
+    }
+
+    if (remoteAccuracyValue > localAccuracyValue) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+    if (localAccuracyValue > remoteAccuracyValue) {
+      return {
+        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+        attempts: localAttemptsValue,
+        accuracy: localAccuracyValue,
+      };
+    }
+
+    if (remoteAttemptsValue > localAttemptsValue) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+
+    return {
+      [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+      attempts: localAttemptsValue,
+      accuracy: localAccuracyValue,
+    };
+  };
 
   const mergedCategoryMap = new Map();
   (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
@@ -30542,23 +30614,12 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
 
   (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
     const name = String(row?.category || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
     const existing = mergedCategoryMap.get(name);
-    if (!existing) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
+    const chosen = chooseBetterRow(existing, row, "category");
     mergedCategoryMap.set(name, {
       category: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
+      attempts: chosen.attempts,
+      accuracy: chosen.accuracy,
     });
   });
 
@@ -30574,23 +30635,12 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
 
   (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
     const name = String(row?.rotation || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
     const existing = mergedRotationMap.get(name);
-    if (!existing) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
+    const chosen = chooseBetterRow(existing, row, "rotation");
     mergedRotationMap.set(name, {
       rotation: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
+      attempts: chosen.attempts,
+      accuracy: chosen.accuracy,
     });
   });
 

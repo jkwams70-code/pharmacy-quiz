@@ -31126,24 +31126,25 @@ function renderDashboardRecentResults() {
   });
 }
 
-function showDashboard() {
+async function showDashboard() {
   showScreen("dashboard");
 
   rebuildCategoryPerformanceFromQuestionStats();
   rebuildRotationPerformanceFromQuestionStats();
   const localSnapshot = getLocalDashboardSnapshot();
   renderDashboardValues(localSnapshot);
-  void loadSyncedPerformanceState({ force: true });
+  await loadSyncedPerformanceState({ force: true });
   void loadDashboardTrendData({ force: true });
 
+  const refreshedLocalSnapshot = getLocalDashboardSnapshot();
   backendClient
     .fetchSyncedDashboard()
     .then((remote) => {
-      const mergedSnapshot = mergeDashboardSnapshots(localSnapshot, remote);
+      const mergedSnapshot = mergeDashboardSnapshots(refreshedLocalSnapshot, remote);
       renderDashboardValues(mergedSnapshot);
     })
     .catch(() => {
-      // Keep local dashboard when backend is not reachable.
+      renderDashboardValues(refreshedLocalSnapshot);
     });
 
   const dashboardCloseBtn = document.getElementById("dashboard-close-btn");

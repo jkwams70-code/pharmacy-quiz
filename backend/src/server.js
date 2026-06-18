@@ -4362,10 +4362,19 @@ app.get(
 
     const syncDashboard = buildDashboardFromSync(events, sessions, performanceState);
     const attemptDashboard = buildDashboardFromAttempts(attempts, questions);
-    const useAttemptDashboard =
+    const syncHasData =
+      Number(syncDashboard.totalAttempts) > 0 ||
+      Number(syncDashboard.totalSessions) > 0 ||
+      Number(syncDashboard.overallAccuracy) > 0 ||
+      (Array.isArray(syncDashboard.categories) && syncDashboard.categories.some((row) => Number(row?.attempts) > 0)) ||
+      (Array.isArray(syncDashboard.rotations) && syncDashboard.rotations.some((row) => Number(row?.attempts) > 0));
+    const attemptHasData =
       Number(attemptDashboard.totalQuestionAttempts) > 0 ||
-      Number(attemptDashboard.totalSessions) > 0;
-    const sourceDashboard = useAttemptDashboard ? attemptDashboard : syncDashboard;
+      Number(attemptDashboard.totalSessions) > 0 ||
+      Number(attemptDashboard.overallAccuracy) > 0 ||
+      (Array.isArray(attemptDashboard.categories) && attemptDashboard.categories.some((row) => Number(row?.attempts) > 0)) ||
+      (Array.isArray(attemptDashboard.rotations) && attemptDashboard.rotations.some((row) => Number(row?.attempts) > 0));
+    const sourceDashboard = syncHasData ? syncDashboard : attemptHasData ? attemptDashboard : syncDashboard;
 
     res.json({
       totalSessions: Math.max(0, Number(sourceDashboard.totalSessions) || 0),

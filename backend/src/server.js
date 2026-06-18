@@ -2350,6 +2350,21 @@ function buildDashboardFromSync(events, sessions) {
     categoryStats.set(category, cat);
   }
 
+  const sessionTotals = (Array.isArray(sessions) ? sessions : []).reduce(
+    (acc, session) => {
+      const score = Math.max(0, Math.round(Number(session?.score) || 0));
+      const total = Math.max(0, Math.round(Number(session?.total) || 0));
+      if (total <= 0) return acc;
+      acc.attempts += total;
+      acc.correct += Math.min(score, total);
+      if (Math.round((score / total) * 100) < 60) {
+        acc.weakCount += 1;
+      }
+      return acc;
+    },
+    { attempts: 0, correct: 0, weakCount: 0 },
+  );
+
   const weakQuestions = [...questionStats.values()].filter((row) => {
     const accuracy =
       row.attempts === 0 ? 100 : Math.round((row.correct / row.attempts) * 100);
@@ -2370,12 +2385,14 @@ function buildDashboardFromSync(events, sessions) {
 
   return {
     totalSessions: sessions.length,
-    totalAttempts,
+    totalAttempts: totalAttempts > 0 ? totalAttempts : sessionTotals.attempts,
     overallAccuracy:
       totalAttempts === 0
-        ? 0
+        ? sessionTotals.attempts === 0
+          ? 0
+          : Math.round((sessionTotals.correct / sessionTotals.attempts) * 100)
         : Math.round((totalCorrect / totalAttempts) * 100),
-    weakQuestions,
+    weakQuestions: weakQuestions > 0 ? weakQuestions : sessionTotals.weakCount,
     categories,
   };
 }

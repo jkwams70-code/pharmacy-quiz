@@ -30473,6 +30473,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     }
   });
 
+  const remoteCategories = Array.isArray(remote.categories) ? remote.categories : [];
+  const remoteRotations = Array.isArray(remote.rotations) ? remote.rotations : [];
+  const hasUsefulRemoteCategories = remoteCategories.some((row) => Number(row?.attempts) > 0);
+  const hasUsefulRemoteRotations = remoteRotations.some((row) => Number(row?.attempts) > 0);
+
   return {
     totalAttempts: mergedTotalAttempts,
     overallAccuracy: mergedOverallAccuracy,
@@ -30481,11 +30486,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
       Math.max(0, Number(local.sessionCount) || 0),
       Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
     ),
-    categories: [...mergedCategoryMap.values()].sort((a, b) =>
-      String(a.category).localeCompare(String(b.category)),
+    categories: (hasUsefulRemoteCategories ? remoteCategories : [...mergedCategoryMap.values()]).sort(
+      (a, b) => String(a.category).localeCompare(String(b.category)),
     ),
-    rotations: [...mergedRotationMap.values()].sort((a, b) =>
-      String(a.rotation).localeCompare(String(b.rotation)),
+    rotations: (hasUsefulRemoteRotations ? remoteRotations : [...mergedRotationMap.values()]).sort(
+      (a, b) => String(a.rotation).localeCompare(String(b.rotation)),
     ),
   };
 }

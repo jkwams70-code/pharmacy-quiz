@@ -497,6 +497,24 @@ async function loadCommunityContext() {
     ]);
 
   const normalizedUsers = users.map(normalizeExistingUser);
+  const dedupeById = (items = []) => {
+    const merged = new Map();
+    for (const item of Array.isArray(items) ? items : []) {
+      const id = String(item?.id || "").trim();
+      if (!id) continue;
+      const existing = merged.get(id);
+      if (!existing) {
+        merged.set(id, item);
+        continue;
+      }
+      const existingUpdatedAt = String(existing?.updatedAt || existing?.createdAt || "").trim();
+      const nextUpdatedAt = String(item?.updatedAt || item?.createdAt || "").trim();
+      if (!existingUpdatedAt || nextUpdatedAt.localeCompare(existingUpdatedAt) >= 0) {
+        merged.set(id, item);
+      }
+    }
+    return [...merged.values()];
+  };
   const usersById = new Map(normalizedUsers.map((user) => [String(user.id || "").trim(), user]));
   const uploadsById = new Map(uploads.map((upload) => [String(upload.id || "").trim(), upload]));
 
@@ -506,10 +524,10 @@ async function loadCommunityContext() {
     friendRequests: Array.isArray(friendRequests) ? friendRequests : [],
     friendships: Array.isArray(friendships) ? friendships : [],
     blocks: Array.isArray(blocks) ? blocks : [],
-    conversations: Array.isArray(conversations) ? conversations : [],
-    messages: Array.isArray(messages) ? messages : [],
-    statuses: Array.isArray(statuses) ? statuses : [],
-    uploads: Array.isArray(uploads) ? uploads : [],
+    conversations: dedupeById(conversations),
+    messages: dedupeById(messages),
+    statuses: dedupeById(statuses),
+    uploads: dedupeById(uploads),
     uploadsById,
   };
 }
@@ -1285,9 +1303,51 @@ function normalizeAdminBroadcastMessage(message = {}, uploadsById = new Map()) {
     hiddenForUserIds: normalizeIdList(message.hiddenForUserIds),
     noticeThreadKey: String(message.noticeThreadKey || "broadcast").trim() || "broadcast",
     noticeBatchId: String(message.noticeBatchId || "").trim() || String(message.id || "").trim(),
+    clientRequestId: String(message.clientRequestId || "").trim(),
     createdAt: String(message.createdAt || "").trim(),
     updatedAt: String(message.updatedAt || message.createdAt || "").trim(),
   };
+}
+
+function getBroadcastMessageIdentityKey(message = {}) {
+  const attachment = normalizeAdminBroadcastAttachment(message.attachment, new Map()) || {};
+  const createdAt = Date.parse(String(message?.createdAt || message?.updatedAt || message?.deliveredAt || ""));
+  const timeBucket = Number.isFinite(createdAt) ? Math.floor(createdAt / 5000) : 0;
+  return [
+    String(message?.conversationId || "").trim(),
+    String(message?.senderUserId || "").trim(),
+    String(message?.type || "").trim().toLowerCase(),
+    String(message?.text || "").trim(),
+    String(message?.replyTo?.sourceId || "").trim(),
+    String(attachment?.fileName || "").trim(),
+    String(attachment?.mimeType || "").trim().toLowerCase(),
+    String(attachment?.dataUrl || attachment?.remoteUrl || "").trim(),
+    String(message?.noticeThreadKey || "").trim().toLowerCase(),
+    String(message?.noticeBatchId || "").trim(),
+    String(timeBucket),
+  ].join("::");
+}
+
+function dedupeBroadcastMessages(messages = []) {
+  const seen = new Map();
+  for (const rawMessage of Array.isArray(messages) ? messages : []) {
+    if (!rawMessage || typeof rawMessage !== "object") continue;
+    const message = normalizeAdminBroadcastMessage(rawMessage);
+    const id = String(message.id || "").trim();
+    const key = id || getBroadcastMessageIdentityKey(message);
+    if (!key) continue;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, message);
+      continue;
+    }
+    const existingTime = String(existing.updatedAt || existing.createdAt || "").trim();
+    const nextTime = String(message.updatedAt || message.createdAt || "").trim();
+    if (!existingTime || nextTime.localeCompare(existingTime) >= 0) {
+      seen.set(key, message);
+    }
+  }
+  return [...seen.values()].sort((left, right) => String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
 }
 
 function buildAdminBroadcastThreadSummary(messages = [], recipientCount = 0, uploadsById = new Map()) {
@@ -1413,7 +1473,7 @@ async function syncAdminBroadcastNoticeConversation(latestMessage = null) {
     readCollection("adminBroadcastMessages"),
     readCollection("messages"),
   ]);
-  const broadcastMessages = adminBroadcastMessages
+  const broadcastMessages = dedupeBroadcastMessages(adminBroadcastMessages)
     .filter((message) => String(message?.noticeThreadKey || "broadcast").trim() === "broadcast")
     .sort((left, right) => String(left?.createdAt || "").localeCompare(String(right?.createdAt || "")));
   if (!broadcastMessages.length) {
@@ -1638,6 +1698,24 @@ async function loadAdminCommunityContext() {
     ]);
 
   const normalizedUsers = users.map(normalizeExistingUser);
+  const dedupeById = (items = []) => {
+    const merged = new Map();
+    for (const item of Array.isArray(items) ? items : []) {
+      const id = String(item?.id || "").trim();
+      if (!id) continue;
+      const existing = merged.get(id);
+      if (!existing) {
+        merged.set(id, item);
+        continue;
+      }
+      const existingUpdatedAt = String(existing?.updatedAt || existing?.createdAt || "").trim();
+      const nextUpdatedAt = String(item?.updatedAt || item?.createdAt || "").trim();
+      if (!existingUpdatedAt || nextUpdatedAt.localeCompare(existingUpdatedAt) >= 0) {
+        merged.set(id, item);
+      }
+    }
+    return [...merged.values()];
+  };
   const usersById = new Map(normalizedUsers.map((user) => [String(user.id || "").trim(), user]));
   const uploadsById = new Map(uploads.map((upload) => [String(upload.id || "").trim(), upload]));
   const messagesByConversation = new Map();
@@ -1655,13 +1733,13 @@ async function loadAdminCommunityContext() {
   return {
     users: normalizedUsers,
     usersById,
-    conversations: Array.isArray(conversations) ? conversations : [],
-    messages: Array.isArray(messages) ? messages : [],
+    conversations: dedupeById(conversations),
+    messages: dedupeById(messages),
     messagesByConversation,
     reports: Array.isArray(reports) ? reports : [],
     deletedGroups: Array.isArray(deletedGroups) ? deletedGroups : [],
     statuses: Array.isArray(statuses) ? statuses : [],
-    adminBroadcastMessages: Array.isArray(adminBroadcastMessages) ? adminBroadcastMessages : [],
+    adminBroadcastMessages: dedupeBroadcastMessages(adminBroadcastMessages),
     uploadsById,
   };
 }
@@ -1686,6 +1764,7 @@ async function buildCommunityConversationMessagesPayload(req, conversationId, { 
   for (const list of messagesByConversation.values()) {
     list.sort((left, right) => String(left?.createdAt || "").localeCompare(String(right?.createdAt || "")));
   }
+  const isNoticeConversation = String(conversation?.type || "").trim().toLowerCase() === "notice";
   const summary = summarizeCommunityConversation(conversation, {
     viewerId,
     usersById,
@@ -1696,7 +1775,8 @@ async function buildCommunityConversationMessagesPayload(req, conversationId, { 
     messagesByConversation,
   });
   const rawMessages = messagesByConversation.get(safeConversationId) || [];
-  const visibleMessages = rawMessages.filter((message) => {
+  const dedupedMessages = isNoticeConversation ? dedupeBroadcastMessages(rawMessages) : rawMessages;
+  const visibleMessages = dedupedMessages.filter((message) => {
     const hiddenForUserIds = normalizeIdList(message?.hiddenForUserIds);
     const deletedForUserIds = normalizeIdList(message?.deletedForUserIds);
     if (viewerId && hiddenForUserIds.includes(viewerId)) return false;
@@ -2324,7 +2404,44 @@ function buildDashboardFromAttempts(attempts, questions) {
   };
 }
 
-function buildDashboardFromSync(events, sessions) {
+function normalizeSyncedPerformanceStatsMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw).map(([key, value]) => {
+      const attempts = Math.max(0, Math.round(Number(value?.attempts) || 0));
+      const correct = Math.max(0, Math.min(attempts, Math.round(Number(value?.correct) || 0)));
+      return [String(key || "").trim(), { attempts, correct }];
+    }).filter(([key]) => Boolean(key)),
+  );
+}
+
+function mergeSyncedPerformanceStatsMap(left = {}, right = {}) {
+  const safeLeft = normalizeSyncedPerformanceStatsMap(left);
+  const safeRight = normalizeSyncedPerformanceStatsMap(right);
+  const merged = new Map();
+
+  for (const [key, value] of Object.entries(safeLeft)) {
+    merged.set(key, { attempts: value.attempts, correct: value.correct });
+  }
+
+  for (const [key, value] of Object.entries(safeRight)) {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { attempts: value.attempts, correct: value.correct });
+      continue;
+    }
+    const attempts = Math.max(existing.attempts, value.attempts);
+    const correct = Math.max(existing.correct, value.correct);
+    merged.set(key, {
+      attempts,
+      correct: Math.min(attempts, correct),
+    });
+  }
+
+  return Object.fromEntries(merged.entries());
+}
+
+function buildDashboardFromSync(events, sessions, performanceState = null) {
   const questionStats = new Map();
   const categoryStats = new Map();
 
@@ -2350,6 +2467,19 @@ function buildDashboardFromSync(events, sessions) {
     categoryStats.set(category, cat);
   }
 
+  const syncedCategoryStats = normalizeSyncedPerformanceStatsMap(
+    performanceState?.categoryPerformance || {},
+  );
+  for (const [category, stats] of Object.entries(syncedCategoryStats)) {
+    const existing = categoryStats.get(category) || { attempts: 0, correct: 0 };
+    const attempts = Math.max(existing.attempts, stats.attempts);
+    const correct = Math.max(existing.correct, stats.correct);
+    categoryStats.set(category, {
+      attempts,
+      correct: Math.min(attempts, correct),
+    });
+  }
+
   const sessionTotals = (Array.isArray(sessions) ? sessions : []).reduce(
     (acc, session) => {
       const score = Math.max(0, Math.round(Number(session?.score) || 0));
@@ -2364,6 +2494,21 @@ function buildDashboardFromSync(events, sessions) {
     },
     { attempts: 0, correct: 0, weakCount: 0 },
   );
+
+  const syncedRotationStats = normalizeSyncedPerformanceStatsMap(
+    performanceState?.rotationPerformance || {},
+  );
+  const rotations = Object.entries(syncedRotationStats)
+    .map(([rotation, stats]) => ({
+      rotation,
+      attempts: stats.attempts,
+      correct: stats.correct,
+      accuracy:
+        stats.attempts === 0
+          ? 0
+          : Math.round((stats.correct / stats.attempts) * 100),
+    }))
+    .sort((a, b) => a.rotation.localeCompare(b.rotation));
 
   const weakQuestions = [...questionStats.values()].filter((row) => {
     const accuracy =
@@ -2394,6 +2539,7 @@ function buildDashboardFromSync(events, sessions) {
         : Math.round((totalCorrect / totalAttempts) * 100),
     weakQuestions: weakQuestions > 0 ? weakQuestions : sessionTotals.weakCount,
     categories,
+    rotations,
   };
 }
 
@@ -2540,7 +2686,6 @@ async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) 
   const { users, pointEvents } = await repairStoredUserPointTotals();
   const viewerId = getViewerIdFromReq(req);
   const safeScope = String(scope || "daily").trim().toLowerCase();
-  const safeLimit = Math.max(1, Math.min(100, Math.round(Number(limit) || 20)));
   const now = new Date();
   const periodTotals = safeScope === "alltime"
     ? null
@@ -2572,6 +2717,7 @@ async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) 
       };
     })
     .filter((entry) => Boolean(entry.userId))
+    .filter((entry) => Number(entry.points) > 0)
     .sort((left, right) => {
       if ((right.points || 0) !== (left.points || 0)) return (right.points || 0) - (left.points || 0);
       if ((right.allTimePoints || 0) !== (left.allTimePoints || 0)) {
@@ -2584,7 +2730,7 @@ async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) 
       rank: index + 1,
     }));
 
-  const leaderboard = rows.slice(0, safeLimit);
+  const leaderboard = rows;
   const yourEntry = viewerId ? rows.find((entry) => entry.userId === viewerId) || null : null;
   if (yourEntry && !leaderboard.some((entry) => entry.userId === yourEntry.userId)) {
     leaderboard.push(yourEntry);
@@ -3947,6 +4093,56 @@ app.post(
 );
 
 app.post(
+  "/api/sync/performance-state",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+    const performanceData =
+      req.body && typeof req.body.performanceData === "object" && !Array.isArray(req.body.performanceData)
+        ? req.body.performanceData
+        : {};
+    const categoryPerformance =
+      req.body && typeof req.body.categoryPerformance === "object" && !Array.isArray(req.body.categoryPerformance)
+        ? req.body.categoryPerformance
+        : {};
+    const rotationPerformance =
+      req.body && typeof req.body.rotationPerformance === "object" && !Array.isArray(req.body.rotationPerformance)
+        ? req.body.rotationPerformance
+        : {};
+
+    const state = {
+      id: crypto.randomUUID(),
+      actorId,
+      performanceData,
+      categoryPerformance,
+      rotationPerformance,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await updateCollection("syncPerformanceState", async (items) => {
+      const next = Array.isArray(items) ? items.filter((item) => String(item?.actorId || "").trim() !== actorId) : [];
+      next.push(state);
+      return next;
+    });
+
+    res.status(201).json({ ok: true, state });
+  }),
+);
+
+app.get(
+  "/api/sync/performance-state",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const actorId = getActorId(req);
+    const states = (await readCollection("syncPerformanceState")).filter(
+      (item) => String(item?.actorId || "").trim() === actorId,
+    );
+    const state = states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) || null;
+    res.json({ state });
+  }),
+);
+
+app.post(
   "/api/sync/sessions",
   optionalAuth,
   asyncHandler(async (req, res) => {
@@ -4020,8 +4216,14 @@ app.get(
     const events = (await readCollection("syncPerformance")).filter(
       (e) => e.actorId === actorId,
     );
+    const states = (await readCollection("syncPerformanceState")).filter(
+      (item) => String(item?.actorId || "").trim() === actorId,
+    );
+    const performanceState =
+      states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) ||
+      null;
 
-    res.json(buildDashboardFromSync(events, sessions));
+    res.json(buildDashboardFromSync(events, sessions, performanceState));
   }),
 );
 
@@ -4872,7 +5074,7 @@ app.get(
     }
 
     const { users, statuses, adminBroadcastMessages, uploadsById } = await loadAdminCommunityContext();
-    const broadcastMessages = adminBroadcastMessages.filter(
+    const broadcastMessages = dedupeBroadcastMessages(adminBroadcastMessages).filter(
       (message) => String(message?.noticeThreadKey || "broadcast").trim() === "broadcast",
     );
     const thread = buildAdminBroadcastThreadSummary(broadcastMessages, users.length, uploadsById);
@@ -4907,7 +5109,7 @@ app.get(
     }
 
     const { users, adminBroadcastMessages, uploadsById } = await loadAdminCommunityContext();
-    const batches = adminBroadcastMessages
+    const batches = dedupeBroadcastMessages(adminBroadcastMessages)
       .filter((message) => String(message?.noticeThreadKey || "broadcast").trim() === threadKey)
       .map((message) => normalizeAdminBroadcastMessage(message, uploadsById))
       .sort((left, right) => String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
@@ -4936,6 +5138,7 @@ app.post(
     }
 
     const messageText = String(req.body?.message || "").trim();
+    const clientRequestId = String(req.body?.clientRequestId || req.body?.requestId || "").trim();
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "attachment").trim() || "attachment";
     const attachmentMimeType = parseDataUrlMimeType(attachmentDataUrl) || String(req.body?.attachmentMimeType || "").trim() || "application/octet-stream";
@@ -4945,7 +5148,22 @@ app.post(
     }
 
     const now = new Date().toISOString();
-    const batchId = crypto.randomUUID();
+    const batchId = clientRequestId || crypto.randomUUID();
+    if (clientRequestId) {
+      const { adminBroadcastMessages: existingBroadcastMessages, uploadsById } = await loadAdminCommunityContext();
+      const existing = existingBroadcastMessages.find(
+        (entry) => String(entry?.clientRequestId || "").trim() === clientRequestId,
+      );
+      if (existing) {
+        res.status(200).json({
+          ok: true,
+          deliveredTo: (await loadAdminCommunityContext()).users.length,
+          batchId: String(existing.noticeBatchId || existing.id || clientRequestId).trim() || clientRequestId,
+          message: normalizeAdminBroadcastMessage(existing, uploadsById),
+        });
+        return;
+      }
+    }
     const message = {
       id: crypto.randomUUID(),
       conversationId: "__admin_broadcast__",
@@ -4971,11 +5189,15 @@ app.post(
       hiddenForUserIds: [],
       noticeThreadKey: threadKey,
       noticeBatchId: batchId,
+      clientRequestId,
       createdAt: now,
       updatedAt: now,
     };
 
     await updateCollection("adminBroadcastMessages", async (items) => {
+      if (clientRequestId && items.some((entry) => String(entry?.clientRequestId || "").trim() === clientRequestId)) {
+        return items;
+      }
       items.push(message);
       return items;
     });

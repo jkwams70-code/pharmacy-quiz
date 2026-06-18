@@ -2393,9 +2393,6 @@ function applySyncedPerformanceState(state = {}) {
   localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
   rebuildRotationPerformanceFromQuestionStats();
   renderPoints();
-  if (dashboardDiv?.classList.contains("screen-active")) {
-    renderDashboardValues(getLocalDashboardSnapshot());
-  }
 }
 
 async function loadSyncedPerformanceState({ force = false } = {}) {
@@ -2413,10 +2410,6 @@ async function loadSyncedPerformanceState({ force = false } = {}) {
     }
   } catch {
     // Keep local performance data if the backend cannot be reached.
-  }
-
-  if (dashboardDiv?.classList.contains("screen-active")) {
-    renderDashboardValues(getLocalDashboardSnapshot());
   }
 
   return syncedPerformanceStateCache;

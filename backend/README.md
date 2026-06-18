@@ -25,6 +25,9 @@ ENABLE_GZIP=true
 HTTPS_ENABLED=false
 ```
 
+For production deployments, start from `.env.production.example`.
+For local preview on a PC and phone, use `start-local-preview.cmd` from the repo root; it now injects the current LAN IP into `CORS_ORIGIN` automatically for the backend process.
+
 ## 3) Run
 
 ```bash

@@ -30516,37 +30516,93 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     rotations: [],
   };
   const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
+  const remoteAttempts = Math.max(
+    0,
+    Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
+  );
+  const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
+  const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
 
-  const remoteHasData =
-    Number(remote.totalAttempts ?? remote.totalQuestionAttempts) > 0 ||
-    Number(remote.totalSessions ?? remote.sessionCount) > 0 ||
-    (Array.isArray(remote.categories) && remote.categories.length > 0) ||
-    (Array.isArray(remote.rotations) && remote.rotations.length > 0);
+  const mergedTotalAttempts = Math.max(Math.max(0, Number(local.totalAttempts) || 0), remoteAttempts);
+  const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
+  const mergedOverallAccuracy =
+    remoteAttempts > (Number(local.totalAttempts) || 0)
+      ? remoteAccuracy
+      : Math.max(0, Number(local.overallAccuracy) || 0);
 
-  if (remoteHasData) {
-    return {
-      totalAttempts: Math.max(0, Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0),
-      overallAccuracy: Math.max(0, Number(remote.overallAccuracy) || 0),
-      weakCount: Math.max(0, Number(remote.weakQuestions) || 0),
-      sessionCount: Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
-      categories: (Array.isArray(remote.categories) ? remote.categories : []).sort((a, b) =>
-        String(a.category).localeCompare(String(b.category)),
-      ),
-      rotations: (Array.isArray(remote.rotations) ? remote.rotations : []).sort((a, b) =>
-        String(a.rotation).localeCompare(String(b.rotation)),
-      ),
+  const mergedCategoryMap = new Map();
+  (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
+    const name = String(row?.category || "").trim() || "General";
+    mergedCategoryMap.set(name, {
+      category: name,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
+    });
+  });
+
+  (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
+    const name = String(row?.category || "").trim() || "General";
+    const remoteRow = {
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
     };
-  }
+    const existing = mergedCategoryMap.get(name);
+    if (!existing) {
+      mergedCategoryMap.set(name, { category: name, ...remoteRow });
+      return;
+    }
+    if (remoteRow.attempts > existing.attempts) {
+      mergedCategoryMap.set(name, { category: name, ...remoteRow });
+      return;
+    }
+    mergedCategoryMap.set(name, {
+      category: name,
+      attempts: existing.attempts,
+      accuracy: existing.accuracy,
+    });
+  });
+
+  const mergedRotationMap = new Map();
+  (Array.isArray(local.rotations) ? local.rotations : []).forEach((row) => {
+    const name = String(row?.rotation || "").trim() || "General";
+    mergedRotationMap.set(name, {
+      rotation: name,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
+    });
+  });
+
+  (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
+    const name = String(row?.rotation || "").trim() || "General";
+    const remoteRow = {
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
+    };
+    const existing = mergedRotationMap.get(name);
+    if (!existing) {
+      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
+      return;
+    }
+    if (remoteRow.attempts > existing.attempts) {
+      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
+      return;
+    }
+    mergedRotationMap.set(name, {
+      rotation: name,
+      attempts: existing.attempts,
+      accuracy: existing.accuracy,
+    });
+  });
 
   return {
-    totalAttempts: Math.max(0, Number(local.totalAttempts) || 0),
-    overallAccuracy: Math.max(0, Number(local.overallAccuracy) || 0),
-    weakCount: Math.max(0, Number(local.weakCount) || 0),
+    totalAttempts: mergedTotalAttempts,
+    overallAccuracy: mergedOverallAccuracy,
+    weakCount: mergedWeakCount,
     sessionCount: Math.max(0, Number(local.sessionCount) || 0),
-    categories: (Array.isArray(local.categories) ? local.categories : []).sort((a, b) =>
+    categories: [...mergedCategoryMap.values()].sort((a, b) =>
       String(a.category).localeCompare(String(b.category)),
     ),
-    rotations: (Array.isArray(local.rotations) ? local.rotations : []).sort((a, b) =>
+    rotations: [...mergedRotationMap.values()].sort((a, b) =>
       String(a.rotation).localeCompare(String(b.rotation)),
     ),
   };

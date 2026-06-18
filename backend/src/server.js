@@ -2333,6 +2333,7 @@ function buildDashboardFromAttempts(attempts, questions) {
   const questionById = new Map(questions.map((q) => [Number(q.id), q]));
   const questionStats = new Map();
   const categoryStats = new Map();
+  const rotationStats = new Map();
 
   let totalQuestionAttempts = 0;
   let totalCorrect = 0;
@@ -2353,6 +2354,9 @@ function buildDashboardFromAttempts(attempts, questions) {
         question.category,
         `${String(question.question || question.text || "")} ${String(question.explanation || "")}`,
       );
+      const mappedRotation =
+        String(question.rotation || question.rotationGroup || question.rotationName || "")
+          .trim() || "General";
 
       const stat = questionStats.get(id) || {
         attempts: 0,
@@ -2371,6 +2375,14 @@ function buildDashboardFromAttempts(attempts, questions) {
       categoryRow.attempts += 1;
       if (isCorrect) categoryRow.correct += 1;
       categoryStats.set(category, categoryRow);
+
+      const rotationRow = rotationStats.get(mappedRotation) || {
+        attempts: 0,
+        correct: 0,
+      };
+      rotationRow.attempts += 1;
+      if (isCorrect) rotationRow.correct += 1;
+      rotationStats.set(mappedRotation, rotationRow);
     }
   }
 
@@ -2392,6 +2404,18 @@ function buildDashboardFromAttempts(attempts, questions) {
     }))
     .sort((a, b) => a.category.localeCompare(b.category));
 
+  const rotations = [...rotationStats.entries()]
+    .map(([rotation, stats]) => ({
+      rotation,
+      attempts: stats.attempts,
+      correct: stats.correct,
+      accuracy:
+        stats.attempts === 0
+          ? 0
+          : Math.round((stats.correct / stats.attempts) * 100),
+    }))
+    .sort((a, b) => a.rotation.localeCompare(b.rotation));
+
   return {
     totalSessions: attempts.length,
     totalQuestionAttempts,
@@ -2401,6 +2425,7 @@ function buildDashboardFromAttempts(attempts, questions) {
         : Math.round((totalCorrect / totalQuestionAttempts) * 100),
     weakQuestions,
     categories,
+    rotations,
   };
 }
 
@@ -4223,7 +4248,38 @@ app.get(
       states.sort((a, b) => String(a?.updatedAt || "").localeCompare(String(b?.updatedAt || ""))).at(-1) ||
       null;
 
-    res.json(buildDashboardFromSync(events, sessions, performanceState));
+    const questions = await readCollection("questions");
+    const attempts = (await readCollection("attempts")).filter(
+      (attempt) => attempt.actorId === actorId && attempt.finishedAt,
+    );
+
+    const syncDashboard = buildDashboardFromSync(events, sessions, performanceState);
+    const attemptDashboard = buildDashboardFromAttempts(attempts, questions);
+
+    res.json({
+      totalSessions: Math.max(
+        Math.max(0, Number(syncDashboard.totalSessions) || 0),
+        Math.max(0, Number(attemptDashboard.totalSessions) || 0),
+      ),
+      totalAttempts: Math.max(
+        Math.max(0, Number(syncDashboard.totalAttempts) || 0),
+        Math.max(0, Number(attemptDashboard.totalQuestionAttempts) || 0),
+      ),
+      overallAccuracy:
+        Math.max(0, Number(syncDashboard.totalAttempts) || 0) > 0
+          ? Math.max(0, Number(syncDashboard.overallAccuracy) || 0)
+          : Math.max(0, Number(attemptDashboard.overallAccuracy) || 0),
+      weakQuestions: Math.max(
+        Math.max(0, Number(syncDashboard.weakQuestions) || 0),
+        Math.max(0, Number(attemptDashboard.weakQuestions) || 0),
+      ),
+      categories: Array.isArray(syncDashboard.categories) && syncDashboard.categories.length
+        ? syncDashboard.categories
+        : attemptDashboard.categories,
+      rotations: Array.isArray(syncDashboard.rotations) && syncDashboard.rotations.length
+        ? syncDashboard.rotations
+        : attemptDashboard.rotations,
+    });
   }),
 );
 

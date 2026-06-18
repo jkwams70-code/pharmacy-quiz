@@ -2450,8 +2450,6 @@ function reconcileLocalQuestionStats() {
 }
 
 reconcileLocalQuestionStats();
-rebuildCategoryPerformanceFromQuestionStats();
-rebuildRotationPerformanceFromQuestionStats();
 
 function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (!performanceData[questionId]) {
@@ -2625,6 +2623,7 @@ function getWeakRotations(threshold = 80) {
 }
 
 rebuildRotationPerformanceFromQuestionStats();
+rebuildCategoryPerformanceFromQuestionStats();
 
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");

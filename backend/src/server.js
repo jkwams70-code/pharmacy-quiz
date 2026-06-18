@@ -4269,7 +4269,9 @@ app.get(
 
     const questions = await readCollection("questions");
     const attempts = (await readCollection("attempts")).filter(
-      (attempt) => attempt.actorId === actorId && attempt.finishedAt,
+      (attempt) =>
+        actorIds.includes(String(attempt.actorId || "").trim()) &&
+        Boolean(attempt.finishedAt),
     );
 
     const syncDashboard = buildDashboardFromSync(events, sessions, performanceState);

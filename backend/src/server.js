@@ -2448,6 +2448,47 @@ function buildDashboardFromAttempts(attempts, questions) {
   };
 }
 
+function mergeDashboardStatRows(leftRows = [], rightRows = [], keyField = "category") {
+  const merged = new Map();
+  const sourceRows = [
+    ...(Array.isArray(leftRows) ? leftRows : []),
+    ...(Array.isArray(rightRows) ? rightRows : []),
+  ];
+
+  for (const row of sourceRows) {
+    const key = String(row?.[keyField] || "").trim() || "General";
+    const attempts = Math.max(0, Math.round(Number(row?.attempts) || 0));
+    const correct = Math.max(
+      0,
+      Math.min(attempts, Math.round(Number(row?.correct) || 0)),
+    );
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, {
+        [keyField]: key,
+        attempts,
+        correct,
+      });
+      continue;
+    }
+    const nextAttempts = Math.max(existing.attempts, attempts);
+    const nextCorrect = Math.max(existing.correct, correct);
+    merged.set(key, {
+      [keyField]: key,
+      attempts: nextAttempts,
+      correct: Math.min(nextAttempts, nextCorrect),
+    });
+  }
+
+  return [...merged.values()]
+    .map((row) => ({
+      ...row,
+      accuracy:
+        row.attempts === 0 ? 0 : Math.round((row.correct / row.attempts) * 100),
+    }))
+    .sort((a, b) => String(a[keyField]).localeCompare(String(b[keyField])));
+}
+
 function normalizeSyncedPerformanceStatsMap(raw = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return Object.fromEntries(
@@ -4276,6 +4317,16 @@ app.get(
 
     const syncDashboard = buildDashboardFromSync(events, sessions, performanceState);
     const attemptDashboard = buildDashboardFromAttempts(attempts, questions);
+    const categories = mergeDashboardStatRows(
+      syncDashboard.categories,
+      attemptDashboard.categories,
+      "category",
+    );
+    const rotations = mergeDashboardStatRows(
+      syncDashboard.rotations,
+      attemptDashboard.rotations,
+      "rotation",
+    );
 
     res.json({
       totalSessions: Math.max(
@@ -4294,12 +4345,8 @@ app.get(
         Math.max(0, Number(syncDashboard.weakQuestions) || 0),
         Math.max(0, Number(attemptDashboard.weakQuestions) || 0),
       ),
-      categories: Array.isArray(syncDashboard.categories) && syncDashboard.categories.length
-        ? syncDashboard.categories
-        : attemptDashboard.categories,
-      rotations: Array.isArray(syncDashboard.rotations) && syncDashboard.rotations.length
-        ? syncDashboard.rotations
-        : attemptDashboard.rotations,
+      categories,
+      rotations,
     });
   }),
 );

@@ -5286,10 +5286,21 @@ function writeSetupPointsState(state = {}) {
   return { owners: safeOwners };
 }
 
+function hasAnySetupPoints(points = {}) {
+  return Object.values(sanitizeSetupPoints(points)).some((value) => Number(value) > 0);
+}
+
 function readCurrentSetupPoints() {
   const state = readSetupPointsState();
-  const local = sanitizeSetupPoints(state.owners?.[getSetupPointsOwnerKey()] || createEmptySetupPoints());
-  return mergeSetupPoints(local, currentUser?.setupPoints || {});
+  const ownerKey = getSetupPointsOwnerKey();
+  const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
+  const primary = mergeSetupPoints(local, remote);
+  if (ownerKey === "guest" || hasAnySetupPoints(primary)) {
+    return primary;
+  }
+  const guest = sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints());
+  return mergeSetupPoints(primary, guest);
 }
 
 function writeCurrentSetupPoints(nextValue = {}) {
@@ -5337,7 +5348,10 @@ async function flushSetupPointsSync() {
   const state = readSetupPointsState();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
-  const merged = mergeSetupPoints(local, remote);
+  const primary = mergeSetupPoints(local, remote);
+  const merged = ownerKey !== "guest" && !hasAnySetupPoints(primary)
+    ? mergeSetupPoints(primary, sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints()))
+    : primary;
   const changed = JSON.stringify(merged) !== JSON.stringify(remote);
 
   if (!changed) {
@@ -30305,8 +30319,10 @@ function normalizeDashboardSessionMode(mode = "Session") {
   if (!lower) return "Session";
   if (lower.includes("law drill") || lower.includes("pharmacy law quiz")) return "Law Drill";
   if (lower.includes("sudden death")) return "Sudden Death";
+  if (lower.includes("rapid fire") || lower.includes("rapid drill")) return "Rapid Fire";
+  if (lower.includes("clinical judgement") || lower.includes("clinical drill")) return "Clinical Judgement";
   if (lower.startsWith("daily")) return "Daily";
-  if (lower.startsWith("study")) return "Study";
+  if (lower.startsWith("study") || lower.includes("topic quiz")) return "Study";
   if (lower.startsWith("exam")) return "Exam";
   if (lower.startsWith("smart")) return "Smart";
   return raw;

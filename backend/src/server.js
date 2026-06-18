@@ -2028,6 +2028,85 @@ function mergeSetupPoints(current = {}, incoming = {}) {
   return merged;
 }
 
+function normalizeSyncedSessionMode(mode = "") {
+  const raw = String(mode || "").trim();
+  const lower = raw.toLowerCase();
+  if (!lower) return "Session";
+  if (lower.includes("law drill") || lower.includes("pharmacy law quiz")) return "Law Drill";
+  if (lower.includes("sudden death")) return "Sudden Death";
+  if (lower.includes("clinical judgement") || lower.includes("clinical drill")) {
+    return "Clinical Judgement";
+  }
+  if (lower.includes("rapid fire") || lower.includes("rapid drill")) return "Rapid Fire";
+  if (lower.startsWith("daily")) return "Daily";
+  if (lower.startsWith("study") || lower.includes("topic quiz")) return "Study";
+  if (lower.startsWith("exam")) return "Exam";
+  if (lower.startsWith("smart")) return "Smart";
+  return raw;
+}
+
+function getSetupPointsBucketFromSessionMode(mode = "") {
+  const normalized = normalizeSyncedSessionMode(mode).toLowerCase();
+  if (normalized.startsWith("daily")) return "daily";
+  if (normalized.startsWith("study")) return "study";
+  if (normalized.startsWith("smart")) return "exam";
+  if (normalized.startsWith("exam")) return "exam";
+  if (normalized.includes("rapid fire")) return "rapid";
+  if (normalized.includes("sudden death")) return "sudden";
+  if (normalized.includes("clinical judgement")) return "clinical";
+  if (normalized.includes("law drill")) return "law";
+  return "";
+}
+
+function dedupeUserSyncedSessions(sessions = [], userId = "") {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) return [];
+
+  const merged = new Map();
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    if (String(session?.actorId || "").trim() !== safeUserId) continue;
+
+    const createdAtRaw = session?.createdAt || session?.timestamp || session?.date || "";
+    const createdAt = new Date(String(createdAtRaw || ""));
+    const timestamp = Number.isNaN(createdAt.getTime()) ? 0 : createdAt.getTime();
+    const normalizedMode = normalizeSyncedSessionMode(session?.mode || "");
+    const score = Math.max(0, Math.round(Number(session?.score) || 0));
+    const total = Math.max(0, Math.round(Number(session?.total) || 0));
+    const percent = Math.max(0, Math.round(Number(session?.percent) || 0));
+    const duration = String(session?.duration || "").trim();
+    const sessionKey = String(session?.sessionId || "").trim();
+    const fingerprint = [normalizedMode, score, total, percent, duration].join("|");
+    const timeBucket = Math.floor(timestamp / 10000);
+    const key = sessionKey ? `sid:${sessionKey}` : `fp:${fingerprint}|${timeBucket}`;
+    const next = {
+      ...session,
+      mode: normalizedMode,
+      score,
+      total,
+      percent,
+      duration,
+      timestamp,
+    };
+    const existing = merged.get(key);
+    if (!existing || next.timestamp >= existing.timestamp) {
+      merged.set(key, next);
+    }
+  }
+
+  return [...merged.values()].sort((left, right) => left.timestamp - right.timestamp);
+}
+
+function deriveSetupPointsFromSyncedSessions(sessions = [], userId = "") {
+  const totals = createEmptySetupPoints();
+  for (const session of dedupeUserSyncedSessions(sessions, userId)) {
+    const bucket = getSetupPointsBucketFromSessionMode(session?.mode || "");
+    const score = Math.max(0, Math.round(Number(session?.score) || 0));
+    if (!bucket || score <= 0) continue;
+    totals[bucket] += score;
+  }
+  return totals;
+}
+
 function hashDailyQuizSelection(seed, questionId) {
   return crypto.createHash("sha256").update(`${seed}:${questionId}`).digest("hex");
 }
@@ -2383,32 +2462,61 @@ async function repairStoredUserPointTotals() {
   return { changed, users: nextUsers, pointEvents };
 }
 
-async function syncUserPointsFromEvents(userId = "") {
+async function repairStoredUserProgress(userId = "") {
   const safeUserId = String(userId || "").trim();
   if (!safeUserId) return null;
-  const [users, pointEvents] = await Promise.all([
+
+  const [users, pointEvents, syncSessions] = await Promise.all([
     readCollection("users"),
     readCollection("pointEvents"),
+    readCollection("syncSessions"),
   ]);
-  const allTimeTotals = aggregatePointEvents(pointEvents, "alltime");
+
   const userIndex = users.findIndex((user) => String(user?.id || "").trim() === safeUserId);
   if (userIndex === -1) return null;
+
   const currentUser = normalizeExistingUser(users[userIndex]);
+  const allTimeTotals = aggregatePointEvents(pointEvents, "alltime");
   const eventTotal = Math.max(0, Math.round(Number(allTimeTotals.get(safeUserId) || 0)));
   const storedTotal = Math.max(0, Math.round(Number(currentUser.points) || 0));
   const nextTotal = Math.max(storedTotal, eventTotal);
-  if (nextTotal !== storedTotal) {
-    users[userIndex] = {
-      ...users[userIndex],
+
+  const derivedSetupPoints = deriveSetupPointsFromSyncedSessions(syncSessions, safeUserId);
+  const nextSetupPoints = mergeSetupPoints(currentUser.setupPoints, derivedSetupPoints);
+  const normalizedLawDrillSession = normalizeLawDrillSession(currentUser.lawDrillSession);
+  const nextLawDrillSession = normalizedLawDrillSession || currentUser.lawDrillSession || null;
+
+  const currentSetupPoints = normalizeSetupPoints(currentUser.setupPoints);
+  const setupChanged = JSON.stringify(nextSetupPoints) !== JSON.stringify(currentSetupPoints);
+  const pointsChanged = nextTotal !== storedTotal;
+  const lawChanged =
+    JSON.stringify(nextLawDrillSession) !== JSON.stringify(currentUser.lawDrillSession || null);
+
+  if (!pointsChanged && !setupChanged && !lawChanged) {
+    return {
+      ...currentUser,
       points: nextTotal,
-      updatedAt: new Date().toISOString(),
+      setupPoints: nextSetupPoints,
+      lawDrillSession: nextLawDrillSession,
     };
-    await writeCollection("users", users);
   }
-  return {
-    ...currentUser,
+
+  users[userIndex] = {
+    ...users[userIndex],
     points: nextTotal,
+    setupPoints: nextSetupPoints,
+    lawDrillSession: nextLawDrillSession,
+    updatedAt: new Date().toISOString(),
   };
+  await writeCollection("users", users);
+
+  return normalizeExistingUser(users[userIndex]);
+}
+
+async function syncUserPointsFromEvents(userId = "") {
+  const repaired = await repairStoredUserProgress(userId);
+  if (!repaired) return null;
+  return repaired;
 }
 
 async function buildPointsLeaderboardSnapshot(req, scope = "daily", limit = 20) {
@@ -2730,9 +2838,10 @@ app.post(
     await writeCollection("users", users);
 
     const token = createToken(user);
+    const repairedUser = await repairStoredUserProgress(user.id);
     res.status(201).json({
       token,
-      user: toCurrentUser(user),
+      user: toCurrentUser(repairedUser || user),
     });
   }),
 );
@@ -2781,9 +2890,10 @@ app.post(
     }
 
     const token = createToken(user);
+    const repairedUser = await repairStoredUserProgress(user.id);
     res.json({
       token,
-      user: toCurrentUser(user),
+      user: toCurrentUser(repairedUser || user),
     });
   }),
 );
@@ -2884,11 +2994,12 @@ app.post(
       updatedAt: now,
     };
     await writeCollection("users", users);
+    const repairedUser = await repairStoredUserProgress(viewerId);
 
     res.status(201).json({
       ok: true,
       setupPoints: nextSetupPoints,
-      user: toCurrentUser(users[userIndex]),
+      user: toCurrentUser(repairedUser || users[userIndex]),
     });
   }),
 );
@@ -2925,11 +3036,12 @@ app.post(
       updatedAt: now,
     };
     await writeCollection("users", users);
+    const repairedUser = await repairStoredUserProgress(viewerId);
 
     res.status(201).json({
       ok: true,
       lawDrillSession: nextLawDrillSession,
-      user: toCurrentUser(users[userIndex]),
+      user: toCurrentUser(repairedUser || users[userIndex]),
     });
   }),
 );

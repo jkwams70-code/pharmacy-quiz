@@ -497,6 +497,24 @@ async function loadCommunityContext() {
     ]);
 
   const normalizedUsers = users.map(normalizeExistingUser);
+  const dedupeById = (items = []) => {
+    const merged = new Map();
+    for (const item of Array.isArray(items) ? items : []) {
+      const id = String(item?.id || "").trim();
+      if (!id) continue;
+      const existing = merged.get(id);
+      if (!existing) {
+        merged.set(id, item);
+        continue;
+      }
+      const existingUpdatedAt = String(existing?.updatedAt || existing?.createdAt || "").trim();
+      const nextUpdatedAt = String(item?.updatedAt || item?.createdAt || "").trim();
+      if (!existingUpdatedAt || nextUpdatedAt.localeCompare(existingUpdatedAt) >= 0) {
+        merged.set(id, item);
+      }
+    }
+    return [...merged.values()];
+  };
   const usersById = new Map(normalizedUsers.map((user) => [String(user.id || "").trim(), user]));
   const uploadsById = new Map(uploads.map((upload) => [String(upload.id || "").trim(), upload]));
 
@@ -506,10 +524,10 @@ async function loadCommunityContext() {
     friendRequests: Array.isArray(friendRequests) ? friendRequests : [],
     friendships: Array.isArray(friendships) ? friendships : [],
     blocks: Array.isArray(blocks) ? blocks : [],
-    conversations: Array.isArray(conversations) ? conversations : [],
-    messages: Array.isArray(messages) ? messages : [],
-    statuses: Array.isArray(statuses) ? statuses : [],
-    uploads: Array.isArray(uploads) ? uploads : [],
+    conversations: dedupeById(conversations),
+    messages: dedupeById(messages),
+    statuses: dedupeById(statuses),
+    uploads: dedupeById(uploads),
     uploadsById,
   };
 }
@@ -1285,9 +1303,51 @@ function normalizeAdminBroadcastMessage(message = {}, uploadsById = new Map()) {
     hiddenForUserIds: normalizeIdList(message.hiddenForUserIds),
     noticeThreadKey: String(message.noticeThreadKey || "broadcast").trim() || "broadcast",
     noticeBatchId: String(message.noticeBatchId || "").trim() || String(message.id || "").trim(),
+    clientRequestId: String(message.clientRequestId || "").trim(),
     createdAt: String(message.createdAt || "").trim(),
     updatedAt: String(message.updatedAt || message.createdAt || "").trim(),
   };
+}
+
+function getBroadcastMessageIdentityKey(message = {}) {
+  const attachment = normalizeAdminBroadcastAttachment(message.attachment, new Map()) || {};
+  const createdAt = Date.parse(String(message?.createdAt || message?.updatedAt || message?.deliveredAt || ""));
+  const timeBucket = Number.isFinite(createdAt) ? Math.floor(createdAt / 5000) : 0;
+  return [
+    String(message?.conversationId || "").trim(),
+    String(message?.senderUserId || "").trim(),
+    String(message?.type || "").trim().toLowerCase(),
+    String(message?.text || "").trim(),
+    String(message?.replyTo?.sourceId || "").trim(),
+    String(attachment?.fileName || "").trim(),
+    String(attachment?.mimeType || "").trim().toLowerCase(),
+    String(attachment?.dataUrl || attachment?.remoteUrl || "").trim(),
+    String(message?.noticeThreadKey || "").trim().toLowerCase(),
+    String(message?.noticeBatchId || "").trim(),
+    String(timeBucket),
+  ].join("::");
+}
+
+function dedupeBroadcastMessages(messages = []) {
+  const seen = new Map();
+  for (const rawMessage of Array.isArray(messages) ? messages : []) {
+    if (!rawMessage || typeof rawMessage !== "object") continue;
+    const message = normalizeAdminBroadcastMessage(rawMessage);
+    const id = String(message.id || "").trim();
+    const key = id || getBroadcastMessageIdentityKey(message);
+    if (!key) continue;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, message);
+      continue;
+    }
+    const existingTime = String(existing.updatedAt || existing.createdAt || "").trim();
+    const nextTime = String(message.updatedAt || message.createdAt || "").trim();
+    if (!existingTime || nextTime.localeCompare(existingTime) >= 0) {
+      seen.set(key, message);
+    }
+  }
+  return [...seen.values()].sort((left, right) => String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
 }
 
 function buildAdminBroadcastThreadSummary(messages = [], recipientCount = 0, uploadsById = new Map()) {
@@ -1413,7 +1473,7 @@ async function syncAdminBroadcastNoticeConversation(latestMessage = null) {
     readCollection("adminBroadcastMessages"),
     readCollection("messages"),
   ]);
-  const broadcastMessages = adminBroadcastMessages
+  const broadcastMessages = dedupeBroadcastMessages(adminBroadcastMessages)
     .filter((message) => String(message?.noticeThreadKey || "broadcast").trim() === "broadcast")
     .sort((left, right) => String(left?.createdAt || "").localeCompare(String(right?.createdAt || "")));
   if (!broadcastMessages.length) {
@@ -1638,6 +1698,24 @@ async function loadAdminCommunityContext() {
     ]);
 
   const normalizedUsers = users.map(normalizeExistingUser);
+  const dedupeById = (items = []) => {
+    const merged = new Map();
+    for (const item of Array.isArray(items) ? items : []) {
+      const id = String(item?.id || "").trim();
+      if (!id) continue;
+      const existing = merged.get(id);
+      if (!existing) {
+        merged.set(id, item);
+        continue;
+      }
+      const existingUpdatedAt = String(existing?.updatedAt || existing?.createdAt || "").trim();
+      const nextUpdatedAt = String(item?.updatedAt || item?.createdAt || "").trim();
+      if (!existingUpdatedAt || nextUpdatedAt.localeCompare(existingUpdatedAt) >= 0) {
+        merged.set(id, item);
+      }
+    }
+    return [...merged.values()];
+  };
   const usersById = new Map(normalizedUsers.map((user) => [String(user.id || "").trim(), user]));
   const uploadsById = new Map(uploads.map((upload) => [String(upload.id || "").trim(), upload]));
   const messagesByConversation = new Map();
@@ -1655,13 +1733,13 @@ async function loadAdminCommunityContext() {
   return {
     users: normalizedUsers,
     usersById,
-    conversations: Array.isArray(conversations) ? conversations : [],
-    messages: Array.isArray(messages) ? messages : [],
+    conversations: dedupeById(conversations),
+    messages: dedupeById(messages),
     messagesByConversation,
     reports: Array.isArray(reports) ? reports : [],
     deletedGroups: Array.isArray(deletedGroups) ? deletedGroups : [],
     statuses: Array.isArray(statuses) ? statuses : [],
-    adminBroadcastMessages: Array.isArray(adminBroadcastMessages) ? adminBroadcastMessages : [],
+    adminBroadcastMessages: dedupeBroadcastMessages(adminBroadcastMessages),
     uploadsById,
   };
 }
@@ -1686,6 +1764,7 @@ async function buildCommunityConversationMessagesPayload(req, conversationId, { 
   for (const list of messagesByConversation.values()) {
     list.sort((left, right) => String(left?.createdAt || "").localeCompare(String(right?.createdAt || "")));
   }
+  const isNoticeConversation = String(conversation?.type || "").trim().toLowerCase() === "notice";
   const summary = summarizeCommunityConversation(conversation, {
     viewerId,
     usersById,
@@ -1696,7 +1775,8 @@ async function buildCommunityConversationMessagesPayload(req, conversationId, { 
     messagesByConversation,
   });
   const rawMessages = messagesByConversation.get(safeConversationId) || [];
-  const visibleMessages = rawMessages.filter((message) => {
+  const dedupedMessages = isNoticeConversation ? dedupeBroadcastMessages(rawMessages) : rawMessages;
+  const visibleMessages = dedupedMessages.filter((message) => {
     const hiddenForUserIds = normalizeIdList(message?.hiddenForUserIds);
     const deletedForUserIds = normalizeIdList(message?.deletedForUserIds);
     if (viewerId && hiddenForUserIds.includes(viewerId)) return false;
@@ -4994,7 +5074,7 @@ app.get(
     }
 
     const { users, statuses, adminBroadcastMessages, uploadsById } = await loadAdminCommunityContext();
-    const broadcastMessages = adminBroadcastMessages.filter(
+    const broadcastMessages = dedupeBroadcastMessages(adminBroadcastMessages).filter(
       (message) => String(message?.noticeThreadKey || "broadcast").trim() === "broadcast",
     );
     const thread = buildAdminBroadcastThreadSummary(broadcastMessages, users.length, uploadsById);
@@ -5029,7 +5109,7 @@ app.get(
     }
 
     const { users, adminBroadcastMessages, uploadsById } = await loadAdminCommunityContext();
-    const batches = adminBroadcastMessages
+    const batches = dedupeBroadcastMessages(adminBroadcastMessages)
       .filter((message) => String(message?.noticeThreadKey || "broadcast").trim() === threadKey)
       .map((message) => normalizeAdminBroadcastMessage(message, uploadsById))
       .sort((left, right) => String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
@@ -5058,6 +5138,7 @@ app.post(
     }
 
     const messageText = String(req.body?.message || "").trim();
+    const clientRequestId = String(req.body?.clientRequestId || req.body?.requestId || "").trim();
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "attachment").trim() || "attachment";
     const attachmentMimeType = parseDataUrlMimeType(attachmentDataUrl) || String(req.body?.attachmentMimeType || "").trim() || "application/octet-stream";
@@ -5067,7 +5148,22 @@ app.post(
     }
 
     const now = new Date().toISOString();
-    const batchId = crypto.randomUUID();
+    const batchId = clientRequestId || crypto.randomUUID();
+    if (clientRequestId) {
+      const { adminBroadcastMessages: existingBroadcastMessages, uploadsById } = await loadAdminCommunityContext();
+      const existing = existingBroadcastMessages.find(
+        (entry) => String(entry?.clientRequestId || "").trim() === clientRequestId,
+      );
+      if (existing) {
+        res.status(200).json({
+          ok: true,
+          deliveredTo: (await loadAdminCommunityContext()).users.length,
+          batchId: String(existing.noticeBatchId || existing.id || clientRequestId).trim() || clientRequestId,
+          message: normalizeAdminBroadcastMessage(existing, uploadsById),
+        });
+        return;
+      }
+    }
     const message = {
       id: crypto.randomUUID(),
       conversationId: "__admin_broadcast__",
@@ -5093,11 +5189,15 @@ app.post(
       hiddenForUserIds: [],
       noticeThreadKey: threadKey,
       noticeBatchId: batchId,
+      clientRequestId,
       createdAt: now,
       updatedAt: now,
     };
 
     await updateCollection("adminBroadcastMessages", async (items) => {
+      if (clientRequestId && items.some((entry) => String(entry?.clientRequestId || "").trim() === clientRequestId)) {
+        return items;
+      }
       items.push(message);
       return items;
     });

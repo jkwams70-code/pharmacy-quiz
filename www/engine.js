@@ -13852,14 +13852,62 @@ function getCommunityMessageUploadState(message = {}) {
   return "";
 }
 
+function areCommunityNoticeMessagesDuplicate(left = {}, right = {}) {
+  const leftTime = Date.parse(String(left?.createdAt || left?.updatedAt || left?.deliveredAt || ""));
+  const rightTime = Date.parse(String(right?.createdAt || right?.updatedAt || right?.deliveredAt || ""));
+  const leftBucket = Number.isFinite(leftTime) ? Math.floor(leftTime / 5000) : 0;
+  const rightBucket = Number.isFinite(rightTime) ? Math.floor(rightTime / 5000) : 0;
+  const leftAttachment = getCommunityMessageAttachmentUpload(left) || {};
+  const rightAttachment = getCommunityMessageAttachmentUpload(right) || {};
+  return [
+    String(left?.senderUserId || "").trim(),
+    String(left?.type || "").trim().toLowerCase(),
+    String(left?.text || "").trim(),
+    String(left?.replyTo?.sourceId || "").trim(),
+    String(leftAttachment?.dataUrl || leftAttachment?.remoteUrl || "").trim(),
+    String(leftAttachment?.fileName || "").trim(),
+    String(leftAttachment?.mimeType || "").trim().toLowerCase(),
+    String(left?.noticeThreadKey || "").trim().toLowerCase(),
+    String(left?.noticeBatchId || "").trim(),
+    leftBucket,
+  ].join("::") === [
+    String(right?.senderUserId || "").trim(),
+    String(right?.type || "").trim().toLowerCase(),
+    String(right?.text || "").trim(),
+    String(right?.replyTo?.sourceId || "").trim(),
+    String(rightAttachment?.dataUrl || rightAttachment?.remoteUrl || "").trim(),
+    String(rightAttachment?.fileName || "").trim(),
+    String(rightAttachment?.mimeType || "").trim().toLowerCase(),
+    String(right?.noticeThreadKey || "").trim().toLowerCase(),
+    String(right?.noticeBatchId || "").trim(),
+    rightBucket,
+  ].join("::");
+}
+
 function getCommunityVisibleMessages(messages = []) {
   const baseMessages = Array.isArray(messages) ? [...messages] : [];
+  const dedupedBaseMessages = [];
+  const seenIds = new Set();
+  for (const message of baseMessages) {
+    const id = String(message?.id || "").trim();
+    if (id && seenIds.has(id)) continue;
+    if (id) seenIds.add(id);
+    const isNoticeConversation =
+      Boolean(communityState.activeConversationPartner?.isNotice) ||
+      String(message?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+      String(message?.senderUserId || "").trim() === COMMUNITY_ADMIN_NOTICE_SENDER_ID;
+    const previous = dedupedBaseMessages[dedupedBaseMessages.length - 1] || null;
+    if (isNoticeConversation && previous && areCommunityNoticeMessagesDuplicate(previous, message)) {
+      continue;
+    }
+    dedupedBaseMessages.push(message);
+  }
   const pendingMessages = Array.isArray(communityState.pendingOutgoingMessages)
     ? communityState.pendingOutgoingMessages
     : [];
-  if (!pendingMessages.length) return baseMessages;
+  if (!pendingMessages.length) return dedupedBaseMessages;
   const activeConversationId = String(communityState.activeConversation?.id || "").trim();
-  const merged = [...baseMessages];
+  const merged = [...dedupedBaseMessages];
   pendingMessages.forEach((entry) => {
     if (!entry || typeof entry !== "object") return;
     const entryConversationId = String(entry.conversationId || "").trim();

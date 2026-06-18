@@ -1,0 +1,27 @@
+{
+  "name": "Ajix Pharmacy Quiz",
+  "short_name": "Ajix Quiz",
+  "id": "/?app=quiz",
+  "description": "Pharmacy exam practice, study notes, and adaptive quiz sessions.",
+  "start_url": "/?source=pwa-quiz",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f3f7f",
+  "icons": [
+    {
+      "src": "/icons/icon-192-s3.png?v=20260324-applogo1",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512-s3.png?v=20260324-applogo1",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

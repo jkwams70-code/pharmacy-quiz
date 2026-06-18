@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<<<<<<< HEAD
+<<<<<<< HEAD
+    <title>Adrenal Disorders - Comprehensive Lecture Note</title>
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16-s3.png?v=20260324-applogo1" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180-s3.png?v=20260324-applogo1" />
+    <style>
+      :root { --bg:#f8fbff; --surface:#ffffff; --ink:#132841; --muted:#556c84; --line:#d7e4f0; --brand:#6a3f0f; --brand-soft:#fff6ea; --warn-soft:#fff7e8; --teal-soft:#eefaf6; --danger-soft:#fff0f0; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family:"Segoe UI",Tahoma,Arial,sans-serif; color:var(--ink); background:radial-gradient(circle at 84% 8%, #ffe9c9 0%, transparent 31%), radial-gradient(circle at 10% 20%, #e9f4ff 0%, transparent 24%), var(--bg); }
+      .wrap { width:min(1200px,94vw); margin:22px auto 34px; display:grid; grid-template-columns:280px 1fr; gap:16px; }
+      .panel { background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 24px rgba(13,34,62,.06); }
+      .toc { position:sticky; top:16px; max-height:calc(100dvh - 32px); overflow:auto; padding:14px; }
+      .toc h2 { margin:0 0 10px; color:var(--brand); font-size:1rem; }
+      .toc a { display:block; text-decoration:none; color:#36506c; border-radius:8px; padding:7px 9px; font-size:13px; }
+      .toc a:hover { background:#fff8ee; color:#6a3f0f; }
+      .content { padding:0 0 18px; }
+      .hero { padding:20px; border-bottom:1px solid var(--line); background:linear-gradient(160deg,#ffffff 0%,#fff8ef 56%,#eef7ff 100%); }
+      .eyebrow { display:inline-flex; align-items:center; min-height:28px; padding:5px 12px; border-radius:999px; background:var(--brand-soft); color:#6a3f0f; font-size:12px; font-weight:700; margin-bottom:10px; }
+      h1 { margin:0; color:#58350d; font-size:clamp(1.42rem,2.4vw,2.04rem); }
+      .subtitle { margin:8px 0 0; color:#7a562a; font-family:"Montserrat","Segoe UI",Tahoma,Arial,sans-serif; font-size:.98rem; font-weight:500; line-height:1.5; }
+      .hero-layout { margin-top:14px; display:grid; grid-template-columns:1.35fr .95fr; gap:12px; }
+      .hero-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+      .metric,.box { border:1px solid #f1e1c9; border-radius:12px; background:#fff; padding:12px; }
+      .metric .k { font-size:11px; color:#7d6a57; margin-bottom:6px; text-transform:uppercase; letter-spacing:.3px; }
+      .metric .v { font-size:14px; color:#58350d; font-weight:700; }
+      .hero-visual { border:1px solid #f0e0c8; border-radius:14px; background:#fff; padding:12px; display:grid; gap:8px; }
+      .hero-visual h3 { margin:0; font-size:.95rem; color:#58350d; }
+      .hero-visual p { margin:0; font-size:.84rem; color:#5d758c; }
+      .section { padding:18px 20px; border-bottom:1px solid #edf3fb; }
+      .section:last-child { border-bottom:none; }
+      .section h2 { margin:0 0 10px; color:#6a3f0f; font-size:1.12rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+      .section h3 { margin:0 0 8px; color:#33526f; font-size:.98rem; font-weight:700; }
+      .section p { margin:0; color:#314860; line-height:1.6; }
+      .stack { margin-top:12px; display:grid; gap:12px; }
+      .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+      .grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+      .box ul,.section ul,.section ol { margin:0 0 0 18px; padding:0; }
+      .box li,.section li { margin:6px 0; color:#304860; line-height:1.55; }
+      .table { margin-top:10px; width:100%; border-collapse:collapse; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+      .table th,.table td { padding:10px; text-align:left; font-size:14px; vertical-align:top; border-bottom:1px solid #e8eff8; }
+      .table thead th { background:#fff7ed; color:#5a3914; font-weight:700; }
+      .table tr:last-child td { border-bottom:none; }
+      .callout { border-radius:12px; padding:12px 14px; border:1px solid #f0e0c8; background:#fffaf3; color:#4c3722; }
+      .callout.teal { background:var(--teal-soft); border-color:#d8efe6; }
+      .callout.warn { background:var(--warn-soft); border-color:#f0dfc0; }
+      .callout.danger { background:var(--danger-soft); border-color:#f1d4d4; }
+      .guideline-list { display:grid; gap:10px; }
+      .guideline-line { color:#304863; line-height:1.7; }
+      .guideline-line strong { color:#5a3914; }
+      .note-quiz-footer { padding:18px 20px 24px; }
+      .topic-quiz-actions { display:flex; flex-wrap:wrap; gap:10px; }
+      .topic-quiz-cta { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border-radius:999px; border:1px solid #d8c39c; background:#6a3f0f; color:#fff; font-weight:700; text-decoration:none; cursor:pointer; box-shadow:0 10px 22px rgba(106,63,15,.22); }
+      .topic-quiz-cta:visited { color:#fff; }
+      .topic-quiz-cta:hover,.topic-quiz-cta:focus-visible { background:#55310a; color:#fff; border-color:#cba96c; }
+      code,pre { font-family:Consolas,"Courier New",monospace; }
+      pre { margin:10px 0 0; padding:12px; border-radius:12px; background:#fff8ef; border:1px solid #f0e0c8; color:#4b3826; overflow:auto; }
+      a { color:#6a3f0f; }
+      @media (max-width:860px) { .wrap { width:min(100%,100vw); margin:0; display:block; } .panel { border-radius:0; box-shadow:none; border-left:none; border-right:none; } .hero-layout,.hero-grid,.grid-2,.grid-3 { grid-template-columns:1fr; } .section { padding:16px 14px; } .table th,.table td { padding:8px; font-size:12px; } }
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+    <title>Adrenal Disorders - Clinical Study Note</title>
+    <style>
+      :root {
+        --bg: #f8fbff;
+        --surface: #ffffff;
+        --ink: #132841;
+        --muted: #556c84;
+        --line: #d7e4f0;
+        --brand: #6a3f0f;
+        --brand-soft: #fff6ea;
+        --teal-soft: #eefaf6;
+        --warn-soft: #fff7e8;
+        --danger-soft: #fff0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 84% 8%, #ffe9c9 0%, transparent 31%),
+          radial-gradient(circle at 10% 20%, #e9f4ff 0%, transparent 24%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1240px, 94vw);
+        margin: 22px auto 34px;
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 24px rgba(13, 34, 62, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 16px;
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .toc h2 {
+        margin: 0 0 10px;
+        color: var(--brand);
+        font-size: 1rem;
+      }
+
+      .toc a {
+        display: block;
+        text-decoration: none;
+        color: #36506c;
+        border-radius: 8px;
+        padding: 7px 9px;
+        font-size: 13px;
+      }
+
+      .toc a:hover {
+        background: #fff8ee;
+        color: #6a3f0f;
+      }
+
+      .content {
+        padding: 0 0 18px;
+      }
+
+      .hero {
+        padding: 20px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(160deg, #ffffff 0%, #fff8ef 56%, #eef7ff 100%);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: #6a3f0f;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #58350d;
+        font-size: clamp(1.42rem, 2.4vw, 2.04rem);
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .hero-layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.35fr 0.95fr;
+        gap: 12px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #f1e1c9;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .metric .k {
+        font-size: 11px;
+        color: #7d6a57;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .metric .v {
+        font-size: 14px;
+        color: #58350d;
+        font-weight: 700;
+      }
+
+      .hero-visual {
+        border: 1px solid #f0e0c8;
+        border-radius: 14px;
+        background: #fff;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .hero-visual h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #58350d;
+      }
+
+      .hero-visual p {
+        margin: 0;
+        font-size: 0.84rem;
+        color: #5d758c;
+      }
+
+      .hero-visual svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .section {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf3fb;
+      }
+
+      .section:last-child {
+        border-bottom: none;
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        color: #58350d;
+        font-size: 1.16rem;
+      }
+
+      .section p {
+        margin: 0;
+        color: #314860;
+        line-height: 1.56;
+      }
+
+      .stack {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 11px 12px;
+        background: #fff;
+      }
+
+      .box h3 {
+        margin: 0 0 7px;
+        font-size: 0.97rem;
+        color: #1f4061;
+      }
+
+      .box p {
+        margin: 0;
+      }
+
+      .box ul {
+        margin: 0 0 0 17px;
+        padding: 0;
+      }
+
+      .box li {
+        margin: 4px 0;
+        color: #304860;
+      }
+
+      .table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+
+      .table th,
+      .table td {
+        padding: 10px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid #e8eff8;
+        vertical-align: top;
+      }
+
+      .table th {
+        background: #fff8ef;
+        color: #58350d;
+      }
+
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .chips {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d8e4f2;
+        background: #f8fbff;
+        color: #254764;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .callout {
+        margin-top: 10px;
+        border-left: 4px solid #0f766e;
+        border-radius: 10px;
+        background: var(--teal-soft);
+        color: #175358;
+        padding: 10px 12px;
+      }
+
+      .callout.warn {
+        border-left-color: #b66a00;
+        background: var(--warn-soft);
+        color: #7c5b1d;
+      }
+
+      .callout.alert {
+        border-left-color: #b91c1c;
+        background: var(--danger-soft);
+        color: #6d2222;
+      }
+
+      .flow {
+        margin-top: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .step {
+        border: 1px solid #d5e3f4;
+        border-radius: 12px;
+        padding: 10px 11px;
+        background: #f9fcff;
+      }
+
+      .step strong {
+        color: #58350d;
+      }
+
+      .arrow {
+        width: 30px;
+        height: 30px;
+        margin: 0 auto;
+        border-radius: 999px;
+        border: 1px solid #c9d8ec;
+        background: #f6fbff;
+        color: #456887;
+        font-weight: 900;
+        display: grid;
+        place-items: center;
+        line-height: 1;
+      }
+
+      .diagram-card {
+        margin-top: 10px;
+        border: 1px solid #d8e4f2;
+        border-radius: 12px;
+        background: #fbfdff;
+        padding: 11px;
+      }
+
+      .diagram-title {
+        margin: 0 0 8px;
+        font-size: 0.9rem;
+        color: #1d3f62;
+        font-weight: 700;
+      }
+
+      .refs a {
+        color: #145aa9;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .refs a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1040px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+        }
+
+        .hero-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .grid-2,
+        .grid-3,
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+<<<<<<< HEAD
+<<<<<<< HEAD
+        <a href="#learning-objectives">1. Learning Objectives</a>
+        <a href="#introduction-to-the-adrenal-gland">2. Introduction to the Adrenal Gland</a>
+        <a href="#disorders-of-adrenal-cortical-excess">3. Disorders of Adrenal Cortical Excess</a>
+        <a href="#disorders-of-adrenal-cortical-insufficiency">4. Disorders of Adrenal Cortical Insufficiency</a>
+        <a href="#disorders-of-adrenal-medulla">5. Disorders of Adrenal Medulla</a>
+        <a href="#pharmacological-management">6. Pharmacological Management</a>
+        <a href="#patient-counseling-points">7. Patient Counseling Points</a>
+        <a href="#summary-for-exam-preparation">8. Summary for Exam Preparation</a>
+        <a href="#key-guidelines-links">9. Key Guidelines Links</a>
+      </aside>
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Endocrine Therapeutics</span>
+          <h1>Adrenal Disorders</h1>
+          <p class="subtitle">A comprehensive lecture note covering adrenal physiology, cortisol excess, adrenal insufficiency, pheochromocytoma, emergency care, and exam-focused pharmacologic management.</p>
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric"><div class="k">High-Yield Cluster</div><div class="v">Cushing, Addison, Pheochromocytoma</div></div>
+              <div class="metric"><div class="k">Emergency Trigger</div><div class="v">Adrenal crisis = hydrocortisone + saline</div></div>
+              <div class="metric"><div class="k">Core Drug</div><div class="v">Hydrocortisone replacement</div></div>
+              <div class="metric"><div class="k">Exam Trap</div><div class="v">Never beta-block first in pheochromocytoma</div></div>
+            </div>
+            <div class="hero-visual">
+              <h3>Core endocrine frame</h3>
+              <p>Think cortex for cortisol and aldosterone, medulla for catecholamines, and always connect disease patterns back to the HPA axis.</p>
+              <svg viewBox="0 0 360 150" aria-hidden="true">
+                <rect x="8" y="10" width="344" height="130" rx="16" fill="#fff8ef" stroke="#f0e0c8" />
+                <rect x="24" y="28" width="90" height="94" rx="14" fill="#fde9d0" stroke="#e3bf8b" />
+                <rect x="246" y="28" width="90" height="94" rx="14" fill="#fde9d0" stroke="#e3bf8b" />
+                <circle cx="69" cy="75" r="22" fill="#c98f45" opacity="0.7" />
+                <circle cx="291" cy="75" r="22" fill="#c98f45" opacity="0.7" />
+                <path d="M114 75H160" stroke="#8a5d2a" stroke-width="4" stroke-linecap="round" />
+                <path d="M200 75H246" stroke="#8a5d2a" stroke-width="4" stroke-linecap="round" />
+                <rect x="156" y="48" width="48" height="54" rx="12" fill="#eef4ff" stroke="#bfd2f0" />
+                <text x="180" y="69" text-anchor="middle" font-size="12" font-family="Segoe UI, Arial" fill="#33526f">Pituitary</text>
+                <text x="180" y="86" text-anchor="middle" font-size="11" font-family="Segoe UI, Arial" fill="#5d758c">ACTH</text>
+              </svg>
+            </div>
+          </div>
+        </header>
+        <section class="section" id="learning-objectives">
+          <h2>1. Learning Objectives</h2>
+          <div class="stack"><div class="box"><ol>
+            <li>Describe the anatomy, physiology, and hormonal regulation of the adrenal gland.</li>
+            <li>Differentiate Cushing's syndrome, Cushing's disease, and adrenal insufficiency by cause and presentation.</li>
+            <li>Identify the signs, symptoms, and diagnostic approach for primary hyperaldosteronism.</li>
+            <li>Recognize the clinical features and management of pheochromocytoma.</li>
+            <li>Select glucocorticoid and mineralocorticoid replacement therapy for adrenal insufficiency.</li>
+            <li>Identify pharmacologic agents used for cortisol excess in Cushing's syndrome.</li>
+            <li>Recognize and manage adrenal crisis as a medical emergency.</li>
+            <li>Provide patient-centered counseling on glucocorticoid therapy, dosing schedules, adherence, and sick day rules.</li>
+          </ol></div></div>
+        </section>
+        <section class="section" id="introduction-to-the-adrenal-gland">
+          <h2>2. Introduction to the Adrenal Gland</h2>
+          <p>The adrenal glands are paired triangular endocrine glands above each kidney. Each gland has a hormonally active cortex and medulla, and disorders of either region can create major cardiovascular, metabolic, and emergency-care consequences.</p>
+          <table class="table">
+            <thead><tr><th>Region</th><th>Hormones Produced</th><th>Primary Functions</th></tr></thead>
+            <tbody>
+              <tr><td>Adrenal cortex</td><td>Glucocorticoids, mineralocorticoids, and androgens</td><td>Stress response, metabolism, electrolyte balance, blood pressure control, and secondary sex traits</td></tr>
+              <tr><td>Adrenal medulla</td><td>Catecholamines</td><td>Fight-or-flight signaling with higher heart rate, BP, and glucose</td></tr>
+            </tbody>
+          </table>
+          <div class="stack">
+            <div class="box">
+              <h3>Hypothalamic-Pituitary-Adrenal axis regulation</h3>
+              <pre>Hypothalamus -> Corticotropin-Releasing Hormone (CRH)
+            ↓
+        Pituitary Gland
+            ↓
+Adrenocorticotropic Hormone (ACTH)
+            ↓
+        Adrenal Cortex
+            ↓
+            Cortisol
+            ↓
+Negative feedback to hypothalamus and pituitary</pre>
+            </div>
+            <div class="callout teal"><strong>Clinical pearl:</strong> exogenous glucocorticoids suppress the HPA axis. Abrupt withdrawal after chronic use can produce adrenal insufficiency or adrenal crisis.</div>
+          </div>
+        </section>
+        <section class="section" id="disorders-of-adrenal-cortical-excess">
+          <h2>3. Disorders of Adrenal Cortical Excess</h2>
+          <div class="stack"><div class="box"><h3>3.1. Cushing's Syndrome</h3><p>Cushing's syndrome is chronic glucocorticoid excess from any cause. Exogenous steroid exposure is the most common overall cause, while pituitary ACTH excess is the most common endogenous source.</p></div></div>
+          <table class="table">
+            <thead><tr><th>Type</th><th>Cause</th><th>Frequency Pattern</th></tr></thead>
+            <tbody>
+              <tr><td>Exogenous</td><td>Long-term glucocorticoids or ACTH exposure</td><td>Most common overall</td></tr>
+              <tr><td>ACTH-dependent</td><td>Pituitary adenoma or ectopic ACTH production</td><td>Most endogenous cases</td></tr>
+              <tr><td>ACTH-independent</td><td>Adrenal adenoma, adrenal carcinoma, bilateral adrenal hyperplasia</td><td>Minority of endogenous cases</td></tr>
+            </tbody>
+          </table>
+          <div class="stack"><div class="box"><h3>CUSHINGOID clinical pattern</h3><ul>
+            <li><strong>Central obesity / upper body obesity:</strong> truncal fat with thin extremities and buffalo hump</li>
+            <li><strong>Skin changes:</strong> purple striae, easy bruising, thin skin</li>
+            <li><strong>Hypertension and hyperglycemia:</strong> cortisol drives both hemodynamic and metabolic injury</li>
+            <li><strong>Immune, neuropsychiatric, gonadal, and bone effects:</strong> infection risk, depression, menstrual disturbance, osteoporosis</li>
+            <li><strong>Androgen excess:</strong> hirsutism or acne, especially with adrenal tumors</li>
+          </ul></div></div>
+          <table class="table">
+            <thead><tr><th>Test</th><th>Finding in Cushing's Syndrome</th></tr></thead>
+            <tbody>
+              <tr><td>24-hour urinary free cortisol</td><td>Elevated; classic screening test</td></tr>
+              <tr><td>Late-night salivary cortisol</td><td>Elevated because circadian rhythm is lost</td></tr>
+              <tr><td>Low-dose dexamethasone suppression</td><td>Failure to suppress cortisol</td></tr>
+              <tr><td>Plasma ACTH</td><td>Differentiates ACTH-dependent from ACTH-independent disease</td></tr>
+              <tr><td>High-dose dexamethasone suppression</td><td>Suppression suggests pituitary source</td></tr>
+              <tr><td>Imaging</td><td>MRI pituitary or CT adrenals/chest depending on source</td></tr>
+            </tbody>
+          </table>
+          <div class="stack"><div class="box"><h3>3.2. Hyperaldosteronism (Primary Aldosteronism)</h3><p>Primary hyperaldosteronism is aldosterone excess independent of the renin-angiotensin system. It causes resistant hypertension, hypokalemia, metabolic alkalosis, and suppressed plasma renin.</p></div></div>
+          <table class="table">
+            <thead><tr><th>Etiology</th><th>Relative Frequency</th></tr></thead>
+            <tbody>
+              <tr><td>Idiopathic bilateral adrenal hyperplasia</td><td>Most common</td></tr>
+              <tr><td>Aldosterone-producing adenoma (Conn's syndrome)</td><td>Second most common</td></tr>
+              <tr><td>Unilateral adrenal hyperplasia, familial disease, adrenal carcinoma</td><td>Rare</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-2 stack">
+            <div class="box"><h3>Clinical presentation</h3><ul><li>Resistant or severe hypertension</li><li>Hypokalemia with weakness, cramps, and fatigue</li><li>Metabolic alkalosis and mild hypernatremia</li><li>Polyuria or polydipsia from hypokalemia-induced nephrogenic DI</li></ul></div>
+            <div class="box"><h3>Diagnostic approach</h3><ul><li><strong>Aldosterone-to-renin ratio:</strong> screening test of choice</li><li><strong>Oral sodium loading:</strong> confirmatory if aldosterone fails to suppress</li><li><strong>Adrenal CT:</strong> adenoma versus bilateral disease</li><li><strong>Adrenal vein sampling:</strong> gold standard for lateralization before surgery</li></ul></div>
+          </div>
+        </section>
+        <section class="section" id="disorders-of-adrenal-cortical-insufficiency">
+          <h2>4. Disorders of Adrenal Cortical Insufficiency</h2>
+          <div class="stack"><div class="box"><h3>4.1. Primary Adrenal Insufficiency (Addison's Disease)</h3><p>Primary adrenal insufficiency results from adrenal cortex destruction, causing deficiency of cortisol, aldosterone, and adrenal androgens.</p></div></div>
+          <table class="table">
+            <thead><tr><th>Cause</th><th>Clinical Note</th></tr></thead>
+            <tbody>
+              <tr><td>Autoimmune adrenalitis</td><td>Most common in developed settings</td></tr>
+              <tr><td>Infectious disease</td><td>TB, HIV, or fungal disease remain important globally</td></tr>
+              <tr><td>Metastatic, hemorrhagic, infiltrative, or drug-induced injury</td><td>Think cancer, Waterhouse-Friderichsen syndrome, ketoconazole, etomidate, or mitotane</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-2 stack">
+            <div class="box"><h3>Clinical presentation</h3><ul><li>Profound chronic fatigue and weight loss</li><li><strong>Hyperpigmentation:</strong> key feature from high ACTH</li><li>Orthostatic hypotension and salt craving</li><li>Hyponatremia, hyperkalemia, and hypoglycemia</li><li>Nausea, vomiting, abdominal pain, or diarrhea</li></ul></div>
+            <div class="box"><h3>4.2. Secondary Adrenal Insufficiency</h3><p>Secondary adrenal insufficiency reflects low ACTH from pituitary or hypothalamic dysfunction. Aldosterone is usually preserved, so hyperkalemia and marked mineralocorticoid deficiency are not typical.</p><ul><li>Most common cause: chronic exogenous glucocorticoid therapy</li><li>Other causes: pituitary tumors, surgery, radiation, Sheehan's syndrome, hypothalamic disease</li></ul></div>
+          </div>
+          <table class="table">
+            <thead><tr><th>Feature</th><th>Primary (Addison's)</th><th>Secondary</th></tr></thead>
+            <tbody>
+              <tr><td>Hyperpigmentation</td><td>Present</td><td>Absent</td></tr>
+              <tr><td>Aldosterone deficiency</td><td>Yes</td><td>No</td></tr>
+              <tr><td>Plasma ACTH</td><td>Elevated</td><td>Low or inappropriately normal</td></tr>
+              <tr><td>Renin</td><td>Elevated</td><td>Usually normal</td></tr>
+            </tbody>
+          </table>
+          <div class="stack">
+            <div class="box"><h3>4.3. Adrenal Crisis</h3><p>Adrenal crisis is acute life-threatening adrenal insufficiency, often triggered by illness, surgery, trauma, abrupt glucocorticoid withdrawal, or bilateral adrenal hemorrhage.</p></div>
+            <div class="callout danger"><strong>Emergency pattern:</strong> hypotension or shock, severe hyponatremia, hyperkalemia, hypoglycemia, vomiting, fever, and altered mental status.</div>
+          </div>
+          <table class="table">
+            <thead><tr><th>Intervention</th><th>Emergency Management</th></tr></thead>
+            <tbody>
+              <tr><td>IV hydrocortisone</td><td>100 mg IV bolus, then 50-100 mg IV every 6 hours or continuous infusion</td></tr>
+              <tr><td>IV fluids</td><td>0.9% normal saline rapidly, often liters over the first 24 hours</td></tr>
+              <tr><td>Glucose</td><td>D50W if hypoglycemia is present</td></tr>
+              <tr><td>Monitoring</td><td>Electrolytes, hemodynamics, and the precipitating cause</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="disorders-of-adrenal-medulla">
+          <h2>5. Disorders of Adrenal Medulla</h2>
+          <div class="stack"><div class="box"><h3>5.1. Pheochromocytoma</h3><p>Pheochromocytoma is a catecholamine-secreting tumor from adrenal medullary chromaffin cells. Extra-adrenal analogues are paragangliomas.</p></div></div>
+          <div class="grid-2 stack">
+            <div class="box"><h3>PHEO clinical picture</h3><ul><li><strong>P:</strong> Paroxysmal hypertension</li><li><strong>H:</strong> Headache</li><li><strong>E:</strong> Episodic sweating</li><li><strong>O:</strong> Ordinary triggers with palpitations, anxiety, tremor, and pallor</li></ul><p>The classic triad is headache, palpitations, and diaphoresis.</p></div>
+            <div class="box"><h3>Triggers and work-up</h3><ul><li>Stress, exertion, anesthesia, tyramine, opioids, metoclopramide, tricyclics</li><li><strong>Plasma-free metanephrines:</strong> screening test of choice</li><li><strong>24-hour urinary fractionated metanephrines:</strong> confirmatory support</li><li><strong>CT/MRI and MIBG:</strong> localize adrenal or extra-adrenal disease</li></ul></div>
+          </div>
+          <div class="callout warn"><strong>Critical warning:</strong> never give a beta-blocker alone in pheochromocytoma. Unopposed alpha-mediated vasoconstriction can precipitate a hypertensive crisis.</div>
+          <div class="stack"><div class="box"><h3>5.2. Paraganglioma</h3><p>Paragangliomas are extra-adrenal catecholamine-producing tumors. They share the same diagnostic logic and perioperative alpha-first management principles as pheochromocytoma.</p></div></div>
+        </section>
+        <section class="section" id="pharmacological-management">
+          <h2>6. Pharmacological Management</h2>
+          <div class="stack"><div class="box"><h3>6.1. Glucocorticoid Replacement Therapy</h3></div></div>
+          <table class="table">
+            <thead><tr><th>Agent</th><th>Dose</th><th>Clinical Note</th></tr></thead>
+            <tbody>
+              <tr><td>Hydrocortisone</td><td>15-25 mg/day divided</td><td>Preferred physiologic replacement; largest dose in the morning</td></tr>
+              <tr><td>Prednisone</td><td>3-5 mg/day</td><td>Longer-acting alternative</td></tr>
+              <tr><td>Dexamethasone</td><td>0.5-0.75 mg/day</td><td>Not preferred for replacement because suppression is stronger and mineralocorticoid activity is absent</td></tr>
+            </tbody>
+          </table>
+          <div class="callout teal"><strong>Dosing principles:</strong> largest dose at 6-8 AM, smaller dose in early afternoon, and double or triple the dose during illness, fever, trauma, or surgery.</div>
+          <div class="stack"><div class="box"><h3>6.2. Mineralocorticoid Replacement Therapy</h3><p>Fludrocortisone 0.05-0.2 mg/day is used in <strong>primary</strong> adrenal insufficiency only. Monitor BP, sodium, potassium, and plasma renin activity.</p></div></div>
+          <table class="table">
+            <thead><tr><th>6.3. Drugs for Cushing's Syndrome</th><th>Mechanism</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>Ketoconazole, metyrapone, etomidate, mitotane, osilodrostat</td><td>Adrenal steroidogenesis inhibition</td><td>Pre-op control, persistent disease, or metastatic/inoperable disease</td></tr>
+              <tr><td>Pasireotide</td><td>Pituitary-directed ACTH suppression</td><td>Cushing's disease when surgery is not suitable or is incomplete</td></tr>
+              <tr><td>Mifepristone</td><td>Glucocorticoid receptor antagonism</td><td>Cushing's syndrome with hyperglycemia when surgery is not an option</td></tr>
+            </tbody>
+          </table>
+          <table class="table">
+            <thead><tr><th>6.4. Drugs for Hyperaldosteronism</th><th>Mechanism</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>Spironolactone, eplerenone</td><td>Mineralocorticoid receptor antagonism</td><td>First-line medical therapy, especially in bilateral adrenal hyperplasia</td></tr>
+              <tr><td>Amiloride, triamterene</td><td>ENaC inhibition</td><td>Alternative if MRAs are not tolerated</td></tr>
+              <tr><td>Laparoscopic adrenalectomy</td><td>Surgical removal of adenoma</td><td>Curative for unilateral aldosterone-producing adenoma</td></tr>
+            </tbody>
+          </table>
+          <div class="callout warn"><strong>Spironolactone adverse effects:</strong> hyperkalemia, gynecomastia, impotence, and menstrual irregularities.</div>
+          <table class="table">
+            <thead><tr><th>6.5. Drugs for Pheochromocytoma</th><th>Dose or Sequence</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>Phenoxybenzamine</td><td>Start low and titrate over 7-14 days pre-op</td><td>Alpha-blockade to control BP and prevent hypertensive crisis</td></tr>
+              <tr><td>Propranolol or atenolol</td><td>Add only after alpha-blockade is established</td><td>Control tachycardia</td></tr>
+              <tr><td>High-sodium diet / IV fluids</td><td>After alpha-blockade</td><td>Reverse vasoconstriction-induced hypovolemia</td></tr>
+              <tr><td>Metyrosine</td><td>Adjunct in refractory disease</td><td>Reduce catecholamine synthesis</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="patient-counseling-points">
+          <h2>7. Patient Counseling Points</h2>
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>For chronic glucocorticoid therapy</h3>
+              <ul>
+                <li><strong>Never stop abruptly:</strong> sudden withdrawal can cause adrenal crisis.</li>
+                <li><strong>Sick day rules:</strong> double or triple the dose during illness, fever, surgery, or trauma.</li>
+                <li><strong>Timing matters:</strong> larger morning dose helps mimic circadian rhythm.</li>
+                <li><strong>Bone and glucose monitoring:</strong> long-term steroids weaken bone and raise blood sugar.</li>
+                <li><strong>Take with food:</strong> helps reduce gastric irritation.</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>For spironolactone or pheochromocytoma therapy</h3>
+              <ul>
+                <li><strong>Spironolactone:</strong> avoid potassium salt substitutes and report muscle weakness or palpitations.</li>
+                <li><strong>Gynecomastia counseling:</strong> breast tenderness or enlargement can occur; alternatives exist.</li>
+                <li><strong>Pheochromocytoma pre-op:</strong> take alpha-blocker exactly as prescribed and avoid known triggers.</li>
+                <li><strong>Medical alert:</strong> adrenal insufficiency patients should carry emergency steroid information.</li>
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+        <a href="#adrenal-physiology">1. Adrenal Physiology</a>
+        <a href="#cushing-syndrome">2. Cushing Syndrome</a>
+        <a href="#addison-disease">3. Addison Disease</a>
+        <a href="#adrenal-crisis">4. Adrenal Crisis</a>
+        <a href="#secondary-adrenal-insufficiency">5. Secondary Adrenal Insufficiency</a>
+        <a href="#primary-hyperaldosteronism">6. Primary Hyperaldosteronism</a>
+        <a href="#management-recap-drill">Recap Drill</a>
+        <a href="#exam-traps">7. Common Exam Traps</a>
+        <a href="#quick-revision">8. Quick Revision Summary</a>
+      </aside>
+
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Endocrinology</span>
+          <h1>Adrenal Disorders</h1>
+          <p class="subtitle">
+            Clinical overview and exam mastery guide for cortisol excess/deficiency,
+            adrenal crisis emergency care, and hyperaldosteronism treatment.
+          </p>
+
+          <div class="hero-layout">
+            <div class="hero-grid">
+              <div class="metric">
+                <div class="k">Cushing</div>
+                <div class="v">Excess cortisol</div>
+              </div>
+              <div class="metric">
+                <div class="k">Addison</div>
+                <div class="v">Low cortisol plus low aldosterone</div>
+              </div>
+              <div class="metric">
+                <div class="k">Adrenal Crisis</div>
+                <div class="v">Immediate IV hydrocortisone</div>
+              </div>
+              <div class="metric">
+                <div class="k">Conn Syndrome</div>
+                <div class="v">Aldosterone excess</div>
+              </div>
+            </div>
+
+            <div class="hero-visual">
+              <h3>Adrenal Axis Snapshot</h3>
+              <svg viewBox="0 0 500 220" role="img" aria-label="Adrenal disorders overview">
+                <rect x="0" y="0" width="500" height="220" rx="14" fill="#fbfdff" />
+                <rect x="20" y="30" width="146" height="72" rx="10" fill="#fff8ef" stroke="#f1e1c9" />
+                <text x="93" y="54" text-anchor="middle" font-size="13" fill="#58350d" font-weight="700">Cortex</text>
+                <text x="93" y="72" text-anchor="middle" font-size="12" fill="#7d6a57">cortisol</text>
+                <text x="93" y="88" text-anchor="middle" font-size="12" fill="#7d6a57">aldosterone</text>
+
+                <rect x="176" y="30" width="146" height="72" rx="10" fill="#eef7ff" stroke="#d8e6f6" />
+                <text x="249" y="54" text-anchor="middle" font-size="13" fill="#1f4467" font-weight="700">Medulla</text>
+                <text x="249" y="72" text-anchor="middle" font-size="12" fill="#5f7488">epinephrine</text>
+                <text x="249" y="88" text-anchor="middle" font-size="12" fill="#5f7488">norepinephrine</text>
+
+                <rect x="332" y="30" width="146" height="72" rx="10" fill="#eefaf7" stroke="#d4ece4" />
+                <text x="405" y="54" text-anchor="middle" font-size="13" fill="#1c564f" font-weight="700">Exam focus</text>
+                <text x="405" y="72" text-anchor="middle" font-size="12" fill="#5b7a74">cortisol and</text>
+                <text x="405" y="88" text-anchor="middle" font-size="12" fill="#5b7a74">aldosterone disorders</text>
+
+                <rect x="20" y="128" width="458" height="68" rx="10" fill="#ffffff" stroke="#d8e4f2" />
+                <text x="249" y="154" text-anchor="middle" font-size="13" fill="#2a4963" font-weight="700">
+                  Clinical split: excess, deficiency, and emergency decompensation
+                </text>
+                <text x="249" y="172" text-anchor="middle" font-size="12" fill="#45637e">
+                  Replace deficiency, block excess synthesis/effect, and treat crises immediately
+                </text>
+              </svg>
+              <p>Endocrine emergencies require treatment before full diagnostic completion.</p>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="adrenal-physiology">
+          <h2>1. Adrenal Physiology (Foundation First)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Cortex</h3>
+              <ul>
+                <li>Cortisol (glucocorticoid)</li>
+                <li>Aldosterone (mineralocorticoid)</li>
+                <li>Androgens</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Medulla</h3>
+              <ul>
+                <li>Epinephrine</li>
+                <li>Norepinephrine</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout">Most exam questions focus on cortisol and aldosterone disorders.</div>
+        </section>
+
+        <section class="section" id="cushing-syndrome">
+          <h2>2. Cushing Syndrome (Excess Cortisol)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Causes</h3>
+              <ul>
+                <li>Exogenous steroid exposure (most common overall)</li>
+                <li>Pituitary adenoma (Cushing disease)</li>
+                <li>Adrenal tumor</li>
+                <li>Ectopic ACTH production</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Clinical Features</h3>
+              <ul>
+                <li>Central obesity, moon facies, buffalo hump</li>
+                <li>Purple striae, hypertension, hyperglycemia</li>
+                <li>Osteoporosis and proximal muscle weakness</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout">
+            First-line strategy is treating the source (often surgery for a resectable tumor).
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Contraindications / Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ketoconazole</td>
+                <td>Inhibits adrenal steroidogenic enzymes and lowers cortisol synthesis</td>
+                <td>Hepatotoxicity, GI upset</td>
+                <td>Contraindicated in significant liver disease</td>
+              </tr>
+              <tr>
+                <td>Metyrapone</td>
+                <td>11-beta-hydroxylase inhibition decreases cortisol production</td>
+                <td>Hypertension, hypokalemia</td>
+                <td>Mineralocorticoid precursor accumulation can worsen BP/electrolytes</td>
+              </tr>
+              <tr>
+                <td>Mifepristone</td>
+                <td>Glucocorticoid receptor antagonist; blocks cortisol effect, not level</td>
+                <td>Hypokalemia, endometrial thickening</td>
+                <td>Useful in Cushing syndrome with hyperglycemia</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="addison-disease">
+          <h2>3. Addison Disease (Primary Adrenal Insufficiency)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Etiology and Features</h3>
+              <ul>
+                <li>Adrenal destruction (autoimmune, TB, hemorrhage)</li>
+                <li>Fatigue, weight loss, hypotension</li>
+                <li>Hyperpigmentation, hyponatremia, hyperkalemia</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Replacement Therapy</h3>
+              <ul>
+                <li>Hydrocortisone for glucocorticoid replacement</li>
+                <li>Fludrocortisone for mineralocorticoid replacement</li>
+              </ul>
+            </div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>MOA</th>
+                <th>Major Side Effects</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Hydrocortisone</td>
+                <td>Replaces cortisol activity</td>
+                <td>Weight gain, hyperglycemia, long-term bone loss</td>
+                <td>Foundation of adrenal insufficiency treatment</td>
+              </tr>
+              <tr>
+                <td>Fludrocortisone</td>
+                <td>Mineralocorticoid receptor agonist replacing aldosterone effect</td>
+                <td>Hypertension, hypokalemia, edema</td>
+                <td>Required in primary adrenal insufficiency</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="adrenal-crisis">
+          <h2>4. Adrenal Crisis (Emergency)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Triggers and Features</h3>
+              <ul>
+                <li>Triggers: infection, surgery, abrupt steroid withdrawal</li>
+                <li>Severe hypotension/shock, hypoglycemia, hyponatremia</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Immediate Management</h3>
+              <ul>
+                <li>1. IV hydrocortisone immediately</li>
+                <li>2. IV fluids</li>
+                <li>3. Electrolyte correction</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout alert">Do not delay treatment while waiting for confirmatory laboratory results.</div>
+        </section>
+
+        <section class="section" id="secondary-adrenal-insufficiency">
+          <h2>5. Secondary Adrenal Insufficiency</h2>
+          <p>
+            Usually due to pituitary dysfunction or chronic exogenous steroid suppression.
+            Aldosterone is typically preserved.
+          </p>
+          <div class="callout">Treatment generally requires glucocorticoid replacement without mineralocorticoid replacement.</div>
+        </section>
+
+        <section class="section" id="primary-hyperaldosteronism">
+          <h2>6. Primary Hyperaldosteronism (Conn Syndrome)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Clinical Pattern</h3>
+              <ul>
+                <li>Hypertension</li>
+                <li>Hypokalemia</li>
+                <li>Metabolic alkalosis</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Treatment Branches</h3>
+              <ul>
+                <li>Bilateral disease: medical therapy (spironolactone)</li>
+                <li>Unilateral adenoma: surgical adrenalectomy</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="box stack">
+            <h3>Spironolactone</h3>
+            <ul>
+              <li>MOA: mineralocorticoid receptor blockade reduces sodium retention and preserves potassium</li>
+              <li>Side effects: hyperkalemia, gynecomastia</li>
+              <li>Contraindications/caution: significant hyperkalemia or severe renal dysfunction</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="management-recap-drill">
+          <h2>Management Recap Drill</h2>
+          <div class="flow">
+            <div class="step"><strong>Cushing:</strong> surgery when possible, medical cortisol control when needed.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Addison:</strong> hydrocortisone plus fludrocortisone replacement.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Adrenal crisis:</strong> immediate IV hydrocortisone and fluids.</div>
+            <div class="arrow" aria-hidden="true">&#8595;</div>
+            <div class="step"><strong>Hyperaldosteronism:</strong> spironolactone for bilateral disease or surgery for unilateral adenoma.</div>
+          </div>
+
+          <div class="diagram-card">
+            <p class="diagram-title">Visual Algorithm Placeholder</p>
+            <p>
+              [Insert Adrenal Disorder Diagnostic and Treatment Flowchart Here During UI Integration]
+            </p>
+          </div>
+        </section>
+
+        <section class="section refs">
+          <h2>Guideline References (Management)</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Endocrine Society Clinical Practice Guidelines</h3>
+              <a href="https://www.endocrine.org" target="_blank" rel="noopener">
+                https://www.endocrine.org
+              </a>
+            </div>
+            <div class="box">
+              <h3>Guideline Scope</h3>
+              <ul>
+                <li>Cushing syndrome management</li>
+                <li>Adrenal insufficiency replacement</li>
+                <li>Hyperaldosteronism therapy options</li>
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+              </ul>
+            </div>
+          </div>
+        </section>
+<<<<<<< HEAD
+<<<<<<< HEAD
+        <section class="section" id="summary-for-exam-preparation">
+          <h2>8. Summary for Exam Preparation</h2>
+          <table class="table">
+            <thead><tr><th>Condition</th><th>Key Feature</th><th>First-Line Treatment</th></tr></thead>
+            <tbody>
+              <tr><td>Cushing's Syndrome</td><td>Central obesity, striae, hypertension, hyperglycemia</td><td>Surgery when possible; steroidogenesis inhibitors if not</td></tr>
+              <tr><td>Primary Aldosteronism</td><td>Hypertension plus hypokalemia with suppressed renin</td><td>Spironolactone/eplerenone or adrenalectomy for adenoma</td></tr>
+              <tr><td>Addison's Disease</td><td>Hyperpigmentation, hyponatremia, hyperkalemia, hypotension</td><td>Hydrocortisone plus fludrocortisone</td></tr>
+              <tr><td>Secondary Adrenal Insufficiency</td><td>No hyperpigmentation, normal aldosterone pattern</td><td>Hydrocortisone or prednisone without fludrocortisone</td></tr>
+              <tr><td>Adrenal Crisis</td><td>Shock, hyponatremia, hyperkalemia, hypoglycemia</td><td>IV hydrocortisone 100 mg plus IV normal saline</td></tr>
+              <tr><td>Pheochromocytoma</td><td>Paroxysmal hypertension, headache, palpitations, diaphoresis</td><td>Alpha-blockade, then beta-blockade, then surgery</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-3 stack">
+            <div class="box"><h3>CUSHINGOID</h3><p>Central obesity, upper body obesity, skin changes, hypertension, hyperglycemia, immune suppression, neuropsychiatric change, gonadal dysfunction, osteoporosis, and diabetes.</p></div>
+            <div class="box"><h3>ADDISON</h3><p>Autoimmune, dark hyperpigmentation, diarrhea, insidious onset, sodium loss, orthostatic hypotension, and negative energy balance.</p></div>
+            <div class="box"><h3>PHEO</h3><p>Paroxysmal hypertension, headache, episodic sweating, and ordinary triggers with palpitations.</p></div>
+          </div>
+        </section>
+        <section class="section" id="key-guidelines-links">
+          <h2>9. Key Guidelines Links</h2>
+          <div class="guideline-list">
+            <p class="guideline-line"><strong>Endocrine Society Cushing's Syndrome Guidance 2015:</strong> <a href="https://www.endocrine.org/clinical-practice-guidelines/cushings-syndrome" target="_blank" rel="noreferrer">https://www.endocrine.org/clinical-practice-guidelines/cushings-syndrome</a></p>
+            <p class="guideline-line"><strong>Endocrine Society Primary Aldosteronism Guidance 2016:</strong> <a href="https://www.endocrine.org/clinical-practice-guidelines/primary-aldosteronism" target="_blank" rel="noreferrer">https://www.endocrine.org/clinical-practice-guidelines/primary-aldosteronism</a></p>
+            <p class="guideline-line"><strong>Endocrine Society Adrenal Insufficiency Guidance 2016:</strong> <a href="https://www.endocrine.org/clinical-practice-guidelines/adrenal-insufficiency" target="_blank" rel="noreferrer">https://www.endocrine.org/clinical-practice-guidelines/adrenal-insufficiency</a></p>
+            <p class="guideline-line"><strong>Endocrine Society Pheochromocytoma and Paraganglioma Guidance 2014:</strong> <a href="https://www.endocrine.org/clinical-practice-guidelines/pheochromocytoma-and-paraganglioma" target="_blank" rel="noreferrer">https://www.endocrine.org/clinical-practice-guidelines/pheochromocytoma-and-paraganglioma</a></p>
+            <p class="guideline-line"><strong>Society for Endocrinology Emergency Adrenal Crisis Guidance 2020:</strong> <a href="https://www.endocrinology.org/clinical-practice/emergency-guidelines/" target="_blank" rel="noreferrer">https://www.endocrinology.org/clinical-practice/emergency-guidelines/</a></p>
+          </div>
+        </section>
+        <div class="note-quiz-footer">
+          <div class="topic-quiz-actions">
+            <a class="topic-quiz-cta" href="../index.html?topicQuiz=adrenal-disorders&topicTitle=Adrenal%20Disorders" target="_top" onclick="if(window.top&&typeof window.top.startTopicQuizSession==='function'){window.top.startTopicQuizSession('adrenal-disorders','Adrenal Disorders'); return false;} return true;">Start Topic Quiz</a>
+          </div>
+        </div>
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+
+        <section class="section" id="exam-traps">
+          <h2>7. Common Exam Traps</h2>
+          <div class="stack">
+            <div class="callout alert">Exogenous steroid exposure is the most common overall cause of Cushing syndrome.</div>
+            <div class="callout alert">Primary adrenal insufficiency often shows hyperpigmentation with hyperkalemia.</div>
+            <div class="callout alert">Adrenal crisis treatment must start immediately.</div>
+            <div class="callout alert">Secondary adrenal insufficiency usually does not need mineralocorticoid replacement.</div>
+            <div class="callout alert">Spironolactone is first-line medical therapy for bilateral primary hyperaldosteronism.</div>
+          </div>
+        </section>
+
+        <section class="section" id="quick-revision">
+          <h2>8. Quick Revision Summary</h2>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Must Remember</h3>
+              <ul>
+                <li>Cushing equals cortisol excess</li>
+                <li>Addison equals cortisol deficiency with mineralocorticoid loss in primary disease</li>
+                <li>Adrenal crisis requires urgent steroid and fluid therapy</li>
+                <li>Aldosterone excess drives hypertension and hypokalemia</li>
+                <li>Gradual steroid taper helps prevent HPA-axis suppression complications</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Practice Questions Placeholder</h3>
+              <ul>
+                <li>Topic: Adrenal Disorders</li>
+                <li>
+                  Subtopics: Cushing syndrome, Addison disease, adrenal crisis,
+                  hyperaldosteronism, steroid tapering
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+      </article>
+    </div>
+  </body>
+</html>

@@ -1,7 +1,25 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
 const API_BASE =
   localStorage.getItem("quizApiBase")?.trim() || "http://localhost:4000/api";
 
 const CLIENT_ID_KEY = "quizClientId";
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
+const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const inferredApiBase = isLocalHost
+  ? "http://localhost:4000/api"
+  : `${window.location.origin}/api`;
+const API_BASE = storedApiBase || inferredApiBase;
+
+const CLIENT_ID_KEY = "quizClientId";
+const AUTH_TOKEN_KEY = "quizAuthToken";
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 
 function getClientId() {
   const existing = localStorage.getItem(CLIENT_ID_KEY);
@@ -16,6 +34,8 @@ function getClientId() {
   return next;
 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
 async function post(path, payload) {
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
@@ -45,6 +65,75 @@ async function get(path) {
   }
 
   return response.json();
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+}
+
+function buildHeaders(includeJson = false) {
+  const headers = {
+    "x-client-id": getClientId(),
+  };
+
+  if (includeJson) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const token = getAuthToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+async function request(method, path, payload = undefined) {
+  const useJson = payload !== undefined;
+  const response = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: buildHeaders(useJson),
+    body: useJson ? JSON.stringify(payload) : undefined,
+  });
+
+  if (!response.ok) {
+    let message = `API request failed (${response.status})`;
+    try {
+      const body = await response.json();
+      if (body?.error) {
+        message = `${body.error} (${response.status})`;
+      }
+    } catch {
+      // Ignore parse failures and keep fallback message.
+    }
+    const err = new Error(message);
+    err.status = response.status;
+    throw err;
+  }
+
+  if (response.status === 204) return {};
+  return response.json();
+}
+
+function post(path, payload) {
+  return request("POST", path, payload);
+}
+
+function put(path, payload) {
+  return request("PUT", path, payload);
+}
+
+function del(path, payload = undefined) {
+  return request("DELETE", path, payload);
+}
+
+function get(path) {
+  return request("GET", path);
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 }
 
 function fireAndForget(promise) {
@@ -66,6 +155,77 @@ function toQuery(params = {}) {
 }
 
 export const backendClient = {
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+  getToken() {
+    return getAuthToken();
+  },
+
+  setToken(token) {
+    const cleaned = String(token || "").trim();
+    if (!cleaned) return;
+    localStorage.setItem(AUTH_TOKEN_KEY, cleaned);
+  },
+
+  clearToken() {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  },
+
+  isAuthenticated() {
+    return Boolean(getAuthToken());
+  },
+
+  async register(payload = {}) {
+    const data = await post("/auth/register", payload);
+    if (data?.token) {
+      this.setToken(data.token);
+    }
+    return data;
+  },
+
+  async login(payload = {}) {
+    const data = await post("/auth/login", payload);
+    if (data?.token) {
+      this.setToken(data.token);
+    }
+    return data;
+  },
+
+  fetchMe() {
+    return get("/auth/me");
+  },
+
+  forgotPassword(payload = {}) {
+    return post("/auth/forgot-password", payload);
+  },
+
+  resetPassword(payload = {}) {
+    return post("/auth/reset-password", payload);
+  },
+
+  changePassword(payload = {}) {
+    return post("/auth/change-password", payload);
+  },
+
+  updateProfile(payload = {}) {
+    return put("/auth/profile", payload);
+  },
+
+  deactivateAccount(days = 30) {
+    return post("/auth/deactivate", { days });
+  },
+
+  deleteAccount(confirmToken = "DELETE_MY_ACCOUNT_CONFIRMED") {
+    return del("/auth/account", { confirmToken });
+  },
+
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   warmup() {
     return get("/health");
   },

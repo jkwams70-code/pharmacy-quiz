@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
 export const baseQuestions = [
   /* ================= Q1–Q3 ================= */
 
@@ -73,6 +75,88 @@ export const baseQuestions = [
 
   /* ================= Q7–Q26 COMBO ================= */
 
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+export const baseQuestions = [
+  /* ================= Q1–Q3 ================= */
+
+  {
+    id: 1,
+    type: "match",
+    category: "Haematology",
+    question:
+      "Q1. Which ONE of the following laboratory parameters may be decreased in iron deficiency anaemia?",
+    options: ["MCHC", "lymphocytes", "HbA1c", "INR", "thrombocytes"],
+    correct: "MCHC",
+    explanation:
+      "Mean corpuscular haemoglobin concentration (MCHC) decreases in iron deficiency anaemia.",
+  },
+
+  {
+    id: 2,
+    type: "match",
+    category: "Haematology",
+    question:
+      "Q2. Which ONE of the following laboratory parameters may have an increased value in viral infections?",
+    options: ["MCHC", "lymphocytes", "HbA1c", "INR", "thrombocytes"],
+    correct: "lymphocytes",
+    explanation: "Lymphocyte count increases in viral infections.",
+  },
+
+  {
+    id: 3,
+    type: "match",
+    category: "Haematology",
+    question:
+      "Q3. Which ONE of the following may have a decreased value in idiopathic thrombocytopenia purpura?",
+    options: ["MCHC", "lymphocytes", "HbA1c", "INR", "thrombocytes"],
+    correct: "thrombocytes",
+    explanation:
+      "Idiopathic thrombocytopenia purpura results in reduced platelet count.",
+  },
+
+  /* ================= Q4–Q6 ================= */
+
+  {
+    id: 4,
+    type: "match",
+    category: "Clinical Pharmacology",
+    question:
+      "Q4. Which ONE of the following conditions is manifested by muscle weakness and muscle wasting?",
+    options: ["tachypnoea", "hypoxia", "afterload", "myopathy", "dysphasia"],
+    correct: "myopathy",
+    explanation: "Myopathy is characterised by muscle weakness and wasting.",
+  },
+
+  {
+    id: 5,
+    type: "match",
+    category: "Clinical Pharmacology",
+    question:
+      "Q5. Which ONE of the following is characterised by a rapid rate of breathing?",
+    options: ["tachypnoea", "hypoxia", "afterload", "myopathy", "dysphasia"],
+    correct: "tachypnoea",
+    explanation: "Tachypnoea refers to an abnormally rapid respiratory rate.",
+  },
+
+  {
+    id: 6,
+    type: "match",
+    category: "Clinical Pharmacology",
+    question:
+      "Q6. Which ONE of the following refers to an impairment of the language aspect of speech?",
+    options: ["tachypnoea", "hypoxia", "afterload", "myopathy", "dysphasia"],
+    correct: "dysphasia",
+    explanation: "Dysphasia (aphasia) refers to language impairment.",
+  },
+
+  /* ================= Q7–Q26 COMBO ================= */
+
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   {
     id: 7,
     type: "combo",
@@ -90,6 +174,8 @@ export const baseQuestions = [
     type: "combo",
     category: "Clinical Pharmacology",
     correct: "A",
+<<<<<<< HEAD
+<<<<<<< HEAD
     question:
       "Q8. Conditions that may give rise to muscular or joint pain include:",
     statements: [" Paget’s disease", " Neuropathy", " Haemophilia"],
@@ -142,6 +228,65 @@ export const baseQuestions = [
     explanation: "Speech therapy and physiotherapy are appropriate referrals.",
   },
 
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+    question:
+      "Q8. Conditions that may give rise to muscular or joint pain include:",
+    statements: [" Paget’s disease", " Neuropathy", " Haemophilia"],
+    explanation: "All three conditions may cause musculoskeletal pain.",
+  },
+
+  {
+    id: 9,
+    type: "combo",
+    category: "Oncology",
+    correct: "A",
+    question:
+      "Q9. Symptoms that may indicate neoplastic disease if unexplained include:",
+    statements: [
+      " Skin ulceration",
+      " Unexplained fractures",
+      " General debility",
+    ],
+    explanation: "All are potential red-flag signs of malignancy.",
+  },
+
+  {
+    id: 10,
+    type: "combo",
+    category: "Oncology",
+    correct: "C",
+    question:
+      "Q10. Possible causes of resistance to cytotoxic chemotherapy include:",
+    statements: [
+      " Increased cellular uptake",
+      " Increased repair of DNA damage",
+      " Poor penetration into tumour tissue",
+    ],
+    explanation:
+      "Increased DNA repair and poor tumour penetration contribute to resistance.",
+  },
+
+  {
+    id: 11,
+    type: "combo",
+    category: "Neurology",
+    correct: "B",
+    question:
+      "Q11. In Parkinson’s disease, the patient could be referred for services from the:",
+    statements: [
+      " Speech therapy department",
+      " Physiotherapy department",
+      " Pain management team",
+    ],
+    explanation: "Speech therapy and physiotherapy are appropriate referrals.",
+  },
+
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   {
     id: 12,
     type: "combo",
@@ -156,6 +301,8 @@ export const baseQuestions = [
     explanation:
       "Statements 1 and 2 are correct in this context; ultrasound is non-ionising and is used to assess organ size and shape.",
   },
+<<<<<<< HEAD
+<<<<<<< HEAD
 
   {
     id: 13,
@@ -171,6 +318,28 @@ export const baseQuestions = [
     explanation: "Statements 1 and 2 are correct.",
   },
 
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+
+  {
+    id: 13,
+    type: "combo",
+    category: "Clinical Pharmacology",
+    correct: "B",
+    question: "Q13. Regarding creatinine clearance:",
+    statements: [
+      " It is an index used to measure glomerular filtration rate",
+      " Measurement involves a 24-hour urine collection",
+      " Measurement requires 24-hour monitoring of plasma creatinine",
+    ],
+    explanation: "Statements 1 and 2 are correct.",
+  },
+
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   {
     id: 14,
     type: "combo",
@@ -186,6 +355,8 @@ export const baseQuestions = [
     explanation:
       "Only statement 1 is correct. Headache commonly occurs early with nitrates and usually lessens with continued therapy.",
   },
+<<<<<<< HEAD
+<<<<<<< HEAD
 
   {
     id: 15,
@@ -475,6 +646,302 @@ export const baseQuestions = [
       "Urine output and blood glucose are essential for monitoring. Thyroid function tests are not indicated in this case.",
   },
 
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+
+  {
+    id: 15,
+    type: "combo",
+    category: "Cardiology",
+    correct: "B",
+    question: "Q15. With respect to adrenaline:",
+    statements: [
+      " It is used in cardiac arrest",
+      " Administration requires monitoring of blood pressure",
+      " It results in a fall in blood pressure",
+    ],
+    explanation: "Statements 1 and 2 are correct.",
+  },
+
+  {
+    id: 16,
+    type: "combo",
+    category: "Psychiatry",
+    correct: "C",
+    question: "Q16. With respect to methadone:",
+    statements: [
+      " It requires multiple dosing in a day",
+      " It is addictive",
+      " It is an opioid agonist",
+    ],
+    explanation: "Statements 2 and 3 are correct.",
+  },
+
+  {
+    id: 17,
+    type: "combo",
+    category: "Oncology",
+    correct: "A",
+    question: "Q17. Patients receiving tamoxifen should be advised:",
+    statements: [
+      " That hot flushes may occur",
+      " That menstrual irregularities may occur",
+      " To report sudden breathlessness and any pain in the calf",
+    ],
+    explanation: "All three statements are correct.",
+  },
+
+  {
+    id: 18,
+    type: "combo",
+    category: "Clinical Pharmacology",
+    correct: "B",
+    question: "Q18. Regarding parenteral sodium bicarbonate:",
+    statements: [
+      " It raises blood pH",
+      " It is indicated in metabolic acidosis",
+      " It may be used in hypomagnesaemia",
+    ],
+    explanation: "Statements 1 and 2 are correct.",
+  },
+
+  {
+    id: 19,
+    type: "combo",
+    category: "Haematology",
+    correct: "A",
+    question: "Q19. With respect to phytomenadione:",
+    statements: [
+      " It is a lipid-soluble analogue of vitamin K",
+      " It promotes hepatic synthesis of active prothrombin",
+      " It is indicated in babies at birth to prevent vitamin K deficiency bleeding",
+    ],
+    explanation: "All statements are correct.",
+  },
+
+  {
+    id: 20,
+    type: "combo",
+    category: "Haematology",
+    correct: "A",
+    question: "Q20. Regarding enoxaparin:",
+    statements: [
+      " It cannot be used at the same dose as heparin",
+      " Thrombocytopenia may occur with its use",
+      " Agents that affect haemostasis should be used with care",
+    ],
+    explanation: "All statements are correct.",
+  },
+
+  {
+    id: 21,
+    type: "combo",
+    category: "Dermatology",
+    correct: "A",
+    question: "Q21. Patients receiving oral isotretinoin should be advised:",
+    statements: [
+      " To avoid pregnancy",
+      " To avoid wax epilation during treatment",
+      " To use a lip balm regularly",
+    ],
+    explanation: "All statements are correct.",
+  },
+
+  {
+    id: 22,
+    type: "combo",
+    category: "Gastroenterology",
+    correct: "C",
+    question:
+      "Q22. A patient who will be undergoing a colonoscopy is advised to:",
+    statements: [
+      " Use a topical haemorrhoid preparation before admission",
+      " Take a bowel cleansing preparation",
+      " Avoid solid food on the previous day",
+    ],
+    explanation: "Statements 2 and 3 are correct.",
+  },
+
+  {
+    id: 23,
+    type: "combo",
+    category: "Respiratory",
+    correct: "B",
+    question: "Q23. In which of the following cases is referral recommended:",
+    statements: [
+      " A paediatric patient with a history of asthma presenting with a chest infection",
+      " A patient receiving diuretics presenting with symptoms of heat stroke",
+      " A tourist presenting with acute diarrhoea",
+    ],
+    explanation: "Statements 1 and 2 warrant referral.",
+  },
+
+  {
+    id: 24,
+    type: "combo",
+    category: "Infectious Diseases",
+    correct: "B",
+    question:
+      "Q24. Anti-infectives used in triple-therapy regimens to eradicate Helicobacter pylori include:",
+    statements: [" Metronidazole", " Clarithromycin", " Telithromycin"],
+    explanation: "Statements 1 and 2 are correct.",
+  },
+
+  {
+    id: 25,
+    type: "combo",
+    category: "Infectious Diseases",
+    correct: "D",
+    question: "Q25. In HIV infection:",
+    statements: [
+      " Accumulation of mutations associated with drug resistance may occur",
+      " Drug resistance testing is not possible",
+      " Monotherapy is preferred",
+    ],
+    explanation: "Statement 1 only is correct.",
+  },
+
+  {
+    id: 26,
+    type: "combo",
+    category: "Endocrinology",
+    correct: "B",
+    question: "Q26. Diabetic ketoacidosis:",
+    statements: [
+      " Is associated with insulin deficiency",
+      " May be precipitated by a severe infection",
+      " Causes retinopathy",
+    ],
+    explanation: "Statements 1 and 2 are correct.",
+  },
+
+  /* ===============================
+                     CASE 1 – Questions 27–31
+                  ================================= */
+
+  {
+    id: 27,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case1",
+    caseBlock:
+      "PS is hospitalised with pulmonary oedema. The patient is started on metolazone 2.5 mg once daily and bumetanide 2 mg twice daily intravenously.",
+    correct: "C",
+    question: "Q27. Signs and symptoms of pulmonary oedema include:",
+    statements: ["1. Weight loss", "2. Dyspnoea", "3. Cough"],
+    explanation: "Pulmonary oedema presents with dyspnoea and cough.",
+  },
+
+  {
+    id: 28,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case1",
+    correct: "C",
+    question: "Q28. Precipitants of acute pulmonary oedema include:",
+    statements: [
+      "1. Hypothyroidism",
+      "2. Excessive infusion rate",
+      "3. Heart failure",
+    ],
+    explanation:
+      "Excessive IV fluids and heart failure can precipitate pulmonary oedema.",
+  },
+
+  {
+    id: 29,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case1",
+    correct: "B",
+    question:
+      "Q29. Parameters that are monitored during metolazone therapy include:",
+    statements: [
+      "1. Body weight",
+      "2. Electrolytes",
+      "3. Liver function tests",
+    ],
+    explanation: "Weight and electrolytes must be monitored with diuretics.",
+  },
+
+  {
+    id: 30,
+    type: "single",
+    category: "Cardiology",
+    caseId: "case1",
+    question: "Q30. Metolazone and bumetanide:",
+    options: [
+      "Reduce the blood volume",
+      "Produce a euphoric state",
+      "Cause sedation",
+      "Control bronchospasm",
+      "Prevent embolisation",
+    ],
+    correct: "Reduce the blood volume",
+    explanation: "Both drugs are diuretics and reduce blood volume.",
+  },
+
+  {
+    id: 31,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case1",
+    correct: "B",
+    question:
+      "Q31. When PS is stabilised, the therapeutic plan should consider:",
+    statements: [
+      "1. Stopping metolazone treatment",
+      "2. Changing bumetanide to an oral formulation",
+      "3. Starting co-amoxiclav",
+    ],
+    explanation:
+      "After stabilisation, step-down therapy and conversion to oral diuretics may be considered.",
+  },
+
+  /* ===============================
+                     CASE 2 – Questions 32–38
+                  ================================= */
+
+  {
+    id: 32,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case2",
+    caseBlock:
+      "CA is a 77-year-old patient admitted with infected multiple sores and complaints of polyuria and weakness. She presents with reduced skin turgor, dehydration, tremor and confusion. Past medical history includes diabetes managed by diet alone. On admission she is started on glibenclamide 2.5 mg daily, ciprofloxacin 500 mg bd, sodium chloride 0.9% IV infusion and haloperidol 0.5 mg bd. Random blood glucose: 12 mmol/L. Blood pressure: 125/78 mmHg.",
+    correct: "B",
+    question: "Q32. Management aims for CA include:",
+    statements: [
+      "1. Rehydration",
+      "2. Control of hyperglycaemia",
+      "3. Management of hypertension",
+    ],
+    explanation:
+      "Management should focus on rehydration and control of hyperglycaemia. Blood pressure is normal and does not require intervention.",
+  },
+
+  {
+    id: 33,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case2",
+    correct: "B",
+    question:
+      "Q33. Parameters that need to be monitored to assess outcomes of therapy include:",
+    statements: [
+      "1. Urine output",
+      "2. Blood glucose monitoring",
+      "3. Thyroid function tests",
+    ],
+    explanation:
+      "Urine output and blood glucose are essential for monitoring. Thyroid function tests are not indicated in this case.",
+  },
+
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   {
     id: 34,
     type: "combo",
@@ -487,6 +954,8 @@ export const baseQuestions = [
     explanation:
       "Statements 1 and 2 are correct. Uncontrolled diabetes increases infection risk and can present with dehydration signs such as reduced skin turgor.",
   },
+<<<<<<< HEAD
+<<<<<<< HEAD
 
   {
     id: 35,
@@ -1257,6 +1726,783 @@ export const baseQuestions = [
   /* ===============================
                      TEST 2 - Questions 81-160
                   ================================= */
+=======
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+
+  {
+    id: 35,
+    type: "combo",
+    category: "Clinical Pharmacology",
+    caseId: "case2",
+    correct: "C",
+    question:
+      "Q35. Pharmacist intervention with regards to therapy started on admission includes:",
+    statements: [
+      "1. Increase dose of ciprofloxacin",
+      "2. Review sodium chloride infusion",
+      "3. Rationale for haloperidol treatment",
+    ],
+    explanation:
+      "The IV fluids should be reviewed carefully and the indication for haloperidol assessed. Increasing ciprofloxacin dose is not required.",
+  },
+
+  {
+    id: 36,
+    type: "single",
+    category: "Endocrinology",
+    caseId: "case2",
+    question: "Q36. As regards glibenclamide therapy:",
+    options: [
+      "Gliclazide is preferred in this patient",
+      "The dose could be increased to 10 mg daily",
+      "The drug is administered in the afternoon",
+      "The drug reduces insulin secretion",
+      "It restores beta-cell activity",
+    ],
+    correct: "Gliclazide is preferred in this patient",
+    explanation:
+      "In elderly patients, gliclazide is generally preferred due to lower risk of prolonged hypoglycaemia compared to glibenclamide.",
+  },
+
+  {
+    id: 37,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case2",
+    correct: "B",
+    question: "Q37. When the patient is discharged, advice includes:",
+    statements: [
+      "1. Consuming small, frequent regular meals",
+      "2. Taking glibenclamide regularly",
+      "3. Using fusidic acid cream daily",
+    ],
+    explanation:
+      "Regular meals and adherence to glibenclamide are essential. Topical antibiotics should be reviewed before continued use.",
+  },
+
+  {
+    id: 38,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case2",
+    correct: "E",
+    question: "Q38. Onset of hypoglycaemia in CA could be precipitated by:",
+    statements: [
+      "1. Missed doses of glibenclamide",
+      "2. Excess dietary intake",
+      "3. Skipped meals",
+    ],
+    explanation:
+      "Hypoglycaemia with sulfonylureas is commonly precipitated by skipped meals.",
+  },
+
+  /* ===============================
+                     CASE 3 – Questions 39–41
+                  ================================= */
+
+  {
+    id: 39,
+    type: "combo",
+    category: "Clinical Pharmacology",
+    caseId: "case3",
+    caseBlock:
+      "BD is a 34-year-old patient admitted with an overdose of promethazine and alcohol withdrawal symptoms. The patient has a history of alcohol abuse.",
+    correct: "A",
+    question:
+      "Q39. Symptoms that could occur due to promethazine overdose include:",
+    statements: ["1. Drowsiness", "2. Headache", "3. Blurred vision"],
+    explanation:
+      "Promethazine overdose commonly causes CNS depression (drowsiness), anticholinergic effects such as blurred vision, and headache.",
+  },
+
+  {
+    id: 40,
+    type: "single",
+    category: "Clinical Pharmacology",
+    caseId: "case3",
+    question: "Q40. Promethazine is an:",
+    options: [
+      "Antidepressant",
+      "Antipsychotic",
+      "Antihistamine",
+      "Analgesic",
+      "Anxiolytic",
+    ],
+    correct: "Antihistamine",
+    explanation:
+      "Promethazine is a first-generation H1 antihistamine with sedative and anticholinergic properties.",
+  },
+
+  {
+    id: 41,
+    type: "single",
+    category: "Psychiatry",
+    caseId: "case3",
+    question: "Q41. A drug that can be used in alcohol withdrawal is:",
+    options: [
+      "Beclometasone",
+      "Chlorphenamine",
+      "Lithium",
+      "Diazepam",
+      "Risperidone",
+    ],
+    correct: "Diazepam",
+    explanation:
+      "Benzodiazepines such as diazepam are first-line treatment for alcohol withdrawal to prevent seizures and delirium tremens.",
+  },
+
+  /* ===============================
+                     CASE 4 – Questions 42–44
+                  ================================= */
+
+  {
+    id: 42,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case4",
+    caseBlock:
+      "MB is a 58-year-old woman who presents with a prescription for simvastatin 10 mg daily. Her current medication is atenolol 50 mg daily. MB suffered a myocardial infarction last year.",
+    correct: "B",
+    question: "Q42. MB is advised:",
+    statements: [
+      "1. To report any muscle pain or weakness",
+      "2. To take simvastatin at night",
+      "3. To stop taking atenolol",
+    ],
+    explanation:
+      "Patients on simvastatin should report unexplained muscle pain due to risk of myopathy. Simvastatin is best taken at night. Atenolol should not be stopped abruptly.",
+  },
+
+  {
+    id: 43,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case4",
+    correct: "A",
+    question: "Q43. Side-effects to be expected with simvastatin include:",
+    statements: ["1. Headache", "2. Nausea", "3. Abdominal pain"],
+    explanation:
+      "Common adverse effects of simvastatin include headache, gastrointestinal disturbances such as nausea, and abdominal pain.",
+  },
+
+  {
+    id: 44,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case4",
+    correct: "B",
+    question: "Q44. Recommendations made to MB include:",
+    statements: [
+      "1. Follow moderate exercise",
+      "2. Adopt a low-fat diet",
+      "3. Take atenolol 2 hours before simvastatin",
+    ],
+    explanation:
+      "Lifestyle modification including moderate exercise and a low-fat diet is recommended. There is no need to separate atenolol and simvastatin by 2 hours.",
+  },
+
+  /* ===============================
+                     CASE 5 – Questions 45–47
+                  ================================= */
+
+  {
+    id: 45,
+    type: "combo",
+    category: "Haematology",
+    caseId: "case5",
+    caseBlock:
+      "GD is a 72-year-old female whose current medication is: aspirin 75 mg daily; dipyridamole 100 mg three times daily; timolol 0.5% eye drops, two drops in both eyes twice daily; lactulose 20 mL daily.",
+    correct: "C",
+    question: "Q45. With regard to dipyridamole:",
+    statements: [
+      "1. It cannot be used in combination with low-dose aspirin",
+      "2. It is used for prophylaxis of thromboembolism",
+      "3. It may cause increased bleeding during or after surgery",
+    ],
+    explanation:
+      "Dipyridamole is commonly combined with low-dose aspirin for antiplatelet therapy. It is used for thromboembolic prophylaxis and may increase bleeding risk.",
+  },
+
+  {
+    id: 46,
+    type: "combo",
+    category: "Gastroenterology",
+    caseId: "case5",
+    correct: "E",
+    question: "Q46. With regard to lactulose:",
+    statements: [
+      "1. The dose needs to be reviewed as the maximum adult daily dose is 5 mL",
+      "2. It should not be used for more than 5 days",
+      "3. It is used to maintain bowel evacuation",
+    ],
+    explanation:
+      "Lactulose doses are often much higher than 5 mL daily. It can be used long term if needed. It is used to treat constipation and maintain bowel evacuation.",
+  },
+
+  {
+    id: 47,
+    type: "combo",
+    category: "Ophthalmology",
+    caseId: "case5",
+    correct: "D",
+    question: "Q47. GD is receiving medications for:",
+    statements: ["1. Glaucoma", "2. Diarrhoea", "3. Osteoporosis"],
+    explanation:
+      "Timolol eye drops are used for glaucoma. Lactulose is for constipation, not diarrhoea. No medication listed is for osteoporosis.",
+  },
+
+  /* ===============================
+                     CASE 6 – Questions 48–53
+                  ================================= */
+
+  {
+    id: 48,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case6",
+    caseBlock:
+      "SP is a 64-year-old patient admitted with tiredness, shortness of breath and ankle oedema. She has a history of congestive heart failure. SP was intolerant to enalapril due to cough. Current medications: spironolactone 12.5 mg daily and losartan 25 mg daily.",
+    correct: "B",
+    question: "Q48. The therapeutic aims for SP are:",
+    statements: [
+      "1. To control symptoms of heart failure",
+      "2. To control oedema",
+      "3. To control diabetes",
+    ],
+    explanation:
+      "Management aims focus on heart failure symptom control and oedema reduction. There is no indication of diabetes.",
+  },
+
+  {
+    id: 49,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case6",
+    correct: "A",
+    question: "Q49. With regard to spironolactone:",
+    statements: [
+      "1. It reduces symptoms and mortality",
+      "2. The dose may be increased to 25 mg daily",
+      "3. It is an aldosterone antagonist",
+    ],
+    explanation:
+      "Spironolactone reduces mortality in heart failure, can be titrated to 25 mg daily, and is an aldosterone antagonist.",
+  },
+
+  {
+    id: 50,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case6",
+    correct: "B",
+    question:
+      "Q50. Monitoring required because of spironolactone treatment involves:",
+    statements: [
+      "1. Serum creatinine",
+      "2. Serum potassium",
+      "3. Thyroid function",
+    ],
+    explanation:
+      "Renal function and potassium must be monitored due to hyperkalaemia risk. Thyroid monitoring is not required.",
+  },
+
+  {
+    id: 51,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case6",
+    correct: "A",
+    question: "Q51. With regard to losartan:",
+    statements: [
+      "1. It is an angiotensin-II receptor antagonist",
+      "2. It exhibits a lower incidence of cough compared with enalapril",
+      "3. The dose may be increased to 50 mg daily",
+    ],
+    explanation:
+      "Losartan is an ARB, has lower cough incidence than ACE inhibitors, and can be titrated to 50 mg daily.",
+  },
+
+  {
+    id: 52,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case6",
+    correct: "C",
+    question: "Q52. Digoxin is used in patients with heart failure:",
+    statements: [
+      "1. Because it decreases myocardial intracellular ionic calcium",
+      "2. When there is atrial fibrillation",
+      "3. Because it exerts a positive inotropic effect",
+    ],
+    explanation:
+      "Digoxin increases intracellular calcium (not decreases), is useful in atrial fibrillation, and has a positive inotropic effect.",
+  },
+
+  {
+    id: 53,
+    type: "combo",
+    category: "Cardiology",
+    caseId: "case6",
+    correct: "B",
+    question:
+      "Q53. Parameters to be monitored when digoxin therapy is started include:",
+    statements: [
+      "1. Plasma digoxin concentration",
+      "2. Plasma potassium measurement",
+      "3. Plasma sodium measurement",
+    ],
+    explanation:
+      "Digoxin levels and potassium must be monitored. Sodium monitoring is not routinely required for digoxin initiation.",
+  },
+
+  /* ===============================
+                     CASE 7 - Questions 54-57
+                  ================================= */
+
+  {
+    id: 54,
+    type: "single",
+    category: "Infectious Diseases",
+    caseId: "case7",
+    caseBlock:
+      "LB is a 55-year-old male patient who developed unilateral vesicles around his waist and complained of stabbing irritation in the area. LB is prescribed aciclovir 800 mg five times daily for 5 days.",
+    question: "Q54. The likely diagnosis for LB is:",
+    options: [
+      "prickly heat",
+      "herpes zoster infection",
+      "herpes labialis infection",
+      "cytomegalovirus infection",
+      "hepatitis B infection",
+    ],
+    correct: "herpes zoster infection",
+    explanation:
+      "Painful unilateral vesicles in a dermatomal distribution are characteristic of herpes zoster.",
+  },
+
+  {
+    id: 55,
+    type: "combo",
+    category: "Infectious Diseases",
+    caseId: "case7",
+    correct: "B",
+    question: "Q55. Patient should be advised:",
+    statements: [
+      "1. To take doses at regular intervals",
+      "2. To avoid exposure to sunlight",
+      "3. To wash hands thoroughly after drug administration",
+    ],
+    explanation:
+      "Regular dosing and sunlight avoidance are key counseling points with aciclovir in this context.",
+  },
+
+  {
+    id: 56,
+    type: "combo",
+    category: "Infectious Diseases",
+    caseId: "case7",
+    correct: "A",
+    question: "Q56. Side-effects that may be expected include:",
+    statements: ["1. Headache", "2. Nausea", "3. Diarrhoea"],
+    explanation:
+      "All listed effects are recognized adverse effects of aciclovir therapy.",
+  },
+
+  {
+    id: 57,
+    type: "combo",
+    category: "Infectious Diseases",
+    caseId: "case7",
+    correct: "B",
+    question: "Q57. Adjuvant therapy that may be used for LB include(s):",
+    statements: ["1. Calamine lotion", "2. Amitriptyline", "3. Ergotamine"],
+    explanation:
+      "Calamine and amitriptyline can be useful adjuncts; ergotamine is not indicated for shingles-related pain.",
+  },
+
+  /* ===============================
+                     CASE 8 - Questions 58-63
+                  ================================= */
+
+  {
+    id: 58,
+    type: "single",
+    category: "Infectious Diseases",
+    caseId: "case8",
+    caseBlock:
+      "AD is a 39-year-old female with bacterial endocarditis. She is started on gentamicin 80 mg IV twice daily and penicillin G IV 1.8 g every 6 hours.",
+    question: "Q58. Penicillin G is:",
+    options: [
+      "phenoxymethylpenicillin",
+      "benzylpenicillin",
+      "penicillin V",
+      "piperacillin",
+      "pivmecillinam",
+    ],
+    correct: "benzylpenicillin",
+    explanation: "Penicillin G is benzylpenicillin.",
+  },
+
+  {
+    id: 59,
+    type: "single",
+    category: "Infectious Diseases",
+    caseId: "case8",
+    question:
+      "Q59. Penicillin G is available in 600 mg vials. How many vials are required for each dose?",
+    options: ["0.5", "1", "2", "3", "30"],
+    correct: "3",
+    explanation:
+      "A 1.8 g dose equals 1800 mg, so 1800/600 = 3 vials per dose.",
+  },
+
+  {
+    id: 60,
+    type: "combo",
+    category: "Infectious Diseases",
+    caseId: "case8",
+    correct: "C",
+    question: "Q60. Penicillin G:",
+    statements: [
+      "1. Is bacteriostatic",
+      "2. Is bactericidal",
+      "3. Can be given as an intramuscular injection",
+    ],
+    explanation:
+      "Penicillin G is bactericidal and is administered parenterally, including intramuscular routes.",
+  },
+
+  {
+    id: 61,
+    type: "combo",
+    category: "Infectious Diseases",
+    caseId: "case8",
+    correct: "D",
+    question: "Q61. Gentamicin:",
+    statements: [
+      "1. Has a broad spectrum of activity",
+      "2. Is contraindicated in hepatic impairment",
+      "3. Therapy may be changed to oral administration when the patient is stabilised",
+    ],
+    explanation:
+      "Gentamicin has broad antibacterial activity, but it is not switched to oral therapy for systemic treatment.",
+  },
+
+  {
+    id: 62,
+    type: "combo",
+    category: "Infectious Diseases",
+    caseId: "case8",
+    correct: "A",
+    question: "Q62. A possible reason for these symptoms is:",
+    statements: [
+      "1. Allergy to gentamicin",
+      "2. Allergy to penicillin G",
+      "3. Development of heat rash",
+    ],
+    explanation:
+      "All listed possibilities can explain rash and generalized itch in this setting.",
+  },
+
+  {
+    id: 63,
+    type: "combo",
+    category: "Infectious Diseases",
+    caseId: "case8",
+    correct: "A",
+    question: "Q63. Manifestations of bacterial endocarditis include:",
+    statements: [
+      "1. Prolonged fever",
+      "2. Embolic phenomena",
+      "3. Renal failure",
+    ],
+    explanation:
+      "All three can occur as manifestations or complications of bacterial endocarditis.",
+  },
+
+  /* ===============================
+                     CASE 9 - Questions 64-74
+                  ================================= */
+
+  {
+    id: 64,
+    type: "single",
+    category: "Rheumatology",
+    caseId: "case9",
+    caseBlock:
+      "JZ is a 78-year-old obese male diagnosed with an acute attack of gout. PMH: hypertension and heart failure. Current medicines include enalapril 5 mg daily, atenolol 100 mg daily, bendroflumethiazide 5 mg daily, and aspirin EC 75 mg daily. He is started on colchicine 500 micrograms twice daily for six days.",
+    question: "Q64. Gout:",
+    options: [
+      "may be due to excessive production of uric acid",
+      "may be due to increased renal elimination of uric acid",
+      "results in deposition of crystals of xanthine in the joints",
+      "is characterised by excessive calcium deposited in the joints",
+      "is the result of hypouricaemia",
+    ],
+    correct: "may be due to excessive production of uric acid",
+    explanation:
+      "Gout is linked to hyperuricaemia from urate overproduction or underexcretion.",
+  },
+
+  {
+    id: 65,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "A",
+    question: "Q65. Gout may be precipitated in JZ by:",
+    statements: [
+      "1. Heart failure",
+      "2. Bendroflumethiazide",
+      "3. Excessive consumption of meat in the diet",
+    ],
+    explanation:
+      "All three factors can increase urate burden or trigger gout attacks.",
+  },
+
+  {
+    id: 66,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "D",
+    question: "Q66. Gout:",
+    statements: [
+      "1. Presents as a painful condition in the big toe",
+      "2. Onset is insidious",
+      "3. Recurrence is rare",
+    ],
+    explanation:
+      "Typical acute gout is painful in the big toe, with sudden onset and potential recurrence.",
+  },
+
+  {
+    id: 67,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "D",
+    question: "Q67. Diagnosis of gout:",
+    statements: [
+      "1. Is based on clinical signs",
+      "2. Requires confirmation of urate crystals in synovial fluid of affected joint",
+      "3. Requires a positive ESR level",
+    ],
+    explanation:
+      "Clinical features are characteristic, crystal confirmation supports diagnosis, and ESR is non-specific.",
+  },
+
+  {
+    id: 68,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "B",
+    question: "Q68. Non-pharmacological measures for JZ include:",
+    statements: [
+      "1. Resting the affected joint",
+      "2. Maintaining a high fluid intake",
+      "3. Maintaining a high calcium intake",
+    ],
+    explanation:
+      "Rest and hydration are advised; high calcium intake is not a core gout measure.",
+  },
+
+  {
+    id: 69,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "B",
+    question: "Q69. Colchicine:",
+    statements: [
+      "1. Reduces the inflammatory reaction to urate crystals",
+      "2. Provides dramatic relief from acute attacks of gout",
+      "3. Is also used in rheumatoid arthritis",
+    ],
+    explanation:
+      "Colchicine is effective in gout inflammation but is not a standard rheumatoid arthritis treatment.",
+  },
+
+  {
+    id: 70,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "A",
+    question: "Q70. Colchicine:",
+    statements: [
+      "1. Should be used when there is a contraindication to NSAIDs",
+      "2. Is more toxic than NSAIDs",
+      "3. Occurrence of diarrhoea and vomiting are used as an index to review therapy",
+    ],
+    explanation:
+      "All statements are true; GI toxicity is a key signal for dose review.",
+  },
+
+  {
+    id: 71,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "B",
+    question:
+      "Q71. Alternatives to colchicine in the management of gout include:",
+    statements: ["1. Indometacin", "2. Diclofenac", "3. Aspirin"],
+    explanation:
+      "Indometacin and diclofenac are options in acute gout; aspirin can worsen urate handling.",
+  },
+
+  {
+    id: 72,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "B",
+    question: "Q72. To prevent further attacks, JZ should be advised to:",
+    statements: [
+      "1. Lose weight",
+      "2. Follow a diet low in purines",
+      "3. Keep taking colchicine on a long-term basis",
+    ],
+    explanation:
+      "Weight reduction and low-purine diet reduce recurrence risk; long-term colchicine is not routine for all patients.",
+  },
+
+  {
+    id: 73,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "A",
+    question: "Q73. Allopurinol:",
+    statements: [
+      "1. Should be started 2-3 weeks after the acute attack has subsided",
+      "2. Reduces urate production",
+      "3. Is given once daily",
+    ],
+    explanation:
+      "All statements are correct for long-term urate-lowering prophylaxis with allopurinol.",
+  },
+
+  {
+    id: 74,
+    type: "combo",
+    category: "Rheumatology",
+    caseId: "case9",
+    correct: "A",
+    question: "Q74. Uricosuric agents:",
+    statements: [
+      "1. Can be used instead of allopurinol",
+      "2. Are ineffective in patients with impaired renal function",
+      "3. Increase renal urate excretion",
+    ],
+    explanation:
+      "All three are correct for uricosuric therapy use and mechanism.",
+  },
+
+  /* ===============================
+                     CASE 10 - Questions 75-80
+                  ================================= */
+
+  {
+    id: 75,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case10",
+    caseBlock:
+      "HG is a 71-year-old female with Sjogren's syndrome presenting with dry eyes and dry mouth. Her medicines include aspirin, dipyridamole, glimepiride, and atenolol. She was recently diagnosed with hypothyroidism and started on thyroxine 50 micrograms daily; metformin 500 mg daily and simvastatin 10 mg nocte were added at follow-up.",
+    correct: "A",
+    question:
+      "Q75. In view of the recent amendments to her treatment, HG should be advised to:",
+    statements: [
+      "1. Take thyroxine tablet in the morning",
+      "2. Take metformin tablet with food",
+      "3. Take dipyridamole tablets before food",
+    ],
+    explanation:
+      "All counseling points are appropriate for thyroxine, metformin, and dipyridamole use.",
+  },
+
+  {
+    id: 76,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case10",
+    correct: "D",
+    question: "Q76. Hypothyroidism:",
+    statements: [
+      "1. May have an insidious onset in the elderly",
+      "2. May cause dry eyes",
+      "3. May induce hypoglycaemia",
+    ],
+    explanation:
+      "Only statement 1 is correct in this context; dry eyes here are linked to Sjogren's syndrome.",
+  },
+
+  {
+    id: 77,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case10",
+    correct: "D",
+    question:
+      "Q77. Drugs that could significantly interact with thyroxine include:",
+    statements: ["1. Warfarin", "2. Simvastatin", "3. Ranitidine"],
+    explanation:
+      "Warfarin interaction is clinically significant; simvastatin and ranitidine are not key interactions here.",
+  },
+
+  {
+    id: 78,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case10",
+    correct: "A",
+    question: "Q78. Caution should be undertaken when starting thyroxine in:",
+    statements: [
+      "1. Elderly patients",
+      "2. Diabetics",
+      "3. Patients with cardiovascular disorders",
+    ],
+    explanation:
+      "All listed groups require cautious initiation and monitoring with thyroxine.",
+  },
+
+  {
+    id: 79,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case10",
+    correct: "B",
+    question: "Q79. Side-effects associated with thyroxine include:",
+    statements: ["1. Diarrhoea", "2. Anginal pain", "3. Bradycardia"],
+    explanation:
+      "Diarrhoea and anginal symptoms can occur with overtreatment; bradycardia is not typical.",
+  },
+
+  {
+    id: 80,
+    type: "combo",
+    category: "Endocrinology",
+    caseId: "case10",
+    correct: "D",
+    question: "Q80. Total thyroid hormones:",
+    statements: [
+      "1. Concentration in plasma changes with alterations in amount of thyroxine-binding globulin in plasma",
+      "2. Concentration is used as the main diagnostic marker for hypothyroidism",
+      "3. Act as antibodies to thyroglobulin",
+    ],
+    explanation:
+      "Only statement 1 is correct; diagnosis relies mainly on free thyroid hormones and TSH, and thyroid hormones are not antibodies.",
+  },
+  /* ===============================
+                     TEST 2 - Questions 81-160
+                  ================================= */
+<<<<<<< HEAD
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   {
     id: 81,
     type: "match",
@@ -4866,4 +6112,12 @@ export const baseQuestions = [
     correct: "B",
     explanation: "HG should be advised to avoid exposure to allergens. She should be advised to avoid walking in gardens and to use products to eradicate house dust mites regularly in the house.",
   },
+<<<<<<< HEAD
+<<<<<<< HEAD
 ];
+=======
+];
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+=======
+];
+>>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)

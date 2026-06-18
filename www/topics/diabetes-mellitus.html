@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diabetes Mellitus - Comprehensive Lecture Note</title>
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-s3.png?v=20260324-applogo1" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16-s3.png?v=20260324-applogo1" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180-s3.png?v=20260324-applogo1" />
+    <style>
+      :root { --bg:#f5fbff; --surface:#ffffff; --ink:#10233d; --muted:#4e657d; --line:#d7e4f0; --brand:#0e5b8f; --brand-soft:#e9f5ff; --warn-soft:#fff7e8; --teal-soft:#eefaf6; --danger-soft:#fff0f0; }
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:"Segoe UI",Tahoma,Arial,sans-serif; color:var(--ink); background:radial-gradient(circle at 86% 8%, #d7edff 0%, transparent 30%), radial-gradient(circle at 10% 22%, #dff8ef 0%, transparent 24%), var(--bg); }
+      .wrap { width:min(1200px,94vw); margin:22px auto 34px; display:grid; grid-template-columns:280px 1fr; gap:16px; }
+      .panel { background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 24px rgba(12,36,68,.06); }
+      .toc { position:sticky; top:16px; max-height:calc(100dvh - 32px); overflow:auto; padding:14px; }
+      .toc h2 { margin:0 0 10px; color:var(--brand); font-size:1rem; }
+      .toc a { display:block; text-decoration:none; color:#34506c; border-radius:8px; padding:7px 9px; font-size:13px; }
+      .toc a:hover { background:#edf6ff; color:#124b77; }
+      .content { padding:0 0 18px; }
+      .hero { padding:20px; border-bottom:1px solid var(--line); background:linear-gradient(160deg,#ffffff 0%,#f0f8ff 62%,#edf9f4 100%); }
+      .eyebrow { display:inline-flex; align-items:center; min-height:28px; padding:5px 12px; border-radius:999px; background:var(--brand-soft); color:var(--brand); font-size:12px; font-weight:700; margin-bottom:10px; }
+      h1 { margin:0; color:#08385f; font-size:clamp(1.42rem,2.4vw,2.04rem); }
+      .subtitle { margin:8px 0 0; color:#2e6189; font-family:"Montserrat","Segoe UI",Tahoma,Arial,sans-serif; font-size:.98rem; font-weight:500; line-height:1.5; }
+      .hero-grid { margin-top:14px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+      .metric,.box { border:1px solid #cfe0f2; border-radius:12px; background:#fff; padding:12px; }
+      .metric .k { font-size:11px; color:#5d758c; margin-bottom:6px; text-transform:uppercase; letter-spacing:.3px; }
+      .metric .v { font-size:14px; color:#1d456d; font-weight:700; }
+      .section { padding:18px 20px; border-bottom:1px solid #edf3fb; }
+      .section:last-child { border-bottom:none; }
+      .section h2 { margin:0 0 10px; color:#0e5b8f; font-size:1.12rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+      .section h3 { margin:0 0 8px; color:#33526f; font-size:.98rem; font-weight:700; }
+      .section p { margin:0; color:#304860; line-height:1.6; }
+      .stack { margin-top:12px; display:grid; gap:12px; }
+      .grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+      .grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+      .box ul,.section ul,.section ol { margin:0 0 0 18px; padding:0; }
+      .box li,.section li { margin:6px 0; color:#304860; line-height:1.55; }
+      .table { margin-top:10px; width:100%; border-collapse:collapse; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+      .table th,.table td { padding:10px; text-align:left; font-size:14px; vertical-align:top; border-bottom:1px solid #e8eff8; }
+      .table thead th { background:#f4f9ff; color:#14456f; font-weight:700; }
+      .table tr:last-child td { border-bottom:none; }
+      .callout { border-radius:12px; padding:12px 14px; border:1px solid #d6e8f6; background:#f8fbff; color:#284764; }
+      .callout.teal { background:var(--teal-soft); border-color:#d8efe6; }
+      .callout.warn { background:var(--warn-soft); border-color:#f0dfc0; }
+      .callout.danger { background:var(--danger-soft); border-color:#f1d4d4; }
+      .guideline-list { display:grid; gap:10px; }
+      .guideline-line { color:#304863; line-height:1.7; }
+      .guideline-line strong { color:#14456f; }
+      .note-quiz-footer { padding:18px 20px 24px; }
+      .topic-quiz-actions { display:flex; flex-wrap:wrap; gap:10px; }
+      .topic-quiz-cta { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 18px; border-radius:999px; border:1px solid #bfd9ef; background:#0e5b8f; color:#fff; font-weight:700; text-decoration:none; cursor:pointer; box-shadow:0 10px 22px rgba(14,91,143,.22); }
+      .topic-quiz-cta:visited { color:#fff; }
+      .topic-quiz-cta:hover,.topic-quiz-cta:focus-visible { background:#0b4870; color:#fff; border-color:#96c7e9; }
+      a { color:#0e5b8f; }
+      @media (max-width:860px) { .wrap { width:min(100%,100vw); margin:0; display:block; } .panel { border-radius:0; box-shadow:none; border-left:none; border-right:none; } .hero-grid,.grid-2,.grid-3 { grid-template-columns:1fr; } .section { padding:16px 14px; } .table th,.table td { padding:8px; font-size:12px; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <aside class="panel toc">
+        <h2>On This Page</h2>
+        <a href="#learning-objectives">1. Learning Objectives</a>
+        <a href="#introduction-to-diabetes-mellitus">2. Introduction to Diabetes Mellitus</a>
+        <a href="#classification-of-diabetes-mellitus">3. Classification of Diabetes Mellitus</a>
+        <a href="#diagnostic-criteria">4. Diagnostic Criteria</a>
+        <a href="#pathophysiology">5. Pathophysiology</a>
+        <a href="#glycemic-goals-and-monitoring">6. Glycemic Goals and Monitoring</a>
+        <a href="#non-pharmacological-management">7. Non-Pharmacological Management</a>
+        <a href="#pharmacological-management-of-type-1-diabetes">8. Pharmacological Management of Type 1 Diabetes</a>
+        <a href="#pharmacological-management-of-type-2-diabetes">9. Pharmacological Management of Type 2 Diabetes</a>
+        <a href="#approach-to-pharmacotherapy-selection">10. Approach to Pharmacotherapy Selection</a>
+        <a href="#management-of-cardiovascular-risk-and-comorbidities">11. Management of Cardiovascular Risk and Comorbidities</a>
+        <a href="#acute-complications">12. Acute Complications</a>
+        <a href="#chronic-complications">13. Chronic Complications</a>
+        <a href="#special-populations">14. Special Populations</a>
+        <a href="#patient-counseling-points">15. Patient Counseling Points</a>
+        <a href="#summary-for-exam-preparation">16. Summary for Exam Preparation</a>
+        <a href="#key-guidelines-links">17. Key Guidelines Links</a>
+      </aside>
+      <article class="panel content">
+        <header class="hero">
+          <span class="eyebrow">Endocrine Therapeutics</span>
+          <h1>Diabetes Mellitus</h1>
+          <p class="subtitle">A comprehensive lecture note covering diagnosis, glycemic monitoring, insulin and non-insulin therapy, ADA/EASD pharmacotherapy selection, acute emergencies, chronic complications, and patient counseling.</p>
+          <div class="hero-grid">
+            <div class="metric"><div class="k">Core Split</div><div class="v">Type 1 absolute deficiency vs Type 2 insulin resistance</div></div>
+            <div class="metric"><div class="k">A1c Goal</div><div class="v">Most adults: &lt;7.0%</div></div>
+            <div class="metric"><div class="k">High-Yield Drug</div><div class="v">Metformin first-line unless contraindicated</div></div>
+            <div class="metric"><div class="k">Emergency Pair</div><div class="v">DKA and HHS</div></div>
+          </div>
+        </header>
+        <section class="section" id="learning-objectives">
+          <h2>1. Learning Objectives</h2>
+          <div class="stack"><div class="box"><ol>
+            <li>Classify diabetes mellitus by type and differentiate based on pathophysiology and clinical presentation.</li>
+            <li>Apply current diagnostic criteria for diabetes, prediabetes, and gestational diabetes.</li>
+            <li>Interpret glycemic targets using A1c, fasting glucose, and postprandial glucose.</li>
+            <li>Select and individualize pharmacotherapy for type 1 and type 2 diabetes using guideline-directed approaches.</li>
+            <li>Compare mechanisms, adverse effects, and clinical indications for antihyperglycemic drug classes.</li>
+            <li>Recognize and manage hypoglycemia, DKA, and HHS.</li>
+            <li>Identify strategies to prevent and manage chronic microvascular and macrovascular complications.</li>
+            <li>Provide counseling on adherence, insulin administration, monitoring, and lifestyle modification.</li>
+          </ol></div></div>
+        </section>
+        <section class="section" id="introduction-to-diabetes-mellitus">
+          <h2>2. Introduction to Diabetes Mellitus</h2>
+          <p>Diabetes mellitus is a group of metabolic disorders marked by chronic hyperglycemia caused by defects in insulin secretion, insulin action, or both. It is a major cause of blindness, end-stage renal disease, amputation, myocardial infarction, stroke, and heart failure.</p>
+          <div class="grid-3 stack">
+            <div class="box"><h3>Prevalence</h3><p>Roughly 1 in 10 adults globally are affected.</p></div>
+            <div class="box"><h3>Microvascular burden</h3><p>Retinopathy, nephropathy, and neuropathy drive disability.</p></div>
+            <div class="box"><h3>Macrovascular burden</h3><p>Diabetes markedly raises cardiovascular risk.</p></div>
+          </div>
+        </section>
+        <section class="section" id="classification-of-diabetes-mellitus">
+          <h2>3. Classification of Diabetes Mellitus</h2>
+          <div class="stack"><div class="box"><h3>3.1. Type 1 Diabetes Mellitus</h3></div></div>
+          <table class="table">
+            <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Etiology</td><td>Autoimmune beta-cell destruction</td></tr>
+              <tr><td>Onset</td><td>Usually childhood or adolescence, but can occur at any age</td></tr>
+              <tr><td>Insulin status</td><td>Absolute insulin deficiency</td></tr>
+              <tr><td>Ketosis</td><td>Prone to diabetic ketoacidosis</td></tr>
+              <tr><td>Autoantibodies</td><td>Often present: GAD, IA-2, islet cell, insulin autoantibodies</td></tr>
+              <tr><td>Treatment</td><td>Lifelong insulin required</td></tr>
+            </tbody>
+          </table>
+          <div class="callout"><strong>Subtypes:</strong> Type 1A is autoimmune and most common; Type 1B is idiopathic and more often described in people of African or Asian descent.</div>
+          <div class="stack"><div class="box"><h3>3.2. Type 2 Diabetes Mellitus</h3></div></div>
+          <table class="table">
+            <thead><tr><th>Feature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>Etiology</td><td>Insulin resistance plus relative insulin deficiency</td></tr>
+              <tr><td>Onset</td><td>Typically adulthood, increasingly seen in youth with obesity</td></tr>
+              <tr><td>Ketosis</td><td>Uncommon but possible under stress</td></tr>
+              <tr><td>Autoantibodies</td><td>Absent</td></tr>
+              <tr><td>Body habitus</td><td>Often overweight or obese</td></tr>
+              <tr><td>Treatment</td><td>Lifestyle, oral agents, injectables, and sometimes insulin</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-2 stack">
+            <div class="box"><h3>3.3. Gestational Diabetes Mellitus</h3><ul><li>Glucose intolerance first recognized during pregnancy</li><li>Raises risk of macrosomia, neonatal hypoglycemia, pre-eclampsia, and later T2DM</li><li>Medical nutrition therapy first; insulin preferred if medication is needed</li></ul></div>
+            <div class="box"><h3>3.4. Other Specific Types</h3><ul><li>Monogenic diabetes: MODY, neonatal diabetes</li><li>Secondary diabetes: glucocorticoids, antipsychotics, pancreatitis, pancreatectomy, endocrinopathies such as Cushing's syndrome or acromegaly</li></ul></div>
+          </div>
+        </section>
+        <section class="section" id="diagnostic-criteria">
+          <h2>4. Diagnostic Criteria</h2>
+          <table class="table">
+            <thead><tr><th>Test</th><th>Diagnostic Value</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Fasting plasma glucose</td><td>&gt;=126 mg/dL</td><td>Requires no caloric intake for at least 8 hours</td></tr>
+              <tr><td>2-hour plasma glucose after 75 g OGTT</td><td>&gt;=200 mg/dL</td><td>Oral glucose tolerance test</td></tr>
+              <tr><td>Hemoglobin A1c</td><td>&gt;=6.5%</td><td>Should be measured by a certified laboratory method</td></tr>
+              <tr><td>Random plasma glucose</td><td>&gt;=200 mg/dL</td><td>Requires classic symptoms of hyperglycemia</td></tr>
+            </tbody>
+          </table>
+          <table class="table">
+            <thead><tr><th>Prediabetes Test</th><th>Prediabetes Range</th></tr></thead>
+            <tbody>
+              <tr><td>Fasting plasma glucose</td><td>100-125 mg/dL</td></tr>
+              <tr><td>2-hour OGTT</td><td>140-199 mg/dL</td></tr>
+              <tr><td>A1c</td><td>5.7-6.4%</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="pathophysiology">
+          <h2>5. Pathophysiology</h2>
+          <div class="grid-2 stack">
+            <div class="box">
+              <h3>5.1. Type 1 Diabetes Pathophysiology</h3>
+              <ol>
+                <li>Genetic susceptibility such as HLA-DR3 and HLA-DR4</li>
+                <li>Environmental trigger such as viral infection</li>
+                <li>Autoimmune attack on beta-cell antigens</li>
+                <li>Progressive beta-cell destruction</li>
+                <li>Absolute insulin deficiency with hyperglycemia and ketosis</li>
+              </ol>
+            </div>
+            <div class="box">
+              <h3>5.2. Type 2 Diabetes Pathophysiology</h3>
+              <p>The classic high-yield model is the ominous octet: insulin resistance, beta-cell dysfunction, reduced incretin effect, inappropriate glucagon secretion, increased renal glucose reabsorption, excess lipolysis, increased hepatic glucose production, and impaired central regulation.</p>
+            </div>
+          </div>
+          <table class="table">
+            <thead><tr><th>Defect</th><th>Site</th><th>Consequence</th></tr></thead>
+            <tbody>
+              <tr><td>Insulin resistance</td><td>Muscle, liver, adipose tissue</td><td>Reduced glucose uptake and increased hepatic output</td></tr>
+              <tr><td>Beta-cell dysfunction</td><td>Pancreas</td><td>Progressive decline in insulin secretion</td></tr>
+              <tr><td>Incretin deficiency</td><td>Gut</td><td>Reduced GLP-1 and GIP activity</td></tr>
+              <tr><td>Alpha-cell dysfunction</td><td>Pancreas</td><td>Inappropriate glucagon secretion</td></tr>
+              <tr><td>Glucose reabsorption</td><td>Kidney</td><td>Increased SGLT2-mediated glucose recovery</td></tr>
+              <tr><td>Lipolysis / CNS dysregulation</td><td>Adipose tissue / hypothalamus</td><td>Free fatty acids and dysregulated appetite worsen hyperglycemia</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="glycemic-goals-and-monitoring">
+          <h2>6. Glycemic Goals and Monitoring</h2>
+          <div class="stack"><div class="box"><h3>6.1. Hemoglobin A1c</h3><p>A1c reflects average glucose over roughly 2-3 months, based on glucose exposure across the erythrocyte lifespan.</p></div></div>
+          <table class="table">
+            <thead><tr><th>Population</th><th>Recommended A1c Goal</th></tr></thead>
+            <tbody>
+              <tr><td>Most non-pregnant adults</td><td>&lt;7.0%</td></tr>
+              <tr><td>More stringent</td><td>&lt;6.5% when achievable safely</td></tr>
+              <tr><td>Less stringent</td><td>&lt;8.0% in severe hypoglycemia risk, frailty, or limited life expectancy</td></tr>
+            </tbody>
+          </table>
+          <div class="callout"><strong>Common correlation:</strong> A1c 6% is about 126 mg/dL, 7% is about 154 mg/dL, 8% is about 183 mg/dL, and 10% is about 240 mg/dL.</div>
+          <div class="grid-2 stack">
+            <div class="box"><h3>6.2. Self-Monitoring of Blood Glucose</h3><ul><li>T1DM: often 4-10 times daily</li><li>T2DM on insulin: often 2-4 times daily</li><li>Preprandial target: 80-130 mg/dL</li><li>Postprandial target: &lt;180 mg/dL</li></ul></div>
+            <div class="box"><h3>6.3. Continuous Glucose Monitoring</h3><ul><li>Time in range goal: &gt;70%</li><li>Time below range: &lt;4% under 70 mg/dL and &lt;1% under 54 mg/dL</li><li>Time above range: &lt;25% over 180 mg/dL</li></ul></div>
+          </div>
+        </section>
+        <section class="section" id="non-pharmacological-management">
+          <h2>7. Non-Pharmacological Management</h2>
+          <div class="grid-3 stack">
+            <div class="box"><h3>7.1. Medical Nutrition Therapy</h3><ul><li>Consistent carbohydrate timing and amount</li><li>Fiber at least 14 g per 1000 kcal</li><li>Limit saturated fat and avoid sugar-sweetened beverages</li><li>Carbohydrate counting is essential in insulin-treated patients</li></ul></div>
+            <div class="box"><h3>7.2. Physical Activity</h3><ul><li>150 minutes/week of moderate aerobic activity</li><li>Resistance training 2-3 times per week</li><li>Adjust insulin or carbohydrate to reduce exercise-related hypoglycemia</li></ul></div>
+            <div class="box"><h3>7.3. Weight Management</h3><ul><li>5-10% weight loss improves glucose, BP, and lipids</li><li>Very-low-calorie diets may induce remission in selected T2DM</li><li>Bariatric surgery can be considered in severe obesity when medical therapy is insufficient</li></ul></div>
+          </div>
+        </section>
+        <section class="section" id="pharmacological-management-of-type-1-diabetes">
+          <h2>8. Pharmacological Management of Type 1 Diabetes</h2>
+          <div class="stack"><div class="box"><h3>8.1. Insulin Therapy</h3><p>All patients with T1DM require basal insulin plus prandial insulin. Insulin is the cornerstone of therapy.</p></div></div>
+          <table class="table">
+            <thead><tr><th>Class</th><th>Examples</th><th>Onset</th><th>Peak</th><th>Duration</th><th>Key Features</th></tr></thead>
+            <tbody>
+              <tr><td>Rapid-acting</td><td>Lispro, aspart, glulisine</td><td>10-30 min</td><td>30-90 min</td><td>3-5 hours</td><td>Given just before or just after meals</td></tr>
+              <tr><td>Short-acting</td><td>Regular insulin</td><td>30-60 min</td><td>2-4 hours</td><td>5-8 hours</td><td>Given 30-60 min before meals; also used IV</td></tr>
+              <tr><td>Intermediate</td><td>NPH</td><td>1-2 hours</td><td>4-8 hours</td><td>10-16 hours</td><td>Cloudy suspension with hypoglycemia-prone peak</td></tr>
+              <tr><td>Long-acting</td><td>Glargine, detemir, degludec</td><td>1-2 hours</td><td>Relatively peakless</td><td>24-42 hours</td><td>Basal coverage with less hypoglycemia than NPH</td></tr>
+              <tr><td>Premixed</td><td>70/30, 75/25</td><td>Variable</td><td>Variable</td><td>Variable</td><td>Convenient but less flexible; not preferred in T1DM</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-2 stack">
+            <div class="box"><h3>8.2. Insulin Regimens</h3><ul><li><strong>Multiple daily injections:</strong> basal insulin plus rapid-acting meal insulin</li><li><strong>Insulin pump (CSII):</strong> continuous basal infusion with bolus dosing</li></ul></div>
+            <div class="box"><h3>8.3. Adjunctive Therapy</h3><p>Pramlintide is an amylin analogue that slows gastric emptying, suppresses glucagon, and increases satiety. It can reduce A1c modestly and may promote weight loss, but hypoglycemia risk rises if prandial insulin is not adjusted.</p></div>
+          </div>
+        </section>
+        <section class="section" id="pharmacological-management-of-type-2-diabetes">
+          <h2>9. Pharmacological Management of Type 2 Diabetes</h2>
+          <table class="table">
+            <thead><tr><th>9.1. Metformin</th><th>Key Points</th></tr></thead>
+            <tbody>
+              <tr><td>Mechanism</td><td>Activates AMPK, lowers hepatic glucose production, and increases peripheral glucose uptake</td></tr>
+              <tr><td>A1c effect</td><td>About 1.0-1.5%</td></tr>
+              <tr><td>Weight / hypoglycemia</td><td>Weight neutral or modest loss; very low hypoglycemia risk</td></tr>
+              <tr><td>Key issues</td><td>GI intolerance is common; rare lactic acidosis; contraindicated when eGFR is below 30 mL/min/1.73m²</td></tr>
+              <tr><td>High-yield note</td><td>First-line for T2DM unless contraindicated</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-2 stack">
+            <div class="box"><h3>9.2. Insulin Secretagogues</h3><ul><li><strong>Sulfonylureas:</strong> glimepiride, glipizide, glyburide; high hypoglycemia risk, weight gain</li><li><strong>Meglitinides:</strong> repaglinide, nateglinide; shorter acting and taken with meals</li></ul></div>
+            <div class="box"><h3>9.3. Thiazolidinediones</h3><ul><li>Pioglitazone and rosiglitazone improve insulin sensitivity</li><li>Cause edema, weight gain, fracture risk, and can worsen heart failure</li></ul></div>
+          </div>
+          <div class="grid-3 stack">
+            <div class="box"><h3>9.4. Alpha-Glucosidase Inhibitors</h3><p>Acarbose and miglitol delay carbohydrate absorption. GI adverse effects are common, and hypoglycemia must be treated with glucose rather than sucrose.</p></div>
+            <div class="box"><h3>9.5. DPP-4 Inhibitors</h3><p>Sitagliptin, saxagliptin, linagliptin, and alogliptin raise endogenous incretin activity. They are weight neutral with low hypoglycemia risk but modest A1c lowering.</p></div>
+            <div class="box"><h3>9.6. GLP-1 Receptor Agonists</h3><p>Liraglutide, dulaglutide, semaglutide, and related agents lower A1c, promote weight loss, and reduce MACE in selected agents.</p></div>
+          </div>
+          <div class="grid-3 stack">
+            <div class="box"><h3>9.7. SGLT2 Inhibitors</h3><p>Empagliflozin, dapagliflozin, canagliflozin, and ertugliflozin cause glucosuria, modest weight loss, low hypoglycemia risk, and strong cardiorenal benefit.</p></div>
+            <div class="box"><h3>9.8. Pramlintide</h3><p>Adjunct to insulin in T1DM or T2DM, with modest A1c lowering and weight loss but higher hypoglycemia risk unless mealtime insulin is reduced.</p></div>
+            <div class="box"><h3>9.9. Insulin in Type 2 Diabetes</h3><p>Use insulin for very high A1c, symptomatic hyperglycemia, failure of combination therapy, pregnancy, surgery, or acute illness. Start basal insulin and intensify if needed.</p></div>
+          </div>
+          <div class="callout warn"><strong>Common class anchors:</strong> sulfonylureas and insulin increase hypoglycemia risk; TZDs worsen edema and heart failure; GLP-1 RAs mainly cause nausea; SGLT2 inhibitors can cause genital infection, volume depletion, and euglycemic DKA.</div>
+        </section>
+        <section class="section" id="approach-to-pharmacotherapy-selection">
+          <h2>10. Approach to Pharmacotherapy Selection</h2>
+          <p>The ADA/EASD approach is patient-centered and no longer focused only on A1c. Cardiovascular disease, heart failure, CKD, weight, hypoglycemia risk, cost, and patient preference all shape therapy choice.</p>
+          <table class="table">
+            <thead><tr><th>Factor</th><th>Therapeutic Meaning</th></tr></thead>
+            <tbody>
+              <tr><td>ASCVD or high cardiovascular risk</td><td>Prefer GLP-1 RA or SGLT2 inhibitor with proven cardiovascular benefit</td></tr>
+              <tr><td>Heart failure</td><td>SGLT2 inhibitors are strongly favored</td></tr>
+              <tr><td>CKD</td><td>SGLT2 inhibitors and GLP-1 RAs provide renal benefit</td></tr>
+              <tr><td>Weight priority</td><td>Prefer GLP-1 RA or SGLT2 inhibitor</td></tr>
+              <tr><td>Cost priority</td><td>Metformin, sulfonylureas, or TZDs may be used</td></tr>
+              <tr><td>Hypoglycemia avoidance</td><td>Prefer metformin, DPP-4 inhibitor, SGLT2 inhibitor, GLP-1 RA, or TZD</td></tr>
+            </tbody>
+          </table>
+          <table class="table">
+            <thead><tr><th>Step</th><th>Therapy</th></tr></thead>
+            <tbody>
+              <tr><td>Step 1</td><td>Metformin plus lifestyle modification unless contraindicated</td></tr>
+              <tr><td>Step 2</td><td>Add a second agent based on cardiorenal risk, weight, cost, and hypoglycemia considerations</td></tr>
+              <tr><td>Step 3</td><td>Escalate to triple therapy or insulin if not at goal</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="management-of-cardiovascular-risk-and-comorbidities">
+          <h2>11. Management of Cardiovascular Risk and Comorbidities</h2>
+          <table class="table">
+            <thead><tr><th>Condition</th><th>Preferred Agents</th><th>Rationale</th></tr></thead>
+            <tbody>
+              <tr><td>ASCVD</td><td>GLP-1 RA or SGLT2 inhibitor with proven CV benefit</td><td>Cardiovascular outcome trials show MACE reduction</td></tr>
+              <tr><td>Heart failure</td><td>SGLT2 inhibitor</td><td>Reduces heart failure hospitalization and improves outcomes</td></tr>
+              <tr><td>CKD</td><td>SGLT2 inhibitor or GLP-1 RA</td><td>Slows progression of kidney disease and reduces albuminuria</td></tr>
+              <tr><td>Hypertension</td><td>ACE inhibitor or ARB</td><td>Improves BP control and renal protection</td></tr>
+              <tr><td>Dyslipidemia</td><td>Statin therapy</td><td>Moderate-intensity statin is standard for most adults aged 40-75 with diabetes</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="acute-complications">
+          <h2>12. Acute Complications</h2>
+          <div class="grid-3 stack">
+            <div class="box"><h3>12.1. Hypoglycemia</h3><p>Glucose under 70 mg/dL can cause adrenergic symptoms like tremor and sweating and neuroglycopenic symptoms like confusion or seizure.</p><ul><li>Rule of 15: 15 g fast carbohydrate, recheck in 15 minutes, repeat if needed</li><li>If unconscious: give glucagon and seek emergency care</li></ul></div>
+            <div class="box"><h3>12.2. Diabetic Ketoacidosis</h3><p>DKA is hyperglycemia, ketosis, metabolic acidosis, and an elevated anion gap. Treat with IV fluids, IV insulin, potassium replacement, and precipitant management.</p></div>
+            <div class="box"><h3>12.3. Hyperosmolar Hyperglycemic State</h3><p>HHS is severe hyperglycemia with hyperosmolarity and little or no ketosis. Fluids and electrolyte correction are especially important.</p></div>
+          </div>
+          <div class="callout danger"><strong>SGLT2 warning:</strong> euglycemic DKA can occur during illness, surgery, or reduced oral intake. These agents should be held in those settings.</div>
+        </section>
+        <section class="section" id="chronic-complications">
+          <h2>13. Chronic Complications</h2>
+          <table class="table">
+            <thead><tr><th>13.1. Microvascular Complications</th><th>Description</th><th>Prevention / Management</th></tr></thead>
+            <tbody>
+              <tr><td>Retinopathy</td><td>Blindness risk from non-proliferative to proliferative disease</td><td>Annual eye exam, glycemic control, anti-VEGF or laser when needed</td></tr>
+              <tr><td>Nephropathy</td><td>Albuminuria and progressive CKD</td><td>ACEi/ARB, SGLT2 inhibitor, GLP-1 RA, monitor UACR and eGFR</td></tr>
+              <tr><td>Neuropathy</td><td>Peripheral and autonomic patterns</td><td>Glycemic control plus duloxetine, pregabalin, gabapentin, or tricyclics for pain</td></tr>
+            </tbody>
+          </table>
+          <table class="table">
+            <thead><tr><th>13.2. Macrovascular Complications</th><th>Description</th><th>Prevention / Management</th></tr></thead>
+            <tbody>
+              <tr><td>Coronary artery disease</td><td>MI and angina risk</td><td>Statin, antiplatelet when indicated, BP control, CV-protective glucose agents</td></tr>
+              <tr><td>Cerebrovascular disease</td><td>Stroke and TIA</td><td>Statin, BP control, antiplatelet therapy when indicated</td></tr>
+              <tr><td>Peripheral artery disease</td><td>Claudication, ulcers, amputation risk</td><td>Statin, antiplatelet, foot care, vascular evaluation</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="section" id="special-populations">
+          <h2>14. Special Populations</h2>
+          <div class="grid-3 stack">
+            <div class="box"><h3>14.1. Diabetes in Pregnancy</h3><ul><li>Preconception A1c goal often under 6.5%</li><li>Insulin is preferred in gestational diabetes if lifestyle measures fail</li><li>Avoid ACEi, ARB, statins, SGLT2 inhibitors, and GLP-1 RAs in pregnancy</li></ul></div>
+            <div class="box"><h3>14.2. Diabetes in CKD</h3><ul><li>Metformin is contraindicated when eGFR is under 30</li><li>Use renal dosing for several agents</li><li>SGLT2 inhibitors and GLP-1 RAs are especially valuable when appropriate</li></ul></div>
+            <div class="box"><h3>14.3. Diabetes in Older Adults</h3><ul><li>Healthy older adults often target A1c under 7.0-7.5%</li><li>Frail patients may need less stringent goals</li><li>Regimen simplification and hypoglycemia avoidance are key</li></ul></div>
+          </div>
+        </section>
+        <section class="section" id="patient-counseling-points">
+          <h2>15. Patient Counseling Points</h2>
+          <div class="grid-2 stack">
+            <div class="box"><h3>For all patients</h3><ul><li>Consistent carbohydrate intake, exercise, and weight management matter as much as medicines</li><li>Check glucose as recommended and keep a log</li><li>Recognize and treat hypoglycemia early</li><li>During illness, stay hydrated and monitor more frequently</li></ul></div>
+            <div class="box"><h3>For insulin, SGLT2, and GLP-1 therapy</h3><ul><li>Rotate insulin injection sites and never skip basal insulin</li><li>Hold SGLT2 inhibitors during acute illness, surgery, or reduced intake</li><li>GLP-1 RAs often cause nausea early, so start low and titrate slowly</li></ul></div>
+          </div>
+        </section>
+        <section class="section" id="summary-for-exam-preparation">
+          <h2>16. Summary for Exam Preparation</h2>
+          <table class="table">
+            <thead><tr><th>Class</th><th>Examples</th><th>A1c Reduction</th><th>Weight</th><th>Hypoglycemia</th><th>CV Benefit</th><th>Key AE</th></tr></thead>
+            <tbody>
+              <tr><td>Metformin</td><td>Metformin</td><td>1.0-1.5%</td><td>Down or neutral</td><td>Low</td><td>Neutral</td><td>GI effects, rare lactic acidosis</td></tr>
+              <tr><td>Sulfonylureas</td><td>Glipizide, glimepiride</td><td>1.0-1.5%</td><td>Up</td><td>High</td><td>Neutral</td><td>Hypoglycemia</td></tr>
+              <tr><td>TZDs</td><td>Pioglitazone</td><td>0.8-1.0%</td><td>Up</td><td>Low</td><td>Neutral</td><td>Edema, HF, fracture risk</td></tr>
+              <tr><td>DPP-4 inhibitors</td><td>Sitagliptin</td><td>0.5-0.8%</td><td>Neutral</td><td>Low</td><td>Neutral</td><td>Rare pancreatitis</td></tr>
+              <tr><td>GLP-1 receptor agonists</td><td>Liraglutide, semaglutide</td><td>1.0-1.5%</td><td>Down</td><td>Low</td><td>Reduces MACE</td><td>Nausea</td></tr>
+              <tr><td>SGLT2 inhibitors</td><td>Empagliflozin, dapagliflozin</td><td>0.7-1.0%</td><td>Down</td><td>Low</td><td>Reduces MACE and HF</td><td>UTI/genital infection, DKA, volume depletion</td></tr>
+              <tr><td>Insulin</td><td>Glargine, aspart</td><td>Variable</td><td>Up</td><td>High</td><td>Neutral</td><td>Hypoglycemia</td></tr>
+            </tbody>
+          </table>
+          <div class="grid-3 stack">
+            <div class="box"><h3>GLP-1 RA Benefits</h3><p>Cardiovascular benefit, weight loss, low hypoglycemia risk, and satiety.</p></div>
+            <div class="box"><h3>SGLT2 Benefits</h3><p>Glucosuria-based glucose lowering with heart failure and renal benefit.</p></div>
+            <div class="box"><h3>High Hypoglycemia Risk</h3><p>Sulfonylureas, insulin, and meglitinides are the classic high-risk classes.</p></div>
+          </div>
+        </section>
+        <section class="section" id="key-guidelines-links">
+          <h2>17. Key Guidelines Links</h2>
+          <div class="guideline-list">
+            <p class="guideline-line"><strong>ADA Standards of Care 2024:</strong> <a href="https://diabetesjournals.org/care/issue/47/Supplement_1" target="_blank" rel="noreferrer">https://diabetesjournals.org/care/issue/47/Supplement_1</a></p>
+            <p class="guideline-line"><strong>ADA / EASD Hyperglycemia Consensus 2022:</strong> <a href="https://diabetesjournals.org/care/article/45/11/2753/146097" target="_blank" rel="noreferrer">https://diabetesjournals.org/care/article/45/11/2753/146097</a></p>
+            <p class="guideline-line"><strong>AACE T2DM Algorithm 2023:</strong> <a href="https://www.aace.com/disease-state-resources/diabetes/algorithm-guidelines" target="_blank" rel="noreferrer">https://www.aace.com/disease-state-resources/diabetes/algorithm-guidelines</a></p>
+            <p class="guideline-line"><strong>KDIGO Diabetes in CKD 2022:</strong> <a href="https://kdigo.org/guidelines/diabetes-ckd/" target="_blank" rel="noreferrer">https://kdigo.org/guidelines/diabetes-ckd/</a></p>
+            <p class="guideline-line"><strong>ESC Diabetes and Cardiovascular Disease 2023:</strong> <a href="https://academic.oup.com/eurheartj/article/44/37/3507/7247399" target="_blank" rel="noreferrer">https://academic.oup.com/eurheartj/article/44/37/3507/7247399</a></p>
+          </div>
+        </section>
+        <div class="note-quiz-footer">
+          <div class="topic-quiz-actions">
+            <a class="topic-quiz-cta" href="../index.html?topicQuiz=diabetes-mellitus&topicTitle=Diabetes%20Mellitus" target="_top" onclick="if(window.top&&typeof window.top.startTopicQuizSession==='function'){window.top.startTopicQuizSession('diabetes-mellitus','Diabetes Mellitus'); return false;} return true;">Start Topic Quiz</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </body>
+</html>

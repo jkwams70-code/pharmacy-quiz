@@ -1,0 +1,198 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Quiz System Status</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      .status {
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+      }
+      .ok {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      h1 {
+        color: #333;
+      }
+      .test-button {
+        padding: 10px 20px;
+        margin: 5px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🏥 Pharmacy Quiz - System Status</h1>
+
+    <div id="backend-status" class="status">Checking backend...</div>
+    <div id="frontend-status" class="status">Checking frontend...</div>
+    <div id="connection-status" class="status">Checking connection...</div>
+    <div id="data-status" class="status">Checking data...</div>
+
+    <h2>Quick Tests</h2>
+    <button class="test-button" onclick="testHealthCheck()">
+      Test Backend Health
+    </button>
+    <button class="test-button" onclick="testCategories()">
+      Test Categories
+    </button>
+    <button class="test-button" onclick="testQuestions()">
+      Test Questions
+    </button>
+    <button class="test-button" onclick="openQuiz()">Open Quiz</button>
+
+    <h2>System Summary</h2>
+    <div
+      id="summary"
+      style="background: #f0f0f0; padding: 15px; border-radius: 5px"
+    >
+      <p>
+        <strong>Backend:</strong>
+        <span id="backend-summary">Running on http://localhost:4000</span>
+      </p>
+      <p>
+        <strong>Frontend:</strong>
+        <span id="frontend-summary">Running on http://localhost:8000</span>
+      </p>
+      <p>
+        <strong>Questions:</strong> <span id="questions-count">Loading...</span>
+      </p>
+      <p>
+        <strong>Categories:</strong>
+        <span id="categories-count">Loading...</span>
+      </p>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:4000/api";
+
+      async function checkBackend() {
+        try {
+          const res = await fetch(`${API_BASE}/health`);
+          const data = await res.json();
+          document.getElementById("backend-status").innerHTML =
+            '<div class="ok">✅ <strong>Backend:</strong> Running - ' +
+            data.service +
+            "</div>";
+          return true;
+        } catch (e) {
+          document.getElementById("backend-status").innerHTML =
+            '<div class="error">❌ <strong>Backend:</strong> Not responding - ' +
+            e.message +
+            "</div>";
+          return false;
+        }
+      }
+
+      async function checkFrontend() {
+        document.getElementById("frontend-status").innerHTML =
+          '<div class="ok">✅ <strong>Frontend:</strong> Page loaded successfully</div>';
+        return true;
+      }
+
+      async function checkConnection() {
+        try {
+          const res = await fetch(`${API_BASE}/categories`);
+          if (res.ok) {
+            document.getElementById("connection-status").innerHTML =
+              '<div class="ok">✅ <strong>Connection:</strong> Frontend ↔ Backend working</div>';
+            return true;
+          }
+        } catch (e) {
+          document.getElementById("connection-status").innerHTML =
+            '<div class="error">❌ <strong>Connection:</strong> ' +
+            e.message +
+            "</div>";
+          return false;
+        }
+      }
+
+      async function checkData() {
+        try {
+          const res = await fetch(`${API_BASE}/questions?limit=1`);
+          const data = await res.json();
+          document.getElementById("data-status").innerHTML =
+            '<div class="ok">✅ <strong>Data:</strong> ' +
+            data.total +
+            " questions available</div>";
+          document.getElementById("questions-count").textContent =
+            data.total + " questions";
+
+          const catRes = await fetch(`${API_BASE}/categories`);
+          const catData = await catRes.json();
+          document.getElementById("categories-count").textContent =
+            catData.categories.length + " categories";
+          return true;
+        } catch (e) {
+          document.getElementById("data-status").innerHTML =
+            '<div class="error">❌ <strong>Data:</strong> ' +
+            e.message +
+            "</div>";
+          return false;
+        }
+      }
+
+      async function testHealthCheck() {
+        alert(
+          JSON.stringify(
+            await fetch(`${API_BASE}/health`).then((r) => r.json()),
+            null,
+            2,
+          ),
+        );
+      }
+
+      async function testCategories() {
+        const data = await fetch(`${API_BASE}/categories`).then((r) =>
+          r.json(),
+        );
+        alert(
+          "Categories: " +
+            data.categories.slice(0, 5).join(", ") +
+            "... (" +
+            data.categories.length +
+            " total)",
+        );
+      }
+
+      async function testQuestions() {
+        const data = await fetch(`${API_BASE}/questions?limit=2`).then((r) =>
+          r.json(),
+        );
+        alert(
+          "Total: " +
+            data.total +
+            " questions\nFirst: " +
+            data.questions[0].text.substring(0, 50) +
+            "...",
+        );
+      }
+
+      function openQuiz() {
+        window.location.href = "http://localhost:8000";
+      }
+
+      // Run checks on page load
+      window.addEventListener("load", async () => {
+        await checkBackend();
+        await checkFrontend();
+        await checkConnection();
+        await checkData();
+      });
+    </script>
+  </body>
+</html>

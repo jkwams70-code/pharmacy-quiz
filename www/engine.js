@@ -30475,6 +30475,10 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
 
   const remoteCategories = Array.isArray(remote.categories) ? remote.categories : [];
   const remoteRotations = Array.isArray(remote.rotations) ? remote.rotations : [];
+  const localCategories = Array.isArray(local.categories) ? local.categories : [];
+  const localRotations = Array.isArray(local.rotations) ? local.rotations : [];
+  const hasUsefulLocalCategories = localCategories.some((row) => Number(row?.attempts) > 0);
+  const hasUsefulLocalRotations = localRotations.some((row) => Number(row?.attempts) > 0);
   const hasUsefulRemoteCategories = remoteCategories.some((row) => Number(row?.attempts) > 0);
   const hasUsefulRemoteRotations = remoteRotations.some((row) => Number(row?.attempts) > 0);
 
@@ -30486,10 +30490,10 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
       Math.max(0, Number(local.sessionCount) || 0),
       Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
     ),
-    categories: (hasUsefulRemoteCategories ? remoteCategories : [...mergedCategoryMap.values()]).sort(
+    categories: (hasUsefulLocalCategories ? localCategories : hasUsefulRemoteCategories ? remoteCategories : [...mergedCategoryMap.values()]).sort(
       (a, b) => String(a.category).localeCompare(String(b.category)),
     ),
-    rotations: (hasUsefulRemoteRotations ? remoteRotations : [...mergedRotationMap.values()]).sort(
+    rotations: (hasUsefulLocalRotations ? localRotations : hasUsefulRemoteRotations ? remoteRotations : [...mergedRotationMap.values()]).sort(
       (a, b) => String(a.rotation).localeCompare(String(b.rotation)),
     ),
   };

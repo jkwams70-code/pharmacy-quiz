@@ -2552,7 +2552,7 @@ function getCategoryAccuracy(category) {
   const data = categoryPerformance[category];
   if (!data || data.attempts === 0) return 100;
 
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakCategories(threshold = 80) {
@@ -2613,7 +2613,7 @@ function getRotationAccuracy(rotation) {
   const key = normalizeRotationValue(rotation);
   const data = rotationPerformance[key];
   if (!key || !data || data.attempts === 0) return 100;
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakRotations(threshold = 80) {
@@ -30473,6 +30473,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     }
   });
 
+  const remoteCategories = Array.isArray(remote.categories) ? remote.categories : [];
+  const remoteRotations = Array.isArray(remote.rotations) ? remote.rotations : [];
+  const hasUsefulRemoteCategories = remoteCategories.some((row) => Number(row?.attempts) > 0);
+  const hasUsefulRemoteRotations = remoteRotations.some((row) => Number(row?.attempts) > 0);
+
   return {
     totalAttempts: mergedTotalAttempts,
     overallAccuracy: mergedOverallAccuracy,
@@ -30481,11 +30486,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
       Math.max(0, Number(local.sessionCount) || 0),
       Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
     ),
-    categories: [...mergedCategoryMap.values()].sort((a, b) =>
-      String(a.category).localeCompare(String(b.category)),
+    categories: (hasUsefulRemoteCategories ? remoteCategories : [...mergedCategoryMap.values()]).sort(
+      (a, b) => String(a.category).localeCompare(String(b.category)),
     ),
-    rotations: [...mergedRotationMap.values()].sort((a, b) =>
-      String(a.rotation).localeCompare(String(b.rotation)),
+    rotations: (hasUsefulRemoteRotations ? remoteRotations : [...mergedRotationMap.values()]).sort(
+      (a, b) => String(a.rotation).localeCompare(String(b.rotation)),
     ),
   };
 }
@@ -30872,6 +30877,7 @@ function renderDashboardTopSubjects(categories = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30879,7 +30885,7 @@ function renderDashboardTopSubjects(categories = []) {
         <div class="dashboard-topsubject-name">${row.category || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });
@@ -30904,6 +30910,7 @@ function renderDashboardRotations(rotations = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30911,7 +30918,7 @@ function renderDashboardRotations(rotations = []) {
         <div class="dashboard-topsubject-name">${row.rotation || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });

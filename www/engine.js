@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js?v=20260613-manufacturing-set2";
-import { backendClient } from "./backendClient.js?v=20260611-community29";
+import { backendClient } from "./backendClient.js?v=20260618-signin-api-fix1";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
 
 const MAJOR_CATEGORIES = [

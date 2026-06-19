@@ -1591,6 +1591,7 @@ function openLawDrillLevelReview(levelIndex = 0) {
   lawDrillState.reviewLevelIndex = levelIndex;
   lawDrillState.resultLevelIndex = null;
   setLawDrillView("review", { persist: false });
+  inReview = false;
   inDetailedReview = true;
   renderLawDrillRail();
   showScreen("quiz-area");
@@ -1627,6 +1628,7 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   lawDrillState.resultLevelIndex = levelIndex;
   lawDrillState.reviewLevelIndex = null;
   setLawDrillView("result", { persist: false });
+  inReview = false;
   if (questionCardEl) questionCardEl.classList.add("hidden");
   if (lawDrillPanelEl) lawDrillPanelEl.classList.add("hidden");
   if (lawDrillStackEl) {
@@ -1644,6 +1646,8 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   const reviewBtn = document.getElementById("result-review-btn");
   const shareBtn = document.getElementById("result-share-btn");
   const menuBtn = document.getElementById("result-menu-btn");
+  const scoreBlock = document.querySelector("#study-result-screen .result-score-block");
+  const genericReviewWrapper = document.getElementById("result-review-content");
 
   if (resultTitle) {
     resultTitle.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
@@ -1668,28 +1672,33 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
         : "That level is complete. Return to the ladder when ready.";
   }
   if (reviewSection) {
-    reviewSection.classList.remove("hidden");
+    reviewSection.classList.add("hidden");
   }
   if (reviewSectionTitle) {
-    reviewSectionTitle.textContent = "Review";
+    reviewSectionTitle.textContent = "Law Drill Review";
   }
   if (reviewContent) {
-    reviewContent.classList.remove("review-palette-grid");
-    reviewContent.classList.add("analysis-list");
-    reviewContent.innerHTML = buildLawDrillStackMarkup(levelIndex, "Past Level Review");
+    reviewContent.classList.remove("review-palette-grid", "analysis-list", "law-drill-only-review");
+    reviewContent.innerHTML = "";
+  }
+  if (scoreBlock) {
+    scoreBlock.classList.add("hidden");
+  }
+  if (genericReviewWrapper) {
+    genericReviewWrapper.classList.add("law-drill-only-review");
   }
 
   if (reviewBtn) {
-    reviewBtn.classList.toggle("hidden", !hasNext);
-    reviewBtn.textContent = hasNext ? `Level ${nextLevelIndex + 1}` : "Close";
-    reviewBtn.onclick = hasNext
-      ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
-      : returnToLawLadder;
+    reviewBtn.classList.toggle("hidden", false);
+    reviewBtn.textContent = "Open Review";
+    reviewBtn.onclick = () => openLawDrillLevelReview(levelIndex);
   }
   if (shareBtn) {
     shareBtn.classList.toggle("hidden", false);
-    shareBtn.textContent = "Close";
-    shareBtn.onclick = returnToLawLadder;
+    shareBtn.textContent = hasNext ? `Level ${nextLevelIndex + 1}` : "Close";
+    shareBtn.onclick = hasNext
+      ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
+      : returnToLawLadder;
   }
   if (menuBtn) {
     menuBtn.textContent = "Back to Menu";
@@ -21813,6 +21822,14 @@ function clearDailyResultEnhancements() {
     resultShareBtn.classList.add("hidden");
     resultShareBtn.onclick = null;
   }
+  const scoreBlock = document.querySelector("#study-result-screen .result-score-block");
+  if (scoreBlock) {
+    scoreBlock.classList.remove("hidden");
+  }
+  const reviewContent = document.getElementById("result-review-content");
+  if (reviewContent) {
+    reviewContent.classList.remove("law-drill-only-review");
+  }
 }
 
 function renderDailySocialCard(snapshot) {
@@ -33436,29 +33453,10 @@ async function finishLawDrill() {
   userAnswers = {};
   answeredCurrent = false;
 
-  if (resultTitle) resultTitle.innerText = "Law Drill Complete";
-  if (percentEl) percentEl.innerText = `${percent}%`;
-  if (scoreEl) scoreEl.innerText = `${correctAnswers} / ${Math.max(1, totalAnswered)} Correct`;
-  if (feedbackEl) {
-    if (percent >= 80) {
-      feedbackEl.innerText = "Excellent progress. Keep building the ladder.";
-      if (percentEl) percentEl.style.color = "#15803d";
-    } else if (percent >= 60) {
-      feedbackEl.innerText = "Good momentum. Review the harder levels again.";
-      if (percentEl) percentEl.style.color = "#f9a825";
-    } else {
-      feedbackEl.innerText = "Keep going. The stack will sharpen with more reps.";
-      if (percentEl) percentEl.style.color = "#dc2626";
-    }
-  }
-
   awardXp(10 + Math.round(percent / 20));
 
-  clearDailyResultEnhancements();
-  showScreen("study-result-screen");
-  configureStudyLikeResultActions();
-  renderPoints();
-  renderSessionPointsDisplay();
+  // Hand off to the dedicated law-drill completion flow so the next level unlocks.
+  markLawDrillCurrentLevelComplete();
 }
 
 function finishStudy() {

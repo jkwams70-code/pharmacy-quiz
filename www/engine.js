@@ -842,6 +842,9 @@ function getLawDrillCumulativeScore() {
   const liveHistoryScore = getLawDrillTotalCorrect();
   const savedSession = readCurrentLawDrillSession();
   const savedHistoryScore = getLawDrillStateTotalCorrect(savedSession?.lawDrillState || null);
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return Math.max(0, Math.round(Math.max(setupScore, savedHistoryScore)));
+  }
   return Math.max(0, Math.round(Math.max(setupScore, liveHistoryScore, savedHistoryScore)));
 }
 
@@ -1079,6 +1082,9 @@ function readCurrentLawDrillSession() {
   const ownerKey = getLawDrillSessionOwnerKey();
   const local = state.owners?.[ownerKey] || null;
   const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return remote || local;
+  }
   return mergeLawDrillSessions(local, remote);
 }
 
@@ -1967,6 +1973,7 @@ let dashboardTrendScope =
     .trim()
     .toLowerCase() || "session";
 let dashboardTrendSessionsCache = [];
+let dashboardTrendSessionsLoadedFromSync = false;
 let lastSavedSessionFingerprint = "";
 let lastSavedSessionAt = 0;
 
@@ -2356,6 +2363,14 @@ rebuildCaseMap();
 
 let performanceData = JSON.parse(localStorage.getItem("quizPerformance")) || {};
 let syncedPerformanceStateCache = null;
+let syncedPerformanceStateLoadedFromSync = false;
+
+function resetSyncedDashboardCaches() {
+  syncedPerformanceStateCache = null;
+  syncedPerformanceStateLoadedFromSync = false;
+  dashboardTrendSessionsCache = [];
+  dashboardTrendSessionsLoadedFromSync = false;
+}
 
 function savePerformance() {
   localStorage.setItem("quizPerformance", JSON.stringify(performanceData));
@@ -2507,22 +2522,12 @@ function applySyncedPerformanceState(state = {}) {
   const nextCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
   const nextRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
   const nextWeakTracker = normalizeWeakTrackerMap(state?.weakTracker || {});
-  const hasSyncedCategoryPerformance = Object.keys(nextCategoryPerformance).length > 0;
-  const hasSyncedRotationPerformance = Object.keys(nextRotationPerformance).length > 0;
 
-  performanceData = mergePerformanceStatsMap(performanceData, nextPerformanceData);
-  categoryPerformance = mergePerformanceStatsMap(categoryPerformance, nextCategoryPerformance);
-  rotationPerformance = mergePerformanceStatsMap(rotationPerformance, nextRotationPerformance);
-  if (Object.keys(nextWeakTracker).length > 0) {
-    weakTracker = mergeWeakTrackerMap(weakTracker, nextWeakTracker);
-  }
+  performanceData = nextPerformanceData;
+  categoryPerformance = nextCategoryPerformance;
+  rotationPerformance = nextRotationPerformance;
+  weakTracker = nextWeakTracker;
 
-  if (!hasSyncedCategoryPerformance) {
-    rebuildCategoryPerformanceFromQuestionStats();
-  }
-  if (!hasSyncedRotationPerformance) {
-    rebuildRotationPerformanceFromQuestionStats();
-  }
   savePerformance();
   localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
   localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
@@ -2530,7 +2535,7 @@ function applySyncedPerformanceState(state = {}) {
 }
 
 async function loadSyncedPerformanceState({ force = false } = {}) {
-  if (!force && syncedPerformanceStateCache) {
+  if (!force && syncedPerformanceStateLoadedFromSync && syncedPerformanceStateCache) {
     applySyncedPerformanceState(syncedPerformanceStateCache);
     return syncedPerformanceStateCache;
   }
@@ -2538,32 +2543,17 @@ async function loadSyncedPerformanceState({ force = false } = {}) {
   try {
     const response = await backendClient.fetchSyncedPerformanceState(5000);
     const events = Array.isArray(response?.events) ? response.events : [];
-    const state = response?.state && typeof response.state === "object" ? response.state : null;
     const built = buildPerformanceStateFromEvents(events);
-    const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || state?.weakTracker || {});
-    const stateCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
-    const stateRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
+    const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || {});
     const nextState = {
-      performanceData: mergePerformanceStatsMap(performanceData, built.performanceData),
-      categoryPerformance: mergePerformanceStatsMap(
-        categoryPerformance,
-        Object.keys(stateCategoryPerformance).length > 0
-          ? stateCategoryPerformance
-          : built.categoryPerformance,
-      ),
-      rotationPerformance: mergePerformanceStatsMap(
-        rotationPerformance,
-        Object.keys(stateRotationPerformance).length > 0
-          ? stateRotationPerformance
-          : built.rotationPerformance,
-      ),
-      weakTracker: Object.keys(remoteWeakTracker).length > 0 ? remoteWeakTracker : built.weakTracker,
+      performanceData: built.performanceData,
+      categoryPerformance: built.categoryPerformance,
+      rotationPerformance: built.rotationPerformance,
+      weakTracker: remoteWeakTracker,
     };
     syncedPerformanceStateCache = nextState;
+    syncedPerformanceStateLoadedFromSync = true;
     applySyncedPerformanceState(nextState);
-    if (!events.length && state) {
-      applySyncedPerformanceState(state);
-    }
   } catch {
     // Keep local performance data if the backend cannot be reached.
   }
@@ -5493,6 +5483,9 @@ function writePendingPoints(value = 0) {
 function getCumulativePoints() {
   const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return remotePoints > 0 ? remotePoints : localPoints;
+  }
   return Math.max(localPoints, remotePoints);
 }
 
@@ -5596,6 +5589,9 @@ function readCurrentSetupPoints() {
   const ownerKey = getSetupPointsOwnerKey();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return hasAnySetupPoints(remote) ? remote : local;
+  }
   const primary = mergeSetupPoints(local, remote);
   const historyDerived = deriveSetupPointsFromDashboardSessions(getDashboardSessionEntries());
   const merged = mergeSetupPoints(primary, historyDerived);
@@ -22154,6 +22150,9 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
 
     const payload = await fetchToday.call(backendClient);
     dailyQuizState = normalizeDailyQuizPayload(payload);
+    if (payload?.user) {
+      currentUser = payload.user;
+    }
     if (dailyQuizState.today?.completed) {
       markDailyPopupSeen(dailyQuizState.today.date);
     }
@@ -29120,6 +29119,7 @@ async function restoreAuthSession() {
   if (!backendClient.isAuthenticated()) {
     currentUser = null;
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     return false;
   }
@@ -29130,8 +29130,8 @@ async function restoreAuthSession() {
     await flushSetupPointsSync();
     await flushLawDrillSessionSync();
     await refreshDailyQuizState({ force: true, silent: true });
-    void loadSyncedPerformanceState({ force: true });
-    void loadDashboardTrendData({ force: true });
+    await loadSyncedPerformanceState({ force: true });
+    await loadDashboardTrendData({ force: true });
     void loadCommunityOverview({ silent: true });
     return true;
   } catch {
@@ -29139,6 +29139,7 @@ async function restoreAuthSession() {
     teardownCommunityRealtime();
     currentUser = null;
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     return false;
   }
@@ -29282,8 +29283,8 @@ async function handleAuthSubmit(event) {
       await flushSetupPointsSync();
       await flushLawDrillSessionSync();
       await refreshDailyQuizState({ force: true, silent: true });
-      void loadSyncedPerformanceState({ force: true });
-      void loadDashboardTrendData({ force: true });
+      await loadSyncedPerformanceState({ force: true });
+      await loadDashboardTrendData({ force: true });
       await loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
@@ -29303,8 +29304,8 @@ async function handleAuthSubmit(event) {
       await flushSetupPointsSync();
       await flushLawDrillSessionSync();
       await refreshDailyQuizState({ force: true, silent: true });
-      void loadSyncedPerformanceState({ force: true });
-      void loadDashboardTrendData({ force: true });
+      await loadSyncedPerformanceState({ force: true });
+      await loadDashboardTrendData({ force: true });
       await loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
@@ -29404,6 +29405,7 @@ if (logoutBtn) {
     currentUser = null;
     resetPointsState();
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     closeAuthModal();
     showScreen("home-screen");
@@ -29430,6 +29432,7 @@ if (logoutConfirmBtn) {
     currentUser = null;
     resetPointsState();
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     closeAuthModal();
     showScreen("home-screen");
@@ -30793,13 +30796,19 @@ function mergeDashboardTrendEntries(entries = []) {
   return [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
 
-function getDashboardSessionEntries() {
+function getLocalDashboardSessionEntries() {
   return mergeDashboardTrendEntries([
     ...(Array.isArray(sessionHistory) ? sessionHistory : []),
-    ...(Array.isArray(dashboardTrendSessionsCache) ? dashboardTrendSessionsCache : []),
     ...(Array.isArray(recentSessionResults) ? recentSessionResults : []),
     latestSavedSession,
   ]);
+}
+
+function getDashboardSessionEntries() {
+  if (dashboardTrendSessionsLoadedFromSync) {
+    return Array.isArray(dashboardTrendSessionsCache) ? dashboardTrendSessionsCache : [];
+  }
+  return getLocalDashboardSessionEntries();
 }
 
 function getDashboardTrendScopeLabel(scope = "session") {
@@ -31042,27 +31051,32 @@ function renderDashboardTrend(scope = dashboardTrendScope) {
 }
 
 async function loadDashboardTrendData({ force = false } = {}) {
-  if (!force && dashboardTrendSessionsCache.length > 0) {
+  if (!force && dashboardTrendSessionsLoadedFromSync) {
     renderDashboardTrend(dashboardTrendScope);
     return dashboardTrendSessionsCache;
   }
 
-  dashboardTrendSessionsCache = getDashboardTrendSourceEntries();
-  renderDashboardTrend(dashboardTrendScope);
+  const localEntries = getLocalDashboardSessionEntries();
+  if (!currentUser) {
+    dashboardTrendSessionsLoadedFromSync = false;
+    dashboardTrendSessionsCache = localEntries;
+    renderDashboardTrend(dashboardTrendScope);
+    return dashboardTrendSessionsCache;
+  }
 
   try {
     const response = await backendClient.fetchSyncedHistory("", 5000);
     const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-    dashboardTrendSessionsCache = mergeDashboardTrendEntries([
-      ...dashboardTrendSessionsCache,
-      ...remoteSessions,
-    ]);
+    dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
+    dashboardTrendSessionsLoadedFromSync = true;
     renderPoints();
     renderDashboardTrend(dashboardTrendScope);
     if (dashboardDiv?.classList.contains("screen-active")) {
       renderDashboardRecentResults();
     }
   } catch {
+    dashboardTrendSessionsLoadedFromSync = false;
+    dashboardTrendSessionsCache = localEntries;
     // Keep local data if syncing is unavailable.
   }
 
@@ -31181,21 +31195,9 @@ async function showDashboard() {
 
   rebuildCategoryPerformanceFromQuestionStats();
   rebuildRotationPerformanceFromQuestionStats();
-  const localSnapshot = getLocalDashboardSnapshot();
-  renderDashboardValues(localSnapshot);
   await loadSyncedPerformanceState({ force: true });
-  void loadDashboardTrendData({ force: true });
-
-  const refreshedLocalSnapshot = getLocalDashboardSnapshot();
-  backendClient
-    .fetchSyncedDashboard()
-    .then((remote) => {
-      const mergedSnapshot = mergeDashboardSnapshots(refreshedLocalSnapshot, remote);
-      renderDashboardValues(mergedSnapshot);
-    })
-    .catch(() => {
-      renderDashboardValues(refreshedLocalSnapshot);
-    });
+  await loadDashboardTrendData({ force: true });
+  renderDashboardValues(getLocalDashboardSnapshot());
 
   const dashboardCloseBtn = document.getElementById("dashboard-close-btn");
   if (dashboardCloseBtn) {
@@ -33136,6 +33138,9 @@ async function finishDailyQuizSession() {
       Number(dailyQuizState?.stats?.gems ?? currentUser?.dailyQuiz?.gems) || 0;
     const response = await backendClient.submitDailyQuiz({ answers });
     dailyQuizState = normalizeDailyQuizPayload(response);
+    if (response?.user) {
+      currentUser = response.user;
+    }
 
     const result = dailyQuizState.result || {};
     const finalScore = Number.isFinite(Number(result.score))

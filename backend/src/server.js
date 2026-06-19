@@ -3232,6 +3232,43 @@ function normalizePointsValue(value) {
   return Number.isFinite(points) && points > 0 ? Math.round(points) : 0;
 }
 
+function createEmptySetupPoints() {
+  return {
+    study: 0,
+    exam: 0,
+    daily: 0,
+    rapid: 0,
+    sudden: 0,
+    clinical: 0,
+    law: 0,
+  };
+}
+
+function normalizeSetupPointsValue(rawPoints = {}) {
+  const next = createEmptySetupPoints();
+  if (!rawPoints || typeof rawPoints !== "object" || Array.isArray(rawPoints)) {
+    return next;
+  }
+
+  for (const key of Object.keys(next)) {
+    next[key] = Math.max(0, Math.round(Number(rawPoints[key]) || 0));
+  }
+
+  return next;
+}
+
+function normalizeLawDrillSessionValue(rawSession = null) {
+  if (!rawSession || typeof rawSession !== "object" || Array.isArray(rawSession)) {
+    return null;
+  }
+
+  try {
+    return structuredClone(rawSession);
+  } catch {
+    return JSON.parse(JSON.stringify(rawSession));
+  }
+}
+
 function normalizePointEvent(rawEvent = {}) {
   return {
     id: String(rawEvent.id || crypto.randomUUID()),
@@ -3491,6 +3528,8 @@ function normalizeExistingUser(rawUser = {}) {
     resetCodeExpiresAt: rawUser.resetCodeExpiresAt || null,
     points: normalizePointsValue(rawUser.points),
     dailyQuiz: normalizeDailyQuizState(rawUser.dailyQuiz),
+    setupPoints: normalizeSetupPointsValue(rawUser.setupPoints),
+    lawDrillSession: normalizeLawDrillSessionValue(rawUser.lawDrillSession),
   };
 }
 
@@ -3522,6 +3561,8 @@ function toPublicUser(user) {
     deactivatedUntil: normalized.deactivatedUntil,
     points: normalizePointsValue(normalized.points),
     dailyQuiz: summarizeDailyQuizState(normalized.dailyQuiz),
+    setupPoints: normalizeSetupPointsValue(normalized.setupPoints),
+    lawDrillSession: normalizeLawDrillSessionValue(normalized.lawDrillSession),
   };
 }
 
@@ -5177,6 +5218,9 @@ function buildDailyLeaderboardSnapshot({
 }
 
 function createCorsOptions() {
+  if (process.env.NODE_ENV !== "production") {
+    return { origin: true };
+  }
   if (config.corsOrigins.includes("*")) {
     return { origin: true };
   }
@@ -5243,6 +5287,30 @@ if (config.trustProxy) {
 app.use(
   cors(createCorsOptions()),
 );
+app.use((req, res, next) => {
+  if (req.method !== "OPTIONS") {
+    next();
+    return;
+  }
+
+  const origin = String(req.get("origin") || "").trim();
+  const requestHeaders = String(
+    req.get("access-control-request-headers") || "content-type,authorization,x-client-id",
+  ).trim();
+  const allowedOrigins = config.corsOrigins;
+
+  if (origin && (allowedOrigins.includes("*") || allowedOrigins.includes(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  } else if (allowedOrigins.includes("*")) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", requestHeaders);
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.sendStatus(204);
+});
 app.use(helmet());
 if (config.enableGzip) {
   app.use(compression());
@@ -5966,6 +6034,86 @@ app.put(
     users[userIndex] = nextUser;
     await writeCollection("users", users);
     res.json({ ok: true, user: toPublicUser(nextUser) });
+  }),
+);
+
+app.put(
+  "/api/auth/setup-points",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await purgeExpiredDeactivatedUsers();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
+
+    if (userIndex === -1) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const currentUser = users[userIndex];
+    if (isUserCurrentlyDeactivated(currentUser)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    if (!req.body || typeof req.body.setupPoints !== "object" || Array.isArray(req.body.setupPoints)) {
+      res.status(400).json({ error: "setupPoints must be an object" });
+      return;
+    }
+
+    const nextUser = {
+      ...currentUser,
+      setupPoints: normalizeSetupPointsValue(req.body.setupPoints),
+      updatedAt: new Date().toISOString(),
+    };
+
+    users[userIndex] = nextUser;
+    await writeCollection("users", users);
+    res.json({
+      ok: true,
+      setupPoints: normalizeSetupPointsValue(nextUser.setupPoints),
+      user: toPublicUser(nextUser),
+    });
+  }),
+);
+
+app.put(
+  "/api/auth/law-drill-session",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await purgeExpiredDeactivatedUsers();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
+
+    if (userIndex === -1) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const currentUser = users[userIndex];
+    if (isUserCurrentlyDeactivated(currentUser)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    if (req.body?.lawDrillSession !== null && typeof req.body?.lawDrillSession !== "object") {
+      res.status(400).json({ error: "lawDrillSession must be an object or null" });
+      return;
+    }
+
+    const nextUser = {
+      ...currentUser,
+      lawDrillSession: normalizeLawDrillSessionValue(req.body?.lawDrillSession),
+      updatedAt: new Date().toISOString(),
+    };
+
+    users[userIndex] = nextUser;
+    await writeCollection("users", users);
+    res.json({
+      ok: true,
+      lawDrillSession: normalizeLawDrillSessionValue(nextUser.lawDrillSession),
+      user: toPublicUser(nextUser),
+    });
   }),
 );
 
@@ -9173,7 +9321,10 @@ app.get(
       await writeCollection("users", users);
     }
 
-    res.json(buildDailyQuizResponse(dailyState, todayKey));
+    res.json({
+      ...buildDailyQuizResponse(dailyState, todayKey),
+      user: toPublicUser(users[userIndex]),
+    });
   }),
 );
 
@@ -9326,6 +9477,7 @@ app.post(
         wrongQuestionIds,
         rewards,
       },
+      user: toPublicUser(users[userIndex]),
     });
   }),
 );

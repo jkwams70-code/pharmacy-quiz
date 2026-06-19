@@ -402,6 +402,14 @@ export const backendClient = {
     return put("/auth/profile", payload);
   },
 
+  updateSetupPoints(payload = {}) {
+    return put("/auth/setup-points", payload);
+  },
+
+  updateLawDrillSession(payload = {}) {
+    return put("/auth/law-drill-session", payload);
+  },
+
   fetchCommunityOverview() {
     return get("/community/overview");
   },

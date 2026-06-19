@@ -1083,7 +1083,7 @@ function readCurrentLawDrillSession() {
   const local = state.owners?.[ownerKey] || null;
   const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
   if (currentUser?.id && backendClient.isAuthenticated()) {
-    return remote || local;
+    return remote;
   }
   return mergeLawDrillSessions(local, remote);
 }
@@ -5484,7 +5484,7 @@ function getCumulativePoints() {
   const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
   if (currentUser?.id && backendClient.isAuthenticated()) {
-    return remotePoints > 0 ? remotePoints : localPoints;
+    return remotePoints;
   }
   return Math.max(localPoints, remotePoints);
 }
@@ -5590,7 +5590,7 @@ function readCurrentSetupPoints() {
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
   if (currentUser?.id && backendClient.isAuthenticated()) {
-    return hasAnySetupPoints(remote) ? remote : local;
+    return remote;
   }
   const primary = mergeSetupPoints(local, remote);
   const historyDerived = deriveSetupPointsFromDashboardSessions(getDashboardSessionEntries());
@@ -5602,12 +5602,12 @@ function readCurrentSetupPoints() {
   return mergeSetupPoints(merged, guest);
 }
 
-function writeCurrentSetupPoints(nextValue = {}) {
+function writeCurrentSetupPoints(nextValue = {}, { scheduleSync = true } = {}) {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
   state.owners[ownerKey] = sanitizeSetupPoints(nextValue);
   writeSetupPointsState(state);
-  if (currentUser?.id && backendClient.isAuthenticated()) {
+  if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
     scheduleSetupPointsSync();
   }
   return state.owners[ownerKey];
@@ -5880,10 +5880,8 @@ function resetPointsState() {
 }
 
 function syncPointsFromCurrentUser() {
-  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
-  const pending = readPendingPoints();
-  writeStoredPoints(Math.max(localPoints, remotePoints + pending));
+  writeStoredPoints(remotePoints);
   leaderboardState.cache = Object.create(null);
   renderPoints();
 }
@@ -29127,8 +29125,14 @@ async function restoreAuthSession() {
   try {
     currentUser = await backendClient.fetchMe();
     renderAuthState();
-    await flushSetupPointsSync();
-    await flushLawDrillSessionSync();
+    syncPointsFromCurrentUser();
+    writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+      scheduleSync: false,
+    });
+    writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+      scheduleSync: false,
+    });
+    renderPoints();
     await refreshDailyQuizState({ force: true, silent: true });
     await loadSyncedPerformanceState({ force: true });
     await loadDashboardTrendData({ force: true });
@@ -31197,7 +31201,23 @@ async function showDashboard() {
   rebuildRotationPerformanceFromQuestionStats();
   await loadSyncedPerformanceState({ force: true });
   await loadDashboardTrendData({ force: true });
-  renderDashboardValues(getLocalDashboardSnapshot());
+  let remoteSnapshot = null;
+  try {
+    remoteSnapshot = await backendClient.fetchSyncedDashboard();
+  } catch {
+    remoteSnapshot = null;
+  }
+  const localSnapshot = getLocalDashboardSnapshot();
+  renderDashboardValues({
+    totalAttempts: Number(remoteSnapshot?.totalAttempts ?? localSnapshot.totalAttempts) || 0,
+    overallAccuracy: Number(remoteSnapshot?.overallAccuracy ?? localSnapshot.overallAccuracy) || 0,
+    weakCount: Number(remoteSnapshot?.weakQuestions ?? localSnapshot.weakCount) || 0,
+    sessionCount: Number(remoteSnapshot?.totalSessions ?? localSnapshot.sessionCount) || 0,
+    categories: Array.isArray(remoteSnapshot?.categories) && remoteSnapshot.categories.length > 0
+      ? remoteSnapshot.categories
+      : localSnapshot.categories,
+    rotations: localSnapshot.rotations,
+  });
 
   const dashboardCloseBtn = document.getElementById("dashboard-close-btn");
   if (dashboardCloseBtn) {

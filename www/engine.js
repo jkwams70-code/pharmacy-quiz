@@ -1,5 +1,5 @@
 import { baseQuestions } from "./data.js?v=20260613-manufacturing-set2";
-import { backendClient } from "./backendClient.js?v=20260611-community29";
+import { backendClient } from "./backendClient.js?v=20260618-signin-api-fix3";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
 
 const MAJOR_CATEGORIES = [
@@ -800,6 +800,18 @@ function getLawDrillTotalCorrect() {
   }, 0);
 }
 
+function getLawDrillStateTotalCorrect(state = null) {
+  const levels = Array.isArray(state?.levels) ? state.levels : [];
+  if (!levels.length) return 0;
+  return levels.reduce((total, level) => {
+    const historyCorrect = Array.isArray(level?.history)
+      ? level.history.filter((entry) => entry?.isCorrect).length
+      : 0;
+    const score = Math.max(0, Math.round(Number(level?.score) || 0));
+    return total + Math.max(historyCorrect, score);
+  }, 0);
+}
+
 function getLawDrillCurrentLevelScore() {
   return getLawDrillLevelScore(lawDrillState?.currentLevelIndex ?? 0);
 }
@@ -812,8 +824,10 @@ function getLawDrillLevelScore(levelIndex = 0) {
 
 function getLawDrillCumulativeScore() {
   const setupScore = Number(readCurrentSetupPoints()?.law) || 0;
-  const historyScore = getLawDrillTotalCorrect();
-  return Math.max(0, Math.round(Math.max(setupScore, historyScore)));
+  const liveHistoryScore = getLawDrillTotalCorrect();
+  const savedSession = readCurrentLawDrillSession();
+  const savedHistoryScore = getLawDrillStateTotalCorrect(savedSession?.lawDrillState || null);
+  return Math.max(0, Math.round(Math.max(setupScore, liveHistoryScore, savedHistoryScore)));
 }
 
 function getCurrentDrillCumulativeScore() {
@@ -2315,9 +2329,220 @@ rebuildCaseMap();
                   ================================= */
 
 let performanceData = JSON.parse(localStorage.getItem("quizPerformance")) || {};
+let syncedPerformanceStateCache = null;
 
 function savePerformance() {
   localStorage.setItem("quizPerformance", JSON.stringify(performanceData));
+}
+
+function normalizePerformanceStatsMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => {
+        const attempts = Math.max(0, Math.round(Number(value?.attempts) || 0));
+        const correct = Math.max(0, Math.min(attempts, Math.round(Number(value?.correct) || 0)));
+        return [String(key || "").trim(), { attempts, correct }];
+      })
+      .filter(([key]) => Boolean(key)),
+  );
+}
+
+function mergePerformanceStatsMap(left = {}, right = {}) {
+  const safeLeft = normalizePerformanceStatsMap(left);
+  const safeRight = normalizePerformanceStatsMap(right);
+  const merged = new Map();
+
+  Object.entries(safeLeft).forEach(([key, value]) => {
+    merged.set(key, { attempts: value.attempts, correct: value.correct });
+  });
+
+  Object.entries(safeRight).forEach(([key, value]) => {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { attempts: value.attempts, correct: value.correct });
+      return;
+    }
+    const attempts = Math.max(existing.attempts, value.attempts);
+    const correct = Math.max(existing.correct, value.correct);
+    merged.set(key, { attempts, correct: Math.min(attempts, correct) });
+  });
+
+  return Object.fromEntries(merged.entries());
+}
+
+function normalizeWeakTrackerMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => {
+        const normalizedKey = String(key || "").trim();
+        if (!normalizedKey) return null;
+        const roundsPassed = Math.max(0, Math.round(Number(value?.roundsPassed) || 0));
+        return [normalizedKey, { roundsPassed }];
+      })
+      .filter(Boolean),
+  );
+}
+
+function mergeWeakTrackerMap(left = {}, right = {}) {
+  const safeLeft = normalizeWeakTrackerMap(left);
+  const safeRight = normalizeWeakTrackerMap(right);
+  const merged = new Map();
+
+  Object.entries(safeLeft).forEach(([key, value]) => {
+    merged.set(key, { roundsPassed: value.roundsPassed });
+  });
+
+  Object.entries(safeRight).forEach(([key, value]) => {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { roundsPassed: value.roundsPassed });
+      return;
+    }
+    merged.set(key, {
+      roundsPassed: Math.max(existing.roundsPassed, value.roundsPassed),
+    });
+  });
+
+  return Object.fromEntries(merged.entries());
+}
+
+function buildPerformanceStateFromEvents(events = []) {
+  const nextPerformanceData = {};
+  const nextCategoryPerformance = {};
+  const nextRotationPerformance = {};
+
+  (Array.isArray(events) ? events : []).forEach((event) => {
+    const questionId = normalizeQuestionIdKey(event?.questionId);
+    if (!questionId) return;
+
+    const isCorrect = Boolean(event?.isCorrect);
+    const category = normalizeMajorCategory(event?.category || "", "");
+    const rotation = String(event?.rotation || "").trim();
+
+    if (!nextPerformanceData[questionId]) {
+      nextPerformanceData[questionId] = { attempts: 0, correct: 0 };
+    }
+    nextPerformanceData[questionId].attempts += 1;
+    if (isCorrect) {
+      nextPerformanceData[questionId].correct += 1;
+    }
+
+    if (!nextCategoryPerformance[category]) {
+      nextCategoryPerformance[category] = { attempts: 0, correct: 0 };
+    }
+    nextCategoryPerformance[category].attempts += 1;
+    if (isCorrect) {
+      nextCategoryPerformance[category].correct += 1;
+    }
+
+    if (rotation) {
+      if (!nextRotationPerformance[rotation]) {
+        nextRotationPerformance[rotation] = { attempts: 0, correct: 0 };
+      }
+      nextRotationPerformance[rotation].attempts += 1;
+      if (isCorrect) {
+        nextRotationPerformance[rotation].correct += 1;
+      }
+    }
+  });
+
+  const derivedWeakTracker = {};
+  Object.entries(nextPerformanceData).forEach(([questionId, row]) => {
+    const attempts = Math.max(0, Math.round(Number(row?.attempts) || 0));
+    const correct = Math.max(0, Math.min(attempts, Math.round(Number(row?.correct) || 0)));
+    const accuracy = attempts <= 0 ? 100 : Math.round((correct / attempts) * 100);
+    if (attempts > 0 && accuracy < 60) {
+      derivedWeakTracker[questionId] = { roundsPassed: 0 };
+    }
+  });
+
+  return {
+    performanceData: nextPerformanceData,
+    categoryPerformance: nextCategoryPerformance,
+    rotationPerformance: nextRotationPerformance,
+    weakTracker: derivedWeakTracker,
+  };
+}
+
+function captureCurrentPerformanceState() {
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
+  return {
+    performanceData: JSON.parse(JSON.stringify(performanceData || {})),
+    categoryPerformance: JSON.parse(JSON.stringify(categoryPerformance || {})),
+    rotationPerformance: JSON.parse(JSON.stringify(rotationPerformance || {})),
+  };
+}
+
+function applySyncedPerformanceState(state = {}) {
+  const nextPerformanceData = normalizePerformanceStatsMap(state?.performanceData || {});
+  const nextCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
+  const nextRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
+  const nextWeakTracker = normalizeWeakTrackerMap(state?.weakTracker || {});
+  const hasSyncedCategoryPerformance = Object.keys(nextCategoryPerformance).length > 0;
+  const hasSyncedRotationPerformance = Object.keys(nextRotationPerformance).length > 0;
+
+  performanceData = mergePerformanceStatsMap(performanceData, nextPerformanceData);
+  categoryPerformance = mergePerformanceStatsMap(categoryPerformance, nextCategoryPerformance);
+  rotationPerformance = mergePerformanceStatsMap(rotationPerformance, nextRotationPerformance);
+  if (Object.keys(nextWeakTracker).length > 0) {
+    weakTracker = mergeWeakTrackerMap(weakTracker, nextWeakTracker);
+  }
+
+  if (!hasSyncedCategoryPerformance) {
+    rebuildCategoryPerformanceFromQuestionStats();
+  }
+  if (!hasSyncedRotationPerformance) {
+    rebuildRotationPerformanceFromQuestionStats();
+  }
+  savePerformance();
+  localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
+  localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
+  renderPoints();
+}
+
+async function loadSyncedPerformanceState({ force = false } = {}) {
+  if (!force && syncedPerformanceStateCache) {
+    applySyncedPerformanceState(syncedPerformanceStateCache);
+    return syncedPerformanceStateCache;
+  }
+
+  try {
+    const response = await backendClient.fetchSyncedPerformanceState(5000);
+    const events = Array.isArray(response?.events) ? response.events : [];
+    const state = response?.state && typeof response.state === "object" ? response.state : null;
+    const built = buildPerformanceStateFromEvents(events);
+    const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || state?.weakTracker || {});
+    const stateCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
+    const stateRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
+    const nextState = {
+      performanceData: mergePerformanceStatsMap(performanceData, built.performanceData),
+      categoryPerformance: mergePerformanceStatsMap(
+        categoryPerformance,
+        Object.keys(stateCategoryPerformance).length > 0
+          ? stateCategoryPerformance
+          : built.categoryPerformance,
+      ),
+      rotationPerformance: mergePerformanceStatsMap(
+        rotationPerformance,
+        Object.keys(stateRotationPerformance).length > 0
+          ? stateRotationPerformance
+          : built.rotationPerformance,
+      ),
+      weakTracker: Object.keys(remoteWeakTracker).length > 0 ? remoteWeakTracker : built.weakTracker,
+    };
+    syncedPerformanceStateCache = nextState;
+    applySyncedPerformanceState(nextState);
+    if (!events.length && state) {
+      applySyncedPerformanceState(state);
+    }
+  } catch {
+    // Keep local performance data if the backend cannot be reached.
+  }
+
+  return syncedPerformanceStateCache;
 }
 
 function normalizeQuestionIdKey(value) {
@@ -2384,6 +2609,7 @@ function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
     rotation: question?.rotation || question?.rotations?.[0] || "",
     selectedAnswer: String(selectedAnswer || "").trim(),
   });
+  backendClient.syncPerformanceState(captureCurrentPerformanceState());
 
   savePerformance();
 }
@@ -2426,11 +2652,34 @@ function updateCategoryPerformance(category, isCorrect) {
   );
 }
 
+function rebuildCategoryPerformanceFromQuestionStats() {
+  const rebuilt = {};
+
+  Object.entries(performanceData || {}).forEach(([questionId, row]) => {
+    const question = findQuestionById(questionId);
+    const category = normalizeMajorCategory(
+      question?.category || "",
+      `${String(question?.question || "")} ${String(question?.explanation || "")}`,
+    );
+    if (!category || category === "all") return;
+
+    const attempts = Math.max(0, Number(row?.attempts) || 0);
+    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
+    const existing = rebuilt[category] || { attempts: 0, correct: 0 };
+    existing.attempts += attempts;
+    existing.correct += correct;
+    rebuilt[category] = existing;
+  });
+
+  categoryPerformance = rebuilt;
+  localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
+}
+
 function getCategoryAccuracy(category) {
   const data = categoryPerformance[category];
   if (!data || data.attempts === 0) return 100;
 
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakCategories(threshold = 80) {
@@ -2491,7 +2740,7 @@ function getRotationAccuracy(rotation) {
   const key = normalizeRotationValue(rotation);
   const data = rotationPerformance[key];
   if (!key || !data || data.attempts === 0) return 100;
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakRotations(threshold = 80) {
@@ -2501,6 +2750,7 @@ function getWeakRotations(threshold = 80) {
 }
 
 rebuildRotationPerformanceFromQuestionStats();
+rebuildCategoryPerformanceFromQuestionStats();
 
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");
@@ -5286,10 +5536,48 @@ function writeSetupPointsState(state = {}) {
   return { owners: safeOwners };
 }
 
+function hasAnySetupPoints(points = {}) {
+  return Object.values(sanitizeSetupPoints(points)).some((value) => Number(value) > 0);
+}
+
+function getSetupPointsBucketFromDashboardSessionMode(mode = "") {
+  const normalized = normalizeDashboardSessionMode(mode).trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized.startsWith("daily")) return "daily";
+  if (normalized.startsWith("study")) return "study";
+  if (normalized.startsWith("smart")) return "exam";
+  if (normalized.startsWith("exam")) return "exam";
+  if (normalized.includes("rapid fire")) return "rapid";
+  if (normalized.includes("sudden death")) return "sudden";
+  if (normalized.includes("clinical judgement")) return "clinical";
+  if (normalized.includes("law drill") || normalized.includes("pharmacy law quiz")) return "law";
+  return "";
+}
+
+function deriveSetupPointsFromDashboardSessions(entries = []) {
+  const totals = createEmptySetupPoints();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const bucket = getSetupPointsBucketFromDashboardSessionMode(entry?.mode || "");
+    const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+    if (!bucket || score <= 0) continue;
+    totals[bucket] += score;
+  }
+  return totals;
+}
+
 function readCurrentSetupPoints() {
   const state = readSetupPointsState();
-  const local = sanitizeSetupPoints(state.owners?.[getSetupPointsOwnerKey()] || createEmptySetupPoints());
-  return mergeSetupPoints(local, currentUser?.setupPoints || {});
+  const ownerKey = getSetupPointsOwnerKey();
+  const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
+  const primary = mergeSetupPoints(local, remote);
+  const historyDerived = deriveSetupPointsFromDashboardSessions(getDashboardSessionEntries());
+  const merged = mergeSetupPoints(primary, historyDerived);
+  if (ownerKey === "guest" || hasAnySetupPoints(merged)) {
+    return merged;
+  }
+  const guest = sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints());
+  return mergeSetupPoints(merged, guest);
 }
 
 function writeCurrentSetupPoints(nextValue = {}) {
@@ -5337,13 +5625,17 @@ async function flushSetupPointsSync() {
   const state = readSetupPointsState();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
-  const merged = mergeSetupPoints(local, remote);
+  const primary = mergeSetupPoints(local, remote);
+  const merged = ownerKey !== "guest" && !hasAnySetupPoints(primary)
+    ? mergeSetupPoints(primary, sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints()))
+    : primary;
   const changed = JSON.stringify(merged) !== JSON.stringify(remote);
 
   if (!changed) {
     state.owners[ownerKey] = merged;
     writeSetupPointsState(state);
     currentUser = { ...(currentUser || {}), setupPoints: merged };
+    renderPoints();
     return;
   }
 
@@ -5354,9 +5646,11 @@ async function flushSetupPointsSync() {
     state.owners[ownerKey] = synced;
     writeSetupPointsState(state);
     currentUser = response?.user || { ...(currentUser || {}), setupPoints: synced };
+    renderPoints();
   } catch {
     state.owners[ownerKey] = merged;
     writeSetupPointsState(state);
+    renderPoints();
   } finally {
     setupPointsSyncInFlight = false;
   }
@@ -13705,14 +13999,62 @@ function getCommunityMessageUploadState(message = {}) {
   return "";
 }
 
+function areCommunityNoticeMessagesDuplicate(left = {}, right = {}) {
+  const leftTime = Date.parse(String(left?.createdAt || left?.updatedAt || left?.deliveredAt || ""));
+  const rightTime = Date.parse(String(right?.createdAt || right?.updatedAt || right?.deliveredAt || ""));
+  const leftBucket = Number.isFinite(leftTime) ? Math.floor(leftTime / 5000) : 0;
+  const rightBucket = Number.isFinite(rightTime) ? Math.floor(rightTime / 5000) : 0;
+  const leftAttachment = getCommunityMessageAttachmentUpload(left) || {};
+  const rightAttachment = getCommunityMessageAttachmentUpload(right) || {};
+  return [
+    String(left?.senderUserId || "").trim(),
+    String(left?.type || "").trim().toLowerCase(),
+    String(left?.text || "").trim(),
+    String(left?.replyTo?.sourceId || "").trim(),
+    String(leftAttachment?.dataUrl || leftAttachment?.remoteUrl || "").trim(),
+    String(leftAttachment?.fileName || "").trim(),
+    String(leftAttachment?.mimeType || "").trim().toLowerCase(),
+    String(left?.noticeThreadKey || "").trim().toLowerCase(),
+    String(left?.noticeBatchId || "").trim(),
+    leftBucket,
+  ].join("::") === [
+    String(right?.senderUserId || "").trim(),
+    String(right?.type || "").trim().toLowerCase(),
+    String(right?.text || "").trim(),
+    String(right?.replyTo?.sourceId || "").trim(),
+    String(rightAttachment?.dataUrl || rightAttachment?.remoteUrl || "").trim(),
+    String(rightAttachment?.fileName || "").trim(),
+    String(rightAttachment?.mimeType || "").trim().toLowerCase(),
+    String(right?.noticeThreadKey || "").trim().toLowerCase(),
+    String(right?.noticeBatchId || "").trim(),
+    rightBucket,
+  ].join("::");
+}
+
 function getCommunityVisibleMessages(messages = []) {
   const baseMessages = Array.isArray(messages) ? [...messages] : [];
+  const dedupedBaseMessages = [];
+  const seenIds = new Set();
+  for (const message of baseMessages) {
+    const id = String(message?.id || "").trim();
+    if (id && seenIds.has(id)) continue;
+    if (id) seenIds.add(id);
+    const isNoticeConversation =
+      Boolean(communityState.activeConversationPartner?.isNotice) ||
+      String(message?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+      String(message?.senderUserId || "").trim() === COMMUNITY_ADMIN_NOTICE_SENDER_ID;
+    const previous = dedupedBaseMessages[dedupedBaseMessages.length - 1] || null;
+    if (isNoticeConversation && previous && areCommunityNoticeMessagesDuplicate(previous, message)) {
+      continue;
+    }
+    dedupedBaseMessages.push(message);
+  }
   const pendingMessages = Array.isArray(communityState.pendingOutgoingMessages)
     ? communityState.pendingOutgoingMessages
     : [];
-  if (!pendingMessages.length) return baseMessages;
+  if (!pendingMessages.length) return dedupedBaseMessages;
   const activeConversationId = String(communityState.activeConversation?.id || "").trim();
-  const merged = [...baseMessages];
+  const merged = [...dedupedBaseMessages];
   pendingMessages.forEach((entry) => {
     if (!entry || typeof entry !== "object") return;
     const entryConversationId = String(entry.conversationId || "").trim();
@@ -21604,8 +21946,13 @@ function renderDailyQuizUi() {
 
   const streak = Number(state?.stats?.streak ?? userSummary.streak) || 0;
   const gems = Number(state?.stats?.gems ?? userSummary.gems) || 0;
-  const completedDays =
-    Number(state?.stats?.completedDays ?? userSummary.completedDays) || 0;
+  const completedSessions =
+    Number(
+      state?.stats?.totalCompleted ??
+        userSummary.totalCompleted ??
+        state?.stats?.completedDays ??
+        userSummary.completedDays,
+    ) || 0;
   const season = state?.season || {};
   const today = state?.today || {};
   const rules = state?.rewardRules || {};
@@ -21667,7 +22014,7 @@ function renderDailyQuizUi() {
 
   if (dailyStreakValueEl) dailyStreakValueEl.textContent = String(streak);
   if (!dailyGemsAnimationActive) setDailyGemsValue(gems);
-  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedDays);
+  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedSessions);
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =
@@ -28749,6 +29096,8 @@ async function restoreAuthSession() {
     await flushSetupPointsSync();
     await flushLawDrillSessionSync();
     await refreshDailyQuizState({ force: true, silent: true });
+    void loadSyncedPerformanceState({ force: true });
+    void loadDashboardTrendData({ force: true });
     void loadCommunityOverview({ silent: true });
     return true;
   } catch {
@@ -28899,6 +29248,8 @@ async function handleAuthSubmit(event) {
       await flushSetupPointsSync();
       await flushLawDrillSessionSync();
       await refreshDailyQuizState({ force: true, silent: true });
+      void loadSyncedPerformanceState({ force: true });
+      void loadDashboardTrendData({ force: true });
       await loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
@@ -28918,6 +29269,8 @@ async function handleAuthSubmit(event) {
       await flushSetupPointsSync();
       await flushLawDrillSessionSync();
       await refreshDailyQuizState({ force: true, silent: true });
+      void loadSyncedPerformanceState({ force: true });
+      void loadDashboardTrendData({ force: true });
       await loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
@@ -30124,6 +30477,27 @@ function getLocalDashboardSnapshot() {
   const overallAccuracy =
     totalAttempts === 0 ? 0 : Math.round((totalCorrect / totalAttempts) * 100);
 
+  const sessionEntries = getDashboardSessionEntries();
+  const sessionTotals = sessionEntries.reduce(
+    (acc, entry) => {
+      const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+      const total = Math.max(0, Math.round(Number(entry?.total) || 0));
+      if (total <= 0) return acc;
+      acc.attempts += total;
+      acc.correct += Math.min(score, total);
+      if (Math.round((score / total) * 100) < 60) {
+        acc.weakCount += 1;
+      }
+      return acc;
+    },
+    { attempts: 0, correct: 0, weakCount: 0 },
+  );
+
+  const sessionFallbackAccuracy =
+    sessionTotals.attempts === 0
+      ? 0
+      : Math.round((sessionTotals.correct / sessionTotals.attempts) * 100);
+
   const categories = Object.keys(categoryPerformance || {})
     .map((cat) => ({
       category: cat,
@@ -30141,10 +30515,10 @@ function getLocalDashboardSnapshot() {
     .sort((a, b) => String(a.rotation).localeCompare(String(b.rotation)));
 
   return {
-    totalAttempts,
-    overallAccuracy,
-    weakCount,
-    sessionCount: getDashboardSessionEntries().length,
+    totalAttempts: totalAttempts > 0 ? totalAttempts : sessionTotals.attempts,
+    overallAccuracy: totalAttempts > 0 ? overallAccuracy : sessionFallbackAccuracy,
+    weakCount: weakCount > 0 ? weakCount : sessionTotals.weakCount,
+    sessionCount: sessionEntries.length,
     categories,
     rotations,
   };
@@ -30160,23 +30534,73 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     rotations: [],
   };
   const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
-
   const remoteAttempts = Math.max(
     0,
     Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
   );
   const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
   const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
+  const localAttempts = Math.max(0, Number(local.totalAttempts) || 0);
+  const localAccuracy = Math.max(0, Number(local.overallAccuracy) || 0);
 
-  const mergedTotalAttempts = Math.max(
-    Math.max(0, Number(local.totalAttempts) || 0),
-    remoteAttempts,
-  );
+  const mergedTotalAttempts = Math.max(localAttempts, remoteAttempts);
   const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
   const mergedOverallAccuracy =
-    remoteAttempts > (Number(local.totalAttempts) || 0)
+    remoteAccuracy > localAccuracy
       ? remoteAccuracy
-      : Math.max(0, Number(local.overallAccuracy) || 0);
+      : localAccuracy;
+
+  const chooseBetterRow = (localRow, remoteRow, keyField) => {
+    const localAttemptsValue = Math.max(0, Number(localRow?.attempts) || 0);
+    const localAccuracyValue = Math.max(0, Number(localRow?.accuracy) || 0);
+    const remoteAttemptsValue = Math.max(0, Number(remoteRow?.attempts) || 0);
+    const remoteAccuracyValue = Math.max(0, Number(remoteRow?.accuracy) || 0);
+    const keyName = keyField === "rotation" ? "rotation" : "category";
+
+    if (!localRow && remoteRow) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+    if (localRow && !remoteRow) {
+      return {
+        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+        attempts: localAttemptsValue,
+        accuracy: localAccuracyValue,
+      };
+    }
+
+    if (remoteAccuracyValue > localAccuracyValue) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+    if (localAccuracyValue > remoteAccuracyValue) {
+      return {
+        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+        attempts: localAttemptsValue,
+        accuracy: localAccuracyValue,
+      };
+    }
+
+    if (remoteAttemptsValue > localAttemptsValue) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+
+    return {
+      [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+      attempts: localAttemptsValue,
+      accuracy: localAccuracyValue,
+    };
+  };
 
   const mergedCategoryMap = new Map();
   (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
@@ -30190,23 +30614,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
 
   (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
     const name = String(row?.category || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedCategoryMap.get(name);
-    if (!existing) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
+    if (mergedCategoryMap.has(name)) return;
     mergedCategoryMap.set(name, {
       category: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
@@ -30222,23 +30634,11 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
 
   (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
     const name = String(row?.rotation || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedRotationMap.get(name);
-    if (!existing) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
+    if (mergedRotationMap.has(name)) return;
     mergedRotationMap.set(name, {
       rotation: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
+      attempts: Math.max(0, Number(row?.attempts) || 0),
+      accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
@@ -30246,10 +30646,7 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     totalAttempts: mergedTotalAttempts,
     overallAccuracy: mergedOverallAccuracy,
     weakCount: mergedWeakCount,
-    sessionCount: Math.max(
-      Math.max(0, Number(local.sessionCount) || 0),
-      Math.max(0, Number(remote.totalSessions ?? remote.sessionCount) || 0),
-    ),
+    sessionCount: Math.max(0, Number(local.sessionCount) || 0),
     categories: [...mergedCategoryMap.values()].sort((a, b) =>
       String(a.category).localeCompare(String(b.category)),
     ),
@@ -30305,8 +30702,10 @@ function normalizeDashboardSessionMode(mode = "Session") {
   if (!lower) return "Session";
   if (lower.includes("law drill") || lower.includes("pharmacy law quiz")) return "Law Drill";
   if (lower.includes("sudden death")) return "Sudden Death";
+  if (lower.includes("rapid fire") || lower.includes("rapid drill")) return "Rapid Fire";
+  if (lower.includes("clinical judgement") || lower.includes("clinical drill")) return "Clinical Judgement";
   if (lower.startsWith("daily")) return "Daily";
-  if (lower.startsWith("study")) return "Study";
+  if (lower.startsWith("study") || lower.includes("topic quiz")) return "Study";
   if (lower.startsWith("exam")) return "Exam";
   if (lower.startsWith("smart")) return "Smart";
   return raw;
@@ -30608,6 +31007,7 @@ async function loadDashboardTrendData({ force = false } = {}) {
       ...dashboardTrendSessionsCache,
       ...remoteSessions,
     ]);
+    renderPoints();
     renderDashboardTrend(dashboardTrendScope);
     if (dashboardDiv?.classList.contains("screen-active")) {
       renderDashboardRecentResults();
@@ -30638,6 +31038,7 @@ function renderDashboardTopSubjects(categories = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30645,7 +31046,7 @@ function renderDashboardTopSubjects(categories = []) {
         <div class="dashboard-topsubject-name">${row.category || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });
@@ -30670,6 +31071,7 @@ function renderDashboardRotations(rotations = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30677,7 +31079,7 @@ function renderDashboardRotations(rotations = []) {
         <div class="dashboard-topsubject-name">${row.rotation || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });
@@ -30724,21 +31126,25 @@ function renderDashboardRecentResults() {
   });
 }
 
-function showDashboard() {
+async function showDashboard() {
   showScreen("dashboard");
 
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
   const localSnapshot = getLocalDashboardSnapshot();
   renderDashboardValues(localSnapshot);
+  await loadSyncedPerformanceState({ force: true });
   void loadDashboardTrendData({ force: true });
 
+  const refreshedLocalSnapshot = getLocalDashboardSnapshot();
   backendClient
     .fetchSyncedDashboard()
     .then((remote) => {
-      const mergedSnapshot = mergeDashboardSnapshots(localSnapshot, remote);
+      const mergedSnapshot = mergeDashboardSnapshots(refreshedLocalSnapshot, remote);
       renderDashboardValues(mergedSnapshot);
     })
     .catch(() => {
-      // Keep local dashboard when backend is not reachable.
+      renderDashboardValues(refreshedLocalSnapshot);
     });
 
   const dashboardCloseBtn = document.getElementById("dashboard-close-btn");

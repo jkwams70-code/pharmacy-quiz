@@ -203,7 +203,7 @@ function buildDashboardFromSync(events, sessions) {
 
 app.use(
   cors({
-    origin: config.corsOrigin === "*" ? true : config.corsOrigin,
+    origin: config.corsOrigins.includes("*") ? true : config.corsOrigins,
   }),
 );
 app.use(helmet());

@@ -40,15 +40,15 @@ const inferredApiBase = shouldUseLocalApi
   : isLanPreview
     ? `http://${currentHost}:4000/api`
     : isProductionHost
-      ? sameOriginApiBase || productionFallbackApiBase
+      ? productionFallbackApiBase || sameOriginApiBase
       : productionFallbackApiBase;
+const productionApiBaseCandidates = [productionFallbackApiBase, sameOriginApiBase].filter(Boolean);
 const apiBaseCandidates = Array.from(
   new Set(
     [
-      storedApiBase,
+      isProductionHost ? "" : storedApiBase,
       inferredApiBase,
-      isProductionHost ? sameOriginApiBase : "",
-      isProductionHost ? productionFallbackApiBase : "",
+      ...productionApiBaseCandidates,
     ].filter(Boolean),
   ),
 );
@@ -63,7 +63,11 @@ const hasStaleStoredApiBase =
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }
-const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || inferredApiBase;
+const API_BASE = hasStaleStoredApiBase
+  ? inferredApiBase
+  : isProductionHost
+    ? productionFallbackApiBase || sameOriginApiBase
+    : storedApiBase || inferredApiBase;
 
 const CLIENT_ID_KEY = "quizClientId";
 const AUTH_TOKEN_KEY = "quizAuthToken";
@@ -171,14 +175,21 @@ async function request(method, path, payload = undefined) {
       continue;
     }
 
-    if (response?.ok) {
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const isAuthOrValidationError = [400, 401, 403, 409].includes(response.status);
+    const looksLikeJson = contentType.includes("application/json");
+    const looksLikeWrongEndpoint =
+      response.status === 404 || contentType.includes("text/html") || !looksLikeJson;
+
+    if (response.ok && looksLikeJson) {
       break;
     }
 
-    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-    const isAuthOrValidationError = [400, 401, 403, 409].includes(response.status);
-    const looksLikeWrongEndpoint = response.status === 404 || contentType.includes("text/html");
-    if (!looksLikeWrongEndpoint || isAuthOrValidationError) {
+    if (isAuthOrValidationError) {
+      break;
+    }
+
+    if (!looksLikeWrongEndpoint) {
       break;
     }
     response = null;

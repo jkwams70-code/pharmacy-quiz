@@ -29,13 +29,29 @@ const isLanPreview =
   !isLocalHost &&
   !isProductionHost &&
   window.location.protocol === "http:";
+const sameOriginApiBase =
+  currentHost && currentProtocol.startsWith("http")
+    ? `${window.location.origin.replace(/\/+$/, "")}/api`
+    : "";
+const productionFallbackApiBase = "https://api.ajixpharmacy.online/api";
 const shouldUseLocalApi = (isFilePreview || (isLocalHost && !isLikelyNativeHost)) && !isNativeShell;
 const inferredApiBase = shouldUseLocalApi
   ? "http://localhost:4000/api"
   : isLanPreview
     ? `http://${currentHost}:4000/api`
-    : "https://api.ajixpharmacy.online/api";
-const forceLocalApi = shouldUseLocalApi || isLanPreview;
+    : isProductionHost
+      ? productionFallbackApiBase || sameOriginApiBase
+      : productionFallbackApiBase;
+const productionApiBaseCandidates = [productionFallbackApiBase, sameOriginApiBase].filter(Boolean);
+const apiBaseCandidates = Array.from(
+  new Set(
+    [
+      isProductionHost ? "" : storedApiBase,
+      inferredApiBase,
+      ...productionApiBaseCandidates,
+    ].filter(Boolean),
+  ),
+);
 const hasStaleStoredApiBase =
   !!storedApiBase &&
   (/trycloudflare\.com/i.test(storedApiBase) ||
@@ -43,14 +59,19 @@ const hasStaleStoredApiBase =
     /your-new-tunnel/i.test(storedApiBase) ||
     /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase) ||
     (isLanPreview && /localhost:4000/i.test(storedApiBase)) ||
-  ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)));
+    ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)));
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }
-const API_BASE = forceLocalApi ? inferredApiBase : hasStaleStoredApiBase ? inferredApiBase : storedApiBase || inferredApiBase;
+const API_BASE = hasStaleStoredApiBase
+  ? inferredApiBase
+  : isProductionHost
+    ? productionFallbackApiBase || sameOriginApiBase
+    : storedApiBase || inferredApiBase;
 
 const CLIENT_ID_KEY = "quizClientId";
 const AUTH_TOKEN_KEY = "quizAuthToken";
+const ADMIN_KEY_KEY = "quizAdminKey";
 const UPLOAD_MIME_TYPE_ALIASES = {
   "audio/mp3": "audio/mpeg",
   "audio/m4a": "audio/mp4",
@@ -91,6 +112,10 @@ function getAuthToken() {
   return localStorage.getItem(AUTH_TOKEN_KEY) || "";
 }
 
+function getAdminKey() {
+  return localStorage.getItem(ADMIN_KEY_KEY) || "";
+}
+
 function buildHeaders(includeJson = false) {
   const headers = {
     "x-client-id": getClientId(),
@@ -103,6 +128,11 @@ function buildHeaders(includeJson = false) {
   const token = getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  const adminKey = getAdminKey();
+  if (adminKey) {
+    headers["x-admin-key"] = adminKey;
   }
 
   return headers;
@@ -134,7 +164,43 @@ async function request(method, path, payload = undefined) {
       body: useJson ? JSON.stringify(payload) : undefined,
     });
 
-  let response = await send();
+  let response = null;
+  let lastError = null;
+
+  for (const base of apiBaseCandidates) {
+    try {
+      response = await send(base);
+    } catch (networkError) {
+      lastError = networkError;
+      continue;
+    }
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const isAuthOrValidationError = [400, 401, 403, 409].includes(response.status);
+    const looksLikeJson = contentType.includes("application/json");
+    const looksLikeWrongEndpoint =
+      response.status === 404 || contentType.includes("text/html") || !looksLikeJson;
+
+    if (response.ok && looksLikeJson) {
+      break;
+    }
+
+    if (isAuthOrValidationError) {
+      break;
+    }
+
+    if (!looksLikeWrongEndpoint) {
+      break;
+    }
+    response = null;
+  }
+
+  if (!response) {
+    if (lastError) {
+      throw lastError;
+    }
+    throw new Error("API request failed");
+  }
 
   // OpenRouter free endpoints can return transient 502s. Retry once for AI explain.
   if (path === "/ai/explain" && response.status === 502) {
@@ -183,15 +249,36 @@ async function requestBinary(method, path, body, {
   contentType = "application/octet-stream",
   headers = {},
 } = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      ...buildHeaders(false),
-      "Content-Type": contentType,
-      ...headers,
-    },
-    body,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: {
+        ...buildHeaders(false),
+        "Content-Type": contentType,
+        ...headers,
+      },
+      body,
+    });
+  } catch (networkError) {
+    if (storedApiBase && API_BASE !== inferredApiBase) {
+      try {
+        response = await fetch(`${inferredApiBase}${path}`, {
+          method,
+          headers: {
+            ...buildHeaders(false),
+            "Content-Type": contentType,
+            ...headers,
+          },
+          body,
+        });
+      } catch {
+        throw networkError;
+      }
+    } else {
+      throw networkError;
+    }
+  }
   if (!response.ok) {
     let message = `API request failed (${response.status})`;
     try {
@@ -290,15 +377,7 @@ export const backendClient = {
     return post("/auth/points", payload);
   },
 
-  updateSetupPoints(payload = {}) {
-    return post("/auth/setup-points", payload);
-  },
-
-  updateLawDrillSession(payload = {}) {
-    return post("/auth/law-drill-session", payload);
-  },
-
-  fetchPointsLeaderboard(scope = "daily", limit = 20) {
+  fetchPointsLeaderboard(scope = "daily", limit = null) {
     const query = toQuery({ scope, limit });
     return get(`/points/leaderboard${query}`);
   },
@@ -356,6 +435,10 @@ export const backendClient = {
     return get("/community/friends");
   },
 
+  unfriendUser(userId) {
+    return del(`/community/friends/${encodeURIComponent(userId)}`);
+  },
+
   fetchBlockedUsers() {
     return get("/community/blocks");
   },
@@ -380,29 +463,6 @@ export const backendClient = {
     return del(`/community/block/${encodeURIComponent(userId)}`);
   },
 
-  favoriteCommunityConversation(conversationId) {
-    return post(`/community/conversations/${encodeURIComponent(conversationId)}/favorite`);
-  },
-
-  unfavoriteCommunityConversation(conversationId) {
-    return del(`/community/conversations/${encodeURIComponent(conversationId)}/favorite`);
-  },
-
-  deleteConversationMessage(messageId, scope = "self") {
-    return del(`/community/messages/${encodeURIComponent(messageId)}`, { scope });
-  },
-
-  async clearCommunityConversation(conversationId) {
-    const payload = await this.fetchConversationMessages(conversationId, { markRead: false }).catch(() => null);
-    const messages = Array.isArray(payload?.messages) ? payload.messages : [];
-    await Promise.all(
-      messages
-        .filter((message) => Boolean(message?.id))
-        .map((message) => this.deleteConversationMessage(message.id, "self")),
-    );
-    return { ok: true, cleared: messages.length };
-  },
-
   fetchConversations() {
     return get("/community/conversations");
   },
@@ -411,20 +471,20 @@ export const backendClient = {
     return post("/community/conversations/direct", { userId });
   },
 
+  favoriteCommunityConversation(conversationId) {
+    return post(`/community/conversations/${encodeURIComponent(conversationId)}/favorite`);
+  },
+
+  unfavoriteCommunityConversation(conversationId) {
+    return del(`/community/conversations/${encodeURIComponent(conversationId)}/favorite`);
+  },
+
+  clearCommunityConversation(conversationId) {
+    return post(`/community/conversations/${encodeURIComponent(conversationId)}/clear`);
+  },
+
   deleteCommunityConversation(conversationId) {
     return del(`/community/conversations/${encodeURIComponent(conversationId)}`);
-  },
-
-  deleteCommunityGroup(groupId) {
-    return del(`/community/groups/${encodeURIComponent(groupId)}`);
-  },
-
-  leaveCommunityGroup(groupId) {
-    return post(`/community/groups/${encodeURIComponent(groupId)}/leave`);
-  },
-
-  unfriendUser(userId) {
-    return del(`/community/friends/${encodeURIComponent(userId)}`);
   },
 
   createStudyGroup(name = "", memberIds = []) {
@@ -435,20 +495,42 @@ export const backendClient = {
     return get(`/community/groups/${encodeURIComponent(groupId)}`);
   },
 
-  fetchCommunityGroupInvitePreview(groupId, inviteToken) {
-    return get(
-      `/community/groups/${encodeURIComponent(groupId)}/invite/${encodeURIComponent(inviteToken)}`,
-    );
+  createCommunityGroupInviteLink(groupId) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/invite-link`);
   },
 
-  joinCommunityGroupInvite(groupId, inviteToken) {
-    return post(
-      `/community/groups/${encodeURIComponent(groupId)}/invite/${encodeURIComponent(inviteToken)}/join`,
-    );
+  fetchCommunityGroupInvitePreview(groupId, inviteToken = "") {
+    const params = new URLSearchParams();
+    params.set("inviteToken", inviteToken);
+    return get(`/community/groups/${encodeURIComponent(groupId)}/invite-preview?${params.toString()}`);
+  },
+
+  joinCommunityGroupInvite(groupId, inviteToken = "") {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/join`, { inviteToken });
+  },
+
+  addCommunityGroupMembers(groupId, memberIds = []) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/members`, { memberIds });
   },
 
   updateCommunityGroup(groupId, payload = {}) {
     return patch(`/community/groups/${encodeURIComponent(groupId)}`, payload);
+  },
+
+  leaveCommunityGroup(groupId) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/leave`);
+  },
+
+  deleteCommunityGroup(groupId) {
+    return del(`/community/groups/${encodeURIComponent(groupId)}`);
+  },
+
+  reportCommunityGroup(groupId, reason = "") {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/report`, { reason });
+  },
+
+  reportCommunityUser(userId, reason = "") {
+    return post(`/community/users/${encodeURIComponent(userId)}/report`, { reason });
   },
 
   uploadCommunityGroupAvatarFile(groupId, file = null) {
@@ -514,7 +596,7 @@ export const backendClient = {
     });
   },
 
-  uploadStatusMedia(mediaDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null) {
+  uploadStatusMedia(mediaDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null, options = {}) {
     return post("/community/statuses", {
       mediaDataUrl,
       imageDataUrl: mediaDataUrl,
@@ -522,14 +604,15 @@ export const backendClient = {
       caption,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     });
   },
 
-  uploadStatusImage(imageDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null) {
-    return this.uploadStatusMedia(imageDataUrl, fileName, caption, visibility, style);
+  uploadStatusImage(imageDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null, options = {}) {
+    return this.uploadStatusMedia(imageDataUrl, fileName, caption, visibility, style, options);
   },
 
-  uploadStatusMediaFile(file = null, caption = "", visibility = "friends", style = null) {
+  uploadStatusMediaFile(file = null, caption = "", visibility = "friends", style = null, options = {}) {
     if (!(file instanceof Blob)) {
       return Promise.reject(new Error("A media file is required."));
     }
@@ -538,6 +621,7 @@ export const backendClient = {
       caption,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     }));
     return requestBinary("POST", "/community/statuses/file", file, {
       contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
@@ -547,7 +631,7 @@ export const backendClient = {
     });
   },
 
-  uploadStatusVideoFile(file = null, caption = "", visibility = "friends", style = null) {
+  uploadStatusVideoFile(file = null, caption = "", visibility = "friends", style = null, options = {}) {
     if (!(file instanceof Blob)) {
       return Promise.reject(new Error("A video file is required."));
     }
@@ -556,6 +640,7 @@ export const backendClient = {
       caption,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     }));
     return requestBinary("POST", "/community/statuses/video", file, {
       contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
@@ -565,12 +650,13 @@ export const backendClient = {
     });
   },
 
-  uploadStatusText(text = "", background = "", visibility = "friends", style = null) {
+  uploadStatusText(text = "", background = "", visibility = "friends", style = null, options = {}) {
     return post("/community/statuses", {
       text,
       background,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     });
   },
 
@@ -592,6 +678,15 @@ export const backendClient = {
 
   deleteStatus(statusId) {
     return del(`/community/statuses/${encodeURIComponent(statusId)}`);
+  },
+
+  broadcastAdminMessage(message = "", attachment = null) {
+    return post("/admin/broadcast/message", {
+      message,
+      attachmentDataUrl: attachment?.dataUrl || "",
+      attachmentFileName: attachment?.fileName || "",
+      attachmentMimeType: attachment?.mimeType || "",
+    });
   },
 
   editConversationMessage(messageId, text = "") {
@@ -697,15 +792,32 @@ export const backendClient = {
     fireAndForget(post("/sync/performance", event));
   },
 
+  syncPerformanceState(state = {}) {
+    fireAndForget(post("/sync/performance-state", state));
+  },
+
+  syncWeakTracker(weakTracker = {}) {
+    return post("/sync/weak-tracker", { weakTracker });
+  },
+
   syncSession(entry) {
     fireAndForget(post("/sync/sessions", entry));
+  },
+
+  clearSyncedHistory() {
+    return del("/sync/history");
   },
 
   fetchSyncedDashboard() {
     return get("/sync/dashboard");
   },
 
-  fetchSyncedHistory(mode = "", limit = 20) {
+  fetchSyncedPerformanceState(limit = 5000) {
+    const query = toQuery({ limit });
+    return get(`/sync/performance-state${query}`);
+  },
+
+  fetchSyncedHistory(mode, limit = null) {
     const query = toQuery({ mode, limit });
     return get(`/sync/history${query}`);
   },

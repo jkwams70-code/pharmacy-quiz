@@ -45,10 +45,6 @@ if (!["debug", "info", "silent"].includes(logLevel)) {
   throw new Error("Invalid LOG_LEVEL. Use one of: debug, info, silent.");
 }
 
-if (isProduction && corsOrigin === "*") {
-  throw new Error("CORS_ORIGIN cannot be '*' in production.");
-}
-
 if (isProduction && jwtSecret.length < 32) {
   throw new Error("JWT_SECRET must be at least 32 characters in production.");
 }
@@ -66,12 +62,26 @@ if (httpsEnabled && httpsEnforce && port === httpsPort) {
 }
 
 const corsOrigins =
-  corsOrigin === "*"
-    ? ["*"]
-    : corsOrigin
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
+  (() => {
+    const parsed =
+      corsOrigin === "*"
+        ? []
+        : corsOrigin
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+    if (!isProduction) {
+      return corsOrigin === "*" ? ["*"] : parsed;
+    }
+    const defaults = new Set([
+      "https://ajixpharmacy.online",
+      "https://www.ajixpharmacy.online",
+    ]);
+    for (const origin of parsed) {
+      defaults.add(origin);
+    }
+    return Array.from(defaults);
+  })();
 
 export const config = {
   port,

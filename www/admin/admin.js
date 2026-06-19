@@ -84,6 +84,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let selectedReportSnapshot = null;
       let selectedReportWarningDraft = "";
       let broadcastChatAttachment = null;
+      let broadcastChatSending = false;
+      let broadcastChatClientRequestId = "";
       let broadcastChatEmojiPickerOpen = false;
       let broadcastChatAttachmentViewerMode = "sent";
       let broadcastChatAttachmentViewerAttachment = null;
@@ -2288,6 +2290,13 @@ async function ensureAdminApiBase({ force = false } = {}) {
             previewEl.classList.add("hidden");
           }
         }
+        if (safeKind === "chat") {
+          const sendBtn = document.getElementById("broadcast-chat-send-btn");
+          if (sendBtn instanceof HTMLElement) {
+            sendBtn.disabled = broadcastChatSending;
+            sendBtn.classList.toggle("is-disabled", broadcastChatSending);
+          }
+        }
       }
 
       function renderBroadcastStatusStrip() {
@@ -2620,6 +2629,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       async function sendAdminBroadcastMessage() {
+        if (broadcastChatSending) return;
         const threadKey = getActiveBroadcastThreadKey();
         const messageEl = document.getElementById("broadcast-chat-message");
         const message = String(messageEl?.value || "").trim();
@@ -2631,6 +2641,11 @@ async function ensureAdminApiBase({ force = false } = {}) {
           showAlert("broadcast-alerts", "Write a message or attach a file first", "error");
           return;
         }
+        broadcastChatSending = true;
+        if (!broadcastChatClientRequestId) {
+          broadcastChatClientRequestId = `broadcast-chat-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+        }
+        syncBroadcastAttachmentUi("chat");
         try {
           const res = await fetch(`${API_BASE}/admin/broadcast/threads/${encodeURIComponent(threadKey)}/message`, {
             method: "POST",
@@ -2639,6 +2654,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
               message,
               attachmentDataUrl: broadcastChatAttachment?.dataUrl || "",
               attachmentFileName: broadcastChatAttachment?.fileName || "",
+              clientRequestId: broadcastChatClientRequestId,
             }),
           });
           const data = await res.json().catch(() => ({}));
@@ -2650,6 +2666,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             autoSizeBroadcastChatMessage();
           }
           broadcastChatAttachment = null;
+          broadcastChatClientRequestId = "";
           const fileInput = document.getElementById("broadcast-chat-file");
           if (fileInput) fileInput.value = "";
           syncBroadcastAttachmentUi("chat");
@@ -2661,6 +2678,9 @@ async function ensureAdminApiBase({ force = false } = {}) {
           showAlert("broadcast-alerts", `Notice sent to ${Number(data.deliveredTo || 0)} recipients.`, "success");
         } catch (err) {
           showAlert("broadcast-alerts", "Error: " + err.message, "error");
+        } finally {
+          broadcastChatSending = false;
+          syncBroadcastAttachmentUi("chat");
         }
       }
 
@@ -3311,6 +3331,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         document
           .getElementById("broadcast-chat-message")
           ?.addEventListener("input", () => {
+            broadcastChatClientRequestId = "";
             requestAnimationFrame(() => {
               autoSizeBroadcastChatMessage();
             });
@@ -3352,12 +3373,14 @@ async function ensureAdminApiBase({ force = false } = {}) {
           ?.addEventListener("change", async (event) => {
             const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
             if (file instanceof File) {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = {
                 dataUrl: await readFileAsDataUrl(file),
                 fileName: file.name || "attachment",
                 mimeType: String(file.type || "").trim().toLowerCase(),
               };
             } else {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = null;
             }
             syncBroadcastAttachmentUi("chat");
@@ -3370,6 +3393,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
           ?.addEventListener("click", (event) => {
             const removeBtn = event.target instanceof HTMLElement ? event.target.closest("[data-broadcast-chat-remove-attachment]") : null;
             if (removeBtn instanceof HTMLElement) {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = null;
               syncBroadcastAttachmentUi("chat");
               return;
@@ -3381,6 +3405,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         document
           .getElementById("broadcast-chat-clear-btn")
           ?.addEventListener("click", () => {
+            broadcastChatClientRequestId = "";
             broadcastChatAttachment = null;
             syncBroadcastAttachmentUi("chat");
           });

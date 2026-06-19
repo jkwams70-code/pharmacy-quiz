@@ -29115,6 +29115,7 @@ async function handleAiExplainClick() {
 
 async function restoreAuthSession() {
   if (!backendClient.isAuthenticated()) {
+    stopSharedAccountStatePolling();
     currentUser = null;
     resetDailyQuizRuntimeState();
     resetSyncedDashboardCaches();
@@ -29123,7 +29124,66 @@ async function restoreAuthSession() {
   }
 
   try {
-    currentUser = await backendClient.fetchMe();
+    await refreshSharedAccountState({ force: true, silent: true });
+    void loadCommunityOverview({ silent: true });
+    return true;
+  } catch {
+    backendClient.clearToken();
+    teardownCommunityRealtime();
+    stopSharedAccountStatePolling();
+    currentUser = null;
+    resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
+    renderAuthState();
+    return false;
+  }
+}
+
+let sharedAccountStateRefreshInFlight = null;
+let sharedAccountStateRefreshAt = 0;
+let sharedAccountStatePollingHandle = null;
+
+function stopSharedAccountStatePolling() {
+  if (sharedAccountStatePollingHandle) {
+    clearInterval(sharedAccountStatePollingHandle);
+    sharedAccountStatePollingHandle = null;
+  }
+}
+
+function startSharedAccountStatePolling() {
+  stopSharedAccountStatePolling();
+  if (!currentUser || !backendClient.isAuthenticated()) {
+    return;
+  }
+  sharedAccountStatePollingHandle = setInterval(() => {
+    if (document.hidden || !currentUser || !backendClient.isAuthenticated()) {
+      return;
+    }
+    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+  }, 60_000);
+}
+
+async function refreshSharedAccountState({
+  force = false,
+  silent = false,
+} = {}) {
+  if (!backendClient.isAuthenticated()) {
+    return false;
+  }
+
+  const now = Date.now();
+  if (!force && now - sharedAccountStateRefreshAt < 12_000) {
+    return true;
+  }
+
+  if (sharedAccountStateRefreshInFlight) {
+    return sharedAccountStateRefreshInFlight;
+  }
+
+  sharedAccountStateRefreshAt = now;
+  sharedAccountStateRefreshInFlight = (async () => {
+    const freshUser = await backendClient.fetchMe();
+    currentUser = freshUser;
     renderAuthState();
     syncPointsFromCurrentUser();
     writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
@@ -29133,20 +29193,19 @@ async function restoreAuthSession() {
       scheduleSync: false,
     });
     renderPoints();
-    await refreshDailyQuizState({ force: true, silent: true });
+    await refreshDailyQuizState({ force: true, silent });
     await loadSyncedPerformanceState({ force: true });
     await loadDashboardTrendData({ force: true });
-    void loadCommunityOverview({ silent: true });
+    renderMenuDashboardStats();
+    renderSetupPoints();
+    renderDailyQuizUi();
+    startSharedAccountStatePolling();
     return true;
-  } catch {
-    backendClient.clearToken();
-    teardownCommunityRealtime();
-    currentUser = null;
-    resetDailyQuizRuntimeState();
-    resetSyncedDashboardCaches();
-    renderAuthState();
-    return false;
-  }
+  })().finally(() => {
+      sharedAccountStateRefreshInFlight = null;
+    });
+
+  return sharedAccountStateRefreshInFlight;
 }
 
 async function ensureAuthenticated() {
@@ -29414,6 +29473,7 @@ if (logoutBtn) {
     closeMenuUserHub();
     backendClient.clearToken();
     teardownCommunityRealtime();
+    stopSharedAccountStatePolling();
     profileImageMarkedForDeletion = false;
     pendingProfileImage = "";
     if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
@@ -34493,6 +34553,11 @@ function showScreen(id, options = {}) {
     closeCommunityConfirmModal?.();
     closeCommunityConversationActions?.();
     closeCommunityFriendActions?.();
+    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+  }
+
+  if (["dashboard", "daily-setup", "study-setup", "exam-setup"].includes(id)) {
+    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
   }
 
   if (nextCommunityScreen && !wasCommunityScreen && isCommunityLockEnabled() && !communityState.communityLockSessionUnlocked) {
@@ -34559,6 +34624,18 @@ function showScreen(id, options = {}) {
     }
   }
 }
+
+window.addEventListener("focus", () => {
+  if (currentUser && backendClient.isAuthenticated()) {
+    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && currentUser && backendClient.isAuthenticated()) {
+    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+  }
+});
 function restoreStreakUI() {
   const streakBox = document.getElementById("streak-box");
   const streakValue = document.getElementById("streak-value");

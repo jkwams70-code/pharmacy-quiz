@@ -11,7 +11,15 @@
     "backup": "node src/scripts/backupData.js",
     "cleanup": "node src/scripts/cleanupRuntimeFiles.js",
     "cleanup:users": "node src/scripts/cleanupInactiveUsers.js",
+    "cleanup:admin-notices": "node src/scripts/cleanupAdminNoticeThreads.js",
     "validate:data": "node src/scripts/validateDataRelations.js",
+    "repair:data": "node src/scripts/repairDataRelations.js",
+    "renumber:questions": "node src/scripts/renumberQuestionIds.js",
+    "renumber:questions:apply": "node src/scripts/renumberQuestionIds.js --apply",
+    "questions:expand": "node src/scripts/generateQuestionExpansion.js",
+    "questions:expand:apply": "node src/scripts/generateQuestionExpansion.js --apply",
+    "preflight:prod": "node src/scripts/preflightProduction.js",
+    "secrets:generate": "node src/scripts/generateSecrets.js",
     "smoke:ui": "node src/scripts/uiSmoke.js",
     "smoke:firefox": "node src/scripts/firefoxSmoke.js",
     "smoke:mem": "node src/scripts/checkMemoryLeak.js",
@@ -26,6 +34,7 @@
     "pm2:logs": "pm2 logs quiz-api --lines 100"
   },
   "dependencies": {
+    "agora-access-token": "^2.0.4",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -33,6 +42,7 @@
     "express": "^4.21.2",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "quiz": "file:.."
   }
 }

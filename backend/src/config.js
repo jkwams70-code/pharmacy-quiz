@@ -1,6 +1,14 @@
 import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({
+  path: path.join(__dirname, "..", ".env"),
+  override: true,
+});
 
 const isProduction = process.env.NODE_ENV === "production";
 const port = Number(process.env.PORT || 4000);
@@ -14,6 +22,15 @@ const logDir = process.env.LOG_DIR || "logs";
 const logRetentionDays = Number(process.env.LOG_RETENTION_DAYS || 30);
 const logLevel = (process.env.LOG_LEVEL || "info").toLowerCase();
 const dbPath = process.env.DB_PATH || "./data";
+const databaseUrl = String(process.env.DATABASE_URL || "").trim();
+const databaseSsl =
+  String(process.env.DATABASE_SSL || "").trim().toLowerCase() === "true" ||
+  /supabase\.co/i.test(databaseUrl) ||
+  /sslmode=require/i.test(databaseUrl);
+const databasePoolMax = Math.max(
+  1,
+  Math.round(Number(process.env.DATABASE_POOL_MAX || 5) || 5),
+);
 const enableGzip = String(process.env.ENABLE_GZIP || "true").toLowerCase() !== "false";
 const httpsEnabled = process.env.HTTPS_ENABLED === "true";
 const httpsEnforce = process.env.HTTPS_ENFORCE === "true";
@@ -95,6 +112,9 @@ export const config = {
   logRetentionDays,
   logLevel,
   dbPath,
+  databaseUrl,
+  databaseSsl,
+  databasePoolMax,
   enableGzip,
   httpsEnabled,
   httpsEnforce,

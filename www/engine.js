@@ -647,27 +647,38 @@ function normalizeLawDrillState(rawState = null) {
   const levels = cloneLawDrillLevels(rawState.levels);
   if (levels.length === 0) return null;
 
-  let inferredCurrentLevelIndex = -1;
-  let inferredCompletedNextIndex = 0;
-  levels.forEach((level, index) => {
-    const status = String(level?.status || "").trim().toLowerCase();
-    if (status === "current" || status === "review") {
-      inferredCurrentLevelIndex = Math.max(inferredCurrentLevelIndex, index);
-    }
-    if (status === "completed") {
-      inferredCompletedNextIndex = Math.max(inferredCompletedNextIndex, index + 1);
-    }
-  });
+  const deriveCurrentLevelIndexFromLevels = () => {
+    let inferredCurrentLevelIndex = -1;
+    let inferredCompletedNextIndex = 0;
+    levels.forEach((level, index) => {
+      const status = String(level?.status || "").trim().toLowerCase();
+      if (status === "current" || status === "review") {
+        inferredCurrentLevelIndex = Math.max(inferredCurrentLevelIndex, index);
+      }
+      if (status === "completed") {
+        inferredCompletedNextIndex = Math.max(inferredCompletedNextIndex, index + 1);
+      }
+    });
+
+    return {
+      inferredCurrentLevelIndex,
+      inferredCompletedNextIndex,
+      derivedCurrentLevelIndex: Math.max(
+        inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
+        inferredCompletedNextIndex > 0 ? Math.min(levels.length - 1, inferredCompletedNextIndex) : 0,
+      ),
+    };
+  };
+
+  const { inferredCurrentLevelIndex, inferredCompletedNextIndex, derivedCurrentLevelIndex } =
+    deriveCurrentLevelIndexFromLevels();
 
   const rawCurrentLevelIndex = Math.max(
     0,
     Math.min(levels.length - 1, Math.round(Number(rawState.currentLevelIndex) || 0)),
   );
-  const derivedCurrentLevelIndex = Math.max(
-    inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
-    inferredCompletedNextIndex > 0 ? Math.min(levels.length - 1, inferredCompletedNextIndex) : 0,
-  );
-  const currentLevelIndex = Math.max(rawCurrentLevelIndex, derivedCurrentLevelIndex);
+  const hasProgressMarkers = inferredCurrentLevelIndex >= 0 || inferredCompletedNextIndex > 0;
+  const currentLevelIndex = hasProgressMarkers ? derivedCurrentLevelIndex : rawCurrentLevelIndex;
   const hasReviewLevel =
     rawState.reviewLevelIndex !== null &&
     rawState.reviewLevelIndex !== undefined &&
@@ -728,18 +739,22 @@ function repairLawDrillCurrentLevelIndex() {
     }
   });
 
-  const derivedCurrentLevelIndex = Math.max(
-    inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
-    inferredCompletedNextIndex > 0
-      ? Math.min(lawDrillState.levels.length - 1, inferredCompletedNextIndex)
-      : 0,
-  );
+  const hasProgressMarkers = inferredCurrentLevelIndex >= 0 || inferredCompletedNextIndex > 0;
+  const derivedCurrentLevelIndex = hasProgressMarkers
+    ? Math.max(
+        inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
+        inferredCompletedNextIndex > 0
+          ? Math.min(lawDrillState.levels.length - 1, inferredCompletedNextIndex)
+          : 0,
+      )
+    : Math.max(0, Math.min(lawDrillState.levels.length - 1, lawDrillState.currentLevelIndex ?? 0));
 
-  if (derivedCurrentLevelIndex > (lawDrillState.currentLevelIndex ?? 0)) {
-    lawDrillState.currentLevelIndex = derivedCurrentLevelIndex;
+  const safeIndex = Math.max(0, Math.min(lawDrillState.levels.length - 1, derivedCurrentLevelIndex));
+  if (lawDrillState.currentLevelIndex !== safeIndex) {
+    lawDrillState.currentLevelIndex = safeIndex;
   }
 
-  return Math.max(0, Math.min(lawDrillState.levels.length - 1, lawDrillState.currentLevelIndex ?? 0));
+  return safeIndex;
 }
 
 function createLawDrillState(sourceQuestions = questionBank) {
@@ -1180,6 +1195,7 @@ function syncLawDrillLevelStatuses(activeLevelIndex = 0) {
       level.status = "locked";
     }
   });
+  lawDrillState.currentLevelIndex = safeIndex;
 }
 
 function syncLawDrillCumulativeScore() {
@@ -1738,10 +1754,11 @@ function markLawDrillCurrentLevelComplete() {
 
   const nextLevelIndex = currentLevel.index + 1;
   if (nextLevelIndex >= (lawDrillState?.levels?.length || 0)) {
-    syncLawDrillLevelStatuses(currentLevel.index);
-    saveLawDrillLevelSession(currentLevel.index, { finishBackendAttempt: true });
+    lawDrillState.currentLevelIndex = currentLevel.index;
+    lawDrillState.reviewLevelIndex = null;
     lawDrillState.resultLevelIndex = currentLevel.index;
     lawDrillState.view = "result";
+    saveLawDrillLevelSession(currentLevel.index, { finishBackendAttempt: true });
     active = [];
     userAnswers = {};
     current = 0;
@@ -30603,44 +30620,60 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
   };
 
   const mergedCategoryMap = new Map();
+  const localCategoryMap = new Map();
   (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
     const name = String(row?.category || "").trim() || "General";
-    mergedCategoryMap.set(name, {
+    localCategoryMap.set(name, {
       category: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
+  const remoteCategoryMap = new Map();
   (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
     const name = String(row?.category || "").trim() || "General";
-    if (mergedCategoryMap.has(name)) return;
-    mergedCategoryMap.set(name, {
+    remoteCategoryMap.set(name, {
       category: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
+  for (const key of new Set([...localCategoryMap.keys(), ...remoteCategoryMap.keys()])) {
+    const chosen = chooseBetterRow(localCategoryMap.get(key), remoteCategoryMap.get(key), "category");
+    if (chosen) {
+      mergedCategoryMap.set(String(chosen.category || key).trim() || "General", chosen);
+    }
+  }
+
   const mergedRotationMap = new Map();
+  const localRotationMap = new Map();
   (Array.isArray(local.rotations) ? local.rotations : []).forEach((row) => {
     const name = String(row?.rotation || "").trim() || "General";
-    mergedRotationMap.set(name, {
+    localRotationMap.set(name, {
       rotation: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
+  const remoteRotationMap = new Map();
   (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
     const name = String(row?.rotation || "").trim() || "General";
-    if (mergedRotationMap.has(name)) return;
-    mergedRotationMap.set(name, {
+    remoteRotationMap.set(name, {
       rotation: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
+
+  for (const key of new Set([...localRotationMap.keys(), ...remoteRotationMap.keys()])) {
+    const chosen = chooseBetterRow(localRotationMap.get(key), remoteRotationMap.get(key), "rotation");
+    if (chosen) {
+      mergedRotationMap.set(String(chosen.rotation || key).trim() || "General", chosen);
+    }
+  }
 
   return {
     totalAttempts: mergedTotalAttempts,
@@ -32848,14 +32881,10 @@ function renderLawDrillInlineMetaLegacy() {
     ? targetLevel.questionIds.length
     : LAW_DRILL_QUESTIONS_PER_LEVEL;
   const reviewLabel = lawDrillState.reviewLevelIndex != null ? "Review" : "Level";
-  const score = Array.isArray(targetLevel?.history)
-    ? targetLevel.history.filter((entry) => entry?.isCorrect).length
-    : 0;
   const sessionPoints = getCurrentSessionPoints();
   const parts = [
     `<span class="header-inline-progress">Law Drill</span>`,
     `<span class="header-inline-progress">${reviewLabel} ${targetLevelIndex + 1}/${totalLevels}</span>`,
-    `<span class="header-inline-progress">Score ${score}/${questionsInLevel}</span>`,
   ];
 
   if (Array.isArray(active) && active.length) {
@@ -32881,11 +32910,6 @@ function renderLawDrillInlineMeta() {
       : state.view === "result" && Number.isInteger(state.resultLevelIndex)
         ? state.resultLevelIndex
         : state.currentLevelIndex || 0;
-  const targetLevel = state.levels?.[targetLevelIndex] || null;
-  const questionsInLevel = Array.isArray(targetLevel?.questionIds) && targetLevel.questionIds.length
-    ? targetLevel.questionIds.length
-    : LAW_DRILL_QUESTIONS_PER_LEVEL;
-  const levelScore = Math.max(0, Number(getLawDrillLevelScore(targetLevelIndex)) || 0);
 
   if (view === "ladder") {
     return `<span class="law-drill-inline-title">Law Drill</span>${buildDrillCumulativePointsBadgeMarkup(
@@ -32894,7 +32918,7 @@ function renderLawDrillInlineMeta() {
     )}`;
   }
 
-  return `<span class="law-drill-inline-title">Level ${targetLevelIndex + 1}/${totalLevels}</span><span class="law-drill-inline-score">Score ${levelScore}/${questionsInLevel}</span>`;
+  return `<span class="law-drill-inline-title">Level ${targetLevelIndex + 1}/${totalLevels}</span><span class="law-drill-inline-score">Questions ${current + 1}/${active.length}</span>`;
 }
 
 function renderCompactHeaderMeta() {

@@ -264,10 +264,29 @@ function normalizeLawDrillState(rawState = null) {
     1,
     Math.round(Number(rawState.questionsPerLevel) || LAW_DRILL_QUESTIONS_PER_LEVEL),
   );
-  const currentLevelIndex = Math.max(
+  let inferredCurrentLevelIndex = -1;
+  let inferredCompletedNextIndex = 0;
+  rawLevels.forEach((level, index) => {
+    const status = String(level?.status || "").trim().toLowerCase();
+    if (status === "current" || status === "review") {
+      inferredCurrentLevelIndex = Math.max(inferredCurrentLevelIndex, index);
+    }
+    if (status === "completed") {
+      inferredCompletedNextIndex = Math.max(inferredCompletedNextIndex, index + 1);
+    }
+  });
+
+  const rawCurrentLevelIndex = Math.max(
     0,
     Math.min(rawLevels.length - 1, Math.round(Number(rawState.currentLevelIndex) || 0)),
   );
+  const hasProgressMarkers = inferredCurrentLevelIndex >= 0 || inferredCompletedNextIndex > 0;
+  const currentLevelIndex = hasProgressMarkers
+    ? Math.max(
+        inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
+        inferredCompletedNextIndex > 0 ? Math.min(rawLevels.length - 1, inferredCompletedNextIndex) : 0,
+      )
+    : rawCurrentLevelIndex;
   const hasReviewLevel =
     rawState.reviewLevelIndex !== null &&
     rawState.reviewLevelIndex !== undefined &&

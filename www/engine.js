@@ -29284,8 +29284,14 @@ async function handleAuthSubmit(event) {
       const response = await backendClient.login({ identifier, password });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      await flushSetupPointsSync();
-      await flushLawDrillSessionSync();
+      syncPointsFromCurrentUser();
+      writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+        scheduleSync: false,
+      });
+      writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+        scheduleSync: false,
+      });
+      renderPoints();
       await refreshDailyQuizState({ force: true, silent: true });
       await loadSyncedPerformanceState({ force: true });
       await loadDashboardTrendData({ force: true });
@@ -29305,8 +29311,14 @@ async function handleAuthSubmit(event) {
       });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      await flushSetupPointsSync();
-      await flushLawDrillSessionSync();
+      syncPointsFromCurrentUser();
+      writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+        scheduleSync: false,
+      });
+      writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+        scheduleSync: false,
+      });
+      renderPoints();
       await refreshDailyQuizState({ force: true, silent: true });
       await loadSyncedPerformanceState({ force: true });
       await loadDashboardTrendData({ force: true });

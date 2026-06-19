@@ -377,6 +377,14 @@ export const backendClient = {
     return post("/auth/points", payload);
   },
 
+  updateSetupPoints(payload = {}) {
+    return put("/auth/setup-points", payload);
+  },
+
+  updateLawDrillSession(payload = {}) {
+    return put("/auth/law-drill-session", payload);
+  },
+
   fetchPointsLeaderboard(scope = "daily", limit = null) {
     const query = toQuery({ scope, limit });
     return get(`/points/leaderboard${query}`);

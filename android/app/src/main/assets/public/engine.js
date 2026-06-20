@@ -6448,6 +6448,7 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
   const cachedSnapshot = leaderboardState.cache[safeScope];
   const cachedAt = Number(leaderboardState.cacheAt[safeScope]) || 0;
   const isFresh = cachedAt > 0 && Date.now() - cachedAt < 60_000;
+  const hasCachedView = Boolean(cachedSnapshot);
   if (!force && cachedSnapshot) {
     renderLeaderboardSnapshot(cachedSnapshot, safeScope);
     if (isFresh) {
@@ -6480,8 +6481,11 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     }
   }
 
-  setLeaderboardLoading(true);
-  setLeaderboardEmptyState(false);
+  const shouldShowLoading = !hasCachedView;
+  if (shouldShowLoading) {
+    setLeaderboardLoading(true);
+    setLeaderboardEmptyState(false);
+  }
 
   try {
     if (currentUser && backendClient.isAuthenticated() && readPendingPoints() > 0) {
@@ -6493,15 +6497,19 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     void setOfflineEntry(cacheKey, snapshot || {});
     renderLeaderboardSnapshot(snapshot || {}, safeScope);
   } catch {
-    renderLeaderboardPodium([]);
-    renderLeaderboardYourRank(null);
-    renderLeaderboardList([]);
-    setLeaderboardEmptyState(
-      true,
-      "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
-    );
+    if (!hasCachedView) {
+      renderLeaderboardPodium([]);
+      renderLeaderboardYourRank(null);
+      renderLeaderboardList([]);
+      setLeaderboardEmptyState(
+        true,
+        "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
+      );
+    }
   } finally {
-    setLeaderboardLoading(false);
+    if (shouldShowLoading) {
+      setLeaderboardLoading(false);
+    }
   }
 }
 

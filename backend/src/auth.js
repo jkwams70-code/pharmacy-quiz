@@ -9,7 +9,16 @@ export async function hashPassword(password) {
 }
 
 export async function verifyPassword(password, hash) {
-  return bcrypt.compare(password, hash);
+  const safePassword = String(password || "");
+  const safeHash = String(hash || "");
+  if (!safePassword || !safeHash) {
+    return false;
+  }
+  try {
+    return await bcrypt.compare(safePassword, safeHash);
+  } catch {
+    return false;
+  }
 }
 
 export function createToken(user) {

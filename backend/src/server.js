@@ -5535,11 +5535,22 @@ app.post(
     }
 
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
-    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
-    if (changed) {
-      await writeCollection("users", reconciledUsers);
+    let reconciledUsers = users;
+    let reconciledUser = user;
+    try {
+      const reconciliation = reconcileUsersWithPointHistory(users, pointEvents);
+      reconciledUsers = reconciliation.users;
+      reconciledUser = reconciledUsers.find((entry) => entry.id === user.id) || user;
+      if (reconciliation.changed) {
+        try {
+          await writeCollection("users", reconciledUsers);
+        } catch (writeError) {
+          console.warn("Skipping post-login user reconciliation write", writeError?.message || writeError);
+        }
+      }
+    } catch (reconciliationError) {
+      console.warn("Skipping post-login user reconciliation", reconciliationError?.message || reconciliationError);
     }
-    const reconciledUser = reconciledUsers.find((entry) => entry.id === user.id) || user;
     const token = createToken(reconciledUser);
     res.json({
       token,

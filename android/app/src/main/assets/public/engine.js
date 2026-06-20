@@ -14224,6 +14224,7 @@ async function saveCommunityGroupEditModal() {
     await backendClient.updateCommunityGroup(groupId, payload);
     const freshProfile = await backendClient.fetchCommunityGroup(groupId);
     communityState.profile = freshProfile;
+    void setOfflineEntry(`community-group-profile:${groupId}`, freshProfile);
     closeCommunityGroupEditModal({ force: true });
     renderCommunityProfileView();
     showScreen("community-profile-screen");
@@ -17784,6 +17785,20 @@ async function setCommunityTab(nextTab = "friends") {
 
 function renderCommunityProfileView() {
   if (!communityProfileCardEl) return;
+  if (!communityState.profile || (!communityState.profile.profile && !communityState.profile.group)) {
+    communityProfileScreenEl?.classList.remove("is-group-profile-view");
+    communityProfileScreenEl?.classList.add("is-contact-profile-view");
+    communityProfileScreenEl?.classList.remove("is-group-header-collapsed");
+    communityProfileTopbarCopyEl?.classList.remove("hidden");
+    if (communityProfileHeaderSlotEl) {
+      communityProfileHeaderSlotEl.innerHTML = "";
+      communityProfileHeaderSlotEl.setAttribute("aria-hidden", "true");
+    }
+    if (communityProfileScreenTitleEl) communityProfileScreenTitleEl.textContent = "Learner Profile";
+    if (communityProfileScreenSubtitleEl) communityProfileScreenSubtitleEl.textContent = "";
+    communityProfileCardEl.innerHTML = `<div class="community-empty-state is-chat">Loading profile...</div>`;
+    return;
+  }
   if (communityState.groupEdit?.open && !communityState.profile?.group) {
     closeCommunityGroupEditModal();
   }
@@ -17956,6 +17971,15 @@ async function ensureCommunityProfileLeaderboardStats(profilePayload = null, use
   const isSelf = Boolean(payload.relationship?.isSelf);
   if (!isSelf && visibility === "nobody") return payload;
   try {
+    const cachedSnapshot = leaderboardState?.cache?.alltime;
+    const cachedEntry =
+      (Array.isArray(cachedSnapshot?.topThree) ? cachedSnapshot.topThree : []).find((row) => String(row.userId || "") === targetId) ||
+      (Array.isArray(cachedSnapshot?.leaderboard) ? cachedSnapshot.leaderboard : []).find((row) => String(row.userId || "") === targetId) ||
+      (cachedSnapshot?.yourEntry && String(cachedSnapshot.yourEntry.userId || "") === targetId ? cachedSnapshot.yourEntry : null);
+    if (cachedEntry) {
+      payload.profile.leaderboardStats = cachedEntry;
+      return payload;
+    }
     const snapshot = await backendClient.fetchPointsLeaderboard("alltime", 100, { preferCache: true });
     const entry =
       (Array.isArray(snapshot?.topThree) ? snapshot.topThree : []).find((row) => String(row.userId || "") === targetId) ||
@@ -17986,12 +18010,20 @@ async function openCommunityProfile(userId = "") {
       closeLeaderboardModal({ useHistory: false });
     }
     const safeUserId = String(userId || "").trim();
+    showScreen("community-profile-screen");
+    communityState.profile = null;
+    renderCommunityProfileView();
+    requestAnimationFrame(() => {
+      const communityProfileScrollEl = getCommunityProfileScrollEl();
+      if (communityProfileScrollEl instanceof HTMLElement) {
+        communityProfileScrollEl.scrollTop = 0;
+      }
+      syncCommunityGroupProfileHeaderOffset();
+    });
     const cachedProfile = await getOfflineEntry(`community-profile:${safeUserId}`);
     if (cachedProfile?.value) {
       communityState.profile = cachedProfile.value;
-      communityState.profile = await ensureCommunityProfileLeaderboardStats(communityState.profile, userId);
       renderCommunityProfileView();
-      showScreen("community-profile-screen");
       requestAnimationFrame(() => {
         const communityProfileScrollEl = getCommunityProfileScrollEl();
         if (communityProfileScrollEl instanceof HTMLElement) {
@@ -18000,18 +18032,24 @@ async function openCommunityProfile(userId = "") {
         syncCommunityGroupProfileHeaderOffset();
       });
     }
-    communityState.profile = await backendClient.fetchCommunityProfile(userId, { preferCache: true });
-    communityState.profile = await ensureCommunityProfileLeaderboardStats(communityState.profile, userId);
-    void setOfflineEntry(`community-profile:${safeUserId}`, communityState.profile);
-    renderCommunityProfileView();
-    showScreen("community-profile-screen");
-    requestAnimationFrame(() => {
-      const communityProfileScrollEl = getCommunityProfileScrollEl();
-      if (communityProfileScrollEl instanceof HTMLElement) {
-        communityProfileScrollEl.scrollTop = 0;
+    void (async () => {
+      try {
+        const freshProfile = await backendClient.fetchCommunityProfile(userId, { preferCache: true });
+        const nextProfile = await ensureCommunityProfileLeaderboardStats(freshProfile, userId);
+        communityState.profile = nextProfile;
+        void setOfflineEntry(`community-profile:${safeUserId}`, nextProfile);
+        renderCommunityProfileView();
+        requestAnimationFrame(() => {
+          const communityProfileScrollEl = getCommunityProfileScrollEl();
+          if (communityProfileScrollEl instanceof HTMLElement) {
+            communityProfileScrollEl.scrollTop = 0;
+          }
+          syncCommunityGroupProfileHeaderOffset();
+        });
+      } catch {
+        // Keep cached or loading state visible.
       }
-      syncCommunityGroupProfileHeaderOffset();
-    });
+    })();
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Profile could not load right now."), true);
   }
@@ -18317,12 +18355,34 @@ async function openCommunityGroupProfile(groupId = "") {
     if (leaderboardState.open) {
       closeLeaderboardModal({ useHistory: false });
     }
-    communityState.profile = await backendClient.fetchCommunityGroup(groupId);
-    renderCommunityProfileView();
     showScreen("community-profile-screen");
+    const safeGroupId = String(groupId || "").trim();
+    communityState.profile = null;
+    renderCommunityProfileView();
     requestAnimationFrame(() => {
       syncCommunityGroupProfileHeaderCollapse();
     });
+    const cachedProfile = await getOfflineEntry(`community-group-profile:${safeGroupId}`);
+    if (cachedProfile?.value) {
+      communityState.profile = cachedProfile.value;
+      renderCommunityProfileView();
+      requestAnimationFrame(() => {
+        syncCommunityGroupProfileHeaderCollapse();
+      });
+    }
+    void (async () => {
+      try {
+        const freshProfile = await backendClient.fetchCommunityGroup(groupId);
+        communityState.profile = freshProfile;
+        void setOfflineEntry(`community-group-profile:${safeGroupId}`, freshProfile);
+        renderCommunityProfileView();
+        requestAnimationFrame(() => {
+          syncCommunityGroupProfileHeaderCollapse();
+        });
+      } catch {
+        // Keep cached or loading state visible.
+      }
+    })();
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Group info could not load right now."), true);
   }
@@ -20102,6 +20162,9 @@ async function joinCommunityGroupFromInvite() {
     const response = await backendClient.joinCommunityGroupInvite(groupId, inviteToken);
     clearPendingCommunityGroupInvite();
     communityState.profile = response;
+    if (response?.group) {
+      void setOfflineEntry(`community-group-profile:${groupId}`, response);
+    }
     void loadCommunityOverview({ silent: true, preferCache: true });
     communityState.groupInviteModal = {
       ...communityState.groupInviteModal,
@@ -20148,6 +20211,9 @@ async function loadCommunityGroupInvitePreview(groupId = "", inviteToken = "", {
   });
   try {
     const response = await backendClient.fetchCommunityGroupInvitePreview(safeGroupId, safeInviteToken);
+    if (response?.group) {
+      void setOfflineEntry(`community-group-profile:${safeGroupId}`, response);
+    }
     openCommunityGroupInviteModal({
       groupId: safeGroupId,
       inviteToken: String(response?.invite?.inviteToken || safeInviteToken || "").trim(),

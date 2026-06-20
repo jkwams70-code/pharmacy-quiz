@@ -6449,6 +6449,7 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
   const cachedAt = Number(leaderboardState.cacheAt[safeScope]) || 0;
   const isFresh = cachedAt > 0 && Date.now() - cachedAt < 60_000;
   const hasCachedView = Boolean(cachedSnapshot);
+  const isLocalDevHost = /^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname || ""));
   if (!force && cachedSnapshot) {
     renderLeaderboardSnapshot(cachedSnapshot, safeScope);
     if (isFresh) {
@@ -6498,13 +6499,17 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     renderLeaderboardSnapshot(snapshot || {}, safeScope);
   } catch {
     if (!hasCachedView) {
-      renderLeaderboardPodium([]);
-      renderLeaderboardYourRank(null);
-      renderLeaderboardList([]);
-      setLeaderboardEmptyState(
-        true,
-        "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
-      );
+      if (isLocalDevHost) {
+        renderLeaderboardPodium([]);
+        renderLeaderboardYourRank(null);
+        renderLeaderboardList([]);
+        setLeaderboardEmptyState(
+          true,
+          "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
+        );
+      } else {
+        setLeaderboardEmptyState(false);
+      }
     }
   } finally {
     if (shouldShowLoading) {

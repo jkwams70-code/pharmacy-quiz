@@ -1604,6 +1604,15 @@ function openLawDrillLevelReview(levelIndex = 0) {
   showQuestion();
 }
 
+function isLawDrillResultState() {
+  if (!isLawStudyMode() || !lawDrillState) return false;
+  return (
+    lawDrillState.view === "result" ||
+    Number.isInteger(lawDrillState.reviewLevelIndex) ||
+    Number.isInteger(lawDrillState.resultLevelIndex)
+  );
+}
+
 function exitLawDrillLevelReview() {
   if (!lawDrillState) return;
   lawDrillState.reviewLevelIndex = null;
@@ -33726,6 +33735,10 @@ function returnToTopicViewerFromQuiz() {
 }
 
 function configureStudyLikeResultActions() {
+  if (isLawDrillResultState()) {
+    return;
+  }
+
   const reviewBtn = document.getElementById("result-review-btn");
   const menuBtn = document.getElementById("result-menu-btn");
   const resultTitle = document.getElementById("result-title");
@@ -33777,6 +33790,16 @@ function goToMenu() {
 
 function rebuildStudyResult() {
   const resultScreen = document.getElementById("study-result-screen");
+
+  if (isLawDrillResultState()) {
+    const levelIndex = Number.isInteger(lawDrillState?.resultLevelIndex)
+      ? lawDrillState.resultLevelIndex
+      : Math.max(0, (lawDrillState?.currentLevelIndex ?? 0) - 1);
+    showLawDrillLevelResult(levelIndex, {
+      final: levelIndex >= (lawDrillState?.levels?.length || 1) - 1,
+    });
+    return;
+  }
 
   const data = window.lastStudyResult;
   if (!data) return;
@@ -33861,6 +33884,10 @@ function returnToReview() {
 }
 
 function showDetailedReview() {
+  if (isLawDrillResultState()) {
+    return;
+  }
+
   const reviewSection = document.getElementById("result-review-section");
   const content = document.getElementById("result-review-content");
 

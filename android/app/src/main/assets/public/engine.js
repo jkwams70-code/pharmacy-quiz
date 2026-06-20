@@ -4514,6 +4514,7 @@ const leaderboardState = {
   open: false,
   scope: "daily",
   cache: Object.create(null),
+  cacheAt: Object.create(null),
 };
 const communityState = {
   tab: "chats",
@@ -5056,8 +5057,12 @@ function syncPointsFromCurrentUser() {
   const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
   const pending = readPendingPoints();
-  writeStoredPoints(Math.max(localPoints, remotePoints + pending));
-  leaderboardState.cache = Object.create(null);
+  const nextPoints = Math.max(localPoints, remotePoints + pending);
+  writeStoredPoints(nextPoints);
+  if (nextPoints !== localPoints) {
+    leaderboardState.cache = Object.create(null);
+    leaderboardState.cacheAt = Object.create(null);
+  }
   renderPoints();
 }
 
@@ -5084,6 +5089,7 @@ async function flushPendingPoints() {
     writePendingPoints(0);
     writeStoredPoints(nextPoints);
     leaderboardState.cache = Object.create(null);
+    leaderboardState.cacheAt = Object.create(null);
     renderPoints();
   } catch {
     renderPoints();
@@ -5114,6 +5120,7 @@ function awardCorrectAnswerPoint(delta = 1) {
     addPointsToCurrentSetupBucket(safeDelta);
   }
   leaderboardState.cache = Object.create(null);
+  leaderboardState.cacheAt = Object.create(null);
   renderPoints();
 
   if (currentUser && backendClient.isAuthenticated() && shouldCountCorrectAnswerTowardLeaderboard()) {
@@ -5324,8 +5331,19 @@ function renderLeaderboardSnapshot(snapshot = {}, scope = "daily") {
 
 async function loadLeaderboard(scope = "daily", { force = false } = {}) {
   const safeScope = String(scope || "daily").trim().toLowerCase();
-  if (!force && leaderboardState.cache[safeScope]) {
-    renderLeaderboardSnapshot(leaderboardState.cache[safeScope], safeScope);
+  const cachedSnapshot = leaderboardState.cache[safeScope];
+  const cachedAt = Number(leaderboardState.cacheAt[safeScope]) || 0;
+  const isFresh = cachedAt > 0 && Date.now() - cachedAt < 60_000;
+  if (!force && cachedSnapshot) {
+    renderLeaderboardSnapshot(cachedSnapshot, safeScope);
+    if (isFresh) {
+      return;
+    }
+    if (leaderboardState.open) {
+      window.setTimeout(() => {
+        void loadLeaderboard(safeScope, { force: true });
+      }, 0);
+    }
     return;
   }
 
@@ -5338,6 +5356,7 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     }
     const snapshot = await backendClient.fetchPointsLeaderboard(safeScope);
     leaderboardState.cache[safeScope] = snapshot || {};
+    leaderboardState.cacheAt[safeScope] = Date.now();
     renderLeaderboardSnapshot(snapshot || {}, safeScope);
   } catch {
     renderLeaderboardPodium([]);

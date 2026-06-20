@@ -1894,7 +1894,7 @@ const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
 // Load questions from backend if available
 async function loadQuestionsFromBackend() {
   try {
-    const questions = await backendClient.fetchQuestions({ limit: 1000 });
+    const questions = await backendClient.fetchQuestions();
     if (Array.isArray(questions) && questions.length > 0) {
       // Use Neon/Postgres as the source of truth whenever the backend is reachable.
       // Local questions remain only as an offline fallback.
@@ -1905,6 +1905,8 @@ async function loadQuestionsFromBackend() {
       questionBank = enrichImportedCaseQuestions(backendQuestions);
       backendReady = true;
       reconcileLocalQuestionStats();
+      rebuildCaseMap();
+      refreshQuestionDependentUi();
       console.info(`Loaded ${questionBank.length} questions from backend`);
     }
   } catch (error) {
@@ -1925,6 +1927,20 @@ function rebuildCaseMap() {
       }
     }
   });
+}
+
+function refreshQuestionDependentUi() {
+  populateStudyCategories();
+  populateStudyRotations();
+  populateExamCategories();
+  populateExamRotations();
+  populateTopicLibraryCategories();
+  syncAllSetupPickerButtons();
+
+  const homeTotalQuestions = document.getElementById("home-total-questions");
+  if (homeTotalQuestions) {
+    homeTotalQuestions.innerText = questionBank.length;
+  }
 }
 
 function buildScopedCaseMapKey(caseId = "", topicSlug = "") {
@@ -32329,24 +32345,6 @@ window.addEventListener("load", function () {
     consumePendingTopicQuizLaunch();
   }
 
-  // Load questions from backend first
-  loadQuestionsFromBackend().then(() => {
-    rebuildCaseMap();
-  });
-
-  backendClient.warmup().catch(() => {
-    // Keep local-first behavior if backend is offline.
-  });
-
-  populateStudyCategories();
-  populateStudyRotations();
-  populateExamCategories();
-  populateExamRotations();
-  populateTopicLibraryCategories();
-  syncAllSetupPickerButtons();
-  wireSetupPickerModal();
-  wireSetupPickerTriggers();
-
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
 
@@ -32412,6 +32410,22 @@ window.addEventListener("load", function () {
     } else {
       showScreen("home-screen", { recordHistory: false });
     }
+  }
+
+  const runDeferredBootstrap = () => {
+    wireSetupPickerModal();
+    wireSetupPickerTriggers();
+    refreshQuestionDependentUi();
+    void loadQuestionsFromBackend();
+    backendClient.warmup().catch(() => {
+      // Keep local-first behavior if backend is offline.
+    });
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runDeferredBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runDeferredBootstrap, 0);
   }
 });
 

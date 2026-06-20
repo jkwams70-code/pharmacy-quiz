@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { Pool } from "pg";
 import { config } from "./config.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -10,6 +11,12 @@ const dataDir = path.isAbsolute(config.dbPath)
   ? config.dbPath
   : path.join(__dirname, "..", config.dbPath);
 const backupsDir = path.join(__dirname, "..", "backups");
+const databaseSchema = "public";
+const collectionTable = "app_collections";
+const databaseUrl = String(config.databaseUrl || "").trim();
+const useDatabase = Boolean(databaseUrl);
+const databaseSslEnabled = Boolean(config.databaseSsl);
+const databasePoolMax = Number(config.databasePoolMax || 5);
 
 const defaults = {
   users: [],
@@ -35,10 +42,15 @@ const defaults = {
   aiUsage: [],
 };
 
+export const collectionNames = Object.keys(defaults);
+
 const WRITE_RETRY_CODES = new Set(["EBUSY", "EPERM"]);
 const WRITE_RETRY_DELAYS_MS = [40, 100, 180, 320, 520];
 const READ_RETRY_CODES = new Set(["EBUSY", "EPERM"]);
 const READ_RETRY_DELAYS_MS = [30, 80, 150, 260];
+
+let pool = null;
+let ensureStorePromise = null;
 
 function pathFor(collection) {
   return path.join(dataDir, `${collection}.json`);
@@ -50,6 +62,20 @@ function backupPathFor(collection) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function quoteIdentifier(identifier) {
+  return `"${String(identifier).replace(/"/g, '""')}"`;
+}
+
+function qualifiedTableName(schema, table) {
+  return `${quoteIdentifier(schema)}.${quoteIdentifier(table)}`;
+}
+
+const publicCollectionTable = qualifiedTableName(databaseSchema, collectionTable);
+
+function cloneDefault(collection) {
+  return structuredClone(defaults[collection]);
 }
 
 async function runWithWriteRetry(operation) {
@@ -86,6 +112,20 @@ async function runWithReadRetry(operation) {
   throw lastError;
 }
 
+async function getPool() {
+  if (!useDatabase) return null;
+  if (pool) return pool;
+
+  pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: databaseSslEnabled ? { rejectUnauthorized: false } : undefined,
+    max: databasePoolMax,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
+  return pool;
+}
+
 async function readLatestUsersSnapshotBackup() {
   try {
     const entries = await fs.readdir(backupsDir, { withFileTypes: true });
@@ -120,26 +160,209 @@ async function readLatestUsersSnapshotBackup() {
   return null;
 }
 
-export async function ensureStore() {
-  await fs.mkdir(dataDir, { recursive: true });
+async function readLegacyCollection(collection) {
+  const fallback = defaults[collection];
+  try {
+    const raw = await runWithReadRetry(() => fs.readFile(pathFor(collection), "utf8"));
+    return JSON.parse(raw);
+  } catch {
+    if (collection === "users") {
+      try {
+        const backupRaw = await runWithReadRetry(() =>
+          fs.readFile(backupPathFor(collection), "utf8"),
+        );
+        const parsedBackup = JSON.parse(backupRaw);
+        if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
+          return parsedBackup;
+        }
+      } catch {
+        // Fall through to the snapshot fallback below.
+      }
 
-  for (const [collection, initialValue] of Object.entries(defaults)) {
-    const filePath = pathFor(collection);
-    try {
-      await fs.access(filePath);
-    } catch {
-      await fs.writeFile(filePath, JSON.stringify(initialValue, null, 2), "utf8");
+      const latestSnapshotBackup = await readLatestUsersSnapshotBackup();
+      if (latestSnapshotBackup) {
+        return latestSnapshotBackup;
+      }
+    }
+
+    return cloneDefault(collection);
+  }
+}
+
+async function ensureDatabaseCollectionTable(db) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS ${publicCollectionTable} (
+      collection TEXT PRIMARY KEY,
+      payload JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+async function copyLegacyDatabaseCollections(db) {
+  const schemaResult = await db.query(
+    `
+      SELECT schemaname
+      FROM pg_tables
+      WHERE tablename = $1
+      ORDER BY CASE WHEN schemaname = $2 THEN 0 ELSE 1 END, schemaname
+    `,
+    [collectionTable, databaseSchema],
+  );
+
+  const schemas = schemaResult.rows
+    .map((row) => String(row?.schemaname || "").trim())
+    .filter(Boolean);
+
+  if (schemas.length === 0) {
+    return;
+  }
+
+  for (const schema of schemas) {
+    if (schema === databaseSchema) {
+      continue;
+    }
+
+    const sourceTable = qualifiedTableName(schema, collectionTable);
+    const sourceRows = await db.query(
+      `SELECT collection, payload, updated_at FROM ${sourceTable}`,
+    );
+
+    if (sourceRows.rowCount === 0) {
+      continue;
+    }
+
+    for (const row of sourceRows.rows) {
+      if (!row?.collection) {
+        continue;
+      }
+
+      await db.query(
+        `
+          INSERT INTO ${publicCollectionTable} (collection, payload, updated_at)
+          VALUES ($1, $2::jsonb, COALESCE($3, NOW()))
+          ON CONFLICT (collection) DO NOTHING
+        `,
+        [row.collection, JSON.stringify(row.payload ?? cloneDefault(row.collection)), row.updated_at],
+      );
     }
   }
 }
 
+async function readDbCollection(collection, { allowMissing = true } = {}) {
+  const db = await getPool();
+  if (!db) return null;
+  await ensureDatabaseCollectionTable(db);
+
+  const result = await db.query(
+    `SELECT payload FROM ${publicCollectionTable} WHERE collection = $1 LIMIT 1`,
+    [collection],
+  );
+
+  if (result.rowCount > 0) {
+    return result.rows[0]?.payload ?? cloneDefault(collection);
+  }
+
+  if (allowMissing) return null;
+  return cloneDefault(collection);
+}
+
+async function writeDbCollection(collection, data) {
+  const db = await getPool();
+  if (!db) return null;
+  await ensureDatabaseCollectionTable(db);
+
+  await db.query(
+    `INSERT INTO ${publicCollectionTable} (collection, payload, updated_at)
+     VALUES ($1, $2::jsonb, NOW())
+     ON CONFLICT (collection)
+     DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW()`,
+    [collection, JSON.stringify(data)],
+  );
+  return data;
+}
+
+async function seedDatabaseFromLegacyFiles() {
+  const db = await getPool();
+  if (!db) return;
+  await fs.mkdir(dataDir, { recursive: true });
+  await ensureDatabaseCollectionTable(db);
+  await copyLegacyDatabaseCollections(db);
+
+  for (const [collection, fallback] of Object.entries(defaults)) {
+    const existing = await db.query(
+      `SELECT 1 FROM ${publicCollectionTable} WHERE collection = $1 LIMIT 1`,
+      [collection],
+    );
+    if (existing.rowCount > 0) continue;
+
+    const seedValue = await readLegacyCollection(collection).catch(() => cloneDefault(collection));
+    const payload = Array.isArray(seedValue) || (seedValue && typeof seedValue === "object")
+      ? seedValue
+      : cloneDefault(collection);
+
+    await db.query(
+      `INSERT INTO ${publicCollectionTable} (collection, payload, updated_at)
+       VALUES ($1, $2::jsonb, NOW())
+       ON CONFLICT (collection)
+       DO NOTHING`,
+      [collection, JSON.stringify(payload)],
+    );
+  }
+}
+
+async function initializeStore() {
+  await fs.mkdir(dataDir, { recursive: true });
+
+  if (!useDatabase) {
+    for (const [collection, initialValue] of Object.entries(defaults)) {
+      const filePath = pathFor(collection);
+      try {
+        await fs.access(filePath);
+      } catch {
+        await fs.writeFile(filePath, JSON.stringify(initialValue, null, 2), "utf8");
+      }
+    }
+    return;
+  }
+
+  await seedDatabaseFromLegacyFiles();
+}
+
+async function ensureStoreReady() {
+  if (!ensureStorePromise) {
+    ensureStorePromise = initializeStore().finally(() => {
+      ensureStorePromise = null;
+    });
+  }
+  return ensureStorePromise;
+}
+
+export async function ensureStore() {
+  await ensureStoreReady();
+}
+
 export async function readCollection(collection) {
-  const filePath = pathFor(collection);
   const fallback = defaults[collection];
 
   if (fallback === undefined) {
     throw new Error(`Unknown collection: ${collection}`);
   }
+
+  await ensureStoreReady();
+
+  if (useDatabase) {
+    const dbValue = await readDbCollection(collection, { allowMissing: true });
+    if (dbValue !== null) {
+      return dbValue;
+    }
+
+    const legacyValue = await readLegacyCollection(collection);
+    await writeDbCollection(collection, legacyValue);
+    return legacyValue;
+  }
+
+  const filePath = pathFor(collection);
 
   try {
     const raw = await runWithReadRetry(() => fs.readFile(filePath, "utf8"));
@@ -169,12 +392,16 @@ export async function readCollection(collection) {
       throw primaryError;
     }
 
-    return structuredClone(fallback);
+    return cloneDefault(collection);
   }
 }
 
 export async function writeCollection(collection, data) {
-  const filePath = pathFor(collection);
+  const fallback = defaults[collection];
+
+  if (fallback === undefined) {
+    throw new Error(`Unknown collection: ${collection}`);
+  }
 
   if (
     collection === "users" &&
@@ -188,6 +415,14 @@ export async function writeCollection(collection, data) {
     );
   }
 
+  await ensureStoreReady();
+
+  if (useDatabase) {
+    return writeDbCollection(collection, data);
+  }
+
+  const filePath = pathFor(collection);
+
   if (collection === "users") {
     try {
       await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(collection)));
@@ -199,6 +434,8 @@ export async function writeCollection(collection, data) {
   await runWithWriteRetry(() =>
     fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf8"),
   );
+
+  return data;
 }
 
 export async function updateCollection(collection, updater) {

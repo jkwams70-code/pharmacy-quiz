@@ -6403,6 +6403,7 @@ function renderLeaderboardList(entries = []) {
 function renderLeaderboardSnapshot(snapshot = {}, scope = "daily") {
   const safeScope = String(scope || "daily");
   leaderboardState.scope = safeScope;
+  const isLocalDevHost = /^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname || ""));
   leaderboardTabEls.forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.leaderboardScope === safeScope);
   });
@@ -6430,7 +6431,11 @@ function renderLeaderboardSnapshot(snapshot = {}, scope = "daily") {
   renderLeaderboardPodium(topThree);
   renderLeaderboardYourRank(yourEntry, totalPlayers);
   renderLeaderboardList(leaderboard.slice(podiumCount));
-  setLeaderboardEmptyState(leaderboard.length === 0, "No leaderboard points yet for this period.");
+  const hasVisibleContent = leaderboard.length > 0 || Boolean(yourEntry) || totalPlayers > 0;
+  setLeaderboardEmptyState(
+    !hasVisibleContent && isLocalDevHost,
+    "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
+  );
   renderMenuDashboardStats();
 }
 

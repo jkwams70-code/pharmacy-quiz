@@ -1956,10 +1956,17 @@ function refreshQuestionDependentUi() {
 function startBackendBootstrap() {
   if (backendBootstrapStarted) return;
   backendBootstrapStarted = true;
-  void loadQuestionsFromBackend();
-  backendClient.warmup().catch(() => {
-    // Keep local-first behavior if backend is offline.
-  });
+  const runBootstrap = () => {
+    void loadQuestionsFromBackend();
+    backendClient.warmup().catch(() => {
+      // Keep local-first behavior if backend is offline.
+    });
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runBootstrap, 250);
+  }
 }
 
 function buildScopedCaseMapKey(caseId = "", topicSlug = "") {
@@ -27771,21 +27778,7 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
   try {
     currentUser = await backendClient.fetchMe();
     renderAuthState();
-    if (deferHydration) {
-      window.setTimeout(() => {
-        void Promise.allSettled([
-          refreshDailyQuizState({ force: true, silent: true }),
-          loadSyncedPerformanceState({ force: true }),
-        ]);
-        void loadCommunityOverview({ silent: true });
-      }, 0);
-    } else {
-      void Promise.allSettled([
-        refreshDailyQuizState({ force: true, silent: true }),
-        loadSyncedPerformanceState({ force: true }),
-      ]);
-      void loadCommunityOverview({ silent: true });
-    }
+    schedulePostAuthHydration({ deferHydration });
     return true;
   } catch {
     backendClient.clearToken();
@@ -27794,6 +27787,22 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
     resetDailyQuizRuntimeState();
     renderAuthState();
     return false;
+  }
+}
+
+function schedulePostAuthHydration({ deferHydration = false } = {}) {
+  const runHydration = () => {
+    void Promise.allSettled([
+      refreshDailyQuizState({ force: true, silent: true }),
+      loadSyncedPerformanceState({ force: true }),
+    ]);
+    void loadCommunityOverview({ silent: true });
+  };
+
+  if (deferHydration && typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runHydration, { timeout: 2000 });
+  } else {
+    window.setTimeout(runHydration, deferHydration ? 600 : 0);
   }
 }
 
@@ -27939,7 +27948,7 @@ async function handleAuthSubmit(event) {
       const response = await backendClient.login({ identifier, password });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      void refreshDailyQuizState({ force: true, silent: true });
+      schedulePostAuthHydration({ deferHydration: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -27955,7 +27964,7 @@ async function handleAuthSubmit(event) {
       });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      void refreshDailyQuizState({ force: true, silent: true });
+      schedulePostAuthHydration({ deferHydration: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;

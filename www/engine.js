@@ -2330,10 +2330,17 @@ async function loadQuestionsFromBackend() {
 function startBackendBootstrap() {
   if (backendBootstrapStarted) return;
   backendBootstrapStarted = true;
-  void loadQuestionsFromBackend();
-  backendClient.warmup().catch(() => {
-    // Keep local-first behavior if backend is offline.
-  });
+  const runBootstrap = () => {
+    void loadQuestionsFromBackend();
+    backendClient.warmup().catch(() => {
+      // Keep local-first behavior if backend is offline.
+    });
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runBootstrap, 250);
+  }
 }
 
 function rebuildCaseMap() {
@@ -29192,6 +29199,8 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
 let sharedAccountStateRefreshInFlight = null;
 let sharedAccountStateRefreshAt = 0;
 let sharedAccountStatePollingHandle = null;
+let sharedAccountHydrationHandle = null;
+let sharedAccountHydrationInFlight = null;
 
 function stopSharedAccountStatePolling() {
   if (sharedAccountStatePollingHandle) {
@@ -29211,6 +29220,41 @@ function startSharedAccountStatePolling() {
     }
     void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
   }, 20_000);
+}
+
+function scheduleSharedAccountHydration({ silent = true, deferHydration = false } = {}) {
+  if (!currentUser || !backendClient.isAuthenticated()) {
+    return;
+  }
+  if (sharedAccountHydrationInFlight || sharedAccountHydrationHandle) {
+    return;
+  }
+
+  const runHydration = () => {
+    sharedAccountHydrationHandle = null;
+    if (sharedAccountHydrationInFlight || !currentUser || !backendClient.isAuthenticated()) {
+      return;
+    }
+    sharedAccountHydrationInFlight = (async () => {
+      await Promise.allSettled([
+        refreshDailyQuizState({ force: true, silent }),
+        loadSyncedPerformanceState({ force: true }),
+      ]);
+      await loadCommunityOverview({ silent: true });
+      return true;
+    })()
+      .catch(() => false)
+      .finally(() => {
+      sharedAccountHydrationInFlight = null;
+    });
+  };
+
+  if (deferHydration && typeof window.requestIdleCallback === "function") {
+    sharedAccountHydrationHandle = window.requestIdleCallback(runHydration, { timeout: 2000 });
+    return;
+  }
+
+  sharedAccountHydrationHandle = window.setTimeout(runHydration, deferHydration ? 600 : 0);
 }
 
 async function refreshSharedAccountState({
@@ -29244,30 +29288,11 @@ async function refreshSharedAccountState({
       scheduleSync: false,
     });
     renderPoints();
-    if (deferHydration) {
-      window.setTimeout(() => {
-        void Promise.allSettled([
-          refreshDailyQuizState({ force: true, silent }),
-          loadSyncedPerformanceState({ force: true }),
-        ]);
-      }, 0);
-    } else {
-      void Promise.allSettled([
-        refreshDailyQuizState({ force: true, silent }),
-        loadSyncedPerformanceState({ force: true }),
-      ]);
-    }
+    scheduleSharedAccountHydration({ silent, deferHydration });
     renderMenuDashboardStats();
     renderSetupPoints();
     renderDailyQuizUi();
     startSharedAccountStatePolling();
-    if (!deferHydration) {
-      void loadCommunityOverview({ silent: true });
-    } else {
-      window.setTimeout(() => {
-        void loadCommunityOverview({ silent: true });
-      }, 0);
-    }
     return true;
   })().finally(() => {
       sharedAccountStateRefreshInFlight = null;
@@ -29426,11 +29451,7 @@ async function handleAuthSubmit(event) {
         scheduleSync: false,
       });
       renderPoints();
-      void Promise.allSettled([
-        refreshDailyQuizState({ force: true, silent: true }),
-        loadSyncedPerformanceState({ force: true }),
-      ]);
-      void loadCommunityOverview({ silent: true });
+      scheduleSharedAccountHydration({ silent: true, deferHydration: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -29454,11 +29475,7 @@ async function handleAuthSubmit(event) {
         scheduleSync: false,
       });
       renderPoints();
-      void Promise.allSettled([
-        refreshDailyQuizState({ force: true, silent: true }),
-        loadSyncedPerformanceState({ force: true }),
-      ]);
-      void loadCommunityOverview({ silent: true });
+      scheduleSharedAccountHydration({ silent: true, deferHydration: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -34675,13 +34692,13 @@ function showScreen(id, options = {}) {
     closeCommunityConversationActions?.();
     closeCommunityFriendActions?.();
     window.setTimeout(() => {
-      void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
     }, 0);
   }
 
   if (["dashboard", "daily-setup", "study-setup", "exam-setup"].includes(id)) {
     window.setTimeout(() => {
-      void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
     }, 0);
   }
 
@@ -34752,13 +34769,13 @@ function showScreen(id, options = {}) {
 
 window.addEventListener("focus", () => {
   if (currentUser && backendClient.isAuthenticated()) {
-    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
   }
 });
 
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && currentUser && backendClient.isAuthenticated()) {
-    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
   }
 });
 function restoreStreakUI() {

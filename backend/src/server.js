@@ -5534,28 +5534,34 @@ app.post(
       return;
     }
 
-    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
-    let reconciledUsers = users;
-    let reconciledUser = user;
-    try {
-      const reconciliation = reconcileUsersWithPointHistory(users, pointEvents);
-      reconciledUsers = reconciliation.users;
-      reconciledUser = reconciledUsers.find((entry) => entry.id === user.id) || user;
-      if (reconciliation.changed) {
-        try {
-          await writeCollection("users", reconciledUsers);
-        } catch (writeError) {
-          console.warn("Skipping post-login user reconciliation write", writeError?.message || writeError);
-        }
-      }
-    } catch (reconciliationError) {
-      console.warn("Skipping post-login user reconciliation", reconciliationError?.message || reconciliationError);
-    }
-    const token = createToken(reconciledUser);
+    const token = createToken(user);
     res.json({
       token,
-      user: toPublicUser(reconciledUser),
+      user: toPublicUser(user),
     });
+
+    void (async () => {
+      try {
+        const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+        const reconciliation = reconcileUsersWithPointHistory(users, pointEvents);
+        if (!reconciliation.changed) {
+          return;
+        }
+        try {
+          await writeCollection("users", reconciliation.users);
+        } catch (writeError) {
+          console.warn(
+            "Skipping post-login user reconciliation write",
+            writeError?.message || writeError,
+          );
+        }
+      } catch (reconciliationError) {
+        console.warn(
+          "Skipping post-login user reconciliation",
+          reconciliationError?.message || reconciliationError,
+        );
+      }
+    })();
   }),
 );
 

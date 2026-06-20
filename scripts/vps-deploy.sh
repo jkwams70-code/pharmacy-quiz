@@ -13,7 +13,8 @@ git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
 
 echo "==> Sync frontend files from www/"
-cp -rf "${SOURCE_DIR}/." "${FRONTEND_DIR}/"
+mkdir -p "${FRONTEND_DIR}"
+rsync -a --delete "${SOURCE_DIR}/" "${FRONTEND_DIR}/"
 
 echo "==> Reload web server"
 systemctl reload caddy

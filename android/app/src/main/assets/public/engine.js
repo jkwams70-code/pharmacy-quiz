@@ -5353,7 +5353,6 @@ function renderLeaderboardYourRank(entry = null, totalPlayers = 0) {
   if (!leaderboardYourRankEl) return;
   leaderboardYourRankEl.classList.add("hidden");
   leaderboardYourRankEl.innerHTML = "";
-  return;
   if (!entry) {
     leaderboardYourRankEl.classList.add("hidden");
     leaderboardYourRankEl.innerHTML = "";
@@ -5477,12 +5476,8 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
   setLeaderboardEmptyState(false);
 
   try {
-    if (currentUser && backendClient.isAuthenticated()) {
-      void flushPendingPoints().finally(() => {
-        if (leaderboardState.open && leaderboardState.scope === safeScope) {
-          void loadLeaderboard(safeScope, { force: true });
-        }
-      });
+    if (currentUser && backendClient.isAuthenticated() && readPendingPoints() > 0) {
+      await flushPendingPoints();
     }
     const snapshot = await backendClient.fetchPointsLeaderboard(safeScope);
     leaderboardState.cache[safeScope] = snapshot || {};

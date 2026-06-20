@@ -72,35 +72,6 @@
           console.warn("PWA launch URL build failed:", error);
         }
 
-        try {
-          if ("serviceWorker" in navigator && navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-            navigator.serviceWorker.getRegistrations()
-              .then(function (registrations) {
-                registrations.forEach(function (registration) {
-                  if (registration && registration.unregister) {
-                    registration.unregister().catch(function () {});
-                  }
-                });
-              })
-              .catch(function (error) {
-                console.warn("PWA launch cleanup failed:", error);
-              });
-          }
-          if ("caches" in window && window.caches && window.caches.keys) {
-            window.caches.keys()
-              .then(function (keys) {
-                keys.forEach(function (key) {
-                  window.caches.delete(key).catch(function () {});
-                });
-              })
-              .catch(function (error) {
-                console.warn("PWA cache cleanup failed:", error);
-              });
-          }
-        } catch (error) {
-          console.warn("PWA launch cleanup failed:", error);
-        }
-
         window.setTimeout(function () {
           window.location.replace(nextUrl);
         }, 100);

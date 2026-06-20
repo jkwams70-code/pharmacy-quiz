@@ -25,7 +25,7 @@ ENABLE_GZIP=true
 HTTPS_ENABLED=false
 ```
 
-For production deployments, start from `.env.production.example`.
+For production deployments, start from `.env.production.example` and set `DATABASE_URL` to your Postgres connection string.
 For local preview on a PC and phone, use `start-local-preview.cmd` from the repo root; it now injects the current LAN IP into `CORS_ORIGIN` automatically for the backend process.
 
 ## 3) Run
@@ -36,7 +36,14 @@ npm run dev
 
 On first startup, questions are auto-seeded from `Quiz/data.js`.
 
-## 4) Frontend
+## 4) Storage
+
+Development can use the JSON file store under `backend/data/`.
+
+Production should use Postgres via `DATABASE_URL`. The backend stores each logical collection in the `app_collections` table as JSONB, so the same account data is available across devices and browsers.
+To move the current question bank from the local `Quiz/data.js` file into Neon, set `DATABASE_URL` and run `npm run seed` once from `Quiz/backend`. That imports the local dataset into Postgres, and future edits should be made through the admin UI or the `/api/admin/questions` endpoints.
+
+## 5) Frontend
 
 The frontend sends sync events to:
 
@@ -50,10 +57,18 @@ localStorage.setItem("quizApiBase", "http://localhost:4000/api");
 
 Then reload the quiz page.
 
-## 5) Operations Scripts
+## 6) Backups
 
 ```bash
-npm run backup          # Create timestamped backup of data files
+npm run backup          # Export all collections to a timestamped backup folder
+```
+
+Backups are database-aware and can be restored in either local file mode or Postgres mode.
+To restore, run `npm run restore -- data_20260619_183446`.
+
+## 7) Operations Scripts
+
+```bash
 npm run cleanup         # Remove old runtime logs/backups
 npm run cleanup:users   # Remove inactive users with no activity history
 npm run validate:data   # Validate user/question/sync data references
@@ -67,7 +82,7 @@ npm run security:audit  # Dependency vulnerability audit
 npm run security:outdated # Available dependency updates
 ```
 
-## 6) Optional HTTPS (Local/Server)
+## 8) Optional HTTPS (Local/Server)
 
 Enable TLS in `.env`:
 

@@ -18807,6 +18807,68 @@ body #quiz-menu .menu-modern-points-value {
   font-weight: 700 !important;
 }
 
+@keyframes menuSkeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+body #quiz-menu .menu-modern-profile-btn.is-loading .menu-profile-icon {
+  opacity: 0 !important;
+}
+
+body #quiz-menu .menu-modern-profile-btn.is-loading .menu-modern-profile-avatar {
+  position: relative !important;
+}
+
+body #quiz-menu .menu-modern-profile-btn.is-loading .menu-modern-profile-avatar::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, #d9e2ec 25%, #f7f9fc 50%, #d9e2ec 75%) !important;
+  background-size: 200% 100% !important;
+  animation: menuSkeletonShimmer 1.2s linear infinite !important;
+}
+
+body #quiz-menu .menu-modern-profile-btn.is-loading .menu-modern-profile-name,
+body #quiz-menu .menu-modern-profile-btn.is-loading .menu-modern-profile-subtitle,
+body #quiz-menu .menu-modern-points-pill.is-loading .menu-modern-points-value {
+  position: relative !important;
+  display: inline-block !important;
+  overflow: hidden !important;
+  color: transparent !important;
+  border-radius: 999px !important;
+}
+
+body #quiz-menu .menu-modern-profile-btn.is-loading .menu-modern-profile-name {
+  min-width: 108px !important;
+  min-height: 14px !important;
+  background: linear-gradient(90deg, #d9e2ec 25%, #f7f9fc 50%, #d9e2ec 75%) !important;
+  background-size: 200% 100% !important;
+  animation: menuSkeletonShimmer 1.2s linear infinite !important;
+}
+
+body #quiz-menu .menu-modern-profile-btn.is-loading .menu-modern-profile-subtitle {
+  min-width: 74px !important;
+  min-height: 10px !important;
+  background: linear-gradient(90deg, #d9e2ec 25%, #f7f9fc 50%, #d9e2ec 75%) !important;
+  background-size: 200% 100% !important;
+  animation: menuSkeletonShimmer 1.2s linear infinite !important;
+}
+
+body #quiz-menu .menu-modern-points-pill.is-loading .menu-modern-points-value {
+  min-width: 42px !important;
+  min-height: 14px !important;
+  background: linear-gradient(90deg, #d9e2ec 25%, #f7f9fc 50%, #d9e2ec 75%) !important;
+  background-size: 200% 100% !important;
+  animation: menuSkeletonShimmer 1.2s linear infinite !important;
+}
+
 #quiz-area.mode-law .header-inline-meta {
   width: 100%;
   justify-content: center;

@@ -1,6 +1,8 @@
-import { baseQuestions } from "./data.js?v=20260613-manufacturing-set2";
 import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
+import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
+
+const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -103,6 +105,9 @@ const NEGATIVE_ANSWER_FEEDBACK = [
 
 const QUESTION_BANK_SCHEMA_STORAGE_KEY = "quizQuestionBankSchemaVersion";
 const QUESTION_BANK_SCHEMA_VERSION = "20260613-manufacturing-set2";
+const QUESTION_BANK_REMOTE_META_STORAGE_KEY = "quizQuestionBankRemoteMeta";
+let questionBankReady = false;
+let questionBankBootstrapPromise = null;
 const LAW_DRILL_STORAGE_KEY = "lawDrillSessionV2";
 const LEGACY_LAW_DRILL_STORAGE_KEY = "lawDrillSession";
 const LAW_DRILL_TOTAL_LEVELS = 100;
@@ -2211,17 +2216,172 @@ function stripCaseStemFromQuestion(questionText, caseText) {
   return output;
 }
 
-const normalizedLocalQuestions = enrichImportedCaseQuestions(
-  (Array.isArray(baseQuestions) ? baseQuestions : [])
-    .filter((question) => !isRetiredLawCategoryQuestion(question))
-    .map(withMajorCategory),
-);
+let normalizedLocalQuestions = [];
+let localQuestionFallbackById = new Map();
+let localTopicQuestionBank = [];
+let questionBank = [];
+const caseMap = {};
+let backendReady = false;
+let backendAttemptId = null;
+let currentUser = null;
+let authMode = "login";
+let topicCatalog = { topics: [], categories: [] };
+let topicCatalogLoaded = false;
+let topicLibraryReturnScreen = "quiz-menu";
+let topicViewerReturnScreen = "topic-library";
+let topicViewerCurrentSlug = "";
+let dailyQuizState = null;
+let dailyQuizSessionMeta = null;
+let dailyQuizPopupShownDate = "";
+let dailyCelebrationShownDate = "";
+let dailyPendingCelebration = null;
+let dailyGemsAnimationHandle = null;
+let dailyGemsAnimationActive = false;
+let dailyCelebrationHideTimer = null;
+let dailyCelebrationResetTimer = null;
+let dailyMidnightRefreshTimer = null;
+let dailyLeaderboardSnapshot = null;
+let questionInsightCache = Object.create(null);
+let questionInsightInFlightKey = "";
+let performanceStateSyncHandle = null;
+let performanceStateSyncInFlight = false;
+let performanceStateSyncQueued = false;
+let backendBootstrapStarted = false;
+const communityStatusVideoMetaCache = new Map();
+const communityStatusVideoFrameCache = new Map();
+const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
+const COMMUNITY_OFFLINE_QUEUE_TYPES = {
+  SEND_MESSAGE: "community-send-message",
+  TOGGLE_STATUS_LIKE: "community-toggle-status-like",
+  SEND_FRIEND_REQUEST: "community-send-friend-request",
+  RESPOND_FRIEND_REQUEST: "community-respond-friend-request",
+  UNFRIEND: "community-unfriend",
+  BLOCK_USER: "community-block-user",
+  UNBLOCK_USER: "community-unblock-user",
+};
+let communityOfflineQueueFlushHandle = null;
+let communityOfflineQueueFlushInFlight = false;
 
-const localQuestionFallbackById = new Map(
-  normalizedLocalQuestions
-    .map((q) => [Number(q?.id), q])
-    .filter(([id]) => Number.isFinite(id)),
-);
+function scheduleCommunityOfflineQueueFlush(delayMs = 800) {
+  if (communityOfflineQueueFlushHandle) {
+    clearTimeout(communityOfflineQueueFlushHandle);
+  }
+  communityOfflineQueueFlushHandle = setTimeout(() => {
+    communityOfflineQueueFlushHandle = null;
+    void flushCommunityOfflineQueue();
+  }, Math.max(200, Math.round(Number(delayMs) || 800)));
+}
+
+async function flushCommunityOfflineQueue() {
+  if (communityOfflineQueueFlushInFlight || !backendClient.isAuthenticated()) return;
+  communityOfflineQueueFlushInFlight = true;
+  try {
+    const outcomes = await flushOfflineQueue(async (entry) => {
+      const payload = entry?.payload && typeof entry.payload === "object" ? entry.payload : {};
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_MESSAGE) {
+        const response = await backendClient.sendConversationMessage(
+          String(payload.conversationId || "").trim(),
+          String(payload.text || ""),
+          payload.attachment || null,
+          payload.replyTo || null,
+        );
+        if (payload.optimisticIds) {
+          removeCommunityPendingOutgoingMessageIds(payload.optimisticIds);
+        }
+        const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
+        if (savedMessage) {
+          communityState.messages = Array.isArray(communityState.messages)
+            ? communityState.messages.filter((message) => !Array.isArray(payload.optimisticIds) || !payload.optimisticIds.includes(String(message?.id || "")))
+            : [];
+          if (!communityState.messages.some((message) => String(message?.id || "") === String(savedMessage.id || ""))) {
+            communityState.messages.push(savedMessage);
+          }
+          renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
+        }
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.TOGGLE_STATUS_LIKE) {
+        await backendClient.toggleStatusLike(String(payload.statusId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_FRIEND_REQUEST) {
+        await backendClient.sendFriendRequest(String(payload.userId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST) {
+        await backendClient.respondToFriendRequest(String(payload.requestId || ""), String(payload.decision || "accept"));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.UNFRIEND) {
+        await backendClient.unfriendUser(String(payload.userId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.BLOCK_USER) {
+        await backendClient.blockUser(String(payload.userId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.UNBLOCK_USER) {
+        await backendClient.unblockUser(String(payload.userId || ""));
+      }
+    });
+    if (Array.isArray(outcomes) && outcomes.some((outcome) => Boolean(outcome?.ok))) {
+      void loadCommunityOverview({ silent: true, preferCache: true });
+      if (communityState.activeConversation?.id) {
+        void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+      }
+    }
+  } catch {
+    // Best effort only.
+  } finally {
+    communityOfflineQueueFlushInFlight = false;
+  }
+}
+
+async function loadBundledQuestionSource() {
+  const imported = await import(QUESTION_BANK_MODULE_URL);
+  return Array.isArray(imported.baseQuestions) ? imported.baseQuestions : [];
+}
+
+async function ensureQuestionBankLoaded() {
+  if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+    return questionBank;
+  }
+
+  if (questionBankBootstrapPromise) {
+    return questionBankBootstrapPromise;
+  }
+
+  questionBankBootstrapPromise = (async () => {
+    const sourceQuestions = await loadBundledQuestionSource();
+    if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+      return questionBank;
+    }
+    normalizedLocalQuestions = enrichImportedCaseQuestions(
+      (Array.isArray(sourceQuestions) ? sourceQuestions : [])
+        .filter((question) => !isRetiredLawCategoryQuestion(question))
+        .map(withMajorCategory),
+    );
+
+    localQuestionFallbackById = new Map(
+      normalizedLocalQuestions
+        .map((q) => [Number(q?.id), q])
+        .filter(([id]) => Number.isFinite(id)),
+    );
+    localTopicQuestionBank = [...normalizedLocalQuestions];
+    questionBank = [...localTopicQuestionBank];
+    questionBankReady = true;
+    rebuildCaseMap();
+    reconcileLocalQuestionStats();
+    refreshQuestionDependentUi();
+    return questionBank;
+  })().catch((error) => {
+    console.warn("Failed to load bundled question bank:", error);
+    questionBankBootstrapPromise = null;
+    return [];
+  });
+
+  return questionBankBootstrapPromise;
+}
 
 function mapBackendQuestionToLocal(q = {}) {
   const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
@@ -2270,51 +2430,24 @@ function mapBackendQuestionToLocal(q = {}) {
   };
 }
 
-const localTopicQuestionBank = [...normalizedLocalQuestions];
-let questionBank = [...localTopicQuestionBank];
-const caseMap = {};
-let backendReady = false;
-let backendAttemptId = null;
-let currentUser = null;
-let authMode = "login";
-let topicCatalog = { topics: [], categories: [] };
-let topicCatalogLoaded = false;
-let topicLibraryReturnScreen = "quiz-menu";
-let topicViewerReturnScreen = "topic-library";
-let topicViewerCurrentSlug = "";
-let dailyQuizState = null;
-let dailyQuizSessionMeta = null;
-let dailyQuizPopupShownDate = "";
-let dailyCelebrationShownDate = "";
-let dailyPendingCelebration = null;
-let dailyGemsAnimationHandle = null;
-let dailyGemsAnimationActive = false;
-let dailyCelebrationHideTimer = null;
-let dailyCelebrationResetTimer = null;
-let dailyMidnightRefreshTimer = null;
-let dailyLeaderboardSnapshot = null;
-let questionInsightCache = Object.create(null);
-let questionInsightInFlightKey = "";
-let performanceStateSyncHandle = null;
-let performanceStateSyncInFlight = false;
-let performanceStateSyncQueued = false;
-let backendBootstrapStarted = false;
-const communityStatusVideoMetaCache = new Map();
-const communityStatusVideoFrameCache = new Map();
-const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
-
 // Load questions from backend if available
 async function loadQuestionsFromBackend() {
   try {
     const questions = await backendClient.fetchQuestions();
     if (Array.isArray(questions) && questions.length > 0) {
-      // Use Neon/Postgres as the source of truth whenever the backend is reachable.
-      // Local questions remain only as an offline fallback.
       const backendQuestions = questions
         .filter((question) => !isRetiredLawCategoryQuestion(question))
         .map(mapBackendQuestionToLocal)
         .sort(byQuestionIdAscending);
       questionBank = enrichImportedCaseQuestions(backendQuestions);
+      localTopicQuestionBank = [...questionBank];
+      normalizedLocalQuestions = [...questionBank];
+      localQuestionFallbackById = new Map(
+        normalizedLocalQuestions
+          .map((q) => [Number(q?.id), q])
+          .filter(([id]) => Number.isFinite(id)),
+      );
+      questionBankReady = true;
       backendReady = true;
       reconcileLocalQuestionStats();
       rebuildCaseMap();
@@ -2332,9 +2465,14 @@ function startBackendBootstrap() {
   backendBootstrapStarted = true;
   const runBootstrap = () => {
     void loadQuestionsFromBackend();
-    backendClient.warmup().catch(() => {
-      // Keep local-first behavior if backend is offline.
-    });
+    backendClient
+      .warmup()
+      .then(() => {
+        backendReady = true;
+      })
+      .catch(() => {
+        // Keep local-first behavior if backend is offline.
+      });
   };
   if (typeof window.requestIdleCallback === "function") {
     window.requestIdleCallback(runBootstrap, { timeout: 1500 });
@@ -2342,6 +2480,22 @@ function startBackendBootstrap() {
     window.setTimeout(runBootstrap, 250);
   }
 }
+
+function startQuestionBankBootstrap() {
+  const runBootstrap = () => {
+    void ensureQuestionBankLoaded();
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runBootstrap, 250);
+  }
+}
+
+window.addEventListener("online", () => {
+  scheduleCommunityOfflineQueueFlush(100);
+});
 
 function rebuildCaseMap() {
   Object.keys(caseMap).forEach((key) => delete caseMap[key]);
@@ -2598,6 +2752,37 @@ async function loadSyncedPerformanceState({ force = false } = {}) {
     return syncedPerformanceStateCache;
   }
 
+  if (!force) {
+    const cachedState = await getOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY);
+    if (cachedState?.value) {
+      const nextState = cachedState.value;
+      syncedPerformanceStateCache = nextState;
+      syncedPerformanceStateLoadedFromSync = true;
+      applySyncedPerformanceState(nextState);
+      void (async () => {
+        try {
+          const response = await backendClient.fetchSyncedPerformanceState(5000);
+          const events = Array.isArray(response?.events) ? response.events : [];
+          const built = buildPerformanceStateFromEvents(events);
+          const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || {});
+          const freshState = {
+            performanceData: built.performanceData,
+            categoryPerformance: built.categoryPerformance,
+            rotationPerformance: built.rotationPerformance,
+            weakTracker: remoteWeakTracker,
+          };
+          syncedPerformanceStateCache = freshState;
+          syncedPerformanceStateLoadedFromSync = true;
+          applySyncedPerformanceState(freshState);
+          void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, freshState);
+        } catch {
+          // Keep cached performance state if the backend cannot be reached.
+        }
+      })();
+      return nextState;
+    }
+  }
+
   try {
     const response = await backendClient.fetchSyncedPerformanceState(5000);
     const events = Array.isArray(response?.events) ? response.events : [];
@@ -2612,6 +2797,7 @@ async function loadSyncedPerformanceState({ force = false } = {}) {
     syncedPerformanceStateCache = nextState;
     syncedPerformanceStateLoadedFromSync = true;
     applySyncedPerformanceState(nextState);
+    void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, nextState);
   } catch {
     // Keep local performance data if the backend cannot be reached.
   }
@@ -2625,6 +2811,10 @@ function normalizeQuestionIdKey(value) {
 }
 
 function reconcileLocalQuestionStats() {
+  if (!questionBankReady) {
+    return;
+  }
+
   const validIds = new Set(
     (Array.isArray(questionBank) ? questionBank : [])
       .map((q) => normalizeQuestionIdKey(q?.id))
@@ -2946,6 +3136,7 @@ const welcomeRegisterCtaBtns = Array.from(
   document.querySelectorAll('[data-open-welcome-register="true"]'),
 );
 const WELCOME_INTRO_SEEN_KEY = "quizWelcomeIntroSeenV1";
+const MENU_SNAPSHOT_STORAGE_KEY = "quizMenuSnapshotV1";
 const profileBtnIcon = profileBtn?.querySelector(".menu-profile-icon");
 const profileBtnAvatarEl = profileBtn?.querySelector(".menu-modern-profile-avatar");
 const menuProfileNameEl = document.getElementById("menu-profile-name");
@@ -3471,6 +3662,12 @@ const COMMUNITY_ADMIN_KEY_STORAGE_KEY = "quizAdminKey";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
 const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
+const DAILY_QUIZ_STATE_CACHE_KEY = "dailyQuizStateCacheV1";
+const DAILY_LEADERBOARD_CACHE_KEY = "dailyQuizLeaderboardCacheV1";
+const DASHBOARD_SYNC_STATE_CACHE_KEY = "dashboardSyncedPerformanceStateCacheV1";
+const DASHBOARD_SNAPSHOT_CACHE_KEY = "dashboardSyncedSnapshotCacheV1";
+const DASHBOARD_TREND_HISTORY_CACHE_KEY = "dashboardSyncedTrendHistoryCacheV1";
+const DASHBOARD_HISTORY_CACHE_PREFIX = "dashboardSyncedHistoryCacheV1:";
 const POINTS_STORAGE_KEY = "quizPointsV1";
 const POINTS_PENDING_STORAGE_KEY = "quizPointsPendingV1";
 const SETUP_POINTS_STORAGE_KEY = "quizSetupPointsV1";
@@ -4929,7 +5126,7 @@ async function sendCommunityVoiceNoteFile(file) {
     clearCommunityReplyDraft();
     syncCommunityChatComposerState();
     await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview();
+    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
     communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
     renderCommunitySummary();
     renderCommunityStatusStrip();
@@ -5772,11 +5969,12 @@ function getMenuLevelSnapshot(points = 0) {
 }
 
 function getMenuLeaderboardRankLabel() {
+  const snapshotUser = getMenuSnapshotUser();
   const cachedAllTime = leaderboardState?.cache?.alltime?.yourEntry;
   const rankValue = Number(
     cachedAllTime?.rank ??
-    currentUser?.leaderboardStats?.rank ??
-    currentUser?.leaderboardRank ??
+    snapshotUser?.leaderboardStats?.rank ??
+    snapshotUser?.leaderboardRank ??
     0,
   );
   if (Number.isFinite(rankValue) && rankValue > 0) {
@@ -5850,14 +6048,15 @@ function getMenuWeeklyPercent() {
 }
 
 function renderMenuDashboardStats() {
-  const points = getCumulativePoints();
+  const snapshotUser = getMenuSnapshotUser();
+  const points = getMenuPointsValue();
   const dailyStreak = Math.max(
     0,
     Math.round(
       Number(
         dailyQuizState?.stats?.streak ??
-          currentUser?.dailyQuiz?.streak ??
-          currentUser?.dailyQuiz?.dailyStreak ??
+          snapshotUser?.dailyQuiz?.streak ??
+          snapshotUser?.dailyQuiz?.dailyStreak ??
           0,
       ) || 0,
     ),
@@ -5904,7 +6103,10 @@ function renderSetupPoints() {
 
 function renderPoints() {
   if (!menuPointsValueEl) return;
-  menuPointsValueEl.textContent = String(getCumulativePoints());
+  if (currentUser) {
+    syncMenuSnapshotCacheFromUser(currentUser);
+  }
+  menuPointsValueEl.textContent = String(getMenuPointsValue());
   renderMenuDashboardStats();
   renderSetupPoints();
 }
@@ -6214,6 +6416,7 @@ function renderLeaderboardSnapshot(snapshot = {}, scope = "daily") {
 
 async function loadLeaderboard(scope = "daily", { force = false } = {}) {
   const safeScope = String(scope || "daily").trim().toLowerCase();
+  const cacheKey = `leaderboard:${safeScope}`;
   const cachedSnapshot = leaderboardState.cache[safeScope];
   const cachedAt = Number(leaderboardState.cacheAt[safeScope]) || 0;
   const isFresh = cachedAt > 0 && Date.now() - cachedAt < 60_000;
@@ -6230,17 +6433,40 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     }
     return;
   }
+  if (!force) {
+    const offlineSnapshot = await getOfflineEntry(cacheKey);
+    if (offlineSnapshot?.value) {
+      const snapshot = offlineSnapshot.value;
+      leaderboardState.cache[safeScope] = snapshot || {};
+      leaderboardState.cacheAt[safeScope] = Number(offlineSnapshot.updatedAt) || Date.now();
+      renderLeaderboardSnapshot(snapshot || {}, safeScope);
+      if (isFresh) {
+        return;
+      }
+      if (leaderboardState.open) {
+        window.setTimeout(() => {
+          void loadLeaderboard(safeScope, { force: true });
+        }, 0);
+      }
+      return;
+    }
+  }
 
   setLeaderboardLoading(true);
   setLeaderboardEmptyState(false);
 
   try {
     if (currentUser && backendClient.isAuthenticated()) {
-      await flushPendingPoints();
+      void flushPendingPoints().finally(() => {
+        if (leaderboardState.open && leaderboardState.scope === safeScope) {
+          void loadLeaderboard(safeScope, { force: true });
+        }
+      });
     }
     const snapshot = await backendClient.fetchPointsLeaderboard(safeScope);
     leaderboardState.cache[safeScope] = snapshot || {};
     leaderboardState.cacheAt[safeScope] = Date.now();
+    void setOfflineEntry(cacheKey, snapshot || {});
     renderLeaderboardSnapshot(snapshot || {}, safeScope);
   } catch {
     renderLeaderboardPodium([]);
@@ -16753,7 +16979,7 @@ async function runCommunityFriendAction(action = "") {
       syncCommunityChatComposerState();
     }
     communityState.profile = null;
-    await loadCommunityOverview({ silent: true });
+    await loadCommunityOverview({ silent: true, preferCache: true });
     closeCommunityFriendActions();
     if (getActiveScreenId() === "community-profile-screen" && payload.userId) {
       await openCommunityProfile(payload.userId);
@@ -17149,7 +17375,7 @@ async function runCommunityConversationAction(action = "") {
             : backendClient.unfavoriteCommunityConversation(row.id),
         ),
       );
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -17158,7 +17384,7 @@ async function runCommunityConversationAction(action = "") {
     if (action === "clear") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(selectedIds.map((conversationId) => backendClient.clearCommunityConversation(conversationId)));
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -17184,7 +17410,7 @@ async function runCommunityConversationAction(action = "") {
         syncCommunityChatComposerState();
       }
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -17204,7 +17430,7 @@ async function runCommunityConversationAction(action = "") {
         ...directConversationIds.map((conversationId) => backendClient.deleteCommunityConversation(conversationId)),
         ...groupConversationIds.map((conversationId) => backendClient.deleteCommunityGroup(conversationId)),
       ]);
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -17219,7 +17445,7 @@ async function runCommunityConversationAction(action = "") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(userIds.map((userId) => backendClient.blockUser(userId)));
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -17230,7 +17456,7 @@ async function runCommunityConversationAction(action = "") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(groupIds.map((conversationId) => backendClient.leaveCommunityGroup(conversationId)));
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -17295,16 +17521,36 @@ function renderCommunityView() {
   renderCommunityDiscover();
 }
 
-async function loadCommunityOverview({ silent = false } = {}) {
+async function loadCommunityOverview({ silent = false, preferCache = false } = {}) {
   if (!silent) {
     setCommunityFeedback("Loading community...");
   }
   try {
     void ensureCommunityGlobalRealtimeSubscription();
-    communityState.overview = await backendClient.fetchCommunityOverview();
+    if (preferCache) {
+      const cachedOverview = await getOfflineEntry("community-overview");
+      if (cachedOverview?.value) {
+        communityState.overview = cachedOverview.value;
+        communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+        try {
+          const cachedBlocked = await getOfflineEntry("community-blocked");
+          communityState.blocked = Array.isArray(cachedBlocked?.value?.blocked) ? cachedBlocked.value.blocked : [];
+        } catch {
+          communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+        }
+        communityState.searchResults = null;
+        setCommunityFeedback("");
+        startCommunityOverviewPolling({ background: true });
+        renderCommunityNotificationBadges();
+        maybeShowCommunityEntryNotificationBanner();
+        syncAppNotificationBannerVisibility();
+        renderCommunityView();
+      }
+    }
+    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache });
     communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
     try {
-      const blockedResponse = await backendClient.fetchBlockedUsers();
+      const blockedResponse = await backendClient.fetchBlockedUsers({ preferCache });
       communityState.blocked = Array.isArray(blockedResponse?.blocked) ? blockedResponse.blocked : [];
     } catch {
       communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
@@ -17316,6 +17562,31 @@ async function loadCommunityOverview({ silent = false } = {}) {
     maybeShowCommunityEntryNotificationBanner();
     syncAppNotificationBannerVisibility();
     renderCommunityView();
+    void setOfflineEntry("community-overview", communityState.overview);
+    void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
+    if (preferCache) {
+      void (async () => {
+        try {
+          const freshOverview = await backendClient.fetchCommunityOverview();
+          communityState.overview = freshOverview;
+          communityState.statuses = Array.isArray(freshOverview?.statuses) ? freshOverview.statuses : [];
+          try {
+            const freshBlockedResponse = await backendClient.fetchBlockedUsers();
+            communityState.blocked = Array.isArray(freshBlockedResponse?.blocked) ? freshBlockedResponse.blocked : [];
+          } catch {
+            communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+          }
+          renderCommunityNotificationBadges();
+          maybeShowCommunityEntryNotificationBanner();
+          syncAppNotificationBannerVisibility();
+          renderCommunityView();
+          void setOfflineEntry("community-overview", freshOverview);
+          void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
+        } catch {
+          // Best-effort refresh only.
+        }
+      })();
+    }
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Community could not load right now."), true);
     renderCommunityNotificationBadges();
@@ -17336,7 +17607,44 @@ async function runCommunitySearch() {
   }
   setCommunityFeedback("Searching community...");
   try {
-    const response = await backendClient.searchCommunityUsers(query, 24);
+    const safeQuery = query.toLowerCase().slice(0, 120);
+    const cacheKey = `community-search:${safeQuery}:24`;
+    const offlineResults = await getOfflineEntry(cacheKey);
+    const showCachedResults = Boolean(offlineResults?.value);
+    if (offlineResults?.value) {
+      communityState.searchResults = Array.isArray(offlineResults.value?.users) ? offlineResults.value.users : [];
+      communityState.tab = "friends";
+      communityState.friendsView = "suggestions";
+      updateCommunityTabState();
+      setCommunityFeedback(
+        communityState.searchResults.length
+          ? `Found ${communityState.searchResults.length} learner${communityState.searchResults.length === 1 ? "" : "s"}.`
+          : "No learners matched that search.",
+      );
+      renderCommunityView();
+    }
+    if (showCachedResults) {
+      void (async () => {
+        try {
+          const response = await backendClient.searchCommunityUsers(query, 24, { preferCache: true });
+          communityState.searchResults = Array.isArray(response?.users) ? response.users : [];
+          communityState.tab = "friends";
+          communityState.friendsView = "suggestions";
+          updateCommunityTabState();
+          setCommunityFeedback(
+            communityState.searchResults.length
+              ? `Found ${communityState.searchResults.length} learner${communityState.searchResults.length === 1 ? "" : "s"}.`
+              : "No learners matched that search.",
+          );
+          renderCommunityView();
+          void setOfflineEntry(cacheKey, { users: communityState.searchResults });
+        } catch {
+          // Keep cached results visible.
+        }
+      })();
+      return;
+    }
+    const response = await backendClient.searchCommunityUsers(query, 24, { preferCache: true });
     communityState.searchResults = Array.isArray(response?.users) ? response.users : [];
     communityState.tab = "friends";
     communityState.friendsView = "suggestions";
@@ -17347,6 +17655,7 @@ async function runCommunitySearch() {
         : "No learners matched that search.",
     );
     renderCommunityView();
+    void setOfflineEntry(cacheKey, { users: communityState.searchResults });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Search is unavailable right now."), true);
   }
@@ -17655,7 +17964,7 @@ async function ensureCommunityProfileLeaderboardStats(profilePayload = null, use
   const isSelf = Boolean(payload.relationship?.isSelf);
   if (!isSelf && visibility === "nobody") return payload;
   try {
-    const snapshot = await backendClient.fetchPointsLeaderboard("alltime", 100);
+    const snapshot = await backendClient.fetchPointsLeaderboard("alltime", 100, { preferCache: true });
     const entry =
       (Array.isArray(snapshot?.topThree) ? snapshot.topThree : []).find((row) => String(row.userId || "") === targetId) ||
       (Array.isArray(snapshot?.leaderboard) ? snapshot.leaderboard : []).find((row) => String(row.userId || "") === targetId) ||
@@ -17684,8 +17993,24 @@ async function openCommunityProfile(userId = "") {
     if (leaderboardState.open) {
       closeLeaderboardModal({ useHistory: false });
     }
-    communityState.profile = await backendClient.fetchCommunityProfile(userId);
+    const safeUserId = String(userId || "").trim();
+    const cachedProfile = await getOfflineEntry(`community-profile:${safeUserId}`);
+    if (cachedProfile?.value) {
+      communityState.profile = cachedProfile.value;
+      communityState.profile = await ensureCommunityProfileLeaderboardStats(communityState.profile, userId);
+      renderCommunityProfileView();
+      showScreen("community-profile-screen");
+      requestAnimationFrame(() => {
+        const communityProfileScrollEl = getCommunityProfileScrollEl();
+        if (communityProfileScrollEl instanceof HTMLElement) {
+          communityProfileScrollEl.scrollTop = 0;
+        }
+        syncCommunityGroupProfileHeaderOffset();
+      });
+    }
+    communityState.profile = await backendClient.fetchCommunityProfile(userId, { preferCache: true });
     communityState.profile = await ensureCommunityProfileLeaderboardStats(communityState.profile, userId);
+    void setOfflineEntry(`community-profile:${safeUserId}`, communityState.profile);
     renderCommunityProfileView();
     showScreen("community-profile-screen");
     requestAnimationFrame(() => {
@@ -18155,7 +18480,7 @@ async function openCommunityGroupStorageScreen(groupId = "", initialTab = "media
       String(communityState.profile?.group?.id || "") === String(groupId)
         ? String(communityState.profile?.group?.name || "").trim()
         : "";
-    const response = await backendClient.fetchConversationMessages(groupId);
+    const response = await backendClient.fetchConversationMessages(groupId, { preferCache: true });
     communityState.groupStorage = {
       groupId: String(groupId || "").trim(),
       groupName: groupName || "Shared Media",
@@ -18533,12 +18858,25 @@ function renderCommunityMessageReplySnippet(replyTo = null) {
   `;
 }
 
-async function loadCommunityMessages({ silent = false, scrollToBottom = false } = {}) {
+async function loadCommunityMessages({ silent = false, scrollToBottom = false, preferCache = false } = {}) {
   if (!communityState.activeConversation?.id) return;
   try {
     const shouldStickToBottom = scrollToBottom || isCommunityChatNearBottom();
+    const conversationCacheKey = `community-messages:${String(communityState.activeConversation.id || "").trim()}`;
+    if (preferCache) {
+      const cachedMessages = await getOfflineEntry(conversationCacheKey);
+      if (cachedMessages?.value) {
+        const cachedResponse = cachedMessages.value;
+        const cachedList = Array.isArray(cachedResponse?.messages) ? cachedResponse.messages : [];
+        if (cachedResponse?.partner) {
+          updateCommunityChatHeader(cachedResponse.partner);
+        }
+        renderCommunityMessages(cachedList, { scrollToBottom: shouldStickToBottom });
+      }
+    }
     const response = await backendClient.fetchConversationMessages(communityState.activeConversation.id, {
       markRead: true,
+      preferCache,
     });
     const messages = Array.isArray(response?.messages) ? response.messages : [];
     const nextContentSignature = getCommunityMessageContentSignature(messages);
@@ -18563,6 +18901,13 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false } 
     }
     restoreCommunityChatDraftIfNeeded(communityState.activeConversation?.id || "");
     void refreshCommunityConversationActiveCall({ silent: true });
+    void setOfflineEntry(conversationCacheKey, {
+      messages,
+      partner: response?.partner || communityState.activeConversationPartner || null,
+    });
+    if (preferCache) {
+      void loadCommunityMessages({ silent: true, scrollToBottom: false, preferCache: false });
+    }
     if (!silent) setCommunityFeedback("");
   } catch (error) {
     if (!silent) setCommunityFeedback(generalApiErrorMessage(error, "Messages could not load right now."), true);
@@ -18603,7 +18948,7 @@ async function openCommunityConversation(userId = "", existingConversationId = "
       )?.conversation?.partner ||
       null;
     if (!partner && conversationId) {
-      const groupResponse = await backendClient.fetchCommunityGroup(conversationId).catch(() => null);
+      const groupResponse = await backendClient.fetchCommunityGroup(conversationId, { preferCache: true }).catch(() => null);
       partner = groupResponse?.group || groupResponse?.conversation?.partner || partner || null;
     }
     if (!partner) {
@@ -18623,9 +18968,9 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     resetCommunityVoiceRecordingState();
     updateCommunityChatHeader(partner || {});
     showScreen("community-chat-screen");
-    await loadCommunityMessages({ scrollToBottom: true });
+    await loadCommunityMessages({ scrollToBottom: true, preferCache: true });
     try {
-      communityState.overview = await backendClient.fetchCommunityOverview();
+      communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
       communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
       renderCommunityNotificationBadges();
     } catch {}
@@ -18757,25 +19102,48 @@ async function sendCommunityMessage() {
     removeCommunityChatDraftForConversation(conversationId);
     syncCommunityChatComposerState();
     await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview();
+    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
     communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
     renderCommunitySummary();
     renderCommunityStatusStrip();
-    } catch (error) {
-      const errorMessage = attachments.length
-        ? generalApiErrorMessage(error, "Attachments could not send right now.")
-        : generalApiErrorMessage(error, "Message could not send right now.");
-      if (pendingDrafts.length) {
-      updateCommunityPendingOutgoingMessages(
-        pendingDrafts.map((entry) => entry.id),
-        (entry) => ({
-          ...entry,
-          uploadState: "failed",
-          uploadError: errorMessage,
-        }),
+  } catch (error) {
+    const errorMessage = attachments.length
+      ? generalApiErrorMessage(error, "Attachments could not send right now.")
+      : generalApiErrorMessage(error, "Message could not send right now.");
+    if (pendingDrafts.length) {
+      if (!attachments.length) {
+        const optimisticIds = pendingDrafts.map((entry) => entry.id);
+        updateCommunityPendingOutgoingMessages(
+          optimisticIds,
+          (entry) => ({
+            ...entry,
+            uploadState: "queued",
+            uploadError: "Waiting for connection...",
+          }),
+        );
+        void enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_MESSAGE,
+          payload: {
+            conversationId,
+            text,
+            replyTo,
+            optimisticIds,
+          },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
+      } else {
+        updateCommunityPendingOutgoingMessages(
+          pendingDrafts.map((entry) => entry.id),
+          (entry) => ({
+            ...entry,
+            uploadState: "failed",
+            uploadError: errorMessage,
+          }),
         );
         renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
       }
+    }
     if (communityChatInput) {
       autosizeCommunityChatInput();
     }
@@ -20372,15 +20740,55 @@ async function executeCommunityAction(action = "", payload = {}) {
       return;
     }
     if (action === "send-request" && userId) {
-      await backendClient.sendFriendRequest(userId);
+      try {
+        await backendClient.sendFriendRequest(userId);
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_FRIEND_REQUEST,
+          payload: { userId },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "accept-request" && requestId) {
-      await backendClient.respondToFriendRequest(requestId, "accept");
+      try {
+        await backendClient.respondToFriendRequest(requestId, "accept");
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST,
+          payload: { requestId, decision: "accept" },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "reject-request" && requestId) {
-      await backendClient.respondToFriendRequest(requestId, "reject");
+      try {
+        await backendClient.respondToFriendRequest(requestId, "reject");
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST,
+          payload: { requestId, decision: "reject" },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "cancel-request" && requestId) {
-      await backendClient.cancelFriendRequest(requestId);
+      try {
+        await backendClient.cancelFriendRequest(requestId);
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST,
+          payload: { requestId, decision: "cancel" },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "block-user" && userId) {
-      const targetUserResponse = await backendClient.fetchCommunityProfile(userId).catch(() => null);
+      const targetUserResponse = await backendClient.fetchCommunityProfile(userId, { preferCache: true }).catch(() => null);
       const targetUser = targetUserResponse?.profile || targetUserResponse?.user || targetUserResponse;
       if (isCommunityAppAdminUser(targetUser)) {
         setCommunityFeedback("App admins cannot be blocked.", true);
@@ -20393,9 +20801,19 @@ async function executeCommunityAction(action = "", payload = {}) {
         intent: "danger",
         onConfirm: async () => {
           closeCommunityConfirmModal();
-          await backendClient.blockUser(userId);
+          try {
+            await backendClient.blockUser(userId);
+          } catch (error) {
+            await enqueueOfflineAction({
+              type: COMMUNITY_OFFLINE_QUEUE_TYPES.BLOCK_USER,
+              payload: { userId },
+            });
+            scheduleCommunityOfflineQueueFlush();
+            setCommunityFeedback("Saved locally. It will sync when connection returns.");
+            return;
+          }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true });
+          await loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }
@@ -20410,9 +20828,19 @@ async function executeCommunityAction(action = "", payload = {}) {
         intent: "default",
         onConfirm: async () => {
           closeCommunityConfirmModal();
-          await backendClient.unblockUser(userId);
+          try {
+            await backendClient.unblockUser(userId);
+          } catch (error) {
+            await enqueueOfflineAction({
+              type: COMMUNITY_OFFLINE_QUEUE_TYPES.UNBLOCK_USER,
+              payload: { userId },
+            });
+            scheduleCommunityOfflineQueueFlush();
+            setCommunityFeedback("Saved locally. It will sync when connection returns.");
+            return;
+          }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true });
+          await loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }
@@ -20520,7 +20948,7 @@ async function executeCommunityAction(action = "", payload = {}) {
     }
 
     communityState.profile = null;
-    await loadCommunityOverview({ silent: true });
+    await loadCommunityOverview({ silent: true, preferCache: true });
     if (getActiveScreenId() === "community-profile-screen" && userId) {
       await openCommunityProfile(userId);
     }
@@ -20552,7 +20980,7 @@ async function openCommunityScreen() {
   showScreen("community-screen");
   renderCommunitySummary();
   renderCommunityResultsMarkup(`<div class="community-empty-state">Loading community...</div>`);
-  await loadCommunityOverview();
+  await loadCommunityOverview({ preferCache: true });
 }
 
 function renderXp() {
@@ -22010,10 +22438,11 @@ function configureDailyShareButton(context = {}) {
 }
 
 function renderDailyQuizUi() {
-  const userSummary = currentUser?.dailyQuiz || {};
+  const menuUser = getMenuSnapshotUser();
+  const userSummary = currentUser?.dailyQuiz || menuUser?.dailyQuiz || {};
   const state = dailyQuizState;
 
-  if (!currentUser) {
+  if (!menuUser) {
     if (dailyQuizMetaEl) {
       dailyQuizMetaEl.textContent = "Sign in to unlock today's challenge.";
     }
@@ -22220,6 +22649,43 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
     return dailyQuizState;
   }
 
+  if (!force) {
+    const cachedState = await getOfflineEntry(DAILY_QUIZ_STATE_CACHE_KEY);
+    if (cachedState?.value) {
+      dailyQuizState = normalizeDailyQuizPayload(cachedState.value);
+      renderDailyQuizUi();
+      void (async () => {
+        try {
+          const fetchToday =
+            backendClient.fetchDailyQuizToday ||
+            backendClient.fetchDailyQuiz ||
+            backendClient.fetchQuizToday ||
+            backendClient.fetchquiztoday ||
+            backendClient.fecthQuizToday ||
+            backendClient.fecthquiztoday;
+
+          if (typeof fetchToday !== "function") {
+            return;
+          }
+
+          const payload = await fetchToday.call(backendClient);
+          dailyQuizState = normalizeDailyQuizPayload(payload);
+          if (payload?.user) {
+            currentUser = payload.user;
+          }
+          if (dailyQuizState.today?.completed) {
+            markDailyPopupSeen(dailyQuizState.today.date);
+          }
+          renderDailyQuizUi();
+          void setOfflineEntry(DAILY_QUIZ_STATE_CACHE_KEY, dailyQuizState);
+        } catch {
+          // Keep cached daily quiz state when refresh fails.
+        }
+      })();
+      return dailyQuizState;
+    }
+  }
+
   const previousState = dailyQuizState;
   if (!silent && dailyStatusLineEl) {
     dailyStatusLineEl.textContent = "Checking today's challenge...";
@@ -22246,6 +22712,7 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
     if (dailyQuizState.today?.completed) {
       markDailyPopupSeen(dailyQuizState.today.date);
     }
+    void setOfflineEntry(DAILY_QUIZ_STATE_CACHE_KEY, dailyQuizState);
     renderDailyQuizUi();
     return dailyQuizState;
   } catch (error) {
@@ -26356,12 +26823,23 @@ if (communityStatusLikeBtn) {
     const ownerId = String(communityState.statusViewerOwnerId || "").trim();
     const statusId = String(current?.id || "").trim();
     if (!ownerId || !statusId) return;
+    const nextLiked = !Boolean(current?.likedByViewer);
+    const currentLikes = Math.max(0, Math.round(Number(current?.likesCount) || 0));
+    const nextLikesCount = Math.max(0, currentLikes + (nextLiked ? 1 : -1));
+    updateCommunityStatusLikeLocal(ownerId, statusId, nextLiked, nextLikesCount);
+    renderCommunityStatusViewerEntry(getCommunityStatusViewerEntry() || {});
+    renderCommunityStatusStrip();
     try {
       const response = await backendClient.toggleStatusLike(statusId);
       updateCommunityStatusLikeLocal(ownerId, statusId, Boolean(response?.liked), response?.likesCount);
       renderCommunityStatusViewerEntry(getCommunityStatusViewerEntry() || {});
       renderCommunityStatusStrip();
     } catch (error) {
+      await enqueueOfflineAction({
+        type: COMMUNITY_OFFLINE_QUEUE_TYPES.TOGGLE_STATUS_LIKE,
+        payload: { statusId, ownerId },
+      });
+      scheduleCommunityOfflineQueueFlush();
       setCommunityFeedback(String(error?.message || "Like could not be updated."), true);
     }
   });
@@ -28512,6 +28990,7 @@ function isValidContactValue(value) {
 
 let pendingProfileImage = "";
 let profileImageMarkedForDeletion = false;
+let menuSnapshotCache = readMenuSnapshotCache();
 
 function getCurrentProfileImage() {
   if (profileImageMarkedForDeletion) return "";
@@ -28581,6 +29060,97 @@ function getMenuProfileDisplayName(user = currentUser) {
     .filter(Boolean)
     .join(" ");
   return titledName || String(user.name || user.username || "Your Profile").trim();
+}
+
+function readMenuSnapshotCache() {
+  try {
+    const raw = localStorage.getItem(MENU_SNAPSHOT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeMenuSnapshotCache(snapshot = null) {
+  try {
+    if (!snapshot || typeof snapshot !== "object") {
+      localStorage.removeItem(MENU_SNAPSHOT_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(MENU_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Best effort only.
+  }
+}
+
+function buildMenuSnapshotFromUser(user = null) {
+  if (!user || typeof user !== "object") return null;
+  const dailyQuiz = user.dailyQuiz && typeof user.dailyQuiz === "object" ? user.dailyQuiz : {};
+  const leaderboardStats =
+    user.leaderboardStats && typeof user.leaderboardStats === "object"
+      ? user.leaderboardStats
+      : null;
+  const points = Math.max(0, Math.round(Number(getCumulativePoints()) || Number(user.points) || 0));
+  const dailyStreak = Math.max(
+    0,
+    Math.round(Number(dailyQuiz.streak ?? dailyQuiz.dailyStreak ?? 0) || 0),
+  );
+  const completedDays = Math.max(0, Math.round(Number(dailyQuiz.completedDays) || 0));
+  const gems = Math.max(0, Math.round(Number(dailyQuiz.gems) || 0));
+  const rankValue = Number(
+    leaderboardStats?.rank ?? user.leaderboardRank ?? user.rank ?? 0,
+  );
+
+  return {
+    id: String(user.id || "").trim(),
+    name: getMenuProfileDisplayName(user),
+    username: String(user.username || "").trim(),
+    contact: String(user.contact || "").trim(),
+    professionalType: String(user.professionalType || "").trim(),
+    profileImage: String(user.profileImage || "").trim(),
+    points,
+    dailyQuiz: {
+      streak: dailyStreak,
+      dailyStreak,
+      completedDays,
+      gems,
+    },
+    leaderboardStats: leaderboardStats
+      ? {
+          rank: Number.isFinite(rankValue) && rankValue > 0 ? Math.round(rankValue) : 0,
+          points: Math.max(0, Math.round(Number(leaderboardStats.points ?? user.points) || 0)),
+        }
+      : null,
+    leaderboardRank: Number.isFinite(rankValue) && rankValue > 0 ? Math.round(rankValue) : 0,
+  };
+}
+
+function syncMenuSnapshotCacheFromUser(user = currentUser) {
+  if (!user) return null;
+  const nextSnapshot = buildMenuSnapshotFromUser(user);
+  if (!nextSnapshot) return null;
+  menuSnapshotCache = nextSnapshot;
+  writeMenuSnapshotCache(nextSnapshot);
+  return nextSnapshot;
+}
+
+function clearMenuSnapshotCache() {
+  menuSnapshotCache = null;
+  writeMenuSnapshotCache(null);
+}
+
+function getMenuSnapshotUser() {
+  if (currentUser) return currentUser;
+  if (backendClient.isAuthenticated()) return menuSnapshotCache;
+  return null;
+}
+
+function getMenuPointsValue() {
+  const snapshotUser = getMenuSnapshotUser();
+  const cachedPoints = Math.max(0, Math.round(Number(snapshotUser?.points) || 0));
+  return Math.max(getCumulativePoints(), cachedPoints);
 }
 
 let profileFeedbackTimer = null;
@@ -28733,6 +29303,20 @@ function openTourScreen() {
 function renderAuthState() {
   if (!authUserLabel || !logoutBtn || !profileBtn) return;
 
+  const menuUser = getMenuSnapshotUser();
+  const isAuthHydrating = backendClient.isAuthenticated() && !currentUser;
+
+  profileBtn.classList.toggle("is-loading", isAuthHydrating && !menuUser);
+  if (menuPointsBtn) {
+    menuPointsBtn.classList.toggle("is-loading", isAuthHydrating && !menuUser);
+  }
+  if (menuProfileNameEl) {
+    menuProfileNameEl.classList.toggle("is-skeleton", isAuthHydrating && !menuUser);
+  }
+  if (menuProfileSubtitleEl) {
+    menuProfileSubtitleEl.classList.toggle("is-skeleton", isAuthHydrating && !menuUser);
+  }
+
   if (currentUser) {
     const username = String(currentUser.username || "").trim();
     const fallbackLabel =
@@ -28751,6 +29335,7 @@ function renderAuthState() {
     if (menuProfileNameEl) menuProfileNameEl.textContent = displayName;
     if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = displaySubtitle;
     updateProfileButtonAvatar(getCurrentProfileImage());
+    syncMenuSnapshotCacheFromUser(currentUser);
     fillProfileForm();
     refreshProfilePhotoDeleteVisibility();
     syncPointsFromCurrentUser();
@@ -28765,12 +29350,39 @@ function renderAuthState() {
     return;
   }
 
-  authUserLabel.textContent = "";
-  authUserLabel.classList.add("hidden");
+  if (menuUser) {
+    const username = String(menuUser.username || "").trim();
+    const fallbackLabel = menuUser.name || menuUser.contact || "User";
+    const displayName = getMenuProfileDisplayName(menuUser);
+    const isAdmin = isCommunityAppAdminUser(menuUser);
+    const displaySubtitle = isAdmin
+      ? "Admin"
+      : username
+        ? `@${username}`
+        : menuUser.professionalType || "Signed in";
+    authUserLabel.textContent = isAdmin ? displayName : username ? `@${username}` : fallbackLabel;
+    authUserLabel.classList.remove("hidden");
+    logoutBtn.classList.add("hidden");
+    profileBtn.classList.remove("hidden");
+    if (menuProfileNameEl) menuProfileNameEl.textContent = displayName;
+    if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = displaySubtitle;
+    updateProfileButtonAvatar(menuUser.profileImage || "");
+    refreshProfilePhotoDeleteVisibility();
+    renderPoints();
+    renderDailyQuizUi();
+    void syncOneSignalUserSession();
+    return;
+  }
+
+  clearMenuSnapshotCache();
+  authUserLabel.textContent = isAuthHydrating ? "Loading profile..." : "";
+  authUserLabel.classList.toggle("hidden", !isAuthHydrating);
   logoutBtn.classList.add("hidden");
   closeMenuUserHub();
-  if (menuProfileNameEl) menuProfileNameEl.textContent = "Your Profile";
-  if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = "Tap to sign in";
+  if (menuProfileNameEl) menuProfileNameEl.textContent = isAuthHydrating ? "Loading profile" : "Your Profile";
+  if (menuProfileSubtitleEl) {
+    menuProfileSubtitleEl.textContent = isAuthHydrating ? "Syncing your account" : "Tap to sign in";
+  }
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
   renderPoints();
@@ -29226,7 +29838,9 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
   }
 
   try {
-    await refreshSharedAccountState({ force: true, silent: true, deferHydration });
+    currentUser = await backendClient.fetchMe({ preferCache: true });
+    renderAuthState();
+    scheduleSharedAccountHydration({ silent: true, deferHydration });
     return true;
   } catch {
     backendClient.clearToken();
@@ -29284,7 +29898,7 @@ function scheduleSharedAccountHydration({ silent = true, deferHydration = false 
         refreshDailyQuizState({ force: true, silent }),
         loadSyncedPerformanceState({ force: true }),
       ]);
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       return true;
     })()
       .catch(() => false)
@@ -29381,12 +29995,14 @@ async function handlePortalEntry() {
   if (currentUser || backendClient.isAuthenticated()) {
     showScreen("quiz-menu");
     void restoreAuthSession({ deferHydration: true });
+    startQuestionBankBootstrap();
     startBackendBootstrap();
     return;
   }
   const allowed = await ensureAuthenticated();
   if (!allowed) return;
   showScreen("quiz-menu");
+  startQuestionBankBootstrap();
   startBackendBootstrap();
 }
 
@@ -31265,6 +31881,7 @@ function renderDashboardTrend(scope = dashboardTrendScope) {
 }
 
 async function loadDashboardTrendData({ force = false } = {}) {
+  const cacheKey = DASHBOARD_TREND_HISTORY_CACHE_KEY;
   if (!force && dashboardTrendSessionsLoadedFromSync) {
     renderDashboardTrend(dashboardTrendScope);
     return dashboardTrendSessionsCache;
@@ -31278,11 +31895,47 @@ async function loadDashboardTrendData({ force = false } = {}) {
     return dashboardTrendSessionsCache;
   }
 
+  if (!force) {
+    const cachedTrend = await getOfflineEntry(cacheKey);
+    if (cachedTrend?.value) {
+      const cachedSessions = Array.isArray(cachedTrend.value?.sessions)
+        ? cachedTrend.value.sessions
+        : Array.isArray(cachedTrend.value)
+          ? cachedTrend.value
+          : [];
+      dashboardTrendSessionsCache = mergeDashboardTrendEntries(cachedSessions);
+      dashboardTrendSessionsLoadedFromSync = true;
+      renderPoints();
+      renderDashboardTrend(dashboardTrendScope);
+      if (dashboardDiv?.classList.contains("screen-active")) {
+        renderDashboardRecentResults();
+      }
+      void (async () => {
+        try {
+          const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
+          const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
+          dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
+          dashboardTrendSessionsLoadedFromSync = true;
+          renderPoints();
+          renderDashboardTrend(dashboardTrendScope);
+          if (dashboardDiv?.classList.contains("screen-active")) {
+            renderDashboardRecentResults();
+          }
+          void setOfflineEntry(cacheKey, { sessions: remoteSessions });
+        } catch {
+          // Keep cached dashboard trend when sync is unavailable.
+        }
+      })();
+      return dashboardTrendSessionsCache;
+    }
+  }
+
   try {
     const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
     const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
     dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
     dashboardTrendSessionsLoadedFromSync = true;
+    void setOfflineEntry(cacheKey, { sessions: remoteSessions });
     renderPoints();
     renderDashboardTrend(dashboardTrendScope);
     if (dashboardDiv?.classList.contains("screen-active")) {
@@ -31331,6 +31984,10 @@ function renderDashboardTopSubjects(categories = []) {
 }
 
 function refreshQuestionDependentUi() {
+  if (!questionBankReady) {
+    return;
+  }
+
   populateStudyCategories();
   populateStudyRotations();
   populateExamCategories();
@@ -31340,7 +31997,7 @@ function refreshQuestionDependentUi() {
 
   const homeTotalQuestions = document.getElementById("home-total-questions");
   if (homeTotalQuestions) {
-    homeTotalQuestions.innerText = questionBank.length;
+    homeTotalQuestions.innerText = String(questionBank.length || 0);
   }
 }
 
@@ -31420,22 +32077,20 @@ function renderDashboardRecentResults() {
 
 async function showDashboard() {
   showScreen("dashboard");
+  void ensureQuestionBankLoaded();
 
   rebuildCategoryPerformanceFromQuestionStats();
   rebuildRotationPerformanceFromQuestionStats();
   const localSnapshot = getLocalDashboardSnapshot();
-  renderDashboardValues({
-    totalAttempts: Number(localSnapshot.totalAttempts) || 0,
-    overallAccuracy: Number(localSnapshot.overallAccuracy) || 0,
-    weakCount: Number(localSnapshot.weakCount) || 0,
-    sessionCount: Number(localSnapshot.sessionCount) || 0,
-    categories: localSnapshot.categories,
-    rotations: localSnapshot.rotations,
-  });
+  const cachedSnapshot = await getOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY);
+  const initialSnapshot = cachedSnapshot?.value
+    ? mergeDashboardSnapshots(localSnapshot, cachedSnapshot.value)
+    : localSnapshot;
+  renderDashboardValues(initialSnapshot);
 
   void Promise.allSettled([
-    loadSyncedPerformanceState({ force: true }),
-    loadDashboardTrendData({ force: true }),
+    loadSyncedPerformanceState({ force: false }),
+    loadDashboardTrendData({ force: false }),
     backendClient.fetchSyncedDashboard(),
   ]).then(([performanceResult, trendResult, remoteSnapshotResult]) => {
     void performanceResult;
@@ -31456,6 +32111,7 @@ async function showDashboard() {
           : localSnapshot.categories,
       rotations: localSnapshot.rotations,
     };
+    void setOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY, remoteSnapshot || {});
     renderDashboardValues(mergedSnapshot);
   });
 
@@ -31544,7 +32200,7 @@ function getTrend() {
   return "➡ Stable";
 }
 
-function renderModeHistory(modeName, containerId) {
+async function renderModeHistory(modeName, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -31640,6 +32296,30 @@ function renderModeHistory(modeName, containerId) {
 
   const localEntries = mergeHistoryEntries(sessionHistory);
   renderEntries(localEntries);
+  const cacheKey = `${DASHBOARD_HISTORY_CACHE_PREFIX}${normalizedModeName || "study"}`;
+  const cachedHistory = await getOfflineEntry(cacheKey);
+  if (cachedHistory?.value) {
+    const cachedSessions = Array.isArray(cachedHistory.value?.sessions)
+      ? cachedHistory.value.sessions
+      : Array.isArray(cachedHistory.value)
+        ? cachedHistory.value
+        : [];
+    const cachedEntries = mergeHistoryEntries(
+      cachedSessions.map((s) => ({
+        mode: s.mode || modeName,
+        score: Number(s.score) || 0,
+        total: Number(s.total) || 0,
+        percent: Number(s.percent) || 0,
+        date: s.date || "",
+        createdAt: s.createdAt || s.date || "",
+        timestamp: new Date(s.createdAt || s.date || Date.now()).getTime(),
+        duration: s.duration || null,
+      })),
+    );
+    if (cachedEntries.length > 0) {
+      renderEntries(cachedEntries);
+    }
+  }
 
   backendClient
     .fetchSyncedHistory("", 200)
@@ -31657,7 +32337,9 @@ function renderModeHistory(modeName, containerId) {
         duration: s.duration || null,
       }));
 
-      renderEntries(mergeHistoryEntries([...localEntries, ...remoteEntries]));
+      const mergedEntries = mergeHistoryEntries([...localEntries, ...remoteEntries]);
+      void setOfflineEntry(cacheKey, { sessions: remoteEntries });
+      renderEntries(mergedEntries);
     })
     .catch(() => {
       // Keep local history when backend is offline.
@@ -32113,7 +32795,7 @@ function updateModeIndicator(studyType = null) {
                            START MODES
                         ================================= */
 
-function startStudy() {
+async function startStudy() {
   studySessionEnded = false;
   clearAiExplainStateSession();
   examVariant = "normal";
@@ -32130,6 +32812,8 @@ function startStudy() {
     "study-category-select",
   ).value;
   const selectedRotation = document.getElementById("study-rotation-select").value;
+
+  await ensureQuestionBankLoaded();
 
   if (studyType === "law") {
     const savedSession = getSavedLawDrillSession();
@@ -32266,7 +32950,7 @@ function startStudy() {
   showQuestion();
 }
 
-function startExam(count, requestedVariant = null) {
+async function startExam(count, requestedVariant = null) {
   const variant = String(requestedVariant || examTypeSelect?.value || "normal")
     .trim()
     .toLowerCase();
@@ -32281,6 +32965,8 @@ function startExam(count, requestedVariant = null) {
   score = 0;
   userAnswers = {};
   inReview = false;
+
+  await ensureQuestionBankLoaded();
 
   const selectedCategory = document.getElementById("category-select").value;
   const selectedRotation = document.getElementById("rotation-select").value;
@@ -33458,14 +34144,10 @@ async function finishDailyQuizSession() {
     }
 
     clearDailyResultEnhancements();
-    let socialSnapshot = null;
-    try {
-      socialSnapshot = await backendClient.fetchDailyLeaderboard(10);
-    } catch {
-      socialSnapshot = null;
-    }
-    dailyLeaderboardSnapshot = socialSnapshot;
-    renderDailySocialCard(socialSnapshot);
+    const cachedDailyLeaderboard = await getOfflineEntry(DAILY_LEADERBOARD_CACHE_KEY);
+    const cachedSocialSnapshot = cachedDailyLeaderboard?.value || null;
+    dailyLeaderboardSnapshot = cachedSocialSnapshot;
+    renderDailySocialCard(cachedSocialSnapshot);
     configureDailyShareButton({
       date: dailyQuizState?.today?.date || "",
       score: finalScore,
@@ -33473,7 +34155,7 @@ async function finishDailyQuizSession() {
       percent,
       streak,
       gemsAwarded,
-      social: socialSnapshot,
+      social: cachedSocialSnapshot,
     });
 
     awardXp(12 + Math.round(percent / 25));
@@ -33488,6 +34170,25 @@ async function finishDailyQuizSession() {
       markDailyPopupSeen(dailyQuizState.today.date);
     }
     renderDailyQuizUi();
+    void (async () => {
+      try {
+        const socialSnapshot = await backendClient.fetchDailyLeaderboard(10);
+        dailyLeaderboardSnapshot = socialSnapshot;
+        void setOfflineEntry(DAILY_LEADERBOARD_CACHE_KEY, socialSnapshot || {});
+        renderDailySocialCard(socialSnapshot);
+        configureDailyShareButton({
+          date: dailyQuizState?.today?.date || "",
+          score: finalScore,
+          total: totalQuestions,
+          percent,
+          streak,
+          gemsAwarded,
+          social: socialSnapshot,
+        });
+      } catch {
+        // Keep the cached daily leaderboard when the backend is unavailable.
+      }
+    })();
     await refreshDailyQuizState({ force: true, silent: true });
   } catch (error) {
     const message = String(error?.message || "Failed to submit Daily Quiz.");
@@ -34448,6 +35149,8 @@ window.addEventListener("load", function () {
   restoreAuthSession();
   closeCommunityConversationActions();
   closeCommunityFriendActions();
+  startQuestionBankBootstrap();
+  startBackendBootstrap();
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
   }, 900);

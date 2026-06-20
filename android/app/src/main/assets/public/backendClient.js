@@ -282,8 +282,8 @@ export const backendClient = {
     return data;
   },
 
-  fetchMe() {
-    return get("/auth/me");
+  fetchMe({ preferCache = false } = {}) {
+    return get("/auth/me", { preferCache });
   },
 
   addPoints(payload = {}) {
@@ -556,8 +556,9 @@ export const backendClient = {
   },
 
   async fetchQuestions(filters = {}) {
-    const query = toQuery(filters);
-    const data = await get(`/questions${query}`);
+    const { preferCache = false, ...queryFilters } = filters || {};
+    const query = toQuery(queryFilters);
+    const data = await get(`/questions${query}`, { preferCache });
     return Array.isArray(data?.questions) ? data.questions : [];
   },
 

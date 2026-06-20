@@ -15,6 +15,8 @@ const defaults = {
   syncPerformance: [],
 };
 
+const collectionCache = new Map();
+
 function pathFor(collection) {
   return path.join(dataDir, `${collection}.json`);
 }
@@ -40,17 +42,36 @@ export async function readCollection(collection) {
     throw new Error(`Unknown collection: ${collection}`);
   }
 
+  const cached = collectionCache.get(collection);
+  if (cached) {
+    return structuredClone(cached.data);
+  }
+
   try {
     const raw = await fs.readFile(filePath, "utf8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    collectionCache.set(collection, {
+      data: parsed,
+      updatedAt: new Date().toISOString(),
+    });
+    return structuredClone(parsed);
   } catch {
-    return structuredClone(fallback);
+    const snapshot = structuredClone(fallback);
+    collectionCache.set(collection, {
+      data: snapshot,
+      updatedAt: null,
+    });
+    return structuredClone(snapshot);
   }
 }
 
 export async function writeCollection(collection, data) {
   const filePath = pathFor(collection);
   await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf8");
+  collectionCache.set(collection, {
+    data: structuredClone(data),
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export async function updateCollection(collection, updater) {
@@ -58,4 +79,25 @@ export async function updateCollection(collection, updater) {
   const next = await updater(current);
   await writeCollection(collection, next);
   return next;
+}
+
+export async function getCollectionMeta(collection) {
+  const fallback = defaults[collection];
+  if (fallback === undefined) {
+    throw new Error(`Unknown collection: ${collection}`);
+  }
+
+  const cached = collectionCache.get(collection);
+  if (cached) {
+    return {
+      count: Array.isArray(cached.data) ? cached.data.length : 0,
+      updatedAt: cached.updatedAt,
+    };
+  }
+
+  const items = await readCollection(collection);
+  return {
+    count: Array.isArray(items) ? items.length : 0,
+    updatedAt: collectionCache.get(collection)?.updatedAt || null,
+  };
 }

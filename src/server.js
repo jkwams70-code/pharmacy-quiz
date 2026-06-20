@@ -16,6 +16,7 @@ import { config } from "./config.js";
 import { ensureQuestionsSeeded } from "./services/questions.js";
 import {
   ensureStore,
+  getCollectionMeta,
   readCollection,
   updateCollection,
   writeCollection,
@@ -324,6 +325,14 @@ app.get(
       email: user.email,
       createdAt: user.createdAt,
     });
+  }),
+);
+
+app.get(
+  "/api/questions/meta",
+  asyncHandler(async (_req, res) => {
+    const meta = await getCollectionMeta("questions");
+    res.json(meta);
   }),
 );
 

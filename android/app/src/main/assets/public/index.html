@@ -83,7 +83,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260611-lawdrill22" />
+    <link rel="stylesheet" href="styles.css?v=20260620-smooth-cache-fix1" />
   </head>
 
   <body>
@@ -3890,8 +3890,7 @@
         }
       };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="engine.js?v=20260613-manufacturing-set2"></script>
+    <script type="module" src="engine.js?v=20260620-smooth-cache-fix1"></script>
     <script>
       const APP_BUILD_ID = "20260613-rollback106";
       const APP_STANDALONE_BUILD = "20260613-rollback106";
@@ -3919,39 +3918,22 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", async () => {
-          const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(location.hostname);
-
           try {
-            const previousBuild = localStorage.getItem("quizAppBuild");
-            const needsCutoverRefresh = previousBuild !== APP_BUILD_ID;
-            const didHardCutover = sessionStorage.getItem("quizHardCutoverDone") === APP_BUILD_ID;
+            const registration = await navigator.serviceWorker.register("/sw.js", {
+              scope: "/",
+            });
 
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(
-              registrations
-                .filter((registration) => {
-                  const scriptUrl =
-                    registration.active?.scriptURL ||
-                    registration.waiting?.scriptURL ||
-                    registration.installing?.scriptURL ||
-                    "";
-                  return /\/sw\.js(?:[?#]|$)/i.test(String(scriptUrl || ""));
-                })
-                .map((registration) => registration.unregister()),
-            );
-
-            if ("caches" in window) {
-              const cacheKeys = await caches.keys();
-              await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+            if (registration && "update" in registration) {
+              void registration.update().catch(() => {});
             }
 
             localStorage.setItem("quizAppBuild", APP_BUILD_ID);
             sessionStorage.setItem("quizHardCutoverDone", APP_BUILD_ID);
-            document.documentElement.removeAttribute("data-app-boot");
           } catch (error) {
-            console.warn(isProductionHost ? "Production cache reset failed:" : "Local preview cache reset failed:", error);
-            document.documentElement.removeAttribute("data-app-boot");
+            console.warn("Service worker registration failed:", error);
           }
+
+          document.documentElement.removeAttribute("data-app-boot");
         });
       } else {
         document.documentElement.removeAttribute("data-app-boot");

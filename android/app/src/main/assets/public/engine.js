@@ -1896,6 +1896,7 @@ let dailyMidnightRefreshTimer = null;
 let dailyLeaderboardSnapshot = null;
 let questionInsightCache = Object.create(null);
 let questionInsightInFlightKey = "";
+let backendBootstrapStarted = false;
 const communityStatusVideoMetaCache = new Map();
 const communityStatusVideoFrameCache = new Map();
 const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
@@ -1950,6 +1951,15 @@ function refreshQuestionDependentUi() {
   if (homeTotalQuestions) {
     homeTotalQuestions.innerText = questionBank.length;
   }
+}
+
+function startBackendBootstrap() {
+  if (backendBootstrapStarted) return;
+  backendBootstrapStarted = true;
+  void loadQuestionsFromBackend();
+  backendClient.warmup().catch(() => {
+    // Keep local-first behavior if backend is offline.
+  });
 }
 
 function buildScopedCaseMapKey(caseId = "", topicSlug = "") {
@@ -27750,7 +27760,7 @@ async function handleAiExplainClick() {
   }
 }
 
-async function restoreAuthSession() {
+async function restoreAuthSession({ deferHydration = false } = {}) {
   if (!backendClient.isAuthenticated()) {
     currentUser = null;
     resetDailyQuizRuntimeState();
@@ -27761,7 +27771,21 @@ async function restoreAuthSession() {
   try {
     currentUser = await backendClient.fetchMe();
     renderAuthState();
-    void refreshDailyQuizState({ force: true, silent: true });
+    if (deferHydration) {
+      window.setTimeout(() => {
+        void Promise.allSettled([
+          refreshDailyQuizState({ force: true, silent: true }),
+          loadSyncedPerformanceState({ force: true }),
+        ]);
+        void loadCommunityOverview({ silent: true });
+      }, 0);
+    } else {
+      void Promise.allSettled([
+        refreshDailyQuizState({ force: true, silent: true }),
+        loadSyncedPerformanceState({ force: true }),
+      ]);
+      void loadCommunityOverview({ silent: true });
+    }
     return true;
   } catch {
     backendClient.clearToken();
@@ -27806,9 +27830,16 @@ function openWelcomeRegisterFlow(event) {
 }
 
 async function handlePortalEntry() {
+  if (currentUser || backendClient.isAuthenticated()) {
+    showScreen("quiz-menu");
+    void restoreAuthSession({ deferHydration: true });
+    startBackendBootstrap();
+    return;
+  }
   const allowed = await ensureAuthenticated();
   if (!allowed) return;
   showScreen("quiz-menu");
+  startBackendBootstrap();
 }
 
 async function handleAuthSubmit(event) {
@@ -32443,10 +32474,6 @@ window.addEventListener("load", function () {
     wireSetupPickerModal();
     wireSetupPickerTriggers();
     refreshQuestionDependentUi();
-    void loadQuestionsFromBackend();
-    backendClient.warmup().catch(() => {
-      // Keep local-first behavior if backend is offline.
-    });
   };
 
   if (typeof window.requestIdleCallback === "function") {

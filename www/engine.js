@@ -2298,6 +2298,7 @@ let questionInsightInFlightKey = "";
 let performanceStateSyncHandle = null;
 let performanceStateSyncInFlight = false;
 let performanceStateSyncQueued = false;
+let backendBootstrapStarted = false;
 const communityStatusVideoMetaCache = new Map();
 const communityStatusVideoFrameCache = new Map();
 const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
@@ -2324,6 +2325,15 @@ async function loadQuestionsFromBackend() {
     console.warn("Backend unavailable, using local questions:", error);
     // Keep using local questions from data.js
   }
+}
+
+function startBackendBootstrap() {
+  if (backendBootstrapStarted) return;
+  backendBootstrapStarted = true;
+  void loadQuestionsFromBackend();
+  backendClient.warmup().catch(() => {
+    // Keep local-first behavior if backend is offline.
+  });
 }
 
 function rebuildCaseMap() {
@@ -29154,7 +29164,7 @@ async function handleAiExplainClick() {
   }
 }
 
-async function restoreAuthSession() {
+async function restoreAuthSession({ deferHydration = false } = {}) {
   if (!backendClient.isAuthenticated()) {
     stopSharedAccountStatePolling();
     currentUser = null;
@@ -29165,8 +29175,7 @@ async function restoreAuthSession() {
   }
 
   try {
-    await refreshSharedAccountState({ force: true, silent: true });
-    void loadCommunityOverview({ silent: true });
+    await refreshSharedAccountState({ force: true, silent: true, deferHydration });
     return true;
   } catch {
     backendClient.clearToken();
@@ -29207,6 +29216,7 @@ function startSharedAccountStatePolling() {
 async function refreshSharedAccountState({
   force = false,
   silent = false,
+  deferHydration = false,
 } = {}) {
   if (!backendClient.isAuthenticated()) {
     return false;
@@ -29234,14 +29244,30 @@ async function refreshSharedAccountState({
       scheduleSync: false,
     });
     renderPoints();
-    void Promise.allSettled([
-      refreshDailyQuizState({ force: true, silent }),
-      loadSyncedPerformanceState({ force: true }),
-    ]);
+    if (deferHydration) {
+      window.setTimeout(() => {
+        void Promise.allSettled([
+          refreshDailyQuizState({ force: true, silent }),
+          loadSyncedPerformanceState({ force: true }),
+        ]);
+      }, 0);
+    } else {
+      void Promise.allSettled([
+        refreshDailyQuizState({ force: true, silent }),
+        loadSyncedPerformanceState({ force: true }),
+      ]);
+    }
     renderMenuDashboardStats();
     renderSetupPoints();
     renderDailyQuizUi();
     startSharedAccountStatePolling();
+    if (!deferHydration) {
+      void loadCommunityOverview({ silent: true });
+    } else {
+      window.setTimeout(() => {
+        void loadCommunityOverview({ silent: true });
+      }, 0);
+    }
     return true;
   })().finally(() => {
       sharedAccountStateRefreshInFlight = null;
@@ -29283,9 +29309,16 @@ function openWelcomeRegisterFlow(event) {
 }
 
 async function handlePortalEntry() {
+  if (currentUser || backendClient.isAuthenticated()) {
+    showScreen("quiz-menu");
+    void restoreAuthSession({ deferHydration: true });
+    startBackendBootstrap();
+    return;
+  }
   const allowed = await ensureAuthenticated();
   if (!allowed) return;
   showScreen("quiz-menu");
+  startBackendBootstrap();
 }
 
 async function handleAuthSubmit(event) {
@@ -34433,10 +34466,6 @@ window.addEventListener("load", function () {
     wireSetupPickerModal();
     wireSetupPickerTriggers();
     refreshQuestionDependentUi();
-    void loadQuestionsFromBackend();
-    backendClient.warmup().catch(() => {
-      // Keep local-first behavior if backend is offline.
-    });
   };
 
   if (typeof window.requestIdleCallback === "function") {

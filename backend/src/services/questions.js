@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 const backendRoot = path.resolve(__dirname, "..", "..");
 const quizRoot = path.resolve(backendRoot, "..");
 const questionSourceCandidates = [
+  path.join(backendRoot, "backups", "data_20260619_183446", "questions.json"),
   path.join(quizRoot, "www", "data.js"),
   path.join(quizRoot, "android", "app", "src", "main", "assets", "public", "data.js"),
   path.join(quizRoot, "data.js"),
@@ -64,6 +65,13 @@ async function importQuestionModule(modulePath) {
   return arrays.flat().map(normalizeQuestion);
 }
 
+async function importQuestionJson(modulePath) {
+  const raw = await fs.readFile(modulePath, "utf8");
+  const parsed = JSON.parse(raw);
+  const source = Array.isArray(parsed) ? parsed : [];
+  return source.map(normalizeQuestion);
+}
+
 async function readQuestionModulePaths(directory) {
   try {
     const entries = await fs.readdir(directory, { withFileTypes: true });
@@ -81,7 +89,9 @@ export async function importQuestionsFromFrontend() {
 
   for (const dataModulePath of questionSourceCandidates) {
     try {
-      const source = await importQuestionModule(dataModulePath);
+      const source = dataModulePath.toLowerCase().endsWith(".json")
+        ? await importQuestionJson(dataModulePath)
+        : await importQuestionModule(dataModulePath);
       if (source.length > 0) {
         for (const question of source) {
           const questionId = Number(question?.id);
@@ -89,7 +99,6 @@ export async function importQuestionsFromFrontend() {
             questionsById.set(questionId, question);
           }
         }
-        break;
       }
     } catch (error) {
       const message = String(error?.message || error);

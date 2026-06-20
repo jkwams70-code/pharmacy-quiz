@@ -6125,28 +6125,45 @@ app.get(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const activeStatuses = await purgeExpiredStatuses();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const conversations = (await readCollection("conversations")).map(normalizeConversation);
-    const messages = (await readCollection("messages")).map(normalizeMessage);
-    const uploads = (await readCollection("uploads")).map(normalizeUpload);
-    const conversationStates = (await readCollection("communityConversationStates")).map(
-      normalizeCommunityConversationState,
-    );
-    const visibleUsers = users.filter(
+    const [
+      users,
+      friendships,
+      friendRequests,
+      blocks,
+      conversations,
+      messages,
+      uploads,
+      conversationStates,
+    ] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+      readCollection("conversations"),
+      readCollection("messages"),
+      readCollection("uploads"),
+      readCollection("communityConversationStates"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const normalizedConversations = conversations.map(normalizeConversation);
+    const normalizedMessages = messages.map(normalizeMessage);
+    const normalizedUploads = uploads.map(normalizeUpload);
+    const normalizedConversationStates = conversationStates.map(normalizeCommunityConversationState);
+    const visibleUsers = normalizedUsers.filter(
       (entry) =>
         entry.id !== viewerId &&
-        !isBlocked(blocks, viewerId, entry.id) &&
-        !isBlocked(blocks, entry.id, viewerId),
+        !isBlocked(normalizedBlocks, viewerId, entry.id) &&
+        !isBlocked(normalizedBlocks, entry.id, viewerId),
     );
 
-    const incoming = friendRequests
+    const incoming = normalizedFriendRequests
       .filter((entry) => entry.toUserId === viewerId && entry.status === "pending")
       .map((entry) => {
-        const actor = users.find((user) => user.id === entry.fromUserId);
-        const blockState = actor ? getCommunityBlockState(blocks, viewerId, actor.id) : {};
+        const actor = normalizedUsers.find((user) => user.id === entry.fromUserId);
+        const blockState = actor ? getCommunityBlockState(normalizedBlocks, viewerId, actor.id) : {};
         return {
           ...entry,
           user: actor ? applyCommunityProfileView(actor, { viewerId, isFriend: false, ...blockState }) : null,
@@ -6154,11 +6171,11 @@ app.get(
       })
       .filter((entry) => entry.user);
 
-    const sent = friendRequests
+    const sent = normalizedFriendRequests
       .filter((entry) => entry.fromUserId === viewerId && entry.status === "pending")
       .map((entry) => {
-        const actor = users.find((user) => user.id === entry.toUserId);
-        const blockState = actor ? getCommunityBlockState(blocks, viewerId, actor.id) : {};
+        const actor = normalizedUsers.find((user) => user.id === entry.toUserId);
+        const blockState = actor ? getCommunityBlockState(normalizedBlocks, viewerId, actor.id) : {};
         return {
           ...entry,
           user: actor ? applyCommunityProfileView(actor, { viewerId, isFriend: false, ...blockState }) : null,
@@ -6166,28 +6183,28 @@ app.get(
       })
       .filter((entry) => entry.user);
 
-    const friends = friendships
+    const friends = normalizedFriendships
       .filter((entry) => entry.userA === viewerId || entry.userB === viewerId)
       .map((entry) => {
         const friendId = entry.userA === viewerId ? entry.userB : entry.userA;
-        const actor = users.find((user) => user.id === friendId);
-        const blockState = actor ? getCommunityBlockState(blocks, viewerId, actor.id) : {};
+        const actor = normalizedUsers.find((user) => user.id === friendId);
+        const blockState = actor ? getCommunityBlockState(normalizedBlocks, viewerId, actor.id) : {};
         return actor ? applyCommunityProfileView(actor, { viewerId, isFriend: true, ...blockState }) : null;
       })
       .filter(Boolean);
 
     const chats = buildCommunityConversationRows({
       viewerId,
-      users,
-      friendships,
-      blocks,
-      uploads,
-      conversations,
-      messages,
-      conversationStates,
+      users: normalizedUsers,
+      friendships: normalizedFriendships,
+      blocks: normalizedBlocks,
+      uploads: normalizedUploads,
+      conversations: normalizedConversations,
+      messages: normalizedMessages,
+      conversationStates: normalizedConversationStates,
     });
 
-    const statuses = users
+    const statuses = normalizedUsers
       .map((owner) => {
         const ownerStatuses = activeStatuses
           .filter((entry) =>
@@ -6195,8 +6212,8 @@ app.get(
             canViewerSeeStatus(entry, {
               viewerId,
               owner,
-              isFriend: areFriends(friendships, viewerId, owner.id),
-              blocks,
+              isFriend: areFriends(normalizedFriendships, viewerId, owner.id),
+              blocks: normalizedBlocks,
             }),
           )
           .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
@@ -6206,15 +6223,15 @@ app.get(
             ? applyCommunityProfileView(owner, { viewerId, isFriend: true })
             : applyCommunityProfileView(owner, {
                 viewerId,
-                isFriend: areFriends(friendships, viewerId, owner.id),
-                ...getCommunityBlockState(blocks, viewerId, owner.id),
+                isFriend: areFriends(normalizedFriendships, viewerId, owner.id),
+                ...getCommunityBlockState(normalizedBlocks, viewerId, owner.id),
               });
         return {
           user: ownerView,
           latestAt: ownerStatuses[0].createdAt,
           hasUnseen: ownerStatuses.some((entry) => !hasStatusActor(entry.viewers, viewerId)),
           items: ownerStatuses.map((entry) => {
-            const upload = uploads.find((candidate) => candidate.id === entry.uploadId);
+            const upload = normalizedUploads.find((candidate) => candidate.id === entry.uploadId);
             return {
               id: entry.id,
               type: entry.type,
@@ -6261,7 +6278,7 @@ app.get(
         latestAt: adminBroadcastStatuses[0].createdAt,
         hasUnseen: adminBroadcastStatuses.some((entry) => !hasStatusActor(entry.viewers, viewerId)),
         items: adminBroadcastStatuses.map((entry) => {
-          const upload = uploads.find((candidate) => candidate.id === entry.uploadId);
+            const upload = normalizedUploads.find((candidate) => candidate.id === entry.uploadId);
           return {
             id: entry.id,
             type: entry.type,
@@ -6332,15 +6349,22 @@ app.get(
     await touchUserLastSeen(viewerId);
     const query = normalizeWhitespace(req.query?.q || req.query?.query || "").toLowerCase();
     const limit = Math.max(1, Math.min(30, Math.round(Number(req.query?.limit) || 20)));
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const results = users
+    const [users, friendships, friendRequests, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const results = normalizedUsers
       .filter((entry) => entry.id !== viewerId)
       .filter(
         (entry) =>
-          !isBlocked(blocks, viewerId, entry.id) && !isBlocked(blocks, entry.id, viewerId),
+          !isBlocked(normalizedBlocks, viewerId, entry.id) &&
+          !isBlocked(normalizedBlocks, entry.id, viewerId),
       )
       .filter((entry) => {
         if (!query) return true;
@@ -6358,12 +6382,12 @@ app.get(
       })
       .slice(0, limit)
       .map((entry) => {
-        const isFriend = areFriends(friendships, viewerId, entry.id);
-        const pendingIncoming = friendRequests.some(
+        const isFriend = areFriends(normalizedFriendships, viewerId, entry.id);
+        const pendingIncoming = normalizedFriendRequests.some(
           (row) =>
             row.fromUserId === entry.id && row.toUserId === viewerId && row.status === "pending",
         );
-        const pendingSent = friendRequests.some(
+        const pendingSent = normalizedFriendRequests.some(
           (row) =>
             row.fromUserId === viewerId && row.toUserId === entry.id && row.status === "pending",
         );
@@ -6391,24 +6415,33 @@ app.get(
     const targetId = String(req.params.userId || "");
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
-    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
+    const [users, pointEvents] = await Promise.all([
+      readCollection("users"),
+      readCollection("pointEvents"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedPointEvents = pointEvents.map(normalizePointEvent);
+    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(normalizedUsers, normalizedPointEvents);
     if (changed) {
       await writeCollection("users", reconciledUsers);
     }
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
+    const [friendships, friendRequests, blocks] = await Promise.all([
+      readCollection("friendships"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+    ]);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
     const target = reconciledUsers.find((entry) => entry.id === targetId);
 
     if (!target) {
       res.status(404).json({ error: "user not found" });
       return;
     }
-    const isFriend = areFriends(friendships, viewerId, targetId);
-    const viewerBlockedTarget = isBlocked(blocks, viewerId, targetId);
-    const targetBlockedViewer = isBlocked(blocks, targetId, viewerId);
+    const isFriend = areFriends(normalizedFriendships, viewerId, targetId);
+    const viewerBlockedTarget = isBlocked(normalizedBlocks, viewerId, targetId);
+    const targetBlockedViewer = isBlocked(normalizedBlocks, targetId, viewerId);
     const leaderboardSnapshot = buildPointsLeaderboardSnapshot({
       users: reconciledUsers,
       pointEvents,
@@ -6425,10 +6458,10 @@ app.get(
         points: normalizePointsValue(target.points),
         rank: null,
       };
-    const incoming = friendRequests.find(
+    const incoming = normalizedFriendRequests.find(
       (row) => row.fromUserId === targetId && row.toUserId === viewerId && row.status === "pending",
     );
-    const sent = friendRequests.find(
+    const sent = normalizedFriendRequests.find(
       (row) => row.fromUserId === viewerId && row.toUserId === targetId && row.status === "pending",
     );
 
@@ -6495,19 +6528,24 @@ app.get(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const rows = friendships
+    const [users, friendships, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const rows = normalizedFriendships
       .filter((entry) => entry.userA === viewerId || entry.userB === viewerId)
       .map((entry) => {
         const friendId = entry.userA === viewerId ? entry.userB : entry.userA;
-        const user = users.find((candidate) => candidate.id === friendId);
+        const user = normalizedUsers.find((candidate) => candidate.id === friendId);
         return user
           ? applyCommunityProfileView(user, {
               viewerId,
               isFriend: true,
-              ...getCommunityBlockState(blocks, viewerId, user.id),
+              ...getCommunityBlockState(normalizedBlocks, viewerId, user.id),
             })
           : null;
       })
@@ -6546,32 +6584,37 @@ app.get(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const incoming = friendRequests
+    const [users, friendRequests, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const incoming = normalizedFriendRequests
       .filter((entry) => entry.toUserId === viewerId && entry.status === "pending")
       .map((entry) => ({
         ...entry,
         user: applyCommunityProfileView(
-          users.find((user) => user.id === entry.fromUserId),
+          normalizedUsers.find((user) => user.id === entry.fromUserId),
           {
             viewerId,
             isFriend: false,
-            ...getCommunityBlockState(blocks, viewerId, entry.fromUserId),
+            ...getCommunityBlockState(normalizedBlocks, viewerId, entry.fromUserId),
           },
         ),
       }));
-    const sent = friendRequests
+    const sent = normalizedFriendRequests
       .filter((entry) => entry.fromUserId === viewerId && entry.status === "pending")
       .map((entry) => ({
         ...entry,
         user: applyCommunityProfileView(
-          users.find((user) => user.id === entry.toUserId),
+          normalizedUsers.find((user) => user.id === entry.toUserId),
           {
             viewerId,
             isFriend: false,
-            ...getCommunityBlockState(blocks, viewerId, entry.toUserId),
+            ...getCommunityBlockState(normalizedBlocks, viewerId, entry.toUserId),
           },
         ),
       }));
@@ -6736,11 +6779,15 @@ app.get(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const blockedUsers = blocks
+    const [users, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const blockedUsers = normalizedBlocks
       .filter((entry) => entry.blockerUserId === viewerId)
-      .map((entry) => users.find((user) => user.id === entry.blockedUserId))
+      .map((entry) => normalizedUsers.find((user) => user.id === entry.blockedUserId))
       .filter(Boolean)
       .map((entry) => applyCommunityProfileView(entry, { viewerId, isFriend: false }));
     res.json({ blocked: blockedUsers });
@@ -8556,13 +8603,21 @@ app.get(
     await touchUserLastSeen(viewerId);
     const conversationId = String(req.params.conversationId || "");
     const markRead = String(req.query?.markRead || "true").trim().toLowerCase() !== "false";
-    const conversations = (await readCollection("conversations")).map(normalizeConversation);
-    const messages = (await readCollection("messages")).map(normalizeMessage);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const uploads = (await readCollection("uploads")).map(normalizeUpload);
-    const conversation = conversations.find((entry) => entry.id === conversationId);
+    const [conversations, messages, users, friendships, blocks, uploads] = await Promise.all([
+      readCollection("conversations"),
+      readCollection("messages"),
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("blocks"),
+      readCollection("uploads"),
+    ]);
+    const normalizedConversations = conversations.map(normalizeConversation);
+    const normalizedMessages = messages.map(normalizeMessage);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const normalizedUploads = uploads.map(normalizeUpload);
+    const conversation = normalizedConversations.find((entry) => entry.id === conversationId);
     if (!conversation || !conversation.memberIds.includes(viewerId)) {
       res.status(404).json({ error: "conversation not found" });
       return;
@@ -8570,7 +8625,7 @@ app.get(
     const conversationIds = new Set([conversation.id]);
     if (conversation.type === "notice") {
       const mergeKey = getCommunityConversationMergeKey(conversation);
-      conversations.forEach((entry) => {
+      normalizedConversations.forEach((entry) => {
         if (entry.memberIds.includes(viewerId) && getCommunityConversationMergeKey(entry) === mergeKey) {
           conversationIds.add(entry.id);
         }
@@ -8578,7 +8633,7 @@ app.get(
     }
     const nowIso = new Date().toISOString();
     let changed = false;
-    const nextMessages = messages.map((entry) => {
+    const nextMessages = normalizedMessages.map((entry) => {
       if (
         !conversationIds.has(entry.conversationId) ||
         entry.senderUserId === viewerId ||
@@ -8621,13 +8676,13 @@ app.get(
     res.json({
       partner: getConversationDisplayPayload(conversation, {
         viewerId,
-        users,
-        friendships,
-        blocks,
-        uploads,
+        users: normalizedUsers,
+        friendships: normalizedFriendships,
+        blocks: normalizedBlocks,
+        uploads: normalizedUploads,
       }),
       conversation,
-      messages: (changed ? nextMessages : messages)
+      messages: (changed ? nextMessages : normalizedMessages)
         .filter(
           (entry) =>
             conversationIds.has(entry.conversationId) &&
@@ -8637,7 +8692,7 @@ app.get(
         .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
         .map((entry) => {
           const safeEntry = sanitizeDeletedCommunityMessage(entry);
-          const sender = users.find((candidate) => candidate.id === entry.senderUserId);
+          const sender = normalizedUsers.find((candidate) => candidate.id === entry.senderUserId);
           const fallbackSenderName =
             safeEntry.senderName ||
             sender?.name ||
@@ -8650,7 +8705,7 @@ app.get(
               isDeletedForEveryone: Boolean(safeEntry.deletedAt),
             };
           }
-          const upload = uploads.find((candidate) => candidate.id === safeEntry.attachment.uploadId);
+          const upload = normalizedUploads.find((candidate) => candidate.id === safeEntry.attachment.uploadId);
           return {
             ...safeEntry,
             senderName: fallbackSenderName,
@@ -8663,7 +8718,7 @@ app.get(
         })
         .map((entry) => ({
           ...entry,
-          senderName: entry.senderName || users.find((candidate) => candidate.id === entry.senderUserId)?.name || "",
+          senderName: entry.senderName || normalizedUsers.find((candidate) => candidate.id === entry.senderUserId)?.name || "",
         })),
     });
   }),

@@ -1,7 +1,8 @@
-import { baseQuestions } from "./data.js?v=20260613-manufacturing-set2";
-import { backendClient } from "./backendClient.js?v=20260611-community29";
+import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
 import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
+
+const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -104,7 +105,11 @@ const NEGATIVE_ANSWER_FEEDBACK = [
 
 const QUESTION_BANK_SCHEMA_STORAGE_KEY = "quizQuestionBankSchemaVersion";
 const QUESTION_BANK_SCHEMA_VERSION = "20260613-manufacturing-set2";
-const LAW_DRILL_STORAGE_KEY = "lawDrillSession";
+const QUESTION_BANK_REMOTE_META_STORAGE_KEY = "quizQuestionBankRemoteMeta";
+let questionBankReady = false;
+let questionBankBootstrapPromise = null;
+const LAW_DRILL_STORAGE_KEY = "lawDrillSessionV2";
+const LEGACY_LAW_DRILL_STORAGE_KEY = "lawDrillSession";
 const LAW_DRILL_TOTAL_LEVELS = 100;
 const LAW_DRILL_QUESTIONS_PER_LEVEL = 5;
 const QUESTION_CATEGORY_OVERRIDES = {
@@ -129,10 +134,8 @@ function clearQuestionIdDependentLocalCache() {
   const keysToClear = [
     "studySession",
     "practiceSession",
-    LAW_DRILL_STORAGE_KEY,
     "quizExamSession",
     "examAbandoned",
-    "quizSessionHistory",
     "weakTracker",
     "quizPerformance",
     "quizCategoryPerformance",
@@ -392,7 +395,7 @@ function getCurrentStudyType() {
 }
 
 function isLawStudyMode() {
-  return mode === "study" && Boolean(lawDrillState);
+  return Boolean(lawDrillState) && (mode === "study" || (mode === "exam" && examVariant === "law"));
 }
 
 function getQuestionDrillTags(question = {}) {
@@ -649,10 +652,38 @@ function normalizeLawDrillState(rawState = null) {
   const levels = cloneLawDrillLevels(rawState.levels);
   if (levels.length === 0) return null;
 
-  const currentLevelIndex = Math.max(
+  const deriveCurrentLevelIndexFromLevels = () => {
+    let inferredCurrentLevelIndex = -1;
+    let inferredCompletedNextIndex = 0;
+    levels.forEach((level, index) => {
+      const status = String(level?.status || "").trim().toLowerCase();
+      if (status === "current" || status === "review") {
+        inferredCurrentLevelIndex = Math.max(inferredCurrentLevelIndex, index);
+      }
+      if (status === "completed") {
+        inferredCompletedNextIndex = Math.max(inferredCompletedNextIndex, index + 1);
+      }
+    });
+
+    return {
+      inferredCurrentLevelIndex,
+      inferredCompletedNextIndex,
+      derivedCurrentLevelIndex: Math.max(
+        inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
+        inferredCompletedNextIndex > 0 ? Math.min(levels.length - 1, inferredCompletedNextIndex) : 0,
+      ),
+    };
+  };
+
+  const { inferredCurrentLevelIndex, inferredCompletedNextIndex, derivedCurrentLevelIndex } =
+    deriveCurrentLevelIndexFromLevels();
+
+  const rawCurrentLevelIndex = Math.max(
     0,
     Math.min(levels.length - 1, Math.round(Number(rawState.currentLevelIndex) || 0)),
   );
+  const hasProgressMarkers = inferredCurrentLevelIndex >= 0 || inferredCompletedNextIndex > 0;
+  const currentLevelIndex = hasProgressMarkers ? derivedCurrentLevelIndex : rawCurrentLevelIndex;
   const hasReviewLevel =
     rawState.reviewLevelIndex !== null &&
     rawState.reviewLevelIndex !== undefined &&
@@ -694,6 +725,41 @@ function normalizeLawDrillState(rawState = null) {
     view,
     levels,
   };
+}
+
+function repairLawDrillCurrentLevelIndex() {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels) || lawDrillState.levels.length === 0) {
+    return 0;
+  }
+
+  let inferredCurrentLevelIndex = -1;
+  let inferredCompletedNextIndex = 0;
+  lawDrillState.levels.forEach((level, index) => {
+    const status = String(level?.status || "").trim().toLowerCase();
+    if (status === "current" || status === "review") {
+      inferredCurrentLevelIndex = Math.max(inferredCurrentLevelIndex, index);
+    }
+    if (status === "completed") {
+      inferredCompletedNextIndex = Math.max(inferredCompletedNextIndex, index + 1);
+    }
+  });
+
+  const hasProgressMarkers = inferredCurrentLevelIndex >= 0 || inferredCompletedNextIndex > 0;
+  const derivedCurrentLevelIndex = hasProgressMarkers
+    ? Math.max(
+        inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
+        inferredCompletedNextIndex > 0
+          ? Math.min(lawDrillState.levels.length - 1, inferredCompletedNextIndex)
+          : 0,
+      )
+    : Math.max(0, Math.min(lawDrillState.levels.length - 1, lawDrillState.currentLevelIndex ?? 0));
+
+  const safeIndex = Math.max(0, Math.min(lawDrillState.levels.length - 1, derivedCurrentLevelIndex));
+  if (lawDrillState.currentLevelIndex !== safeIndex) {
+    lawDrillState.currentLevelIndex = safeIndex;
+  }
+
+  return safeIndex;
 }
 
 function createLawDrillState(sourceQuestions = questionBank) {
@@ -754,6 +820,18 @@ function getLawDrillTotalCorrect() {
   }, 0);
 }
 
+function getLawDrillStateTotalCorrect(state = null) {
+  const levels = Array.isArray(state?.levels) ? state.levels : [];
+  if (!levels.length) return 0;
+  return levels.reduce((total, level) => {
+    const historyCorrect = Array.isArray(level?.history)
+      ? level.history.filter((entry) => entry?.isCorrect).length
+      : 0;
+    const score = Math.max(0, Math.round(Number(level?.score) || 0));
+    return total + Math.max(historyCorrect, score);
+  }, 0);
+}
+
 function getLawDrillCurrentLevelScore() {
   return getLawDrillLevelScore(lawDrillState?.currentLevelIndex ?? 0);
 }
@@ -766,8 +844,37 @@ function getLawDrillLevelScore(levelIndex = 0) {
 
 function getLawDrillCumulativeScore() {
   const setupScore = Number(readCurrentSetupPoints()?.law) || 0;
-  const historyScore = getLawDrillTotalCorrect();
-  return Math.max(0, Math.round(Math.max(setupScore, historyScore)));
+  const liveHistoryScore = getLawDrillTotalCorrect();
+  const savedSession = readCurrentLawDrillSession();
+  const savedHistoryScore = getLawDrillStateTotalCorrect(savedSession?.lawDrillState || null);
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return Math.max(0, Math.round(Math.max(setupScore, savedHistoryScore)));
+  }
+  return Math.max(0, Math.round(Math.max(setupScore, liveHistoryScore, savedHistoryScore)));
+}
+
+function getCurrentDrillCumulativeScore() {
+  if (isLawStudyMode()) {
+    return getLawDrillCumulativeScore();
+  }
+
+  const bucket = getCurrentSetupPointsBucket();
+  if (!bucket) {
+    return Math.max(0, Math.round(Number(currentUser?.points) || 0));
+  }
+
+  return Math.max(0, Math.round(Number(readCurrentSetupPoints()?.[bucket]) || 0));
+}
+
+function buildDrillCumulativePointsBadgeMarkup(points = 0, label = "Total") {
+  const safePoints = Math.max(0, Math.round(Number(points) || 0));
+  return `
+    <span class="header-inline-points is-cumulative" title="Cumulative drill points">
+      <span class="header-inline-points-icon" aria-hidden="true">🏆</span>
+      <span class="header-inline-points-label">${escapeHtml(label)}</span>
+      <span class="header-inline-points-value">${safePoints}</span>
+    </span>
+  `.trim();
 }
 
 function buildLawDrillResultReviewMarkup(levelIndex = 0) {
@@ -877,6 +984,181 @@ function serializeLawDrillState() {
   };
 }
 
+function getLawDrillSessionOwnerKey() {
+  return currentUser?.id ? `user:${currentUser.id}` : "guest";
+}
+
+function normalizeStoredLawDrillSession(rawSession = null) {
+  if (!rawSession || typeof rawSession !== "object") return null;
+
+  const lawDrillState = normalizeLawDrillState(rawSession.lawDrillState || rawSession.state || rawSession);
+  if (!lawDrillState) return null;
+
+  return {
+    mode: String(rawSession.mode || "study").trim().toLowerCase() || "study",
+    studyType: String(rawSession.studyType || "law").trim().toLowerCase() || "law",
+    current: Math.max(0, Math.round(Number(rawSession.current) || 0)),
+    currentStreak: Math.max(0, Math.round(Number(rawSession.currentStreak) || 0)),
+    userAnswers:
+      rawSession.userAnswers && typeof rawSession.userAnswers === "object" && !Array.isArray(rawSession.userAnswers)
+        ? { ...rawSession.userAnswers }
+        : {},
+    active: Array.isArray(rawSession.active)
+      ? rawSession.active.map((item) => (item && typeof item === "object" ? { ...item } : item)).filter(Boolean)
+      : [],
+    answeredCurrent: Boolean(rawSession.answeredCurrent),
+    inReview: Boolean(rawSession.inReview),
+    inDetailedReview: Boolean(rawSession.inDetailedReview),
+    activeCase: String(rawSession.activeCase || "").trim(),
+    backendAttemptId: String(rawSession.backendAttemptId || "").trim(),
+    timestamp: Math.max(0, Math.round(Number(rawSession.timestamp) || 0)),
+    lawDrillState,
+  };
+}
+
+function getLawDrillSessionProgress(session = null) {
+  const normalized = normalizeStoredLawDrillSession(session);
+  if (!normalized) return -1;
+
+  const state = normalized.lawDrillState || {};
+  const levels = Array.isArray(state.levels) ? state.levels : [];
+  const completedLevels = levels.filter(
+    (level) => String(level?.status || "").trim().toLowerCase() === "completed",
+  ).length;
+  const totalHistory = levels.reduce(
+    (total, level) => total + (Array.isArray(level?.history) ? level.history.length : 0),
+    0,
+  );
+
+  return (
+    Math.max(0, Math.round(Number(state.currentLevelIndex) || 0)) * 100000 +
+    completedLevels * 1000 +
+    totalHistory * 10 +
+    Math.max(0, Math.round(Number(normalized.current) || 0))
+  );
+}
+
+function mergeLawDrillSessions(left = null, right = null) {
+  const current = normalizeStoredLawDrillSession(left);
+  const incoming = normalizeStoredLawDrillSession(right);
+  if (!current) return incoming;
+  if (!incoming) return current;
+  return getLawDrillSessionProgress(incoming) >= getLawDrillSessionProgress(current) ? incoming : current;
+}
+
+function readLawDrillSessionState() {
+  try {
+    const raw = localStorage.getItem(LAW_DRILL_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && typeof parsed === "object" && parsed.owners && typeof parsed.owners === "object") {
+      return {
+        owners: Object.fromEntries(
+          Object.entries(parsed.owners).map(([ownerKey, value]) => [ownerKey, normalizeStoredLawDrillSession(value)]),
+        ),
+      };
+    }
+
+    const legacyRaw = localStorage.getItem(LEGACY_LAW_DRILL_STORAGE_KEY);
+    const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : parsed;
+    return {
+      owners: {
+        guest: normalizeStoredLawDrillSession(legacyParsed),
+      },
+    };
+  } catch {
+    return {
+      owners: {
+        guest: null,
+      },
+    };
+  }
+}
+
+function writeLawDrillSessionState(state = {}) {
+  const safeOwners = Object.fromEntries(
+    Object.entries(state?.owners || {}).map(([ownerKey, value]) => [ownerKey, normalizeStoredLawDrillSession(value)]),
+  );
+  localStorage.setItem(LAW_DRILL_STORAGE_KEY, JSON.stringify({ owners: safeOwners }));
+  return { owners: safeOwners };
+}
+
+function readCurrentLawDrillSession() {
+  const state = readLawDrillSessionState();
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const local = state.owners?.[ownerKey] || null;
+  const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return remote;
+  }
+  return mergeLawDrillSessions(local, remote);
+}
+
+function writeCurrentLawDrillSession(nextValue = {}, { scheduleSync = true } = {}) {
+  const state = readLawDrillSessionState();
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const normalized = normalizeStoredLawDrillSession(nextValue);
+  state.owners[ownerKey] = normalized;
+  writeLawDrillSessionState(state);
+  if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
+    scheduleLawDrillSessionSync();
+  }
+  return normalized;
+}
+
+let lawDrillSessionSyncHandle = null;
+let lawDrillSessionSyncInFlight = false;
+
+async function flushLawDrillSessionSync() {
+  if (lawDrillSessionSyncInFlight) return;
+  if (!currentUser || !backendClient.isAuthenticated()) return;
+
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const state = readLawDrillSessionState();
+  const local = normalizeStoredLawDrillSession(state.owners?.[ownerKey] || null);
+  const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
+  const merged = mergeLawDrillSessions(local, remote);
+
+  if (!merged) {
+    state.owners[ownerKey] = local || remote || null;
+    writeLawDrillSessionState(state);
+    return;
+  }
+
+  const changed = JSON.stringify(merged) !== JSON.stringify(remote);
+  if (!changed) {
+    state.owners[ownerKey] = merged;
+    writeLawDrillSessionState(state);
+    currentUser = { ...(currentUser || {}), lawDrillSession: merged };
+    return;
+  }
+
+  lawDrillSessionSyncInFlight = true;
+  try {
+    const response = await backendClient.updateLawDrillSession({ lawDrillSession: merged });
+    const synced = normalizeStoredLawDrillSession(
+      response?.lawDrillSession || response?.user?.lawDrillSession || merged,
+    );
+    state.owners[ownerKey] = synced;
+    writeLawDrillSessionState(state);
+    currentUser = response?.user || { ...(currentUser || {}), lawDrillSession: synced };
+  } catch {
+    state.owners[ownerKey] = merged;
+    writeLawDrillSessionState(state);
+  } finally {
+    lawDrillSessionSyncInFlight = false;
+  }
+}
+
+function scheduleLawDrillSessionSync(delayMs = 450) {
+  if (lawDrillSessionSyncHandle) {
+    clearTimeout(lawDrillSessionSyncHandle);
+  }
+  lawDrillSessionSyncHandle = setTimeout(() => {
+    lawDrillSessionSyncHandle = null;
+    void flushLawDrillSessionSync();
+  }, delayMs);
+}
+
 function persistLawDrillSession() {
   if (!lawDrillState) return;
   const payload = {
@@ -889,11 +1171,15 @@ function persistLawDrillSession() {
     lawDrillState: serializeLawDrillState(),
     timestamp: Date.now(),
   };
-  localStorage.setItem(LAW_DRILL_STORAGE_KEY, JSON.stringify(payload));
+  writeCurrentLawDrillSession(payload);
 }
 
 function clearLawDrillSession() {
-  localStorage.removeItem(LAW_DRILL_STORAGE_KEY);
+  const state = readLawDrillSessionState();
+  const ownerKey = getLawDrillSessionOwnerKey();
+  delete state.owners[ownerKey];
+  delete state.owners.guest;
+  writeLawDrillSessionState(state);
 }
 
 function updateLawDrillCurrentLevelScore() {
@@ -902,6 +1188,25 @@ function updateLawDrillCurrentLevelScore() {
   currentLevel.score = getLawDrillCurrentLevelScore();
   syncLawDrillCumulativeScore();
   renderSetupPoints();
+}
+
+function syncLawDrillLevelStatuses(activeLevelIndex = 0) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return;
+  const safeIndex = Math.max(
+    0,
+    Math.min(lawDrillState.levels.length - 1, Math.round(Number(activeLevelIndex) || 0)),
+  );
+
+  lawDrillState.levels.forEach((level, index) => {
+    if (index < safeIndex) {
+      level.status = "completed";
+    } else if (index === safeIndex) {
+      level.status = "current";
+    } else if (!["completed", "review"].includes(String(level.status || "").trim().toLowerCase())) {
+      level.status = "locked";
+    }
+  });
+  lawDrillState.currentLevelIndex = safeIndex;
 }
 
 function syncLawDrillCumulativeScore() {
@@ -935,6 +1240,7 @@ function renderLawDrillRail() {
   const levels = Array.isArray(lawDrillState.levels) ? lawDrillState.levels : [];
   const rowSize = window.matchMedia("(max-width: 720px)").matches ? 5 : 10;
   lawDrillRailEl.innerHTML = "";
+  let currentNode = null;
 
   for (let rowStart = 0; rowStart < levels.length; rowStart += rowSize) {
     const rowIndex = Math.floor(rowStart / rowSize);
@@ -977,6 +1283,7 @@ function renderLawDrillRail() {
         button.onclick = () => openLawDrillLevelReview(index);
       } else if (isCurrent) {
         button.onclick = () => openLawDrillLevel(index, { resetProgress: false });
+        currentNode = button;
       }
       track.appendChild(button);
     });
@@ -990,6 +1297,16 @@ function renderLawDrillRail() {
 
     lawDrillRailEl.appendChild(row);
   }
+
+  if (currentNode instanceof HTMLElement) {
+    window.requestAnimationFrame(() => {
+      try {
+        currentNode.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      } catch {
+        // Ignore scroll failures in constrained browsers.
+      }
+    });
+  }
 }
 
 function syncLawDrillRailForViewport() {
@@ -1000,6 +1317,7 @@ function syncLawDrillRailForViewport() {
 
 function showLawDrillLadderView() {
   if (!lawDrillState) return;
+  syncLawDrillLevelStatuses(repairLawDrillCurrentLevelIndex());
   setLawDrillView("ladder", { persist: false });
   lawDrillState.reviewLevelIndex = null;
   lawDrillState.resultLevelIndex = null;
@@ -1069,6 +1387,21 @@ function openLawDrillLevel(levelIndex = 0, { resetProgress = false } = {}) {
   renderLawDrillRail();
   showScreen("quiz-area");
   syncLawDrillLayout();
+  if (backendReady && !backendAttemptId) {
+    backendClient
+      .startAttempt({
+        mode: "exam",
+        variant: "law",
+        category: "law-drill",
+        questionIds: active.map((q) => Number(q.id)),
+      })
+      .then((result) => {
+        backendAttemptId = result.attemptId;
+      })
+      .catch((error) => {
+        console.warn("Failed to start law drill backend attempt:", error);
+      });
+  }
   persistLawDrillSession();
   showQuestion();
 }
@@ -1269,6 +1602,7 @@ function openLawDrillLevelReview(levelIndex = 0) {
   lawDrillState.reviewLevelIndex = levelIndex;
   lawDrillState.resultLevelIndex = null;
   setLawDrillView("review", { persist: false });
+  inReview = false;
   inDetailedReview = true;
   renderLawDrillRail();
   showScreen("quiz-area");
@@ -1314,6 +1648,7 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   lawDrillState.resultLevelIndex = levelIndex;
   lawDrillState.reviewLevelIndex = null;
   setLawDrillView("result", { persist: false });
+  inReview = false;
   if (questionCardEl) questionCardEl.classList.add("hidden");
   if (lawDrillPanelEl) lawDrillPanelEl.classList.add("hidden");
   if (lawDrillStackEl) {
@@ -1331,10 +1666,12 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   const reviewBtn = document.getElementById("result-review-btn");
   const shareBtn = document.getElementById("result-share-btn");
   const menuBtn = document.getElementById("result-menu-btn");
+  const scoreBlock = document.querySelector("#study-result-screen .result-score-block");
+  const genericReviewWrapper = document.getElementById("result-review-content");
 
   if (resultTitle) {
     resultTitle.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
-    resultTitle.classList.toggle("hidden", !final);
+    resultTitle.classList.remove("hidden");
   }
   if (resultBadgeEl) {
     resultBadgeEl.textContent = final ? "Drill Complete" : `Level ${levelIndex + 1} Completed`;
@@ -1351,32 +1688,37 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
     feedbackEl.innerText = final
       ? "You have cleared all 100 levels. You can review the ladder or head back to the menu."
       : hasNext
-        ? `Nice work. Level ${nextLevelIndex + 1} is ready when you are.`
+        ? `Nice work. Level ${nextLevelIndex + 1} is unlocked and ready.`
         : "That level is complete. Return to the ladder when ready.";
   }
   if (reviewSection) {
-    reviewSection.classList.remove("hidden");
+    reviewSection.classList.add("hidden");
   }
   if (reviewSectionTitle) {
-    reviewSectionTitle.textContent = "Review";
+    reviewSectionTitle.textContent = "Law Drill Review";
   }
   if (reviewContent) {
-    reviewContent.classList.remove("review-palette-grid");
-    reviewContent.classList.add("analysis-list");
-    reviewContent.innerHTML = buildLawDrillStackMarkup(levelIndex, "Past Level Review");
+    reviewContent.classList.remove("review-palette-grid", "analysis-list", "law-drill-only-review");
+    reviewContent.innerHTML = "";
+  }
+  if (scoreBlock) {
+    scoreBlock.classList.add("hidden");
+  }
+  if (genericReviewWrapper) {
+    genericReviewWrapper.classList.add("law-drill-only-review");
   }
 
   if (reviewBtn) {
-    reviewBtn.classList.toggle("hidden", !hasNext);
-    reviewBtn.textContent = hasNext ? `Level ${nextLevelIndex + 1}` : "Close";
-    reviewBtn.onclick = hasNext
-      ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
-      : returnToLawLadder;
+    reviewBtn.classList.toggle("hidden", false);
+    reviewBtn.textContent = "Open Review";
+    reviewBtn.onclick = () => openLawDrillLevelReview(levelIndex);
   }
   if (shareBtn) {
     shareBtn.classList.toggle("hidden", false);
-    shareBtn.textContent = "Close";
-    shareBtn.onclick = returnToLawLadder;
+    shareBtn.textContent = hasNext ? `Level ${nextLevelIndex + 1}` : "Close";
+    shareBtn.onclick = hasNext
+      ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
+      : returnToLawLadder;
   }
   if (menuBtn) {
     menuBtn.textContent = "Back to Menu";
@@ -1387,6 +1729,42 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   renderPoints();
   renderSessionPointsDisplay();
   persistLawDrillSession();
+}
+
+function getLawDrillSessionLabel(levelIndex = 0) {
+  return `Law Drill Level ${levelIndex + 1}`;
+}
+
+function saveLawDrillLevelSession(levelIndex = 0, { finishBackendAttempt = true } = {}) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return false;
+  const level = lawDrillState.levels[levelIndex] || null;
+  if (!level) return false;
+  if (level.sessionSaved) return false;
+
+  const history = Array.isArray(level.history) ? level.history : [];
+  const answers = {};
+  history.forEach((entry) => {
+    if (!entry?.questionId) return;
+    answers[String(entry.questionId)] = String(entry.selectedAnswer || "").trim();
+    updatePerformance(
+      entry.questionId,
+      Boolean(entry.isCorrect),
+      String(entry.selectedAnswer || "").trim() || "Skipped",
+    );
+  });
+
+  const answered = history.length;
+  const correct = history.filter((entry) => entry?.isCorrect).length;
+  level.sessionSaved = true;
+
+  if (finishBackendAttempt && backendReady && backendAttemptId) {
+    backendClient.finishAttempt(backendAttemptId, answers);
+    backendAttemptId = null;
+  }
+
+  saveSession(getLawDrillSessionLabel(levelIndex), correct, answered);
+  persistLawDrillSession();
+  return true;
 }
 
 function ensureLawDrillActiveLevel() {
@@ -1405,15 +1783,17 @@ function markLawDrillCurrentLevelComplete() {
 
   const nextLevelIndex = currentLevel.index + 1;
   if (nextLevelIndex >= (lawDrillState?.levels?.length || 0)) {
+    lawDrillState.currentLevelIndex = currentLevel.index;
+    lawDrillState.reviewLevelIndex = null;
     lawDrillState.resultLevelIndex = currentLevel.index;
     lawDrillState.view = "result";
+    saveLawDrillLevelSession(currentLevel.index, { finishBackendAttempt: true });
     active = [];
     userAnswers = {};
     current = 0;
     answeredCurrent = false;
     inDetailedReview = false;
     renderLawDrillRail();
-    persistLawDrillSession();
     showDrillEventBanner(`Level ${currentLevel.index + 1} complete`, "good");
     showLawDrillLevelResult(currentLevel.index, { final: true });
     return;
@@ -1428,15 +1808,17 @@ function markLawDrillCurrentLevelComplete() {
   lawDrillState.reviewLevelIndex = null;
   lawDrillState.resultLevelIndex = currentLevel.index;
   lawDrillState.view = "result";
+  syncLawDrillLevelStatuses(nextLevelIndex);
+  saveLawDrillLevelSession(currentLevel.index, { finishBackendAttempt: true });
   active = [];
   userAnswers = {};
   current = 0;
   answeredCurrent = false;
   inDetailedReview = false;
   renderLawDrillRail();
-  persistLawDrillSession();
   showDrillEventBanner(`Level ${currentLevel.index + 1} complete`, "good");
   showLawDrillLevelResult(currentLevel.index);
+  persistLawDrillSession();
 }
 
 function recordLawDrillAnswer(question, selectedAnswer, isCorrect) {
@@ -1478,7 +1860,7 @@ function recordLawDrillAnswer(question, selectedAnswer, isCorrect) {
 async function startLawDrillSession({ resumeState = null } = {}) {
   studySessionEnded = false;
   clearAiExplainStateSession();
-  examVariant = "normal";
+  examVariant = "law";
   examTimeBudget = 0;
   clearInterval(examTimer);
   clearInterval(reviewTimer);
@@ -1501,7 +1883,7 @@ async function startLawDrillSession({ resumeState = null } = {}) {
     return;
   }
 
-  mode = "study";
+  mode = "exam";
   lawDrillState.reviewLevelIndex =
     Number.isInteger(lawDrillState.reviewLevelIndex) && lawDrillState.reviewLevelIndex >= 0
       ? lawDrillState.reviewLevelIndex
@@ -1519,6 +1901,7 @@ async function startLawDrillSession({ resumeState = null } = {}) {
     }
   }
 
+  repairLawDrillCurrentLevelIndex();
   ensureLawDrillActiveLevel();
   updateModeIndicator();
   renderLawDrillRail();
@@ -1546,7 +1929,7 @@ async function startLawDrillSession({ resumeState = null } = {}) {
   if (backendReady) {
     backendClient
       .startAttempt({
-        mode: "study",
+        mode: "exam",
         category: "law-drill",
         questionIds: active.map((q) => Number(q.id)),
       })
@@ -1564,11 +1947,15 @@ async function startLawDrillSession({ resumeState = null } = {}) {
 
 function getSavedLawDrillSession() {
   try {
-    const raw = localStorage.getItem(LAW_DRILL_STORAGE_KEY);
-    if (!raw) return null;
-    const saved = JSON.parse(raw);
-    if (!saved || typeof saved !== "object") return null;
-    return saved;
+    const session = readCurrentLawDrillSession();
+    if (!session) return null;
+    const state = readLawDrillSessionState();
+    const ownerKey = getLawDrillSessionOwnerKey();
+    if (JSON.stringify(state.owners?.[ownerKey] || null) !== JSON.stringify(session)) {
+      state.owners[ownerKey] = session;
+      writeLawDrillSessionState(state);
+    }
+    return session;
   } catch {
     return null;
   }
@@ -1587,7 +1974,23 @@ let bestStreak = parseInt(localStorage.getItem("quizBestStreak")) || 0;
 
 let sessionHistory =
   JSON.parse(localStorage.getItem("quizSessionHistory")) || [];
-const MAX_SESSION_HISTORY_ENTRIES = 20;
+const MAX_SESSION_HISTORY_ENTRIES = 120;
+const DASHBOARD_TREND_MAX_POINTS = 12;
+const DASHBOARD_RECENT_RESULTS_MAX = 10;
+const DASHBOARD_TREND_REMOTE_HISTORY_LIMIT = Math.min(1000, MAX_SESSION_HISTORY_ENTRIES * 4);
+const DASHBOARD_TREND_SCOPE_STORAGE_KEY = "dashboardTrendScopeV1";
+const RECENT_RESULTS_STORAGE_KEY = "quizRecentSessionResultsV1";
+let latestSavedSession = Array.isArray(sessionHistory) && sessionHistory.length > 0 ? sessionHistory[0] : null;
+let recentSessionResults =
+  JSON.parse(localStorage.getItem(RECENT_RESULTS_STORAGE_KEY)) || [];
+let dashboardTrendScope =
+  String(localStorage.getItem(DASHBOARD_TREND_SCOPE_STORAGE_KEY) || "session")
+    .trim()
+    .toLowerCase() || "session";
+let dashboardTrendSessionsCache = [];
+let dashboardTrendSessionsLoadedFromSync = false;
+let lastSavedSessionFingerprint = "";
+let lastSavedSessionAt = 0;
 
 function byQuestionIdAscending(a, b) {
   return Number(a?.id || 0) - Number(b?.id || 0);
@@ -1813,67 +2216,10 @@ function stripCaseStemFromQuestion(questionText, caseText) {
   return output;
 }
 
-const normalizedLocalQuestions = enrichImportedCaseQuestions(
-  (Array.isArray(baseQuestions) ? baseQuestions : [])
-    .filter((question) => !isRetiredLawCategoryQuestion(question))
-    .map(withMajorCategory),
-);
-
-const localQuestionFallbackById = new Map(
-  normalizedLocalQuestions
-    .map((q) => [Number(q?.id), q])
-    .filter(([id]) => Number.isFinite(id)),
-);
-
-function mapBackendQuestionToLocal(q = {}) {
-  const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
-  return {
-    id: q.id,
-    text: q.text || q.question || fallback.text || fallback.question || "",
-    question: q.question || q.text || fallback.question || fallback.text || "",
-    category: normalizeQuestionCategory({
-      ...q,
-      question: q.question || q.text || fallback.question || fallback.text || "",
-      explanation: q.explanation || fallback.explanation || "",
-    }),
-    options: Array.isArray(q.options)
-      ? q.options
-      : Array.isArray(fallback.options)
-        ? fallback.options
-        : [],
-    statements: Array.isArray(q.statements)
-      ? q.statements
-      : Array.isArray(fallback.statements)
-        ? fallback.statements
-        : [],
-    caseId: q.caseId || fallback.caseId || "",
-    caseBlock: q.caseBlock || fallback.caseBlock || "",
-    correct: q.correct || fallback.correct,
-    explanation: q.explanation || fallback.explanation || "",
-    explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
-    wrongOptionExplanations:
-      q.wrongOptionExplanations && typeof q.wrongOptionExplanations === "object"
-        ? q.wrongOptionExplanations
-        : fallback.wrongOptionExplanations &&
-            typeof fallback.wrongOptionExplanations === "object"
-          ? fallback.wrongOptionExplanations
-          : {},
-    memoryTrick: q.memoryTrick || fallback.memoryTrick || "",
-    type: q.type || fallback.type || "single",
-    topicSlug: q.topicSlug || fallback.topicSlug || "",
-    sectionId: q.sectionId || fallback.sectionId || "",
-    drillTags: Array.isArray(q.drillTags)
-      ? q.drillTags
-      : Array.isArray(fallback.drillTags)
-        ? fallback.drillTags
-        : [],
-    drillTrack: q.drillTrack || fallback.drillTrack || "",
-    lawDrill: q.lawDrill ?? fallback.lawDrill ?? false,
-  };
-}
-
-const localTopicQuestionBank = [...normalizedLocalQuestions];
-let questionBank = [...localTopicQuestionBank];
+let normalizedLocalQuestions = [];
+let localQuestionFallbackById = new Map();
+let localTopicQuestionBank = [];
+let questionBank = [];
 const caseMap = {};
 let backendReady = false;
 let backendAttemptId = null;
@@ -1897,6 +2243,9 @@ let dailyMidnightRefreshTimer = null;
 let dailyLeaderboardSnapshot = null;
 let questionInsightCache = Object.create(null);
 let questionInsightInFlightKey = "";
+let performanceStateSyncHandle = null;
+let performanceStateSyncInFlight = false;
+let performanceStateSyncQueued = false;
 let backendBootstrapStarted = false;
 const communityStatusVideoMetaCache = new Map();
 const communityStatusVideoFrameCache = new Map();
@@ -1982,9 +2331,103 @@ async function flushCommunityOfflineQueue() {
       }
     }
   } catch {
+    // Best effort only.
   } finally {
     communityOfflineQueueFlushInFlight = false;
   }
+}
+
+async function loadBundledQuestionSource() {
+  const imported = await import(QUESTION_BANK_MODULE_URL);
+  return Array.isArray(imported.baseQuestions) ? imported.baseQuestions : [];
+}
+
+async function ensureQuestionBankLoaded() {
+  if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+    return questionBank;
+  }
+
+  if (questionBankBootstrapPromise) {
+    return questionBankBootstrapPromise;
+  }
+
+  questionBankBootstrapPromise = (async () => {
+    const sourceQuestions = await loadBundledQuestionSource();
+    if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+      return questionBank;
+    }
+    normalizedLocalQuestions = enrichImportedCaseQuestions(
+      (Array.isArray(sourceQuestions) ? sourceQuestions : [])
+        .filter((question) => !isRetiredLawCategoryQuestion(question))
+        .map(withMajorCategory),
+    );
+
+    localQuestionFallbackById = new Map(
+      normalizedLocalQuestions
+        .map((q) => [Number(q?.id), q])
+        .filter(([id]) => Number.isFinite(id)),
+    );
+    localTopicQuestionBank = [...normalizedLocalQuestions];
+    questionBank = [...localTopicQuestionBank];
+    questionBankReady = true;
+    rebuildCaseMap();
+    reconcileLocalQuestionStats();
+    refreshQuestionDependentUi();
+    return questionBank;
+  })().catch((error) => {
+    console.warn("Failed to load bundled question bank:", error);
+    questionBankBootstrapPromise = null;
+    return [];
+  });
+
+  return questionBankBootstrapPromise;
+}
+
+function mapBackendQuestionToLocal(q = {}) {
+  const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
+  return {
+    id: q.id,
+    text: q.text || q.question || fallback.text || fallback.question || "",
+    question: q.question || q.text || fallback.question || fallback.text || "",
+    category: normalizeQuestionCategory({
+      ...q,
+      question: q.question || q.text || fallback.question || fallback.text || "",
+      explanation: q.explanation || fallback.explanation || "",
+    }),
+    options: Array.isArray(q.options)
+      ? q.options
+      : Array.isArray(fallback.options)
+        ? fallback.options
+        : [],
+    statements: Array.isArray(q.statements)
+      ? q.statements
+      : Array.isArray(fallback.statements)
+        ? fallback.statements
+        : [],
+    caseId: q.caseId || fallback.caseId || "",
+    caseBlock: q.caseBlock || fallback.caseBlock || "",
+    correct: q.correct || fallback.correct,
+    explanation: q.explanation || fallback.explanation || "",
+    explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
+    wrongOptionExplanations:
+      q.wrongOptionExplanations && typeof q.wrongOptionExplanations === "object"
+        ? q.wrongOptionExplanations
+        : fallback.wrongOptionExplanations &&
+            typeof fallback.wrongOptionExplanations === "object"
+          ? fallback.wrongOptionExplanations
+          : {},
+    memoryTrick: q.memoryTrick || fallback.memoryTrick || "",
+    type: q.type || fallback.type || "single",
+    topicSlug: q.topicSlug || fallback.topicSlug || "",
+    sectionId: q.sectionId || fallback.sectionId || "",
+    drillTags: Array.isArray(q.drillTags)
+      ? q.drillTags
+      : Array.isArray(fallback.drillTags)
+        ? fallback.drillTags
+        : [],
+    drillTrack: q.drillTrack || fallback.drillTrack || "",
+    lawDrill: q.lawDrill ?? fallback.lawDrill ?? false,
+  };
 }
 
 // Load questions from backend if available
@@ -1992,13 +2435,19 @@ async function loadQuestionsFromBackend() {
   try {
     const questions = await backendClient.fetchQuestions();
     if (Array.isArray(questions) && questions.length > 0) {
-      // Use Neon/Postgres as the source of truth whenever the backend is reachable.
-      // Local questions remain only as an offline fallback.
       const backendQuestions = questions
         .filter((question) => !isRetiredLawCategoryQuestion(question))
         .map(mapBackendQuestionToLocal)
         .sort(byQuestionIdAscending);
       questionBank = enrichImportedCaseQuestions(backendQuestions);
+      localTopicQuestionBank = [...questionBank];
+      normalizedLocalQuestions = [...questionBank];
+      localQuestionFallbackById = new Map(
+        normalizedLocalQuestions
+          .map((q) => [Number(q?.id), q])
+          .filter(([id]) => Number.isFinite(id)),
+      );
+      questionBankReady = true;
       backendReady = true;
       reconcileLocalQuestionStats();
       rebuildCaseMap();
@@ -2010,6 +2459,43 @@ async function loadQuestionsFromBackend() {
     // Keep using local questions from data.js
   }
 }
+
+function startBackendBootstrap() {
+  if (backendBootstrapStarted) return;
+  backendBootstrapStarted = true;
+  const runBootstrap = () => {
+    void loadQuestionsFromBackend();
+    backendClient
+      .warmup()
+      .then(() => {
+        backendReady = true;
+      })
+      .catch(() => {
+        // Keep local-first behavior if backend is offline.
+      });
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runBootstrap, 250);
+  }
+}
+
+function startQuestionBankBootstrap() {
+  const runBootstrap = () => {
+    void ensureQuestionBankLoaded();
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runBootstrap, 250);
+  }
+}
+
+window.addEventListener("online", () => {
+  scheduleCommunityOfflineQueueFlush(100);
+});
 
 function rebuildCaseMap() {
   Object.keys(caseMap).forEach((key) => delete caseMap[key]);
@@ -2024,40 +2510,6 @@ function rebuildCaseMap() {
     }
   });
 }
-
-function refreshQuestionDependentUi() {
-  populateStudyCategories();
-  populateStudyRotations();
-  populateExamCategories();
-  populateExamRotations();
-  populateTopicLibraryCategories();
-  syncAllSetupPickerButtons();
-
-  const homeTotalQuestions = document.getElementById("home-total-questions");
-  if (homeTotalQuestions) {
-    homeTotalQuestions.innerText = questionBank.length;
-  }
-}
-
-function startBackendBootstrap() {
-  if (backendBootstrapStarted) return;
-  backendBootstrapStarted = true;
-  const runBootstrap = () => {
-    void loadQuestionsFromBackend();
-    backendClient.warmup().catch(() => {
-      // Keep local-first behavior if backend is offline.
-    });
-  };
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
-  } else {
-    window.setTimeout(runBootstrap, 250);
-  }
-}
-
-window.addEventListener("online", () => {
-  scheduleCommunityOfflineQueueFlush(100);
-});
 
 function buildScopedCaseMapKey(caseId = "", topicSlug = "") {
   const safeCaseId = String(caseId || "").trim();
@@ -2087,9 +2539,270 @@ rebuildCaseMap();
                   ================================= */
 
 let performanceData = JSON.parse(localStorage.getItem("quizPerformance")) || {};
+let syncedPerformanceStateCache = null;
+let syncedPerformanceStateLoadedFromSync = false;
+
+function resetSyncedDashboardCaches() {
+  syncedPerformanceStateCache = null;
+  syncedPerformanceStateLoadedFromSync = false;
+  dashboardTrendSessionsCache = [];
+  dashboardTrendSessionsLoadedFromSync = false;
+}
 
 function savePerformance() {
   localStorage.setItem("quizPerformance", JSON.stringify(performanceData));
+}
+
+function normalizePerformanceStatsMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => {
+        const attempts = Math.max(0, Math.round(Number(value?.attempts) || 0));
+        const correct = Math.max(0, Math.min(attempts, Math.round(Number(value?.correct) || 0)));
+        return [String(key || "").trim(), { attempts, correct }];
+      })
+      .filter(([key]) => Boolean(key)),
+  );
+}
+
+function mergePerformanceStatsMap(left = {}, right = {}) {
+  const safeLeft = normalizePerformanceStatsMap(left);
+  const safeRight = normalizePerformanceStatsMap(right);
+  const merged = new Map();
+
+  Object.entries(safeLeft).forEach(([key, value]) => {
+    merged.set(key, { attempts: value.attempts, correct: value.correct });
+  });
+
+  Object.entries(safeRight).forEach(([key, value]) => {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { attempts: value.attempts, correct: value.correct });
+      return;
+    }
+    const attempts = Math.max(existing.attempts, value.attempts);
+    const correct = Math.max(existing.correct, value.correct);
+    merged.set(key, { attempts, correct: Math.min(attempts, correct) });
+  });
+
+  return Object.fromEntries(merged.entries());
+}
+
+function normalizeWeakTrackerMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => {
+        const normalizedKey = String(key || "").trim();
+        if (!normalizedKey) return null;
+        const roundsPassed = Math.max(0, Math.round(Number(value?.roundsPassed) || 0));
+        return [normalizedKey, { roundsPassed }];
+      })
+      .filter(Boolean),
+  );
+}
+
+function mergeWeakTrackerMap(left = {}, right = {}) {
+  const safeLeft = normalizeWeakTrackerMap(left);
+  const safeRight = normalizeWeakTrackerMap(right);
+  const merged = new Map();
+
+  Object.entries(safeLeft).forEach(([key, value]) => {
+    merged.set(key, { roundsPassed: value.roundsPassed });
+  });
+
+  Object.entries(safeRight).forEach(([key, value]) => {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { roundsPassed: value.roundsPassed });
+      return;
+    }
+    merged.set(key, {
+      roundsPassed: Math.max(existing.roundsPassed, value.roundsPassed),
+    });
+  });
+
+  return Object.fromEntries(merged.entries());
+}
+
+function buildPerformanceStateFromEvents(events = []) {
+  const nextPerformanceData = {};
+  const nextCategoryPerformance = {};
+  const nextRotationPerformance = {};
+
+  (Array.isArray(events) ? events : []).forEach((event) => {
+    const questionId = normalizeQuestionIdKey(event?.questionId);
+    if (!questionId) return;
+
+    const isCorrect = Boolean(event?.isCorrect);
+    const category = normalizeMajorCategory(event?.category || "", "");
+    const rotation = String(event?.rotation || "").trim();
+
+    if (!nextPerformanceData[questionId]) {
+      nextPerformanceData[questionId] = { attempts: 0, correct: 0 };
+    }
+    nextPerformanceData[questionId].attempts += 1;
+    if (isCorrect) {
+      nextPerformanceData[questionId].correct += 1;
+    }
+
+    if (!nextCategoryPerformance[category]) {
+      nextCategoryPerformance[category] = { attempts: 0, correct: 0 };
+    }
+    nextCategoryPerformance[category].attempts += 1;
+    if (isCorrect) {
+      nextCategoryPerformance[category].correct += 1;
+    }
+
+    if (rotation) {
+      if (!nextRotationPerformance[rotation]) {
+        nextRotationPerformance[rotation] = { attempts: 0, correct: 0 };
+      }
+      nextRotationPerformance[rotation].attempts += 1;
+      if (isCorrect) {
+        nextRotationPerformance[rotation].correct += 1;
+      }
+    }
+  });
+
+  const derivedWeakTracker = {};
+  Object.entries(nextPerformanceData).forEach(([questionId, row]) => {
+    const attempts = Math.max(0, Math.round(Number(row?.attempts) || 0));
+    const correct = Math.max(0, Math.min(attempts, Math.round(Number(row?.correct) || 0)));
+    const accuracy = attempts <= 0 ? 100 : Math.round((correct / attempts) * 100);
+    if (attempts > 0 && accuracy < 60) {
+      derivedWeakTracker[questionId] = { roundsPassed: 0 };
+    }
+  });
+
+  return {
+    performanceData: nextPerformanceData,
+    categoryPerformance: nextCategoryPerformance,
+    rotationPerformance: nextRotationPerformance,
+    weakTracker: derivedWeakTracker,
+  };
+}
+
+function captureCurrentPerformanceState() {
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
+  return {
+    performanceData: JSON.parse(JSON.stringify(performanceData || {})),
+    categoryPerformance: JSON.parse(JSON.stringify(categoryPerformance || {})),
+    rotationPerformance: JSON.parse(JSON.stringify(rotationPerformance || {})),
+  };
+}
+
+function schedulePerformanceStateSync(delayMs = 800) {
+  if (performanceStateSyncHandle) {
+    clearTimeout(performanceStateSyncHandle);
+  }
+  performanceStateSyncHandle = setTimeout(() => {
+    performanceStateSyncHandle = null;
+    void flushPendingPerformanceStateSync();
+  }, Math.max(250, Number(delayMs) || 800));
+}
+
+async function flushPendingPerformanceStateSync() {
+  if (performanceStateSyncHandle) {
+    clearTimeout(performanceStateSyncHandle);
+    performanceStateSyncHandle = null;
+  }
+  if (!currentUser || !backendClient.isAuthenticated()) return;
+  if (performanceStateSyncInFlight) {
+    performanceStateSyncQueued = true;
+    return;
+  }
+
+  performanceStateSyncInFlight = true;
+  try {
+    await backendClient.syncPerformanceState(captureCurrentPerformanceState());
+  } catch {
+    // Keep local progress even if the backend sync is briefly unavailable.
+  } finally {
+    performanceStateSyncInFlight = false;
+    if (performanceStateSyncQueued) {
+      performanceStateSyncQueued = false;
+      schedulePerformanceStateSync(400);
+    }
+  }
+}
+
+function applySyncedPerformanceState(state = {}) {
+  const nextPerformanceData = normalizePerformanceStatsMap(state?.performanceData || {});
+  const nextCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
+  const nextRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
+  const nextWeakTracker = normalizeWeakTrackerMap(state?.weakTracker || {});
+
+  performanceData = nextPerformanceData;
+  categoryPerformance = nextCategoryPerformance;
+  rotationPerformance = nextRotationPerformance;
+  weakTracker = nextWeakTracker;
+
+  savePerformance();
+  localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
+  localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
+  renderPoints();
+}
+
+async function loadSyncedPerformanceState({ force = false } = {}) {
+  if (!force && syncedPerformanceStateLoadedFromSync && syncedPerformanceStateCache) {
+    applySyncedPerformanceState(syncedPerformanceStateCache);
+    return syncedPerformanceStateCache;
+  }
+
+  if (!force) {
+    const cachedState = await getOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY);
+    if (cachedState?.value) {
+      const nextState = cachedState.value;
+      syncedPerformanceStateCache = nextState;
+      syncedPerformanceStateLoadedFromSync = true;
+      applySyncedPerformanceState(nextState);
+      void (async () => {
+        try {
+          const response = await backendClient.fetchSyncedPerformanceState(5000);
+          const events = Array.isArray(response?.events) ? response.events : [];
+          const built = buildPerformanceStateFromEvents(events);
+          const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || {});
+          const freshState = {
+            performanceData: built.performanceData,
+            categoryPerformance: built.categoryPerformance,
+            rotationPerformance: built.rotationPerformance,
+            weakTracker: remoteWeakTracker,
+          };
+          syncedPerformanceStateCache = freshState;
+          syncedPerformanceStateLoadedFromSync = true;
+          applySyncedPerformanceState(freshState);
+          void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, freshState);
+        } catch {
+          // Keep cached performance state if the backend cannot be reached.
+        }
+      })();
+      return nextState;
+    }
+  }
+
+  try {
+    const response = await backendClient.fetchSyncedPerformanceState(5000);
+    const events = Array.isArray(response?.events) ? response.events : [];
+    const built = buildPerformanceStateFromEvents(events);
+    const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || {});
+    const nextState = {
+      performanceData: built.performanceData,
+      categoryPerformance: built.categoryPerformance,
+      rotationPerformance: built.rotationPerformance,
+      weakTracker: remoteWeakTracker,
+    };
+    syncedPerformanceStateCache = nextState;
+    syncedPerformanceStateLoadedFromSync = true;
+    applySyncedPerformanceState(nextState);
+    void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, nextState);
+  } catch {
+    // Keep local performance data if the backend cannot be reached.
+  }
+
+  return syncedPerformanceStateCache;
 }
 
 function normalizeQuestionIdKey(value) {
@@ -2098,6 +2811,10 @@ function normalizeQuestionIdKey(value) {
 }
 
 function reconcileLocalQuestionStats() {
+  if (!questionBankReady) {
+    return;
+  }
+
   const validIds = new Set(
     (Array.isArray(questionBank) ? questionBank : [])
       .map((q) => normalizeQuestionIdKey(q?.id))
@@ -2156,6 +2873,7 @@ function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
     rotation: question?.rotation || question?.rotations?.[0] || "",
     selectedAnswer: String(selectedAnswer || "").trim(),
   });
+  schedulePerformanceStateSync();
 
   savePerformance();
 }
@@ -2198,11 +2916,34 @@ function updateCategoryPerformance(category, isCorrect) {
   );
 }
 
+function rebuildCategoryPerformanceFromQuestionStats() {
+  const rebuilt = {};
+
+  Object.entries(performanceData || {}).forEach(([questionId, row]) => {
+    const question = findQuestionById(questionId);
+    const category = normalizeMajorCategory(
+      question?.category || "",
+      `${String(question?.question || "")} ${String(question?.explanation || "")}`,
+    );
+    if (!category || category === "all") return;
+
+    const attempts = Math.max(0, Number(row?.attempts) || 0);
+    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
+    const existing = rebuilt[category] || { attempts: 0, correct: 0 };
+    existing.attempts += attempts;
+    existing.correct += correct;
+    rebuilt[category] = existing;
+  });
+
+  categoryPerformance = rebuilt;
+  localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
+}
+
 function getCategoryAccuracy(category) {
   const data = categoryPerformance[category];
   if (!data || data.attempts === 0) return 100;
 
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakCategories(threshold = 80) {
@@ -2263,7 +3004,7 @@ function getRotationAccuracy(rotation) {
   const key = normalizeRotationValue(rotation);
   const data = rotationPerformance[key];
   if (!key || !data || data.attempts === 0) return 100;
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakRotations(threshold = 80) {
@@ -2273,6 +3014,7 @@ function getWeakRotations(threshold = 80) {
 }
 
 rebuildRotationPerformanceFromQuestionStats();
+rebuildCategoryPerformanceFromQuestionStats();
 
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");
@@ -2908,7 +3650,8 @@ const communityMessageDeleteMenuEl = document.getElementById("community-message-
 const communityMessageDeleteMenuSelfBtn = document.getElementById("community-message-delete-menu-self-btn");
 const communityMessageDeleteMenuAllBtn = document.getElementById("community-message-delete-menu-all-btn");
 const COMMUNITY_ADMIN_NOTICE_SENDER_ID = "__admin_notice__";
-const COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE = "/icons/icon-512-s3.png?v=20260324-applogo1";
+const COMMUNITY_ADMIN_PROFILE_NAME = "AJIXPHARMACY Admin";
+const COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE = "/images/app-logo.png?v=20260617-admin-avatar";
 const resultShareBtn = document.getElementById("result-share-btn");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const COMMUNITY_SETTINGS_STORAGE_KEY = "quizCommunitySettingsV1";
@@ -2934,11 +3677,6 @@ const APP_UPDATE_CHECK_COOLDOWN_MS = 2 * 60 * 1000;
 const COMMUNITY_AGORA_SDK_URL = "https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.24.0/AgoraRTC_N-production.min.js";
 const COMMUNITY_CALL_RING_RETRY_MS = 1600;
 const COMMUNITY_CALL_NO_ANSWER_TIMEOUT_MS = 60 * 1000;
-
-let syncedPerformanceStateCache = null;
-let syncedPerformanceStateLoadedFromSync = false;
-let dashboardTrendSessionsCache = [];
-let dashboardTrendSessionsLoadedFromSync = false;
 const COMMUNITY_NATIVE_CALL_STATUS_SYNC_DEBOUNCE_MS = 450;
 const COMMUNITY_NATIVE_BIOMETRIC_CREDENTIAL_ID = "__native_android_biometric__";
 const LIVE_ANSWER_ADVANCE_DELAY_MS = 1800;
@@ -2948,6 +3686,124 @@ const COMMUNITY_BIOMETRIC_REGISTRATION_TIMEOUT_MS = 90000;
 const COMMUNITY_BIOMETRIC_UNLOCK_TIMEOUT_MS = 60000;
 const COMMUNITY_EMOJI_RECENT_LIMIT = 40;
 const COMMUNITY_EMOJI_SKIN_TONES = ["", "🏻", "🏼", "🏽", "🏾", "🏿"];
+
+function isQuotaExceededStorageError(error) {
+  return Boolean(
+    error &&
+      (error.name === "QuotaExceededError" ||
+        error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        error.code === 22 ||
+        error.code === 1014),
+  );
+}
+
+function sanitizeCommunityChatDraftStore(store = {}) {
+  const safeStore = {};
+  let changed = false;
+  Object.entries(store && typeof store === "object" ? store : {}).forEach(([conversationId, draft]) => {
+    const safeConversationId = getCommunityChatDraftConversationId(conversationId);
+    if (!safeConversationId || !draft || typeof draft !== "object") {
+      changed = true;
+      return;
+    }
+
+    const text = String(draft.text || "");
+    const replyDraft = normalizeCommunityChatDraftReply(draft.replyDraft);
+    const updatedAt = Math.max(0, Math.round(Number(draft.updatedAt) || 0));
+
+    if (!text.trim() && !replyDraft) {
+      changed = true;
+      return;
+    }
+
+    const safeDraft = {
+      conversationId: safeConversationId,
+      text,
+      replyDraft,
+      updatedAt,
+    };
+
+    if (Array.isArray(draft.attachments) && draft.attachments.length > 0) {
+      changed = true;
+    }
+
+    safeStore[safeConversationId] = safeDraft;
+  });
+  return {
+    store: safeStore,
+    changed,
+  };
+}
+
+function applyStoragePressureCleanup() {
+  try {
+    const draftStore = loadCommunityChatDraftStore();
+    const sanitizedDraftStore = sanitizeCommunityChatDraftStore(draftStore).store;
+    communityState.chatDrafts = sanitizedDraftStore;
+    if (JSON.stringify(draftStore) !== JSON.stringify(sanitizedDraftStore)) {
+      localStorage.setItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY, JSON.stringify(sanitizedDraftStore));
+    }
+  } catch {
+    // Ignore cleanup failures.
+  }
+
+  try {
+    if (Array.isArray(sessionHistory) && sessionHistory.length > MAX_SESSION_HISTORY_ENTRIES) {
+      sessionHistory.length = MAX_SESSION_HISTORY_ENTRIES;
+      localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
+    }
+  } catch {
+    // Ignore cleanup failures.
+  }
+
+  try {
+    if (Array.isArray(recentSessionResults) && recentSessionResults.length > DASHBOARD_RECENT_RESULTS_MAX) {
+      recentSessionResults.length = DASHBOARD_RECENT_RESULTS_MAX;
+      localStorage.setItem(RECENT_RESULTS_STORAGE_KEY, JSON.stringify(recentSessionResults));
+    }
+  } catch {
+    // Ignore cleanup failures.
+  }
+
+  try {
+    localStorage.removeItem(COMMUNITY_DOWNLOAD_HISTORY_STORAGE_KEY);
+  } catch {
+    // Ignore cleanup failures.
+  }
+}
+
+if (
+  typeof Storage !== "undefined" &&
+  Storage.prototype &&
+  typeof Storage.prototype.setItem === "function" &&
+  !Storage.prototype.setItem.__ajixQuotaSafe
+) {
+  const originalStorageSetItem = Storage.prototype.setItem;
+  const quotaSafeSetItem = function quotaSafeSetItem(key, value) {
+    try {
+      return originalStorageSetItem.call(this, key, value);
+    } catch (error) {
+      if (!isQuotaExceededStorageError(error)) {
+        throw error;
+      }
+      applyStoragePressureCleanup();
+      try {
+        return originalStorageSetItem.call(this, key, value);
+      } catch (retryError) {
+        if (!isQuotaExceededStorageError(retryError)) {
+          throw retryError;
+        }
+        return undefined;
+      }
+    }
+  };
+  Object.defineProperty(quotaSafeSetItem, "__ajixQuotaSafe", {
+    value: true,
+    enumerable: false,
+  });
+  Storage.prototype.setItem = quotaSafeSetItem;
+}
+
 const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
   {
     id: "smileys",
@@ -4269,11 +5125,8 @@ async function sendCommunityVoiceNoteFile(file) {
     await backendClient.sendConversationMessageFile(conversationId, file, "", replyTo);
     clearCommunityReplyDraft();
     syncCommunityChatComposerState();
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunitySummary();
-    renderCommunityStatusStrip();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Voice note could not send right now."), true);
   } finally {
@@ -4518,6 +5371,12 @@ let communityFriendActionTouchStart = null;
 let communityFriendActionLastPointerType = "";
 let communityFriendActionLastTapAt = 0;
 let communityFriendActionLastTapUserId = "";
+let communityGroupMemberActionHoldHandle = null;
+let communityGroupMemberActionHoldTriggered = false;
+let communityGroupMemberActionTouchStart = null;
+let communityGroupMemberActionLastPointerType = "";
+let communityGroupMemberActionLastTapAt = 0;
+let communityGroupMemberActionLastTapUserId = "";
 let communityChatJumpLatestVisible = false;
 let communityChatJumpLatestAnimating = false;
 let communityChatJumpLatestRaf = 0;
@@ -4566,11 +5425,16 @@ let communityRealtimePresenceOnlineIds = new Set();
 let communityRealtimeConversationId = "";
 let communityRealtimeConversationRefreshHandle = null;
 let communityRealtimeOverviewRefreshHandle = null;
+let communityOverviewRefreshPromise = null;
+let communityOverviewPollHandle = null;
+let communityOverviewPollInFlight = false;
+let communityOverviewBackgroundPollingEnabled = false;
 let communityTypingBroadcastHandle = null;
 let communityTypingInactiveHandle = null;
 let communityAdminBroadcastAttachment = null;
 let communityAdminBroadcastSending = false;
 const communityRealtimeTypingByConversation = new Map();
+const COMMUNITY_OVERVIEW_POLL_INTERVAL_MS = 5000;
 let pushConfig = null;
 let pushConfigPromise = null;
 let oneSignalSdkPromise = null;
@@ -4870,6 +5734,15 @@ function writePendingPoints(value = 0) {
   return safe;
 }
 
+function getCumulativePoints() {
+  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
+  const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return remotePoints;
+  }
+  return Math.max(localPoints, remotePoints);
+}
+
 function createEmptySetupPoints() {
   return {
     study: 0,
@@ -4886,6 +5759,16 @@ function sanitizeSetupPoints(raw = {}) {
   const next = createEmptySetupPoints();
   Object.keys(next).forEach((key) => {
     next[key] = Math.max(0, Math.round(Number(raw?.[key]) || 0));
+  });
+  return next;
+}
+
+function mergeSetupPoints(left = {}, right = {}) {
+  const safeLeft = sanitizeSetupPoints(left);
+  const safeRight = sanitizeSetupPoints(right);
+  const next = createEmptySetupPoints();
+  Object.keys(next).forEach((key) => {
+    next[key] = Math.max(safeLeft[key], safeRight[key]);
   });
   return next;
 }
@@ -4926,16 +5809,61 @@ function writeSetupPointsState(state = {}) {
   return { owners: safeOwners };
 }
 
-function readCurrentSetupPoints() {
-  const state = readSetupPointsState();
-  return sanitizeSetupPoints(state.owners?.[getSetupPointsOwnerKey()] || createEmptySetupPoints());
+function hasAnySetupPoints(points = {}) {
+  return Object.values(sanitizeSetupPoints(points)).some((value) => Number(value) > 0);
 }
 
-function writeCurrentSetupPoints(nextValue = {}) {
+function getSetupPointsBucketFromDashboardSessionMode(mode = "") {
+  const normalized = normalizeDashboardSessionMode(mode).trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized.startsWith("daily")) return "daily";
+  if (normalized.startsWith("study")) return "study";
+  if (normalized.startsWith("smart")) return "exam";
+  if (normalized.startsWith("exam")) return "exam";
+  if (normalized.includes("rapid fire")) return "rapid";
+  if (normalized.includes("sudden death")) return "sudden";
+  if (normalized.includes("clinical judgement")) return "clinical";
+  if (normalized.includes("law drill") || normalized.includes("pharmacy law quiz")) return "law";
+  return "";
+}
+
+function deriveSetupPointsFromDashboardSessions(entries = []) {
+  const totals = createEmptySetupPoints();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const bucket = getSetupPointsBucketFromDashboardSessionMode(entry?.mode || "");
+    const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+    if (!bucket || score <= 0) continue;
+    totals[bucket] += score;
+  }
+  return totals;
+}
+
+function readCurrentSetupPoints() {
+  const state = readSetupPointsState();
+  const ownerKey = getSetupPointsOwnerKey();
+  const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return remote;
+  }
+  const primary = mergeSetupPoints(local, remote);
+  const historyDerived = deriveSetupPointsFromDashboardSessions(getDashboardSessionEntries());
+  const merged = mergeSetupPoints(primary, historyDerived);
+  if (ownerKey === "guest" || hasAnySetupPoints(merged)) {
+    return merged;
+  }
+  const guest = sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints());
+  return mergeSetupPoints(merged, guest);
+}
+
+function writeCurrentSetupPoints(nextValue = {}, { scheduleSync = true } = {}) {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
   state.owners[ownerKey] = sanitizeSetupPoints(nextValue);
   writeSetupPointsState(state);
+  if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
+    scheduleSetupPointsSync();
+  }
   return state.owners[ownerKey];
 }
 
@@ -4960,6 +5888,58 @@ function addPointsToCurrentSetupBucket(delta = 1) {
   const current = readCurrentSetupPoints();
   current[bucket] = Math.max(0, Math.round(Number(current[bucket]) || 0) + safeDelta);
   writeCurrentSetupPoints(current);
+}
+
+let setupPointsSyncHandle = null;
+let setupPointsSyncInFlight = false;
+
+async function flushSetupPointsSync() {
+  if (setupPointsSyncInFlight) return;
+  if (!currentUser || !backendClient.isAuthenticated()) return;
+
+  const ownerKey = getSetupPointsOwnerKey();
+  const state = readSetupPointsState();
+  const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
+  const primary = mergeSetupPoints(local, remote);
+  const merged = ownerKey !== "guest" && !hasAnySetupPoints(primary)
+    ? mergeSetupPoints(primary, sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints()))
+    : primary;
+  const changed = JSON.stringify(merged) !== JSON.stringify(remote);
+
+  if (!changed) {
+    state.owners[ownerKey] = merged;
+    writeSetupPointsState(state);
+    currentUser = { ...(currentUser || {}), setupPoints: merged };
+    renderPoints();
+    return;
+  }
+
+  setupPointsSyncInFlight = true;
+  try {
+    const response = await backendClient.updateSetupPoints({ setupPoints: merged });
+    const synced = sanitizeSetupPoints(response?.setupPoints || response?.user?.setupPoints || merged);
+    state.owners[ownerKey] = synced;
+    writeSetupPointsState(state);
+    currentUser = response?.user || { ...(currentUser || {}), setupPoints: synced };
+    renderPoints();
+  } catch {
+    state.owners[ownerKey] = merged;
+    writeSetupPointsState(state);
+    renderPoints();
+  } finally {
+    setupPointsSyncInFlight = false;
+  }
+}
+
+function scheduleSetupPointsSync(delayMs = 450) {
+  if (setupPointsSyncHandle) {
+    clearTimeout(setupPointsSyncHandle);
+  }
+  setupPointsSyncHandle = setTimeout(() => {
+    setupPointsSyncHandle = null;
+    void flushSetupPointsSync();
+  }, delayMs);
 }
 
 function shouldCountCorrectAnswerTowardLeaderboard() {
@@ -5155,18 +6135,14 @@ function renderSessionPointsDisplay() {
 }
 
 function resetPointsState() {
-  writeStoredPoints(0);
-  writePendingPoints(0);
   renderPoints();
 }
 
 function syncPointsFromCurrentUser() {
-  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
-  const pending = readPendingPoints();
-  const nextPoints = Math.max(localPoints, remotePoints + pending);
-  writeStoredPoints(nextPoints);
-  if (nextPoints !== localPoints) {
+  const previousPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
+  writeStoredPoints(remotePoints);
+  if (remotePoints !== previousPoints) {
     leaderboardState.cache = Object.create(null);
     leaderboardState.cacheAt = Object.create(null);
   }
@@ -5446,9 +6422,10 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     if (isFresh) {
       return;
     }
+    force = false;
     if (leaderboardState.open) {
       window.setTimeout(() => {
-      void loadLeaderboard(safeScope, { force: true });
+        void loadLeaderboard(safeScope, { force: true });
       }, 0);
     }
     return;
@@ -5660,6 +6637,9 @@ function maybeShowCommunityEntryNotificationBanner() {
 }
 
 function getCommunityDisplayName(user = {}) {
+  if (isCommunityAppAdminUser(user)) {
+    return COMMUNITY_ADMIN_PROFILE_NAME;
+  }
   return String(
     user?.name ||
       [user?.title, user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
@@ -5669,8 +6649,11 @@ function getCommunityDisplayName(user = {}) {
 }
 
 function getCommunityUiDisplayName(user = {}, { preserveRealName = false } = {}) {
+  if (isCommunityAppAdminUser(user)) {
+    return COMMUNITY_ADMIN_PROFILE_NAME;
+  }
   if (user?.isNotice) {
-    return String(user?.noticeTitle || user?.name || user?.displayName || "Admin Notice").trim() || "Admin Notice";
+    return String(user?.noticeTitle || user?.name || user?.displayName || COMMUNITY_ADMIN_PROFILE_NAME).trim() || COMMUNITY_ADMIN_PROFILE_NAME;
   }
   if (!preserveRealName && String(user?.id || "") === String(currentUser?.id || "")) {
     return "You";
@@ -5689,6 +6672,13 @@ function getCommunityUiDisplayName(user = {}, { preserveRealName = false } = {})
 
 function isCommunityAppAdminUser(user = {}) {
   return String(user?.role || "").trim().toLowerCase() === "admin" || Boolean(user?.isAppAdmin);
+}
+
+function getCommunityResolvedAvatarImage(user = {}) {
+  if (isCommunityAppAdminUser(user) || Boolean(user?.isNotice)) {
+    return COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE;
+  }
+  return String(user?.profileImage || "").trim();
 }
 
 function getCommunityLeaderboardName(entry = {}) {
@@ -5807,7 +6797,7 @@ function getCommunityAvatarFallbackIconMarkup(kind = "user", extraClass = "") {
 }
 
 function getCommunityAvatarMarkup(user = {}, extraClass = "") {
-  const image = String(user?.profileImage || "").trim();
+  const image = getCommunityResolvedAvatarImage(user);
   const name = getCommunityUiDisplayName(user);
   const isGroup = isCommunityGroupEntity(user);
   const isNotice = Boolean(user?.isNotice);
@@ -5828,7 +6818,7 @@ function getCommunityAvatarMarkup(user = {}, extraClass = "") {
 }
 
 function getCommunityPlainAvatarMarkup(user = {}, extraClass = "") {
-  const image = String(user?.profileImage || "").trim();
+  const image = getCommunityResolvedAvatarImage(user);
   const isGroup = isCommunityGroupEntity(user);
   const isNotice = Boolean(user?.isNotice);
   const classes = ["community-avatar", extraClass].filter(Boolean).join(" ");
@@ -5839,7 +6829,7 @@ function getCommunityPlainAvatarMarkup(user = {}, extraClass = "") {
 }
 
 function getCommunityExpandableAvatarMarkup(user = {}, extraClass = "") {
-  const image = String(user?.profileImage || "").trim();
+  const image = getCommunityResolvedAvatarImage(user);
   const name = getCommunityUiDisplayName(user);
   const isGroup = isCommunityGroupEntity(user) || String(extraClass || "").includes("group");
   const classes = ["community-avatar", extraClass, "is-clickable"].filter(Boolean).join(" ");
@@ -6951,6 +7941,39 @@ function scheduleCommunityRealtimeOverviewRefresh() {
   }, 140);
 }
 
+function refreshCommunityOverviewIfNeeded() {
+  if (communityOverviewPollInFlight) return;
+  if (!backendClient.isAuthenticated()) return;
+  const activeScreenId = getActiveScreenId();
+  if (!communityOverviewBackgroundPollingEnabled && !isCommunityScreenId(activeScreenId)) return;
+  communityOverviewPollInFlight = true;
+  Promise.resolve(loadCommunityOverview({ silent: true }))
+    .catch(() => {})
+    .finally(() => {
+      communityOverviewPollInFlight = false;
+    });
+}
+
+function startCommunityOverviewPolling({ background = false } = {}) {
+  if (background) {
+    communityOverviewBackgroundPollingEnabled = true;
+  }
+  if (communityOverviewPollHandle || !backendClient.isAuthenticated()) return;
+  refreshCommunityOverviewIfNeeded();
+  communityOverviewPollHandle = setInterval(() => {
+    refreshCommunityOverviewIfNeeded();
+  }, COMMUNITY_OVERVIEW_POLL_INTERVAL_MS);
+}
+
+function stopCommunityOverviewPolling({ force = false } = {}) {
+  if (communityOverviewBackgroundPollingEnabled && !force) return;
+  if (communityOverviewPollHandle) {
+    clearInterval(communityOverviewPollHandle);
+    communityOverviewPollHandle = null;
+  }
+  communityOverviewPollInFlight = false;
+}
+
 function scheduleCommunityRealtimeConversationRefresh() {
   if (communityRealtimeConversationRefreshHandle) {
     clearTimeout(communityRealtimeConversationRefreshHandle);
@@ -6999,6 +8022,8 @@ function teardownCommunityRealtime() {
     clearTimeout(communityRealtimeOverviewRefreshHandle);
     communityRealtimeOverviewRefreshHandle = null;
   }
+  stopCommunityOverviewPolling({ force: true });
+  communityOverviewBackgroundPollingEnabled = false;
   stopCommunityConversationRealtimeSubscription();
   stopCommunityPresenceRealtimeSubscription();
   if (communityRealtimeGlobalChannel && communityRealtimeClient?.removeChannel) {
@@ -7474,13 +8499,17 @@ function syncCommunityCallIdentity() {
   const peer = getCommunityCallPeerUser();
   const displayName = getCommunityDisplayName(peer) || "Contact";
   const username = String(peer?.username || "").trim();
-  const profileImage = String(peer?.profileImage || "").trim();
+  const profileImage = getCommunityResolvedAvatarImage(peer);
   const isGroup = isCommunityGroupEntity(peer);
   if (communityCallTitleEl) {
     communityCallTitleEl.textContent = displayName;
   }
   if (communityCallUsernameEl) {
-    communityCallUsernameEl.textContent = username ? `@${username}` : "@user";
+    communityCallUsernameEl.textContent = isCommunityAppAdminUser(peer)
+      ? displayName
+      : username
+        ? `@${username}`
+        : "@user";
   }
   if (communityCallAvatarEl && communityCallAvatarFallbackEl) {
     if (profileImage) {
@@ -8359,7 +9388,21 @@ function dataUrlToBlob(dataUrl = "") {
 function loadCommunityChatDraftStore() {
   try {
     const parsed = JSON.parse(localStorage.getItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY) || "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const rawStore = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const { store: sanitizedStore, changed } = sanitizeCommunityChatDraftStore(rawStore);
+    if (changed) {
+      try {
+        localStorage.removeItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY);
+      } catch {
+        // Ignore storage pressure here.
+      }
+      try {
+        localStorage.setItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY, JSON.stringify(sanitizedStore));
+      } catch {
+        // Ignore storage pressure here; the sanitized copy is still returned.
+      }
+    }
+    return sanitizedStore;
   } catch {
     return {};
   }
@@ -8367,9 +9410,10 @@ function loadCommunityChatDraftStore() {
 
 function saveCommunityChatDraftStore(store = {}) {
   try {
+    const { store: sanitizedStore } = sanitizeCommunityChatDraftStore(store);
     localStorage.setItem(
       COMMUNITY_CHAT_DRAFT_STORAGE_KEY,
-      JSON.stringify(store && typeof store === "object" ? store : {}),
+      JSON.stringify(sanitizedStore),
     );
   } catch {
     return false;
@@ -8404,7 +9448,7 @@ function normalizeCommunityChatDraftReply(raw = null) {
     sourceId,
     senderName: String(raw?.senderName || "Message").trim() || "Message",
     text: String(raw?.text || "").trim(),
-    imageDataUrl: String(raw?.imageDataUrl || "").trim(),
+    imageDataUrl: "",
   };
 }
 
@@ -8414,17 +9458,11 @@ function getCommunityChatDraftSnapshot() {
   const text = String(communityChatInput?.value || "");
   const textHasContent = Boolean(text.trim());
   const replyDraft = normalizeCommunityChatDraftReply(communityState.replyDraft);
-  const attachments = Array.isArray(communityState.pendingAttachments)
-    ? communityState.pendingAttachments
-        .map((attachment) => normalizeCommunityChatDraftAttachment(attachment))
-        .filter(Boolean)
-    : [];
-  if (!textHasContent && !replyDraft && !attachments.length) return null;
+  if (!textHasContent && !replyDraft) return null;
   return {
     conversationId,
     text,
     replyDraft,
-    attachments,
     updatedAt: Date.now(),
   };
 }
@@ -8472,19 +9510,13 @@ function getCommunityChatDraftForConversation(conversationId = "") {
     : loadCommunityChatDraftStore();
   const draft = store[safeConversationId];
   if (!draft || typeof draft !== "object") return null;
-  const attachments = Array.isArray(draft.attachments)
-    ? draft.attachments
-        .map((attachment) => normalizeCommunityChatDraftAttachment(attachment))
-        .filter(Boolean)
-    : [];
   const replyDraft = normalizeCommunityChatDraftReply(draft.replyDraft);
   const text = String(draft.text || "");
-  if (!text.trim() && !attachments.length && !replyDraft) return null;
+  if (!text.trim() && !replyDraft) return null;
   return {
     conversationId: safeConversationId,
     text,
     replyDraft,
-    attachments,
     updatedAt: Math.max(0, Math.round(Number(draft.updatedAt) || 0)),
   };
 }
@@ -12452,7 +13484,8 @@ function getCommunityFriendsHubCounts() {
 }
 
 function formatCommunityTabLabel(label = "", count = 0) {
-  return `${label} [${Math.max(0, Math.round(Number(count) || 0))}]`;
+  const value = Math.max(0, Math.round(Number(count) || 0));
+  return value > 0 ? `${label} [${value}]` : String(label || "");
 }
 
 function markCommunityNotificationsSeen(tab = "") {
@@ -12477,8 +13510,8 @@ function markCommunityNotificationsSeen(tab = "") {
 function getCommunityPendingNotificationCounts() {
   const counts = getCommunityNotificationCounts();
   return {
-    chats: Math.max(0, counts.chats),
-    groups: Math.max(0, counts.groups),
+    chats: Math.max(0, counts.chats - Number(communityState.acknowledged?.chats || 0)),
+    groups: Math.max(0, counts.groups - Number(communityState.acknowledged?.groups || 0)),
     requests: Math.max(0, counts.requests - Number(communityState.acknowledged?.requests || 0)),
     discover: 0,
   };
@@ -12503,19 +13536,20 @@ function setButtonBadge(button, count = 0, { dotOnly = false } = {}) {
 }
 
 function renderCommunityNotificationBadges() {
-  const pending = getCommunityPendingNotificationCounts();
+  const counts = getCommunityNotificationCounts();
   const isCommunityActive = ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen"].includes(getActiveScreenId());
   const dockBadges = {
-    chats: pending.chats,
-    groups: pending.groups,
-    friends: pending.requests,
-    discover: pending.discover,
+    chats: counts.chats,
+    groups: counts.groups,
+    friends: counts.requests,
+    discover: 0,
   };
   communityTabEls.forEach((tabEl) => {
     const tabName = String(tabEl.dataset.communityTab || "").trim().toLowerCase();
-    setButtonBadge(tabEl, dockBadges[tabName] || 0);
+    const badgeCount = dockBadges[tabName] || 0;
+    setButtonBadge(tabEl, badgeCount, { dotOnly: tabName === "friends" });
   });
-  setButtonBadge(menuCommunityBtn, isCommunityActive ? 0 : (pending.chats + pending.groups + pending.requests), { dotOnly: true });
+  setButtonBadge(menuCommunityBtn, isCommunityActive ? 0 : (counts.chats + counts.groups + counts.requests), { dotOnly: true });
 }
 
 function openCommunityAvatarModal(image = "", name = "") {
@@ -13023,7 +14057,17 @@ function closeCommunityConfirmModal() {
 function canCurrentViewerEditCommunityGroup(payload = null) {
   const relationship = payload?.relationship || {};
   const permissions = payload?.group?.permissions || {};
-  return Boolean(relationship.isAdmin || permissions.membersCanEditSettings);
+  const currentUserId = String(currentUser?.id || "").trim();
+  const group = payload?.group || {};
+  const ownerUserId = String(group.ownerUserId || "").trim();
+  const adminIds = Array.isArray(group.adminIds)
+    ? group.adminIds.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  return Boolean(
+    relationship.isAdmin ||
+    permissions.membersCanEditSettings ||
+    (currentUserId && (ownerUserId === currentUserId || adminIds.includes(currentUserId)))
+  );
 }
 
 function canCurrentViewerDeleteCommunityGroup(group = null) {
@@ -13272,14 +14316,62 @@ function getCommunityMessageUploadState(message = {}) {
   return "";
 }
 
+function areCommunityNoticeMessagesDuplicate(left = {}, right = {}) {
+  const leftTime = Date.parse(String(left?.createdAt || left?.updatedAt || left?.deliveredAt || ""));
+  const rightTime = Date.parse(String(right?.createdAt || right?.updatedAt || right?.deliveredAt || ""));
+  const leftBucket = Number.isFinite(leftTime) ? Math.floor(leftTime / 5000) : 0;
+  const rightBucket = Number.isFinite(rightTime) ? Math.floor(rightTime / 5000) : 0;
+  const leftAttachment = getCommunityMessageAttachmentUpload(left) || {};
+  const rightAttachment = getCommunityMessageAttachmentUpload(right) || {};
+  return [
+    String(left?.senderUserId || "").trim(),
+    String(left?.type || "").trim().toLowerCase(),
+    String(left?.text || "").trim(),
+    String(left?.replyTo?.sourceId || "").trim(),
+    String(leftAttachment?.dataUrl || leftAttachment?.remoteUrl || "").trim(),
+    String(leftAttachment?.fileName || "").trim(),
+    String(leftAttachment?.mimeType || "").trim().toLowerCase(),
+    String(left?.noticeThreadKey || "").trim().toLowerCase(),
+    String(left?.noticeBatchId || "").trim(),
+    leftBucket,
+  ].join("::") === [
+    String(right?.senderUserId || "").trim(),
+    String(right?.type || "").trim().toLowerCase(),
+    String(right?.text || "").trim(),
+    String(right?.replyTo?.sourceId || "").trim(),
+    String(rightAttachment?.dataUrl || rightAttachment?.remoteUrl || "").trim(),
+    String(rightAttachment?.fileName || "").trim(),
+    String(rightAttachment?.mimeType || "").trim().toLowerCase(),
+    String(right?.noticeThreadKey || "").trim().toLowerCase(),
+    String(right?.noticeBatchId || "").trim(),
+    rightBucket,
+  ].join("::");
+}
+
 function getCommunityVisibleMessages(messages = []) {
   const baseMessages = Array.isArray(messages) ? [...messages] : [];
+  const dedupedBaseMessages = [];
+  const seenIds = new Set();
+  for (const message of baseMessages) {
+    const id = String(message?.id || "").trim();
+    if (id && seenIds.has(id)) continue;
+    if (id) seenIds.add(id);
+    const isNoticeConversation =
+      Boolean(communityState.activeConversationPartner?.isNotice) ||
+      String(message?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+      String(message?.senderUserId || "").trim() === COMMUNITY_ADMIN_NOTICE_SENDER_ID;
+    const previous = dedupedBaseMessages[dedupedBaseMessages.length - 1] || null;
+    if (isNoticeConversation && previous && areCommunityNoticeMessagesDuplicate(previous, message)) {
+      continue;
+    }
+    dedupedBaseMessages.push(message);
+  }
   const pendingMessages = Array.isArray(communityState.pendingOutgoingMessages)
     ? communityState.pendingOutgoingMessages
     : [];
-  if (!pendingMessages.length) return baseMessages;
+  if (!pendingMessages.length) return dedupedBaseMessages;
   const activeConversationId = String(communityState.activeConversation?.id || "").trim();
-  const merged = [...baseMessages];
+  const merged = [...dedupedBaseMessages];
   pendingMessages.forEach((entry) => {
     if (!entry || typeof entry !== "object") return;
     const entryConversationId = String(entry.conversationId || "").trim();
@@ -15048,9 +16140,13 @@ function isCommunityForwardMode() {
 }
 
 function getCommunityForwardTargetId(entry = {}) {
+  const conversationType = String(entry?.conversationType || "").trim().toLowerCase();
   const conversationId = String(entry?.conversationId || "").trim();
   const userId = String(entry?.userId || "").trim();
-  return conversationId || userId;
+  if (conversationType === "group" || conversationType === "groupchat" || conversationType === "community-group") {
+    return conversationId || userId;
+  }
+  return userId || conversationId;
 }
 
 function syncCommunityForwardBar() {
@@ -15080,9 +16176,14 @@ function toggleCommunityForwardTarget(target = {}) {
     userId: String(target?.userId || "").trim(),
     conversationId: String(target?.conversationId || "").trim(),
     label: String(target?.label || "").trim(),
+    conversationType: String(target?.conversationType || "").trim().toLowerCase(),
   };
   const targetId = getCommunityForwardTargetId(normalized);
-  if (!targetId || !normalized.userId) return false;
+  if (!targetId) return false;
+  if (!normalized.userId && !normalized.conversationId) return false;
+  if (normalized.conversationType === "group" || normalized.conversationType === "notice" || normalized.conversationType === "admin") {
+    return false;
+  }
   const existingIndex = communityState.forwardTargets.findIndex((entry) => getCommunityForwardTargetId(entry) === targetId);
   if (existingIndex >= 0) {
     communityState.forwardTargets.splice(existingIndex, 1);
@@ -15223,6 +16324,19 @@ function getCommunityUserCardMarkup(user = {}, options = {}) {
   `;
 }
 
+function getCommunityForwardFriendsRows(chats = [], friends = []) {
+  const directChatPartnerIds = new Set(
+    (Array.isArray(chats) ? chats : [])
+      .filter((row) => !Boolean(row?.partner?.isGroup) && !Boolean(row?.partner?.isNotice))
+      .map((row) => String(row?.partner?.id || row?.userId || "").trim())
+      .filter(Boolean),
+  );
+  return (Array.isArray(friends) ? friends : []).filter((friend) => {
+    const friendId = String(friend?.id || "").trim();
+    return friendId && !directChatPartnerIds.has(friendId);
+  });
+}
+
 function getCommunityConversationCardMarkup(row = {}) {
   const partner = row.partner || {};
   const isGroup = Boolean(partner?.isGroup);
@@ -15238,7 +16352,7 @@ function getCommunityConversationCardMarkup(row = {}) {
   const unreadCount = Math.max(0, Math.round(Number(row?.unreadCount) || 0));
   const unreadClass = unreadCount > 0 ? " is-unread" : "";
   const typingClass = typingPreview ? " is-typing" : "";
-  const forwardSelectedClass = !isNotice && isCommunityForwardTargetSelected(getCommunityForwardTargetId({ conversationId: row.id, userId: partner.id })) ? " is-selected" : "";
+  const forwardSelectedClass = !isNotice && !isGroup && isCommunityForwardTargetSelected(getCommunityForwardTargetId({ conversationId: row.id, userId: partner.id })) ? " is-selected" : "";
   const draftClass = draft ? " has-draft" : "";
   const draftBadge = draft ? '<span class="community-chat-draft-badge">Draft</span>' : "";
   const actionSelectedClass = getCommunityConversationActionSelectedIds().includes(String(row.id || "").trim()) ? " is-selected" : "";
@@ -15307,6 +16421,45 @@ function renderCommunitySectionMarkup(title = "", bodyMarkup = "") {
       <div class="community-group-title">${escapeHtml(title)}</div>
       ${bodyMarkup}
     </section>
+  `;
+}
+
+function getCommunityGroupConversationCardMarkup(row = {}) {
+  const conversation = row?.conversation || row || {};
+  const group = row?.group || conversation?.partner || row?.partner || {};
+  const groupId = String(group?.id || conversation?.id || row?.id || "").trim();
+  const groupName = getCommunityUiDisplayName(group);
+  const members = Array.isArray(row?.members) ? row.members : Array.isArray(group?.memberIds) ? group.memberIds : [];
+  const memberCount = `${Math.max(0, Math.round(Number(members.length) || 0))} ${Math.max(0, Math.round(Number(members.length) || 0)) === 1 ? "member" : "members"}`;
+  const bio = String(group?.bio || "").trim();
+  const previewText = bio || getCommunityConversationPreviewText(conversation) || "Open group";
+  const updatedLabel = formatCommunityTimestamp(conversation?.updatedAt || group?.updatedAt || row?.updatedAt || "");
+  const unreadCount = Math.max(0, Math.round(Number(conversation?.unreadCount ?? row?.unreadCount) || 0));
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">★</span>' : "";
+  const ariaLabel = `Open ${groupName} chat`;
+  const forwardSelectedClass = isCommunityForwardTargetSelected(
+    getCommunityForwardTargetId({
+      conversationId: String(conversation?.id || row?.id || ""),
+      conversationType: "group",
+    }),
+  ) ? " is-selected" : "";
+  return `
+    <article class="community-chat-row community-group-row${forwardSelectedClass}${row.isFavorite ? " is-favorite" : ""}" data-community-action="open-conversation" role="button" tabindex="0" data-conversation-id="${escapeHtml(String(conversation?.id || row?.id || ""))}" data-group-id="${escapeHtml(groupId)}">
+      <button type="button" class="community-avatar-action-btn" data-community-action="open-group-profile" data-group-id="${escapeHtml(groupId)}" aria-label="Open ${escapeHtml(groupName)} info">${getCommunityPlainAvatarMarkup(group, "is-inline")}</button>
+      <div class="community-chat-row-copy">
+        <div class="community-chat-row-head">
+          <button type="button" class="community-name-link community-chat-name-link" data-community-action="open-group-profile" data-group-id="${escapeHtml(groupId)}">${escapeHtml(truncateWithEllipsis(groupName, 26))}</button>
+          ${favoriteBadge}
+        </div>
+        <div class="community-chat-row-message">
+          <span class="community-chat-row-message-text">${escapeHtml(truncateWithEllipsis(previewText, 72))}</span>
+        </div>
+      </div>
+      <div class="community-chat-row-side">
+        <span class="community-chat-row-time">${escapeHtml(updatedLabel || memberCount)}</span>
+        ${unreadCount > 0 ? `<span class="community-chat-row-badge">${escapeHtml(String(Math.min(99, unreadCount)))}</span>` : `<span class="community-chat-row-badge is-empty" aria-hidden="true"></span>`}
+      </div>
+    </article>
   `;
 }
 
@@ -15412,7 +16565,14 @@ function renderCommunityFriends() {
 }
 
 function renderCommunityChats() {
-  const renderChatList = (rows = []) => rows.map((row) => getCommunityConversationCardMarkup(row)).join("");
+  const renderChatList = (rows = []) =>
+    rows
+      .map((row) =>
+        communityState.chatMode === "groups"
+          ? getCommunityGroupConversationCardMarkup(row)
+          : getCommunityConversationCardMarkup(row),
+      )
+      .join("");
   const allChats = Array.isArray(communityState.overview?.chats)
     ? [...communityState.overview.chats].sort((a, b) => {
         const aDraft = getCommunityChatDraftForConversation(a?.id || "");
@@ -15441,14 +16601,20 @@ function renderCommunityChats() {
     : allChats.filter((row) => !Boolean(row?.partner?.isGroup));
   const friends = Array.isArray(communityState.overview?.friends) ? communityState.overview.friends : [];
   const isForwardMode = isCommunityForwardMode();
-  const favoriteChats = chats.filter((row) => Boolean(row?.isFavorite));
-  const regularChats = chats.filter((row) => !Boolean(row?.isFavorite));
-  const chatListMarkup = renderChatList(chats);
+  const visibleChats = isForwardMode
+    ? chats.filter((row) => !Boolean(row?.partner?.isGroup) && !Boolean(row?.partner?.isNotice))
+    : chats;
+  const favoriteChats = visibleChats.filter((row) => Boolean(row?.isFavorite));
+  const regularChats = visibleChats.filter((row) => !Boolean(row?.isFavorite));
+  const totalUnread = chats.reduce((sum, row) => sum + Math.max(0, Math.round(Number(row?.unreadCount) || 0)), 0);
+  const favoriteUnread = favoriteChats.reduce((sum, row) => sum + Math.max(0, Math.round(Number(row?.unreadCount) || 0)), 0);
+  const regularUnread = regularChats.reduce((sum, row) => sum + Math.max(0, Math.round(Number(row?.unreadCount) || 0)), 0);
+  const chatListMarkup = renderChatList(visibleChats);
   const sections = [];
-  const heading = communityState.chatMode === "groups" ? "Study Groups" : "Recent Chats";
-  const regularHeading = communityState.chatMode === "groups" ? "All Groups" : "Recent Chats";
-  const favoriteHeading = communityState.chatMode === "groups" ? "Favorite Groups" : "Favorite Chats";
-  if (!chats.length && friends.length) {
+  const heading = formatCommunityTabLabel(communityState.chatMode === "groups" ? "Study Groups" : "Recent Chats", totalUnread);
+  const regularHeading = formatCommunityTabLabel(communityState.chatMode === "groups" ? "All Groups" : "Recent Chats", regularUnread);
+  const favoriteHeading = formatCommunityTabLabel(communityState.chatMode === "groups" ? "Favorite Groups" : "Favorite Chats", favoriteUnread);
+  if (!visibleChats.length && friends.length) {
     if (communityState.chatMode === "groups") {
       communityState.chatListRenderSignature = "";
       renderCommunityResultsMarkup(
@@ -15471,10 +16637,10 @@ function renderCommunityChats() {
     );
     return;
   }
-  if (!chats.length) {
+  if (!visibleChats.length) {
     communityState.chatListRenderSignature = "";
     renderCommunityResultsMarkup(
-      `<div class="community-empty-state">${isForwardMode ? "No recent chats yet. Open Friends and choose someone to forward to." : communityState.chatMode === "groups" ? "No study groups yet. Create one from the menu when you're ready." : "No chats yet. Start by searching for someone or opening a friend's profile."}</div>`,
+      `<div class="community-empty-state">${isForwardMode ? "No forwardable chats yet. Open Friends and choose someone to forward to." : communityState.chatMode === "groups" ? "No study groups yet. Create one from the menu when you're ready." : "No chats yet. Start by searching for someone or opening a friend's profile."}</div>`,
     );
     return;
   }
@@ -15504,12 +16670,16 @@ function renderCommunityChats() {
     }
     communityState.chatListRenderSignature = "";
   }
-  if (isForwardMode && friends.length) {
+  if (isForwardMode && communityState.chatMode !== "groups" && friends.length) {
+    const forwardFriends = getCommunityForwardFriendsRows(visibleChats, friends);
+    if (!forwardFriends.length) {
+      return renderCommunityResultsMarkup(sections.join(""));
+    }
     sections.push(`
       <section class="community-group">
         <div class="community-group-title">Friends</div>
         <div class="community-card-list">
-          ${friends.map((user) => getCommunityUserCardMarkup(user, {
+          ${forwardFriends.map((user) => getCommunityUserCardMarkup(user, {
             relationship: "friend",
             showMessage: true,
             showBlock: false,
@@ -15631,10 +16801,6 @@ async function refreshCommunityBlockedUsers({ silent = false } = {}) {
 function setCommunityFriendsView(nextView = "friends", { animate = true } = {}) {
   const normalized = normalizeCommunityFriendsView(nextView);
   communityState.friendsView = normalized;
-  if (normalized === "incoming") {
-    markCommunityNotificationsSeen("friends");
-    renderCommunityNotificationBadges();
-  }
   if (communityState.tab === "friends") {
     if (!syncCommunityFriendsHubView({ animate })) {
       renderCommunityFriendsHub();
@@ -15674,6 +16840,12 @@ function syncCommunityFriendActionRowStyles() {
     if (!(cardEl instanceof HTMLElement)) return;
     cardEl.classList.toggle("is-selected", Boolean(selectedId) && String(cardEl.dataset.userId || "").trim() === selectedId);
   });
+  if (communityProfileCardEl instanceof HTMLElement) {
+    communityProfileCardEl.querySelectorAll(".community-group-member-row[data-user-id]").forEach((cardEl) => {
+      if (!(cardEl instanceof HTMLElement)) return;
+      cardEl.classList.toggle("is-selected", Boolean(selectedId) && String(cardEl.dataset.userId || "").trim() === selectedId);
+    });
+  }
 }
 
 function clearCommunityFriendActionTimers({ keepTapState = false } = {}) {
@@ -15694,6 +16866,7 @@ function clearCommunityFriendActionTimers({ keepTapState = false } = {}) {
 
 function closeCommunityFriendActions({ keepSelection = false } = {}) {
   clearCommunityFriendActionTimers();
+  clearCommunityGroupMemberActionTimers();
   const state = getCommunityFriendActionState();
   state.open = false;
   state.relationship = "";
@@ -15722,32 +16895,11 @@ function renderCommunityFriendActionSelection() {
   const subtitle = String(user.institution || user.country || "Learner").trim() || "Learner";
   const isAppAdmin = isCommunityAppAdminUser(user);
   if (communityFriendActionsTitleEl) {
-    communityFriendActionsTitleEl.textContent =
-      relationship === "incoming"
-        ? "Incoming request"
-        : relationship === "sent"
-          ? "Sent request"
-          : relationship === "friend"
-            ? "Friend actions"
-            : relationship === "blocked"
-              ? "Blocked learner"
-              : "Connection actions";
-  }
-  if (communityFriendActionsSummaryEl) {
-    communityFriendActionsSummaryEl.textContent = relationship === "friend"
-      ? "Choose what you want to do with this friend."
-      : relationship === "incoming"
-        ? "Choose how to respond to this request."
-        : relationship === "sent"
-          ? "Review or cancel the request you sent."
-          : relationship === "blocked"
-            ? "Manage access for this blocked learner."
-            : "Choose how to connect with this learner.";
+    communityFriendActionsTitleEl.innerHTML = `<span class="community-actions-title-pill">${escapeHtml(displayName)}</span>`;
   }
   if (communityFriendActionsSelectedEl) {
     communityFriendActionsSelectedEl.innerHTML = `
       <span class="community-thread-actions-selected-pill is-empty" style="display:inline-flex;gap:6px;align-items:center;">
-        <strong>${escapeHtml(displayName)}</strong>
         <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} • ${escapeHtml(subtitle)}</span>
       </span>
     `;
@@ -15870,7 +17022,27 @@ async function runCommunityFriendAction(action = "") {
 }
 
 function getCommunityConversationActionRows() {
-  return Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
+  const chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
+  const groups = Array.isArray(communityState.overview?.groups) ? communityState.overview.groups : [];
+  if (!groups.length) {
+    return chats;
+  }
+  const rowsById = new Map();
+  chats.forEach((row) => {
+    const id = String(row?.id || "").trim();
+    if (!id || rowsById.has(id)) return;
+    rowsById.set(id, row);
+  });
+  groups.forEach((row) => {
+    const id = String(row?.id || row?.conversation?.id || row?.group?.id || "").trim();
+    if (!id || rowsById.has(id)) return;
+    rowsById.set(id, {
+      ...row,
+      id,
+      partner: row?.partner || row?.group || row?.conversation?.partner || {},
+    });
+  });
+  return [...rowsById.values()];
 }
 
 function getCommunityConversationActionState() {
@@ -15923,6 +17095,15 @@ function getCommunityConversationRowFromEventTarget(target = null) {
   return row;
 }
 
+function getCommunityConversationNestedActionFromEventTarget(target = null) {
+  if (!(target instanceof HTMLElement)) return null;
+  const action = target.closest("[data-community-action]");
+  if (!(action instanceof HTMLElement)) return null;
+  const row = action.closest(".community-chat-row[data-conversation-id]");
+  if (!(row instanceof HTMLElement) || !communityResultsEl?.contains(row) || action === row) return null;
+  return action;
+}
+
 function getCommunityFriendCardFromEventTarget(target = null) {
   if (!(target instanceof HTMLElement)) return null;
   const card = target.closest(".community-user-card[data-user-id]");
@@ -15933,6 +17114,83 @@ function getCommunityFriendCardFromEventTarget(target = null) {
   return card;
 }
 
+function getCommunityGroupMemberCardFromEventTarget(target = null) {
+  if (!(target instanceof HTMLElement)) return null;
+  const card = target.closest(".community-group-member-row[data-user-id]");
+  if (!(card instanceof HTMLElement) || !communityProfileCardEl?.contains(card)) return null;
+  const actionTarget = target.closest("[data-community-action]");
+  if (actionTarget instanceof HTMLElement && actionTarget !== card) return null;
+  return card;
+}
+
+function getCommunityGroupMemberActionUser(userId = "") {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) return null;
+  const overview = communityState.overview || {};
+  const profileMembers = Array.isArray(communityState.profile?.members) ? communityState.profile.members : [];
+  const member = profileMembers.find((entry) => String(entry?.id || "").trim() === safeUserId) || null;
+  const friend = Array.isArray(overview.friends)
+    ? overview.friends.find((entry) => String(entry?.id || "").trim() === safeUserId) || null
+    : null;
+  const incoming = Array.isArray(overview.incoming)
+    ? overview.incoming.find((entry) => String(entry?.user?.id || "").trim() === safeUserId) || null
+    : null;
+  const sent = Array.isArray(overview.sent)
+    ? overview.sent.find((entry) => String(entry?.user?.id || "").trim() === safeUserId) || null
+    : null;
+  const blocked = Array.isArray(communityState.blocked)
+    ? communityState.blocked.find((entry) => String(entry?.id || "").trim() === safeUserId) || null
+    : null;
+  const suggested = Array.isArray(overview.suggested)
+    ? overview.suggested.find((entry) => String(entry?.id || "").trim() === safeUserId) || null
+    : null;
+  return {
+    ...(suggested || {}),
+    ...(member || {}),
+    ...(friend || {}),
+    ...(incoming?.user || {}),
+    ...(sent?.user || {}),
+    ...(blocked || {}),
+    id: safeUserId,
+    relationship: blocked
+      ? "blocked"
+      : friend
+        ? "friend"
+        : incoming
+          ? "incoming"
+          : sent
+            ? "sent"
+            : member?.relationship || "none",
+    requestId: String(incoming?.id || sent?.id || member?.requestId || "").trim(),
+  };
+}
+
+function clearCommunityGroupMemberActionTimers({ keepTapState = false } = {}) {
+  if (communityGroupMemberActionHoldHandle) {
+    clearTimeout(communityGroupMemberActionHoldHandle);
+    communityGroupMemberActionHoldHandle = null;
+  }
+  communityGroupMemberActionHoldTriggered = false;
+  communityGroupMemberActionTouchStart = null;
+  communityGroupMemberActionLastPointerType = "";
+  if (!keepTapState) {
+    communityGroupMemberActionLastTapAt = 0;
+    communityGroupMemberActionLastTapUserId = "";
+  }
+}
+
+function openCommunityGroupMemberActionsForUser(user = {}, { pointerType = "" } = {}) {
+  const safeUserId = String(user?.id || "").trim();
+  if (!safeUserId) return false;
+  clearCommunityGroupMemberActionTimers();
+  const actionUser = getCommunityGroupMemberActionUser(safeUserId) || { ...user, id: safeUserId };
+  return openCommunityFriendActionsForUser(actionUser, {
+    relationship: String(actionUser.relationship || user.relationship || "none").trim().toLowerCase(),
+    requestId: String(actionUser.requestId || user.requestId || "").trim(),
+    pointerType: String(pointerType || "").trim(),
+  });
+}
+
 function renderCommunityConversationActionSelection() {
   const rows = getCommunityConversationActionSelectedRows();
   const mode = rows.some((row) => Boolean(row?.partner?.isGroup)) ? "group" : "direct";
@@ -15941,32 +17199,24 @@ function renderCommunityConversationActionSelection() {
   state.mode = mode;
   state.selectedIds = selectedIds;
   if (communityThreadActionsTitleEl) {
-    communityThreadActionsTitleEl.textContent = rows.length > 1
-      ? `${rows.length} selected`
-      : mode === "group"
-        ? "Group actions"
-        : "Chat actions";
-  }
-  if (communityThreadActionsSummaryEl) {
-    const favoriteCount = rows.filter((row) => row?.isFavorite).length;
-    const summaryParts = [
-      `${rows.length} selected`,
-      mode === "group" ? "Group thread actions" : "Direct chat actions",
-    ];
-    if (favoriteCount > 0) {
-      summaryParts.push(`${favoriteCount} already favorite${favoriteCount === 1 ? "" : "s"}`);
-    }
-    communityThreadActionsSummaryEl.textContent = summaryParts.join(" • ");
+    const firstRow = rows[0] || {};
+    const firstLabel = truncateWithEllipsis(getCommunityUiDisplayName(firstRow?.partner || {}), 22);
+    const titleText = rows.length === 1 ? firstLabel : `${rows.length} selected`;
+    communityThreadActionsTitleEl.innerHTML = `<span class="community-actions-title-pill">${escapeHtml(titleText)}</span>`;
   }
   if (communityThreadActionsSelectedEl) {
-    const badges = rows.map((row) => {
-      const partner = row?.partner || {};
-      const label = truncateWithEllipsis(getCommunityUiDisplayName(partner), 22);
-      const meta = partner?.isGroup ? "Group" : partner?.isNotice ? "Notice" : "Chat";
-      const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">★</span>' : "";
-      return `<span class="community-thread-actions-selected-pill">${flag}${escapeHtml(label)}<span class="community-thread-actions-selected-meta">${escapeHtml(meta)}</span></span>`;
-    }).join("");
-    communityThreadActionsSelectedEl.innerHTML = badges || `<span class="community-thread-actions-selected-pill is-empty">No thread selected</span>`;
+    if (rows.length <= 1) {
+      communityThreadActionsSelectedEl.innerHTML = "";
+    } else {
+      const badges = rows.map((row) => {
+        const partner = row?.partner || {};
+        const label = truncateWithEllipsis(getCommunityUiDisplayName(partner), 22);
+        const meta = partner?.isGroup ? "Group" : partner?.isNotice ? "Notice" : "Chat";
+        const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">★</span>' : "";
+        return `<span class="community-thread-actions-selected-pill">${flag}${escapeHtml(label)}<span class="community-thread-actions-selected-meta">${escapeHtml(meta)}</span></span>`;
+      }).join("");
+      communityThreadActionsSelectedEl.innerHTML = badges || `<span class="community-thread-actions-selected-pill is-empty">No thread selected</span>`;
+    }
   }
   const singleSelection = rows.length === 1;
   const allFavorites = rows.length > 0 && rows.every((row) => Boolean(row?.isFavorite));
@@ -15999,7 +17249,7 @@ function renderCommunityConversationActionSelection() {
     communityThreadActionsDeleteBtn.classList.toggle("hidden", !showDelete);
     communityThreadActionsDeleteBtn.textContent = hasGroup && !hasDirect ? "Delete Group" : "Delete";
     communityThreadActionsDeleteBtn.title = hasGroup && !hasDirect
-      ? "Delete this group for everyone"
+      ? "Remove this group from your list"
       : "Remove this chat from your list";
   }
   if (communityThreadActionsBlockBtn) {
@@ -16118,7 +17368,7 @@ async function runCommunityConversationAction(action = "") {
             : backendClient.unfavoriteCommunityConversation(row.id),
         ),
       );
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16127,7 +17377,7 @@ async function runCommunityConversationAction(action = "") {
     if (action === "clear") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(selectedIds.map((conversationId) => backendClient.clearCommunityConversation(conversationId)));
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16153,7 +17403,7 @@ async function runCommunityConversationAction(action = "") {
         syncCommunityChatComposerState();
       }
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16173,7 +17423,7 @@ async function runCommunityConversationAction(action = "") {
         ...directConversationIds.map((conversationId) => backendClient.deleteCommunityConversation(conversationId)),
         ...groupConversationIds.map((conversationId) => backendClient.deleteCommunityGroup(conversationId)),
       ]);
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16188,7 +17438,7 @@ async function runCommunityConversationAction(action = "") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(userIds.map((userId) => backendClient.blockUser(userId)));
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16199,7 +17449,7 @@ async function runCommunityConversationAction(action = "") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(groupIds.map((conversationId) => backendClient.leaveCommunityGroup(conversationId)));
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16282,53 +17532,53 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
           communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
         }
         communityState.searchResults = null;
-        markCommunityNotificationsSeen(communityState.tab);
         setCommunityFeedback("");
+        startCommunityOverviewPolling({ background: true });
         renderCommunityNotificationBadges();
         maybeShowCommunityEntryNotificationBanner();
         syncAppNotificationBannerVisibility();
         renderCommunityView();
       }
     }
-    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache });
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    try {
-      const blockedResponse = await backendClient.fetchBlockedUsers({ preferCache });
-      communityState.blocked = Array.isArray(blockedResponse?.blocked) ? blockedResponse.blocked : [];
-    } catch {
-      communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
-    }
-    communityState.searchResults = null;
-    markCommunityNotificationsSeen(communityState.tab);
-    setCommunityFeedback("");
-    renderCommunityNotificationBadges();
-    maybeShowCommunityEntryNotificationBanner();
-    syncAppNotificationBannerVisibility();
-    renderCommunityView();
-    void setOfflineEntry("community-overview", communityState.overview);
-    void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
-    if (preferCache) {
-      void (async () => {
+    const refreshCommunityOverview = async ({ refreshBlocked = false } = {}) => {
+      if (communityOverviewRefreshPromise) return communityOverviewRefreshPromise;
+      communityOverviewRefreshPromise = (async () => {
         try {
           const freshOverview = await backendClient.fetchCommunityOverview();
           communityState.overview = freshOverview;
           communityState.statuses = Array.isArray(freshOverview?.statuses) ? freshOverview.statuses : [];
-          try {
-            const freshBlockedResponse = await backendClient.fetchBlockedUsers();
-            communityState.blocked = Array.isArray(freshBlockedResponse?.blocked) ? freshBlockedResponse.blocked : [];
-          } catch {
-            communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+          if (refreshBlocked) {
+            try {
+              const blockedResponse = await backendClient.fetchBlockedUsers();
+              communityState.blocked = Array.isArray(blockedResponse?.blocked) ? blockedResponse.blocked : [];
+              void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
+            } catch {
+              communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+            }
           }
+          communityState.searchResults = null;
+          setCommunityFeedback("");
+          startCommunityOverviewPolling({ background: true });
           renderCommunityNotificationBadges();
           maybeShowCommunityEntryNotificationBanner();
           syncAppNotificationBannerVisibility();
           renderCommunityView();
           void setOfflineEntry("community-overview", freshOverview);
-          void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
-        } catch {
+        } finally {
+          communityOverviewRefreshPromise = null;
         }
       })();
+      return communityOverviewRefreshPromise;
+    };
+    if (preferCache) {
+      void refreshCommunityOverview({
+        refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+      });
+      return;
     }
+    await refreshCommunityOverview({
+      refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+    });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Community could not load right now."), true);
     renderCommunityNotificationBadges();
@@ -16368,7 +17618,7 @@ async function runCommunitySearch() {
     if (showCachedResults) {
       void (async () => {
         try {
-          const response = await backendClient.searchCommunityUsers(query, 24);
+          const response = await backendClient.searchCommunityUsers(query, 24, { preferCache: true });
           communityState.searchResults = Array.isArray(response?.users) ? response.users : [];
           communityState.tab = "friends";
           communityState.friendsView = "suggestions";
@@ -16381,11 +17631,12 @@ async function runCommunitySearch() {
           renderCommunityView();
           void setOfflineEntry(cacheKey, { users: communityState.searchResults });
         } catch {
+          // Keep cached results visible.
         }
       })();
       return;
     }
-    const response = await backendClient.searchCommunityUsers(query, 24);
+    const response = await backendClient.searchCommunityUsers(query, 24, { preferCache: true });
     communityState.searchResults = Array.isArray(response?.users) ? response.users : [];
     communityState.tab = "friends";
     communityState.friendsView = "suggestions";
@@ -16527,7 +17778,6 @@ async function setCommunityTab(nextTab = "friends") {
   if (communityState.tab === "friends" && communityState.friendsView === "blocked") {
     void refreshCommunityBlockedUsers({ silent: true });
   }
-  markCommunityNotificationsSeen(communityState.tab);
   renderCommunityNotificationBadges();
   renderCommunityView();
 }
@@ -16706,7 +17956,7 @@ async function ensureCommunityProfileLeaderboardStats(profilePayload = null, use
   const isSelf = Boolean(payload.relationship?.isSelf);
   if (!isSelf && visibility === "nobody") return payload;
   try {
-    const snapshot = await backendClient.fetchPointsLeaderboard("alltime", 100);
+    const snapshot = await backendClient.fetchPointsLeaderboard("alltime", 100, { preferCache: true });
     const entry =
       (Array.isArray(snapshot?.topThree) ? snapshot.topThree : []).find((row) => String(row.userId || "") === targetId) ||
       (Array.isArray(snapshot?.leaderboard) ? snapshot.leaderboard : []).find((row) => String(row.userId || "") === targetId) ||
@@ -16873,6 +18123,10 @@ function renderCommunityGroupProfileView() {
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Group options</div>
         <div class="community-profile-info-list">
+          ${canEditGroupProfile ? `
+          <button type="button" class="community-profile-info-row is-button" data-community-action="edit-group-profile" data-group-id="${escapeHtml(group.id || "")}">
+            <div class="community-profile-meta-label">Edit group info</div>
+          </button>` : ""}
           <button type="button" class="community-profile-info-row is-button" data-community-action="open-group-storage" data-group-id="${escapeHtml(group.id || "")}">
             <div class="community-profile-meta-label">Media, links &amp; docs</div>
           </button>
@@ -16912,7 +18166,7 @@ function renderCommunityGroupProfileView() {
         <div class="community-group-members-list">
           ${members
             .map((member) => `
-              <article class="community-group-member-row">
+              <article class="community-group-member-row" data-user-id="${escapeHtml(member.id || "")}">
                 ${getCommunityAvatarMarkup(member)}
                 <div class="community-group-member-copy">
                   <button type="button" class="community-name-link community-user-card-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(member.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(member), 28))}</button>
@@ -16949,6 +18203,10 @@ function renderCommunityGroupProfileView() {
               `,
             )
             .join("")}
+        </div>
+        <textarea id="community-group-bio-input" class="community-group-bio-input" rows="3" maxlength="180" placeholder="Write a short group description">${escapeHtml(bio)}</textarea>
+        <div class="community-group-admin-actions">
+          <button type="button" class="community-group-inline-action" data-community-action="save-group-profile" data-group-id="${escapeHtml(group.id || "")}">Save group info</button>
         </div>
       </section>` : ""}
       </div>
@@ -17005,7 +18263,7 @@ function renderCommunityGroupProfileView() {
         <div class="community-group-members-list">
           ${members
             .map((member) => `
-              <article class="community-group-member-row">
+              <article class="community-group-member-row" data-user-id="${escapeHtml(member.id || "")}">
                 ${getCommunityAvatarMarkup(member)}
                 <div class="community-group-member-copy">
                   <button type="button" class="community-name-link community-user-card-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(member.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(member), 28))}</button>
@@ -17606,10 +18864,52 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false, p
           updateCommunityChatHeader(cachedResponse.partner);
         }
         renderCommunityMessages(cachedList, { scrollToBottom: shouldStickToBottom });
+        if (preferCache) {
+          void (async () => {
+            try {
+              const response = await backendClient.fetchConversationMessages(communityState.activeConversation.id, {
+                markRead: true,
+                preferCache: false,
+              });
+              const messages = Array.isArray(response?.messages) ? response.messages : [];
+              const nextContentSignature = getCommunityMessageContentSignature(messages);
+              const nextMetaSignature = getCommunityMessageMetaSignature(messages);
+              if (response?.partner) {
+                updateCommunityChatHeader(response.partner);
+              } else if (communityState.activeConversationPartner) {
+                updateCommunityChatHeader(communityState.activeConversationPartner);
+              }
+              if (nextContentSignature !== String(communityState.messageRenderSignature || "")) {
+                renderCommunityMessages(messages, { scrollToBottom: shouldStickToBottom });
+              } else if (nextMetaSignature !== String(communityState.messageMetaSignature || "")) {
+                syncCommunityMessageMeta(messages);
+                if (shouldStickToBottom) {
+                  scrollCommunityChatToLatest({ settle: true, attempts: 1 });
+                }
+              } else {
+                communityState.messages = Array.isArray(messages) ? [...messages] : [];
+                if (shouldStickToBottom) {
+                  scrollCommunityChatToLatest({ settle: true, attempts: 1 });
+                }
+              }
+              restoreCommunityChatDraftIfNeeded(communityState.activeConversation?.id || "");
+              void refreshCommunityConversationActiveCall({ silent: true });
+              void setOfflineEntry(conversationCacheKey, {
+                messages,
+                partner: response?.partner || communityState.activeConversationPartner || null,
+              });
+            } catch {
+              // Keep cached messages visible.
+            }
+          })();
+          if (!silent) setCommunityFeedback("");
+          return;
+        }
       }
     }
     const response = await backendClient.fetchConversationMessages(communityState.activeConversation.id, {
-      markRead: Boolean(communitySettingsPrefs.chatReadReceipts),
+      markRead: true,
+      preferCache,
     });
     const messages = Array.isArray(response?.messages) ? response.messages : [];
     const nextContentSignature = getCommunityMessageContentSignature(messages);
@@ -17638,9 +18938,6 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false, p
       messages,
       partner: response?.partner || communityState.activeConversationPartner || null,
     });
-    if (preferCache) {
-      void loadCommunityMessages({ silent: true, scrollToBottom: false, preferCache: false });
-    }
     if (!silent) setCommunityFeedback("");
   } catch (error) {
     if (!silent) setCommunityFeedback(generalApiErrorMessage(error, "Messages could not load right now."), true);
@@ -17663,17 +18960,38 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     } else {
       communityState.activeConversation = { id: conversationId };
     }
-    const partner =
+    let partner =
       communityState.overview?.chats?.find((row) =>
         conversationId
           ? String(row.id || "") === String(conversationId)
           : String(row.partner?.id || "") === String(userId),
       )?.partner ||
-      communityState.overview?.friends?.find((row) => String(row.id) === String(userId)) ||
-      communityState.overview?.suggested?.find((row) => String(row.id) === String(userId)) ||
-      communityState.searchResults?.find((row) => String(row.id) === String(userId)) ||
-      communityState.profile?.profile ||
+      communityState.overview?.groups?.find((row) =>
+        conversationId
+          ? String(row?.group?.id || row?.conversation?.id || row?.id || "") === String(conversationId)
+          : String(row?.group?.id || "") === String(userId),
+      )?.group ||
+      communityState.overview?.groups?.find((row) =>
+        conversationId
+          ? String(row?.conversation?.id || row?.id || "") === String(conversationId)
+          : String(row?.group?.id || "") === String(userId),
+      )?.conversation?.partner ||
       null;
+    if (!partner && conversationId) {
+      partner = {
+        id: conversationId,
+        name: "Loading chat...",
+        username: "",
+      };
+    }
+    if (!partner) {
+      partner =
+        communityState.overview?.friends?.find((row) => String(row.id) === String(userId)) ||
+        communityState.overview?.suggested?.find((row) => String(row.id) === String(userId)) ||
+        communityState.searchResults?.find((row) => String(row.id) === String(userId)) ||
+        communityState.profile?.profile ||
+        null;
+    }
 
     clearCommunityTypingTimers();
     clearCommunityTypingState(conversationId);
@@ -17683,12 +19001,8 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     resetCommunityVoiceRecordingState();
     updateCommunityChatHeader(partner || {});
     showScreen("community-chat-screen");
-    await loadCommunityMessages({ scrollToBottom: true, preferCache: true });
-    try {
-      communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
-      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-      renderCommunityNotificationBadges();
-    } catch {}
+    void loadCommunityMessages({ scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
     restoreCommunityChatDraftIfNeeded(conversationId);
     void refreshCommunityConversationActiveCall({ silent: true, force: true });
     syncCommunityChatPolling();
@@ -17816,11 +19130,8 @@ async function sendCommunityMessage() {
     resetCommunityPendingAttachment();
     removeCommunityChatDraftForConversation(conversationId);
     syncCommunityChatComposerState();
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunitySummary();
-    renderCommunityStatusStrip();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     const errorMessage = attachments.length
       ? generalApiErrorMessage(error, "Attachments could not send right now.")
@@ -18073,10 +19384,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           );
           if (!isBackgroundUpload) closeCommunityStatusCompose();
           setCommunityFeedback("Status uploaded successfully.");
-          communityState.overview = await backendClient.fetchCommunityOverview();
-          communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-          renderCommunityStatusStrip();
-          renderCommunityView();
+          void loadCommunityOverview({ silent: true, preferCache: true });
           return;
         } else {
           payload.dataUrl = String(payload.originalDataUrl || payload.dataUrl || "");
@@ -18171,10 +19479,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
     communityState.statusUploadError = "";
     if (!isBackgroundUpload) closeCommunityStatusCompose();
     setCommunityFeedback("Status uploaded successfully.");
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityStatusStrip();
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     const message = rawApiErrorMessage(error, "Status upload failed.");
     communityState.statusUploadError = message;
@@ -18197,9 +19502,7 @@ async function createCommunityStudyGroup() {
   try {
     const response = await backendClient.createStudyGroup(name, memberIds);
     closeCommunityGroupModal();
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     setCommunityFeedback("Study group created.");
     const conversationId = String(response?.conversation?.id || "").trim();
     if (conversationId) {
@@ -18226,7 +19529,7 @@ async function createCommunityStudyGroup() {
         institution: `${memberIds.length + 1} members`,
       });
       showScreen("community-chat-screen");
-      await loadCommunityMessages({ scrollToBottom: true });
+      void loadCommunityMessages({ scrollToBottom: true, preferCache: true });
       restoreCommunityChatDraftIfNeeded(conversationId);
       syncCommunityChatPolling();
     }
@@ -18256,8 +19559,7 @@ async function addCommunityGroupMembers() {
     await backendClient.addCommunityGroupMembers(groupId, memberIds);
     closeCommunityGroupModal();
     communityState.profile = await backendClient.fetchCommunityGroup(groupId);
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+    void loadCommunityOverview({ silent: true, preferCache: true });
     renderCommunityProfileView();
     renderCommunityView();
     setCommunityFeedback("Participants added to the group.");
@@ -18410,6 +19712,8 @@ function renderCommunityGroupInviteModal() {
     }
   }
   if (communityGroupInviteCopyBtn) {
+    const showCopyLink = isShareMode && Boolean(inviteUrl);
+    communityGroupInviteCopyBtn.style.display = showCopyLink ? "" : "none";
     communityGroupInviteCopyBtn.disabled = isLoading || !inviteUrl;
     communityGroupInviteCopyBtn.textContent = "Copy link";
   }
@@ -18628,10 +19932,7 @@ async function submitCommunityAdminBroadcast() {
     const response = await backendClient.broadcastAdminMessage(message, attachment);
     closeCommunityAdminBroadcastModal();
     setCommunityFeedback(`Broadcast sent to ${Math.max(0, Math.round(Number(response?.deliveredTo) || 0))} users.`);
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
-    renderCommunityView();
-    renderCommunitySummary();
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     communityState.adminBroadcastModal = {
       ...(communityState.adminBroadcastModal || {}),
@@ -18801,9 +20102,7 @@ async function joinCommunityGroupFromInvite() {
     const response = await backendClient.joinCommunityGroupInvite(groupId, inviteToken);
     clearPendingCommunityGroupInvite();
     communityState.profile = response;
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     communityState.groupInviteModal = {
       ...communityState.groupInviteModal,
       loading: false,
@@ -18878,40 +20177,38 @@ async function loadCommunityGroupInvitePreview(groupId = "", inviteToken = "", {
 async function shareCommunityGroupInviteLink(groupId = "") {
   const safeGroupId = String(groupId || "").trim();
   if (!safeGroupId) return;
-  const payload = communityState.profile?.group ? communityState.profile : null;
-  const canShareInvite = Boolean(payload?.relationship?.isAdmin || payload?.group?.permissions?.membersCanInviteByLink);
+  const currentProfile =
+    communityState.profile?.group && String(communityState.profile.group.id || "") === safeGroupId
+      ? communityState.profile
+      : await backendClient.fetchCommunityGroup(safeGroupId).catch(() => null);
+  const group = currentProfile?.group || {};
+  const canShareInvite = Boolean(currentProfile?.relationship?.isAdmin || group?.permissions?.membersCanInviteByLink);
   if (!canShareInvite) {
     setCommunityFeedback("Invite links are disabled for this group.", true);
     return;
   }
   try {
-    const payload = await backendClient.createCommunityGroupInviteLink(safeGroupId);
-    const inviteToken = String(payload?.inviteToken || "").trim();
-    if (!inviteToken) {
-      throw new Error("invite link could not be generated");
+    const inviteToken = String(group.inviteToken || currentProfile?.inviteToken || "").trim();
+    const inviteUrl = normalizeCommunityInviteUrl(buildCommunityGroupInviteHref(safeGroupId, inviteToken));
+    if (!inviteUrl || !inviteToken) {
+      throw new Error("invite link could not be prepared");
     }
-    if (communityState.profile?.group) {
-      communityState.profile.group.inviteToken = inviteToken;
-    }
-    const inviteHref = buildCommunityGroupInviteHref(safeGroupId, inviteToken);
-    if (!inviteHref) {
-      throw new Error("invite link could not be built");
-    }
-    const inviteUrl = normalizeCommunityInviteUrl(payload?.inviteUrl || inviteHref);
     openCommunityGroupInviteModal({
       groupId: safeGroupId,
       inviteToken,
       inviteUrl,
-      inviteExpiresAt: String(payload?.inviteExpiresAt || "").trim(),
+      inviteExpiresAt: String(currentProfile?.inviteExpiresAt || group.inviteExpiresAt || "").trim(),
       inviteExpired: false,
-      group: communityState.profile?.group || null,
-      members: Array.isArray(communityState.profile?.members) ? communityState.profile.members : [],
-      memberCount: Array.isArray(communityState.profile?.members) ? communityState.profile.members.length : Number(communityState.profile?.group?.memberIds?.length || 0),
+      group,
+      members: Array.isArray(currentProfile?.members) ? currentProfile.members : [],
+      memberCount: Array.isArray(currentProfile?.members)
+        ? currentProfile.members.length
+        : Number(group.memberIds?.length || 0),
       relationship: {
-        isMember: false,
-        isOwner: Boolean(communityState.profile?.relationship?.isOwner),
-        isAdmin: Boolean(communityState.profile?.relationship?.isAdmin),
-        isMuted: Boolean(communityState.profile?.relationship?.isMuted),
+        isMember: Boolean(currentProfile?.relationship?.isMember),
+        isOwner: Boolean(currentProfile?.relationship?.isOwner),
+        isAdmin: Boolean(currentProfile?.relationship?.isAdmin),
+        isMuted: Boolean(currentProfile?.relationship?.isMuted),
       },
       source: "share",
     });
@@ -18938,9 +20235,7 @@ async function leaveCommunityGroup(groupId = "") {
         communityState.activeConversationPartner = null;
         syncCommunityChatPolling();
       }
-      communityState.overview = await backendClient.fetchCommunityOverview();
-      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-      renderCommunityView();
+      void loadCommunityOverview({ silent: true, preferCache: true });
       setCommunityFeedback(response?.removed ? "Group removed." : "You left the group.");
     },
   });
@@ -19304,14 +20599,18 @@ async function sendForwardedCommunityMessage() {
   const targets = Array.isArray(communityState.forwardTargets) ? [...communityState.forwardTargets] : [];
   if (!payloadItems.length || !targets.length) return false;
   try {
-    const sendTargets = targets.slice(0, 5);
-    for (const target of sendTargets) {
-      const targetUserId = String(target.userId || "").trim();
-      let conversationId = String(target.conversationId || "").trim();
-      if (!conversationId) {
-        const response = await backendClient.openDirectConversation(targetUserId);
-        conversationId = String(response?.conversation?.id || "").trim();
+      const sendTargets = targets.slice(0, 5);
+      for (const target of sendTargets) {
+        const targetUserId = String(target.userId || "").trim();
+        const targetConversationType = String(target.conversationType || "").trim().toLowerCase();
+        if (targetConversationType === "group" || targetConversationType === "notice" || targetConversationType === "admin") {
+          throw new Error("Selected target cannot receive forwarded items.");
+        }
+        let conversationId = String(target.conversationId || "").trim();
         if (!conversationId) {
+          const response = await backendClient.openDirectConversation(targetUserId);
+          conversationId = String(response?.conversation?.id || "").trim();
+          if (!conversationId) {
           throw new Error("conversation not found");
         }
       }
@@ -19329,11 +20628,9 @@ async function sendForwardedCommunityMessage() {
     setCommunityFeedback(
       itemCount > 1
         ? `Forwarded ${itemCount} items to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`
-        : `Forwarded to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`,
+      : `Forwarded to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`,
     );
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    renderCommunitySummary();
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     return true;
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Item could not forward right now."), true);
@@ -19360,9 +20657,8 @@ async function editCommunityMessageText() {
   }
   try {
     await backendClient.editConversationMessage(message.id, cleaned);
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    renderCommunitySummary();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Message could not update right now."), true);
   }
@@ -19407,11 +20703,10 @@ function confirmCommunityMessageDelete(scope = "self") {
           .filter((message) => Boolean(message?.id))
           .map((message) => backendClient.deleteConversationMessage(message.id, deleteScope)),
       );
-      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom });
-      communityState.overview = await backendClient.fetchCommunityOverview();
-      renderCommunitySummary();
+      void loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom, preferCache: true });
+      void loadCommunityOverview({ silent: true, preferCache: true });
     } catch (error) {
-      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom }).catch(() => {});
+      void loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom, preferCache: true }).catch(() => {});
       setCommunityFeedback(generalApiErrorMessage(error, "Message could not delete right now."), true);
     }
   })();
@@ -19428,10 +20723,24 @@ async function executeCommunityAction(action = "", payload = {}) {
       (action === "open-chat" || action === "open-conversation") &&
       (userId || conversationId)
     ) {
+      const matchingConversation = conversationId
+        ? (Array.isArray(communityState.overview?.chats)
+          ? communityState.overview.chats.find((row) => String(row?.id || "").trim() === conversationId)
+          : null)
+        : null;
+      if (matchingConversation?.partner?.isGroup || matchingConversation?.partner?.isNotice) {
+        setCommunityFeedback("Groups and admin notices can’t receive forwarded items.", true);
+        return;
+      }
       toggleCommunityForwardTarget({
         userId,
         conversationId,
         label: payload.label || "",
+        conversationType: matchingConversation?.partner?.isGroup
+          ? "group"
+          : matchingConversation?.partner?.isNotice
+            ? "notice"
+            : "direct",
       });
       renderCommunityView();
       return;
@@ -19510,7 +20819,14 @@ async function executeCommunityAction(action = "", payload = {}) {
             return;
           }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true, preferCache: true });
+          if (targetUser) {
+            const existingBlocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+            const nextBlocked = existingBlocked.filter((entry) => String(entry?.id || "") !== userId);
+            nextBlocked.push(targetUser);
+            communityState.blocked = nextBlocked;
+            void setOfflineEntry("community-blocked", { blocked: nextBlocked });
+          }
+          void loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }
@@ -19537,7 +20853,12 @@ async function executeCommunityAction(action = "", payload = {}) {
             return;
           }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true, preferCache: true });
+          if (Array.isArray(communityState.blocked)) {
+            const nextBlocked = communityState.blocked.filter((entry) => String(entry?.id || "") !== userId);
+            communityState.blocked = nextBlocked;
+            void setOfflineEntry("community-blocked", { blocked: nextBlocked });
+          }
+          void loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }
@@ -19576,6 +20897,16 @@ async function executeCommunityAction(action = "", payload = {}) {
       return;
     } else if (action === "share-group-link" && groupId) {
       await shareCommunityGroupInviteLink(groupId);
+      return;
+    } else if (action === "save-group-profile" && groupId) {
+      const bioInput = document.getElementById("community-group-bio-input");
+      const nextBio = String(bioInput instanceof HTMLTextAreaElement ? bioInput.value : communityState.profile?.group?.bio || "").trim();
+      await backendClient.updateCommunityGroup(groupId, { bio: nextBio });
+      const freshProfile = await backendClient.fetchCommunityGroup(groupId);
+      communityState.profile = freshProfile;
+      renderCommunityProfileView();
+      renderCommunityView();
+      setCommunityFeedback("Group info updated.");
       return;
     } else if (action === "report-user" && userId) {
       await reportCommunityUser(userId);
@@ -21022,6 +22353,14 @@ function clearDailyResultEnhancements() {
     resultShareBtn.classList.add("hidden");
     resultShareBtn.onclick = null;
   }
+  const scoreBlock = document.querySelector("#study-result-screen .result-score-block");
+  if (scoreBlock) {
+    scoreBlock.classList.remove("hidden");
+  }
+  const reviewContent = document.getElementById("result-review-content");
+  if (reviewContent) {
+    reviewContent.classList.remove("law-drill-only-review");
+  }
 }
 
 function renderDailySocialCard(snapshot) {
@@ -21173,8 +22512,13 @@ function renderDailyQuizUi() {
 
   const streak = Number(state?.stats?.streak ?? userSummary.streak) || 0;
   const gems = Number(state?.stats?.gems ?? userSummary.gems) || 0;
-  const completedDays =
-    Number(state?.stats?.completedDays ?? userSummary.completedDays) || 0;
+  const completedSessions =
+    Number(
+      state?.stats?.totalCompleted ??
+        userSummary.totalCompleted ??
+        state?.stats?.completedDays ??
+        userSummary.completedDays,
+    ) || 0;
   const season = state?.season || {};
   const today = state?.today || {};
   const rules = state?.rewardRules || {};
@@ -21236,7 +22580,7 @@ function renderDailyQuizUi() {
 
   if (dailyStreakValueEl) dailyStreakValueEl.textContent = String(streak);
   if (!dailyGemsAnimationActive) setDailyGemsValue(gems);
-  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedDays);
+  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedSessions);
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =
@@ -21344,6 +22688,9 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
 
           const payload = await fetchToday.call(backendClient);
           dailyQuizState = normalizeDailyQuizPayload(payload);
+          if (payload?.user) {
+            currentUser = payload.user;
+          }
           if (dailyQuizState.today?.completed) {
             markDailyPopupSeen(dailyQuizState.today.date);
           }
@@ -21377,6 +22724,9 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
 
     const payload = await fetchToday.call(backendClient);
     dailyQuizState = normalizeDailyQuizPayload(payload);
+    if (payload?.user) {
+      currentUser = payload.user;
+    }
     if (dailyQuizState.today?.completed) {
       markDailyPopupSeen(dailyQuizState.today.date);
     }
@@ -23282,11 +24632,26 @@ if (communityChatMessagesEl) {
 }
 
 if (communityResultsEl) {
+  communityResultsEl.addEventListener("contextmenu", (event) => {
+    if (isCommunityForwardMode()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const selectableRow =
+      getCommunityConversationRowFromEventTarget(target) ||
+      getCommunityFriendCardFromEventTarget(target) ||
+      target.closest(".community-group-member-row[data-user-id]");
+    if (!(selectableRow instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+
   communityResultsEl.addEventListener("pointerdown", (event) => {
     if (isCommunityForwardMode()) return;
     const target = event.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
     if (!(row instanceof HTMLElement)) return;
+    const nestedAction = getCommunityConversationNestedActionFromEventTarget(target);
+    if (nestedAction) return;
     communityConversationActionLastPointerType = String(event.pointerType || "").trim();
     if (isCommunityConversationActionOpen()) return;
     if (event.pointerType !== "touch") return;
@@ -23340,6 +24705,16 @@ if (communityResultsEl) {
     const gesture = communityConversationActionTouchStart;
     const target = event?.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
+    const nestedAction = getCommunityConversationNestedActionFromEventTarget(target);
+    if (nestedAction) {
+      if (communityConversationActionHoldHandle) {
+        clearTimeout(communityConversationActionHoldHandle);
+        communityConversationActionHoldHandle = null;
+      }
+      communityConversationActionTouchStart = null;
+      communityConversationActionHoldTriggered = false;
+      return;
+    }
     const rowData = row
       ? getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === String(row.dataset.conversationId || ""))
       : null;
@@ -23414,6 +24789,7 @@ if (communityResultsEl) {
     const target = event.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
     if (!(row instanceof HTMLElement)) return;
+    if (getCommunityConversationNestedActionFromEventTarget(target)) return;
     clearCommunityConversationActionTimers();
     const conversationId = String(row.dataset.conversationId || "").trim();
     const rowData = getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === conversationId);
@@ -23428,10 +24804,23 @@ if (communityResultsEl) {
     const target = event.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
     if (!(row instanceof HTMLElement)) return;
+    const nestedAction = getCommunityConversationNestedActionFromEventTarget(target);
+    if (nestedAction) return;
     const conversationId = String(row.dataset.conversationId || "").trim();
     const rowData = getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === conversationId);
     if (!rowData) return;
     const now = Date.now();
+    if (event.detail >= 2 && communityConversationActionLastPointerType !== "touch") {
+      if (communityConversationActionOpenHandle) {
+        clearTimeout(communityConversationActionOpenHandle);
+        communityConversationActionOpenHandle = null;
+      }
+      clearCommunityConversationActionTimers();
+      event.preventDefault();
+      event.stopPropagation();
+      openCommunityConversationActionsForRow(rowData, { pointerType: "mouse" });
+      return;
+    }
     if (
       communityConversationActionSuppressClickConversationId === conversationId &&
       now <= Number(communityConversationActionSuppressClickUntil || 0)
@@ -23624,6 +25013,124 @@ if (communityResultsEl) {
       null;
     if (!user) return;
     openCommunityFriendActionsForUser({ ...user, id: userId, relationship, requestId }, { relationship, requestId, pointerType: "mouse" });
+  });
+}
+
+if (communityProfileCardEl) {
+  communityProfileCardEl.addEventListener("contextmenu", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = target?.closest(".community-group-member-row[data-user-id]");
+    if (!(card instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+
+  communityProfileCardEl.addEventListener("pointerdown", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) return;
+    if (event.pointerType !== "touch") return;
+    clearCommunityGroupMemberActionTimers({ keepTapState: true });
+    communityGroupMemberActionLastPointerType = String(event.pointerType || "").trim();
+    communityGroupMemberActionTouchStart = {
+      x: Number(event.clientX || 0),
+      y: Number(event.clientY || 0),
+      userId: String(card.dataset.userId || "").trim(),
+      moved: false,
+    };
+    const user = getCommunityGroupMemberActionUser(card.dataset.userId || "");
+    if (!user) return;
+    communityGroupMemberActionHoldHandle = window.setTimeout(() => {
+      communityGroupMemberActionHoldHandle = null;
+      communityGroupMemberActionHoldTriggered = true;
+      openCommunityGroupMemberActionsForUser(user, { pointerType: "touch" });
+    }, 520);
+  }, { passive: false });
+
+  communityProfileCardEl.addEventListener("pointermove", (event) => {
+    if (event.pointerType !== "touch") return;
+    const gesture = communityGroupMemberActionTouchStart;
+    if (!gesture) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) {
+      clearCommunityGroupMemberActionTimers();
+      return;
+    }
+    if (String(card.dataset.userId || "").trim() !== gesture.userId) {
+      clearCommunityGroupMemberActionTimers();
+      return;
+    }
+    const deltaX = Number(event.clientX || 0) - Number(gesture.x || 0);
+    const deltaY = Number(event.clientY || 0) - Number(gesture.y || 0);
+    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+      gesture.moved = true;
+      clearCommunityGroupMemberActionTimers();
+    }
+  }, { passive: true });
+
+  communityProfileCardEl.addEventListener("pointerup", (event) => {
+    if (communityGroupMemberActionHoldHandle) {
+      clearTimeout(communityGroupMemberActionHoldHandle);
+      communityGroupMemberActionHoldHandle = null;
+    }
+    const gesture = communityGroupMemberActionTouchStart;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!gesture || !(card instanceof HTMLElement)) {
+      communityGroupMemberActionTouchStart = null;
+      return;
+    }
+    if (String(card.dataset.userId || "").trim() !== gesture.userId) {
+      communityGroupMemberActionTouchStart = null;
+      return;
+    }
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (communityGroupMemberActionHoldTriggered) {
+      window.setTimeout(() => {
+        communityGroupMemberActionHoldTriggered = false;
+      }, 260);
+      communityGroupMemberActionLastTapAt = 0;
+      communityGroupMemberActionLastTapUserId = "";
+      communityGroupMemberActionTouchStart = null;
+      return;
+    }
+    if (!gesture.moved) {
+      const now = Date.now();
+      const isDoubleTap =
+        communityGroupMemberActionLastTapUserId === gesture.userId &&
+        now - communityGroupMemberActionLastTapAt <= 320;
+      if (isDoubleTap) {
+        const user = getCommunityGroupMemberActionUser(gesture.userId);
+        if (user) {
+          openCommunityGroupMemberActionsForUser(user, { pointerType: "touch" });
+        }
+        communityGroupMemberActionLastTapAt = 0;
+        communityGroupMemberActionLastTapUserId = "";
+      } else {
+        communityGroupMemberActionLastTapAt = now;
+        communityGroupMemberActionLastTapUserId = gesture.userId;
+      }
+    }
+    communityGroupMemberActionTouchStart = null;
+  }, { passive: false });
+
+  communityProfileCardEl.addEventListener("pointercancel", () => {
+    clearCommunityGroupMemberActionTimers();
+  }, { passive: true });
+
+  communityProfileCardEl.addEventListener("dblclick", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const user = getCommunityGroupMemberActionUser(String(card.dataset.userId || ""));
+    if (!user) return;
+    openCommunityGroupMemberActionsForUser(user, { pointerType: "mouse" });
   });
 }
 
@@ -23901,8 +25408,10 @@ function findCommunityActionPayload(target) {
   const avatarTrigger = target.closest("[data-community-avatar-view='true']");
   const actionValue = String(actionButton.dataset.communityAction || "").trim();
   const chatRow = target.closest(".community-chat-row[data-conversation-id]");
-  if (chatRow instanceof HTMLElement) {
-    return null;
+  if (chatRow instanceof HTMLElement && chatRow !== actionButton) {
+    if (actionValue !== "open-conversation" && actionValue !== "open-chat" && actionValue !== "open-group-profile") {
+      return null;
+    }
   }
   if (avatarTrigger instanceof HTMLElement && (actionValue === "open-conversation" || actionValue === "open-chat")) {
     return null;
@@ -23923,7 +25432,14 @@ function handleCommunityForwardSelection(target) {
   if (conversationCard instanceof HTMLElement && communityResultsEl?.contains(conversationCard)) {
     const userId = String(conversationCard.dataset.userId || "").trim();
     const conversationId = String(conversationCard.dataset.conversationId || "").trim();
-    if (toggleCommunityForwardTarget({ userId, conversationId })) {
+    const isNotice = conversationCard.classList.contains("is-notice");
+    const isGroup = conversationCard.classList.contains("community-group-row");
+    const conversationType = isGroup ? "group" : isNotice ? "notice" : "direct";
+    if (conversationType === "group" || conversationType === "notice") {
+      setCommunityFeedback("Groups and admin notices can’t receive forwarded items.", true);
+      return true;
+    }
+    if (toggleCommunityForwardTarget({ userId, conversationId, conversationType })) {
       renderCommunityView();
     }
     return true;
@@ -23946,7 +25462,7 @@ document.addEventListener("click", (event) => {
   }
   const target = event.target instanceof Element ? event.target : null;
   if (target && (isCommunityConversationActionOpen() || isCommunityFriendActionOpen())) {
-    const behindModalRow = target.closest(".community-chat-row[data-conversation-id], .community-user-card[data-user-id]");
+    const behindModalRow = target.closest(".community-chat-row[data-conversation-id], .community-user-card[data-user-id], .community-group-member-row[data-user-id]");
     if (behindModalRow instanceof HTMLElement) {
       event.preventDefault();
       event.stopPropagation();
@@ -24849,7 +26365,7 @@ document.addEventListener("keydown", (event) => {
     handleCommunityAvatarActivation(avatarTrigger);
     return;
   }
-  const actionTarget = target.closest("[data-community-action='open-profile'], [data-community-action='open-group-profile']");
+  const actionTarget = target.closest("[data-community-action='open-profile'], [data-community-action='open-group-profile'], [data-community-action='open-conversation'], [data-community-action='open-chat']");
   if (actionTarget instanceof HTMLElement) {
     event.preventDefault();
     const action = String(actionTarget.dataset.communityAction || "").trim();
@@ -25590,7 +27106,7 @@ if (communityThreadActionsDeleteBtn) {
     openCommunityConfirmModal({
       title: mode === "group" ? "Delete group?" : "Delete chat?",
       text: mode === "group"
-        ? "This removes the selected group for everyone. Use Exit Group if you only want to leave."
+        ? "This removes the selected group from your list. Use Exit Group if you want to leave the group."
         : "This removes the selected chat from your list.",
       confirmLabel: mode === "group" ? "Delete Group" : "Delete",
       intent: "danger",
@@ -27500,6 +29016,7 @@ function getCurrentProfileImage() {
   if (typed) return typed;
   const pending = String(pendingProfileImage || "").trim();
   if (pending) return pending;
+  if (isCommunityAppAdminUser(currentUser)) return COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE;
   return String(currentUser?.profileImage || "").trim();
 }
 
@@ -27517,16 +29034,22 @@ function defaultProfileAvatarDataUri() {
 function setProfileAvatarPreview(src = "") {
   if (!profileAvatarPreviewEl) return;
   const cleaned = String(src || "").trim();
-  profileAvatarPreviewEl.src = cleaned || defaultProfileAvatarDataUri();
+  const effectiveSrc = isCommunityAppAdminUser(currentUser)
+    ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+    : cleaned;
+  profileAvatarPreviewEl.src = effectiveSrc || defaultProfileAvatarDataUri();
 }
 
 function updateProfileButtonAvatar(src = "") {
   if (!profileBtn) return;
   const avatarTarget = profileBtnAvatarEl || profileBtn;
   const cleaned = String(src || "").trim();
+  const effectiveSrc = isCommunityAppAdminUser(currentUser)
+    ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+    : cleaned;
 
-  if (cleaned) {
-    avatarTarget.style.setProperty("background-image", `url("${cleaned}")`, "important");
+  if (effectiveSrc) {
+    avatarTarget.style.setProperty("background-image", `url("${effectiveSrc}")`, "important");
     avatarTarget.style.setProperty("background-size", "cover", "important");
     avatarTarget.style.setProperty("background-position", "center", "important");
     avatarTarget.style.setProperty("background-repeat", "no-repeat", "important");
@@ -27549,6 +29072,7 @@ function updateProfileButtonAvatar(src = "") {
 
 function getMenuProfileDisplayName(user = currentUser) {
   if (!user) return "Your Profile";
+  if (isCommunityAppAdminUser(user)) return COMMUNITY_ADMIN_PROFILE_NAME;
   const titledName = [user.title, user.firstName, user.lastName]
     .map((part) => String(part || "").trim())
     .filter(Boolean)
@@ -27586,7 +29110,7 @@ function buildMenuSnapshotFromUser(user = null) {
     user.leaderboardStats && typeof user.leaderboardStats === "object"
       ? user.leaderboardStats
       : null;
-  const points = Math.max(0, Math.round(Number(readStoredPoints()) || Number(user.points) || 0));
+  const points = Math.max(0, Math.round(Number(getCumulativePoints()) || Number(user.points) || 0));
   const dailyStreak = Math.max(
     0,
     Math.round(Number(dailyQuiz.streak ?? dailyQuiz.dailyStreak ?? 0) || 0),
@@ -27644,7 +29168,7 @@ function getMenuSnapshotUser() {
 function getMenuPointsValue() {
   const snapshotUser = getMenuSnapshotUser();
   const cachedPoints = Math.max(0, Math.round(Number(snapshotUser?.points) || 0));
-  return Math.max(readStoredPoints(), cachedPoints);
+  return Math.max(getCumulativePoints(), cachedPoints);
 }
 
 let profileFeedbackTimer = null;
@@ -27713,9 +29237,11 @@ function fillProfileForm() {
   profileImageMarkedForDeletion = false;
   pendingProfileImage = String(currentUser.profileImage || "").trim();
   if (profilePhotoUrlInput) {
-    profilePhotoUrlInput.value = /^https?:\/\//i.test(pendingProfileImage)
-      ? pendingProfileImage
-      : "";
+    profilePhotoUrlInput.value = isCommunityAppAdminUser(currentUser)
+      ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+      : /^https?:\/\//i.test(pendingProfileImage)
+        ? pendingProfileImage
+        : "";
   }
   setProfileAvatarPreview(pendingProfileImage);
   updateProfileButtonAvatar(pendingProfileImage);
@@ -27814,10 +29340,13 @@ function renderAuthState() {
     const fallbackLabel =
       currentUser.name || currentUser.contact || "User";
     const displayName = getMenuProfileDisplayName(currentUser);
-    const displaySubtitle = username
-      ? `@${username}`
-      : currentUser.professionalType || "Signed in";
-    authUserLabel.textContent = username ? `@${username}` : fallbackLabel;
+    const isAdmin = isCommunityAppAdminUser(currentUser);
+    const displaySubtitle = isAdmin
+      ? "Admin"
+      : username
+        ? `@${username}`
+        : currentUser.professionalType || "Signed in";
+    authUserLabel.textContent = isAdmin ? displayName : username ? `@${username}` : fallbackLabel;
     authUserLabel.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
     profileBtn.classList.remove("hidden");
@@ -28318,8 +29847,10 @@ async function handleAiExplainClick() {
 
 async function restoreAuthSession({ deferHydration = false } = {}) {
   if (!backendClient.isAuthenticated()) {
+    stopSharedAccountStatePolling();
     currentUser = null;
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     return false;
   }
@@ -28327,32 +29858,123 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
   try {
     currentUser = await backendClient.fetchMe({ preferCache: true });
     renderAuthState();
-    schedulePostAuthHydration({ deferHydration });
+    scheduleSharedAccountHydration({ silent: true, deferHydration });
     return true;
   } catch {
     backendClient.clearToken();
     teardownCommunityRealtime();
+    stopSharedAccountStatePolling();
     currentUser = null;
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     return false;
   }
 }
 
-function schedulePostAuthHydration({ deferHydration = false } = {}) {
+let sharedAccountStateRefreshInFlight = null;
+let sharedAccountStateRefreshAt = 0;
+let sharedAccountStatePollingHandle = null;
+let sharedAccountHydrationHandle = null;
+let sharedAccountHydrationInFlight = null;
+
+function stopSharedAccountStatePolling() {
+  if (sharedAccountStatePollingHandle) {
+    clearInterval(sharedAccountStatePollingHandle);
+    sharedAccountStatePollingHandle = null;
+  }
+}
+
+function startSharedAccountStatePolling() {
+  stopSharedAccountStatePolling();
+  if (!currentUser || !backendClient.isAuthenticated()) {
+    return;
+  }
+  sharedAccountStatePollingHandle = setInterval(() => {
+    if (document.hidden || !currentUser || !backendClient.isAuthenticated()) {
+      return;
+    }
+    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+  }, 20_000);
+}
+
+function scheduleSharedAccountHydration({ silent = true, deferHydration = false } = {}) {
+  if (!currentUser || !backendClient.isAuthenticated()) {
+    return;
+  }
+  if (sharedAccountHydrationInFlight || sharedAccountHydrationHandle) {
+    return;
+  }
+
   const runHydration = () => {
-    void Promise.allSettled([
-      refreshDailyQuizState({ force: true, silent: true }),
-      loadSyncedPerformanceState({ force: true }),
-    ]);
-    void loadCommunityOverview({ silent: true });
+    sharedAccountHydrationHandle = null;
+    if (sharedAccountHydrationInFlight || !currentUser || !backendClient.isAuthenticated()) {
+      return;
+    }
+    sharedAccountHydrationInFlight = (async () => {
+      await Promise.allSettled([
+        refreshDailyQuizState({ force: true, silent }),
+        loadSyncedPerformanceState({ force: true }),
+      ]);
+      await loadCommunityOverview({ silent: true, preferCache: true });
+      return true;
+    })()
+      .catch(() => false)
+      .finally(() => {
+      sharedAccountHydrationInFlight = null;
+    });
   };
 
   if (deferHydration && typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(runHydration, { timeout: 2000 });
-  } else {
-    window.setTimeout(runHydration, deferHydration ? 600 : 0);
+    sharedAccountHydrationHandle = window.requestIdleCallback(runHydration, { timeout: 2000 });
+    return;
   }
+
+  sharedAccountHydrationHandle = window.setTimeout(runHydration, deferHydration ? 600 : 0);
+}
+
+async function refreshSharedAccountState({
+  force = false,
+  silent = false,
+  deferHydration = false,
+} = {}) {
+  if (!backendClient.isAuthenticated()) {
+    return false;
+  }
+
+  const now = Date.now();
+  if (!force && now - sharedAccountStateRefreshAt < 12_000) {
+    return true;
+  }
+
+  if (sharedAccountStateRefreshInFlight) {
+    return sharedAccountStateRefreshInFlight;
+  }
+
+  sharedAccountStateRefreshAt = now;
+  sharedAccountStateRefreshInFlight = (async () => {
+    const freshUser = await backendClient.fetchMe();
+    currentUser = freshUser;
+    renderAuthState();
+    syncPointsFromCurrentUser();
+    writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+      scheduleSync: false,
+    });
+    writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+      scheduleSync: false,
+    });
+    renderPoints();
+    scheduleSharedAccountHydration({ silent, deferHydration });
+    renderMenuDashboardStats();
+    renderSetupPoints();
+    renderDailyQuizUi();
+    startSharedAccountStatePolling();
+    return true;
+  })().finally(() => {
+      sharedAccountStateRefreshInFlight = null;
+    });
+
+  return sharedAccountStateRefreshInFlight;
 }
 
 async function ensureAuthenticated() {
@@ -28391,12 +30013,14 @@ async function handlePortalEntry() {
   if (currentUser || backendClient.isAuthenticated()) {
     showScreen("quiz-menu");
     void restoreAuthSession({ deferHydration: true });
+    startQuestionBankBootstrap();
     startBackendBootstrap();
     return;
   }
   const allowed = await ensureAuthenticated();
   if (!allowed) return;
   showScreen("quiz-menu");
+  startQuestionBankBootstrap();
   startBackendBootstrap();
 }
 
@@ -28497,7 +30121,15 @@ async function handleAuthSubmit(event) {
       const response = await backendClient.login({ identifier, password });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      schedulePostAuthHydration({ deferHydration: true });
+      syncPointsFromCurrentUser();
+      writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+        scheduleSync: false,
+      });
+      writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+        scheduleSync: false,
+      });
+      renderPoints();
+      scheduleSharedAccountHydration({ silent: true, deferHydration: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -28513,7 +30145,15 @@ async function handleAuthSubmit(event) {
       });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      schedulePostAuthHydration({ deferHydration: true });
+      syncPointsFromCurrentUser();
+      writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+        scheduleSync: false,
+      });
+      writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+        scheduleSync: false,
+      });
+      renderPoints();
+      scheduleSharedAccountHydration({ silent: true, deferHydration: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -28605,6 +30245,7 @@ if (logoutBtn) {
     closeMenuUserHub();
     backendClient.clearToken();
     teardownCommunityRealtime();
+    stopSharedAccountStatePolling();
     profileImageMarkedForDeletion = false;
     pendingProfileImage = "";
     if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
@@ -28612,6 +30253,7 @@ if (logoutBtn) {
     currentUser = null;
     resetPointsState();
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     closeAuthModal();
     showScreen("home-screen");
@@ -28638,6 +30280,7 @@ if (logoutConfirmBtn) {
     currentUser = null;
     resetPointsState();
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     closeAuthModal();
     showScreen("home-screen");
@@ -28771,7 +30414,9 @@ async function saveProfile() {
   const typedImageUrl = String(profilePhotoUrlInput?.value || "").trim();
   const resolvedImage = profileImageMarkedForDeletion
     ? ""
-    : typedImageUrl || pendingProfileImage || currentImage;
+    : isCommunityAppAdminUser(currentUser)
+      ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+      : typedImageUrl || pendingProfileImage || currentImage;
   const payload = {
     title: String(profileTitleInput?.value || "").trim() || String(currentUser.title || "").trim() || "Mr",
     firstName:
@@ -28875,9 +30520,11 @@ async function saveProfile() {
     profileImageMarkedForDeletion = false;
     pendingProfileImage = String(currentUser.profileImage || "").trim();
     if (profilePhotoUrlInput) {
-      profilePhotoUrlInput.value = /^https?:\/\//i.test(pendingProfileImage)
-        ? pendingProfileImage
-        : "";
+      profilePhotoUrlInput.value = isCommunityAppAdminUser(currentUser)
+        ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+        : /^https?:\/\//i.test(pendingProfileImage)
+          ? pendingProfileImage
+          : "";
     }
     refreshProfilePhotoDeleteVisibility();
     renderAuthState();
@@ -29325,16 +30972,18 @@ if (sessionResumeNewBtn) {
 
 if (backBtnQuiz) {
   backBtnQuiz.onclick = function () {
-    if (mode === "study") {
-      if (isLawStudyMode()) {
-        persistLawDrillSession();
-        if (getLawDrillView() === "ladder") {
-          goToMenu();
-        } else {
-          returnToLawLadder();
-        }
-        return;
+    if (isLawStudyMode()) {
+      persistLawDrillSession();
+      const lawView = getLawDrillView();
+      if (lawView === "review" || lawView === "result" || lawView === "level") {
+        returnToLawLadder();
+      } else {
+        goToMenu();
       }
+      return;
+    }
+
+    if (mode === "study") {
       saveStudyProgress();
       returnToParentScreen("study-setup");
       return;
@@ -29611,6 +31260,19 @@ if (dashboardBtns.length) {
   });
 }
 
+const dashboardTrendTabs = document.querySelectorAll("[data-dashboard-trend-scope]");
+if (dashboardTrendTabs.length) {
+  dashboardTrendTabs.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextScope = String(button.dataset.dashboardTrendScope || "session").trim().toLowerCase();
+      dashboardTrendScope = nextScope || "session";
+      localStorage.setItem(DASHBOARD_TREND_SCOPE_STORAGE_KEY, dashboardTrendScope);
+      renderDashboardTrend(dashboardTrendScope);
+      void loadDashboardTrendData({ force: false });
+    });
+  });
+}
+
 if (menuHomeBtn) {
   menuHomeBtn.addEventListener("click", () => {
     closeMenuUserHub();
@@ -29700,6 +31362,27 @@ function getLocalDashboardSnapshot() {
   const overallAccuracy =
     totalAttempts === 0 ? 0 : Math.round((totalCorrect / totalAttempts) * 100);
 
+  const sessionEntries = getDashboardSessionEntries();
+  const sessionTotals = sessionEntries.reduce(
+    (acc, entry) => {
+      const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+      const total = Math.max(0, Math.round(Number(entry?.total) || 0));
+      if (total <= 0) return acc;
+      acc.attempts += total;
+      acc.correct += Math.min(score, total);
+      if (Math.round((score / total) * 100) < 60) {
+        acc.weakCount += 1;
+      }
+      return acc;
+    },
+    { attempts: 0, correct: 0, weakCount: 0 },
+  );
+
+  const sessionFallbackAccuracy =
+    sessionTotals.attempts === 0
+      ? 0
+      : Math.round((sessionTotals.correct / sessionTotals.attempts) * 100);
+
   const categories = Object.keys(categoryPerformance || {})
     .map((cat) => ({
       category: cat,
@@ -29717,10 +31400,10 @@ function getLocalDashboardSnapshot() {
     .sort((a, b) => String(a.rotation).localeCompare(String(b.rotation)));
 
   return {
-    totalAttempts,
-    overallAccuracy,
-    weakCount,
-    sessionCount: Array.isArray(sessionHistory) ? sessionHistory.length : 0,
+    totalAttempts: totalAttempts > 0 ? totalAttempts : sessionTotals.attempts,
+    overallAccuracy: totalAttempts > 0 ? overallAccuracy : sessionFallbackAccuracy,
+    weakCount: weakCount > 0 ? weakCount : sessionTotals.weakCount,
+    sessionCount: sessionEntries.length,
     categories,
     rotations,
   };
@@ -29736,87 +31419,129 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
     rotations: [],
   };
   const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
-
   const remoteAttempts = Math.max(
     0,
     Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
   );
   const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
   const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
+  const localAttempts = Math.max(0, Number(local.totalAttempts) || 0);
+  const localAccuracy = Math.max(0, Number(local.overallAccuracy) || 0);
 
-  const mergedTotalAttempts = Math.max(
-    Math.max(0, Number(local.totalAttempts) || 0),
-    remoteAttempts,
-  );
+  const mergedTotalAttempts = Math.max(localAttempts, remoteAttempts);
   const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
   const mergedOverallAccuracy =
-    remoteAttempts > (Number(local.totalAttempts) || 0)
+    remoteAccuracy > localAccuracy
       ? remoteAccuracy
-      : Math.max(0, Number(local.overallAccuracy) || 0);
+      : localAccuracy;
+
+  const chooseBetterRow = (localRow, remoteRow, keyField) => {
+    const localAttemptsValue = Math.max(0, Number(localRow?.attempts) || 0);
+    const localAccuracyValue = Math.max(0, Number(localRow?.accuracy) || 0);
+    const remoteAttemptsValue = Math.max(0, Number(remoteRow?.attempts) || 0);
+    const remoteAccuracyValue = Math.max(0, Number(remoteRow?.accuracy) || 0);
+    const keyName = keyField === "rotation" ? "rotation" : "category";
+
+    if (!localRow && remoteRow) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+    if (localRow && !remoteRow) {
+      return {
+        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+        attempts: localAttemptsValue,
+        accuracy: localAccuracyValue,
+      };
+    }
+
+    if (remoteAccuracyValue > localAccuracyValue) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+    if (localAccuracyValue > remoteAccuracyValue) {
+      return {
+        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+        attempts: localAttemptsValue,
+        accuracy: localAccuracyValue,
+      };
+    }
+
+    if (remoteAttemptsValue > localAttemptsValue) {
+      return {
+        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
+        attempts: remoteAttemptsValue,
+        accuracy: remoteAccuracyValue,
+      };
+    }
+
+    return {
+      [keyName]: String(localRow?.[keyName] || "").trim() || "General",
+      attempts: localAttemptsValue,
+      accuracy: localAccuracyValue,
+    };
+  };
 
   const mergedCategoryMap = new Map();
+  const localCategoryMap = new Map();
   (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
     const name = String(row?.category || "").trim() || "General";
-    mergedCategoryMap.set(name, {
+    localCategoryMap.set(name, {
       category: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
+  const remoteCategoryMap = new Map();
   (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
     const name = String(row?.category || "").trim() || "General";
-    const remoteRow = {
+    remoteCategoryMap.set(name, {
+      category: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedCategoryMap.get(name);
-    if (!existing) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
-    mergedCategoryMap.set(name, {
-      category: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
     });
   });
+
+  for (const key of new Set([...localCategoryMap.keys(), ...remoteCategoryMap.keys()])) {
+    const chosen = chooseBetterRow(localCategoryMap.get(key), remoteCategoryMap.get(key), "category");
+    if (chosen) {
+      mergedCategoryMap.set(String(chosen.category || key).trim() || "General", chosen);
+    }
+  }
 
   const mergedRotationMap = new Map();
+  const localRotationMap = new Map();
   (Array.isArray(local.rotations) ? local.rotations : []).forEach((row) => {
     const name = String(row?.rotation || "").trim() || "General";
-    mergedRotationMap.set(name, {
+    localRotationMap.set(name, {
       rotation: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
     });
   });
 
+  const remoteRotationMap = new Map();
   (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
     const name = String(row?.rotation || "").trim() || "General";
-    const remoteRow = {
+    remoteRotationMap.set(name, {
+      rotation: name,
       attempts: Math.max(0, Number(row?.attempts) || 0),
       accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedRotationMap.get(name);
-    if (!existing) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
-    mergedRotationMap.set(name, {
-      rotation: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
     });
   });
+
+  for (const key of new Set([...localRotationMap.keys(), ...remoteRotationMap.keys()])) {
+    const chosen = chooseBetterRow(localRotationMap.get(key), remoteRotationMap.get(key), "rotation");
+    if (chosen) {
+      mergedRotationMap.set(String(chosen.rotation || key).trim() || "General", chosen);
+    }
+  }
 
   return {
     totalAttempts: mergedTotalAttempts,
@@ -29832,82 +31557,332 @@ function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
   };
 }
 
-function getDashboardTrendEntries(limit = 8) {
-  const source =
-    dashboardTrendSessionsLoadedFromSync && Array.isArray(dashboardTrendSessionsCache) && dashboardTrendSessionsCache.length
-      ? dashboardTrendSessionsCache
-      : Array.isArray(sessionHistory)
-        ? sessionHistory
-        : [];
-
-  return source
-    .slice(0, limit)
-    .reverse()
-    .map((entry) => ({
-      label: String(entry?.mode || "Session"),
-      percent: Math.max(0, Math.min(100, Number(entry?.percent) || 0)),
-    }));
+function normalizeDashboardTrendEntry(entry = {}) {
+  const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+  const total = Math.max(0, Math.round(Number(entry?.total) || 0));
+  const percent = Math.max(
+    0,
+    Math.min(
+      100,
+      Number.isFinite(Number(entry?.percent))
+        ? Math.round(Number(entry?.percent) || 0)
+      : total > 0
+          ? Math.round((score / total) * 100)
+          : 0,
+    ),
+  );
+  const durationKey = String(entry?.duration || "").trim();
+  const mode = normalizeDashboardSessionMode(entry?.mode || "Session");
+  const createdAtRaw = String(entry?.createdAt || entry?.timestamp || entry?.date || "").trim();
+  const createdAt = createdAtRaw && !Number.isNaN(Date.parse(createdAtRaw))
+    ? new Date(createdAtRaw)
+    : entry?.timestamp
+      ? new Date(Number(entry.timestamp))
+      : new Date();
+  const sessionKey = String(entry?.sessionId || entry?.clientSessionId || entry?.id || "").trim();
+  const signature = [mode, score, total, percent, durationKey].join("|");
+  const timeBucket = Math.floor(createdAt.getTime() / (5 * 60 * 1000));
+  return {
+    id: sessionKey || `${signature}|${timeBucket}`,
+    sessionKey,
+    signature,
+    timeBucket,
+    mode,
+    score,
+    total,
+    percent,
+    createdAt,
+    durationKey,
+    timestamp: createdAt.getTime(),
+  };
 }
 
-function renderDashboardTrend() {
+function normalizeDashboardSessionMode(mode = "Session") {
+  const raw = String(mode || "").trim();
+  const lower = raw.toLowerCase();
+  if (!lower) return "Session";
+  if (lower.includes("law drill") || lower.includes("pharmacy law quiz")) return "Law Drill";
+  if (lower.includes("sudden death")) return "Sudden Death";
+  if (lower.includes("rapid fire") || lower.includes("rapid drill")) return "Rapid Fire";
+  if (lower.includes("clinical judgement") || lower.includes("clinical drill")) return "Clinical Judgement";
+  if (lower.startsWith("daily")) return "Daily";
+  if (lower.startsWith("study") || lower.includes("topic quiz")) return "Study";
+  if (lower.startsWith("exam")) return "Exam";
+  if (lower.startsWith("smart")) return "Smart";
+  return raw;
+}
+
+function mergeDashboardTrendEntries(entries = []) {
+  const merged = new Map();
+  const seenFingerprints = new Map();
+  const recentFingerprintWindowMs = 10 * 1000;
+  [...(Array.isArray(entries) ? entries : [])].forEach((entry) => {
+    const normalized = normalizeDashboardTrendEntry(entry);
+    if (!normalized.id) return;
+    const sessionKey = String(normalized.sessionKey || "").trim();
+    const fingerprint = [
+      normalized.signature,
+      Math.floor(normalized.timestamp / recentFingerprintWindowMs),
+    ].join("|");
+    const existingByFingerprint = seenFingerprints.get(fingerprint);
+    if (existingByFingerprint) {
+      if (normalized.timestamp > existingByFingerprint.timestamp) {
+        seenFingerprints.set(fingerprint, normalized);
+        if (existingByFingerprint.sessionKey) {
+          merged.set(`sid:${existingByFingerprint.sessionKey}`, normalized);
+        } else {
+          merged.set(`fp:${fingerprint}`, normalized);
+        }
+      }
+      return;
+    }
+    seenFingerprints.set(fingerprint, normalized);
+    const key = sessionKey ? `sid:${sessionKey}` : `fp:${fingerprint}`;
+    merged.set(key, normalized);
+    return;
+  });
+  return [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
+}
+
+function getLocalDashboardSessionEntries() {
+  return mergeDashboardTrendEntries([
+    ...(Array.isArray(sessionHistory) ? sessionHistory : []),
+    ...(Array.isArray(recentSessionResults) ? recentSessionResults : []),
+    latestSavedSession,
+  ]);
+}
+
+function getDashboardSessionEntries() {
+  if (dashboardTrendSessionsLoadedFromSync) {
+    return Array.isArray(dashboardTrendSessionsCache) ? dashboardTrendSessionsCache : [];
+  }
+  return getLocalDashboardSessionEntries();
+}
+
+function getDashboardTrendScopeLabel(scope = "session") {
+  const safeScope = String(scope || "session").trim().toLowerCase();
+  if (safeScope === "daily") return "Past 12 days";
+  if (safeScope === "weekly") return "Past 12 weeks";
+  if (safeScope === "monthly") return "Past 12 months";
+  if (safeScope === "yearly") return "Past 12 years";
+  return "Recent 12 sessions";
+}
+
+function getDashboardTrendCopy(scope = "session") {
+  const safeScope = String(scope || "session").trim().toLowerCase();
+  if (safeScope === "daily") return "Daily trend";
+  if (safeScope === "weekly") return "Weekly trend";
+  if (safeScope === "monthly") return "Monthly trend";
+  if (safeScope === "yearly") return "Yearly trend";
+  return "Session trend";
+}
+
+function startOfLocalDay(date = new Date()) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function endOfLocalDay(date = new Date()) {
+  const next = new Date(date);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function startOfLocalWeek(date = new Date()) {
+  const next = startOfLocalDay(date);
+  const dayIndex = (next.getDay() + 6) % 7;
+  next.setDate(next.getDate() - dayIndex);
+  return next;
+}
+
+function endOfLocalWeek(date = new Date()) {
+  const next = startOfLocalWeek(date);
+  next.setDate(next.getDate() + 6);
+  return endOfLocalDay(next);
+}
+
+function formatTrendLabel(date = new Date(), scope = "session", index = 0) {
+  const safeScope = String(scope || "session").trim().toLowerCase();
+  if (safeScope === "session") {
+    const fullTime = date.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    return fullTime
+      .replace(/\s?AM$/i, "a")
+      .replace(/\s?PM$/i, "p")
+      .replace(/\s+/g, "");
+  }
+  if (safeScope === "daily") {
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  if (safeScope === "weekly") {
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+  if (safeScope === "monthly") {
+    return date.toLocaleDateString(undefined, { month: "short" });
+  }
+  if (safeScope === "yearly") {
+    return String(date.getFullYear());
+  }
+  return String(index + 1);
+}
+
+function buildDashboardTrendSeries(entries = [], scope = "session") {
+  const safeScope = String(scope || "session").trim().toLowerCase();
+  const normalized = [...(Array.isArray(entries) ? entries : [])]
+    .map(normalizeDashboardTrendEntry)
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  if (safeScope === "session") {
+    const recent = normalized.slice(-DASHBOARD_TREND_MAX_POINTS);
+    const padded = [];
+    const offset = Math.max(0, DASHBOARD_TREND_MAX_POINTS - recent.length);
+    for (let index = 0; index < DASHBOARD_TREND_MAX_POINTS; index += 1) {
+      const session = recent[index - offset];
+      const labelDate = session ? session.createdAt : new Date();
+      padded.push({
+        label: session ? formatTrendLabel(labelDate, safeScope, index) : "",
+        fullLabel: session
+          ? labelDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+          : "",
+        percent: session ? session.percent : 0,
+        score: session ? session.score : 0,
+        total: session ? session.total : 0,
+        count: session ? 1 : 0,
+      });
+    }
+    return padded;
+  }
+
+  const now = new Date();
+  const buckets = [];
+  for (let index = DASHBOARD_TREND_MAX_POINTS - 1; index >= 0; index -= 1) {
+    let start;
+    let end;
+    let labelDate;
+
+    if (safeScope === "daily") {
+      labelDate = new Date(now);
+      labelDate.setDate(labelDate.getDate() - index);
+      start = startOfLocalDay(labelDate);
+      end = endOfLocalDay(labelDate);
+    } else if (safeScope === "weekly") {
+      labelDate = new Date(now);
+      labelDate.setDate(labelDate.getDate() - index * 7);
+      start = startOfLocalWeek(labelDate);
+      end = endOfLocalWeek(labelDate);
+    } else if (safeScope === "monthly") {
+      labelDate = new Date(now.getFullYear(), now.getMonth() - index, 1);
+      start = new Date(labelDate.getFullYear(), labelDate.getMonth(), 1, 0, 0, 0, 0);
+      end = new Date(labelDate.getFullYear(), labelDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (safeScope === "yearly") {
+      labelDate = new Date(now.getFullYear() - index, 0, 1);
+      start = new Date(labelDate.getFullYear(), 0, 1, 0, 0, 0, 0);
+      end = new Date(labelDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+    } else {
+      labelDate = new Date(now);
+      labelDate.setDate(labelDate.getDate() - index);
+      start = startOfLocalDay(labelDate);
+      end = endOfLocalDay(labelDate);
+    }
+
+    const windowEntries = normalized.filter((entry) => entry.timestamp >= start.getTime() && entry.timestamp <= end.getTime());
+    const score = windowEntries.reduce((sum, entry) => sum + entry.score, 0);
+    const total = windowEntries.reduce((sum, entry) => sum + entry.total, 0);
+    const percent =
+      total > 0
+        ? Math.round((score / total) * 100)
+        : windowEntries.length > 0
+          ? Math.round(windowEntries.reduce((sum, entry) => sum + entry.percent, 0) / windowEntries.length)
+          : 0;
+
+    buckets.push({
+      label: formatTrendLabel(labelDate, safeScope, DASHBOARD_TREND_MAX_POINTS - 1 - index),
+      percent: Math.max(0, Math.min(100, percent)),
+      score,
+      total,
+      count: windowEntries.length,
+    });
+  }
+
+  return buckets;
+}
+
+function getDashboardTrendSourceEntries() {
+  return getDashboardSessionEntries();
+}
+
+function renderDashboardTrend(scope = dashboardTrendScope) {
   const chartEl = document.getElementById("dash-trend-chart");
   const rateEl = document.getElementById("dash-trend-rate");
   const copyEl = document.getElementById("dash-trend-copy");
+  const tabsEl = document.getElementById("dash-trend-tabs");
   if (!chartEl || !rateEl || !copyEl) return;
 
-  const entries = getDashboardTrendEntries(8);
-  if (!entries.length) {
-    rateEl.textContent = "0%";
-    copyEl.textContent = "No recent sessions";
-    chartEl.innerHTML = '<div class="dashboard-empty-state">Complete a session to populate the trend.</div>';
-    return;
+  const safeScope = String(scope || "session").trim().toLowerCase() || "session";
+  dashboardTrendScope = safeScope;
+  localStorage.setItem(DASHBOARD_TREND_SCOPE_STORAGE_KEY, safeScope);
+
+  const entries = buildDashboardTrendSeries(getDashboardTrendSourceEntries(), safeScope);
+  const latest = entries[entries.length - 1] || { percent: 0 };
+  rateEl.textContent = `${Math.max(0, Math.round(Number(latest.percent) || 0))}%`;
+  copyEl.textContent = getDashboardTrendCopy(safeScope);
+
+  if (tabsEl) {
+    tabsEl.querySelectorAll("[data-dashboard-trend-scope]").forEach((button) => {
+      const isActive = String(button.dataset.dashboardTrendScope || "").trim().toLowerCase() === safeScope;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
   }
 
-  const latest = entries[entries.length - 1]?.percent || 0;
-  rateEl.textContent = `${latest}%`;
-  copyEl.textContent = `Last ${entries.length} sessions`;
-
-  if (entries.length === 1) {
-    chartEl.innerHTML = `
-      <div class="dashboard-single-point">
-        <div class="dashboard-single-point-value">${latest}%</div>
-      </div>
-    `;
-    return;
-  }
-
-  const width = 520;
-  const height = 220;
+  const maxVal = 100;
+  const width = 540;
+  const height = 230;
   const left = 18;
-  const right = 16;
+  const right = 14;
   const top = 16;
-  const bottom = 28;
+  const bottom = 30;
   const innerWidth = width - left - right;
   const innerHeight = height - top - bottom;
-  const maxVal = 100;
   const stepX = innerWidth / Math.max(1, entries.length - 1);
   const points = entries.map((entry, index) => {
     const x = left + index * stepX;
-    const y = top + innerHeight - (entry.percent / maxVal) * innerHeight;
-    return { x, y, label: entry.label, percent: entry.percent };
+    const y = top + innerHeight - (Math.max(0, Math.min(100, Number(entry.percent) || 0)) / maxVal) * innerHeight;
+    return {
+      x,
+      y,
+      label: String(entry.label || index + 1),
+      fullLabel: String(entry.fullLabel || entry.label || index + 1),
+      percent: Math.max(0, Math.min(100, Number(entry.percent) || 0)),
+    };
   });
   const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
   const area = `${left},${top + innerHeight} ${polyline} ${left + innerWidth},${top + innerHeight}`;
   const circles = points
     .map(
       (point) =>
-        `<circle cx="${point.x}" cy="${point.y}" r="4.6"></circle>`,
+        `<circle cx="${point.x}" cy="${point.y}" r="4.8"><title>${escapeHtml(
+          point.fullLabel,
+        )}</title></circle>`,
     )
     .join("");
   const labels = points
     .map((point, index) => {
-      const shortLabel = index + 1;
-      return `<text x="${point.x}" y="${height - 8}" text-anchor="middle">${shortLabel}</text>`;
+      const labelY = safeScope === "session"
+        ? height - (index % 2 === 0 ? 10 : 2)
+        : height - 8;
+      return `<text x="${point.x}" y="${labelY}" text-anchor="middle" class="${
+        safeScope === "session" ? "dashboard-trend-session-label" : ""
+      }">${escapeHtml(point.label)}<title>${escapeHtml(point.fullLabel)}</title></text>`;
     })
     .join("");
+  const ariaLabel = `${getDashboardTrendScopeLabel(safeScope)}. Latest value ${latest.percent}%`;
 
   chartEl.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Recent score trend">
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(ariaLabel)}">
       <defs>
         <linearGradient id="dashboardTrendFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="rgba(79, 133, 196, 0.34)"></stop>
@@ -29923,52 +31898,18 @@ function renderDashboardTrend() {
   `;
 }
 
-async function loadSyncedPerformanceState({ force = false } = {}) {
-  if (!currentUser) return syncedPerformanceStateCache;
-
-  if (!force && syncedPerformanceStateLoadedFromSync && syncedPerformanceStateCache) {
-    return syncedPerformanceStateCache;
-  }
-
-  if (!force) {
-    const cachedState = await getOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY);
-    if (cachedState?.value) {
-      syncedPerformanceStateCache = cachedState.value;
-      syncedPerformanceStateLoadedFromSync = true;
-      void (async () => {
-        try {
-          const response = await backendClient.fetchSyncedPerformanceState(5000);
-          syncedPerformanceStateCache = response || cachedState.value;
-          syncedPerformanceStateLoadedFromSync = true;
-          void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, syncedPerformanceStateCache || {});
-        } catch {
-          // Keep the cached state when sync is unavailable.
-        }
-      })();
-      return cachedState.value;
-    }
-  }
-
-  try {
-    const response = await backendClient.fetchSyncedPerformanceState(5000);
-    syncedPerformanceStateCache = response || null;
-    syncedPerformanceStateLoadedFromSync = true;
-    void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, syncedPerformanceStateCache || {});
-  } catch {
-    // Keep local state when sync is unavailable.
-  }
-
-  return syncedPerformanceStateCache;
-}
-
 async function loadDashboardTrendData({ force = false } = {}) {
   const cacheKey = DASHBOARD_TREND_HISTORY_CACHE_KEY;
-  const localEntries = Array.isArray(sessionHistory) ? sessionHistory : [];
+  if (!force && dashboardTrendSessionsLoadedFromSync) {
+    renderDashboardTrend(dashboardTrendScope);
+    return dashboardTrendSessionsCache;
+  }
 
+  const localEntries = getLocalDashboardSessionEntries();
   if (!currentUser) {
-    dashboardTrendSessionsCache = localEntries;
     dashboardTrendSessionsLoadedFromSync = false;
-    renderDashboardTrend();
+    dashboardTrendSessionsCache = localEntries;
+    renderDashboardTrend(dashboardTrendScope);
     return dashboardTrendSessionsCache;
   }
 
@@ -29980,25 +31921,25 @@ async function loadDashboardTrendData({ force = false } = {}) {
         : Array.isArray(cachedTrend.value)
           ? cachedTrend.value
           : [];
-      dashboardTrendSessionsCache = cachedSessions.map((entry) => ({
-        mode: entry.mode || entry.label || "Session",
-        percent: Math.max(0, Math.min(100, Number(entry.percent) || 0)),
-        timestamp: Number(entry.timestamp) || new Date(entry.createdAt || entry.date || Date.now()).getTime(),
-      }));
+      dashboardTrendSessionsCache = mergeDashboardTrendEntries(cachedSessions);
       dashboardTrendSessionsLoadedFromSync = true;
-      renderDashboardTrend();
+      renderPoints();
+      renderDashboardTrend(dashboardTrendScope);
+      if (dashboardDiv?.classList.contains("screen-active")) {
+        renderDashboardRecentResults();
+      }
       void (async () => {
         try {
-          const response = await backendClient.fetchSyncedHistory("", 8);
+          const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
           const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-          dashboardTrendSessionsCache = remoteSessions.map((entry) => ({
-            mode: entry.mode || entry.label || "Session",
-            percent: Math.max(0, Math.min(100, Number(entry.percent) || 0)),
-            timestamp: Number(entry.timestamp) || new Date(entry.createdAt || entry.date || Date.now()).getTime(),
-          }));
+          dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
           dashboardTrendSessionsLoadedFromSync = true;
+          renderPoints();
+          renderDashboardTrend(dashboardTrendScope);
+          if (dashboardDiv?.classList.contains("screen-active")) {
+            renderDashboardRecentResults();
+          }
           void setOfflineEntry(cacheKey, { sessions: remoteSessions });
-          renderDashboardTrend();
         } catch {
           // Keep cached dashboard trend when sync is unavailable.
         }
@@ -30008,20 +31949,19 @@ async function loadDashboardTrendData({ force = false } = {}) {
   }
 
   try {
-    const response = await backendClient.fetchSyncedHistory("", 8);
+    const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
     const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-    dashboardTrendSessionsCache = remoteSessions.map((entry) => ({
-      mode: entry.mode || entry.label || "Session",
-      percent: Math.max(0, Math.min(100, Number(entry.percent) || 0)),
-      timestamp: Number(entry.timestamp) || new Date(entry.createdAt || entry.date || Date.now()).getTime(),
-    }));
+    dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
     dashboardTrendSessionsLoadedFromSync = true;
     void setOfflineEntry(cacheKey, { sessions: remoteSessions });
-    renderDashboardTrend();
+    renderPoints();
+    renderDashboardTrend(dashboardTrendScope);
+    if (dashboardDiv?.classList.contains("screen-active")) {
+      renderDashboardRecentResults();
+    }
   } catch {
     dashboardTrendSessionsLoadedFromSync = false;
     dashboardTrendSessionsCache = localEntries;
-    renderDashboardTrend();
     // Keep local data if syncing is unavailable.
   }
 
@@ -30047,6 +31987,7 @@ function renderDashboardTopSubjects(categories = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30054,10 +31995,28 @@ function renderDashboardTopSubjects(categories = []) {
         <div class="dashboard-topsubject-name">${row.category || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });
+}
+
+function refreshQuestionDependentUi() {
+  if (!questionBankReady) {
+    return;
+  }
+
+  populateStudyCategories();
+  populateStudyRotations();
+  populateExamCategories();
+  populateExamRotations();
+  populateTopicLibraryCategories();
+  syncAllSetupPickerButtons();
+
+  const homeTotalQuestions = document.getElementById("home-total-questions");
+  if (homeTotalQuestions) {
+    homeTotalQuestions.innerText = String(questionBank.length || 0);
+  }
 }
 
 function renderDashboardRotations(rotations = []) {
@@ -30079,6 +32038,7 @@ function renderDashboardRotations(rotations = []) {
   }
 
   rows.forEach((row) => {
+    const accuracy = Number(row?.accuracy) || 0;
     const item = document.createElement("div");
     item.className = "dashboard-topsubject-row";
     item.innerHTML = `
@@ -30086,7 +32046,7 @@ function renderDashboardRotations(rotations = []) {
         <div class="dashboard-topsubject-name">${row.rotation || "General"}</div>
         <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
       </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
+      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
     `;
     container.appendChild(item);
   });
@@ -30097,7 +32057,10 @@ function renderDashboardRecentResults() {
   if (!container) return;
   container.innerHTML = "";
 
-  const entries = (Array.isArray(sessionHistory) ? sessionHistory : []).slice(0, 6);
+  const entries = getDashboardSessionEntries()
+    .slice()
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, DASHBOARD_RECENT_RESULTS_MAX);
   if (!entries.length) {
     container.innerHTML = '<div class="dashboard-empty-state">No recent results yet.</div>';
     return;
@@ -30107,41 +32070,68 @@ function renderDashboardRecentResults() {
     const item = document.createElement("div");
     item.className = "dashboard-recent-row";
     const percent = Math.max(0, Number(entry?.percent) || 0);
+    const createdAt = entry?.createdAt instanceof Date ? entry.createdAt : new Date(Number(entry?.timestamp) || Date.now());
+    const dateLabel = Number.isNaN(createdAt.getTime())
+      ? ""
+      : `${createdAt.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })} • ${createdAt.toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        })}`;
     item.innerHTML = `
-      <div class="dashboard-recent-copy">
+      <div class="dashboard-recent-grid">
         <div class="dashboard-recent-mode">${String(entry?.mode || "Session")}</div>
+        <div class="dashboard-recent-date">${dateLabel}</div>
         <div class="dashboard-recent-meta">${Number(entry?.score) || 0}/${Number(entry?.total) || 0}</div>
+        <div class="dashboard-recent-percent">${percent}%</div>
       </div>
-      <div class="dashboard-recent-percent">${percent}%</div>
     `;
     container.appendChild(item);
   });
 }
 
-function showDashboard() {
+async function showDashboard() {
   showScreen("dashboard");
+  void ensureQuestionBankLoaded();
 
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
   const localSnapshot = getLocalDashboardSnapshot();
-  void (async () => {
-    const cachedSnapshot = await getOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY);
-    const initialSnapshot = cachedSnapshot?.value
-      ? mergeDashboardSnapshots(localSnapshot, cachedSnapshot.value)
-      : localSnapshot;
-    renderDashboardValues(initialSnapshot);
-    void loadSyncedPerformanceState({ force: false });
-    void loadDashboardTrendData({ force: false });
-  })();
+  const cachedSnapshot = await getOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY);
+  const initialSnapshot = cachedSnapshot?.value
+    ? mergeDashboardSnapshots(localSnapshot, cachedSnapshot.value)
+    : localSnapshot;
+  renderDashboardValues(initialSnapshot);
 
-  backendClient
-    .fetchSyncedDashboard()
-    .then((remote) => {
-      const mergedSnapshot = mergeDashboardSnapshots(localSnapshot, remote);
-      void setOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY, remote || {});
-      renderDashboardValues(mergedSnapshot);
-    })
-    .catch(() => {
-      // Keep local dashboard when backend is not reachable.
-    });
+  void Promise.allSettled([
+    loadSyncedPerformanceState({ force: false }),
+    loadDashboardTrendData({ force: false }),
+    backendClient.fetchSyncedDashboard(),
+  ]).then(([performanceResult, trendResult, remoteSnapshotResult]) => {
+    void performanceResult;
+    void trendResult;
+    if (!dashboardDiv?.classList.contains("screen-active")) {
+      return;
+    }
+    const remoteSnapshot =
+      remoteSnapshotResult.status === "fulfilled" ? remoteSnapshotResult.value : null;
+    const mergedSnapshot = {
+      totalAttempts: Number(remoteSnapshot?.totalAttempts ?? localSnapshot.totalAttempts) || 0,
+      overallAccuracy: Number(remoteSnapshot?.overallAccuracy ?? localSnapshot.overallAccuracy) || 0,
+      weakCount: Number(remoteSnapshot?.weakQuestions ?? localSnapshot.weakCount) || 0,
+      sessionCount: Number(remoteSnapshot?.totalSessions ?? localSnapshot.sessionCount) || 0,
+      categories:
+        Array.isArray(remoteSnapshot?.categories) && remoteSnapshot.categories.length > 0
+          ? remoteSnapshot.categories
+          : localSnapshot.categories,
+      rotations: localSnapshot.rotations,
+    };
+    void setOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY, remoteSnapshot || {});
+    renderDashboardValues(mergedSnapshot);
+  });
 
   const dashboardCloseBtn = document.getElementById("dashboard-close-btn");
   if (dashboardCloseBtn) {
@@ -30154,9 +32144,29 @@ function hideDashboard() {
 }
 
 function saveSession(mode, score, total, duration = null) {
+  const now = Date.now();
+  const normalizedMode = normalizeDashboardSessionMode(mode);
   const percent = Math.round((score / total) * 100);
+  const fingerprint = [
+    normalizedMode,
+    Math.max(0, Math.round(Number(score) || 0)),
+    Math.max(0, Math.round(Number(total) || 0)),
+    Math.max(0, Math.round(Number.isFinite(Number(percent)) ? Number(percent) : 0)),
+    String(duration || "").trim(),
+  ].join("|");
+  if (fingerprint === lastSavedSessionFingerprint && now - lastSavedSessionAt < 5000) {
+    return latestSavedSession;
+  }
+  lastSavedSessionFingerprint = fingerprint;
+  lastSavedSessionAt = now;
+
+  const sessionId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
   const entry = {
+    sessionId,
     mode,
     score,
     total,
@@ -30168,6 +32178,11 @@ function saveSession(mode, score, total, duration = null) {
 
   // Add to top
   sessionHistory.unshift(entry);
+  latestSavedSession = entry;
+  recentSessionResults.unshift(entry);
+  if (recentSessionResults.length > DASHBOARD_RECENT_RESULTS_MAX) {
+    recentSessionResults.length = DASHBOARD_RECENT_RESULTS_MAX;
+  }
 
   // Keep a large local window; remote sync keeps the long-term history.
   if (sessionHistory.length > MAX_SESSION_HISTORY_ENTRIES) {
@@ -30175,8 +32190,18 @@ function saveSession(mode, score, total, duration = null) {
   }
 
   localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
+  localStorage.setItem(RECENT_RESULTS_STORAGE_KEY, JSON.stringify(recentSessionResults));
 
+  dashboardTrendSessionsCache = mergeDashboardTrendEntries([
+    ...dashboardTrendSessionsCache,
+    entry,
+  ]);
   backendClient.syncSession(entry);
+
+  if (dashboardDiv?.classList.contains("screen-active")) {
+    renderDashboardRecentResults();
+    renderDashboardTrend(dashboardTrendScope);
+  }
 
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
@@ -30289,7 +32314,6 @@ async function renderModeHistory(modeName, containerId) {
 
   const localEntries = mergeHistoryEntries(sessionHistory);
   renderEntries(localEntries);
-
   const cacheKey = `${DASHBOARD_HISTORY_CACHE_PREFIX}${normalizedModeName || "study"}`;
   const cachedHistory = await getOfflineEntry(cacheKey);
   if (cachedHistory?.value) {
@@ -30316,7 +32340,7 @@ async function renderModeHistory(modeName, containerId) {
   }
 
   backendClient
-    .fetchSyncedHistory(modeName)
+    .fetchSyncedHistory("", 200)
     .then((data) => {
       if (!Array.isArray(data?.sessions) || data.sessions.length === 0) return;
 
@@ -30331,8 +32355,9 @@ async function renderModeHistory(modeName, containerId) {
         duration: s.duration || null,
       }));
 
+      const mergedEntries = mergeHistoryEntries([...localEntries, ...remoteEntries]);
       void setOfflineEntry(cacheKey, { sessions: remoteEntries });
-      renderEntries(mergeHistoryEntries([...localEntries, ...remoteEntries]));
+      renderEntries(mergedEntries);
     })
     .catch(() => {
       // Keep local history when backend is offline.
@@ -30788,7 +32813,7 @@ function updateModeIndicator(studyType = null) {
                            START MODES
                         ================================= */
 
-function startStudy() {
+async function startStudy() {
   studySessionEnded = false;
   clearAiExplainStateSession();
   examVariant = "normal";
@@ -30805,6 +32830,8 @@ function startStudy() {
     "study-category-select",
   ).value;
   const selectedRotation = document.getElementById("study-rotation-select").value;
+
+  await ensureQuestionBankLoaded();
 
   if (studyType === "law") {
     const savedSession = getSavedLawDrillSession();
@@ -30941,7 +32968,7 @@ function startStudy() {
   showQuestion();
 }
 
-function startExam(count, requestedVariant = null) {
+async function startExam(count, requestedVariant = null) {
   const variant = String(requestedVariant || examTypeSelect?.value || "normal")
     .trim()
     .toLowerCase();
@@ -30956,6 +32983,8 @@ function startExam(count, requestedVariant = null) {
   score = 0;
   userAnswers = {};
   inReview = false;
+
+  await ensureQuestionBankLoaded();
 
   const selectedCategory = document.getElementById("category-select").value;
   const selectedRotation = document.getElementById("rotation-select").value;
@@ -31103,11 +33132,28 @@ function showQuestion() {
   answersEl.innerHTML = "";
 
   if (isLawStudyMode()) {
+    repairLawDrillCurrentLevelIndex();
     syncLawDrillLayout();
     if (getLawDrillView() === "ladder") {
       renderLawDrillRail();
       showLawDrillLadderView();
       return;
+    }
+    if (getLawDrillView() === "result") {
+      const resultLevelIndex = Number.isInteger(lawDrillState?.resultLevelIndex)
+        ? lawDrillState.resultLevelIndex
+        : Math.max(0, (lawDrillState?.currentLevelIndex ?? 0) - 1);
+      showLawDrillLevelResult(resultLevelIndex, {
+        final: resultLevelIndex >= (lawDrillState?.levels?.length || 1) - 1,
+      });
+      return;
+    }
+    if ((!Array.isArray(active) || active.length === 0) && getLawDrillView() === "level") {
+      ensureLawDrillActiveLevel();
+      if (!Array.isArray(active) || active.length === 0) {
+        showLawDrillLadderView();
+        return;
+      }
     }
     if (nextBtn) nextBtn.onclick = nextQuestion;
     if (prevBtn) prevBtn.onclick = previousQuestion;
@@ -31818,14 +33864,10 @@ function renderLawDrillInlineMetaLegacy() {
     ? targetLevel.questionIds.length
     : LAW_DRILL_QUESTIONS_PER_LEVEL;
   const reviewLabel = lawDrillState.reviewLevelIndex != null ? "Review" : "Level";
-  const score = Array.isArray(targetLevel?.history)
-    ? targetLevel.history.filter((entry) => entry?.isCorrect).length
-    : 0;
   const sessionPoints = getCurrentSessionPoints();
   const parts = [
     `<span class="header-inline-progress">Law Drill</span>`,
     `<span class="header-inline-progress">${reviewLabel} ${targetLevelIndex + 1}/${totalLevels}</span>`,
-    `<span class="header-inline-progress">Score ${score}/${questionsInLevel}</span>`,
   ];
 
   if (Array.isArray(active) && active.length) {
@@ -31851,17 +33893,15 @@ function renderLawDrillInlineMeta() {
       : state.view === "result" && Number.isInteger(state.resultLevelIndex)
         ? state.resultLevelIndex
         : state.currentLevelIndex || 0;
-  const targetLevel = state.levels?.[targetLevelIndex] || null;
-  const questionsInLevel = Array.isArray(targetLevel?.questionIds) && targetLevel.questionIds.length
-    ? targetLevel.questionIds.length
-    : LAW_DRILL_QUESTIONS_PER_LEVEL;
-  const levelScore = Math.max(0, Number(getLawDrillLevelScore(targetLevelIndex)) || 0);
 
   if (view === "ladder") {
-    return `<span class="law-drill-inline-title">Law Drill</span><span class="law-drill-inline-score">Total Score ${getLawDrillCumulativeScore()}</span>`;
+    return `<span class="law-drill-inline-title">Law Drill</span>${buildDrillCumulativePointsBadgeMarkup(
+      getLawDrillCumulativeScore(),
+      "Total",
+    )}`;
   }
 
-  return `<span class="law-drill-inline-title">Level ${targetLevelIndex + 1}/${totalLevels}</span><span class="law-drill-inline-score">Score ${levelScore}/${questionsInLevel}</span>`;
+  return `<span class="law-drill-inline-title">Level ${targetLevelIndex + 1}/${totalLevels}</span><span class="law-drill-inline-score">Questions ${current + 1}/${active.length}</span>`;
 }
 
 function renderCompactHeaderMeta() {
@@ -31878,7 +33918,7 @@ function renderCompactHeaderMeta() {
     mode === "daily" ||
     mode === "smart" ||
     (mode === "exam" &&
-      ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal"))) ||
+      ["normal", "rapid", "sudden", "clinical", "law"].includes(String(examVariant || "normal"))) ||
     isLawStudyMode();
 
   if (!compactHeaderMode) {
@@ -31887,7 +33927,6 @@ function renderCompactHeaderMeta() {
   }
 
   const parts = [];
-  const sessionPoints = getCurrentSessionPoints();
   const timerVisible =
     timerEl &&
     !timerEl.classList.contains("hidden") &&
@@ -31895,16 +33934,19 @@ function renderCompactHeaderMeta() {
 
   if (mode === "exam" && examVariant === "sudden") {
     parts.push(`<span class="header-inline-progress">${calculateScore()}</span>`);
-    parts.push(`<span class="header-inline-points">👑 ${sessionPoints}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
   } else if (mode === "exam" && examVariant === "rapid") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
-    parts.push(`<span class="header-inline-points">👑 ${sessionPoints}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
   } else if (mode === "exam" && examVariant === "clinical") {
     const correctSoFar = calculateScore();
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
     parts.push(`<span class="header-inline-progress">${buildClinicalLivesMarkup(clinicalLives, 3)}</span>`);
     parts.push(`<span class="header-inline-progress">${correctSoFar}</span>`);
-    parts.push(`<span class="header-inline-points">👑 ${sessionPoints}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
+  } else if (mode === "exam" && examVariant === "law") {
+    parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
   } else if (mode === "daily") {
     parts.push(`<span class="header-inline-progress">Daily Quiz</span>`);
   } else if (mode === "topic") {
@@ -31926,7 +33968,7 @@ function renderCompactHeaderMeta() {
     const reviewLabel = lawDrillState?.reviewLevelIndex != null ? "Review" : "Level";
     parts.push(`<span class="header-inline-progress">${reviewLabel} ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS}</span>`);
     parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
-    parts.push(`<span class="header-inline-points">🪙 ${sessionPoints}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getLawDrillCumulativeScore(), "Total"));
   } else if (mode === "exam" || mode === "smart") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
   }
@@ -31970,6 +34012,10 @@ function clampSuddenReviewToSeenQuestions() {
                         ================================= */
 
 function goToReview() {
+  if (isLawStudyMode()) {
+    markLawDrillCurrentLevelComplete();
+    return;
+  }
   if (isDirectSubmitDrillMode()) {
     void finishExam();
     return;
@@ -32056,6 +34102,9 @@ async function finishDailyQuizSession() {
       Number(dailyQuizState?.stats?.gems ?? currentUser?.dailyQuiz?.gems) || 0;
     const response = await backendClient.submitDailyQuiz({ answers });
     dailyQuizState = normalizeDailyQuizPayload(response);
+    if (response?.user) {
+      currentUser = response.user;
+    }
 
     const result = dailyQuizState.result || {};
     const finalScore = Number.isFinite(Number(result.score))
@@ -32214,6 +34263,8 @@ async function finishExam() {
     backendAttemptId = null;
   }
 
+  await flushPendingPerformanceStateSync();
+
   const attemptedCount = Object.values(answers).filter(
     (value) => String(value || "").trim().length > 0,
   ).length;
@@ -32240,10 +34291,10 @@ async function finishExam() {
         ? "Rapid Fire (" + active.length + ")"
         : finishedVariant === "sudden"
           ? "Sudden Death (" + active.length + ")"
-          : finishedVariant === "clinical"
-            ? "Clinical Judgement (" + active.length + ")"
-            : finishedVariant === "law"
-              ? "Pharmacy Law Quiz (" + active.length + ")"
+        : finishedVariant === "clinical"
+          ? "Clinical Judgement (" + active.length + ")"
+          : finishedVariant === "law"
+              ? "Law Drill (" + active.length + ")"
             : "Exam (" + active.length + ")";
 
   saveSession(
@@ -32285,10 +34336,10 @@ async function finishExam() {
         ? "Rapid Fire Complete"
         : finishedVariant === "sudden"
           ? "Sudden Death Complete"
-          : finishedVariant === "clinical"
-            ? "Clinical Judgement Complete"
-            : finishedVariant === "law"
-              ? "Pharmacy Law Quiz Complete"
+        : finishedVariant === "clinical"
+          ? "Clinical Judgement Complete"
+          : finishedVariant === "law"
+              ? "Law Drill Complete"
             : "Exam Complete";
   if (finishedVariant === "sudden") {
     percentEl.innerText = `Score ${finalScore}`;
@@ -32361,69 +34412,37 @@ async function finishLawDrill() {
   inDetailedReview = false;
   backReviewBtn.classList.add("hidden");
 
-  const levels = Array.isArray(lawDrillState.levels) ? lawDrillState.levels : [];
-  const answers = {};
-  levels.forEach((level) => {
-    (Array.isArray(level.history) ? level.history : []).forEach((entry) => {
-      if (entry?.questionId) {
-        answers[String(entry.questionId)] = String(entry.selectedAnswer || "").trim();
-      }
-    });
-  });
+  const resultTitle = document.getElementById("result-title");
+  const percentEl = document.getElementById("result-percentage");
+  const scoreEl = document.getElementById("result-score");
+  const feedbackEl = document.getElementById("result-feedback");
 
-  const totalAnswered = Object.keys(answers).length;
-  const correctAnswers = getLawDrillTotalCorrect();
+  const currentLevel = getLawDrillCurrentLevel();
+  const levelIndex = currentLevel?.index ?? lawDrillState?.resultLevelIndex ?? 0;
+  const levelHistory = Array.isArray(currentLevel?.history) ? currentLevel.history : [];
+  const totalAnswered = levelHistory.length;
+  const correctAnswers = levelHistory.filter((entry) => entry?.isCorrect).length;
   const percent =
     totalAnswered === 0 ? 0 : Math.round((correctAnswers / totalAnswered) * 100);
 
-  if (backendReady && backendAttemptId) {
-    backendClient.finishAttempt(backendAttemptId, answers);
-    backendAttemptId = null;
-  }
+  saveLawDrillLevelSession(levelIndex, { finishBackendAttempt: true });
 
-  const finishedState = serializeLawDrillState();
-  clearLawDrillSession();
-  lawDrillState = null;
-  mode = "";
-  examVariant = "normal";
+  if (lawDrillState) {
+    lawDrillState.view = "result";
+    persistLawDrillSession();
+  }
+  mode = "exam";
+  examVariant = "law";
   examTimeBudget = 0;
   active = [];
   current = 0;
   userAnswers = {};
   answeredCurrent = false;
 
-  const resultTitle = document.getElementById("result-title");
-  const percentEl = document.getElementById("result-percentage");
-  const scoreEl = document.getElementById("result-score");
-  const feedbackEl = document.getElementById("result-feedback");
-
-  if (resultTitle) resultTitle.innerText = "Law Drill Complete";
-  if (percentEl) percentEl.innerText = `${percent}%`;
-  if (scoreEl) scoreEl.innerText = `${correctAnswers} / ${Math.max(1, totalAnswered)} Correct`;
-  if (feedbackEl) {
-    if (percent >= 80) {
-      feedbackEl.innerText = "Excellent progress. Keep building the ladder.";
-      if (percentEl) percentEl.style.color = "#15803d";
-    } else if (percent >= 60) {
-      feedbackEl.innerText = "Good momentum. Review the harder levels again.";
-      if (percentEl) percentEl.style.color = "#f9a825";
-    } else {
-      feedbackEl.innerText = "Keep going. The stack will sharpen with more reps.";
-      if (percentEl) percentEl.style.color = "#dc2626";
-    }
-  }
-
-  saveSession("Law Drill (" + LAW_DRILL_TOTAL_LEVELS + " Levels)", correctAnswers, totalAnswered);
   awardXp(10 + Math.round(percent / 20));
 
-  clearDailyResultEnhancements();
-  showScreen("study-result-screen");
-  configureStudyLikeResultActions();
-  renderPoints();
-  renderSessionPointsDisplay();
-  if (finishedState) {
-    sessionHistory = Array.isArray(sessionHistory) ? sessionHistory : [];
-  }
+  // Hand off to the dedicated law-drill completion flow so the next level unlocks.
+  markLawDrillCurrentLevelComplete();
 }
 
 function finishStudy() {
@@ -33148,6 +35167,8 @@ window.addEventListener("load", function () {
   restoreAuthSession();
   closeCommunityConversationActions();
   closeCommunityFriendActions();
+  startQuestionBankBootstrap();
+  startBackendBootstrap();
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
   }, 900);
@@ -33435,6 +35456,15 @@ function showScreen(id, options = {}) {
     closeCommunityConfirmModal?.();
     closeCommunityConversationActions?.();
     closeCommunityFriendActions?.();
+    window.setTimeout(() => {
+      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+    }, 0);
+  }
+
+  if (["dashboard", "daily-setup", "study-setup", "exam-setup"].includes(id)) {
+    window.setTimeout(() => {
+      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+    }, 0);
   }
 
   if (nextCommunityScreen && !wasCommunityScreen && isCommunityLockEnabled() && !communityState.communityLockSessionUnlocked) {
@@ -33443,6 +35473,12 @@ function showScreen(id, options = {}) {
       fallbackScreen,
       redirectOnCancel: true,
     });
+  }
+
+  if (nextCommunityScreen) {
+    startCommunityOverviewPolling();
+  } else {
+    stopCommunityOverviewPolling();
   }
 
   if (id === "daily-setup") {
@@ -33495,6 +35531,18 @@ function showScreen(id, options = {}) {
     }
   }
 }
+
+window.addEventListener("focus", () => {
+  if (currentUser && backendClient.isAuthenticated()) {
+    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && currentUser && backendClient.isAuthenticated()) {
+    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+  }
+});
 function restoreStreakUI() {
   const streakBox = document.getElementById("streak-box");
   const streakValue = document.getElementById("streak-value");

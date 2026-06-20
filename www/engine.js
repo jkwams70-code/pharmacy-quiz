@@ -5125,11 +5125,8 @@ async function sendCommunityVoiceNoteFile(file) {
     await backendClient.sendConversationMessageFile(conversationId, file, "", replyTo);
     clearCommunityReplyDraft();
     syncCommunityChatComposerState();
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunitySummary();
-    renderCommunityStatusStrip();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Voice note could not send right now."), true);
   } finally {
@@ -5428,6 +5425,7 @@ let communityRealtimePresenceOnlineIds = new Set();
 let communityRealtimeConversationId = "";
 let communityRealtimeConversationRefreshHandle = null;
 let communityRealtimeOverviewRefreshHandle = null;
+let communityOverviewRefreshPromise = null;
 let communityOverviewPollHandle = null;
 let communityOverviewPollInFlight = false;
 let communityOverviewBackgroundPollingEnabled = false;
@@ -17542,46 +17540,45 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
         renderCommunityView();
       }
     }
-    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache });
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    try {
-      const blockedResponse = await backendClient.fetchBlockedUsers({ preferCache });
-      communityState.blocked = Array.isArray(blockedResponse?.blocked) ? blockedResponse.blocked : [];
-    } catch {
-      communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
-    }
-    communityState.searchResults = null;
-    setCommunityFeedback("");
-    startCommunityOverviewPolling({ background: true });
-    renderCommunityNotificationBadges();
-    maybeShowCommunityEntryNotificationBanner();
-    syncAppNotificationBannerVisibility();
-    renderCommunityView();
-    void setOfflineEntry("community-overview", communityState.overview);
-    void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
-    if (preferCache) {
-      void (async () => {
+    const refreshCommunityOverview = async ({ refreshBlocked = false } = {}) => {
+      if (communityOverviewRefreshPromise) return communityOverviewRefreshPromise;
+      communityOverviewRefreshPromise = (async () => {
         try {
           const freshOverview = await backendClient.fetchCommunityOverview();
           communityState.overview = freshOverview;
           communityState.statuses = Array.isArray(freshOverview?.statuses) ? freshOverview.statuses : [];
-          try {
-            const freshBlockedResponse = await backendClient.fetchBlockedUsers();
-            communityState.blocked = Array.isArray(freshBlockedResponse?.blocked) ? freshBlockedResponse.blocked : [];
-          } catch {
-            communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+          if (refreshBlocked) {
+            try {
+              const blockedResponse = await backendClient.fetchBlockedUsers();
+              communityState.blocked = Array.isArray(blockedResponse?.blocked) ? blockedResponse.blocked : [];
+              void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
+            } catch {
+              communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+            }
           }
+          communityState.searchResults = null;
+          setCommunityFeedback("");
+          startCommunityOverviewPolling({ background: true });
           renderCommunityNotificationBadges();
           maybeShowCommunityEntryNotificationBanner();
           syncAppNotificationBannerVisibility();
           renderCommunityView();
           void setOfflineEntry("community-overview", freshOverview);
-          void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
-        } catch {
-          // Best-effort refresh only.
+        } finally {
+          communityOverviewRefreshPromise = null;
         }
       })();
+      return communityOverviewRefreshPromise;
+    };
+    if (preferCache) {
+      void refreshCommunityOverview({
+        refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+      });
+      return;
     }
+    await refreshCommunityOverview({
+      refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+    });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Community could not load right now."), true);
     renderCommunityNotificationBadges();
@@ -18867,6 +18864,47 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false, p
           updateCommunityChatHeader(cachedResponse.partner);
         }
         renderCommunityMessages(cachedList, { scrollToBottom: shouldStickToBottom });
+        if (preferCache) {
+          void (async () => {
+            try {
+              const response = await backendClient.fetchConversationMessages(communityState.activeConversation.id, {
+                markRead: true,
+                preferCache: false,
+              });
+              const messages = Array.isArray(response?.messages) ? response.messages : [];
+              const nextContentSignature = getCommunityMessageContentSignature(messages);
+              const nextMetaSignature = getCommunityMessageMetaSignature(messages);
+              if (response?.partner) {
+                updateCommunityChatHeader(response.partner);
+              } else if (communityState.activeConversationPartner) {
+                updateCommunityChatHeader(communityState.activeConversationPartner);
+              }
+              if (nextContentSignature !== String(communityState.messageRenderSignature || "")) {
+                renderCommunityMessages(messages, { scrollToBottom: shouldStickToBottom });
+              } else if (nextMetaSignature !== String(communityState.messageMetaSignature || "")) {
+                syncCommunityMessageMeta(messages);
+                if (shouldStickToBottom) {
+                  scrollCommunityChatToLatest({ settle: true, attempts: 1 });
+                }
+              } else {
+                communityState.messages = Array.isArray(messages) ? [...messages] : [];
+                if (shouldStickToBottom) {
+                  scrollCommunityChatToLatest({ settle: true, attempts: 1 });
+                }
+              }
+              restoreCommunityChatDraftIfNeeded(communityState.activeConversation?.id || "");
+              void refreshCommunityConversationActiveCall({ silent: true });
+              void setOfflineEntry(conversationCacheKey, {
+                messages,
+                partner: response?.partner || communityState.activeConversationPartner || null,
+              });
+            } catch {
+              // Keep cached messages visible.
+            }
+          })();
+          if (!silent) setCommunityFeedback("");
+          return;
+        }
       }
     }
     const response = await backendClient.fetchConversationMessages(communityState.activeConversation.id, {
@@ -18900,9 +18938,6 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false, p
       messages,
       partner: response?.partner || communityState.activeConversationPartner || null,
     });
-    if (preferCache) {
-      void loadCommunityMessages({ silent: true, scrollToBottom: false, preferCache: false });
-    }
     if (!silent) setCommunityFeedback("");
   } catch (error) {
     if (!silent) setCommunityFeedback(generalApiErrorMessage(error, "Messages could not load right now."), true);
@@ -18943,8 +18978,11 @@ async function openCommunityConversation(userId = "", existingConversationId = "
       )?.conversation?.partner ||
       null;
     if (!partner && conversationId) {
-      const groupResponse = await backendClient.fetchCommunityGroup(conversationId, { preferCache: true }).catch(() => null);
-      partner = groupResponse?.group || groupResponse?.conversation?.partner || partner || null;
+      partner = {
+        id: conversationId,
+        name: "Loading chat...",
+        username: "",
+      };
     }
     if (!partner) {
       partner =
@@ -18963,12 +19001,8 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     resetCommunityVoiceRecordingState();
     updateCommunityChatHeader(partner || {});
     showScreen("community-chat-screen");
-    await loadCommunityMessages({ scrollToBottom: true, preferCache: true });
-    try {
-      communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
-      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-      renderCommunityNotificationBadges();
-    } catch {}
+    void loadCommunityMessages({ scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
     restoreCommunityChatDraftIfNeeded(conversationId);
     void refreshCommunityConversationActiveCall({ silent: true, force: true });
     syncCommunityChatPolling();
@@ -19096,11 +19130,8 @@ async function sendCommunityMessage() {
     resetCommunityPendingAttachment();
     removeCommunityChatDraftForConversation(conversationId);
     syncCommunityChatComposerState();
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview({ preferCache: true });
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunitySummary();
-    renderCommunityStatusStrip();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     const errorMessage = attachments.length
       ? generalApiErrorMessage(error, "Attachments could not send right now.")
@@ -19353,10 +19384,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           );
           if (!isBackgroundUpload) closeCommunityStatusCompose();
           setCommunityFeedback("Status uploaded successfully.");
-          communityState.overview = await backendClient.fetchCommunityOverview();
-          communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-          renderCommunityStatusStrip();
-          renderCommunityView();
+          void loadCommunityOverview({ silent: true, preferCache: true });
           return;
         } else {
           payload.dataUrl = String(payload.originalDataUrl || payload.dataUrl || "");
@@ -19451,10 +19479,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
     communityState.statusUploadError = "";
     if (!isBackgroundUpload) closeCommunityStatusCompose();
     setCommunityFeedback("Status uploaded successfully.");
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityStatusStrip();
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     const message = rawApiErrorMessage(error, "Status upload failed.");
     communityState.statusUploadError = message;
@@ -19477,9 +19502,7 @@ async function createCommunityStudyGroup() {
   try {
     const response = await backendClient.createStudyGroup(name, memberIds);
     closeCommunityGroupModal();
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     setCommunityFeedback("Study group created.");
     const conversationId = String(response?.conversation?.id || "").trim();
     if (conversationId) {
@@ -19506,7 +19529,7 @@ async function createCommunityStudyGroup() {
         institution: `${memberIds.length + 1} members`,
       });
       showScreen("community-chat-screen");
-      await loadCommunityMessages({ scrollToBottom: true });
+      void loadCommunityMessages({ scrollToBottom: true, preferCache: true });
       restoreCommunityChatDraftIfNeeded(conversationId);
       syncCommunityChatPolling();
     }
@@ -19536,8 +19559,7 @@ async function addCommunityGroupMembers() {
     await backendClient.addCommunityGroupMembers(groupId, memberIds);
     closeCommunityGroupModal();
     communityState.profile = await backendClient.fetchCommunityGroup(groupId);
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+    void loadCommunityOverview({ silent: true, preferCache: true });
     renderCommunityProfileView();
     renderCommunityView();
     setCommunityFeedback("Participants added to the group.");
@@ -19910,10 +19932,7 @@ async function submitCommunityAdminBroadcast() {
     const response = await backendClient.broadcastAdminMessage(message, attachment);
     closeCommunityAdminBroadcastModal();
     setCommunityFeedback(`Broadcast sent to ${Math.max(0, Math.round(Number(response?.deliveredTo) || 0))} users.`);
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
-    renderCommunityView();
-    renderCommunitySummary();
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     communityState.adminBroadcastModal = {
       ...(communityState.adminBroadcastModal || {}),
@@ -20083,9 +20102,7 @@ async function joinCommunityGroupFromInvite() {
     const response = await backendClient.joinCommunityGroupInvite(groupId, inviteToken);
     clearPendingCommunityGroupInvite();
     communityState.profile = response;
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     communityState.groupInviteModal = {
       ...communityState.groupInviteModal,
       loading: false,
@@ -20218,9 +20235,7 @@ async function leaveCommunityGroup(groupId = "") {
         communityState.activeConversationPartner = null;
         syncCommunityChatPolling();
       }
-      communityState.overview = await backendClient.fetchCommunityOverview();
-      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-      renderCommunityView();
+      void loadCommunityOverview({ silent: true, preferCache: true });
       setCommunityFeedback(response?.removed ? "Group removed." : "You left the group.");
     },
   });
@@ -20613,11 +20628,9 @@ async function sendForwardedCommunityMessage() {
     setCommunityFeedback(
       itemCount > 1
         ? `Forwarded ${itemCount} items to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`
-        : `Forwarded to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`,
+      : `Forwarded to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`,
     );
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    renderCommunitySummary();
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     return true;
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Item could not forward right now."), true);
@@ -20644,9 +20657,8 @@ async function editCommunityMessageText() {
   }
   try {
     await backendClient.editConversationMessage(message.id, cleaned);
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    renderCommunitySummary();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Message could not update right now."), true);
   }
@@ -20691,11 +20703,10 @@ function confirmCommunityMessageDelete(scope = "self") {
           .filter((message) => Boolean(message?.id))
           .map((message) => backendClient.deleteConversationMessage(message.id, deleteScope)),
       );
-      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom });
-      communityState.overview = await backendClient.fetchCommunityOverview();
-      renderCommunitySummary();
+      void loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom, preferCache: true });
+      void loadCommunityOverview({ silent: true, preferCache: true });
     } catch (error) {
-      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom }).catch(() => {});
+      void loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom, preferCache: true }).catch(() => {});
       setCommunityFeedback(generalApiErrorMessage(error, "Message could not delete right now."), true);
     }
   })();
@@ -20808,7 +20819,14 @@ async function executeCommunityAction(action = "", payload = {}) {
             return;
           }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true, preferCache: true });
+          if (targetUser) {
+            const existingBlocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+            const nextBlocked = existingBlocked.filter((entry) => String(entry?.id || "") !== userId);
+            nextBlocked.push(targetUser);
+            communityState.blocked = nextBlocked;
+            void setOfflineEntry("community-blocked", { blocked: nextBlocked });
+          }
+          void loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }
@@ -20835,7 +20853,12 @@ async function executeCommunityAction(action = "", payload = {}) {
             return;
           }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true, preferCache: true });
+          if (Array.isArray(communityState.blocked)) {
+            const nextBlocked = communityState.blocked.filter((entry) => String(entry?.id || "") !== userId);
+            communityState.blocked = nextBlocked;
+            void setOfflineEntry("community-blocked", { blocked: nextBlocked });
+          }
+          void loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }

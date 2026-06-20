@@ -1896,22 +1896,13 @@ async function loadQuestionsFromBackend() {
   try {
     const questions = await backendClient.fetchQuestions({ limit: 1000 });
     if (Array.isArray(questions) && questions.length > 0) {
-      // Merge backend questions over the local dataset so local-only topic work
-      // remains usable until it is also published to the backend store.
-      const localQuestions = [...normalizedLocalQuestions];
-      const filteredBackendQuestions = questions.filter((question) => !isRetiredLawCategoryQuestion(question));
-      const backendById = new Map(
-        filteredBackendQuestions.map(mapBackendQuestionToLocal).map((question) => [Number(question?.id), question]),
-      );
-      const mergedQuestions = localQuestions.map((question) => {
-        const questionId = Number(question?.id);
-        return backendById.get(questionId) || question;
-      });
-      const localIds = new Set(localQuestions.map((question) => Number(question?.id)));
-      const backendOnlyQuestions = [...backendById.values()]
-        .filter((question) => !localIds.has(Number(question?.id)))
+      // Use Neon/Postgres as the source of truth whenever the backend is reachable.
+      // Local questions remain only as an offline fallback.
+      const backendQuestions = questions
+        .filter((question) => !isRetiredLawCategoryQuestion(question))
+        .map(mapBackendQuestionToLocal)
         .sort(byQuestionIdAscending);
-      questionBank = enrichImportedCaseQuestions([...mergedQuestions, ...backendOnlyQuestions]);
+      questionBank = enrichImportedCaseQuestions(backendQuestions);
       backendReady = true;
       reconcileLocalQuestionStats();
       console.info(`Loaded ${questionBank.length} questions from backend`);
@@ -27745,7 +27736,7 @@ async function restoreAuthSession() {
   try {
     currentUser = await backendClient.fetchMe();
     renderAuthState();
-    await refreshDailyQuizState({ force: true, silent: true });
+    void refreshDailyQuizState({ force: true, silent: true });
     return true;
   } catch {
     backendClient.clearToken();
@@ -27892,7 +27883,7 @@ async function handleAuthSubmit(event) {
       const response = await backendClient.login({ identifier, password });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      await refreshDailyQuizState({ force: true, silent: true });
+      void refreshDailyQuizState({ force: true, silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -27908,7 +27899,7 @@ async function handleAuthSubmit(event) {
       });
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
-      await refreshDailyQuizState({ force: true, silent: true });
+      void refreshDailyQuizState({ force: true, silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;

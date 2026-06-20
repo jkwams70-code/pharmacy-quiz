@@ -1963,6 +1963,7 @@ let sessionHistory =
 const MAX_SESSION_HISTORY_ENTRIES = 120;
 const DASHBOARD_TREND_MAX_POINTS = 12;
 const DASHBOARD_RECENT_RESULTS_MAX = 10;
+const DASHBOARD_TREND_REMOTE_HISTORY_LIMIT = Math.min(1000, MAX_SESSION_HISTORY_ENTRIES * 4);
 const DASHBOARD_TREND_SCOPE_STORAGE_KEY = "dashboardTrendScopeV1";
 const RECENT_RESULTS_STORAGE_KEY = "quizRecentSessionResultsV1";
 let latestSavedSession = Array.isArray(sessionHistory) && sessionHistory.length > 0 ? sessionHistory[0] : null;
@@ -2294,22 +2295,13 @@ async function loadQuestionsFromBackend() {
   try {
     const questions = await backendClient.fetchQuestions({ limit: 1000 });
     if (Array.isArray(questions) && questions.length > 0) {
-      // Merge backend questions over the local dataset so local-only topic work
-      // remains usable until it is also published to the backend store.
-      const localQuestions = [...normalizedLocalQuestions];
-      const filteredBackendQuestions = questions.filter((question) => !isRetiredLawCategoryQuestion(question));
-      const backendById = new Map(
-        filteredBackendQuestions.map(mapBackendQuestionToLocal).map((question) => [Number(question?.id), question]),
-      );
-      const mergedQuestions = localQuestions.map((question) => {
-        const questionId = Number(question?.id);
-        return backendById.get(questionId) || question;
-      });
-      const localIds = new Set(localQuestions.map((question) => Number(question?.id)));
-      const backendOnlyQuestions = [...backendById.values()]
-        .filter((question) => !localIds.has(Number(question?.id)))
+      // Use Neon/Postgres as the source of truth whenever the backend is reachable.
+      // Local questions remain only as an offline fallback.
+      const backendQuestions = questions
+        .filter((question) => !isRetiredLawCategoryQuestion(question))
+        .map(mapBackendQuestionToLocal)
         .sort(byQuestionIdAscending);
-      questionBank = enrichImportedCaseQuestions([...mergedQuestions, ...backendOnlyQuestions]);
+      questionBank = enrichImportedCaseQuestions(backendQuestions);
       backendReady = true;
       reconcileLocalQuestionStats();
       console.info(`Loaded ${questionBank.length} questions from backend`);
@@ -29160,7 +29152,7 @@ function startSharedAccountStatePolling() {
       return;
     }
     void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
-  }, 60_000);
+  }, 20_000);
 }
 
 async function refreshSharedAccountState({
@@ -29193,9 +29185,10 @@ async function refreshSharedAccountState({
       scheduleSync: false,
     });
     renderPoints();
-    await refreshDailyQuizState({ force: true, silent });
-    await loadSyncedPerformanceState({ force: true });
-    await loadDashboardTrendData({ force: true });
+    void Promise.allSettled([
+      refreshDailyQuizState({ force: true, silent }),
+      loadSyncedPerformanceState({ force: true }),
+    ]);
     renderMenuDashboardStats();
     renderSetupPoints();
     renderDailyQuizUi();
@@ -29351,10 +29344,11 @@ async function handleAuthSubmit(event) {
         scheduleSync: false,
       });
       renderPoints();
-      await refreshDailyQuizState({ force: true, silent: true });
-      await loadSyncedPerformanceState({ force: true });
-      await loadDashboardTrendData({ force: true });
-      await loadCommunityOverview({ silent: true });
+      void Promise.allSettled([
+        refreshDailyQuizState({ force: true, silent: true }),
+        loadSyncedPerformanceState({ force: true }),
+      ]);
+      void loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -29378,10 +29372,11 @@ async function handleAuthSubmit(event) {
         scheduleSync: false,
       });
       renderPoints();
-      await refreshDailyQuizState({ force: true, silent: true });
-      await loadSyncedPerformanceState({ force: true });
-      await loadDashboardTrendData({ force: true });
-      await loadCommunityOverview({ silent: true });
+      void Promise.allSettled([
+        refreshDailyQuizState({ force: true, silent: true }),
+        loadSyncedPerformanceState({ force: true }),
+      ]);
+      void loadCommunityOverview({ silent: true });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -31141,7 +31136,7 @@ async function loadDashboardTrendData({ force = false } = {}) {
   }
 
   try {
-    const response = await backendClient.fetchSyncedHistory("", 5000);
+    const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
     const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
     dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
     dashboardTrendSessionsLoadedFromSync = true;
@@ -31271,24 +31266,40 @@ async function showDashboard() {
 
   rebuildCategoryPerformanceFromQuestionStats();
   rebuildRotationPerformanceFromQuestionStats();
-  await loadSyncedPerformanceState({ force: true });
-  await loadDashboardTrendData({ force: true });
-  let remoteSnapshot = null;
-  try {
-    remoteSnapshot = await backendClient.fetchSyncedDashboard();
-  } catch {
-    remoteSnapshot = null;
-  }
   const localSnapshot = getLocalDashboardSnapshot();
   renderDashboardValues({
-    totalAttempts: Number(remoteSnapshot?.totalAttempts ?? localSnapshot.totalAttempts) || 0,
-    overallAccuracy: Number(remoteSnapshot?.overallAccuracy ?? localSnapshot.overallAccuracy) || 0,
-    weakCount: Number(remoteSnapshot?.weakQuestions ?? localSnapshot.weakCount) || 0,
-    sessionCount: Number(remoteSnapshot?.totalSessions ?? localSnapshot.sessionCount) || 0,
-    categories: Array.isArray(remoteSnapshot?.categories) && remoteSnapshot.categories.length > 0
-      ? remoteSnapshot.categories
-      : localSnapshot.categories,
+    totalAttempts: Number(localSnapshot.totalAttempts) || 0,
+    overallAccuracy: Number(localSnapshot.overallAccuracy) || 0,
+    weakCount: Number(localSnapshot.weakCount) || 0,
+    sessionCount: Number(localSnapshot.sessionCount) || 0,
+    categories: localSnapshot.categories,
     rotations: localSnapshot.rotations,
+  });
+
+  void Promise.allSettled([
+    loadSyncedPerformanceState({ force: true }),
+    loadDashboardTrendData({ force: true }),
+    backendClient.fetchSyncedDashboard(),
+  ]).then(([performanceResult, trendResult, remoteSnapshotResult]) => {
+    void performanceResult;
+    void trendResult;
+    if (!dashboardDiv?.classList.contains("screen-active")) {
+      return;
+    }
+    const remoteSnapshot =
+      remoteSnapshotResult.status === "fulfilled" ? remoteSnapshotResult.value : null;
+    const mergedSnapshot = {
+      totalAttempts: Number(remoteSnapshot?.totalAttempts ?? localSnapshot.totalAttempts) || 0,
+      overallAccuracy: Number(remoteSnapshot?.overallAccuracy ?? localSnapshot.overallAccuracy) || 0,
+      weakCount: Number(remoteSnapshot?.weakQuestions ?? localSnapshot.weakCount) || 0,
+      sessionCount: Number(remoteSnapshot?.totalSessions ?? localSnapshot.sessionCount) || 0,
+      categories:
+        Array.isArray(remoteSnapshot?.categories) && remoteSnapshot.categories.length > 0
+          ? remoteSnapshot.categories
+          : localSnapshot.categories,
+      rotations: localSnapshot.rotations,
+    };
+    renderDashboardValues(mergedSnapshot);
   });
 
   const dashboardCloseBtn = document.getElementById("dashboard-close-btn");

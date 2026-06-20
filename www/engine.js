@@ -1235,6 +1235,18 @@ function renderLawDrillStack(levelIndex = null, targetEl = lawDrillStackEl, eyeb
   }
 }
 
+function clearLawDrillResultReview() {
+  const resultScreen = document.getElementById("study-result-screen");
+  if (resultScreen) {
+    resultScreen.classList.remove("law-drill-result-active");
+  }
+
+  if (lawDrillResultStackEl) {
+    lawDrillResultStackEl.classList.add("hidden");
+    lawDrillResultStackEl.innerHTML = "";
+  }
+}
+
 function renderLawDrillRail() {
   if (!lawDrillRailEl || !lawDrillState) return;
   const levels = Array.isArray(lawDrillState.levels) ? lawDrillState.levels : [];
@@ -1323,6 +1335,7 @@ function showLawDrillLadderView() {
   lawDrillState.resultLevelIndex = null;
   inDetailedReview = false;
   active = [];
+  clearLawDrillResultReview();
   if (backReviewBtn) {
     backReviewBtn.classList.add("hidden");
   }
@@ -1630,6 +1643,7 @@ function returnToLawLadder() {
   lawDrillState.reviewLevelIndex = null;
   lawDrillState.resultLevelIndex = null;
   inDetailedReview = false;
+  clearLawDrillResultReview();
   showLawDrillLadderView();
 }
 
@@ -1655,6 +1669,7 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
     lawDrillStackEl.classList.add("hidden");
     lawDrillStackEl.innerHTML = "";
   }
+  clearLawDrillResultReview();
 
   const resultTitle = document.getElementById("result-title");
   const percentEl = document.getElementById("result-percentage");
@@ -1667,7 +1682,7 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   const shareBtn = document.getElementById("result-share-btn");
   const menuBtn = document.getElementById("result-menu-btn");
   const scoreBlock = document.querySelector("#study-result-screen .result-score-block");
-  const genericReviewWrapper = document.getElementById("result-review-content");
+  const resultScreen = document.getElementById("study-result-screen");
 
   if (resultTitle) {
     resultTitle.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
@@ -1698,30 +1713,45 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
     reviewSectionTitle.textContent = "Law Drill Review";
   }
   if (reviewContent) {
-    reviewContent.classList.remove("review-palette-grid", "analysis-list", "law-drill-only-review");
+    reviewContent.classList.remove("review-palette-grid", "analysis-list");
     reviewContent.innerHTML = "";
   }
   if (scoreBlock) {
     scoreBlock.classList.add("hidden");
   }
-  if (genericReviewWrapper) {
-    genericReviewWrapper.classList.add("law-drill-only-review");
+  if (resultScreen) {
+    resultScreen.classList.add("law-drill-result-active");
+  }
+  if (lawDrillResultStackEl) {
+    lawDrillResultStackEl.innerHTML = `
+      <div class="law-drill-stack-head">
+        <div>
+          <div class="law-drill-stack-eyebrow">Law Drill Review</div>
+          <div class="law-drill-stack-title">${final ? "Final Level Review" : `Level ${levelIndex + 1} Review`}</div>
+        </div>
+        <div class="law-drill-stack-meta">${answered} answered • ${correct} correct</div>
+      </div>
+      <div class="law-drill-stack-list">
+        ${buildLawDrillResultReviewMarkup(levelIndex)}
+      </div>
+    `;
+    lawDrillResultStackEl.classList.remove("hidden");
   }
 
   if (reviewBtn) {
-    reviewBtn.classList.toggle("hidden", false);
-    reviewBtn.textContent = "Open Review";
-    reviewBtn.onclick = () => openLawDrillLevelReview(levelIndex);
+    reviewBtn.classList.add("hidden");
+    reviewBtn.onclick = null;
   }
   if (shareBtn) {
     shareBtn.classList.toggle("hidden", false);
-    shareBtn.textContent = hasNext ? `Level ${nextLevelIndex + 1}` : "Close";
+    shareBtn.textContent = hasNext ? "Next Level" : "Close";
+    shareBtn.title = hasNext ? `Open Level ${nextLevelIndex + 1}` : "Return to the law drill ladder";
     shareBtn.onclick = hasNext
       ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
       : returnToLawLadder;
   }
   if (menuBtn) {
-    menuBtn.textContent = "Back to Menu";
+    menuBtn.textContent = "Menu";
     menuBtn.onclick = goToMenu;
   }
 
@@ -5482,6 +5512,7 @@ const leaderboardState = {
   cache: Object.create(null),
   cacheAt: Object.create(null),
 };
+let instantLocalCacheBootstrapPromise = null;
 const communityState = {
   tab: "chats",
   friendsView: "friends",
@@ -6454,7 +6485,7 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
 
   try {
     if (currentUser && backendClient.isAuthenticated() && readPendingPoints() > 0) {
-      await flushPendingPoints();
+      void flushPendingPoints();
     }
     const snapshot = await backendClient.fetchPointsLeaderboard(safeScope);
     leaderboardState.cache[safeScope] = snapshot || {};
@@ -6480,6 +6511,7 @@ function openLeaderboardModal(scope = leaderboardState.scope || "daily", { recor
   leaderboardState.returnScreen = activeScreenId;
   leaderboardModalEl.classList.remove("hidden");
   leaderboardState.open = true;
+  void primeInstantLocalCaches();
   if (recordHistory) {
     history.pushState(
       {
@@ -6502,6 +6534,57 @@ function closeLeaderboardModal({ useHistory = false } = {}) {
   }
   leaderboardModalEl.classList.add("hidden");
   leaderboardState.open = false;
+}
+
+async function primeInstantLocalCaches() {
+  if (instantLocalCacheBootstrapPromise) return instantLocalCacheBootstrapPromise;
+  instantLocalCacheBootstrapPromise = (async () => {
+    const [communityOverview, communityBlocked, leaderboardDaily, leaderboardWeekly, leaderboardAllTime] =
+      await Promise.all([
+        getOfflineEntry("community-overview"),
+        getOfflineEntry("community-blocked"),
+        getOfflineEntry("leaderboard:daily"),
+        getOfflineEntry("leaderboard:weekly"),
+        getOfflineEntry("leaderboard:alltime"),
+      ]);
+
+    if (communityOverview?.value && !communityState.overview) {
+      communityState.overview = communityOverview.value;
+      communityState.statuses = Array.isArray(communityState.overview?.statuses)
+        ? communityState.overview.statuses
+        : [];
+    }
+
+    if (communityBlocked?.value && (!Array.isArray(communityState.blocked) || communityState.blocked.length === 0)) {
+      communityState.blocked = Array.isArray(communityBlocked.value?.blocked)
+        ? communityBlocked.value.blocked
+        : [];
+    }
+
+    const hydrateLeaderboardSnapshot = (scope, row) => {
+      if (!row?.value) return;
+      if (!leaderboardState.cache[scope]) {
+        leaderboardState.cache[scope] = row.value || {};
+        leaderboardState.cacheAt[scope] = Number(row.updatedAt) || Date.now();
+      }
+    };
+
+    hydrateLeaderboardSnapshot("daily", leaderboardDaily);
+    hydrateLeaderboardSnapshot("weekly", leaderboardWeekly);
+    hydrateLeaderboardSnapshot("alltime", leaderboardAllTime);
+
+    if (isCommunityScreenId(getActiveScreenId())) {
+      renderCommunityView();
+    }
+    if (leaderboardState.open) {
+      renderLeaderboardSnapshot(leaderboardState.cache[leaderboardState.scope] || {}, leaderboardState.scope);
+    }
+  })()
+    .catch(() => {})
+    .finally(() => {
+      instantLocalCacheBootstrapPromise = null;
+    });
+  return instantLocalCacheBootstrapPromise;
 }
 
 let communityFeedbackTimer = null;
@@ -17571,6 +17654,25 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
       })();
       return communityOverviewRefreshPromise;
     };
+    if (preferCache && communityState.overview) {
+      communityState.statuses = Array.isArray(communityState.overview?.statuses)
+        ? communityState.overview.statuses
+        : [];
+      communityState.searchResults = null;
+      if (!Array.isArray(communityState.blocked)) {
+        communityState.blocked = [];
+      }
+      setCommunityFeedback("");
+      startCommunityOverviewPolling({ background: true });
+      renderCommunityNotificationBadges();
+      maybeShowCommunityEntryNotificationBanner();
+      syncAppNotificationBannerVisibility();
+      renderCommunityView();
+      void refreshCommunityOverview({
+        refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+      });
+      return;
+    }
     if (preferCache) {
       void refreshCommunityOverview({
         refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
@@ -18006,6 +18108,7 @@ async function openCommunityProfile(userId = "") {
   if (!ok || !userId) return;
   setCommunityFeedback("");
   try {
+    void primeInstantLocalCaches();
     if (leaderboardState.open) {
       closeLeaderboardModal({ useHistory: false });
     }
@@ -18352,6 +18455,7 @@ async function openCommunityGroupProfile(groupId = "") {
   if (!ok || !groupId) return;
   setCommunityFeedback("");
   try {
+    void primeInstantLocalCaches();
     if (leaderboardState.open) {
       closeLeaderboardModal({ useHistory: false });
     }
@@ -19008,6 +19112,7 @@ async function openCommunityConversation(userId = "", existingConversationId = "
   const ok = await ensureAuthenticated();
   if (!ok || (!userId && !existingConversationId)) return;
   try {
+    void primeInstantLocalCaches();
     const previousConversationId = getCommunityChatDraftConversationId(communityState.activeConversation?.id || "");
     if (previousConversationId) {
       persistCommunityChatDraftForConversation(previousConversationId);
@@ -21063,8 +21168,9 @@ async function openCommunityScreen() {
   updateCommunityTabState();
   showScreen("community-screen");
   renderCommunitySummary();
-  renderCommunityResultsMarkup(`<div class="community-empty-state">Loading community...</div>`);
-  await loadCommunityOverview({ preferCache: true });
+  renderCommunityView();
+  void primeInstantLocalCaches();
+  void loadCommunityOverview({ silent: true, preferCache: true });
 }
 
 function renderXp() {
@@ -22423,10 +22529,7 @@ function clearDailyResultEnhancements() {
   if (scoreBlock) {
     scoreBlock.classList.remove("hidden");
   }
-  const reviewContent = document.getElementById("result-review-content");
-  if (reviewContent) {
-    reviewContent.classList.remove("law-drill-only-review");
-  }
+  clearLawDrillResultReview();
 }
 
 function renderDailySocialCard(snapshot) {
@@ -34658,6 +34761,8 @@ function configureStudyLikeResultActions() {
     return;
   }
 
+  clearLawDrillResultReview();
+
   const reviewBtn = document.getElementById("result-review-btn");
   const menuBtn = document.getElementById("result-menu-btn");
   const resultTitle = document.getElementById("result-title");
@@ -34806,6 +34911,8 @@ function showDetailedReview() {
   if (isLawDrillResultState()) {
     return;
   }
+
+  clearLawDrillResultReview();
 
   const reviewSection = document.getElementById("result-review-section");
   const content = document.getElementById("result-review-content");
@@ -35235,6 +35342,7 @@ window.addEventListener("load", function () {
   closeCommunityFriendActions();
   startQuestionBankBootstrap();
   startBackendBootstrap();
+  void primeInstantLocalCaches();
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
   }, 900);
@@ -35327,6 +35435,8 @@ window.addEventListener("resize", () => {
   syncLawDrillRailForViewport();
 });
 function showStudyReviewPalette() {
+  clearLawDrillResultReview();
+
   const reviewSection = document.getElementById("result-review-section");
   const content = document.getElementById("result-review-content");
 

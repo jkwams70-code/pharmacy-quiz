@@ -37498,6 +37498,58 @@ body.theme-sunset {
   box-shadow: var(--law-drill-stack-shadow);
 }
 
+#study-result-screen .law-drill-result-stack {
+  display: block;
+  margin: 16px 0 6px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid var(--law-drill-stack-border);
+  background: var(--law-drill-stack-bg);
+  box-shadow: var(--law-drill-stack-shadow);
+}
+
+#study-result-screen .law-drill-result-stack.hidden {
+  display: none !important;
+}
+
+#study-result-screen .law-drill-result-stack .law-drill-stack-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+#study-result-screen .law-drill-result-stack .law-drill-stack-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--law-drill-panel-eyebrow);
+}
+
+#study-result-screen .law-drill-result-stack .law-drill-stack-title {
+  margin-top: 4px;
+  font-size: 0.96rem;
+  font-weight: 900;
+  color: var(--law-drill-panel-title);
+}
+
+#study-result-screen .law-drill-result-stack .law-drill-stack-meta {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--law-drill-panel-eyebrow) 12%, transparent);
+  color: var(--law-drill-panel-eyebrow);
+  font-size: 0.74rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+#study-result-screen .law-drill-result-stack .law-drill-stack-list {
+  display: grid;
+  gap: 12px;
+}
+
 #quiz-area.law-drill-review-view .law-drill-stack,
 #quiz-area.law-drill-result-view .law-drill-stack {
   display: block !important;

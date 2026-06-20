@@ -2295,6 +2295,9 @@ let dailyMidnightRefreshTimer = null;
 let dailyLeaderboardSnapshot = null;
 let questionInsightCache = Object.create(null);
 let questionInsightInFlightKey = "";
+let performanceStateSyncHandle = null;
+let performanceStateSyncInFlight = false;
+let performanceStateSyncQueued = false;
 const communityStatusVideoMetaCache = new Map();
 const communityStatusVideoFrameCache = new Map();
 const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
@@ -2520,6 +2523,41 @@ function captureCurrentPerformanceState() {
   };
 }
 
+function schedulePerformanceStateSync(delayMs = 800) {
+  if (performanceStateSyncHandle) {
+    clearTimeout(performanceStateSyncHandle);
+  }
+  performanceStateSyncHandle = setTimeout(() => {
+    performanceStateSyncHandle = null;
+    void flushPendingPerformanceStateSync();
+  }, Math.max(250, Number(delayMs) || 800));
+}
+
+async function flushPendingPerformanceStateSync() {
+  if (performanceStateSyncHandle) {
+    clearTimeout(performanceStateSyncHandle);
+    performanceStateSyncHandle = null;
+  }
+  if (!currentUser || !backendClient.isAuthenticated()) return;
+  if (performanceStateSyncInFlight) {
+    performanceStateSyncQueued = true;
+    return;
+  }
+
+  performanceStateSyncInFlight = true;
+  try {
+    await backendClient.syncPerformanceState(captureCurrentPerformanceState());
+  } catch {
+    // Keep local progress even if the backend sync is briefly unavailable.
+  } finally {
+    performanceStateSyncInFlight = false;
+    if (performanceStateSyncQueued) {
+      performanceStateSyncQueued = false;
+      schedulePerformanceStateSync(400);
+    }
+  }
+}
+
 function applySyncedPerformanceState(state = {}) {
   const nextPerformanceData = normalizePerformanceStatsMap(state?.performanceData || {});
   const nextCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
@@ -2628,7 +2666,7 @@ function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
     rotation: question?.rotation || question?.rotations?.[0] || "",
     selectedAnswer: String(selectedAnswer || "").trim(),
   });
-  backendClient.syncPerformanceState(captureCurrentPerformanceState());
+  schedulePerformanceStateSync();
 
   savePerformance();
 }
@@ -33411,6 +33449,8 @@ async function finishExam() {
     backendClient.finishAttempt(backendAttemptId, answers, durationSeconds);
     backendAttemptId = null;
   }
+
+  await flushPendingPerformanceStateSync();
 
   const attemptedCount = Object.values(answers).filter(
     (value) => String(value || "").trim().length > 0,

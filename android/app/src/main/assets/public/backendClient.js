@@ -638,6 +638,10 @@ export const backendClient = {
     fireAndForget(post("/sync/performance", event));
   },
 
+  syncPerformanceState(state = {}) {
+    return post("/sync/performance-state", state);
+  },
+
   syncSession(entry) {
     fireAndForget(post("/sync/sessions", entry));
   },
@@ -646,10 +650,15 @@ export const backendClient = {
     return get("/sync/dashboard");
   },
 
-  fetchSyncedHistory(mode) {
-      const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
-      return get(`/sync/history${query}`);
-    },
+  fetchSyncedPerformanceState(limit = 5000) {
+    const query = toQuery({ limit });
+    return get(`/sync/performance-state${query}`);
+  },
+
+  fetchSyncedHistory(mode = "", limit = null) {
+    const query = toQuery({ mode, limit });
+    return get(`/sync/history${query}`);
+  },
 
   fetchDailyLeaderboard(limit = 10, date = "") {
     const query = toQuery({ limit, date });

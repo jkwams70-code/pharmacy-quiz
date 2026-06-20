@@ -6173,10 +6173,6 @@ function syncPointsFromCurrentUser() {
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
   const previousPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   writeStoredPoints(remotePoints);
-  if (remotePoints !== previousPoints) {
-    leaderboardState.cache = Object.create(null);
-    leaderboardState.cacheAt = Object.create(null);
-  }
   renderPoints();
 }
 
@@ -6202,8 +6198,6 @@ async function flushPendingPoints() {
     currentUser = response?.user || { ...(currentUser || {}), points: nextPoints };
     writePendingPoints(0);
     writeStoredPoints(nextPoints);
-    leaderboardState.cache = Object.create(null);
-    leaderboardState.cacheAt = Object.create(null);
     renderPoints();
   } catch {
     renderPoints();
@@ -6233,8 +6227,6 @@ function awardCorrectAnswerPoint(delta = 1) {
   if (!isLawStudyMode()) {
     addPointsToCurrentSetupBucket(safeDelta);
   }
-  leaderboardState.cache = Object.create(null);
-  leaderboardState.cacheAt = Object.create(null);
   renderPoints();
 
   if (currentUser && backendClient.isAuthenticated() && shouldCountCorrectAnswerTowardLeaderboard()) {

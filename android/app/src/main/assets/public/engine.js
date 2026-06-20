@@ -27497,7 +27497,7 @@ function isValidContactValue(value) {
 
 let pendingProfileImage = "";
 let profileImageMarkedForDeletion = false;
-let menuSnapshotCache = readMenuSnapshotCache();
+var menuSnapshotCache = readMenuSnapshotCache();
 
 function getCurrentProfileImage() {
   if (profileImageMarkedForDeletion) return "";

@@ -21542,6 +21542,19 @@ function formatDateKey(dateKey = "") {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+function getLocalDateKey(date = new Date()) {
+  const safeDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  const year = String(safeDate.getFullYear()).padStart(4, "0");
+  const month = String(safeDate.getMonth() + 1).padStart(2, "0");
+  const day = String(safeDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isDailyQuizStateForToday() {
+  const todayDate = String(dailyQuizState?.today?.date || "").trim();
+  return Boolean(todayDate) && todayDate === getLocalDateKey();
+}
+
 function normalizeDailyQuizPayload(raw = {}) {
   const season =
     raw?.season && typeof raw.season === "object" ? raw.season : {};
@@ -22187,6 +22200,7 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
     return dailyQuizState;
   }
 
+  const previousState = dailyQuizState;
   if (!silent && dailyStatusLineEl) {
     dailyStatusLineEl.textContent = "Checking today's challenge...";
   }
@@ -22215,7 +22229,11 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
     renderDailyQuizUi();
     return dailyQuizState;
   } catch (error) {
-    dailyQuizState = null;
+    if (!previousState) {
+      dailyQuizState = null;
+    } else {
+      dailyQuizState = previousState;
+    }
     const message = String(error?.message || "Daily challenge unavailable.");
     const safeMessage = message.replace(/\s+\(\d+\)\s*$/, "");
     if (dailyQuizMetaEl) {
@@ -22247,7 +22265,11 @@ async function openDailySetup() {
   }
   showScreen("daily-setup");
   scheduleDailyMidnightRefresh();
-  await refreshDailyQuizState({ force: true });
+  if (!dailyQuizState || !isDailyQuizStateForToday()) {
+    await refreshDailyQuizState({ force: true });
+  } else {
+    renderDailyQuizUi();
+  }
   if (dailyQuizState?.today?.date) {
     markDailyPopupSeen(dailyQuizState.today.date);
   }
@@ -22259,7 +22281,9 @@ async function startDailyQuizSession() {
   examVariant = "normal";
   examTimeBudget = 0;
 
-  const state = await refreshDailyQuizState({ force: true });
+  const state = dailyQuizState && isDailyQuizStateForToday()
+    ? dailyQuizState
+    : await refreshDailyQuizState({ force: true });
   if (!state) return;
 
   const today = state.today || {};

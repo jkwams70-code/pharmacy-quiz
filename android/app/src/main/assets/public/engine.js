@@ -6493,6 +6493,31 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
       void flushPendingPoints();
     }
     const snapshot = await backendClient.fetchPointsLeaderboard(safeScope);
+    const fetchedLeaderboard = Array.isArray(snapshot?.leaderboard) ? snapshot.leaderboard : [];
+    const fetchedHasContent =
+      fetchedLeaderboard.length > 0 ||
+      Boolean(snapshot?.yourEntry) ||
+      Number(snapshot?.totalPlayers) > 0;
+    if (!fetchedHasContent && hasCachedView) {
+      return;
+    }
+    if (!fetchedHasContent && !hasCachedView) {
+      if (isLocalDevHost) {
+        renderLeaderboardPodium([]);
+        renderLeaderboardYourRank(null);
+        renderLeaderboardList([]);
+        setLeaderboardEmptyState(
+          true,
+          "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
+        );
+      } else {
+        renderLeaderboardPodium([]);
+        renderLeaderboardYourRank(null);
+        renderLeaderboardList([]);
+        setLeaderboardEmptyState(false);
+      }
+      return;
+    }
     leaderboardState.cache[safeScope] = snapshot || {};
     leaderboardState.cacheAt[safeScope] = Date.now();
     void setOfflineEntry(cacheKey, snapshot || {});

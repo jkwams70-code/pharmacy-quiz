@@ -34,9 +34,10 @@ const sameOriginApiBase =
     ? `${window.location.origin.replace(/\/+$/, "")}/api`
     : "";
 const productionFallbackApiBase = "https://api.ajixpharmacy.online/api";
-const shouldUseLocalApi = (isFilePreview || (isLocalHost && !isLikelyNativeHost)) && !isNativeShell;
+const localApiHost = currentHost || "localhost";
+const shouldUseLocalApi = (isFilePreview || isLocalHost) && !isNativeShell;
 const inferredApiBase = shouldUseLocalApi
-  ? "http://localhost:4000/api"
+  ? `http://${localApiHost}:4000/api`
   : isLanPreview
     ? `http://${currentHost}:4000/api`
     : isProductionHost

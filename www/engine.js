@@ -1236,10 +1236,11 @@ function renderLawDrillStack(levelIndex = null, targetEl = lawDrillStackEl, eyeb
 }
 
 function clearLawDrillResultReview() {
-  const resultScreen = document.getElementById("study-result-screen");
-  if (resultScreen) {
-    resultScreen.classList.remove("law-drill-result-active");
-  }
+  [document.getElementById("study-result-screen"), lawDrillResultScreenEl].forEach((resultScreen) => {
+    if (resultScreen) {
+      resultScreen.classList.remove("law-drill-result-active");
+    }
+  });
 
   if (lawDrillResultStackEl) {
     lawDrillResultStackEl.classList.add("hidden");
@@ -1671,56 +1672,27 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   }
   clearLawDrillResultReview();
 
-  const resultTitle = document.getElementById("result-title");
-  const percentEl = document.getElementById("result-percentage");
-  const scoreEl = document.getElementById("result-score");
-  const feedbackEl = document.getElementById("result-feedback");
-  const reviewSection = document.getElementById("result-review-section");
-  const reviewContent = document.getElementById("result-review-content");
-  const reviewSectionTitle = reviewSection?.querySelector(".review-section-title");
-  const reviewBtn = document.getElementById("result-review-btn");
-  const shareBtn = document.getElementById("result-share-btn");
-  const menuBtn = document.getElementById("result-menu-btn");
-  const scoreBlock = document.querySelector("#study-result-screen .result-score-block");
-  const resultScreen = document.getElementById("study-result-screen");
-
-  if (resultTitle) {
-    resultTitle.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
-    resultTitle.classList.remove("hidden");
+  if (lawDrillResultTitleEl) {
+    lawDrillResultTitleEl.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
+    lawDrillResultTitleEl.classList.remove("hidden");
   }
-  if (resultBadgeEl) {
-    resultBadgeEl.textContent = final ? "Drill Complete" : `Level ${levelIndex + 1} Completed`;
-    resultBadgeEl.classList.remove("hidden");
+  if (lawDrillResultBadgeEl) {
+    lawDrillResultBadgeEl.textContent = final ? "Drill Complete" : `Level ${levelIndex + 1} Completed`;
+    lawDrillResultBadgeEl.classList.remove("hidden");
   }
-  if (percentEl) {
-    percentEl.innerText = `${accuracy}%`;
-    percentEl.style.color = accuracy >= 80 ? "#15803d" : accuracy >= 60 ? "#f9a825" : "#dc2626";
+  if (lawDrillResultPercentEl) {
+    lawDrillResultPercentEl.innerText = `${accuracy}%`;
+    lawDrillResultPercentEl.style.color = accuracy >= 80 ? "#15803d" : accuracy >= 60 ? "#f9a825" : "#dc2626";
   }
-  if (scoreEl) {
-    scoreEl.innerText = `${correct} / ${Math.max(1, answered)} Correct`;
+  if (lawDrillResultScoreEl) {
+    lawDrillResultScoreEl.innerText = `${correct} / ${Math.max(1, answered)} Correct`;
   }
-  if (feedbackEl) {
-    feedbackEl.innerText = final
-      ? "You have cleared all 100 levels. You can review the ladder or head back to the menu."
+  if (lawDrillResultFeedbackEl) {
+    lawDrillResultFeedbackEl.innerText = final
+      ? "You have cleared all 100 levels. Return to the ladder or head back to the menu."
       : hasNext
         ? `Nice work. Level ${nextLevelIndex + 1} is unlocked and ready.`
         : "That level is complete. Return to the ladder when ready.";
-  }
-  if (reviewSection) {
-    reviewSection.classList.add("hidden");
-  }
-  if (reviewSectionTitle) {
-    reviewSectionTitle.textContent = "Law Drill Review";
-  }
-  if (reviewContent) {
-    reviewContent.classList.remove("review-palette-grid", "analysis-list");
-    reviewContent.innerHTML = "";
-  }
-  if (scoreBlock) {
-    scoreBlock.classList.add("hidden");
-  }
-  if (resultScreen) {
-    resultScreen.classList.add("law-drill-result-active");
   }
   if (lawDrillResultStackEl) {
     lawDrillResultStackEl.innerHTML = `
@@ -1738,24 +1710,28 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
     lawDrillResultStackEl.classList.remove("hidden");
   }
 
-  if (reviewBtn) {
-    reviewBtn.classList.add("hidden");
-    reviewBtn.onclick = null;
+  if (lawDrillNextLevelBtn) {
+    if (hasNext) {
+      lawDrillNextLevelBtn.classList.remove("hidden");
+      lawDrillNextLevelBtn.textContent = `Level ${nextLevelIndex + 1}`;
+      lawDrillNextLevelBtn.title = `Open Level ${nextLevelIndex + 1}`;
+      lawDrillNextLevelBtn.onclick = () => openLawDrillLevel(nextLevelIndex, { resetProgress: true });
+    } else {
+      lawDrillNextLevelBtn.classList.add("hidden");
+      lawDrillNextLevelBtn.onclick = null;
+    }
   }
-  if (shareBtn) {
-    shareBtn.classList.toggle("hidden", false);
-    shareBtn.textContent = hasNext ? "Next Level" : "Close";
-    shareBtn.title = hasNext ? `Open Level ${nextLevelIndex + 1}` : "Return to the law drill ladder";
-    shareBtn.onclick = hasNext
-      ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
-      : returnToLawLadder;
+  if (lawDrillCloseBtn) {
+    lawDrillCloseBtn.textContent = "Close";
+    lawDrillCloseBtn.title = "Return to the law drill ladder";
+    lawDrillCloseBtn.onclick = returnToLawLadder;
   }
-  if (menuBtn) {
-    menuBtn.textContent = "Menu";
-    menuBtn.onclick = goToMenu;
+  if (lawDrillMenuBtn) {
+    lawDrillMenuBtn.textContent = "Menu";
+    lawDrillMenuBtn.onclick = goToMenu;
   }
 
-  showScreen("study-result-screen");
+  showScreen("law-drill-result-screen");
   renderPoints();
   renderSessionPointsDisplay();
   persistLawDrillSession();
@@ -3102,6 +3078,15 @@ const lawDrillPanelEl = document.getElementById("law-drill-panel");
 const lawDrillRailEl = document.getElementById("law-drill-rail");
 const lawDrillStackEl = document.getElementById("law-drill-stack");
 const lawDrillResultStackEl = document.getElementById("law-drill-result-stack");
+const lawDrillResultScreenEl = document.getElementById("law-drill-result-screen");
+const lawDrillResultTitleEl = document.getElementById("law-drill-result-title");
+const lawDrillResultBadgeEl = document.getElementById("law-drill-result-badge");
+const lawDrillResultPercentEl = document.getElementById("law-drill-result-percentage");
+const lawDrillResultScoreEl = document.getElementById("law-drill-result-score");
+const lawDrillResultFeedbackEl = document.getElementById("law-drill-result-feedback");
+const lawDrillNextLevelBtn = document.getElementById("law-drill-next-level-btn");
+const lawDrillCloseBtn = document.getElementById("law-drill-close-btn");
+const lawDrillMenuBtn = document.getElementById("law-drill-menu-btn");
 const resultBadgeEl = document.getElementById("result-badge");
 const backReviewBtn = document.getElementById("back-review-btn");
 const quizMenu = document.getElementById("quiz-menu");
@@ -35624,6 +35609,7 @@ function showScreen(id, options = {}) {
     "review-screen",
     "dashboard",
     "study-result-screen",
+    "law-drill-result-screen",
   ];
 
   const currentActiveId = getActiveScreenId();

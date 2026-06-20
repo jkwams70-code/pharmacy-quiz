@@ -29,9 +29,10 @@ const isLanPreview =
   !isLocalHost &&
   !isProductionHost &&
   window.location.protocol === "http:";
-const shouldUseLocalApi = (isFilePreview || (isLocalHost && !isLikelyNativeHost)) && !isNativeShell;
+const localApiHost = currentHost || "localhost";
+const shouldUseLocalApi = (isFilePreview || isLocalHost) && !isNativeShell;
 const inferredApiBase = shouldUseLocalApi
-  ? "http://localhost:4000/api"
+  ? `http://${localApiHost}:4000/api`
   : isLanPreview
     ? `http://${currentHost}:4000/api`
     : "https://api.ajixpharmacy.online/api";

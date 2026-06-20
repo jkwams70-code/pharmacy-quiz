@@ -1071,7 +1071,8 @@ body.theme-light.theme-violet {
 #quiz-area,
 #review-screen,
 #dashboard,
-#study-result-screen {
+#study-result-screen,
+#law-drill-result-screen {
   display: none;
   position: fixed;
   inset: 0;
@@ -14063,7 +14064,8 @@ body.theme-dark .leaderboard-self-label {
 #quiz-area:not(.screen-active),
 #review-screen:not(.screen-active),
 #dashboard:not(.screen-active),
-#study-result-screen:not(.screen-active) {
+#study-result-screen:not(.screen-active),
+#law-drill-result-screen:not(.screen-active) {
   display: none !important;
 }
 
@@ -14084,7 +14086,8 @@ body.theme-dark .leaderboard-self-label {
 #quiz-area.screen-active,
 #review-screen.screen-active,
 #dashboard.screen-active,
-#study-result-screen.screen-active {
+#study-result-screen.screen-active,
+#law-drill-result-screen.screen-active {
   display: flex !important;
 }
 
@@ -34739,6 +34742,7 @@ body.theme-light #quiz-area,
 body.theme-light #review-screen,
 body.theme-light #dashboard,
 body.theme-light #study-result-screen,
+body.theme-light #law-drill-result-screen,
 body.theme-light #community-screen,
 body.theme-light #community-profile-screen,
 body.theme-light #community-group-storage-screen,
@@ -34757,6 +34761,7 @@ body.theme-teal #quiz-area,
 body.theme-teal #review-screen,
 body.theme-teal #dashboard,
 body.theme-teal #study-result-screen,
+body.theme-teal #law-drill-result-screen,
 body.theme-teal #community-screen,
 body.theme-teal #community-profile-screen,
 body.theme-teal #community-group-storage-screen,
@@ -34775,6 +34780,7 @@ body.theme-sunset #quiz-area,
 body.theme-sunset #review-screen,
 body.theme-sunset #dashboard,
 body.theme-sunset #study-result-screen,
+body.theme-sunset #law-drill-result-screen,
 body.theme-sunset #community-screen,
 body.theme-sunset #community-profile-screen,
 body.theme-sunset #community-group-storage-screen,
@@ -34793,6 +34799,7 @@ body.theme-dark #quiz-area,
 body.theme-dark #review-screen,
 body.theme-dark #dashboard,
 body.theme-dark #study-result-screen,
+body.theme-dark #law-drill-result-screen,
 body.theme-dark #community-screen,
 body.theme-dark #community-profile-screen,
 body.theme-dark #community-group-storage-screen,

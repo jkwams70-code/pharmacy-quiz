@@ -1071,7 +1071,8 @@ body.theme-light.theme-violet {
 #quiz-area,
 #review-screen,
 #dashboard,
-#study-result-screen {
+#study-result-screen,
+#law-drill-result-screen {
   display: none;
   position: fixed;
   inset: 0;
@@ -14063,7 +14064,8 @@ body.theme-dark .leaderboard-self-label {
 #quiz-area:not(.screen-active),
 #review-screen:not(.screen-active),
 #dashboard:not(.screen-active),
-#study-result-screen:not(.screen-active) {
+#study-result-screen:not(.screen-active),
+#law-drill-result-screen:not(.screen-active) {
   display: none !important;
 }
 
@@ -14084,7 +14086,8 @@ body.theme-dark .leaderboard-self-label {
 #quiz-area.screen-active,
 #review-screen.screen-active,
 #dashboard.screen-active,
-#study-result-screen.screen-active {
+#study-result-screen.screen-active,
+#law-drill-result-screen.screen-active {
   display: flex !important;
 }
 
@@ -17093,7 +17096,9 @@ body.theme-dark #quiz-area.mode-clinical #answers button.wrong {
 body.theme-dark #review-screen .review-title,
 body.theme-dark #study-result-screen .result-title,
 body.theme-dark #review-screen .analysis-question,
-body.theme-dark #study-result-screen .result-score {
+body.theme-dark #study-result-screen .result-score,
+body.theme-dark #law-drill-result-screen .result-title,
+body.theme-dark #law-drill-result-screen .result-score {
   color: #f4f8fd !important;
 }
 
@@ -17212,6 +17217,7 @@ body.theme-dark #settings-screen .settings-panel,
 body.theme-dark #tour-screen .tour-card,
 body.theme-dark #review-screen .review-card,
 body.theme-dark #study-result-screen .result-card,
+body.theme-dark #law-drill-result-screen .result-card,
 body.theme-dark #dashboard .dashboard-panel,
 body.theme-dark #topic-library .topic-library-surface,
 body.theme-dark #study-setup .study-reference-card,
@@ -18261,6 +18267,10 @@ body.theme-dark #study-result-screen .result-title,
 body.theme-dark #study-result-screen .result-score,
 body.theme-dark #study-result-screen .result-score-block,
 body.theme-dark #study-result-screen .review-section-title,
+body.theme-dark #law-drill-result-screen .result-title,
+body.theme-dark #law-drill-result-screen .result-score,
+body.theme-dark #law-drill-result-screen .result-score-block,
+body.theme-dark #law-drill-result-screen .review-section-title,
 body.theme-dark #review-screen .review-section-title,
 body.theme-dark #review-screen .analysis-question,
 body.theme-dark #study-result-screen .analysis-question,
@@ -18272,6 +18282,8 @@ body.theme-dark #study-result-screen .analysis-header {
 body.theme-dark #review-screen .review-subtitle,
 body.theme-dark #study-result-screen .result-copy,
 body.theme-dark #study-result-screen .result-feedback,
+body.theme-dark #law-drill-result-screen .result-copy,
+body.theme-dark #law-drill-result-screen .result-feedback,
 body.theme-dark #review-screen .analysis-answer,
 body.theme-dark #study-result-screen .analysis-answer,
 body.theme-dark #review-screen .analysis-card,
@@ -34801,6 +34813,7 @@ body.theme-light #quiz-area,
 body.theme-light #review-screen,
 body.theme-light #dashboard,
 body.theme-light #study-result-screen,
+body.theme-light #law-drill-result-screen,
 body.theme-light #community-screen,
 body.theme-light #community-profile-screen,
 body.theme-light #community-group-storage-screen,
@@ -34819,6 +34832,7 @@ body.theme-teal #quiz-area,
 body.theme-teal #review-screen,
 body.theme-teal #dashboard,
 body.theme-teal #study-result-screen,
+body.theme-teal #law-drill-result-screen,
 body.theme-teal #community-screen,
 body.theme-teal #community-profile-screen,
 body.theme-teal #community-group-storage-screen,
@@ -34837,6 +34851,7 @@ body.theme-sunset #quiz-area,
 body.theme-sunset #review-screen,
 body.theme-sunset #dashboard,
 body.theme-sunset #study-result-screen,
+body.theme-sunset #law-drill-result-screen,
 body.theme-sunset #community-screen,
 body.theme-sunset #community-profile-screen,
 body.theme-sunset #community-group-storage-screen,
@@ -34855,6 +34870,7 @@ body.theme-dark #quiz-area,
 body.theme-dark #review-screen,
 body.theme-dark #dashboard,
 body.theme-dark #study-result-screen,
+body.theme-dark #law-drill-result-screen,
 body.theme-dark #community-screen,
 body.theme-dark #community-profile-screen,
 body.theme-dark #community-group-storage-screen,
@@ -38176,7 +38192,8 @@ body.theme-sunset {
   box-shadow: var(--law-drill-stack-shadow);
 }
 
-#study-result-screen .law-drill-result-stack {
+#study-result-screen .law-drill-result-stack,
+#law-drill-result-screen .law-drill-result-stack {
   display: block;
   margin: 16px 0 6px;
   padding: 16px;
@@ -38186,11 +38203,13 @@ body.theme-sunset {
   box-shadow: var(--law-drill-stack-shadow);
 }
 
-#study-result-screen .law-drill-result-stack.hidden {
+#study-result-screen .law-drill-result-stack.hidden,
+#law-drill-result-screen .law-drill-result-stack.hidden {
   display: none !important;
 }
 
-#study-result-screen .law-drill-result-stack .law-drill-stack-head {
+#study-result-screen .law-drill-result-stack .law-drill-stack-head,
+#law-drill-result-screen .law-drill-result-stack .law-drill-stack-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -38198,7 +38217,8 @@ body.theme-sunset {
   margin-bottom: 14px;
 }
 
-#study-result-screen .law-drill-result-stack .law-drill-stack-eyebrow {
+#study-result-screen .law-drill-result-stack .law-drill-stack-eyebrow,
+#law-drill-result-screen .law-drill-result-stack .law-drill-stack-eyebrow {
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.18em;
@@ -38206,14 +38226,16 @@ body.theme-sunset {
   color: var(--law-drill-panel-eyebrow);
 }
 
-#study-result-screen .law-drill-result-stack .law-drill-stack-title {
+#study-result-screen .law-drill-result-stack .law-drill-stack-title,
+#law-drill-result-screen .law-drill-result-stack .law-drill-stack-title {
   margin-top: 4px;
   font-size: 0.96rem;
   font-weight: 900;
   color: var(--law-drill-panel-title);
 }
 
-#study-result-screen .law-drill-result-stack .law-drill-stack-meta {
+#study-result-screen .law-drill-result-stack .law-drill-stack-meta,
+#law-drill-result-screen .law-drill-result-stack .law-drill-stack-meta {
   padding: 7px 11px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--law-drill-panel-eyebrow) 12%, transparent);

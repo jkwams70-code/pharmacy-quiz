@@ -7,6 +7,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const backendRoot = path.resolve(__dirname, "..", "..");
 const quizRoot = path.resolve(backendRoot, "..");
+const questionSourceCandidates = [
+  path.join(quizRoot, "www", "data.js"),
+  path.join(quizRoot, "android", "app", "src", "main", "assets", "public", "data.js"),
+  path.join(quizRoot, "data.js"),
+];
 
 function normalizeQuestion(q) {
   const topicSlug = String(q.topicSlug || "").trim().toLowerCase();
@@ -31,11 +36,23 @@ function normalizeQuestion(q) {
 }
 
 export async function importQuestionsFromFrontend() {
-  const dataModulePath = path.join(quizRoot, "data.js");
-  const moduleUrl = pathToFileURL(dataModulePath).href;
-  const imported = await import(moduleUrl);
-  const source = Array.isArray(imported.baseQuestions) ? imported.baseQuestions : [];
-  return source.map(normalizeQuestion);
+  for (const dataModulePath of questionSourceCandidates) {
+    try {
+      const moduleUrl = pathToFileURL(dataModulePath).href;
+      const imported = await import(moduleUrl);
+      const source = Array.isArray(imported.baseQuestions) ? imported.baseQuestions : [];
+      if (source.length > 0) {
+        return source.map(normalizeQuestion);
+      }
+    } catch (error) {
+      const message = String(error?.message || error);
+      if (!/Unexpected token|Cannot find module|Cannot use import statement/i.test(message)) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Unable to load questions from any frontend data source.");
 }
 
 export async function ensureQuestionsSeeded() {

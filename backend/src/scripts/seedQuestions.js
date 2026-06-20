@@ -6,7 +6,7 @@ async function main() {
   const questions = await importQuestionsFromFrontend();
   await writeCollection("questions", questions);
 
-  console.log(`Seed complete: ${questions.length} questions imported.`);
+  console.log(`Seed complete: ${questions.length} questions imported into the database.`);
 }
 
 main().catch((error) => {

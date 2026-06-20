@@ -5859,9 +5859,6 @@ function readCurrentSetupPoints() {
   const ownerKey = getSetupPointsOwnerKey();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
-  if (currentUser?.id && backendClient.isAuthenticated()) {
-    return remote;
-  }
   const primary = mergeSetupPoints(local, remote);
   const historyDerived = deriveSetupPointsFromDashboardSessions(getDashboardSessionEntries());
   const merged = mergeSetupPoints(primary, historyDerived);
@@ -30146,7 +30143,7 @@ async function refreshSharedAccountState({
     currentUser = freshUser;
     renderAuthState();
     syncPointsFromCurrentUser();
-    writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+    writeCurrentSetupPoints(readCurrentSetupPoints(), {
       scheduleSync: false,
     });
     writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
@@ -30311,7 +30308,7 @@ async function handleAuthSubmit(event) {
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
       syncPointsFromCurrentUser();
-      writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+      writeCurrentSetupPoints(readCurrentSetupPoints(), {
         scheduleSync: false,
       });
       writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
@@ -30335,7 +30332,7 @@ async function handleAuthSubmit(event) {
       currentUser = response?.user || (await backendClient.fetchMe());
       renderAuthState();
       syncPointsFromCurrentUser();
-      writeCurrentSetupPoints(currentUser?.setupPoints || createEmptySetupPoints(), {
+      writeCurrentSetupPoints(readCurrentSetupPoints(), {
         scheduleSync: false,
       });
       writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {

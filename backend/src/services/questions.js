@@ -136,17 +136,35 @@ export async function importQuestionsFromFrontend() {
 
 export async function ensureQuestionsSeeded() {
   const existing = await readCollection("questions");
-  if (existing.length > 0) {
-    return { seeded: false, count: existing.length };
+  const seededQuestions = await importQuestionsFromFrontend();
+  const existingIds = new Set(
+    existing
+      .map((row) => Number(row?.id))
+      .filter((id) => Number.isFinite(id)),
+  );
+  const sourceIds = new Set(
+    seededQuestions
+      .map((row) => Number(row?.id))
+      .filter((id) => Number.isFinite(id)),
+  );
+
+  const hasMissingSourceRows = seededQuestions.some((row) => !existingIds.has(Number(row?.id)));
+  const hasExtraStoredRows = existing.some((row) => !sourceIds.has(Number(row?.id)));
+  const shouldReseed =
+    existing.length === 0 ||
+    existing.length !== seededQuestions.length ||
+    hasMissingSourceRows ||
+    hasExtraStoredRows;
+
+  if (shouldReseed) {
+    await writeCollection("questions", seededQuestions);
+    return {
+      seeded: true,
+      count: seededQuestions.length,
+    };
   }
 
-  const seededQuestions = await importQuestionsFromFrontend();
-  await writeCollection("questions", seededQuestions);
-
-  return {
-    seeded: true,
-    count: seededQuestions.length,
-  };
+  return { seeded: false, count: existing.length };
 }
 
 export async function normalizeStoredQuestionCategories() {

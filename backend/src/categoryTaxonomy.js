@@ -11,6 +11,7 @@ export const MAJOR_CATEGORIES = [
   "Rheumatology & Pain",
   "Women's & Men's Health",
   "Immunizations",
+  "Manufacturing and Calculation",
   "Pharmacy Law & Ethics",
 ];
 
@@ -251,8 +252,29 @@ export function normalizeMajorCategory(category, context = "") {
       "cdc adult schedule",
       "pediatric schedule",
     ])
-  ) {
+    ) {
     return "Immunizations";
+  }
+
+  if (
+    rawCategory === "Manufacturing and Calculation" ||
+    hasAny(combined, [
+      "manufacturing",
+      "pharmaceutical manufacturing",
+      "aseptic manufacturing",
+      "sterile manufacturing",
+      "calculation",
+      "dose calculation",
+      "dilution calculation",
+      "alligation",
+      "friability",
+      "media fill",
+      "smoke study",
+      "gmp compliance",
+      "rabs",
+    ])
+  ) {
+    return "Manufacturing and Calculation";
   }
 
   if (hasAny(combined, ["law", "ethic", "regulation", "legal"])) {

@@ -17,6 +17,7 @@ Set-Location $repoRoot
 function Sync-AndroidAssets {
   $sourceDir = Join-Path $repoRoot "www"
   $androidAssetsDir = Join-Path $repoRoot "android\app\src\main\assets\public"
+  $downloadDir = Join-Path $sourceDir "downloads"
 
   if (-not (Test-Path $sourceDir)) {
     Write-Host "Skipping Android sync: source directory missing."
@@ -29,10 +30,15 @@ function Sync-AndroidAssets {
   }
 
   Write-Host "Syncing Android assets from www/..."
-  robocopy $sourceDir $androidAssetsDir /MIR /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
+  robocopy $sourceDir $androidAssetsDir /MIR /XD $downloadDir /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
   $syncCode = $LASTEXITCODE
   if ($syncCode -ge 8) {
     throw "Android asset sync failed with robocopy exit code $syncCode"
+  }
+
+  $staleDownloadDir = Join-Path $androidAssetsDir "downloads"
+  if (Test-Path $staleDownloadDir) {
+    Remove-Item $staleDownloadDir -Recurse -Force
   }
 }
 

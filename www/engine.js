@@ -3265,6 +3265,7 @@ const tourStepDots = Array.from(document.querySelectorAll(".tour-step-dot"));
 const tourSlides = Array.from(document.querySelectorAll(".tour-slide"));
 const settingsBackBtn = document.getElementById("settings-back-btn");
 const settingsMenuBtn = document.getElementById("settings-menu-btn");
+const settingsDownloadAppBtn = document.getElementById("settings-download-app-btn");
 const appThemeSelect = document.getElementById("app-theme-select");
 const appTextSizeSelect = document.getElementById("app-text-size-select");
 const appFontSelect = document.getElementById("app-font-select");
@@ -15064,6 +15065,21 @@ async function openAppUpdateDownloadUrl(url = "") {
   const popup = window.open(safeUrl, "_blank", "noopener,noreferrer");
   if (!popup) {
     window.location.assign(safeUrl);
+  }
+}
+
+async function openSettingsAndroidDownload() {
+  try {
+    const response = await fetch(`${APP_UPDATE_FEED_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Download feed unavailable");
+    const payload = await response.json();
+    const apkUrl = String(payload?.apkUrl || "").trim();
+    if (!apkUrl) throw new Error("Download URL missing");
+    setSettingsFeedback("Opening the Android download...", false);
+    void openAppUpdateDownloadUrl(apkUrl);
+  } catch (error) {
+    console.warn("Android download failed:", error);
+    setSettingsFeedback("Android download is not available right now.", true);
   }
 }
 
@@ -27676,6 +27692,12 @@ if (settingsMenuBtn) {
   settingsMenuBtn.addEventListener("click", (event) => {
     event.stopPropagation();
     openGlobalQuickNav(settingsMenuBtn);
+  });
+}
+
+if (settingsDownloadAppBtn) {
+  settingsDownloadAppBtn.addEventListener("click", () => {
+    void openSettingsAndroidDownload();
   });
 }
 

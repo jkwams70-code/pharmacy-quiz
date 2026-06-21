@@ -12,6 +12,8 @@ android/keystore.properties
 android/keystore/
 *.apk
 *.aab
+!www/downloads/
+!www/downloads/*.apk
 
 # Local preview certificates and keys
 certs/local-preview.pfx

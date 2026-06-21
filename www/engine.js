@@ -30153,6 +30153,7 @@ async function refreshSharedAccountState({
     scheduleSharedAccountHydration({ silent, deferHydration });
     renderMenuDashboardStats();
     renderSetupPoints();
+    void loadDashboardTrendData({ force: false });
     renderDailyQuizUi();
     startSharedAccountStatePolling();
     return true;
@@ -30316,6 +30317,7 @@ async function handleAuthSubmit(event) {
       });
       renderPoints();
       scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+      void loadDashboardTrendData({ force: false });
       closeAuthModal();
       showScreen("quiz-menu");
       return;
@@ -30340,6 +30342,7 @@ async function handleAuthSubmit(event) {
       });
       renderPoints();
       scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+      void loadDashboardTrendData({ force: false });
       closeAuthModal();
       showScreen("quiz-menu");
       return;

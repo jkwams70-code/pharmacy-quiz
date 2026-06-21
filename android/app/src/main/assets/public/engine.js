@@ -31839,10 +31839,14 @@ function getLocalDashboardSessionEntries() {
 }
 
 function getDashboardSessionEntries() {
+  const localEntries = getLocalDashboardSessionEntries();
   if (dashboardTrendSessionsLoadedFromSync) {
-    return Array.isArray(dashboardTrendSessionsCache) ? dashboardTrendSessionsCache : [];
+    return mergeDashboardTrendEntries([
+      ...(Array.isArray(dashboardTrendSessionsCache) ? dashboardTrendSessionsCache : []),
+      ...localEntries,
+    ]);
   }
-  return getLocalDashboardSessionEntries();
+  return localEntries;
 }
 
 function getDashboardTrendScopeLabel(scope = "session") {
@@ -32107,7 +32111,10 @@ async function loadDashboardTrendData({ force = false } = {}) {
         : Array.isArray(cachedTrend.value)
           ? cachedTrend.value
           : [];
-      dashboardTrendSessionsCache = mergeDashboardTrendEntries(cachedSessions);
+      dashboardTrendSessionsCache = mergeDashboardTrendEntries([
+        ...localEntries,
+        ...cachedSessions,
+      ]);
       dashboardTrendSessionsLoadedFromSync = true;
       renderPoints();
       renderDashboardTrend(dashboardTrendScope);
@@ -32118,7 +32125,10 @@ async function loadDashboardTrendData({ force = false } = {}) {
         try {
           const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
           const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-          dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
+          dashboardTrendSessionsCache = mergeDashboardTrendEntries([
+            ...localEntries,
+            ...remoteSessions,
+          ]);
           dashboardTrendSessionsLoadedFromSync = true;
           renderPoints();
           renderDashboardTrend(dashboardTrendScope);
@@ -32137,7 +32147,10 @@ async function loadDashboardTrendData({ force = false } = {}) {
   try {
     const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
     const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-    dashboardTrendSessionsCache = mergeDashboardTrendEntries(remoteSessions);
+    dashboardTrendSessionsCache = mergeDashboardTrendEntries([
+      ...localEntries,
+      ...remoteSessions,
+    ]);
     dashboardTrendSessionsLoadedFromSync = true;
     void setOfflineEntry(cacheKey, { sessions: remoteSessions });
     renderPoints();

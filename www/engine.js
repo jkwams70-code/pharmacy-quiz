@@ -370,6 +370,10 @@ function isStudyLikeMode() {
   return mode === "study" || mode === "topic";
 }
 
+function shouldLockAnswerSelection() {
+  return isStudyLikeMode() || (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden"));
+}
+
 function isPreSubmitReviewMode() {
   return inReview && !inDetailedReview && (mode === "exam" || mode === "smart" || mode === "daily");
 }
@@ -33558,13 +33562,29 @@ function showQuestion() {
 
   const optionList = Array.isArray(q.options) ? q.options : [];
   const statementList = Array.isArray(q.statements) ? q.statements : [];
+  const savedAnswer = userAnswers[q.id];
+  const lockSelection = shouldLockAnswerSelection() && Boolean(savedAnswer);
 
   if (q.type === "match" || q.type === "single") {
     optionList.forEach((opt) => {
       const btn = document.createElement("button");
       btn.innerText = opt;
       btn.dataset.value = opt;
-      btn.onclick = () => selectAnswer(opt, q);
+      btn.disabled = lockSelection;
+      if (!lockSelection) {
+        btn.onclick = () => selectAnswer(opt, q);
+      }
+      if (savedAnswer === opt) {
+        btn.classList.add("selected-live");
+      }
+      if (lockSelection) {
+        if (opt === q.correct) {
+          btn.classList.add("correct");
+        }
+        if (savedAnswer === opt && opt !== q.correct) {
+          btn.classList.add("wrong");
+        }
+      }
       answersEl.appendChild(btn);
     });
   }
@@ -33595,7 +33615,21 @@ function showQuestion() {
       const btn = document.createElement("button");
       btn.innerText = option.text;
       btn.dataset.value = option.letter;
-      btn.onclick = () => selectAnswer(option.letter, q);
+      btn.disabled = lockSelection;
+      if (!lockSelection) {
+        btn.onclick = () => selectAnswer(option.letter, q);
+      }
+      if (savedAnswer === option.letter) {
+        btn.classList.add("selected-live");
+      }
+      if (lockSelection) {
+        if (option.letter === q.correct) {
+          btn.classList.add("correct");
+        }
+        if (savedAnswer === option.letter && option.letter !== q.correct) {
+          btn.classList.add("wrong");
+        }
+      }
       answersEl.appendChild(btn);
     });
   }
@@ -33608,6 +33642,14 @@ function showQuestion() {
   }
 
   restoreSelection(q);
+
+  if (lockSelection) {
+    renderQuestionExplanation(q);
+    renderQuestionTopicLink(q);
+    loadAnswerInsightForQuestion(q);
+    refreshAiExplainAvailability();
+    nextBtn.classList.remove("hidden");
+  }
 
   if (isLawStudyMode()) {
     renderLawDrillStack(lawDrillState?.currentLevelIndex ?? 0);
@@ -33743,6 +33785,13 @@ function selectAnswer(value, q) {
       }
     });
 
+    if (mode === "exam" && examVariant === "clinical") {
+      renderQuestionExplanation(q);
+      renderQuestionTopicLink(q);
+      loadAnswerInsightForQuestion(q);
+      refreshAiExplainAvailability();
+    }
+
     if (mode === "exam" || mode === "smart") {
       saveExamSession();
     }
@@ -33841,7 +33890,11 @@ function nextQuestion() {
       return;
     }
     if (mode === "exam" && examVariant === "clinical") {
-      showAnswerFeedback("No skips in Clinical drill.", "info");
+      if (!answeredCurrent && !userAnswers[q.id]) {
+        selectAnswer("Skipped", q);
+      } else {
+        showAnswerFeedback("Clinical questions lock after answering.", "info");
+      }
       return;
     }
     nextBtn.innerText = "Next";
@@ -33924,6 +33977,7 @@ function restoreSelection(q) {
   const saved = userAnswers[q.id];
   if (!saved) return;
   const editableReview = isPreSubmitReviewMode();
+  const lockSelection = shouldLockAnswerSelection();
 
   const buttons = document.querySelectorAll("#answers button");
 
@@ -33945,7 +33999,7 @@ function restoreSelection(q) {
       return;
     }
 
-    if (isStudyLikeMode()) {
+    if (lockSelection) {
       btn.disabled = true;
 
       if (btnValue === q.correct) {
@@ -33977,14 +34031,14 @@ function restoreSelection(q) {
     }
   });
   // Show explanation again in study mode
-  if (isStudyLikeMode()) {
+  if (isStudyLikeMode() || lockSelection) {
     renderQuestionExplanation(q);
     renderQuestionTopicLink(q);
     loadAnswerInsightForQuestion(q);
     refreshAiExplainAvailability();
   }
 
-  if (isStudyLikeMode()) {
+  if (isStudyLikeMode() || lockSelection) {
     nextBtn.classList.remove("hidden");
   }
 }
@@ -34023,10 +34077,6 @@ function goHome() {
   clearInterval(reviewTimer);
   closeCommunityConversationActions();
   closeCommunityFriendActions();
-
-  if (mode === "study") {
-    localStorage.removeItem("studySession");
-  }
 
   showScreen("home-screen");
 }

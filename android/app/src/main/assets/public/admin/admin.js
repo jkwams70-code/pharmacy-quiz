@@ -84,6 +84,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let selectedReportSnapshot = null;
       let selectedReportWarningDraft = "";
       let broadcastChatAttachment = null;
+      let broadcastChatSending = false;
+      let broadcastChatClientRequestId = "";
       let broadcastChatEmojiPickerOpen = false;
       let broadcastChatAttachmentViewerMode = "sent";
       let broadcastChatAttachmentViewerAttachment = null;
@@ -96,6 +98,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let broadcastThreadOpen = false;
       let selectedBroadcastStatusId = "";
       let broadcastOverviewLoaded = false;
+      let adminActiveTab = "stats";
+      let adminBroadcastReturnTab = "stats";
       const ADMIN_NOTIFICATION_BANNER_STORAGE_KEY = "adminReportsNotificationSignature";
       let adminNotificationBannerHideTimer = null;
       let pendingDeleteUserId = null;
@@ -2011,15 +2015,20 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function syncBroadcastThreadUi() {
         const mainEl = document.getElementById("broadcast-main");
+        const listPanelEl = document.querySelector(".broadcast-thread-list-panel");
         const panelEl = document.getElementById("broadcast-thread-panel");
         const hasSelectedThread = Boolean(selectedBroadcastThreadKey && getBroadcastThreadSummary(selectedBroadcastThreadKey));
+        const isDesktop = window.matchMedia("(min-width: 769px)").matches;
+        const shouldShowThreadPanel = isDesktop || (broadcastThreadOpen && hasSelectedThread);
+        const shouldShowListPanel = isDesktop || !shouldShowThreadPanel;
         if (mainEl) {
-          mainEl.classList.toggle("thread-open", broadcastThreadOpen && hasSelectedThread);
+          mainEl.classList.toggle("thread-open", isDesktop ? true : (broadcastThreadOpen && hasSelectedThread));
         }
+        listPanelEl?.classList.toggle("hidden", !shouldShowListPanel);
         if (panelEl) {
-          panelEl.classList.toggle("hidden", !(broadcastThreadOpen && hasSelectedThread));
+          panelEl.classList.toggle("hidden", !shouldShowThreadPanel);
         }
-        syncBroadcastMobileComposerDock(broadcastThreadOpen && hasSelectedThread);
+        syncBroadcastMobileComposerDock(!isDesktop && broadcastThreadOpen && hasSelectedThread);
       }
 
       function buildBroadcastAttachmentMarkup(attachment = {}, { compact = false } = {}) {
@@ -2103,26 +2112,29 @@ async function ensureAdminApiBase({ force = false } = {}) {
         const subtitleEl = document.getElementById("broadcast-attachment-viewer-subtitle");
         const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
         if (!titleEl || !subtitleEl || !bodyEl) return;
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
         const safeDataUrl = escapeHtml(dataUrl);
         const safeFileName = escapeHtml(fileName);
         const safeMimeType = escapeHtml(mimeType || "application/octet-stream");
-        titleEl.textContent = fileName || "Attachment";
-        subtitleEl.textContent = mimeType || "Broadcast attachment";
+        const isMedia = mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/");
+        titleEl.textContent = isMedia ? "" : (fileName || "Attachment");
+        subtitleEl.textContent = isMedia ? "" : (mimeType || "Broadcast attachment");
+        modalEl?.classList.toggle("is-simple-view", isMedia);
         if (mimeType.startsWith("image/")) {
           bodyEl.innerHTML = `
-            <div class="broadcast-attachment-viewer-stage">
+            <div class="broadcast-attachment-viewer-stage is-media-only">
               <img src="${safeDataUrl}" alt="${safeFileName}" loading="lazy" />
             </div>
           `;
         } else if (mimeType.startsWith("video/")) {
           bodyEl.innerHTML = `
-            <div class="broadcast-attachment-viewer-stage">
+            <div class="broadcast-attachment-viewer-stage is-media-only">
               <video controls playsinline src="${safeDataUrl}"></video>
             </div>
           `;
         } else if (mimeType.startsWith("audio/")) {
           bodyEl.innerHTML = `
-            <div class="broadcast-attachment-viewer-stage">
+            <div class="broadcast-attachment-viewer-stage is-media-only">
               <audio controls src="${safeDataUrl}"></audio>
             </div>
           `;
@@ -2143,11 +2155,12 @@ async function ensureAdminApiBase({ force = false } = {}) {
           `;
         }
         document.getElementById("broadcast-attachment-viewer-actions")?.replaceChildren();
-        document.getElementById("broadcast-attachment-viewer-modal")?.classList.add("active");
+        modalEl?.classList.add("active");
       }
 
       function closeBroadcastAttachmentViewer() {
-        document.getElementById("broadcast-attachment-viewer-modal")?.classList.remove("active");
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
+        modalEl?.classList.remove("active", "is-simple-view");
         broadcastChatAttachmentViewerMode = "sent";
         broadcastChatAttachmentViewerAttachment = null;
       }
@@ -2229,6 +2242,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
         const subtitleEl = document.getElementById("broadcast-attachment-viewer-subtitle");
         const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
         if (!titleEl || !subtitleEl || !bodyEl) return;
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
+        modalEl?.classList.remove("is-simple-view");
         titleEl.textContent = fileName || "Attachment";
         subtitleEl.textContent = String(mode || "sent").toLowerCase() === "composer"
           ? "Preview and edit the selected attachment"
@@ -2244,7 +2259,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       function closeBroadcastComposerAttachmentViewer() {
-        document.getElementById("broadcast-attachment-viewer-modal")?.classList.remove("active");
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
+        modalEl?.classList.remove("active", "is-simple-view");
         broadcastChatAttachmentViewerMode = "sent";
         broadcastChatAttachmentViewerAttachment = null;
       }
@@ -2272,6 +2288,13 @@ async function ensureAdminApiBase({ force = false } = {}) {
           } else {
             previewEl.innerHTML = "";
             previewEl.classList.add("hidden");
+          }
+        }
+        if (safeKind === "chat") {
+          const sendBtn = document.getElementById("broadcast-chat-send-btn");
+          if (sendBtn instanceof HTMLElement) {
+            sendBtn.disabled = broadcastChatSending;
+            sendBtn.classList.toggle("is-disabled", broadcastChatSending);
           }
         }
       }
@@ -2344,11 +2367,14 @@ async function ensureAdminApiBase({ force = false } = {}) {
             const title = String(thread.title || "Admin Notice").trim();
             const preview = String(thread.previewText || thread.subtitle || "No messages yet").trim();
             const time = formatBroadcastTime(thread.latestAt);
-            const badge = thread.threadKey === "broadcast" ? "A" : String(title.charAt(0) || "?").toUpperCase();
+            const badgeMarkup =
+              thread.threadKey === "broadcast"
+                ? `<span class="broadcast-thread-row-badge is-logo" aria-hidden="true"></span>`
+                : `<span class="broadcast-thread-row-badge">${escapeHtml(String(title.charAt(0) || "?").toUpperCase())}</span>`;
             const activeClass = thread.threadKey === activeThreadKey ? " active" : "";
             return `
               <button type="button" class="broadcast-thread-row${activeClass}" data-thread-key="${escapeHtml(thread.threadKey)}">
-                <div class="broadcast-thread-row-badge">${escapeHtml(badge)}</div>
+                ${badgeMarkup}
                 <div class="broadcast-thread-row-body">
                   <div class="broadcast-thread-row-head">
                     <div class="broadcast-thread-row-title">${escapeHtml(title)}</div>
@@ -2415,11 +2441,16 @@ async function ensureAdminApiBase({ force = false } = {}) {
             const text = String(batch.text || "").trim();
             const attachmentHtml = buildBroadcastAttachmentMarkup(batch.attachment, { compact: true });
             const metaTime = formatBroadcastTime(batch.createdAt);
+            const senderName = String(batch.senderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin";
+            const isAdminSender = senderName.toLowerCase() === "ajixpharmacy admin";
+            const senderMarkup = isAdminSender
+              ? `<span class="broadcast-message-sender is-admin"><span class="broadcast-message-sender-avatar" aria-hidden="true"></span><span class="broadcast-message-sender-name">${escapeHtml(senderName)}</span></span>`
+              : `<span class="broadcast-message-sender-name">${escapeHtml(senderName)}</span>`;
             return `
               <div class="broadcast-message-row">
                 <div class="broadcast-message-bubble">
                   <div class="broadcast-message-meta">
-                    <span>${escapeHtml(batch.senderName || "AJIXPHARMACY Admin")}</span>
+                    ${senderMarkup}
                     <span>${escapeHtml(metaTime)}</span>
                   </div>
                   <div class="broadcast-message-text">${escapeHtml(text || "Attachment only message")}</div>
@@ -2598,6 +2629,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       async function sendAdminBroadcastMessage() {
+        if (broadcastChatSending) return;
         const threadKey = getActiveBroadcastThreadKey();
         const messageEl = document.getElementById("broadcast-chat-message");
         const message = String(messageEl?.value || "").trim();
@@ -2609,6 +2641,11 @@ async function ensureAdminApiBase({ force = false } = {}) {
           showAlert("broadcast-alerts", "Write a message or attach a file first", "error");
           return;
         }
+        broadcastChatSending = true;
+        if (!broadcastChatClientRequestId) {
+          broadcastChatClientRequestId = `broadcast-chat-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+        }
+        syncBroadcastAttachmentUi("chat");
         try {
           const res = await fetch(`${API_BASE}/admin/broadcast/threads/${encodeURIComponent(threadKey)}/message`, {
             method: "POST",
@@ -2617,6 +2654,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
               message,
               attachmentDataUrl: broadcastChatAttachment?.dataUrl || "",
               attachmentFileName: broadcastChatAttachment?.fileName || "",
+              clientRequestId: broadcastChatClientRequestId,
             }),
           });
           const data = await res.json().catch(() => ({}));
@@ -2628,6 +2666,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             autoSizeBroadcastChatMessage();
           }
           broadcastChatAttachment = null;
+          broadcastChatClientRequestId = "";
           const fileInput = document.getElementById("broadcast-chat-file");
           if (fileInput) fileInput.value = "";
           syncBroadcastAttachmentUi("chat");
@@ -2639,6 +2678,9 @@ async function ensureAdminApiBase({ force = false } = {}) {
           showAlert("broadcast-alerts", `Notice sent to ${Number(data.deliveredTo || 0)} recipients.`, "success");
         } catch (err) {
           showAlert("broadcast-alerts", "Error: " + err.message, "error");
+        } finally {
+          broadcastChatSending = false;
+          syncBroadcastAttachmentUi("chat");
         }
       }
 
@@ -2797,6 +2839,13 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       function switchTab(tabName, btnEl = null) {
+        const requestedTab = String(tabName || "stats").trim().toLowerCase();
+        const previousTab = adminActiveTab || "stats";
+        adminActiveTab = requestedTab;
+        if (requestedTab === "broadcast") {
+          adminBroadcastReturnTab = previousTab && previousTab !== "broadcast" ? previousTab : adminBroadcastReturnTab || "stats";
+        }
+
         // Hide all content
         document
           .querySelectorAll(".content")
@@ -2806,25 +2855,29 @@ async function ensureAdminApiBase({ force = false } = {}) {
           .forEach((el) => el.classList.remove("active"));
 
         // Show selected content
-        document.getElementById(tabName).classList.add("active");
+        document.getElementById(requestedTab)?.classList.add("active");
         if (btnEl) {
           btnEl.classList.add("active");
         }
         const activeBtn = document.querySelector(
-          `.tab-btn[data-tab="${tabName}"]`,
+          `.tab-btn[data-tab="${requestedTab}"]`,
         );
         if (activeBtn) activeBtn.classList.add("active");
 
+        const dashboardEl = document.getElementById("dashboard");
+        document.body.classList.toggle("admin-broadcast-active", requestedTab === "broadcast");
+        dashboardEl?.classList.toggle("broadcast-mode", requestedTab === "broadcast");
+
         const reportsTabBadge = document.getElementById("reports-tab-badge");
-        if (tabName === "groups" && groupsLoaded) {
+        if (requestedTab === "groups" && groupsLoaded) {
           renderGroupsTable();
         }
-        if (tabName === "reports" && reportsLoaded) {
+        if (requestedTab === "reports" && reportsLoaded) {
           hideAdminNotificationBanner();
           reportsTabBadge?.classList.add("hidden");
           renderReportsTable();
         }
-        if (tabName === "broadcast") {
+        if (requestedTab === "broadcast") {
           if (broadcastOverviewLoaded) {
             renderBroadcastOverview();
           } else {
@@ -3278,6 +3331,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         document
           .getElementById("broadcast-chat-message")
           ?.addEventListener("input", () => {
+            broadcastChatClientRequestId = "";
             requestAnimationFrame(() => {
               autoSizeBroadcastChatMessage();
             });
@@ -3319,12 +3373,14 @@ async function ensureAdminApiBase({ force = false } = {}) {
           ?.addEventListener("change", async (event) => {
             const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
             if (file instanceof File) {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = {
                 dataUrl: await readFileAsDataUrl(file),
                 fileName: file.name || "attachment",
                 mimeType: String(file.type || "").trim().toLowerCase(),
               };
             } else {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = null;
             }
             syncBroadcastAttachmentUi("chat");
@@ -3337,6 +3393,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
           ?.addEventListener("click", (event) => {
             const removeBtn = event.target instanceof HTMLElement ? event.target.closest("[data-broadcast-chat-remove-attachment]") : null;
             if (removeBtn instanceof HTMLElement) {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = null;
               syncBroadcastAttachmentUi("chat");
               return;
@@ -3348,6 +3405,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         document
           .getElementById("broadcast-chat-clear-btn")
           ?.addEventListener("click", () => {
+            broadcastChatClientRequestId = "";
             broadcastChatAttachment = null;
             syncBroadcastAttachmentUi("chat");
           });
@@ -3406,6 +3464,12 @@ async function ensureAdminApiBase({ force = false } = {}) {
         document
           .getElementById("broadcast-thread-back-btn")
           ?.addEventListener("click", closeBroadcastThread);
+        document
+          .getElementById("broadcast-page-back-btn")
+          ?.addEventListener("click", () => {
+            const returnTab = adminBroadcastReturnTab || "stats";
+            switchTab(returnTab === "broadcast" ? "stats" : returnTab);
+          });
         document.addEventListener("pointerdown", (event) => {
           if (!broadcastChatEmojiPickerOpen) return;
           const target = event.target instanceof HTMLElement ? event.target : null;
@@ -3575,4 +3639,3 @@ async function ensureAdminApiBase({ force = false } = {}) {
           refreshData();
         })();
       }
-

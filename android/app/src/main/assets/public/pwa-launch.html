@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f3f7f" />
     <title>Ajix Pharmacy Quiz</title>
+    <meta http-equiv="refresh" content="0;url=/" />
     <style>
       html,
       body {
@@ -58,8 +59,22 @@
       <span>Opening Ajix Pharmacy Quiz...</span>
     </div>
     <script>
-      (async () => {
-        window.location.replace("/");
+      (function () {
+        var nextUrl = "/?cb=" + Date.now();
+        try {
+          if (window.location.search) {
+            nextUrl = "/" + window.location.search + "&cb=" + Date.now();
+          }
+          if (window.location.hash) {
+            nextUrl += window.location.hash;
+          }
+        } catch (error) {
+          console.warn("PWA launch URL build failed:", error);
+        }
+
+        window.setTimeout(function () {
+          window.location.replace(nextUrl);
+        }, 100);
       })();
     </script>
   </body>

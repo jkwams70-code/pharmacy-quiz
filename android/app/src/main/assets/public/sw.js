@@ -6,7 +6,7 @@ const SHELL_ASSETS = [
   "/",
   "/index.html",
   "/engine.js?v=20260620-smooth-cache-fix11",
-  "/backendClient.js?v=20260613-manufacturing-set2",
+  "/backendClient.js?v=20260619-cross-device-sync-fix3",
   "/styles.css",
   "/data.js?v=20260613-manufacturing-set2",
   "/rotationTaxonomy.js",

@@ -110,7 +110,12 @@ function Build-ReleaseApk {
   $gradleBat = Get-GradleBatPath
   $env:ANDROID_SDK_ROOT = Join-Path $env:LOCALAPPDATA "Android\Sdk"
   Write-Host "Building release APK..."
-  & $gradleBat assembleRelease --no-daemon --console=plain
+  Push-Location (Join-Path $repoRoot "android")
+  try {
+    & $gradleBat assembleRelease --no-daemon --console=plain
+  } finally {
+    Pop-Location
+  }
 }
 
 function Copy-ReleaseApk {

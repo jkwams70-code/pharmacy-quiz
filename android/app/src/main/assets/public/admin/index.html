@@ -163,6 +163,31 @@
         display: block;
       }
 
+      body.admin-broadcast-active {
+        overflow: hidden;
+        height: 100dvh;
+        padding: 0;
+      }
+
+      .dashboard.broadcast-mode,
+      body.admin-broadcast-active .dashboard {
+        display: contents !important;
+        max-width: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+      }
+
+      .dashboard.broadcast-mode > .header,
+      .dashboard.broadcast-mode > .tabs,
+      .dashboard.broadcast-mode > .admin-notification-banner,
+      .dashboard.broadcast-mode > .content:not(#broadcast),
+      body.admin-broadcast-active .dashboard > .header,
+      body.admin-broadcast-active .dashboard > .tabs,
+      body.admin-broadcast-active .dashboard > .admin-notification-banner,
+      body.admin-broadcast-active .dashboard > .content:not(#broadcast) {
+        display: none !important;
+      }
+
       .header {
         background: white;
         padding: 20px;
@@ -280,6 +305,15 @@
         display: block;
       }
 
+      #groups.content.active,
+      #reports.content.active {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        height: calc(100vh - 220px);
+        overflow: hidden;
+      }
+
       .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -312,6 +346,24 @@
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         overflow: hidden;
         margin-bottom: 20px;
+      }
+
+      #groups .table-container,
+      #reports .table-container {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 0;
+        scrollbar-width: none;
+      }
+
+      #groups .table-container::-webkit-scrollbar,
+      #reports .table-container::-webkit-scrollbar {
+        width: 0;
+        height: 0;
       }
 
       table {
@@ -1012,15 +1064,58 @@
         margin-bottom: 12px;
       }
 
+      .broadcast-page-back-btn {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 42px;
+        min-width: 42px;
+        height: 42px;
+        min-height: 42px;
+        padding: 0;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.26);
+        background: rgba(255, 255, 255, 0.9);
+        color: #4c1d95;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+      }
+
+      .broadcast-page-back-btn:hover {
+        background: rgba(243, 232, 255, 0.96);
+      }
+
+      .broadcast-page-back-btn svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
       .broadcast-shell {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        min-height: calc(100vh - 150px);
+        gap: 8px;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow: hidden;
       }
 
       #broadcast.content.active {
-        min-height: calc(100vh - 150px);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+        height: 100dvh;
+        overflow: hidden;
       }
 
       .broadcast-status-panel,
@@ -1041,7 +1136,8 @@
       }
 
       .broadcast-status-panel {
-        padding: 16px;
+        position: relative;
+        padding: 10px 10px 10px 66px;
       }
 
       .broadcast-panel-heading,
@@ -1090,7 +1186,7 @@
       }
 
       .broadcast-status-strip {
-        margin-top: 14px;
+        margin-top: 0;
         display: flex;
         gap: 12px;
         align-items: stretch;
@@ -1099,23 +1195,23 @@
       }
 
       .broadcast-status-strip::-webkit-scrollbar {
-        height: 8px;
+        width: 0;
+        height: 0;
       }
 
       .broadcast-status-strip::-webkit-scrollbar-thumb {
-        background: rgba(124, 58, 237, 0.2);
-        border-radius: 999px;
+        background: transparent;
       }
 
       .broadcast-status-card,
       .broadcast-status-add {
-        width: 80px;
-        min-width: 80px;
-        max-width: 80px;
-        height: 80px;
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
+        height: 64px;
         flex: 0 0 auto;
         border-radius: 50%;
-        padding: 9px;
+        padding: 7px;
         border: 1px solid rgba(148, 163, 184, 0.22);
         background: linear-gradient(180deg, rgba(244, 235, 255, 0.95), rgba(255, 255, 255, 0.95));
         box-shadow: 0 10px 24px rgba(103, 80, 164, 0.08);
@@ -1138,7 +1234,7 @@
         color: #7c3aed;
         font-weight: 800;
         border-style: dashed;
-        font-size: 10px;
+        font-size: 8px;
         line-height: 1;
         text-align: center;
         white-space: normal;
@@ -1164,16 +1260,16 @@
 
       .broadcast-main {
         display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 16px;
+        grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+        gap: 12px;
         min-height: 0;
         flex: 1 1 auto;
       }
 
       .broadcast-main.thread-open {
-        grid-template-columns: 320px minmax(0, 1fr);
         align-items: stretch;
-        min-height: calc(100vh - 240px);
+        min-height: 0;
+        height: 100%;
       }
 
       .broadcast-thread-list-panel,
@@ -1183,11 +1279,12 @@
       }
 
       .broadcast-thread-list-panel {
-        padding: 14px;
+        padding: 12px;
         display: flex;
         flex-direction: column;
         min-height: 0;
-        height: calc(100vh - 240px);
+        height: 100%;
+        max-height: none;
       }
 
       .broadcast-thread-list-heading {
@@ -1202,6 +1299,13 @@
         min-height: 0;
         overflow-y: auto;
         padding-right: 4px;
+        scrollbar-width: none;
+      }
+
+      .broadcast-thread-list::-webkit-scrollbar,
+      .broadcast-thread-messages::-webkit-scrollbar {
+        width: 0;
+        height: 0;
       }
 
       .broadcast-thread-row {
@@ -1242,6 +1346,16 @@
         font-weight: 900;
         font-size: 15px;
         box-shadow: 0 12px 18px rgba(124, 58, 237, 0.22);
+      }
+
+      .broadcast-thread-row-badge.is-logo {
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.76)),
+          url("/images/app-logo.png?v=20260617-admin-avatar") center/cover no-repeat;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        color: transparent;
+        font-size: 0;
+        box-shadow: 0 12px 18px rgba(15, 23, 42, 0.12);
       }
 
       .broadcast-thread-row-body {
@@ -1285,24 +1399,21 @@
       }
 
       .broadcast-thread-panel {
-        display: none;
+        display: flex;
         flex-direction: column;
         min-height: 0;
         flex: 1 1 auto;
-        height: calc(100vh - 150px);
+        height: 100%;
+        min-height: 0;
         max-height: none;
-        padding: 16px;
-        overflow: visible;
-      }
-
-      .broadcast-main.thread-open .broadcast-thread-panel {
-        display: flex;
+        padding: 12px;
+        overflow: hidden;
       }
 
       .broadcast-thread-header {
-        padding-bottom: 14px;
+        padding-bottom: 10px;
         border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-        margin-bottom: 14px;
+        margin-bottom: 10px;
         justify-content: flex-start;
       }
 
@@ -1342,6 +1453,8 @@
         overflow-y: auto;
         min-height: 0;
         padding-right: 4px;
+        padding-bottom: 10px;
+        scrollbar-width: none;
       }
 
       .broadcast-thread-empty {
@@ -1401,6 +1514,30 @@
         font-size: 11px;
         margin-bottom: 8px;
         flex-wrap: wrap;
+      }
+
+      .broadcast-message-sender {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        font-weight: 700;
+      }
+
+      .broadcast-message-sender-avatar {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72)),
+          url("/images/app-logo.png?v=20260617-admin-avatar") center/cover no-repeat;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+        flex: 0 0 auto;
+      }
+
+      .broadcast-message-sender-name {
+        min-width: 0;
       }
 
       .broadcast-message-text {
@@ -1514,6 +1651,46 @@
         border: 1px solid rgba(148, 163, 184, 0.16);
       }
 
+      .broadcast-attachment-viewer-modal.is-simple-view {
+        max-width: min(96vw, 1100px);
+        width: min(96vw, 1100px);
+        background: rgba(5, 10, 18, 0.96);
+        border: none;
+        box-shadow: none;
+        padding: 14px;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .modal-header {
+        margin-bottom: 8px !important;
+        justify-content: flex-end !important;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .modal-title,
+      .broadcast-attachment-viewer-modal.is-simple-view .modal-subtitle {
+        display: none !important;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-body {
+        min-height: calc(100dvh - 120px);
+        justify-content: center;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-stage {
+        min-height: calc(100dvh - 190px);
+        background: transparent;
+        border: none;
+        padding: 0;
+        border-radius: 0;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-stage img,
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-stage video {
+        max-width: 100%;
+        max-height: calc(100dvh - 200px);
+        border-radius: 18px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+      }
+
       .broadcast-attachment-viewer-stage img,
       .broadcast-attachment-viewer-stage video {
         max-width: 100%;
@@ -1578,11 +1755,13 @@
       }
 
       .broadcast-thread-composer {
-        margin-top: 14px;
+        margin-top: 12px;
         padding-top: 14px;
         border-top: 1px solid rgba(148, 163, 184, 0.16);
-        position: relative;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.98));
+        backdrop-filter: blur(10px);
         overflow: visible;
+        z-index: 5;
       }
 
       .broadcast-chat-emoji-panel {
@@ -2132,6 +2311,15 @@
           font-size: 11px;
         }
 
+        .broadcast-page-back-btn {
+          width: 38px;
+          min-width: 38px;
+          height: 38px;
+          min-height: 38px;
+          border-radius: 12px;
+          left: 10px;
+        }
+
         .users-toolbar {
           align-items: stretch;
         }
@@ -2194,6 +2382,24 @@
           padding: 8px 6px;
           font-size: 16px !important;
           vertical-align: middle;
+        }
+
+        #groups .table-container,
+        #reports .table-container {
+          max-height: none;
+          overflow-y: auto;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        #groups table,
+        #reports table {
+          table-layout: auto;
+          min-width: 760px;
+        }
+
+        #broadcast .broadcast-shell {
+          max-height: none;
         }
 
         #questions .table-container {
@@ -2304,10 +2510,18 @@
         }
 
         .broadcast-thread-panel {
+          display: none;
           flex: 1 1 auto;
           min-height: 0;
-          height: calc(100dvh - 150px);
+          height: 100%;
+          min-height: 0;
           overflow: hidden;
+        }
+
+        .broadcast-thread-list-panel {
+          display: flex;
+          height: 100%;
+          max-height: none;
         }
 
         .broadcast-main.thread-open .broadcast-thread-list-panel {
@@ -2365,9 +2579,6 @@
 
         .broadcast-thread-composer {
           position: relative;
-          left: auto;
-          right: auto;
-          bottom: auto;
           margin-top: 12px;
           padding: 10px;
           background: rgba(255, 255, 255, 0.98);
@@ -2462,6 +2673,22 @@
           width: 20px;
           height: 20px;
         }
+      }
+
+      /* Hide native scrollbars while preserving scroll behavior. */
+      html,
+      body,
+      * {
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+      }
+
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar,
+      *::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
+        display: none !important;
       }
     </style>
   </head>
@@ -2727,6 +2954,11 @@
         <div id="broadcast-alerts"></div>
         <div class="broadcast-shell">
           <section class="broadcast-status-panel">
+            <button id="broadcast-page-back-btn" type="button" class="broadcast-page-back-btn" aria-label="Back to dashboard" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+              </svg>
+            </button>
             <div id="broadcast-status-strip" class="broadcast-status-strip"></div>
           </section>
 
@@ -3329,7 +3561,3 @@
     </script>
   </body>
 </html>
-
-
-
-

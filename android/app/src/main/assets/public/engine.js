@@ -370,6 +370,10 @@ function isStudyLikeMode() {
   return mode === "study" || mode === "topic";
 }
 
+function shouldLockAnswerSelection() {
+  return isStudyLikeMode() || (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden"));
+}
+
 function isPreSubmitReviewMode() {
   return inReview && !inDetailedReview && (mode === "exam" || mode === "smart" || mode === "daily");
 }
@@ -1186,7 +1190,6 @@ function updateLawDrillCurrentLevelScore() {
   const currentLevel = getLawDrillCurrentLevel();
   if (!currentLevel) return;
   currentLevel.score = getLawDrillCurrentLevelScore();
-  syncLawDrillCumulativeScore();
   renderSetupPoints();
 }
 
@@ -1207,14 +1210,6 @@ function syncLawDrillLevelStatuses(activeLevelIndex = 0) {
     }
   });
   lawDrillState.currentLevelIndex = safeIndex;
-}
-
-function syncLawDrillCumulativeScore() {
-  if (!lawDrillState) return;
-  const nextScore = getLawDrillCumulativeScore();
-  const points = readCurrentSetupPoints();
-  points.law = Math.max(0, Math.round(Number(nextScore) || 0));
-  writeCurrentSetupPoints(points);
 }
 
 function renderLawDrillStack(levelIndex = null, targetEl = lawDrillStackEl, eyebrowLabel = null) {
@@ -1769,6 +1764,10 @@ function saveLawDrillLevelSession(levelIndex = 0, { finishBackendAttempt = true 
   }
 
   saveSession(getLawDrillSessionLabel(levelIndex), correct, answered);
+  commitFinishedSessionPoints({
+    score: correct,
+    setupPointsBucket: "law",
+  });
   persistLawDrillSession();
   return true;
 }
@@ -3265,6 +3264,7 @@ const tourStepDots = Array.from(document.querySelectorAll(".tour-step-dot"));
 const tourSlides = Array.from(document.querySelectorAll(".tour-slide"));
 const settingsBackBtn = document.getElementById("settings-back-btn");
 const settingsMenuBtn = document.getElementById("settings-menu-btn");
+const settingsDownloadAppBtn = document.getElementById("settings-download-app-btn");
 const appThemeSelect = document.getElementById("app-theme-select");
 const appTextSizeSelect = document.getElementById("app-text-size-select");
 const appFontSelect = document.getElementById("app-font-select");
@@ -5753,9 +5753,6 @@ function writePendingPoints(value = 0) {
 function getCumulativePoints() {
   const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
-  if (currentUser?.id && backendClient.isAuthenticated()) {
-    return remotePoints;
-  }
   return Math.max(localPoints, remotePoints);
 }
 
@@ -6154,7 +6151,11 @@ function resetPointsState() {
 function syncPointsFromCurrentUser() {
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
   const previousPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
-  writeStoredPoints(remotePoints);
+  const nextPoints = Math.max(previousPoints, remotePoints);
+  writeStoredPoints(nextPoints);
+  if (currentUser) {
+    currentUser = { ...(currentUser || {}), points: nextPoints };
+  }
   renderPoints();
 }
 
@@ -6198,22 +6199,49 @@ function schedulePendingPointsSync(delayMs = 420) {
   }, delayMs);
 }
 
+let committedSessionPointsId = "";
+
+function commitFinishedSessionPoints({ score = 0, setupPointsBucket = "" } = {}) {
+  const safeScore = Math.max(0, Math.round(Number(score) || 0));
+  const sessionId = String(latestSavedSession?.sessionId || "").trim();
+
+  if (!sessionId || safeScore <= 0) {
+    if (setupPointsBucket) {
+      writeCurrentSetupPoints(readCurrentSetupPoints(), { scheduleSync: true });
+    }
+    renderPoints();
+    return false;
+  }
+
+  if (sessionId === committedSessionPointsId) {
+    return false;
+  }
+
+  committedSessionPointsId = sessionId;
+
+  const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
+  writePendingPoints(readPendingPoints() + safeScore);
+
+  if (currentUser) {
+    currentUser = { ...(currentUser || {}), points: nextStoredPoints };
+  }
+
+  if (setupPointsBucket) {
+    writeCurrentSetupPoints(readCurrentSetupPoints(), { scheduleSync: true });
+  }
+
+  renderPoints();
+  if (currentUser && backendClient.isAuthenticated()) {
+    schedulePendingPointsSync(0);
+  }
+  return true;
+}
+
 function awardCorrectAnswerPoint(delta = 1) {
   const safeDelta = Math.max(0, Math.round(Number(delta) || 0));
   if (safeDelta <= 0) return;
-
-  if (shouldCountCorrectAnswerTowardLeaderboard()) {
-    writeStoredPoints(readStoredPoints() + safeDelta);
-    writePendingPoints(readPendingPoints() + safeDelta);
-  }
-  if (!isLawStudyMode()) {
-    addPointsToCurrentSetupBucket(safeDelta);
-  }
-  renderPoints();
-
-  if (currentUser && backendClient.isAuthenticated() && shouldCountCorrectAnswerTowardLeaderboard()) {
-    schedulePendingPointsSync();
-  }
+  renderSessionPointsDisplay();
+  renderCompactHeaderMeta();
 }
 
 function setLeaderboardLoading(isLoading = false) {
@@ -15064,6 +15092,21 @@ async function openAppUpdateDownloadUrl(url = "") {
   const popup = window.open(safeUrl, "_blank", "noopener,noreferrer");
   if (!popup) {
     window.location.assign(safeUrl);
+  }
+}
+
+async function openSettingsAndroidDownload() {
+  try {
+    const response = await fetch(`${APP_UPDATE_FEED_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Download feed unavailable");
+    const payload = await response.json();
+    const apkUrl = String(payload?.apkUrl || "").trim();
+    if (!apkUrl) throw new Error("Download URL missing");
+    setSettingsFeedback("Opening the Android download...", false);
+    void openAppUpdateDownloadUrl(apkUrl);
+  } catch (error) {
+    console.warn("Android download failed:", error);
+    setSettingsFeedback("Android download is not available right now.", true);
   }
 }
 
@@ -27679,6 +27722,12 @@ if (settingsMenuBtn) {
   });
 }
 
+if (settingsDownloadAppBtn) {
+  settingsDownloadAppBtn.addEventListener("click", () => {
+    void openSettingsAndroidDownload();
+  });
+}
+
 globalQuickNavTriggerBtns.forEach((btn) => {
   if (
     btn === topicViewerMenuBtn ||
@@ -31125,6 +31174,29 @@ function getSavedDrillSession(variant = "") {
   return saved;
 }
 
+function getSavedStudySession() {
+  const studyType = getCurrentStudyType();
+  const preferredKeys = [
+    studyType === "weak" ? "practiceSession" : "studySession",
+    studyType === "weak" ? "studySession" : "practiceSession",
+  ];
+
+  for (const key of preferredKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const saved = JSON.parse(raw);
+      if (saved && typeof saved === "object" && Array.isArray(saved.active) && saved.active.length > 0) {
+        return { key, state: saved };
+      }
+    } catch {
+      // Ignore malformed saved sessions and keep looking.
+    }
+  }
+
+  return null;
+}
+
 function isPausableDrillSession() {
   return mode === "exam" && (examVariant === "sudden" || examVariant === "clinical");
 }
@@ -31329,7 +31401,30 @@ if (rapidDrillBtn) {
 }
 
 if (suddenDrillBtn) {
-  suddenDrillBtn.onclick = () => startMenuDrill("sudden");
+  suddenDrillBtn.onclick = () => {
+    const pausedSudden = getSavedDrillSession("sudden");
+    if (pausedSudden) {
+      openSessionResumeModal({
+        title: "Resume Sudden Death?",
+        text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
+        onResume: () => {
+          loadExamSession();
+        },
+        onStartNew: () => {
+          localStorage.removeItem("quizExamSession");
+          localStorage.removeItem("examAbandoned");
+          mode = "exam";
+          examVariant = "sudden";
+          active = [];
+          userAnswers = {};
+          current = 0;
+          startExam("all", "sudden");
+        },
+      });
+      return;
+    }
+    startMenuDrill("sudden");
+  };
 }
 
 if (clinicalDrillBtn) {
@@ -31369,6 +31464,37 @@ backReviewBtn.onclick = function () {
 
 if (studyBtn) {
   studyBtn.onclick = () => {
+    const savedStudySession = getSavedStudySession();
+    if (savedStudySession) {
+      const { state } = savedStudySession;
+      openSessionResumeModal({
+        title: "Resume Study Session?",
+        text: "You have a paused study session. Resume where you stopped or start a new one.",
+        onResume: () => {
+          mode = "study";
+          activeCase = "";
+          active = state.active;
+          current = state.current;
+          userAnswers = state.userAnswers;
+          currentStreak = state.currentStreak || 0;
+
+          updateModeIndicator(state.studyType);
+          nextBtn.onclick = nextQuestion;
+          prevBtn.onclick = previousQuestion;
+
+          showScreen("quiz-area");
+          showQuestion();
+          restoreStreakUI();
+        },
+        onStartNew: () => {
+          localStorage.removeItem("studySession");
+          localStorage.removeItem("practiceSession");
+          void startStudy();
+        },
+      });
+      return;
+    }
+
     document.getElementById("start-study-btn").onclick = startStudy;
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
@@ -33043,12 +33169,10 @@ async function startStudy() {
 
   lawDrillState = null;
 
-  const sessionKey = studyType === "weak" ? "practiceSession" : "studySession";
+  const savedStudySession = getSavedStudySession();
 
-  const savedSession = localStorage.getItem(sessionKey);
-
-  if (savedSession) {
-    const state = JSON.parse(savedSession);
+  if (savedStudySession) {
+    const { key: sessionKey, state } = savedStudySession;
     openSessionResumeModal({
       title: "Resume Study Session?",
       text: "You have a paused study session. Resume where you stopped or start a new one.",
@@ -33069,7 +33193,8 @@ async function startStudy() {
         restoreStreakUI();
       },
       onStartNew: () => {
-        localStorage.removeItem(sessionKey);
+        localStorage.removeItem("studySession");
+        localStorage.removeItem("practiceSession");
         startStudy();
       },
     });
@@ -33513,13 +33638,34 @@ function showQuestion() {
 
   const optionList = Array.isArray(q.options) ? q.options : [];
   const statementList = Array.isArray(q.statements) ? q.statements : [];
+  const savedAnswer = userAnswers[q.id];
+  const lockSelection = shouldLockAnswerSelection() && Boolean(savedAnswer);
 
   if (q.type === "match" || q.type === "single") {
     optionList.forEach((opt) => {
       const btn = document.createElement("button");
       btn.innerText = opt;
       btn.dataset.value = opt;
-      btn.onclick = () => selectAnswer(opt, q);
+      btn.disabled = lockSelection;
+      if (lockSelection) {
+        btn.onclick = null;
+        btn.removeAttribute("onclick");
+        btn.style.pointerEvents = "none";
+      }
+      if (!lockSelection) {
+        btn.onclick = () => selectAnswer(opt, q);
+      }
+      if (savedAnswer === opt) {
+        btn.classList.add("selected-live");
+      }
+      if (lockSelection) {
+        if (opt === q.correct) {
+          btn.classList.add("correct");
+        }
+        if (savedAnswer === opt && opt !== q.correct) {
+          btn.classList.add("wrong");
+        }
+      }
       answersEl.appendChild(btn);
     });
   }
@@ -33550,7 +33696,26 @@ function showQuestion() {
       const btn = document.createElement("button");
       btn.innerText = option.text;
       btn.dataset.value = option.letter;
-      btn.onclick = () => selectAnswer(option.letter, q);
+      btn.disabled = lockSelection;
+      if (lockSelection) {
+        btn.onclick = null;
+        btn.removeAttribute("onclick");
+        btn.style.pointerEvents = "none";
+      }
+      if (!lockSelection) {
+        btn.onclick = () => selectAnswer(option.letter, q);
+      }
+      if (savedAnswer === option.letter) {
+        btn.classList.add("selected-live");
+      }
+      if (lockSelection) {
+        if (option.letter === q.correct) {
+          btn.classList.add("correct");
+        }
+        if (savedAnswer === option.letter && option.letter !== q.correct) {
+          btn.classList.add("wrong");
+        }
+      }
       answersEl.appendChild(btn);
     });
   }
@@ -33563,6 +33728,14 @@ function showQuestion() {
   }
 
   restoreSelection(q);
+
+  if (lockSelection) {
+    renderQuestionExplanation(q);
+    renderQuestionTopicLink(q);
+    loadAnswerInsightForQuestion(q);
+    refreshAiExplainAvailability();
+    nextBtn.classList.remove("hidden");
+  }
 
   if (isLawStudyMode()) {
     renderLawDrillStack(lawDrillState?.currentLevelIndex ?? 0);
@@ -33691,12 +33864,36 @@ function selectAnswer(value, q) {
 
     const buttons = document.querySelectorAll("#answers button");
     buttons.forEach((btn) => {
+      const btnValue = String(btn.dataset.value || "");
       btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
       btn.classList.remove("selected-live", "correct", "wrong");
-      if (btn.dataset.value === String(value)) {
+
+      if (btnValue === String(q.correct || "")) {
+        btn.classList.add("correct");
+      }
+
+      if (btnValue === String(value)) {
         btn.classList.add("selected-live");
+        if (!isCorrect) {
+          btn.classList.add("wrong");
+        }
       }
     });
+
+    if (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden")) {
+      renderQuestionExplanation(q);
+      renderQuestionTopicLink(q);
+      loadAnswerInsightForQuestion(q);
+      refreshAiExplainAvailability();
+    }
+
+    if (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden")) {
+      answeredCurrent = true;
+      nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
+    }
 
     if (mode === "exam" || mode === "smart") {
       saveExamSession();
@@ -33791,13 +33988,20 @@ function nextQuestion() {
   if (inStudyReview) return;
   if (isLawStudyMode() && lawDrillState?.reviewLevelIndex != null) return;
   if (mode === "exam" || mode === "smart" || mode === "daily") {
+    const q = active[current];
     if (mode === "exam" && examVariant === "sudden") {
-      showAnswerFeedback("No skips in Sudden Death.", "info");
-      return;
+      if (!answeredCurrent && !userAnswers[q.id]) {
+        showAnswerFeedback("No skips in Sudden Death.", "info");
+        return;
+      }
     }
     if (mode === "exam" && examVariant === "clinical") {
-      showAnswerFeedback("No skips in Clinical drill.", "info");
-      return;
+      if (!answeredCurrent && !userAnswers[q.id]) {
+        selectAnswer("Skipped", q);
+        return;
+      } else {
+        nextBtn.innerText = "Next";
+      }
     }
     nextBtn.innerText = "Next";
 
@@ -33879,6 +34083,7 @@ function restoreSelection(q) {
   const saved = userAnswers[q.id];
   if (!saved) return;
   const editableReview = isPreSubmitReviewMode();
+  const lockSelection = shouldLockAnswerSelection();
 
   const buttons = document.querySelectorAll("#answers button");
 
@@ -33900,8 +34105,11 @@ function restoreSelection(q) {
       return;
     }
 
-    if (isStudyLikeMode()) {
+    if (lockSelection) {
       btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
 
       if (btnValue === q.correct) {
         btn.classList.add("correct");
@@ -33932,14 +34140,14 @@ function restoreSelection(q) {
     }
   });
   // Show explanation again in study mode
-  if (isStudyLikeMode()) {
+  if (isStudyLikeMode() || lockSelection) {
     renderQuestionExplanation(q);
     renderQuestionTopicLink(q);
     loadAnswerInsightForQuestion(q);
     refreshAiExplainAvailability();
   }
 
-  if (isStudyLikeMode()) {
+  if (isStudyLikeMode() || lockSelection) {
     nextBtn.classList.remove("hidden");
   }
 }
@@ -33978,10 +34186,6 @@ function goHome() {
   clearInterval(reviewTimer);
   closeCommunityConversationActions();
   closeCommunityFriendActions();
-
-  if (mode === "study") {
-    localStorage.removeItem("studySession");
-  }
 
   showScreen("home-screen");
 }
@@ -34343,6 +34547,10 @@ async function finishDailyQuizSession() {
     });
 
     saveSession(`Daily (${totalQuestions})`, finalScore, totalQuestions);
+    commitFinishedSessionPoints({
+      score: finalScore,
+      setupPointsBucket: "daily",
+    });
 
     const resultTitle = document.getElementById("result-title");
     const percentEl = document.getElementById("result-percentage");
@@ -34437,6 +34645,7 @@ async function finishExam() {
   backReviewBtn.classList.add("hidden");
   const finishedMode = mode;
   const finishedVariant = examVariant;
+  const setupPointsBucket = getCurrentSetupPointsBucket();
   const timeBudget = Math.max(1, Number(examTimeBudget) || active.length * 40);
   const timeUsedSeconds = Math.max(0, timeBudget - (examTimeLeft || 0));
   mode = "";
@@ -34506,6 +34715,10 @@ async function finishExam() {
     sessionTotal,
     "Time Used: " + timeUsedSeconds + "s",
   );
+  commitFinishedSessionPoints({
+    score: finalScore,
+    setupPointsBucket,
+  });
 
   const xpBonusBase =
     finishedMode === "smart"
@@ -34661,6 +34874,7 @@ function finishStudy() {
     totalAnswered === 0
       ? 0
       : Math.round((correctAnswers / totalAnswered) * 100);
+  const setupPointsBucket = getCurrentSetupPointsBucket();
 
   // Finish attempt on backend if available
   if (backendReady && backendAttemptId) {
@@ -34699,6 +34913,10 @@ function finishStudy() {
   }
 
   saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
+  commitFinishedSessionPoints({
+    score: correctAnswers,
+    setupPointsBucket,
+  });
   awardXp(8 + Math.round(percent / 25));
 
   clearDailyResultEnhancements();
@@ -34719,6 +34937,7 @@ function endStudySession() {
     totalAnswered === 0
       ? 0
       : Math.round((correctAnswers / totalAnswered) * 100);
+  const setupPointsBucket = getCurrentSetupPointsBucket();
 
   // 🔥 Store result AFTER calculating
   window.lastStudyResult = {
@@ -34728,6 +34947,10 @@ function endStudySession() {
   };
 
   saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
+  commitFinishedSessionPoints({
+    score: correctAnswers,
+    setupPointsBucket,
+  });
 
   const old = document.getElementById("study-result");
   if (old) old.remove();

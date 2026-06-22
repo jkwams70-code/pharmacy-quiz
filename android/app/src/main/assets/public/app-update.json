@@ -1,6 +1,6 @@
 {
-  "latestVersion": "1.0.6",
-  "apkUrl": "https://ajixpharmacy.online/downloads/ajix-1.0.6.apk",
-  "forceUpdate": false,
-  "message": "A newer Ajix build is available. Update now for the latest fixes and improvements."
+    "latestVersion":  "1.0.9",
+    "apkUrl":  "https://ajixpharmacy.online/downloads/ajix-pharm.apk",
+    "forceUpdate":  false,
+    "message":  "A newer Ajix build is available. Update now for the latest fixes and improvements."
 }

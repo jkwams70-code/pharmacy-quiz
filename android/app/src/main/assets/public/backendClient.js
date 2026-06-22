@@ -29,14 +29,30 @@ const isLanPreview =
   !isLocalHost &&
   !isProductionHost &&
   window.location.protocol === "http:";
+const sameOriginApiBase =
+  currentHost && currentProtocol.startsWith("http")
+    ? `${window.location.origin.replace(/\/+$/, "")}/api`
+    : "";
+const productionFallbackApiBase = "https://api.ajixpharmacy.online/api";
 const localApiHost = currentHost || "localhost";
 const shouldUseLocalApi = (isFilePreview || isLocalHost) && !isNativeShell;
 const inferredApiBase = shouldUseLocalApi
   ? `http://${localApiHost}:4000/api`
   : isLanPreview
     ? `http://${currentHost}:4000/api`
-    : "https://api.ajixpharmacy.online/api";
-const forceLocalApi = shouldUseLocalApi || isLanPreview;
+    : isProductionHost
+      ? productionFallbackApiBase || sameOriginApiBase
+      : productionFallbackApiBase;
+const productionApiBaseCandidates = [productionFallbackApiBase, sameOriginApiBase].filter(Boolean);
+const apiBaseCandidates = Array.from(
+  new Set(
+    [
+      isProductionHost ? "" : storedApiBase,
+      inferredApiBase,
+      ...productionApiBaseCandidates,
+    ].filter(Boolean),
+  ),
+);
 const hasStaleStoredApiBase =
   !!storedApiBase &&
   (/trycloudflare\.com/i.test(storedApiBase) ||
@@ -44,14 +60,20 @@ const hasStaleStoredApiBase =
     /your-new-tunnel/i.test(storedApiBase) ||
     /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase) ||
     (isLanPreview && /localhost:4000/i.test(storedApiBase)) ||
-  ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)));
+    ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)));
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }
-const API_BASE = forceLocalApi ? inferredApiBase : hasStaleStoredApiBase ? inferredApiBase : storedApiBase || inferredApiBase;
+const API_BASE = hasStaleStoredApiBase
+  ? inferredApiBase
+  : isProductionHost
+    ? productionFallbackApiBase || sameOriginApiBase
+    : storedApiBase || inferredApiBase;
 
 const CLIENT_ID_KEY = "quizClientId";
 const AUTH_TOKEN_KEY = "quizAuthToken";
+const ADMIN_KEY_KEY = "quizAdminKey";
+const RESPONSE_CACHE_PREFIX = "quizApiCacheV2:";
 const UPLOAD_MIME_TYPE_ALIASES = {
   "audio/mp3": "audio/mpeg",
   "audio/m4a": "audio/mp4",
@@ -92,6 +114,56 @@ function getAuthToken() {
   return localStorage.getItem(AUTH_TOKEN_KEY) || "";
 }
 
+function getAdminKey() {
+  return localStorage.getItem(ADMIN_KEY_KEY) || "";
+}
+
+function hashString(value = "") {
+  let hash = 0x811c9dc5;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function getResponseCacheScope() {
+  const token = getAuthToken();
+  const scopeSeed = token ? `token:${token}` : `client:${getClientId()}`;
+  return hashString(scopeSeed);
+}
+
+function getResponseCacheKey(cacheKey) {
+  return `${RESPONSE_CACHE_PREFIX}${getResponseCacheScope()}:${cacheKey}`;
+}
+
+function readCachedResponse(cacheKey) {
+  try {
+    const raw = localStorage.getItem(getResponseCacheKey(cacheKey));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedResponse(cacheKey, value) {
+  try {
+    localStorage.setItem(
+      getResponseCacheKey(cacheKey),
+      JSON.stringify({
+        cachedAt: Date.now(),
+        value,
+      }),
+    );
+  } catch {
+    // Cache writes are best-effort.
+  }
+}
+
 function buildHeaders(includeJson = false) {
   const headers = {
     "x-client-id": getClientId(),
@@ -104,6 +176,11 @@ function buildHeaders(includeJson = false) {
   const token = getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  const adminKey = getAdminKey();
+  if (adminKey) {
+    headers["x-admin-key"] = adminKey;
   }
 
   return headers;
@@ -135,7 +212,43 @@ async function request(method, path, payload = undefined) {
       body: useJson ? JSON.stringify(payload) : undefined,
     });
 
-  let response = await send();
+  let response = null;
+  let lastError = null;
+
+  for (const base of apiBaseCandidates) {
+    try {
+      response = await send(base);
+    } catch (networkError) {
+      lastError = networkError;
+      continue;
+    }
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const isAuthOrValidationError = [400, 401, 403, 409].includes(response.status);
+    const looksLikeJson = contentType.includes("application/json");
+    const looksLikeWrongEndpoint =
+      response.status === 404 || contentType.includes("text/html") || !looksLikeJson;
+
+    if (response.ok && looksLikeJson) {
+      break;
+    }
+
+    if (isAuthOrValidationError) {
+      break;
+    }
+
+    if (!looksLikeWrongEndpoint) {
+      break;
+    }
+    response = null;
+  }
+
+  if (!response) {
+    if (lastError) {
+      throw lastError;
+    }
+    throw new Error("API request failed");
+  }
 
   // OpenRouter free endpoints can return transient 502s. Retry once for AI explain.
   if (path === "/ai/explain" && response.status === 502) {
@@ -180,19 +293,69 @@ async function request(method, path, payload = undefined) {
   return parseResponseBody(response);
 }
 
+async function requestCached(
+  method,
+  path,
+  payload = undefined,
+  {
+    cacheKey = path,
+    preferCache = false,
+    cacheable = method === "GET",
+  } = {},
+) {
+  const cached = cacheable ? readCachedResponse(cacheKey) : null;
+  if (preferCache && cached?.value !== undefined) {
+    return cached.value;
+  }
+
+  try {
+    const response = await request(method, path, payload);
+    if (cacheable) {
+      writeCachedResponse(cacheKey, response);
+    }
+    return response;
+  } catch (error) {
+    if (cached?.value !== undefined) {
+      return cached.value;
+    }
+    throw error;
+  }
+}
+
 async function requestBinary(method, path, body, {
   contentType = "application/octet-stream",
   headers = {},
 } = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      ...buildHeaders(false),
-      "Content-Type": contentType,
-      ...headers,
-    },
-    body,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: {
+        ...buildHeaders(false),
+        "Content-Type": contentType,
+        ...headers,
+      },
+      body,
+    });
+  } catch (networkError) {
+    if (storedApiBase && API_BASE !== inferredApiBase) {
+      try {
+        response = await fetch(`${inferredApiBase}${path}`, {
+          method,
+          headers: {
+            ...buildHeaders(false),
+            "Content-Type": contentType,
+            ...headers,
+          },
+          body,
+        });
+      } catch {
+        throw networkError;
+      }
+    } else {
+      throw networkError;
+    }
+  }
   if (!response.ok) {
     let message = `API request failed (${response.status})`;
     try {
@@ -226,8 +389,8 @@ function del(path, payload = undefined) {
   return request("DELETE", path, payload);
 }
 
-function get(path) {
-  return request("GET", path);
+function get(path, options = {}) {
+  return requestCached("GET", path, undefined, options);
 }
 
 function fireAndForget(promise) {
@@ -291,9 +454,17 @@ export const backendClient = {
     return post("/auth/points", payload);
   },
 
-  fetchPointsLeaderboard(scope = "daily", limit = 20) {
+  updateSetupPoints(payload = {}) {
+    return put("/auth/setup-points", payload);
+  },
+
+  updateLawDrillSession(payload = {}) {
+    return put("/auth/law-drill-session", payload);
+  },
+
+  fetchPointsLeaderboard(scope = "daily", limit = null, { preferCache = false } = {}) {
     const query = toQuery({ scope, limit });
-    return get(`/points/leaderboard${query}`);
+    return get(`/points/leaderboard${query}`, { preferCache });
   },
 
   forgotPassword(payload = {}) {
@@ -316,21 +487,21 @@ export const backendClient = {
     return put("/auth/profile", payload);
   },
 
-  fetchCommunityOverview() {
-    return get("/community/overview");
+  fetchCommunityOverview({ preferCache = false } = {}) {
+    return get("/community/overview", { preferCache });
   },
 
-  searchCommunityUsers(query = "", limit = 20) {
+  searchCommunityUsers(query = "", limit = 20, { preferCache = false } = {}) {
     const qs = toQuery({ q: query, limit });
-    return get(`/community/search${qs}`);
+    return get(`/community/search${qs}`, { preferCache });
   },
 
-  fetchCommunityProfile(userId) {
-    return get(`/community/profile/${encodeURIComponent(userId)}`);
+  fetchCommunityProfile(userId, { preferCache = false } = {}) {
+    return get(`/community/profile/${encodeURIComponent(userId)}`, { preferCache });
   },
 
-  fetchFriendRequests() {
-    return get("/community/requests");
+  fetchFriendRequests({ preferCache = false } = {}) {
+    return get("/community/requests", { preferCache });
   },
 
   sendFriendRequest(toUserId) {
@@ -345,20 +516,24 @@ export const backendClient = {
     return del(`/community/requests/${encodeURIComponent(requestId)}`);
   },
 
-  fetchFriends() {
-    return get("/community/friends");
+  fetchFriends({ preferCache = false } = {}) {
+    return get("/community/friends", { preferCache });
   },
 
-  fetchBlockedUsers() {
-    return get("/community/blocks");
+  unfriendUser(userId) {
+    return del(`/community/friends/${encodeURIComponent(userId)}`);
+  },
+
+  fetchBlockedUsers({ preferCache = false } = {}) {
+    return get("/community/blocks", { preferCache });
   },
 
   pingCommunityPresence() {
     return post("/community/presence");
   },
 
-  fetchCommunityRealtimeConfig() {
-    return get("/community/realtime/config");
+  fetchCommunityRealtimeConfig({ preferCache = true } = {}) {
+    return get("/community/realtime/config", { preferCache });
   },
 
   fetchPushConfig() {
@@ -373,24 +548,76 @@ export const backendClient = {
     return del(`/community/block/${encodeURIComponent(userId)}`);
   },
 
-  fetchConversations() {
-    return get("/community/conversations");
+  fetchConversations({ preferCache = false } = {}) {
+    return get("/community/conversations", { preferCache });
   },
 
   openDirectConversation(userId) {
     return post("/community/conversations/direct", { userId });
   },
 
+  favoriteCommunityConversation(conversationId) {
+    return post(`/community/conversations/${encodeURIComponent(conversationId)}/favorite`);
+  },
+
+  unfavoriteCommunityConversation(conversationId) {
+    return del(`/community/conversations/${encodeURIComponent(conversationId)}/favorite`);
+  },
+
+  clearCommunityConversation(conversationId) {
+    return post(`/community/conversations/${encodeURIComponent(conversationId)}/clear`);
+  },
+
+  deleteCommunityConversation(conversationId) {
+    return del(`/community/conversations/${encodeURIComponent(conversationId)}`);
+  },
+
   createStudyGroup(name = "", memberIds = []) {
     return post("/community/groups", { name, memberIds });
   },
 
-  fetchCommunityGroup(groupId) {
-    return get(`/community/groups/${encodeURIComponent(groupId)}`);
+  fetchCommunityGroup(groupId, { preferCache = false } = {}) {
+    return get(`/community/groups/${encodeURIComponent(groupId)}`, { preferCache });
+  },
+
+  createCommunityGroupInviteLink(groupId) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/invite-link`);
+  },
+
+  fetchCommunityGroupInvitePreview(groupId, inviteToken = "", { preferCache = false } = {}) {
+    const params = new URLSearchParams();
+    params.set("inviteToken", inviteToken);
+    return get(`/community/groups/${encodeURIComponent(groupId)}/invite-preview?${params.toString()}`, {
+      preferCache,
+    });
+  },
+
+  joinCommunityGroupInvite(groupId, inviteToken = "") {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/join`, { inviteToken });
+  },
+
+  addCommunityGroupMembers(groupId, memberIds = []) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/members`, { memberIds });
   },
 
   updateCommunityGroup(groupId, payload = {}) {
     return patch(`/community/groups/${encodeURIComponent(groupId)}`, payload);
+  },
+
+  leaveCommunityGroup(groupId) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/leave`);
+  },
+
+  deleteCommunityGroup(groupId) {
+    return del(`/community/groups/${encodeURIComponent(groupId)}`);
+  },
+
+  reportCommunityGroup(groupId, reason = "") {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/report`, { reason });
+  },
+
+  reportCommunityUser(userId, reason = "") {
+    return post(`/community/users/${encodeURIComponent(userId)}/report`, { reason });
   },
 
   uploadCommunityGroupAvatarFile(groupId, file = null) {
@@ -407,13 +634,17 @@ export const backendClient = {
     });
   },
 
-  fetchConversationMessages(conversationId, { markRead = true } = {}) {
+  fetchConversationMessages(conversationId, { markRead = true, preferCache = false } = {}) {
     const query = markRead ? "" : "?markRead=false";
-    return get(`/community/conversations/${encodeURIComponent(conversationId)}/messages${query}`);
+    return get(`/community/conversations/${encodeURIComponent(conversationId)}/messages${query}`, {
+      preferCache,
+    });
   },
 
-  fetchCommunityConversationActiveCall(conversationId) {
-    return get(`/community/conversations/${encodeURIComponent(conversationId)}/calls/active`);
+  fetchCommunityConversationActiveCall(conversationId, { preferCache = false } = {}) {
+    return get(`/community/conversations/${encodeURIComponent(conversationId)}/calls/active`, {
+      preferCache,
+    });
   },
 
   startCommunityConversationCall(conversationId, mode = "voice") {
@@ -456,7 +687,7 @@ export const backendClient = {
     });
   },
 
-  uploadStatusMedia(mediaDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null) {
+  uploadStatusMedia(mediaDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null, options = {}) {
     return post("/community/statuses", {
       mediaDataUrl,
       imageDataUrl: mediaDataUrl,
@@ -464,14 +695,15 @@ export const backendClient = {
       caption,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     });
   },
 
-  uploadStatusImage(imageDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null) {
-    return this.uploadStatusMedia(imageDataUrl, fileName, caption, visibility, style);
+  uploadStatusImage(imageDataUrl = "", fileName = "", caption = "", visibility = "friends", style = null, options = {}) {
+    return this.uploadStatusMedia(imageDataUrl, fileName, caption, visibility, style, options);
   },
 
-  uploadStatusMediaFile(file = null, caption = "", visibility = "friends", style = null) {
+  uploadStatusMediaFile(file = null, caption = "", visibility = "friends", style = null, options = {}) {
     if (!(file instanceof Blob)) {
       return Promise.reject(new Error("A media file is required."));
     }
@@ -480,6 +712,7 @@ export const backendClient = {
       caption,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     }));
     return requestBinary("POST", "/community/statuses/file", file, {
       contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
@@ -489,7 +722,7 @@ export const backendClient = {
     });
   },
 
-  uploadStatusVideoFile(file = null, caption = "", visibility = "friends", style = null) {
+  uploadStatusVideoFile(file = null, caption = "", visibility = "friends", style = null, options = {}) {
     if (!(file instanceof Blob)) {
       return Promise.reject(new Error("A video file is required."));
     }
@@ -498,6 +731,7 @@ export const backendClient = {
       caption,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     }));
     return requestBinary("POST", "/community/statuses/video", file, {
       contentType: normalizeUploadMimeType(file.type) || "application/octet-stream",
@@ -507,12 +741,13 @@ export const backendClient = {
     });
   },
 
-  uploadStatusText(text = "", background = "", visibility = "friends", style = null) {
+  uploadStatusText(text = "", background = "", visibility = "friends", style = null, options = {}) {
     return post("/community/statuses", {
       text,
       background,
       visibility,
       style,
+      isAdminBroadcast: Boolean(options?.isAdminBroadcast),
     });
   },
 
@@ -524,16 +759,29 @@ export const backendClient = {
     return post(`/community/statuses/${encodeURIComponent(statusId)}/like`);
   },
 
-  fetchStatusLikes(statusId) {
-    return get(`/community/statuses/${encodeURIComponent(statusId)}/likes`);
+  fetchStatusLikes(statusId, { preferCache = false } = {}) {
+    return get(`/community/statuses/${encodeURIComponent(statusId)}/likes`, {
+      preferCache,
+    });
   },
 
-  fetchStatusViews(statusId) {
-    return get(`/community/statuses/${encodeURIComponent(statusId)}/views`);
+  fetchStatusViews(statusId, { preferCache = false } = {}) {
+    return get(`/community/statuses/${encodeURIComponent(statusId)}/views`, {
+      preferCache,
+    });
   },
 
   deleteStatus(statusId) {
     return del(`/community/statuses/${encodeURIComponent(statusId)}`);
+  },
+
+  broadcastAdminMessage(message = "", attachment = null) {
+    return post("/admin/broadcast/message", {
+      message,
+      attachmentDataUrl: attachment?.dataUrl || "",
+      attachmentFileName: attachment?.fileName || "",
+      attachmentMimeType: attachment?.mimeType || "",
+    });
   },
 
   editConversationMessage(messageId, text = "") {
@@ -559,8 +807,14 @@ export const backendClient = {
   async fetchQuestions(filters = {}) {
     const { preferCache = false, ...queryFilters } = filters || {};
     const query = toQuery(queryFilters);
-    const data = await get(`/questions${query}`, { preferCache });
+    const data = await get(`/questions${query}`, {
+      preferCache,
+    });
     return Array.isArray(data?.questions) ? data.questions : [];
+  },
+
+  fetchQuestionsMeta() {
+    return get("/questions/meta", { preferCache: true });
   },
 
   async fetchQuestionsByIds(ids = []) {
@@ -644,8 +898,16 @@ export const backendClient = {
     return post("/sync/performance-state", state);
   },
 
+  syncWeakTracker(weakTracker = {}) {
+    return post("/sync/weak-tracker", { weakTracker });
+  },
+
   syncSession(entry) {
     fireAndForget(post("/sync/sessions", entry));
+  },
+
+  clearSyncedHistory() {
+    return del("/sync/history");
   },
 
   fetchSyncedDashboard() {
@@ -657,7 +919,7 @@ export const backendClient = {
     return get(`/sync/performance-state${query}`);
   },
 
-  fetchSyncedHistory(mode = "", limit = null) {
+  fetchSyncedHistory(mode, limit = null) {
     const query = toQuery({ mode, limit });
     return get(`/sync/history${query}`);
   },

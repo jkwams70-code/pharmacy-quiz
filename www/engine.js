@@ -31174,6 +31174,29 @@ function getSavedDrillSession(variant = "") {
   return saved;
 }
 
+function getSavedStudySession() {
+  const studyType = getCurrentStudyType();
+  const preferredKeys = [
+    studyType === "weak" ? "practiceSession" : "studySession",
+    studyType === "weak" ? "studySession" : "practiceSession",
+  ];
+
+  for (const key of preferredKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const saved = JSON.parse(raw);
+      if (saved && typeof saved === "object" && Array.isArray(saved.active) && saved.active.length > 0) {
+        return { key, state: saved };
+      }
+    } catch {
+      // Ignore malformed saved sessions and keep looking.
+    }
+  }
+
+  return null;
+}
+
 function isPausableDrillSession() {
   return mode === "exam" && (examVariant === "sudden" || examVariant === "clinical");
 }
@@ -33092,12 +33115,10 @@ async function startStudy() {
 
   lawDrillState = null;
 
-  const sessionKey = studyType === "weak" ? "practiceSession" : "studySession";
+  const savedStudySession = getSavedStudySession();
 
-  const savedSession = localStorage.getItem(sessionKey);
-
-  if (savedSession) {
-    const state = JSON.parse(savedSession);
+  if (savedStudySession) {
+    const { key: sessionKey, state } = savedStudySession;
     openSessionResumeModal({
       title: "Resume Study Session?",
       text: "You have a paused study session. Resume where you stopped or start a new one.",
@@ -33118,7 +33139,8 @@ async function startStudy() {
         restoreStreakUI();
       },
       onStartNew: () => {
-        localStorage.removeItem(sessionKey);
+        localStorage.removeItem("studySession");
+        localStorage.removeItem("practiceSession");
         startStudy();
       },
     });
@@ -33571,6 +33593,11 @@ function showQuestion() {
       btn.innerText = opt;
       btn.dataset.value = opt;
       btn.disabled = lockSelection;
+      if (lockSelection) {
+        btn.onclick = null;
+        btn.removeAttribute("onclick");
+        btn.style.pointerEvents = "none";
+      }
       if (!lockSelection) {
         btn.onclick = () => selectAnswer(opt, q);
       }
@@ -33616,6 +33643,11 @@ function showQuestion() {
       btn.innerText = option.text;
       btn.dataset.value = option.letter;
       btn.disabled = lockSelection;
+      if (lockSelection) {
+        btn.onclick = null;
+        btn.removeAttribute("onclick");
+        btn.style.pointerEvents = "none";
+      }
       if (!lockSelection) {
         btn.onclick = () => selectAnswer(option.letter, q);
       }
@@ -33778,18 +33810,35 @@ function selectAnswer(value, q) {
 
     const buttons = document.querySelectorAll("#answers button");
     buttons.forEach((btn) => {
+      const btnValue = String(btn.dataset.value || "");
       btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
       btn.classList.remove("selected-live", "correct", "wrong");
-      if (btn.dataset.value === String(value)) {
+
+      if (btnValue === String(q.correct || "")) {
+        btn.classList.add("correct");
+      }
+
+      if (btnValue === String(value)) {
         btn.classList.add("selected-live");
+        if (!isCorrect) {
+          btn.classList.add("wrong");
+        }
       }
     });
 
-    if (mode === "exam" && examVariant === "clinical") {
+    if (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden")) {
       renderQuestionExplanation(q);
       renderQuestionTopicLink(q);
       loadAnswerInsightForQuestion(q);
       refreshAiExplainAvailability();
+    }
+
+    if (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden")) {
+      answeredCurrent = true;
+      nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
     }
 
     if (mode === "exam" || mode === "smart") {
@@ -33890,6 +33939,7 @@ function nextQuestion() {
       return;
     }
     if (mode === "exam" && examVariant === "clinical") {
+      const q = active[current];
       if (!answeredCurrent && !userAnswers[q.id]) {
         selectAnswer("Skipped", q);
       } else {
@@ -34001,6 +34051,9 @@ function restoreSelection(q) {
 
     if (lockSelection) {
       btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
 
       if (btnValue === q.correct) {
         btn.classList.add("correct");

@@ -31401,7 +31401,30 @@ if (rapidDrillBtn) {
 }
 
 if (suddenDrillBtn) {
-  suddenDrillBtn.onclick = () => startMenuDrill("sudden");
+  suddenDrillBtn.onclick = () => {
+    const pausedSudden = getSavedDrillSession("sudden");
+    if (pausedSudden) {
+      openSessionResumeModal({
+        title: "Resume Sudden Death?",
+        text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
+        onResume: () => {
+          loadExamSession();
+        },
+        onStartNew: () => {
+          localStorage.removeItem("quizExamSession");
+          localStorage.removeItem("examAbandoned");
+          mode = "exam";
+          examVariant = "sudden";
+          active = [];
+          userAnswers = {};
+          current = 0;
+          startExam("all", "sudden");
+        },
+      });
+      return;
+    }
+    startMenuDrill("sudden");
+  };
 }
 
 if (clinicalDrillBtn) {
@@ -31441,6 +31464,37 @@ backReviewBtn.onclick = function () {
 
 if (studyBtn) {
   studyBtn.onclick = () => {
+    const savedStudySession = getSavedStudySession();
+    if (savedStudySession) {
+      const { state } = savedStudySession;
+      openSessionResumeModal({
+        title: "Resume Study Session?",
+        text: "You have a paused study session. Resume where you stopped or start a new one.",
+        onResume: () => {
+          mode = "study";
+          activeCase = "";
+          active = state.active;
+          current = state.current;
+          userAnswers = state.userAnswers;
+          currentStreak = state.currentStreak || 0;
+
+          updateModeIndicator(state.studyType);
+          nextBtn.onclick = nextQuestion;
+          prevBtn.onclick = previousQuestion;
+
+          showScreen("quiz-area");
+          showQuestion();
+          restoreStreakUI();
+        },
+        onStartNew: () => {
+          localStorage.removeItem("studySession");
+          localStorage.removeItem("practiceSession");
+          void startStudy();
+        },
+      });
+      return;
+    }
+
     document.getElementById("start-study-btn").onclick = startStudy;
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
@@ -33934,18 +33988,20 @@ function nextQuestion() {
   if (inStudyReview) return;
   if (isLawStudyMode() && lawDrillState?.reviewLevelIndex != null) return;
   if (mode === "exam" || mode === "smart" || mode === "daily") {
+    const q = active[current];
     if (mode === "exam" && examVariant === "sudden") {
-      showAnswerFeedback("No skips in Sudden Death.", "info");
-      return;
+      if (!answeredCurrent && !userAnswers[q.id]) {
+        showAnswerFeedback("No skips in Sudden Death.", "info");
+        return;
+      }
     }
     if (mode === "exam" && examVariant === "clinical") {
-      const q = active[current];
       if (!answeredCurrent && !userAnswers[q.id]) {
         selectAnswer("Skipped", q);
+        return;
       } else {
-        showAnswerFeedback("Clinical questions lock after answering.", "info");
+        nextBtn.innerText = "Next";
       }
-      return;
     }
     nextBtn.innerText = "Next";
 

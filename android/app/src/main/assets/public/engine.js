@@ -374,6 +374,15 @@ function shouldLockAnswerSelection() {
   return isStudyLikeMode() || (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden"));
 }
 
+function isSubmitAtEndMode() {
+  if (mode === "daily" || mode === "smart") return true;
+  if (mode === "exam") {
+    const variant = String(examVariant || "normal").trim().toLowerCase();
+    return variant === "normal" || variant === "rapid" || variant === "law";
+  }
+  return false;
+}
+
 function isPreSubmitReviewMode() {
   return inReview && !inDetailedReview && (mode === "exam" || mode === "smart" || mode === "daily");
 }
@@ -21324,18 +21333,13 @@ function showAnswerChoiceMotivation(choiceValue, isCorrect) {
 }
 
 function shouldShowAnswerChoiceMotivation() {
-  if (mode === "daily" || mode === "smart") return false;
-  if (mode === "exam") {
-    const variant = String(examVariant || "normal").toLowerCase();
-    return variant === "rapid" || variant === "sudden" || variant === "clinical";
-  }
-  return isStudyLikeMode();
+  return shouldLockAnswerSelection();
 }
 
 function isDirectSubmitDrillMode() {
   if (mode !== "exam") return false;
   const variant = String(examVariant || "normal").toLowerCase();
-  return variant === "rapid" || variant === "sudden" || variant === "clinical" || variant === "law";
+  return variant === "sudden" || variant === "clinical";
 }
 
 function showDrillEventBanner(message = "", tone = "good") {
@@ -33803,22 +33807,24 @@ function selectAnswer(value, q) {
     const studyType = document.getElementById("study-type-select").value;
   }
 
-  if (isCorrect) {
-    playCorrectAnswerSound();
-    showAnswerCheckmark();
-    showAnswerFeedback("");
-    if (shouldShowAnswerChoiceMotivation()) {
-      showAnswerChoiceMotivation(value, true);
+  if (shouldLockAnswerSelection()) {
+    if (isCorrect) {
+      playCorrectAnswerSound();
+      showAnswerCheckmark();
+      showAnswerFeedback("");
+      if (shouldShowAnswerChoiceMotivation()) {
+        showAnswerChoiceMotivation(value, true);
+      } else {
+        clearAnswerChoiceMotivation();
+      }
+      awardCorrectAnswerPoint(1);
     } else {
-      clearAnswerChoiceMotivation();
-    }
-    awardCorrectAnswerPoint(1);
-  } else {
-    showAnswerFeedback("");
-    if (shouldShowAnswerChoiceMotivation()) {
-      showAnswerChoiceMotivation(value, false);
-    } else {
-      clearAnswerChoiceMotivation();
+      showAnswerFeedback("");
+      if (shouldShowAnswerChoiceMotivation()) {
+        showAnswerChoiceMotivation(value, false);
+      } else {
+        clearAnswerChoiceMotivation();
+      }
     }
   }
 
@@ -33836,8 +33842,50 @@ function selectAnswer(value, q) {
     saveStudyProgress();
   }
 
-  if ((mode === "exam" || mode === "smart" || mode === "daily") && !inReview) {
-    if (mode === "exam" && examVariant === "sudden") {
+  if (isSubmitAtEndMode() && !inReview) {
+    const buttons = document.querySelectorAll("#answers button");
+    buttons.forEach((btn) => {
+      const btnValue = String(btn.dataset.value || "");
+      btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
+      btn.classList.remove("selected-live", "correct", "wrong");
+      if (btnValue === String(value)) {
+        btn.classList.add("selected-live");
+      }
+    });
+
+    answeredCurrent = true;
+    nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
+    showAnswerFeedback("");
+    clearAnswerChoiceMotivation();
+
+    if (mode === "exam" || mode === "smart") {
+      saveExamSession();
+    }
+
+    const isLastQuestion = current >= active.length - 1;
+    const expectedQuestionId = q.id;
+    setTimeout(() => {
+      // Avoid stale navigation if screen/question changed during delay.
+      if (!Array.isArray(active) || !active[current]) return;
+      if (active[current].id !== expectedQuestionId) return;
+
+      if (!isLastQuestion) {
+        current++;
+        showQuestion();
+      } else if (isDirectSubmitDrillMode()) {
+        void finishExam();
+      } else {
+        goToReview();
+      }
+    }, LIVE_ANSWER_ADVANCE_DELAY_MS);
+    return;
+  }
+
+  if (mode === "exam" && (examVariant === "sudden" || examVariant === "clinical") && !inReview) {
+    if (examVariant === "sudden") {
       if (isCorrect) {
         const suddenScore = calculateScore();
         const milestone = Math.floor(suddenScore / 5);
@@ -33853,7 +33901,7 @@ function selectAnswer(value, q) {
       }
     }
 
-    if (mode === "exam" && examVariant === "clinical" && !isCorrect) {
+    if (examVariant === "clinical" && !isCorrect) {
       clinicalLives = Math.max(0, clinicalLives - 1);
       if (clinicalLives > 0) {
         showDrillEventBanner(`Life lost. ${clinicalLives} left`, "info");
@@ -33885,17 +33933,12 @@ function selectAnswer(value, q) {
       }
     });
 
-    if (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden")) {
-      renderQuestionExplanation(q);
-      renderQuestionTopicLink(q);
-      loadAnswerInsightForQuestion(q);
-      refreshAiExplainAvailability();
-    }
-
-    if (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden")) {
-      answeredCurrent = true;
-      nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
-    }
+    renderQuestionExplanation(q);
+    renderQuestionTopicLink(q);
+    loadAnswerInsightForQuestion(q);
+    refreshAiExplainAvailability();
+    answeredCurrent = true;
+    nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
 
     if (mode === "exam" || mode === "smart") {
       saveExamSession();

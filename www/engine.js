@@ -1186,7 +1186,6 @@ function updateLawDrillCurrentLevelScore() {
   const currentLevel = getLawDrillCurrentLevel();
   if (!currentLevel) return;
   currentLevel.score = getLawDrillCurrentLevelScore();
-  syncLawDrillCumulativeScore();
   renderSetupPoints();
 }
 
@@ -1207,14 +1206,6 @@ function syncLawDrillLevelStatuses(activeLevelIndex = 0) {
     }
   });
   lawDrillState.currentLevelIndex = safeIndex;
-}
-
-function syncLawDrillCumulativeScore() {
-  if (!lawDrillState) return;
-  const nextScore = getLawDrillCumulativeScore();
-  const points = readCurrentSetupPoints();
-  points.law = Math.max(0, Math.round(Number(nextScore) || 0));
-  writeCurrentSetupPoints(points);
 }
 
 function renderLawDrillStack(levelIndex = null, targetEl = lawDrillStackEl, eyebrowLabel = null) {
@@ -1769,6 +1760,10 @@ function saveLawDrillLevelSession(levelIndex = 0, { finishBackendAttempt = true 
   }
 
   saveSession(getLawDrillSessionLabel(levelIndex), correct, answered);
+  commitFinishedSessionPoints({
+    score: correct,
+    setupPointsBucket: "law",
+  });
   persistLawDrillSession();
   return true;
 }
@@ -5754,9 +5749,6 @@ function writePendingPoints(value = 0) {
 function getCumulativePoints() {
   const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
-  if (currentUser?.id && backendClient.isAuthenticated()) {
-    return remotePoints;
-  }
   return Math.max(localPoints, remotePoints);
 }
 
@@ -6155,7 +6147,11 @@ function resetPointsState() {
 function syncPointsFromCurrentUser() {
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
   const previousPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
-  writeStoredPoints(remotePoints);
+  const nextPoints = Math.max(previousPoints, remotePoints);
+  writeStoredPoints(nextPoints);
+  if (currentUser) {
+    currentUser = { ...(currentUser || {}), points: nextPoints };
+  }
   renderPoints();
 }
 
@@ -6199,22 +6195,49 @@ function schedulePendingPointsSync(delayMs = 420) {
   }, delayMs);
 }
 
+let committedSessionPointsId = "";
+
+function commitFinishedSessionPoints({ score = 0, setupPointsBucket = "" } = {}) {
+  const safeScore = Math.max(0, Math.round(Number(score) || 0));
+  const sessionId = String(latestSavedSession?.sessionId || "").trim();
+
+  if (!sessionId || safeScore <= 0) {
+    if (setupPointsBucket) {
+      writeCurrentSetupPoints(readCurrentSetupPoints(), { scheduleSync: true });
+    }
+    renderPoints();
+    return false;
+  }
+
+  if (sessionId === committedSessionPointsId) {
+    return false;
+  }
+
+  committedSessionPointsId = sessionId;
+
+  const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
+  writePendingPoints(readPendingPoints() + safeScore);
+
+  if (currentUser) {
+    currentUser = { ...(currentUser || {}), points: nextStoredPoints };
+  }
+
+  if (setupPointsBucket) {
+    writeCurrentSetupPoints(readCurrentSetupPoints(), { scheduleSync: true });
+  }
+
+  renderPoints();
+  if (currentUser && backendClient.isAuthenticated()) {
+    schedulePendingPointsSync(0);
+  }
+  return true;
+}
+
 function awardCorrectAnswerPoint(delta = 1) {
   const safeDelta = Math.max(0, Math.round(Number(delta) || 0));
   if (safeDelta <= 0) return;
-
-  if (shouldCountCorrectAnswerTowardLeaderboard()) {
-    writeStoredPoints(readStoredPoints() + safeDelta);
-    writePendingPoints(readPendingPoints() + safeDelta);
-  }
-  if (!isLawStudyMode()) {
-    addPointsToCurrentSetupBucket(safeDelta);
-  }
-  renderPoints();
-
-  if (currentUser && backendClient.isAuthenticated() && shouldCountCorrectAnswerTowardLeaderboard()) {
-    schedulePendingPointsSync();
-  }
+  renderSessionPointsDisplay();
+  renderCompactHeaderMeta();
 }
 
 function setLeaderboardLoading(isLoading = false) {
@@ -34365,6 +34388,10 @@ async function finishDailyQuizSession() {
     });
 
     saveSession(`Daily (${totalQuestions})`, finalScore, totalQuestions);
+    commitFinishedSessionPoints({
+      score: finalScore,
+      setupPointsBucket: "daily",
+    });
 
     const resultTitle = document.getElementById("result-title");
     const percentEl = document.getElementById("result-percentage");
@@ -34459,6 +34486,7 @@ async function finishExam() {
   backReviewBtn.classList.add("hidden");
   const finishedMode = mode;
   const finishedVariant = examVariant;
+  const setupPointsBucket = getCurrentSetupPointsBucket();
   const timeBudget = Math.max(1, Number(examTimeBudget) || active.length * 40);
   const timeUsedSeconds = Math.max(0, timeBudget - (examTimeLeft || 0));
   mode = "";
@@ -34528,6 +34556,10 @@ async function finishExam() {
     sessionTotal,
     "Time Used: " + timeUsedSeconds + "s",
   );
+  commitFinishedSessionPoints({
+    score: finalScore,
+    setupPointsBucket,
+  });
 
   const xpBonusBase =
     finishedMode === "smart"
@@ -34683,6 +34715,7 @@ function finishStudy() {
     totalAnswered === 0
       ? 0
       : Math.round((correctAnswers / totalAnswered) * 100);
+  const setupPointsBucket = getCurrentSetupPointsBucket();
 
   // Finish attempt on backend if available
   if (backendReady && backendAttemptId) {
@@ -34721,6 +34754,10 @@ function finishStudy() {
   }
 
   saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
+  commitFinishedSessionPoints({
+    score: correctAnswers,
+    setupPointsBucket,
+  });
   awardXp(8 + Math.round(percent / 25));
 
   clearDailyResultEnhancements();
@@ -34741,6 +34778,7 @@ function endStudySession() {
     totalAnswered === 0
       ? 0
       : Math.round((correctAnswers / totalAnswered) * 100);
+  const setupPointsBucket = getCurrentSetupPointsBucket();
 
   // 🔥 Store result AFTER calculating
   window.lastStudyResult = {
@@ -34750,6 +34788,10 @@ function endStudySession() {
   };
 
   saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
+  commitFinishedSessionPoints({
+    score: correctAnswers,
+    setupPointsBucket,
+  });
 
   const old = document.getElementById("study-result");
   if (old) old.remove();

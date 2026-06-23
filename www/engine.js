@@ -31169,10 +31169,48 @@ function getSavedExamSession() {
   }
 }
 
+function getExamSessionStorageKey(variant = examVariant, modeValue = mode) {
+  const normalizedVariant = String(variant || "").toLowerCase();
+  const normalizedMode = String(modeValue || "").toLowerCase();
+  if (normalizedMode === "exam" && ["sudden", "clinical"].includes(normalizedVariant)) {
+    return `quizExamSession:${normalizedVariant}`;
+  }
+  return "quizExamSession";
+}
+
+function getLatestSavedExamSession() {
+  const candidateKeys = ["quizExamSession:sudden", "quizExamSession:clinical", "quizExamSession"];
+  let latestSession = null;
+
+  for (const key of candidateKeys) {
+    const saved = getSavedExamSession(key);
+    if (!saved || typeof saved !== "object" || !Array.isArray(saved.active) || saved.active.length === 0) {
+      continue;
+    }
+    const timestamp = Number(saved.timestamp) || 0;
+    if (!latestSession || timestamp >= latestSession.timestamp) {
+      latestSession = { key, state: saved, timestamp };
+    }
+  }
+
+  return latestSession ? { key: latestSession.key, state: latestSession.state } : null;
+}
+
+function clearSavedExamSession(variant = examVariant, modeValue = mode) {
+  const normalizedVariant = String(variant || "").toLowerCase();
+  const storageKey = getExamSessionStorageKey(normalizedVariant, modeValue);
+  localStorage.removeItem(storageKey);
+
+  const legacySaved = getSavedExamSession("quizExamSession");
+  if (legacySaved && String(legacySaved.examVariant || "").toLowerCase() === normalizedVariant) {
+    localStorage.removeItem("quizExamSession");
+  }
+}
+
 function getSavedDrillSession(variant = "") {
   const drill = String(variant || "").toLowerCase();
   if (!["sudden", "clinical"].includes(drill)) return null;
-  const saved = getSavedExamSession();
+  const saved = getSavedExamSession(getExamSessionStorageKey(drill, "exam")) || getSavedExamSession("quizExamSession");
   if (!saved) return null;
 
   const savedMode = String(saved.mode || "exam");
@@ -31243,10 +31281,10 @@ function buildResumeSuddenSessionModalState() {
     title: "Resume Sudden Death?",
     text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
     onResume: () => {
-      loadExamSession();
+      loadExamSession("sudden");
     },
     onStartNew: () => {
-      localStorage.removeItem("quizExamSession");
+      clearSavedExamSession("sudden", "exam");
       localStorage.removeItem("examAbandoned");
       mode = "exam";
       examVariant = "sudden";
@@ -31265,10 +31303,10 @@ function buildResumeClinicalSessionModalState() {
     title: "Resume Clinical Judgement?",
     text: "You have a paused Clinical Judgement round. Resume it or start a new round.",
     onResume: () => {
-      loadExamSession();
+      loadExamSession("clinical");
     },
     onStartNew: () => {
-      localStorage.removeItem("quizExamSession");
+      clearSavedExamSession("clinical", "exam");
       localStorage.removeItem("examAbandoned");
       mode = "exam";
       examVariant = "clinical";
@@ -31429,10 +31467,10 @@ function startMenuDrill(variant = "rapid") {
         title: "Resume Sudden Death?",
         text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
         onResume: () => {
-          loadExamSession();
+          loadExamSession("sudden");
         },
         onStartNew: () => {
-          localStorage.removeItem("quizExamSession");
+          clearSavedExamSession("sudden", "exam");
           localStorage.removeItem("examAbandoned");
           mode = "exam";
           examVariant = "sudden";
@@ -31454,10 +31492,10 @@ function startMenuDrill(variant = "rapid") {
         title: "Resume Clinical Judgement?",
         text: "You have a paused Clinical Judgement round. Resume it or start a new round.",
         onResume: () => {
-          loadExamSession();
+          loadExamSession("clinical");
         },
         onStartNew: () => {
-          localStorage.removeItem("quizExamSession");
+          clearSavedExamSession("clinical", "exam");
           localStorage.removeItem("examAbandoned");
           mode = "exam";
           examVariant = "clinical";
@@ -34755,7 +34793,7 @@ async function finishExam() {
   examVariant = "normal";
   examTimeBudget = 0;
 
-  localStorage.removeItem("quizExamSession");
+  clearSavedExamSession();
   localStorage.removeItem("examAbandoned");
 
   let finalScore = 0;
@@ -35592,11 +35630,17 @@ function saveExamSession() {
     timestamp: Date.now(),
   };
 
-  localStorage.setItem("quizExamSession", JSON.stringify(session));
+  localStorage.setItem(getExamSessionStorageKey(), JSON.stringify(session));
 }
 
-function loadExamSession() {
-  const saved = JSON.parse(localStorage.getItem("quizExamSession"));
+function loadExamSession(storageKeyOrVariant = null) {
+  const requestedVariant = String(storageKeyOrVariant || "").toLowerCase();
+  const hasDedicatedKey = ["sudden", "clinical"].includes(requestedVariant);
+  const primaryKey = hasDedicatedKey ? getExamSessionStorageKey(requestedVariant, "exam") : getExamSessionStorageKey();
+  let saved = getSavedExamSession(primaryKey);
+  if (!saved && hasDedicatedKey) {
+    saved = getSavedExamSession("quizExamSession");
+  }
   if (!saved) return false;
   clearAiExplainStateSession();
 
@@ -35634,7 +35678,7 @@ function loadExamSession() {
     const timePassed = Math.floor((now - saved.timestamp) / 1000);
     examTimeLeft = saved.examTimeLeft - timePassed;
     if (examTimeLeft <= 0) {
-      localStorage.removeItem("quizExamSession");
+      clearSavedExamSession(examVariant, mode);
       finishExam();
       return true;
     }
@@ -35718,7 +35762,7 @@ window.addEventListener("load", function () {
   if (abandoned) {
     localStorage.removeItem("examAbandoned");
 
-    const saved = JSON.parse(localStorage.getItem("quizExamSession"));
+    const saved = getLatestSavedExamSession()?.state || null;
 
     if (saved) {
       const savedMode = String(saved.mode || "exam");

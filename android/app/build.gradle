@@ -14,8 +14,8 @@ android {
         applicationId "com.ajix.quiz"
         minSdk 24
         targetSdk 36
-        versionCode 1111
-        versionName "1.1.11"
+        versionCode 1112
+        versionName "1.1.12"
     }
 
     signingConfigs {

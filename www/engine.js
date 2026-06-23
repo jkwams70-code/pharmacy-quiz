@@ -31157,6 +31157,20 @@ function closeSessionResumeModal(resetHandlers = true) {
   }
 }
 
+function wireSessionResumeModal() {
+  if (!sessionResumeModal) return;
+  sessionResumeModal.addEventListener("pointerdown", (event) => {
+    if (event.target === sessionResumeModal) {
+      closeSessionResumeModal();
+    }
+  });
+  sessionResumeModal.addEventListener("click", (event) => {
+    if (event.target === sessionResumeModal) {
+      closeSessionResumeModal();
+    }
+  });
+}
+
 function getSavedExamSession(storageKey = "quizExamSession") {
   try {
     const raw = localStorage.getItem(String(storageKey || "quizExamSession"));
@@ -35822,6 +35836,7 @@ window.addEventListener("load", function () {
   }
 
   const runDeferredBootstrap = () => {
+    wireSessionResumeModal();
     wireSetupPickerModal();
     wireSetupPickerTriggers();
     refreshQuestionDependentUi();

@@ -31205,6 +31205,81 @@ function getSavedStudySession() {
   return latestSession ? { key: latestSession.key, state: latestSession.state } : null;
 }
 
+function buildResumeStudySessionModalState() {
+  const savedStudySession = getSavedStudySession();
+  if (!savedStudySession) return null;
+  const { state } = savedStudySession;
+  return {
+    title: "Resume Study Session?",
+    text: "You have a paused study session. Resume where you stopped or start a new one.",
+    onResume: () => {
+      mode = "study";
+      activeCase = "";
+      active = state.active;
+      current = state.current;
+      userAnswers = state.userAnswers;
+      currentStreak = state.currentStreak || 0;
+
+      updateModeIndicator(state.studyType);
+      nextBtn.onclick = nextQuestion;
+      prevBtn.onclick = previousQuestion;
+
+      showScreen("quiz-area");
+      showQuestion();
+      restoreStreakUI();
+    },
+    onStartNew: () => {
+      localStorage.removeItem("studySession");
+      localStorage.removeItem("practiceSession");
+      startStudy();
+    },
+  };
+}
+
+function buildResumeSuddenSessionModalState() {
+  const pausedSudden = getSavedDrillSession("sudden");
+  if (!pausedSudden) return null;
+  return {
+    title: "Resume Sudden Death?",
+    text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
+    onResume: () => {
+      loadExamSession();
+    },
+    onStartNew: () => {
+      localStorage.removeItem("quizExamSession");
+      localStorage.removeItem("examAbandoned");
+      mode = "exam";
+      examVariant = "sudden";
+      active = [];
+      userAnswers = {};
+      current = 0;
+      startExam("all", "sudden");
+    },
+  };
+}
+
+function buildResumeClinicalSessionModalState() {
+  const pausedClinical = getSavedDrillSession("clinical");
+  if (!pausedClinical) return null;
+  return {
+    title: "Resume Clinical Judgement?",
+    text: "You have a paused Clinical Judgement round. Resume it or start a new round.",
+    onResume: () => {
+      loadExamSession();
+    },
+    onStartNew: () => {
+      localStorage.removeItem("quizExamSession");
+      localStorage.removeItem("examAbandoned");
+      mode = "exam";
+      examVariant = "clinical";
+      active = [];
+      userAnswers = {};
+      current = 0;
+      startExam(String(clinicalTotalQuestions), "clinical");
+    },
+  };
+}
+
 function isPausableDrillSession() {
   return mode === "exam" && (examVariant === "sudden" || examVariant === "clinical");
 }
@@ -31410,25 +31485,9 @@ if (rapidDrillBtn) {
 
 if (suddenDrillBtn) {
   suddenDrillBtn.onclick = () => {
-    const pausedSudden = getSavedDrillSession("sudden");
-    if (pausedSudden) {
-      openSessionResumeModal({
-        title: "Resume Sudden Death?",
-        text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
-        onResume: () => {
-          loadExamSession();
-        },
-        onStartNew: () => {
-          localStorage.removeItem("quizExamSession");
-          localStorage.removeItem("examAbandoned");
-          mode = "exam";
-          examVariant = "sudden";
-          active = [];
-          userAnswers = {};
-          current = 0;
-          startExam("all", "sudden");
-        },
-      });
+    const modalState = buildResumeSuddenSessionModalState();
+    if (modalState) {
+      openSessionResumeModal(modalState);
       return;
     }
     startMenuDrill("sudden");
@@ -31436,7 +31495,14 @@ if (suddenDrillBtn) {
 }
 
 if (clinicalDrillBtn) {
-  clinicalDrillBtn.onclick = () => startMenuDrill("clinical");
+  clinicalDrillBtn.onclick = () => {
+    const modalState = buildResumeClinicalSessionModalState();
+    if (modalState) {
+      openSessionResumeModal(modalState);
+      return;
+    }
+    startMenuDrill("clinical");
+  };
 }
 
 if (lawDrillBtn) {
@@ -31480,6 +31546,44 @@ if (studyBtn) {
     prevBtn.onclick = previousQuestion;
   };
 }
+
+document.addEventListener(
+  "click",
+  (event) => {
+    const target =
+      event.target instanceof HTMLElement
+        ? event.target.closest("#start-study-btn, #sudden-drill-btn, #clinical-drill-btn")
+        : null;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.id === "start-study-btn") {
+      const modalState = buildResumeStudySessionModalState();
+      if (!modalState) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openSessionResumeModal(modalState);
+      return;
+    }
+
+    if (target.id === "sudden-drill-btn") {
+      const modalState = buildResumeSuddenSessionModalState();
+      if (!modalState) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openSessionResumeModal(modalState);
+      return;
+    }
+
+    if (target.id === "clinical-drill-btn") {
+      const modalState = buildResumeClinicalSessionModalState();
+      if (!modalState) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openSessionResumeModal(modalState);
+    }
+  },
+  true,
+);
 
 if (startStudyBtn) {
   startStudyBtn.type = "button";
@@ -33140,38 +33244,10 @@ async function startStudy() {
   const studyType = getCurrentStudyType();
 
   // Check for a paused study session before loading data so the resume modal appears immediately.
-  if (studyType !== "law") {
-    const savedStudySession = getSavedStudySession();
-
-    if (savedStudySession) {
-      const { state } = savedStudySession;
-      openSessionResumeModal({
-        title: "Resume Study Session?",
-        text: "You have a paused study session. Resume where you stopped or start a new one.",
-        onResume: () => {
-          mode = "study";
-          activeCase = "";
-          active = state.active;
-          current = state.current;
-          userAnswers = state.userAnswers;
-          currentStreak = state.currentStreak || 0;
-
-          updateModeIndicator(state.studyType);
-          nextBtn.onclick = nextQuestion;
-          prevBtn.onclick = previousQuestion;
-
-          showScreen("quiz-area");
-          showQuestion();
-          restoreStreakUI();
-        },
-        onStartNew: () => {
-          localStorage.removeItem("studySession");
-          localStorage.removeItem("practiceSession");
-          startStudy();
-        },
-      });
-      return;
-    }
+  const modalState = buildResumeStudySessionModalState();
+  if (modalState) {
+    openSessionResumeModal(modalState);
+    return;
   }
 
   const selectedCategory = document.getElementById(

@@ -31157,9 +31157,9 @@ function closeSessionResumeModal(resetHandlers = true) {
   }
 }
 
-function getSavedExamSession() {
+function getSavedExamSession(storageKey = "quizExamSession") {
   try {
-    const raw = localStorage.getItem("quizExamSession");
+    const raw = localStorage.getItem(String(storageKey || "quizExamSession"));
     if (!raw) return null;
     const saved = JSON.parse(raw);
     if (!saved || typeof saved !== "object") return null;

@@ -31531,7 +31531,7 @@ function startMenuDrill(variant = "rapid") {
   }
 }
 
-if (rapidDrillBtn) {
+  if (rapidDrillBtn) {
   rapidDrillBtn.onclick = () => startMenuDrill("rapid");
 }
 

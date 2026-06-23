@@ -1100,6 +1100,14 @@ body.theme-light.theme-violet {
   overflow-y: auto;
 }
 
+#session-resume-modal.modal {
+  z-index: 14020;
+}
+
+#session-resume-modal .modal-card {
+  z-index: 14021;
+}
+
 #leaderboard-modal.modal {
   background: transparent;
   display: block;

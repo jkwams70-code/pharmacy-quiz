@@ -31131,6 +31131,7 @@ function openSessionResumeModal({
   onStartNew = null,
 } = {}) {
   if (!sessionResumeModal) return;
+  closeSetupPickerModal({ restoreFocus: false });
   sessionResumeHandlers = {
     onResume: typeof onResume === "function" ? onResume : null,
     onStartNew: typeof onStartNew === "function" ? onStartNew : null,
@@ -31182,26 +31183,26 @@ function getSavedDrillSession(variant = "") {
 }
 
 function getSavedStudySession() {
-  const studyType = getCurrentStudyType();
-  const preferredKeys = [
-    studyType === "weak" ? "practiceSession" : "studySession",
-    studyType === "weak" ? "studySession" : "practiceSession",
-  ];
+  const candidateKeys = ["studySession", "practiceSession"];
+  let latestSession = null;
 
-  for (const key of preferredKeys) {
+  for (const key of candidateKeys) {
     const raw = localStorage.getItem(key);
     if (!raw) continue;
     try {
       const saved = JSON.parse(raw);
       if (saved && typeof saved === "object" && Array.isArray(saved.active) && saved.active.length > 0) {
-        return { key, state: saved };
+        const timestamp = Number(saved.timestamp) || 0;
+        if (!latestSession || timestamp >= latestSession.timestamp) {
+          latestSession = { key, state: saved, timestamp };
+        }
       }
     } catch {
       // Ignore malformed saved sessions and keep looking.
     }
   }
 
-  return null;
+  return latestSession ? { key: latestSession.key, state: latestSession.state } : null;
 }
 
 function isPausableDrillSession() {
@@ -33137,6 +33138,42 @@ async function startStudy() {
   timerEl.innerText = "";
 
   const studyType = getCurrentStudyType();
+
+  // Check for a paused study session before loading data so the resume modal appears immediately.
+  if (studyType !== "law") {
+    const savedStudySession = getSavedStudySession();
+
+    if (savedStudySession) {
+      const { state } = savedStudySession;
+      openSessionResumeModal({
+        title: "Resume Study Session?",
+        text: "You have a paused study session. Resume where you stopped or start a new one.",
+        onResume: () => {
+          mode = "study";
+          activeCase = "";
+          active = state.active;
+          current = state.current;
+          userAnswers = state.userAnswers;
+          currentStreak = state.currentStreak || 0;
+
+          updateModeIndicator(state.studyType);
+          nextBtn.onclick = nextQuestion;
+          prevBtn.onclick = previousQuestion;
+
+          showScreen("quiz-area");
+          showQuestion();
+          restoreStreakUI();
+        },
+        onStartNew: () => {
+          localStorage.removeItem("studySession");
+          localStorage.removeItem("practiceSession");
+          startStudy();
+        },
+      });
+      return;
+    }
+  }
+
   const selectedCategory = document.getElementById(
     "study-category-select",
   ).value;
@@ -33151,38 +33188,6 @@ async function startStudy() {
   }
 
   lawDrillState = null;
-
-  const savedStudySession = getSavedStudySession();
-
-  if (savedStudySession) {
-    const { key: sessionKey, state } = savedStudySession;
-    openSessionResumeModal({
-      title: "Resume Study Session?",
-      text: "You have a paused study session. Resume where you stopped or start a new one.",
-      onResume: () => {
-        mode = "study";
-        activeCase = "";
-        active = state.active;
-        current = state.current;
-        userAnswers = state.userAnswers;
-        currentStreak = state.currentStreak || 0;
-
-        updateModeIndicator(state.studyType);
-        nextBtn.onclick = nextQuestion;
-        prevBtn.onclick = previousQuestion;
-
-        showScreen("quiz-area");
-        showQuestion();
-        restoreStreakUI();
-      },
-      onStartNew: () => {
-        localStorage.removeItem("studySession");
-        localStorage.removeItem("practiceSession");
-        startStudy();
-      },
-    });
-    return;
-  }
 
   // ===============================
   // Fresh Session

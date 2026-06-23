@@ -3042,6 +3042,7 @@ const suddenDrillBtn = document.getElementById("sudden-drill-btn");
 const clinicalDrillBtn = document.getElementById("clinical-drill-btn");
 const lawDrillBtn = document.getElementById("law-drill-btn");
 const menuHomeBtn = document.getElementById("menu-home-btn");
+const startStudyBtn = document.getElementById("start-study-btn");
 const studyTypeSelect = document.getElementById("study-type-select");
 const studyTypePickerBtn = document.getElementById("study-type-picker-btn");
 const studyRotationSelect = document.getElementById("study-rotation-select");
@@ -31470,38 +31471,6 @@ backReviewBtn.onclick = function () {
 
 if (studyBtn) {
   studyBtn.onclick = () => {
-    const savedStudySession = getSavedStudySession();
-    if (savedStudySession) {
-      const { state } = savedStudySession;
-      openSessionResumeModal({
-        title: "Resume Study Session?",
-        text: "You have a paused study session. Resume where you stopped or start a new one.",
-        onResume: () => {
-          mode = "study";
-          activeCase = "";
-          active = state.active;
-          current = state.current;
-          userAnswers = state.userAnswers;
-          currentStreak = state.currentStreak || 0;
-
-          updateModeIndicator(state.studyType);
-          nextBtn.onclick = nextQuestion;
-          prevBtn.onclick = previousQuestion;
-
-          showScreen("quiz-area");
-          showQuestion();
-          restoreStreakUI();
-        },
-        onStartNew: () => {
-          localStorage.removeItem("studySession");
-          localStorage.removeItem("practiceSession");
-          void startStudy();
-        },
-      });
-      return;
-    }
-
-    document.getElementById("start-study-btn").onclick = startStudy;
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
     showScreen("study-setup");
@@ -31509,6 +31478,14 @@ if (studyBtn) {
     nextBtn.onclick = nextQuestion;
     prevBtn.onclick = previousQuestion;
   };
+}
+
+if (startStudyBtn) {
+  startStudyBtn.type = "button";
+  startStudyBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    void startStudy();
+  });
 }
 
 if (examBtn) {

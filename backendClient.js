@@ -1,14 +1,30 @@
-const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
+function normalizeApiBase(value = "") {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function parseApiBase(value = "") {
+  const safeValue = normalizeApiBase(value);
+  if (!safeValue) return null;
+  try {
+    return new URL(safeValue);
+  } catch {
+    return null;
+  }
+}
+
+const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "::1", "[::1]"];
+const storedApiBase = normalizeApiBase(localStorage.getItem("quizApiBase"));
 const currentHost = String(window.location.hostname || "").trim();
 const currentProtocol = String(window.location.protocol || "").trim().toLowerCase();
 const currentPort = String(window.location.port || "").trim();
+const isLoopbackHost = LOOPBACK_HOSTS.includes(currentHost);
 const userAgent = String(
   typeof navigator !== "undefined" ? navigator.userAgent || "" : "",
 );
 const hasCapacitorGlobal =
   typeof window !== "undefined" && typeof window.Capacitor === "object";
 const isAndroidWebView = /\bwv\b/i.test(userAgent);
-const isLikelyNativeHost = ["localhost", "127.0.0.1"].includes(currentHost) && !currentPort;
+const isLikelyNativeHost = isLoopbackHost && !currentPort;
 const isNativeShell =
   currentProtocol.startsWith("capacitor:") ||
   currentProtocol.startsWith("ionic:") ||
@@ -21,7 +37,7 @@ const isNativeShell =
       typeof window.Capacitor.isNativePlatform === "function" &&
       window.Capacitor.isNativePlatform(),
   );
-const isLocalHost = ["localhost", "127.0.0.1"].includes(currentHost);
+const isLocalHost = isLoopbackHost;
 const isFilePreview = currentProtocol === "file:";
 const isProductionHost = /ajixpharmacy\.online$/i.test(currentHost);
 const isLanPreview =
@@ -31,10 +47,10 @@ const isLanPreview =
   window.location.protocol === "http:";
 const sameOriginApiBase =
   currentHost && currentProtocol.startsWith("http")
-    ? `${window.location.origin.replace(/\/+$/, "")}/api`
+    ? normalizeApiBase(`${window.location.origin}/api`)
     : "";
 const productionFallbackApiBase = "https://api.ajixpharmacy.online/api";
-const localApiHost = currentHost || "localhost";
+const localApiHost = isLoopbackHost ? "127.0.0.1" : currentHost || "localhost";
 const shouldUseLocalApi = (isFilePreview || isLocalHost) && !isNativeShell;
 const inferredApiBase = shouldUseLocalApi
   ? `http://${localApiHost}:4000/api`
@@ -44,6 +60,14 @@ const inferredApiBase = shouldUseLocalApi
       ? productionFallbackApiBase || sameOriginApiBase
       : productionFallbackApiBase;
 const productionApiBaseCandidates = [productionFallbackApiBase, sameOriginApiBase].filter(Boolean);
+const parsedStoredApiBase = parseApiBase(storedApiBase);
+const storedApiHost = String(parsedStoredApiBase?.hostname || "").trim().toLowerCase();
+const storedApiPort = String(parsedStoredApiBase?.port || "").trim();
+const isStoredApiLocalBackend =
+  !!parsedStoredApiBase &&
+  storedApiPort === "4000" &&
+  ((shouldUseLocalApi && LOOPBACK_HOSTS.includes(storedApiHost)) ||
+    (isLanPreview && storedApiHost === currentHost.toLowerCase()));
 const apiBaseCandidates = Array.from(
   new Set(
     [
@@ -60,7 +84,8 @@ const hasStaleStoredApiBase =
     /your-new-tunnel/i.test(storedApiBase) ||
     /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase) ||
     (isLanPreview && /localhost:4000/i.test(storedApiBase)) ||
-    ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)));
+    ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)) ||
+    ((shouldUseLocalApi || isLanPreview) && !isStoredApiLocalBackend));
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }

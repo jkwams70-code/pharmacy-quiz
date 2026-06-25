@@ -31188,6 +31188,36 @@ function getSavedExamSession(storageKey = "quizExamSession") {
   }
 }
 
+function getSessionCompletionMarkerKey(kind = "") {
+  const safeKind = String(kind || "").trim().toLowerCase();
+  return safeKind ? `quizSessionCompletedAt:${safeKind}` : "";
+}
+
+function markSessionCompleted(kind = "") {
+  const markerKey = getSessionCompletionMarkerKey(kind);
+  if (!markerKey) return;
+  try {
+    localStorage.setItem(markerKey, String(Date.now()));
+  } catch {}
+}
+
+function getSessionCompletionTimestamp(kind = "") {
+  const markerKey = getSessionCompletionMarkerKey(kind);
+  if (!markerKey) return 0;
+  try {
+    return Math.max(0, Number(localStorage.getItem(markerKey)) || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function isSavedSessionOlderThanCompletion(saved = {}, kind = "") {
+  const completionAt = getSessionCompletionTimestamp(kind);
+  if (!completionAt) return false;
+  const savedAt = Math.max(0, Number(saved?.timestamp) || 0);
+  return savedAt > 0 && savedAt <= completionAt;
+}
+
 function getExamSessionStorageKey(variant = examVariant, modeValue = mode) {
   const normalizedVariant = String(variant || "").toLowerCase();
   const normalizedMode = String(modeValue || "").toLowerCase();
@@ -31236,6 +31266,8 @@ function getSavedDrillSession(variant = "") {
   const savedVariant = String(saved.examVariant || "normal").toLowerCase();
   if (savedMode !== "exam" || savedVariant !== drill) return null;
   if (!Array.isArray(saved.active) || saved.active.length === 0) return null;
+  if (saved.completed || saved.sessionEnded || saved.view === "result") return null;
+  if (isSavedSessionOlderThanCompletion(saved, drill)) return null;
   return saved;
 }
 
@@ -31249,6 +31281,12 @@ function getSavedStudySession() {
     try {
       const saved = JSON.parse(raw);
       if (saved && typeof saved === "object" && Array.isArray(saved.active) && saved.active.length > 0) {
+        if (saved.completed || saved.sessionEnded || saved.view === "result") {
+          continue;
+        }
+        if (isSavedSessionOlderThanCompletion(saved, "study")) {
+          continue;
+        }
         const timestamp = Number(saved.timestamp) || 0;
         if (!latestSession || timestamp >= latestSession.timestamp) {
           latestSession = { key, state: saved, timestamp };
@@ -34879,6 +34917,9 @@ async function finishExam() {
     score: finalScore,
     setupPointsBucket,
   });
+  if (["sudden", "clinical"].includes(finishedVariant)) {
+    markSessionCompleted(finishedVariant);
+  }
 
   const xpBonusBase =
     finishedMode === "smart"
@@ -35077,6 +35118,7 @@ function finishStudy() {
     score: correctAnswers,
     setupPointsBucket,
   });
+  markSessionCompleted("study");
   awardXp(8 + Math.round(percent / 25));
 
   clearDailyResultEnhancements();
@@ -35111,6 +35153,7 @@ function endStudySession() {
     score: correctAnswers,
     setupPointsBucket,
   });
+  markSessionCompleted("study");
 
   const old = document.getElementById("study-result");
   if (old) old.remove();
@@ -35636,6 +35679,7 @@ function showQuestionDetailedMode() {
 }
 
 function saveExamSession() {
+  if (mode !== "exam" && mode !== "smart") return;
   const session = {
     mode,
     examVariant,
@@ -35739,6 +35783,7 @@ function saveStudyProgress() {
     active,
     currentStreak,
     studyType: document.getElementById("study-type-select").value,
+    timestamp: Date.now(),
   };
 
   const key =

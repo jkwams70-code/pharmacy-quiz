@@ -6229,15 +6229,20 @@ function commitFinishedSessionPoints({ score = 0, setupPointsBucket = "" } = {})
 
   committedSessionPointsId = sessionId;
 
+  if (setupPointsBucket) {
+    const currentSetupPoints = readCurrentSetupPoints();
+    currentSetupPoints[setupPointsBucket] = Math.max(
+      0,
+      Math.round(Number(currentSetupPoints[setupPointsBucket]) || 0) + safeScore,
+    );
+    writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true });
+  }
+
   const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
   writePendingPoints(readPendingPoints() + safeScore);
 
   if (currentUser) {
     currentUser = { ...(currentUser || {}), points: nextStoredPoints };
-  }
-
-  if (setupPointsBucket) {
-    writeCurrentSetupPoints(readCurrentSetupPoints(), { scheduleSync: true });
   }
 
   renderPoints();

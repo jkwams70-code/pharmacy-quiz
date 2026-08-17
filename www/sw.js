@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-app-shell-v61";
+const CACHE_VERSION = "ajix-app-shell-v62";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
@@ -77,43 +77,4 @@ self.addEventListener("activate", (event) => {
       await self.clients.claim();
     })(),
   );
-});
-
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  if (request.method !== "GET" || !isSameOriginRequest(request)) {
-    return;
-  }
-
-  const url = new URL(request.url);
-  if (url.pathname.startsWith("/api/")) {
-    return;
-  }
-
-  if (request.mode === "navigate") {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(APP_SHELL_CACHE);
-        const cached = await cache.match(request);
-        if (cached) return cached;
-
-        try {
-          const response = await fetch(request);
-          if (response && response.ok) {
-            cache.put(request, response.clone()).catch(() => {});
-          }
-          return response;
-        } catch {
-          return (
-            (await cache.match("/index.html")) ||
-            (await cache.match("/")) ||
-            Response.error()
-          );
-        }
-      })(),
-    );
-    return;
-  }
-
-  event.respondWith(staleWhileRevalidate(request));
 });

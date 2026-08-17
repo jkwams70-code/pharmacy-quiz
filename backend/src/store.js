@@ -35,6 +35,8 @@ const defaults = {
   uploads: [],
   statuses: [],
   reports: [],
+  subscriptionRequests: [],
+  passwordResetRequests: [],
   syncSessions: [],
   syncPerformance: [],
   syncPerformanceState: [],

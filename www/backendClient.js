@@ -52,6 +52,7 @@ const sameOriginApiBase =
 const productionFallbackApiBase = "https://api.ajixpharmacy.online/api";
 const localApiHost = isLoopbackHost ? "127.0.0.1" : currentHost || "localhost";
 const shouldUseLocalApi = (isFilePreview || isLocalHost) && !isNativeShell;
+const preferLocalPreviewApi = shouldUseLocalApi || isLanPreview;
 const inferredApiBase = shouldUseLocalApi
   ? `http://${localApiHost}:4000/api`
   : isLanPreview
@@ -68,13 +69,24 @@ const isStoredApiLocalBackend =
   storedApiPort === "4000" &&
   ((shouldUseLocalApi && LOOPBACK_HOSTS.includes(storedApiHost)) ||
     (isLanPreview && storedApiHost === currentHost.toLowerCase()));
+const localPreviewApiCandidates = [inferredApiBase, storedApiBase].filter(Boolean).filter((candidate) => {
+  if (!preferLocalPreviewApi) return true;
+  const parsedCandidate = parseApiBase(candidate);
+  const candidateHost = String(parsedCandidate?.hostname || "").trim().toLowerCase();
+  const candidatePort = String(parsedCandidate?.port || "").trim();
+  return candidatePort === "4000" && (LOOPBACK_HOSTS.includes(candidateHost) || candidateHost === currentHost.toLowerCase());
+});
 const apiBaseCandidates = Array.from(
   new Set(
-    [
-      isProductionHost ? "" : storedApiBase,
-      inferredApiBase,
-      ...productionApiBaseCandidates,
-    ].filter(Boolean),
+    (
+      preferLocalPreviewApi
+        ? localPreviewApiCandidates
+        : [
+            isProductionHost ? "" : storedApiBase,
+            inferredApiBase,
+            ...productionApiBaseCandidates,
+          ]
+    ).filter(Boolean),
   ),
 );
 const hasStaleStoredApiBase =
@@ -91,7 +103,9 @@ if (hasStaleStoredApiBase) {
 }
 const API_BASE = hasStaleStoredApiBase
   ? inferredApiBase
-  : isProductionHost
+  : preferLocalPreviewApi
+    ? inferredApiBase
+    : isProductionHost
     ? productionFallbackApiBase || sameOriginApiBase
     : storedApiBase || inferredApiBase;
 
@@ -473,6 +487,18 @@ export const backendClient = {
 
   fetchMe({ preferCache = false } = {}) {
     return get("/auth/me", { preferCache });
+  },
+
+  fetchSubscriptionPlans({ preferCache = true } = {}) {
+    return get("/subscriptions/plans", { preferCache });
+  },
+
+  fetchMySubscription({ preferCache = false } = {}) {
+    return get("/subscriptions/me", { preferCache });
+  },
+
+  submitSubscriptionRequest(payload = {}) {
+    return post("/subscriptions/requests", payload);
   },
 
   addPoints(payload = {}) {

@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ajix Pharmacy Admin - Subscription Review</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3f7fb;
+        --panel: rgba(255, 255, 255, 0.92);
+        --panel-strong: #ffffff;
+        --text: #10233f;
+        --muted: #59708a;
+        --brand: #0f3f7f;
+        --brand-2: #0f766e;
+        --danger: #b42318;
+        --line: rgba(15, 63, 127, 0.14);
+        --shadow: 0 22px 54px rgba(11, 24, 40, 0.10);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(15, 63, 127, 0.12), transparent 32%),
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 30%),
+          linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
+        color: var(--text);
+        min-height: 100vh;
+      }
+      .shell {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .hero {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        padding: 22px;
+        display: grid;
+        gap: 16px;
+      }
+      .hero-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--brand);
+        font-weight: 800;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 42px);
+        line-height: 1.05;
+      }
+      .subcopy {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+        max-width: 72ch;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: end;
+      }
+      .field {
+        display: grid;
+        gap: 8px;
+        min-width: 220px;
+      }
+      label {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      input, textarea, button {
+        font: inherit;
+      }
+      input, textarea {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid rgba(15, 63, 127, 0.16);
+        background: #fff;
+        color: var(--text);
+        padding: 12px 14px;
+        outline: none;
+      }
+      input:focus, textarea:focus {
+        border-color: rgba(15, 63, 127, 0.5);
+        box-shadow: 0 0 0 4px rgba(15, 63, 127, 0.08);
+      }
+      button {
+        border: 0;
+        border-radius: 14px;
+        padding: 12px 16px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+      }
+      button:hover { transform: translateY(-1px); }
+      .btn-primary {
+        color: #fff;
+        background: linear-gradient(135deg, var(--brand), #144f9b);
+        box-shadow: 0 12px 28px rgba(15, 63, 127, 0.22);
+      }
+      .btn-secondary {
+        color: var(--text);
+        background: #edf3f8;
+      }
+      .btn-danger {
+        color: #fff;
+        background: linear-gradient(135deg, var(--danger), #8d1f17);
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+      }
+      .stat {
+        background: rgba(255,255,255,0.84);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 14px;
+      }
+      .stat .label {
+        display: block;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .stat .value {
+        display: block;
+        margin-top: 8px;
+        font-size: 28px;
+        font-weight: 900;
+      }
+      .alert {
+        background: rgba(15, 118, 110, 0.10);
+        border: 1px solid rgba(15, 118, 110, 0.18);
+        color: #114d4a;
+        border-radius: 18px;
+        padding: 14px 16px;
+      }
+      .alert.error {
+        background: rgba(180, 35, 24, 0.10);
+        border-color: rgba(180, 35, 24, 0.18);
+        color: #7e1f1b;
+      }
+      .list {
+        margin-top: 18px;
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .card-head {
+        padding: 18px 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,249,253,0.98));
+        border-bottom: 1px solid rgba(15, 63, 127, 0.08);
+      }
+      .card-title {
+        display: grid;
+        gap: 4px;
+      }
+      .card-title strong {
+        font-size: 18px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-weight: 800;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: rgba(15, 63, 127, 0.10);
+        color: var(--brand);
+      }
+      .pill.pending { background: rgba(15, 118, 110, 0.12); color: var(--brand-2); }
+      .pill.approved { background: rgba(15, 63, 127, 0.12); color: var(--brand); }
+      .pill.rejected { background: rgba(180, 35, 24, 0.12); color: var(--danger); }
+      .card-body {
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .kv {
+        background: rgba(15, 63, 127, 0.04);
+        border: 1px solid rgba(15, 63, 127, 0.08);
+        border-radius: 16px;
+        padding: 12px 14px;
+        display: grid;
+        gap: 6px;
+      }
+      .kv span {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .kv strong, .kv div {
+        word-break: break-word;
+      }
+      .proof {
+        display: grid;
+        gap: 10px;
+      }
+      .proof img {
+        width: 100%;
+        max-height: 320px;
+        object-fit: contain;
+        border-radius: 18px;
+        background: #fff;
+        border: 1px solid rgba(15, 63, 127, 0.10);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .actions .field {
+        min-width: 240px;
+        flex: 1;
+      }
+      .empty {
+        background: var(--panel);
+        border: 1px dashed rgba(15, 63, 127, 0.2);
+        border-radius: 24px;
+        padding: 28px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .muted { color: var(--muted); }
+      .hidden { display: none !important; }
+      @media (max-width: 720px) {
+        .shell { padding: 16px; }
+        .toolbar { align-items: stretch; }
+        .field { min-width: 100%; }
+        .actions .field { min-width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div class="hero-top">
+          <div>
+            <div class="eyebrow">Ajix Pharmacy Admin</div>
+            <h1>Subscription Review</h1>
+            <p class="subcopy">Approve or reject user payment proofs for daily, monthly, and annual access. Trial access is handled automatically by the app after signup.</p>
+          </div>
+          <button id="refresh-btn" class="btn-secondary" type="button">Refresh</button>
+        </div>
+        <div class="toolbar">
+          <div class="field">
+            <label for="api-base-input">API base</label>
+            <input id="api-base-input" type="text" placeholder="http://localhost:4000/api" />
+          </div>
+          <div class="field">
+            <label for="admin-key-input">Admin key</label>
+            <input id="admin-key-input" type="password" placeholder="Enter admin key" />
+          </div>
+          <button id="save-key-btn" class="btn-primary" type="button">Save key</button>
+          <button id="load-btn" class="btn-secondary" type="button">Load requests</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="label">Total</span><span id="total-count" class="value">0</span></div>
+          <div class="stat"><span class="label">Pending</span><span id="pending-count" class="value">0</span></div>
+          <div class="stat"><span class="label">Approved</span><span id="approved-count" class="value">0</span></div>
+          <div class="stat"><span class="label">Rejected</span><span id="rejected-count" class="value">0</span></div>
+        </div>
+        <div id="status-banner" class="alert">Save your admin key, then load the latest payment proofs.</div>
+      </section>
+
+      <section id="requests" class="list"></section>
+      <section id="empty-state" class="empty hidden">No subscription requests found.</section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = "ajixAdminSubscriptionKey";
+      const API_KEY_HEADER = "x-admin-key";
+      const adminKeyInput = document.getElementById("admin-key-input");
+      const apiBaseInput = document.getElementById("api-base-input");
+      const statusBanner = document.getElementById("status-banner");
+      const requestsEl = document.getElementById("requests");
+      const emptyStateEl = document.getElementById("empty-state");
+      const totalCountEl = document.getElementById("total-count");
+      const pendingCountEl = document.getElementById("pending-count");
+      const approvedCountEl = document.getElementById("approved-count");
+      const rejectedCountEl = document.getElementById("rejected-count");
+
+      const savedKey = localStorage.getItem(STORAGE_KEY) || "";
+      const savedBase = localStorage.getItem("quizApiBase") || `${window.location.origin}/api`;
+      adminKeyInput.value = savedKey;
+      apiBaseInput.value = savedBase.replace(/\/+$/, "");
+
+      function setBanner(message, isError = false) {
+        statusBanner.textContent = message;
+        statusBanner.classList.toggle("error", Boolean(isError));
+      }
+
+      function getApiBase() {
+        return String(apiBaseInput.value || "").trim().replace(/\/+$/, "");
+      }
+
+      function getAdminKey() {
+        return String(adminKeyInput.value || "").trim();
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(`${getApiBase()}${path}`, {
+          ...options,
+          headers: {
+            ...(options.headers || {}),
+            [API_KEY_HEADER]: getAdminKey(),
+          },
+        });
+        const text = await response.text();
+        let data = null;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          data = { error: text };
+        }
+        if (!response.ok) {
+          throw new Error(data?.error || `Request failed (${response.status})`);
+        }
+        return data;
+      }
+
+      function formatDate(value) {
+        if (!value) return "--";
+        try {
+          return new Date(value).toLocaleString();
+        } catch {
+          return String(value);
+        }
+      }
+
+      function renderCounts(requests = []) {
+        totalCountEl.textContent = String(requests.length);
+        pendingCountEl.textContent = String(requests.filter((entry) => entry.status === "pending").length);
+        approvedCountEl.textContent = String(requests.filter((entry) => entry.status === "approved").length);
+        rejectedCountEl.textContent = String(requests.filter((entry) => entry.status === "rejected").length);
+      }
+
+      function renderRequests(requests = []) {
+        requestsEl.innerHTML = "";
+        emptyStateEl.classList.toggle("hidden", requests.length > 0);
+        renderCounts(requests);
+
+        if (!requests.length) return;
+
+        for (const request of requests) {
+          const card = document.createElement("article");
+          card.className = "card";
+          const statusClass = String(request.status || "pending").toLowerCase();
+          const user = request.user || {};
+          card.innerHTML = `
+            <div class="card-head">
+              <div class="card-title">
+                <strong>${escapeHtml(user.name || request.userName || "User")}</strong>
+                <span class="muted">${escapeHtml(user.username ? `@${user.username}` : request.contact || "--")}</span>
+              </div>
+              <span class="pill ${escapeHtml(statusClass)}">${escapeHtml(request.status || "pending")}</span>
+            </div>
+            <div class="card-body">
+              <div class="grid">
+                <div class="kv"><span>Plan</span><strong>${escapeHtml(request.planLabel || request.plan || "--")}</strong></div>
+                <div class="kv"><span>Price</span><strong>${escapeHtml(Number(request.priceGhs) === 0 ? "Free" : `GHS ${request.priceGhs}`)}</strong></div>
+                <div class="kv"><span>Requested</span><strong>${escapeHtml(formatDate(request.requestedAt))}</strong></div>
+                <div class="kv"><span>Review deadline</span><strong>${escapeHtml(formatDate(request.reviewDeadlineAt))}</strong></div>
+                <div class="kv"><span>Transaction ID</span><div>${escapeHtml(request.paymentReference || request.proofText || "--")}</div></div>
+                <div class="kv"><span>User contact</span><div>${escapeHtml(user.contact || request.contact || "--")}</div></div>
+              </div>
+              <div class="proof">
+                <div class="muted"><strong>Note:</strong> ${escapeHtml(request.reviewNote || "--")}</div>
+                ${request.proofDataUrl ? `<img src="${escapeHtml(request.proofDataUrl)}" alt="Payment proof" />` : ""}
+              </div>
+              <div class="actions">
+                <div class="field">
+                  <label for="note-${escapeHtml(request.id)}">Review note</label>
+                  <textarea id="note-${escapeHtml(request.id)}" rows="3" placeholder="Optional note for the user or audit trail"></textarea>
+                </div>
+                <div class="field" style="min-width: 160px; flex: 0 0 160px;">
+                  <label>&nbsp;</label>
+                  <button class="btn-primary" data-action="approve" data-id="${escapeHtml(request.id)}" type="button">Approve</button>
+                </div>
+                <div class="field" style="min-width: 160px; flex: 0 0 160px;">
+                  <label>&nbsp;</label>
+                  <button class="btn-danger" data-action="reject" data-id="${escapeHtml(request.id)}" type="button">Reject</button>
+                </div>
+              </div>
+            </div>
+          `;
+          requestsEl.appendChild(card);
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      async function loadRequests() {
+        const key = getAdminKey();
+        if (!key) {
+          setBanner("Enter the admin key first.", true);
+          return;
+        }
+        localStorage.setItem(STORAGE_KEY, key);
+        localStorage.setItem("quizApiBase", getApiBase());
+        setBanner("Loading subscription requests...");
+        const data = await api("/admin/subscription-requests", { method: "GET" });
+        renderRequests(Array.isArray(data?.requests) ? data.requests : []);
+        setBanner(`Loaded ${Array.isArray(data?.requests) ? data.requests.length : 0} requests.`);
+      }
+
+      async function reviewRequest(requestId, action) {
+        const noteEl = document.getElementById(`note-${requestId}`);
+        const reviewNote = String(noteEl?.value || "").trim();
+        const path = action === "approve"
+          ? `/admin/subscription-requests/${encodeURIComponent(requestId)}/approve`
+          : `/admin/subscription-requests/${encodeURIComponent(requestId)}/reject`;
+        setBanner(`${action === "approve" ? "Approving" : "Rejecting"} request...`);
+        await api(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewNote }),
+        });
+        await loadRequests();
+      }
+
+      document.getElementById("save-key-btn").addEventListener("click", () => {
+        localStorage.setItem(STORAGE_KEY, getAdminKey());
+        localStorage.setItem("quizApiBase", getApiBase());
+        setBanner("Admin key saved.");
+      });
+
+      document.getElementById("load-btn").addEventListener("click", () => {
+        void loadRequests().catch((error) => setBanner(error.message, true));
+      });
+
+      document.getElementById("refresh-btn").addEventListener("click", () => {
+        void loadRequests().catch((error) => setBanner(error.message, true));
+      });
+
+      requestsEl.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-action][data-id]");
+        if (!button) return;
+        const action = button.getAttribute("data-action");
+        const id = button.getAttribute("data-id");
+        if (!id || !action) return;
+        void reviewRequest(id, action).catch((error) => setBanner(error.message, true));
+      });
+
+      if (savedKey) {
+        void loadRequests().catch((error) => setBanner(error.message, true));
+      }
+    </script>
+  </body>
+</html>

@@ -428,6 +428,18 @@ export const backendClient = {
     return put("/auth/profile", payload);
   },
 
+  fetchSubscriptionPlans() {
+    return get("/subscriptions/plans");
+  },
+
+  fetchMySubscription() {
+    return get("/subscriptions/me");
+  },
+
+  submitSubscriptionRequest(payload = {}) {
+    return post("/subscriptions/requests", payload);
+  },
+
   updateSetupPoints(payload = {}) {
     return put("/auth/setup-points", payload);
   },

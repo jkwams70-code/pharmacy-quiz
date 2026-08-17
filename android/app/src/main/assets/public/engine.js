@@ -1,4 +1,4 @@
-import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
+﻿import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
 import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
 
@@ -883,7 +883,7 @@ function buildDrillCumulativePointsBadgeMarkup(points = 0, label = "Total") {
   const safePoints = Math.max(0, Math.round(Number(points) || 0));
   return `
     <span class="header-inline-points is-cumulative" title="Cumulative drill points">
-      <span class="header-inline-points-icon" aria-hidden="true">🏆</span>
+      <span class="header-inline-points-icon" aria-hidden="true">ðŸ†</span>
       <span class="header-inline-points-label">${escapeHtml(label)}</span>
       <span class="header-inline-points-value">${safePoints}</span>
     </span>
@@ -1438,7 +1438,7 @@ function updateLawDrillHeaderMeta() {
     : LAW_DRILL_QUESTIONS_PER_LEVEL;
   const levelScore = getLawDrillLevelScore(currentLevel);
   if (progressEl) {
-    progressEl.innerText = `${reviewLabel} ${levelNumber}/${lawDrillState.totalLevels} • Q ${current + 1}/${active.length}`;
+    progressEl.innerText = `${reviewLabel} ${levelNumber}/${lawDrillState.totalLevels} â€¢ Q ${current + 1}/${active.length}`;
   }
 }
 
@@ -1485,7 +1485,7 @@ function renderLawDrillReviewLevelViewLegacy(levelIndex = 0) {
   }
 
   if (progressEl) {
-    progressEl.innerText = `Level ${levelIndex + 1} Review • ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.innerText = `Level ${levelIndex + 1} Review â€¢ ${correct}/${Math.max(1, answered)} Correct`;
     progressEl.style.color = "";
   }
   if (liveScore) liveScore.innerText = "";
@@ -1602,7 +1602,7 @@ function renderLawDrillReviewLevelView(levelIndex = 0) {
   }
 
   if (progressEl) {
-    progressEl.innerText = `Level ${levelIndex + 1} Review • ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.innerText = `Level ${levelIndex + 1} Review â€¢ ${correct}/${Math.max(1, answered)} Correct`;
     progressEl.style.color = "";
   }
   if (liveScore) liveScore.innerText = "";
@@ -1705,7 +1705,7 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
           <div class="law-drill-stack-eyebrow">Law Drill Review</div>
           <div class="law-drill-stack-title">${final ? "Final Level Review" : `Level ${levelIndex + 1} Review`}</div>
         </div>
-        <div class="law-drill-stack-meta">${answered} answered • ${correct} correct</div>
+        <div class="law-drill-stack-meta">${answered} answered â€¢ ${correct} correct</div>
       </div>
       <div class="law-drill-stack-list">
         ${buildLawDrillResultReviewMarkup(levelIndex)}
@@ -2239,8 +2239,17 @@ let backendReady = false;
 let backendAttemptId = null;
 let currentUser = null;
 let authMode = "login";
+let authForgotRequestLocked = false;
 let topicCatalog = { topics: [], categories: [] };
 let topicCatalogLoaded = false;
+let subscriptionPlansCache = [];
+let subscriptionStatusSnapshot = null;
+let subscriptionScreenState = {
+  intent: "general",
+  returnScreen: "quiz-menu",
+  paymentModalOpen: false,
+  paymentProofOpen: false,
+};
 let topicLibraryReturnScreen = "quiz-menu";
 let topicViewerReturnScreen = "topic-library";
 let topicViewerCurrentSlug = "";
@@ -3139,7 +3148,12 @@ const authLastNameInput = document.getElementById("auth-last-name");
 const authUsernameWrap = document.getElementById("auth-username-wrap");
 const authUsernameInput = document.getElementById("auth-username");
 const authContactWrap = document.getElementById("auth-contact-wrap");
-const authContactInput = document.getElementById("auth-contact");
+const authContactFormatInput = document.getElementById("auth-contact-format");
+const authContactEmailWrap = document.getElementById("auth-contact-email-wrap");
+const authContactEmailInput = document.getElementById("auth-contact-email");
+const authContactPhoneWrap = document.getElementById("auth-contact-phone-wrap");
+const authContactCountryCodeInput = document.getElementById("auth-contact-country-code");
+const authContactPhoneInput = document.getElementById("auth-contact-phone");
 const authResetCodeWrap = document.getElementById("auth-reset-code-wrap");
 const authResetCodeInput = document.getElementById("auth-reset-code");
 const authPasswordWrap = document.getElementById("auth-password-wrap");
@@ -3218,7 +3232,13 @@ const profileTitleInput = document.getElementById("profile-title");
 const profileFirstNameInput = document.getElementById("profile-first-name");
 const profileLastNameInput = document.getElementById("profile-last-name");
 const profileUsernameInput = document.getElementById("profile-username");
-const profileContactInput = document.getElementById("profile-contact");
+const profileContactWrap = document.getElementById("profile-contact-wrap");
+const profileContactFormatInput = document.getElementById("profile-contact-format");
+const profileContactEmailWrap = document.getElementById("profile-contact-email-wrap");
+const profileContactEmailInput = document.getElementById("profile-contact-email");
+const profileContactPhoneWrap = document.getElementById("profile-contact-phone-wrap");
+const profileContactCountryCodeInput = document.getElementById("profile-contact-country-code");
+const profileContactPhoneInput = document.getElementById("profile-contact-phone");
 const profileProfessionalTypeInput = document.getElementById("profile-professional-type");
 const profileCountryInput = document.getElementById("profile-country");
 const profileInstitutionInput = document.getElementById("profile-institution");
@@ -3263,6 +3283,7 @@ const menuQuickNavBtn = document.getElementById("menu-quick-nav-btn");
 const menuUserHubPanel = document.getElementById("menu-user-hub-panel");
 const menuUserHubCloseBtn = document.getElementById("menu-user-hub-close-btn");
 const menuTourBtn = document.getElementById("menu-tour-btn");
+const menuSubscriptionBtn = document.getElementById("menu-subscription-btn");
 const menuSettingsBtn = document.getElementById("menu-settings-btn");
 const tourBackBtn = document.getElementById("tour-back-btn");
 const tourMenuBtn = document.getElementById("tour-menu-btn");
@@ -3299,6 +3320,29 @@ const dailyCompletedValueEl = document.getElementById("daily-completed-value");
 const dailyCelebrationEl = document.getElementById("daily-celebration");
 const dailyCompleteCheckEl = document.getElementById("daily-complete-check");
 const dailyGemsRibbonEl = document.getElementById("daily-gems-ribbon");
+const subscriptionBackBtn = document.getElementById("subscription-back-btn");
+const subscriptionPaymentModalEl = document.getElementById("subscription-payment-modal");
+const subscriptionPaymentModalCardEl = subscriptionPaymentModalEl?.querySelector(".subscription-payment-modal-card");
+const subscriptionPaymentModalCloseBtn = document.getElementById("subscription-payment-modal-close-btn");
+const subscriptionPaymentModalCancelBtn = document.getElementById("subscription-payment-cancel-btn");
+const subscriptionPaymentModalCopyEl = document.getElementById("subscription-payment-modal-copy");
+const subscriptionPaymentModalTitleEl = document.getElementById("subscription-payment-modal-title");
+const subscriptionPaymentAmountEl = document.getElementById("subscription-payment-amount");
+const subscriptionPaymentAccountNumberEl = document.getElementById("subscription-payment-account-number");
+const subscriptionPaymentAccountNameEl = document.getElementById("subscription-payment-account-name");
+const subscriptionPaymentDetailsEl = document.getElementById("subscription-payment-details");
+const subscriptionProofPlanTitleEl = document.getElementById("subscription-proof-plan-title");
+const subscriptionProofPlanReferenceEl = document.getElementById("subscription-proof-plan-reference");
+const subscriptionProofJumpBtn = document.getElementById("subscription-proof-jump-btn");
+const subscriptionProofPanelEl = document.getElementById("subscription-proof-panel");
+const subscriptionForm = document.getElementById("subscription-form");
+const subscriptionPlanInput = document.getElementById("subscription-plan-input");
+const subscriptionTransactionInput = document.getElementById("subscription-transaction-input");
+const subscriptionProofInput = document.getElementById("subscription-proof-input");
+const subscriptionProofPreview = document.getElementById("subscription-proof-preview");
+const subscriptionProofPreviewContent = document.getElementById("subscription-proof-preview-content");
+const subscriptionSubmitBtn = document.getElementById("subscription-submit-btn");
+const subscriptionFormFeedback = document.getElementById("subscription-form-feedback");
 const reviewTitleEl = document.querySelector("#review-screen .review-title");
 const reviewTimerStatusEl = document.getElementById("review-timer");
 const submitExamBtn = document.getElementById("submit-exam");
@@ -3710,7 +3754,7 @@ const COMMUNITY_LOCK_PIN_MAX_LENGTH = 8;
 const COMMUNITY_BIOMETRIC_REGISTRATION_TIMEOUT_MS = 90000;
 const COMMUNITY_BIOMETRIC_UNLOCK_TIMEOUT_MS = 60000;
 const COMMUNITY_EMOJI_RECENT_LIMIT = 40;
-const COMMUNITY_EMOJI_SKIN_TONES = ["", "🏻", "🏼", "🏽", "🏾", "🏿"];
+const COMMUNITY_EMOJI_SKIN_TONES = ["", "ðŸ»", "ðŸ¼", "ðŸ½", "ðŸ¾", "ðŸ¿"];
 
 function isQuotaExceededStorageError(error) {
   return Boolean(
@@ -3832,74 +3876,74 @@ if (
 const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
   {
     id: "smileys",
-    icon: "😀",
+    icon: "ðŸ˜€",
     title: "Smileys",
     emojis: [
-      "😀","😃","😄","😁","😆","😅","😂","🤣","🥹","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓","😎","🥳","😤","😔","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😠","😡","😱","😴","🤒","🤕","🤯",
+      "ðŸ˜€","ðŸ˜ƒ","ðŸ˜„","ðŸ˜","ðŸ˜†","ðŸ˜…","ðŸ˜‚","ðŸ¤£","ðŸ¥¹","ðŸ˜Š","ðŸ˜‡","ðŸ™‚","ðŸ™ƒ","ðŸ˜‰","ðŸ˜Œ","ðŸ˜","ðŸ¥°","ðŸ˜˜","ðŸ˜—","ðŸ˜™","ðŸ˜š","ðŸ˜‹","ðŸ˜›","ðŸ˜","ðŸ˜œ","ðŸ¤ª","ðŸ¤¨","ðŸ§","ðŸ¤“","ðŸ˜Ž","ðŸ¥³","ðŸ˜¤","ðŸ˜”","ðŸ˜•","ðŸ™","â˜¹ï¸","ðŸ˜£","ðŸ˜–","ðŸ˜«","ðŸ˜©","ðŸ¥º","ðŸ˜¢","ðŸ˜­","ðŸ˜ ","ðŸ˜¡","ðŸ˜±","ðŸ˜´","ðŸ¤’","ðŸ¤•","ðŸ¤¯",
     ],
   },
   {
     id: "people",
-    icon: "🧑",
+    icon: "ðŸ§‘",
     title: "People",
     emojis: [
-      "👶","🧒","👦","👧","🧑","👨","👩","🧔","👱","👴","👵","🙍","🙎","🙅","🙆","💁","🙋","🧏","🤷","🤦","🙇","🧘","💆","💇","🚶","🧍","🧎","🏃","💃","🕺","🫃","🤰","🤱","👨‍👩‍👧","👨‍👩‍👧‍👦","👩‍👩‍👧","👨‍👨‍👦","🫂","👥","👤","🫶","❤️","💔",
+      "ðŸ‘¶","ðŸ§’","ðŸ‘¦","ðŸ‘§","ðŸ§‘","ðŸ‘¨","ðŸ‘©","ðŸ§”","ðŸ‘±","ðŸ‘´","ðŸ‘µ","ðŸ™","ðŸ™Ž","ðŸ™…","ðŸ™†","ðŸ’","ðŸ™‹","ðŸ§","ðŸ¤·","ðŸ¤¦","ðŸ™‡","ðŸ§˜","ðŸ’†","ðŸ’‡","ðŸš¶","ðŸ§","ðŸ§Ž","ðŸƒ","ðŸ’ƒ","ðŸ•º","ðŸ«ƒ","ðŸ¤°","ðŸ¤±","ðŸ‘¨â€ðŸ‘©â€ðŸ‘§","ðŸ‘¨â€ðŸ‘©â€ðŸ‘§â€ðŸ‘¦","ðŸ‘©â€ðŸ‘©â€ðŸ‘§","ðŸ‘¨â€ðŸ‘¨â€ðŸ‘¦","ðŸ«‚","ðŸ‘¥","ðŸ‘¤","ðŸ«¶","â¤ï¸","ðŸ’”",
     ],
   },
   {
     id: "professions",
-    icon: "🧑‍⚕️",
+    icon: "ðŸ§‘â€âš•ï¸",
     title: "Professions",
     emojis: [
-      "🧑‍⚕️","👨‍⚕️","👩‍⚕️","🧑‍🎓","👨‍🎓","👩‍🎓","🧑‍🏫","👨‍🏫","👩‍🏫","🧑‍⚖️","👨‍⚖️","👩‍⚖️","🧑‍🌾","👨‍🌾","👩‍🌾","🧑‍🍳","👨‍🍳","👩‍🍳","🧑‍🔧","👨‍🔧","👩‍🔧","🧑‍🏭","👨‍🏭","👩‍🏭","🧑‍💼","👨‍💼","👩‍💼","🧑‍🔬","👨‍🔬","👩‍🔬","🧑‍💻","👨‍💻","👩‍💻","🧑‍🎤","👨‍🎤","👩‍🎤","🧑‍🎨","👨‍🎨","👩‍🎨","🧑‍✈️","👨‍✈️","👩‍✈️","🧑‍🚀","👨‍🚀","👩‍🚀","🧑‍🚒","👨‍🚒","👩‍🚒","👮","🕵️",
+      "ðŸ§‘â€âš•ï¸","ðŸ‘¨â€âš•ï¸","ðŸ‘©â€âš•ï¸","ðŸ§‘â€ðŸŽ“","ðŸ‘¨â€ðŸŽ“","ðŸ‘©â€ðŸŽ“","ðŸ§‘â€ðŸ«","ðŸ‘¨â€ðŸ«","ðŸ‘©â€ðŸ«","ðŸ§‘â€âš–ï¸","ðŸ‘¨â€âš–ï¸","ðŸ‘©â€âš–ï¸","ðŸ§‘â€ðŸŒ¾","ðŸ‘¨â€ðŸŒ¾","ðŸ‘©â€ðŸŒ¾","ðŸ§‘â€ðŸ³","ðŸ‘¨â€ðŸ³","ðŸ‘©â€ðŸ³","ðŸ§‘â€ðŸ”§","ðŸ‘¨â€ðŸ”§","ðŸ‘©â€ðŸ”§","ðŸ§‘â€ðŸ­","ðŸ‘¨â€ðŸ­","ðŸ‘©â€ðŸ­","ðŸ§‘â€ðŸ’¼","ðŸ‘¨â€ðŸ’¼","ðŸ‘©â€ðŸ’¼","ðŸ§‘â€ðŸ”¬","ðŸ‘¨â€ðŸ”¬","ðŸ‘©â€ðŸ”¬","ðŸ§‘â€ðŸ’»","ðŸ‘¨â€ðŸ’»","ðŸ‘©â€ðŸ’»","ðŸ§‘â€ðŸŽ¤","ðŸ‘¨â€ðŸŽ¤","ðŸ‘©â€ðŸŽ¤","ðŸ§‘â€ðŸŽ¨","ðŸ‘¨â€ðŸŽ¨","ðŸ‘©â€ðŸŽ¨","ðŸ§‘â€âœˆï¸","ðŸ‘¨â€âœˆï¸","ðŸ‘©â€âœˆï¸","ðŸ§‘â€ðŸš€","ðŸ‘¨â€ðŸš€","ðŸ‘©â€ðŸš€","ðŸ§‘â€ðŸš’","ðŸ‘¨â€ðŸš’","ðŸ‘©â€ðŸš’","ðŸ‘®","ðŸ•µï¸",
     ],
   },
   {
     id: "gestures",
-    icon: "👍",
+    icon: "ðŸ‘",
     title: "Gestures",
     emojis: [
-      "👍","👎","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","✋","🤚","🖐️","🖖","👋","🤝","👏","🙌","👐","🤲","🙏","✍️","💪","🦾","🦿","🦵","🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴",
+      "ðŸ‘","ðŸ‘Ž","ðŸ‘Œ","ðŸ¤Œ","ðŸ¤","âœŒï¸","ðŸ¤ž","ðŸ¤Ÿ","ðŸ¤˜","ðŸ¤™","ðŸ‘ˆ","ðŸ‘‰","ðŸ‘†","ðŸ‘‡","â˜ï¸","âœ‹","ðŸ¤š","ðŸ–ï¸","ðŸ––","ðŸ‘‹","ðŸ¤","ðŸ‘","ðŸ™Œ","ðŸ‘","ðŸ¤²","ðŸ™","âœï¸","ðŸ’ª","ðŸ¦¾","ðŸ¦¿","ðŸ¦µ","ðŸ¦¶","ðŸ‘‚","ðŸ¦»","ðŸ‘ƒ","ðŸ§ ","ðŸ«€","ðŸ«","ðŸ¦·","ðŸ¦´",
     ],
   },
   {
     id: "animals",
-    icon: "🐶",
+    icon: "ðŸ¶",
     title: "Animals",
     emojis: [
-      "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪲","🐞","🦋","🐌","🐢","🐍","🦎","🦂","🦀","🐙","🦑","🐬","🐳","🦈",
+      "ðŸ¶","ðŸ±","ðŸ­","ðŸ¹","ðŸ°","ðŸ¦Š","ðŸ»","ðŸ¼","ðŸ¨","ðŸ¯","ðŸ¦","ðŸ®","ðŸ·","ðŸ¸","ðŸµ","ðŸ”","ðŸ§","ðŸ¦","ðŸ¤","ðŸ¦†","ðŸ¦…","ðŸ¦‰","ðŸ¦‡","ðŸº","ðŸ—","ðŸ´","ðŸ¦„","ðŸ","ðŸª²","ðŸž","ðŸ¦‹","ðŸŒ","ðŸ¢","ðŸ","ðŸ¦Ž","ðŸ¦‚","ðŸ¦€","ðŸ™","ðŸ¦‘","ðŸ¬","ðŸ³","ðŸ¦ˆ",
     ],
   },
   {
     id: "food",
-    icon: "🍔",
+    icon: "ðŸ”",
     title: "Food",
     emojis: [
-      "🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🌶️","🌽","🥕","🫒","🍞","🥐","🥖","🧀","🥚","🍗","🍖","🌭","🍔","🍟","🍕","🌮","🌯","🥗","🍜","🍣","🍤","🍩","🍪","🎂","🍫","🍿","☕","🧃",
+      "ðŸ","ðŸŽ","ðŸ","ðŸŠ","ðŸ‹","ðŸŒ","ðŸ‰","ðŸ‡","ðŸ“","ðŸ«","ðŸˆ","ðŸ’","ðŸ‘","ðŸ¥­","ðŸ","ðŸ¥¥","ðŸ¥","ðŸ…","ðŸ†","ðŸ¥‘","ðŸ¥¦","ðŸ¥¬","ðŸŒ¶ï¸","ðŸŒ½","ðŸ¥•","ðŸ«’","ðŸž","ðŸ¥","ðŸ¥–","ðŸ§€","ðŸ¥š","ðŸ—","ðŸ–","ðŸŒ­","ðŸ”","ðŸŸ","ðŸ•","ðŸŒ®","ðŸŒ¯","ðŸ¥—","ðŸœ","ðŸ£","ðŸ¤","ðŸ©","ðŸª","ðŸŽ‚","ðŸ«","ðŸ¿","â˜•","ðŸ§ƒ",
     ],
   },
   {
     id: "travel",
-    icon: "🚗",
+    icon: "ðŸš—",
     title: "Travel",
     emojis: [
-      "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🛻","🚚","🚜","🏍️","🛵","🚲","✈️","🛫","🛬","🚁","🚀","🛸","⛵","🚤","🛳️","🚢","⛽","🗺️","🧭","🏖️","🏝️","🏔️","⛰️","🌋","🏕️","🏠","🏥","🏫","🏢","🏦","🗽","🗼","🌉",
+      "ðŸš—","ðŸš•","ðŸš™","ðŸšŒ","ðŸšŽ","ðŸŽï¸","ðŸš“","ðŸš‘","ðŸš’","ðŸš","ðŸ›»","ðŸšš","ðŸšœ","ðŸï¸","ðŸ›µ","ðŸš²","âœˆï¸","ðŸ›«","ðŸ›¬","ðŸš","ðŸš€","ðŸ›¸","â›µ","ðŸš¤","ðŸ›³ï¸","ðŸš¢","â›½","ðŸ—ºï¸","ðŸ§­","ðŸ–ï¸","ðŸï¸","ðŸ”ï¸","â›°ï¸","ðŸŒ‹","ðŸ•ï¸","ðŸ ","ðŸ¥","ðŸ«","ðŸ¢","ðŸ¦","ðŸ—½","ðŸ—¼","ðŸŒ‰",
     ],
   },
   {
     id: "objects",
-    icon: "💡",
+    icon: "ðŸ’¡",
     title: "Objects",
     emojis: [
-      "📱","💻","⌨️","🖥️","🖨️","🖱️","💽","📷","📹","🎥","🎬","📞","☎️","📺","📻","🎧","🎤","🎵","🎶","🔋","🔌","💡","🔦","🕯️","🪔","🧯","🛒","🎁","🎈","🎀","🏆","🥇","🥈","🥉","🏅","⚽","🏀","🏈","🎾","🎯","🎲","🧩","🧸","📚","📖","📝","📌","📎","✂️","🔐",
+      "ðŸ“±","ðŸ’»","âŒ¨ï¸","ðŸ–¥ï¸","ðŸ–¨ï¸","ðŸ–±ï¸","ðŸ’½","ðŸ“·","ðŸ“¹","ðŸŽ¥","ðŸŽ¬","ðŸ“ž","â˜Žï¸","ðŸ“º","ðŸ“»","ðŸŽ§","ðŸŽ¤","ðŸŽµ","ðŸŽ¶","ðŸ”‹","ðŸ”Œ","ðŸ’¡","ðŸ”¦","ðŸ•¯ï¸","ðŸª”","ðŸ§¯","ðŸ›’","ðŸŽ","ðŸŽˆ","ðŸŽ€","ðŸ†","ðŸ¥‡","ðŸ¥ˆ","ðŸ¥‰","ðŸ…","âš½","ðŸ€","ðŸˆ","ðŸŽ¾","ðŸŽ¯","ðŸŽ²","ðŸ§©","ðŸ§¸","ðŸ“š","ðŸ“–","ðŸ“","ðŸ“Œ","ðŸ“Ž","âœ‚ï¸","ðŸ”",
     ],
   },
   {
     id: "symbols",
-    icon: "❤️",
+    icon: "â¤ï¸",
     title: "Symbols",
     emojis: [
-      "❤️","🩷","🧡","💛","💚","🩵","💙","💜","🖤","🩶","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","✅","☑️","✔️","❌","❎","⚠️","🚫","❗","❓","‼️","⁉️","💯","✨","⭐","🌟","🔥","💥","🎉","🎊","🙏","📍","⏰","📅","🔔","🔕","♻️","©️","®️",
+      "â¤ï¸","ðŸ©·","ðŸ§¡","ðŸ’›","ðŸ’š","ðŸ©µ","ðŸ’™","ðŸ’œ","ðŸ–¤","ðŸ©¶","ðŸ¤","ðŸ¤Ž","ðŸ’”","â£ï¸","ðŸ’•","ðŸ’ž","ðŸ’“","ðŸ’—","ðŸ’–","ðŸ’˜","ðŸ’","ðŸ’Ÿ","âœ…","â˜‘ï¸","âœ”ï¸","âŒ","âŽ","âš ï¸","ðŸš«","â—","â“","â€¼ï¸","â‰ï¸","ðŸ’¯","âœ¨","â­","ðŸŒŸ","ðŸ”¥","ðŸ’¥","ðŸŽ‰","ðŸŽŠ","ðŸ™","ðŸ“","â°","ðŸ“…","ðŸ””","ðŸ”•","â™»ï¸","Â©ï¸","Â®ï¸",
     ],
   },
 ];
@@ -4767,7 +4811,7 @@ let communityEmojiToneSuppressClickUntil = 0;
 let communityEmojiTonePressState = null;
 
 const COMMUNITY_EMOJI_TONE_COMPATIBLE = new Set([
-  "👍","👎","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","✋","🤚","🖐️","🖖","👋","👏","🙌","👐","🤲","🙏","✍️","💪",
+  "ðŸ‘","ðŸ‘Ž","ðŸ‘Œ","ðŸ¤Œ","ðŸ¤","âœŒï¸","ðŸ¤ž","ðŸ¤Ÿ","ðŸ¤˜","ðŸ¤™","ðŸ‘ˆ","ðŸ‘‰","ðŸ‘†","ðŸ‘‡","â˜ï¸","âœ‹","ðŸ¤š","ðŸ–ï¸","ðŸ––","ðŸ‘‹","ðŸ‘","ðŸ™Œ","ðŸ‘","ðŸ¤²","ðŸ™","âœï¸","ðŸ’ª",
 ]);
 
 function loadCommunityEmojiRecent() {
@@ -4802,7 +4846,7 @@ function getCommunityEmojiCategoriesForPanel() {
   return [
     {
       id: "recent",
-      icon: "🕘",
+      icon: "ðŸ•˜",
       title: "Recent",
       keywords: "recent last used",
       emojis: Array.isArray(communityEmojiRecent) ? communityEmojiRecent : [],
@@ -6035,6 +6079,22 @@ function parseMenuSessionDate(value = "") {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
+  const appShortYearMatch = raw.match(
+    /^(\d{2})\/(\d{2})\/(\d{2})(?:\s+(\d{1,2}):(\d{2})(?:\s*([AP]M))?)?$/i,
+  );
+  if (appShortYearMatch) {
+    const day = Number(appShortYearMatch[1]);
+    const month = Number(appShortYearMatch[2]) - 1;
+    const year = 2000 + Number(appShortYearMatch[3]);
+    let hour = Number(appShortYearMatch[4] || 12);
+    const minute = Number(appShortYearMatch[5] || 0);
+    const meridiem = String(appShortYearMatch[6] || "").trim().toUpperCase();
+    if (meridiem === "PM" && hour < 12) hour += 12;
+    if (meridiem === "AM" && hour === 12) hour = 0;
+    const parsed = new Date(year, month, day, hour, minute, 0, 0);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   const fallback = new Date(raw);
   return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
@@ -6357,7 +6417,7 @@ function renderLeaderboardPodium(entries = []) {
       const points = Math.max(0, Math.round(Number(entry.points) || 0));
       return `
         <div class="leaderboard-podium-card ${podiumClass}">
-          ${rank === 1 ? '<div class="leaderboard-podium-crown" aria-hidden="true">👑</div>' : ""}
+          ${rank === 1 ? '<div class="leaderboard-podium-crown" aria-hidden="true">ðŸ‘‘</div>' : ""}
           <div class="leaderboard-podium-avatar-shell">
             ${getLeaderboardAvatarHtml(entry, "is-podium")}
             <div class="leaderboard-podium-medal">${rank}</div>
@@ -6366,7 +6426,7 @@ function renderLeaderboardPodium(entries = []) {
           <button type="button" class="community-name-link leaderboard-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(entry.userId || "")}">${escapeHtml(displayName)}</button>
           <div class="leaderboard-podium-username">@${escapeHtml(entry.username || "user")}</div>
           <div class="leaderboard-podium-rank">${rankLabel}</div>
-          <div class="leaderboard-podium-points"><span class="leaderboard-points-icon" aria-hidden="true">👑</span>${points}</div>
+          <div class="leaderboard-podium-points"><span class="leaderboard-points-icon" aria-hidden="true">ðŸ‘‘</span>${points}</div>
         </div>
       `;
     })
@@ -6393,7 +6453,7 @@ function renderLeaderboardYourRank(entry = null, totalPlayers = 0) {
       <div class="leaderboard-your-rank-subtitle">${escapeHtml(getCommunityLeaderboardName(entry))}</div>
       <div class="leaderboard-your-rank-handle">@${escapeHtml(entry.username || "user")}</div>
     </div>
-    <div class="leaderboard-rank-points"><span class="leaderboard-points-icon" aria-hidden="true">👑</span>${points}</div>
+    <div class="leaderboard-rank-points"><span class="leaderboard-points-icon" aria-hidden="true">ðŸ‘‘</span>${points}</div>
   `;
 }
 
@@ -6418,7 +6478,7 @@ function renderLeaderboardList(entries = []) {
             <button type="button" class="community-name-link leaderboard-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(entry.userId || "")}">${escapeHtml(displayName)}</button>
             <div class="leaderboard-list-username">@${escapeHtml(entry.username || "user")}</div>
           </div>
-          <div class="leaderboard-list-points"><span class="leaderboard-points-icon" aria-hidden="true">👑</span>${Math.max(0, Math.round(Number(entry.points) || 0))}</div>
+          <div class="leaderboard-list-points"><span class="leaderboard-points-icon" aria-hidden="true">ðŸ‘‘</span>${Math.max(0, Math.round(Number(entry.points) || 0))}</div>
         </div>
       `;
     })
@@ -7073,7 +7133,7 @@ function formatAppDate(value = "", { includeYear = true } = {}) {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   if (!includeYear) return `${day}/${month}`;
-  return `${day}/${month}/${date.getFullYear()}`;
+  return `${day}/${month}/${String(date.getFullYear()).slice(-2)}`;
 }
 
 function formatAppDateTime(value = "") {
@@ -7473,7 +7533,7 @@ function getCommunityMessageReceiptState(message = {}) {
 function renderCommunityMessageReceipt(message = {}) {
   const state = getCommunityMessageReceiptState(message);
   const label = state === "read" ? "Read" : state === "received" ? "Received" : "Sent";
-  const mark = state === "sent" ? "✓" : "✓✓";
+  const mark = state === "sent" ? "âœ“" : "âœ“âœ“";
   return `<span class="community-message-receipt is-${escapeHtml(state)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${escapeHtml(mark)}</span>`;
 }
 
@@ -11849,7 +11909,7 @@ function getCommunityStorageSectionMeta(createdAt = "") {
   if (diffDays < 31) return { key: "last-month", label: "Last month", order: 2, time: date.getTime() };
   return {
     key: `month-${date.getFullYear()}-${date.getMonth()}`,
-    label: new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(date),
+    label: new Intl.DateTimeFormat(undefined, { month: "long", year: "2-digit" }).format(date),
     order: 3,
     time: date.getFullYear() * 12 + date.getMonth(),
   };
@@ -16517,7 +16577,7 @@ function getCommunityConversationCardMarkup(row = {}) {
   const draftClass = draft ? " has-draft" : "";
   const draftBadge = draft ? '<span class="community-chat-draft-badge">Draft</span>' : "";
   const actionSelectedClass = getCommunityConversationActionSelectedIds().includes(String(row.id || "").trim()) ? " is-selected" : "";
-  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">★</span>' : "";
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">â˜…</span>' : "";
   const avatarMarkup = isNotice
     ? `<button type="button" class="community-avatar-action-btn" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}" aria-label="Open ${escapeHtml(getCommunityUiDisplayName(partner))}">${getCommunityPlainAvatarMarkup(partner, "is-inline")}</button>`
     : isGroup
@@ -16596,7 +16656,7 @@ function getCommunityGroupConversationCardMarkup(row = {}) {
   const previewText = bio || getCommunityConversationPreviewText(conversation) || "Open group";
   const updatedLabel = formatCommunityTimestamp(conversation?.updatedAt || group?.updatedAt || row?.updatedAt || "");
   const unreadCount = Math.max(0, Math.round(Number(conversation?.unreadCount ?? row?.unreadCount) || 0));
-  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">★</span>' : "";
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">â˜…</span>' : "";
   const ariaLabel = `Open ${groupName} chat`;
   const forwardSelectedClass = isCommunityForwardTargetSelected(
     getCommunityForwardTargetId({
@@ -17061,7 +17121,7 @@ function renderCommunityFriendActionSelection() {
   if (communityFriendActionsSelectedEl) {
     communityFriendActionsSelectedEl.innerHTML = `
       <span class="community-thread-actions-selected-pill is-empty" style="display:inline-flex;gap:6px;align-items:center;">
-        <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} • ${escapeHtml(subtitle)}</span>
+        <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} â€¢ ${escapeHtml(subtitle)}</span>
       </span>
     `;
   }
@@ -17373,7 +17433,7 @@ function renderCommunityConversationActionSelection() {
         const partner = row?.partner || {};
         const label = truncateWithEllipsis(getCommunityUiDisplayName(partner), 22);
         const meta = partner?.isGroup ? "Group" : partner?.isNotice ? "Notice" : "Chat";
-        const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">★</span>' : "";
+        const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">â˜…</span>' : "";
         return `<span class="community-thread-actions-selected-pill">${flag}${escapeHtml(label)}<span class="community-thread-actions-selected-meta">${escapeHtml(meta)}</span></span>`;
       }).join("");
       communityThreadActionsSelectedEl.innerHTML = badges || `<span class="community-thread-actions-selected-pill is-empty">No thread selected</span>`;
@@ -18044,7 +18104,7 @@ function renderCommunityProfileView() {
         ["Contact", getProfileFieldValue(profile.contact)],
       ];
   const pointsLine = canShowLeaderboard
-    ? `${leaderboardRank ? `#${escapeHtml(leaderboardRank)}` : "Rank hidden"} • ${escapeHtml(String(leaderboardPoints))} pts`
+    ? `${leaderboardRank ? `#${escapeHtml(leaderboardRank)}` : "Rank hidden"} â€¢ ${escapeHtml(String(leaderboardPoints))} pts`
     : "";
   const quickActions = [];
   if (isSelf) {
@@ -18267,7 +18327,7 @@ function renderCommunityGroupProfileHeader(group = {}, bio = "", members = [], q
         ${getCommunityExpandableAvatarMarkup(group, "is-group-profile")}
         <div class="community-group-header-copy">
           <div class="community-group-profile-name">${escapeHtml(group.name || "Study Group")}</div>
-          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` • ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
+          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` â€¢ ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
         </div>
       </div>
       <div class="community-profile-quick-actions community-group-header-actions">${quickActions.join("")}</div>
@@ -18336,7 +18396,7 @@ function renderCommunityGroupProfileView() {
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Description</div>
         <div class="community-group-flat-copy">${escapeHtml(bio || "No group description yet.")}</div>
-        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} • ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
+        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} â€¢ ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
       </section>
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Group options</div>
@@ -18441,7 +18501,7 @@ function renderCommunityGroupProfileView() {
         ${getCommunityPlainAvatarMarkup(group, "is-group-profile")}
         <div class="community-group-profile-copy community-group-info-copy">
           <div class="community-group-profile-name">${escapeHtml(group.name || "Study Group")}</div>
-          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` • ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
+          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` â€¢ ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
         </div>
       </div>
       <div class="community-profile-quick-actions">${quickActions.join("")}</div>
@@ -18450,7 +18510,7 @@ function renderCommunityGroupProfileView() {
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Description</div>
         <div class="community-group-flat-copy">${escapeHtml(bio || "No group description yet.")}</div>
-        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} • ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
+        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} â€¢ ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
       </section>
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Group options</div>
@@ -19833,7 +19893,7 @@ function buildCommunityGroupInviteHref(groupId = "", inviteToken = "") {
 function getCommunityGroupInviteShortLabel(inviteToken = "", inviteUrl = "") {
   const token = String(inviteToken || "").trim();
   if (token.length >= 10) {
-    return `${token.slice(0, 4)}…${token.slice(-4)}`;
+    return `${token.slice(0, 4)}â€¦${token.slice(-4)}`;
   }
   const url = String(inviteUrl || "").trim();
   if (url) {
@@ -19841,12 +19901,12 @@ function getCommunityGroupInviteShortLabel(inviteToken = "", inviteUrl = "") {
       const parsed = new URL(url, window.location.origin);
       const path = `${parsed.pathname || ""}${parsed.search || ""}`.replace(/^\/+/, "");
       if (path.length > 18) {
-        return `${path.slice(0, 8)}…${path.slice(-6)}`;
+        return `${path.slice(0, 8)}â€¦${path.slice(-6)}`;
       }
       return path;
     } catch {
       if (url.length > 18) {
-        return `${url.slice(0, 8)}…${url.slice(-6)}`;
+        return `${url.slice(0, 8)}â€¦${url.slice(-6)}`;
       }
       return url;
     }
@@ -20977,7 +21037,7 @@ async function executeCommunityAction(action = "", payload = {}) {
           : null)
         : null;
       if (matchingConversation?.partner?.isGroup || matchingConversation?.partner?.isNotice) {
-        setCommunityFeedback("Groups and admin notices can’t receive forwarded items.", true);
+        setCommunityFeedback("Groups and admin notices canâ€™t receive forwarded items.", true);
         return;
       }
       toggleCommunityForwardTarget({
@@ -21224,8 +21284,12 @@ async function executeCommunityAction(action = "", payload = {}) {
 }
 
 async function openCommunityScreen() {
+  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   const ok = await ensureAuthenticated();
   if (!ok) return;
+  if (!requireSubscriptionAccess("community")) {
+    return;
+  }
   const unlocked = await ensureCommunityLockAccess({
     fallbackScreen: getActiveScreenId() || "quiz-menu",
     redirectOnCancel: false,
@@ -21244,6 +21308,9 @@ async function openCommunityScreen() {
   setCommunitySearchOpen(false);
   updateCommunityTabState();
   showScreen("community-screen");
+  if (getActiveScreenId() !== "community-screen") {
+    return;
+  }
   renderCommunitySummary();
   renderCommunityView();
   void primeInstantLocalCaches();
@@ -21409,7 +21476,7 @@ function buildClinicalLivesMarkup(lives = 3, maxLives = 3) {
   let html = '<span class="clinical-hearts" aria-label="Lives">';
   for (let i = 0; i < total; i++) {
     const isAlive = i < currentLives;
-    html += `<span class="clinical-heart ${isAlive ? "is-on" : "is-off"}">❤</span>`;
+    html += `<span class="clinical-heart ${isAlive ? "is-on" : "is-off"}">â¤</span>`;
   }
   html += "</span>";
   return html;
@@ -22197,6 +22264,7 @@ function getScreenBackFallback(screenId = "") {
   if (currentId === "community-group-storage-screen") return "community-profile-screen";
   if (currentId === "community-profile-screen" || currentId === "community-chat-screen") return "community-screen";
   if (currentId === "community-screen") return "quiz-menu";
+  if (currentId === "subscription-screen") return subscriptionScreenState.returnScreen || "quiz-menu";
   if (currentId === "topic-viewer") return topicViewerReturnScreen || "topic-library";
   if (currentId === "topic-library") return topicLibraryReturnScreen || "quiz-menu";
   if (currentId === "settings-screen" || currentId === "profile-screen" || currentId === "tour-screen") return "quiz-menu";
@@ -22248,8 +22316,8 @@ function formatDateKey(dateKey = "") {
   }
   const dd = String(day).padStart(2, "0");
   const mm = String(month).padStart(2, "0");
-  const yyyy = String(year).padStart(4, "0");
-  return `${dd}/${mm}/${yyyy}`;
+  const yy = String(year).slice(-2);
+  return `${dd}/${mm}/${yy}`;
 }
 
 function getLocalDateKey(date = new Date()) {
@@ -22375,7 +22443,7 @@ function renderDailyHistoryPanel() {
 
     const score = document.createElement("div");
     score.className = "daily-history-score";
-    score.textContent = `${row.score}/${row.total} • ${row.percent}%`;
+    score.textContent = `${row.score}/${row.total} â€¢ ${row.percent}%`;
 
     left.appendChild(date);
     left.appendChild(score);
@@ -22785,7 +22853,7 @@ function renderDailyQuizUi() {
         : todayCompleted
           ? "Completed today"
           : "Ready today";
-    dailyQuizMetaEl.textContent = `${totalQuestions} questions • ${status}`;
+    dailyQuizMetaEl.textContent = `${totalQuestions} questions â€¢ ${status}`;
   }
 
   if (menuDailyProgressFillEl) {
@@ -22800,7 +22868,7 @@ function renderDailyQuizUi() {
 
   if (dailyWindowLineEl) {
     if (todayDate) {
-      dailyWindowLineEl.textContent = `${formatDateKey(todayDate)} • Renews 12:00 AM`;
+      dailyWindowLineEl.textContent = `${formatDateKey(todayDate)} â€¢ Renews 12:00 AM`;
     } else {
       dailyWindowLineEl.textContent = "Loading today...";
     }
@@ -22825,7 +22893,7 @@ function renderDailyQuizUi() {
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =
-      `+${rules.completion || 0} finish • +${rules.perCorrect || 0}/correct • +${rules.perfect || 0} perfect`;
+      `+${rules.completion || 0} finish â€¢ +${rules.perCorrect || 0}/correct â€¢ +${rules.perfect || 0} perfect`;
   }
 
   if (dailyResultLineEl) {
@@ -23175,9 +23243,10 @@ if (topicLibrarySearchInput) {
 
 if (topicLibraryBtns.length) {
   topicLibraryBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
+      await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
       closeMenuUserHub();
-      openTopicLibrary("quiz-menu");
+      void openTopicLibrary("quiz-menu");
     });
   });
 }
@@ -23317,7 +23386,8 @@ if (menuSettingsBtn) {
 }
 
 if (menuCommunityBtn) {
-  menuCommunityBtn.addEventListener("click", () => {
+  menuCommunityBtn.addEventListener("click", async () => {
+    await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
     closeMenuUserHub();
     void openCommunityScreen();
   });
@@ -25677,7 +25747,7 @@ function handleCommunityForwardSelection(target) {
     const isGroup = conversationCard.classList.contains("community-group-row");
     const conversationType = isGroup ? "group" : isNotice ? "notice" : "direct";
     if (conversationType === "group" || conversationType === "notice") {
-      setCommunityFeedback("Groups and admin notices can’t receive forwarded items.", true);
+      setCommunityFeedback("Groups and admin notices canâ€™t receive forwarded items.", true);
       return true;
     }
     if (toggleCommunityForwardTarget({ userId, conversationId, conversationType })) {
@@ -28247,9 +28317,13 @@ async function ensureTopicCatalogLoaded() {
   }
 }
 
-function openTopicLibrary(returnScreen = "quiz-menu") {
+async function openTopicLibrary(returnScreen = "quiz-menu") {
+  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   topicLibraryReturnScreen = returnScreen;
   showScreen("topic-library");
+  if (getActiveScreenId() !== "topic-library") {
+    return;
+  }
   ensureTopicCatalogLoaded();
   renderTopicLibrary();
 }
@@ -29213,6 +29287,185 @@ function getContactRule(country) {
   return CONTACT_RULES_BY_COUNTRY[String(country || "").trim()] || null;
 }
 
+const CONTACT_FORMAT_EMAIL = "email";
+const CONTACT_FORMAT_PHONE = "phone";
+const CONTACT_COUNTRY_OPTIONS = (() => {
+  const byCode = new Map();
+
+  Object.entries(CONTACT_RULES_BY_COUNTRY).forEach(([country, rule]) => {
+    const code = String(rule?.code || "").trim();
+    if (!code) return;
+
+    const entry = byCode.get(code) || { code, countries: [] };
+    entry.countries.push(country);
+    byCode.set(code, entry);
+  });
+
+  return Array.from(byCode.values()).map((entry) => ({
+    code: entry.code,
+    label: `${entry.countries.join(" / ")} (${entry.code})`,
+  }));
+})();
+const CONTACT_CODE_PRIORITY = Array.from(
+  new Set(CONTACT_COUNTRY_OPTIONS.map((option) => option.code)),
+).sort((left, right) => right.length - left.length);
+const DEFAULT_CONTACT_CODE =
+  CONTACT_COUNTRY_OPTIONS.find((option) => option.code === "+233")?.code ||
+  CONTACT_COUNTRY_OPTIONS[0]?.code ||
+  "+233";
+
+function populateContactCountrySelect(selectEl) {
+  if (!selectEl || selectEl.dataset.populated === "1") return;
+
+  const currentValue = String(selectEl.value || "").trim() || DEFAULT_CONTACT_CODE;
+  selectEl.replaceChildren();
+
+  CONTACT_COUNTRY_OPTIONS.forEach((option) => {
+    const opt = document.createElement("option");
+    opt.value = option.code;
+    opt.textContent = option.label;
+    selectEl.appendChild(opt);
+  });
+
+  selectEl.value = CONTACT_CODE_PRIORITY.includes(currentValue)
+    ? currentValue
+    : DEFAULT_CONTACT_CODE;
+  selectEl.dataset.populated = "1";
+}
+
+function getContactFormatValue(selectEl) {
+  const value = String(selectEl?.value || "").trim().toLowerCase();
+  return value === CONTACT_FORMAT_EMAIL ? CONTACT_FORMAT_EMAIL : CONTACT_FORMAT_PHONE;
+}
+
+function setContactFormatValue(selectEl, value) {
+  if (!selectEl) return;
+  selectEl.value = String(value || "").trim().toLowerCase() === CONTACT_FORMAT_EMAIL
+    ? CONTACT_FORMAT_EMAIL
+    : CONTACT_FORMAT_PHONE;
+}
+
+function splitStoredContactValue(value) {
+  const contact = String(value || "").trim();
+  if (!contact) {
+    return {
+      format: CONTACT_FORMAT_PHONE,
+      email: "",
+      countryCode: DEFAULT_CONTACT_CODE,
+      phone: "",
+    };
+  }
+
+  if (EMAIL_INPUT_REGEX.test(contact)) {
+    return {
+      format: CONTACT_FORMAT_EMAIL,
+      email: contact.toLowerCase(),
+      countryCode: DEFAULT_CONTACT_CODE,
+      phone: "",
+    };
+  }
+
+  const compact = contact.replace(/\s+/g, "");
+  const countryCode =
+    CONTACT_CODE_PRIORITY.find((code) => compact.startsWith(code)) || DEFAULT_CONTACT_CODE;
+  const phone = compact.startsWith(countryCode)
+    ? compact.slice(countryCode.length)
+    : compact.replace(/\D/g, "");
+
+  return {
+    format: CONTACT_FORMAT_PHONE,
+    email: "",
+    countryCode,
+    phone: normalizeDigits(phone),
+  };
+}
+
+function buildContactValueFromFields({
+  formatSelect,
+  emailInput,
+  countryCodeInput,
+  phoneInput,
+} = {}) {
+  const format = getContactFormatValue(formatSelect);
+  if (format === CONTACT_FORMAT_EMAIL) {
+    return String(emailInput?.value || "").trim().toLowerCase();
+  }
+
+  const countryCode = String(countryCodeInput?.value || "").trim() || DEFAULT_CONTACT_CODE;
+  const phone = normalizeDigits(phoneInput?.value || "");
+  return phone ? `${countryCode}${phone}` : "";
+}
+
+function applyContactValueToFields({
+  formatSelect,
+  emailInput,
+  countryCodeInput,
+  phoneInput,
+  value = "",
+} = {}) {
+  const parsed = splitStoredContactValue(value);
+  setContactFormatValue(formatSelect, parsed.format);
+
+  if (emailInput) {
+    emailInput.value = parsed.format === CONTACT_FORMAT_EMAIL ? parsed.email : "";
+  }
+
+  if (countryCodeInput) {
+    populateContactCountrySelect(countryCodeInput);
+    countryCodeInput.value = parsed.countryCode || DEFAULT_CONTACT_CODE;
+  }
+
+  if (phoneInput) {
+    phoneInput.value = parsed.format === CONTACT_FORMAT_PHONE ? parsed.phone : "";
+  }
+
+  return parsed.format;
+}
+
+function syncContactFieldMode({
+  wrap,
+  formatSelect,
+  emailWrap,
+  emailInput,
+  phoneWrap,
+  countryCodeInput,
+  phoneInput,
+  locked = false,
+} = {}) {
+  const mode = getContactFormatValue(formatSelect);
+
+  if (wrap) {
+    wrap.dataset.contactMode = mode;
+    wrap.classList.toggle("is-contact-email", mode === CONTACT_FORMAT_EMAIL);
+    wrap.classList.toggle("is-contact-phone", mode === CONTACT_FORMAT_PHONE);
+  }
+
+  if (emailWrap) emailWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_EMAIL);
+  if (phoneWrap) phoneWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_PHONE);
+
+  if (formatSelect) {
+    formatSelect.disabled = locked;
+  }
+
+  if (emailInput) {
+    emailInput.disabled = locked || mode !== CONTACT_FORMAT_EMAIL;
+    emailInput.autocomplete = "email";
+  }
+
+  if (countryCodeInput) {
+    populateContactCountrySelect(countryCodeInput);
+    countryCodeInput.disabled = locked || mode !== CONTACT_FORMAT_PHONE;
+  }
+
+  if (phoneInput) {
+    phoneInput.disabled = locked || mode !== CONTACT_FORMAT_PHONE;
+    phoneInput.inputMode = "numeric";
+    phoneInput.autocomplete = "tel-national";
+  }
+
+  return mode;
+}
+
 function clearFieldValidation(fieldWrap) {
   if (!fieldWrap) return;
   fieldWrap.classList.remove("field-invalid");
@@ -29463,7 +29716,22 @@ function fillProfileForm() {
   if (profileFirstNameInput) profileFirstNameInput.value = currentUser.firstName || "";
   if (profileLastNameInput) profileLastNameInput.value = currentUser.lastName || "";
   if (profileUsernameInput) profileUsernameInput.value = currentUser.username || "";
-  if (profileContactInput) profileContactInput.value = currentUser.contact || "";
+  applyContactValueToFields({
+    formatSelect: profileContactFormatInput,
+    emailInput: profileContactEmailInput,
+    countryCodeInput: profileContactCountryCodeInput,
+    phoneInput: profileContactPhoneInput,
+    value: String(currentUser.contact || currentUser.email || "").trim(),
+  });
+  syncContactFieldMode({
+    wrap: profileContactWrap,
+    formatSelect: profileContactFormatInput,
+    emailWrap: profileContactEmailWrap,
+    emailInput: profileContactEmailInput,
+    phoneWrap: profileContactPhoneWrap,
+    countryCodeInput: profileContactCountryCodeInput,
+    phoneInput: profileContactPhoneInput,
+  });
   if (profileProfessionalTypeInput) {
     profileProfessionalTypeInput.value = currentUser.professionalType || "Other";
   }
@@ -29671,11 +29939,11 @@ function setAuthMode(nextMode = "login") {
     authTabRegisterBtn.classList.toggle("active", isRegister);
   }
 
-  if (authIdentifierWrap) authIdentifierWrap.classList.toggle("hidden", isRegister);
+  if (authIdentifierWrap) authIdentifierWrap.classList.toggle("hidden", !isLogin);
   if (authFirstNameWrap) authFirstNameWrap.classList.toggle("hidden", !isRegister);
   if (authLastNameWrap) authLastNameWrap.classList.toggle("hidden", !isRegister);
   if (authUsernameWrap) authUsernameWrap.classList.toggle("hidden", !isRegister);
-  if (authContactWrap) authContactWrap.classList.toggle("hidden", !isRegister);
+  if (authContactWrap) authContactWrap.classList.toggle("hidden", !(isRegister || isForgot || isReset));
   if (authResetCodeWrap) authResetCodeWrap.classList.toggle("hidden", !isReset);
   if (authPasswordWrap) authPasswordWrap.classList.toggle("hidden", isForgot);
   if (authConfirmPasswordWrap) {
@@ -29684,6 +29952,7 @@ function setAuthMode(nextMode = "login") {
   if (authForgotLinkBtn) authForgotLinkBtn.classList.toggle("hidden", !isLogin);
   if (authResetLinkBtn) authResetLinkBtn.classList.toggle("hidden", !isLogin);
   if (authBackLoginLinkBtn) authBackLoginLinkBtn.classList.toggle("hidden", isLogin);
+  if (!isForgot) authForgotRequestLocked = false;
 
   if (authPasswordInput) {
     authPasswordInput.setAttribute(
@@ -29695,7 +29964,7 @@ function setAuthMode(nextMode = "login") {
   if (authSubmitBtn) {
     if (isRegister) authSubmitBtn.textContent = "Create Account";
     if (isLogin) authSubmitBtn.textContent = "Sign In";
-    if (isForgot) authSubmitBtn.textContent = "Send Reset Code";
+    if (isForgot) authSubmitBtn.textContent = "Request Reset Code";
     if (isReset) authSubmitBtn.textContent = "Reset Password";
   }
 
@@ -29704,7 +29973,20 @@ function setAuthMode(nextMode = "login") {
   setAuthError("");
   setAuthInfo("");
 
-  if (isRegister && authContactInput) authContactInput.placeholder = "Email or phone number";
+  syncContactFieldMode({
+    wrap: authContactWrap,
+    formatSelect: authContactFormatInput,
+    emailWrap: authContactEmailWrap,
+    emailInput: authContactEmailInput,
+    phoneWrap: authContactPhoneWrap,
+    countryCodeInput: authContactCountryCodeInput,
+    phoneInput: authContactPhoneInput,
+    locked: isForgot && authForgotRequestLocked,
+  });
+
+  if (authSubmitBtn && isForgot) {
+    authSubmitBtn.disabled = authForgotRequestLocked;
+  }
 }
 
 function openAuthModal(nextMode = "login") {
@@ -29718,6 +30000,21 @@ function openAuthModal(nextMode = "login") {
   if (authMode === "register" && authFirstNameInput) {
     authFirstNameInput.focus();
     return;
+  }
+  if (authMode === "forgot" || authMode === "reset") {
+    const contactMode = getContactFormatValue(authContactFormatInput);
+    const contactEmail = String(authContactEmailInput?.value || "").trim();
+    const contactPhone = String(authContactPhoneInput?.value || "").trim();
+    const hasContactValue =
+      contactMode === CONTACT_FORMAT_EMAIL ? Boolean(contactEmail) : Boolean(contactPhone);
+    if (!hasContactValue) {
+      if (contactMode === CONTACT_FORMAT_EMAIL && authContactEmailInput) {
+        authContactEmailInput.focus();
+      } else if (authContactPhoneInput) {
+        authContactPhoneInput.focus();
+      }
+      return;
+    }
   }
   if (authMode === "reset" && authResetCodeInput) {
     authResetCodeInput.focus();
@@ -30216,6 +30513,9 @@ async function refreshSharedAccountState({
     renderSetupPoints();
     void loadDashboardTrendData({ force: false });
     renderDailyQuizUi();
+    if (getActiveScreenId() === "subscription-screen") {
+      renderSubscriptionScreen();
+    }
     startSharedAccountStatePolling();
     return true;
   })().finally(() => {
@@ -30279,7 +30579,15 @@ async function handleAuthSubmit(event) {
   const firstName = String(authFirstNameInput?.value || "").trim();
   const lastName = String(authLastNameInput?.value || "").trim();
   const username = String(authUsernameInput?.value || "").trim().toLowerCase();
-  const contact = String(authContactInput?.value || "").trim().toLowerCase();
+  const contactMode = getContactFormatValue(authContactFormatInput);
+  const contactEmail = String(authContactEmailInput?.value || "").trim().toLowerCase();
+  const contactPhone = String(authContactPhoneInput?.value || "").trim();
+  const contact = buildContactValueFromFields({
+    formatSelect: authContactFormatInput,
+    emailInput: authContactEmailInput,
+    countryCodeInput: authContactCountryCodeInput,
+    phoneInput: authContactPhoneInput,
+  });
   const code = String(authResetCodeInput?.value || "").trim();
   const password = String(authPasswordInput?.value || "");
   const confirmPassword = String(authConfirmPasswordInput?.value || "");
@@ -30317,11 +30625,19 @@ async function handleAuthSubmit(event) {
       );
       hasInvalidRequired = true;
     }
-    if (!contact) {
-      setFieldValidation(authContactWrap, "Required");
+    if (contactMode === CONTACT_FORMAT_EMAIL) {
+      if (!contactEmail) {
+        setFieldValidation(authContactWrap, "Email address is required.");
+        hasInvalidRequired = true;
+      } else if (!EMAIL_INPUT_REGEX.test(contactEmail)) {
+        setFieldValidation(authContactWrap, "Enter a valid email address.");
+        hasInvalidRequired = true;
+      }
+    } else if (!contactPhone) {
+      setFieldValidation(authContactWrap, "Contact number is required.");
       hasInvalidRequired = true;
-    } else if (!isValidContactValue(contact)) {
-      setFieldValidation(authContactWrap, "Enter a valid email or phone (+233...)");
+    } else if (normalizeDigits(contactPhone).length < 6) {
+      setFieldValidation(authContactWrap, "Enter a valid mobile number.");
       hasInvalidRequired = true;
     }
     if (!password || password.length < 6) {
@@ -30342,14 +30658,31 @@ async function handleAuthSubmit(event) {
     }
   }
 
-  if (authMode === "forgot" && !identifier) {
-    setAuthError("Enter your username/contact/email first.");
+  if (authMode === "forgot" && !contact) {
+    setAuthError(
+      contactMode === CONTACT_FORMAT_EMAIL
+        ? "Enter the registered email address used on the account."
+        : "Enter the registered contact number used on the account.",
+    );
+    return;
+  }
+
+  if (authMode === "forgot" && contact && !isValidContactValue(contact)) {
+    setAuthError(
+      contactMode === CONTACT_FORMAT_EMAIL
+        ? "Enter a valid email address."
+        : "Enter a valid mobile number.",
+    );
     return;
   }
 
   if (authMode === "reset") {
-    if (!identifier || !code) {
-      setAuthError("Identifier and reset code are required.");
+    if (!contact || !code) {
+      setAuthError("Registered contact and reset code are required.");
+      return;
+    }
+    if (!isValidContactValue(contact)) {
+      setAuthError("Enter a valid email address or phone number.");
       return;
     }
     if (!password || password.length < 6) {
@@ -30410,21 +30743,30 @@ async function handleAuthSubmit(event) {
     }
 
     if (authMode === "forgot") {
-      const response = await backendClient.forgotPassword({ identifier });
-      const codePreview = String(response?.devResetCode || response?.code || "").trim();
-      setAuthMode("reset");
+      const response = await backendClient.forgotPassword({
+        contact,
+      });
+      authForgotRequestLocked = true;
+      setAuthMode("forgot");
+      if (authSubmitBtn) authSubmitBtn.disabled = true;
+      const deliveryMethod = String(response?.deliveryMethod || "").trim().toLowerCase();
+      const deliveryChannel = deliveryMethod === "email" ? "email" : "WhatsApp";
+      const deliveryTarget = String(response?.deliveryTarget || "").trim();
+      const deliverySummary = deliveryTarget ? `${deliveryChannel} (${deliveryTarget})` : deliveryChannel;
       setAuthInfo(
-        codePreview
-          ? `Reset code: ${codePreview}. Use it now to set a new password.`
-          : String(response?.message || "Reset code sent."),
+        String(
+          response?.message ||
+            `Your reset request has been received. Reset code will be sent to you via ${deliverySummary}. Use that to reset your password.`,
+        ),
       );
-      if (authResetCodeInput && codePreview) authResetCodeInput.value = codePreview;
+      if (authResetCodeInput) authResetCodeInput.value = "";
+      if (authPasswordInput) authPasswordInput.value = "";
       return;
     }
 
     if (authMode === "reset") {
       await backendClient.resetPassword({
-        identifier,
+        contact,
         code,
         newPassword: password,
       });
@@ -30437,10 +30779,20 @@ async function handleAuthSubmit(event) {
     setAuthInfo("");
     setAuthError(authErrorMessage(error));
   } finally {
-    if (authSubmitBtn) authSubmitBtn.disabled = false;
+    if (authSubmitBtn) authSubmitBtn.disabled = authMode === "forgot" && authForgotRequestLocked;
     if (authCancelBtn) authCancelBtn.disabled = false;
     if (authTabLoginBtn) authTabLoginBtn.disabled = false;
     if (authTabRegisterBtn) authTabRegisterBtn.disabled = false;
+    syncContactFieldMode({
+      wrap: authContactWrap,
+      formatSelect: authContactFormatInput,
+      emailWrap: authContactEmailWrap,
+      emailInput: authContactEmailInput,
+      phoneWrap: authContactPhoneWrap,
+      countryCodeInput: authContactCountryCodeInput,
+      phoneInput: authContactPhoneInput,
+      locked: authMode === "forgot" && authForgotRequestLocked,
+    });
   }
 }
 
@@ -30475,9 +30827,49 @@ if (authBackLoginLinkBtn) {
 bindValidationClear(authFirstNameInput, authFirstNameWrap);
 bindValidationClear(authLastNameInput, authLastNameWrap);
 bindValidationClear(authUsernameInput, authUsernameWrap);
-bindValidationClear(authContactInput, authContactWrap);
+bindValidationClear(authContactFormatInput, authContactWrap, "change");
+bindValidationClear(authContactEmailInput, authContactWrap);
+bindValidationClear(authContactCountryCodeInput, authContactWrap, "change");
+bindValidationClear(authContactPhoneInput, authContactWrap);
 bindValidationClear(authPasswordInput, authPasswordWrap);
 bindValidationClear(authConfirmPasswordInput, authConfirmPasswordWrap);
+
+if (authContactFormatInput) {
+  authContactFormatInput.onchange = () =>
+    syncContactFieldMode({
+      wrap: authContactWrap,
+      formatSelect: authContactFormatInput,
+      emailWrap: authContactEmailWrap,
+      emailInput: authContactEmailInput,
+      phoneWrap: authContactPhoneWrap,
+      countryCodeInput: authContactCountryCodeInput,
+      phoneInput: authContactPhoneInput,
+      locked: authMode === "forgot" && authForgotRequestLocked,
+    });
+}
+
+if (authContactCountryCodeInput) {
+  authContactCountryCodeInput.onchange = () => clearFieldValidation(authContactWrap);
+}
+
+if (profileContactFormatInput) {
+  profileContactFormatInput.onchange = () =>
+    syncContactFieldMode({
+      wrap: profileContactWrap,
+      formatSelect: profileContactFormatInput,
+      emailWrap: profileContactEmailWrap,
+      emailInput: profileContactEmailInput,
+      phoneWrap: profileContactPhoneWrap,
+      countryCodeInput: profileContactCountryCodeInput,
+      phoneInput: profileContactPhoneInput,
+    });
+}
+
+if (profileContactCountryCodeInput) {
+  profileContactCountryCodeInput.onchange = () => {
+    if (profileContactWrap) clearFieldValidation(profileContactWrap);
+  };
+}
 
 if (authCancelBtn) {
   authCancelBtn.onclick = () => {
@@ -30678,9 +31070,6 @@ async function saveProfile() {
     username:
       String(profileUsernameInput?.value || "").trim().toLowerCase() ||
       String(currentUser.username || "").trim().toLowerCase(),
-    contact:
-      String(profileContactInput?.value || "").trim() ||
-      String(currentUser.contact || currentUser.email || "").trim(),
     role:
       readSelectedRadioValue("profile-role", String(currentUser.role || "student").trim().toLowerCase()),
     professionalType:
@@ -30744,6 +31133,16 @@ async function saveProfile() {
     profileImage: resolvedImage,
   };
 
+  const profileContactMode = getContactFormatValue(profileContactFormatInput);
+  const profileContactValue =
+    buildContactValueFromFields({
+      formatSelect: profileContactFormatInput,
+      emailInput: profileContactEmailInput,
+      countryCodeInput: profileContactCountryCodeInput,
+      phoneInput: profileContactPhoneInput,
+    }) || String(currentUser.contact || currentUser.email || "").trim();
+  payload.contact = profileContactValue;
+
   if (
     !payload.firstName ||
     !payload.lastName ||
@@ -30758,7 +31157,9 @@ async function saveProfile() {
   }
   if (!isValidContactValue(payload.contact)) {
     setProfileFeedback(
-      "Contact must be a valid email or phone in international format (e.g., +233XXXXXXXXX).",
+      profileContactMode === CONTACT_FORMAT_EMAIL
+        ? "Contact must be a valid email address."
+        : "Contact must be a valid mobile number in international format.",
       true,
     );
     return;
@@ -31485,6 +31886,204 @@ if (examBackBtn) {
   };
 }
 
+if (menuSubscriptionBtn) {
+  menuSubscriptionBtn.onclick = () => {
+    closeMenuUserHub();
+    openSubscriptionScreen({
+      intent: "general",
+      returnScreen: "quiz-menu",
+    });
+  };
+}
+
+if (subscriptionBackBtn) {
+  subscriptionBackBtn.onclick = () => {
+    goToPreviousScreen(subscriptionScreenState.returnScreen || "quiz-menu");
+  };
+}
+
+if (subscriptionPaymentModalCloseBtn) {
+  subscriptionPaymentModalCloseBtn.onclick = () => {
+    closeSubscriptionPaymentModal({ focusPlanButton: true });
+  };
+}
+
+if (subscriptionPaymentModalCancelBtn) {
+  subscriptionPaymentModalCancelBtn.onclick = () => {
+    closeSubscriptionPaymentModal({ focusPlanButton: true });
+  };
+}
+
+if (subscriptionProofJumpBtn) {
+  subscriptionProofJumpBtn.onclick = () => {
+    if (!subscriptionScreenState.paymentProofOpen) {
+      openSubscriptionPaymentProof();
+      return;
+    }
+    subscriptionForm?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+}
+
+if (subscriptionPaymentModalEl) {
+  subscriptionPaymentModalEl.addEventListener("click", (event) => {
+    if (event.target === subscriptionPaymentModalEl) {
+      closeSubscriptionPaymentModal({ focusPlanButton: true });
+    }
+  });
+}
+
+if (subscriptionProofInput) {
+  subscriptionProofInput.addEventListener("change", async () => {
+    const file = subscriptionProofInput.files?.[0] || null;
+    if (!file) {
+      renderSubscriptionProofPreview();
+      return;
+    }
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Failed to read payment screenshot."));
+        reader.readAsDataURL(file);
+      });
+      renderSubscriptionProofPreview({ dataUrl });
+    } catch {
+      renderSubscriptionProofPreview();
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent = "We couldn't read that screenshot. Please try another image.";
+      }
+    }
+  });
+}
+
+if (subscriptionProofPreview) {
+  subscriptionProofPreview.addEventListener("click", (event) => {
+    const removeBtn = event.target.closest?.('[data-action="clear-subscription-proof"]');
+    if (!removeBtn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    clearSubscriptionProofSelection();
+    return;
+  });
+
+  subscriptionProofPreview.addEventListener("click", (event) => {
+    if (subscriptionProofPreview.classList.contains("has-file")) return;
+    if (event.target.closest?.('[data-action="clear-subscription-proof"]')) return;
+    if (!subscriptionProofInput) return;
+    event.preventDefault();
+    try {
+      if (typeof subscriptionProofInput.showPicker === "function") {
+        subscriptionProofInput.showPicker();
+      } else {
+        subscriptionProofInput.click();
+      }
+    } catch {
+      subscriptionProofInput.click();
+    }
+  });
+}
+
+if (subscriptionForm) {
+  subscriptionForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!currentUser && !(await ensureAuthenticated())) {
+      return;
+    }
+    const latestRequest =
+      subscriptionStatusSnapshot?.request ||
+      (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
+    const currentSubscriptionAccess = subscriptionStatusSnapshot?.subscription || currentUser?.subscriptionAccess || null;
+    const currentSubscriptionStatus = String(
+      currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+    )
+      .trim()
+      .toLowerCase();
+    const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+    if (
+      latestRequestStatus === "pending" ||
+      currentSubscriptionStatus === "active" ||
+      currentSubscriptionStatus === "pending"
+    ) {
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent =
+          latestRequestStatus === "pending" || currentSubscriptionStatus === "pending"
+            ? "A subscription request is already under review."
+            : "Your subscription is already active.";
+      }
+      return;
+    }
+    if (subscriptionSubmitBtn) {
+      subscriptionSubmitBtn.disabled = true;
+    }
+
+    if (subscriptionFormFeedback) {
+      subscriptionFormFeedback.dataset.persist = "1";
+      subscriptionFormFeedback.textContent = "Submitting your proof...";
+    }
+
+    try {
+      const file = subscriptionProofInput?.files?.[0] || null;
+      let proofDataUrl = "";
+      let proofFileName = "";
+      let proofMimeType = "";
+
+      if (file) {
+        proofFileName = file.name || "payment-proof";
+        proofMimeType = file.type || "image/*";
+        proofDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(reader.error || new Error("Failed to read proof image."));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const response = await backendClient.submitSubscriptionRequest({
+        plan: subscriptionPlanInput?.value || "weekly",
+        paymentReference: String(subscriptionTransactionInput?.value || "").trim(),
+        proofText: String(subscriptionTransactionInput?.value || "").trim(),
+        proofDataUrl,
+        proofFileName,
+        proofMimeType,
+        paymentMethod: "manual",
+      });
+
+      currentUser = response?.user || currentUser;
+      renderAuthState();
+      subscriptionPlansCache = Array.isArray(response?.plans) ? response.plans : subscriptionPlansCache;
+      subscriptionStatusSnapshot = response || subscriptionStatusSnapshot;
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.textContent =
+          "Payment proof submitted. Admin review can take up to 24 hours.";
+        subscriptionFormFeedback.dataset.persist = "1";
+      }
+      if (subscriptionTransactionInput) subscriptionTransactionInput.value = "";
+      if (subscriptionProofInput) subscriptionProofInput.value = "";
+      renderSubscriptionProofPreview();
+      renderSubscriptionScreen();
+    } catch (error) {
+      const isUnauthorized = Number(error?.status) === 401 || String(error?.message || "").includes("(401)");
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent = isUnauthorized
+          ? "We couldn't verify your current session. Please refresh the page once and try again."
+          : authErrorMessage(error);
+      }
+    } finally {
+      if (subscriptionSubmitBtn) subscriptionSubmitBtn.disabled = false;
+      if (subscriptionFormFeedback) {
+        window.setTimeout(() => {
+          if (subscriptionFormFeedback.dataset.persist !== "1") {
+            subscriptionFormFeedback.textContent = "";
+          }
+        }, 3000);
+      }
+    }
+  });
+}
+
 const enterBtn = document.getElementById("enter-platform-btn");
 if (enterBtn) {
   enterBtn.onclick = handlePortalEntry;
@@ -31511,8 +32110,12 @@ if (startExamBtn) {
   };
 }
 
-function startMenuDrill(variant = "rapid") {
+async function startMenuDrill(variant = "rapid") {
+  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   const drill = String(variant || "").toLowerCase();
+  if (!requireSubscriptionAccess(drill)) {
+    return;
+  }
   if (drill === "rapid") {
     startExam("5", "rapid");
     return;
@@ -31574,34 +32177,45 @@ function startMenuDrill(variant = "rapid") {
   }
 }
 
-  if (rapidDrillBtn) {
-  rapidDrillBtn.onclick = () => startMenuDrill("rapid");
+if (rapidDrillBtn) {
+  rapidDrillBtn.onclick = () => void startMenuDrill("rapid");
 }
 
 if (suddenDrillBtn) {
   suddenDrillBtn.onclick = () => {
+    if (!requireSubscriptionAccess("sudden")) {
+      return;
+    }
     const modalState = buildResumeSuddenSessionModalState();
     if (modalState) {
       openSessionResumeModal(modalState);
       return;
     }
-    startMenuDrill("sudden");
+    void startMenuDrill("sudden");
   };
 }
 
 if (clinicalDrillBtn) {
   clinicalDrillBtn.onclick = () => {
+    if (!requireSubscriptionAccess("clinical")) {
+      return;
+    }
     const modalState = buildResumeClinicalSessionModalState();
     if (modalState) {
       openSessionResumeModal(modalState);
       return;
     }
-    startMenuDrill("clinical");
+    void startMenuDrill("clinical");
   };
 }
 
 if (lawDrillBtn) {
-  lawDrillBtn.onclick = () => startMenuDrill("law");
+  lawDrillBtn.onclick = () => {
+    if (!requireSubscriptionAccess("law")) {
+      return;
+    }
+    void startMenuDrill("law");
+  };
 }
 
 function showCountTooltip() {
@@ -31625,14 +32239,15 @@ function showCountTooltip() {
 }
 
 backReviewBtn.onclick = function () {
-  inReview = false; // 🔥 reset properly
+  inReview = false; // ðŸ”¥ reset properly
   showScreen("review-screen");
   buildReviewPalette();
   backReviewBtn.classList.add("hidden");
 };
 
 if (studyBtn) {
-  studyBtn.onclick = () => {
+  studyBtn.onclick = async () => {
+    await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
     showScreen("study-setup");
@@ -31661,6 +32276,11 @@ document.addEventListener(
     }
 
     if (target.id === "sudden-drill-btn") {
+      if (!requireSubscriptionAccess("sudden")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       const modalState = buildResumeSuddenSessionModalState();
       if (!modalState) return;
       event.preventDefault();
@@ -31670,6 +32290,11 @@ document.addEventListener(
     }
 
     if (target.id === "clinical-drill-btn") {
+      if (!requireSubscriptionAccess("clinical")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       const modalState = buildResumeClinicalSessionModalState();
       if (!modalState) return;
       event.preventDefault();
@@ -32217,10 +32842,10 @@ function formatTrendLabel(date = new Date(), scope = "session", index = 0) {
       .replace(/\s+/g, "");
   }
   if (safeScope === "daily") {
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return formatAppDate(date);
   }
   if (safeScope === "weekly") {
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return formatAppDate(date);
   }
   if (safeScope === "monthly") {
     return date.toLocaleDateString(undefined, { month: "short" });
@@ -32584,11 +33209,7 @@ function renderDashboardRecentResults() {
     const createdAt = entry?.createdAt instanceof Date ? entry.createdAt : new Date(Number(entry?.timestamp) || Date.now());
     const dateLabel = Number.isNaN(createdAt.getTime())
       ? ""
-      : `${createdAt.toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })} • ${createdAt.toLocaleTimeString(undefined, {
+      : `${formatAppDate(createdAt)} â€¢ ${createdAt.toLocaleTimeString(undefined, {
           hour: "numeric",
           minute: "2-digit",
         })}`;
@@ -32724,9 +33345,9 @@ function getTrend() {
   const latest = sessionHistory[0].percent;
   const previous = sessionHistory[1].percent;
 
-  if (latest > previous) return "📈 Improving";
-  if (latest < previous) return "📉 Declining";
-  return "➡ Stable";
+  if (latest > previous) return "ðŸ“ˆ Improving";
+  if (latest < previous) return "ðŸ“‰ Declining";
+  return "âž¡ Stable";
 }
 
 async function renderModeHistory(modeName, containerId) {
@@ -32802,7 +33423,7 @@ async function renderModeHistory(modeName, containerId) {
           opacity:0.6;
           margin-top:4px;
         ">
-          ${s.date}
+          ${formatAppDate(new Date(s.createdAt || s.date || Date.now()))}
         </div>
       </div>
 
@@ -32910,7 +33531,7 @@ function buildCategorySummary() {
     const accuracy = getCategoryAccuracy(cat);
     summary += `
                         <p>
-                          <strong>${cat}</strong> — ${accuracy}%
+                          <strong>${cat}</strong> â€” ${accuracy}%
                         </p>
                       `;
   });
@@ -33245,9 +33866,9 @@ function updateModeIndicator(studyType = null) {
     if (lawDrillActive) {
       indicator.innerText = "Law Drill";
     } else if (resolvedStudyType === "weak") {
-      indicator.innerText = "📚 Practice Weak Areas";
+      indicator.innerText = "ðŸ“š Practice Weak Areas";
     } else {
-      indicator.innerText = "📚 Study Mode";
+      indicator.innerText = "ðŸ“š Study Mode";
     }
 
     indicator.innerText =
@@ -33320,6 +33941,572 @@ function updateModeIndicator(studyType = null) {
     if (!compactHeaderMode) headerInlineMeta.innerHTML = "";
   }
 }
+function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptionStatusSnapshot) {
+  const access = snapshot?.subscription || user?.subscriptionAccess || null;
+  const latestRequest =
+    snapshot?.request ||
+    (Array.isArray(snapshot?.requests) ? snapshot.requests[0] : null) ||
+    user?.subscriptionRequest ||
+    null;
+  const requestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+  const accessStatus = String(access?.status || "").trim().toLowerCase();
+  const planLabel =
+    String(latestRequest?.planLabel || latestRequest?.planShortLabel || access?.planLabel || access?.plan || "Access").trim() ||
+    "Access";
+
+  if (requestStatus === "pending") {
+    return {
+      title: `${planLabel} pending`,
+      subtitle: "Awaiting admin approval",
+      note: latestRequest?.reviewNote || "Your payment proof is in review.",
+      pill: "pending",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (accessStatus === "pending") {
+    return {
+      title: `${planLabel} pending`,
+      subtitle: "Awaiting admin approval",
+      note: access.lockedReason || "Your payment proof is in review.",
+      pill: "pending",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (!access) {
+    return {
+      title: "Free Trial",
+      subtitle: "7 days after signup",
+      note: "You are currently on the trial access path.",
+      pill: "active",
+      locked: false,
+      isActive: true,
+    };
+  }
+
+  if (access.status === "pending") {
+    return {
+      title: `${access.planLabel || "Access"} pending`,
+      subtitle: "Awaiting admin approval",
+      note: access.lockedReason || "Your proof is in review.",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (access.status === "expired") {
+    return {
+      title: "Access expired",
+      subtitle: "",
+      note: access.lockedReason || "Your free trial or paid access has ended.",
+      pill: "expired",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (access.status === "rejected") {
+    return {
+      title: "Proof rejected",
+      subtitle: "Resubmit a valid payment proof",
+      note: access.lockedReason || "The admin could not verify the last submission.",
+      pill: "rejected",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  const daysLeft = Number.isFinite(Number(access.daysRemaining)) ? Number(access.daysRemaining) : null;
+  const plural = daysLeft === 1 ? "day" : "days";
+  const expirationLabel = access.expirationAt
+    ? new Date(access.expirationAt).toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "";
+  return {
+    title: access.planLabel || "Active access",
+    subtitle: daysLeft === null ? "Active access" : `${daysLeft} ${plural} left`,
+    note: expirationLabel ? `Ends ${expirationLabel}` : "Access is currently active.",
+    pill: "active",
+    locked: false,
+    isActive: true,
+  };
+}
+
+function getSubscriptionPlanList() {
+  return Array.isArray(subscriptionPlansCache) && subscriptionPlansCache.length
+    ? subscriptionPlansCache
+    : [
+        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 2, durationDays: 7, description: "Unlock everything for 7 days." },
+        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 5, durationDays: 30, description: "Unlock everything for 30 days." },
+        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 50, durationDays: 365, description: "Unlock everything for 365 days." },
+      ];
+}
+
+function getSubscriptionFeatureList(intent = "general") {
+  const normalized = String(intent || "").toLowerCase();
+  if (normalized.includes("community")) return ["Community", "Drills", "Exams", "Library"];
+  if (normalized.includes("library")) return ["Library", "Drills", "Exams", "Community"];
+  return ["Drills", "Exams", "Library", "Community"];
+}
+
+function getSubscriptionProofReference(planKey = "weekly") {
+  const normalized = String(planKey || "").trim().toLowerCase();
+  const references = {
+    weekly: "AJIX-PHARMACY-WEEK-1786277702691",
+    monthly: "AJIX-PHARMACY-MONTH-1786277702691",
+    yearly: "AJIX-PHARMACY-YEAR-1786277702691",
+  };
+  return references[normalized] || references.weekly;
+}
+
+function renderSubscriptionPaymentBrand(kind = "mtn", label = "") {
+  const normalized = String(kind || "").trim().toLowerCase();
+  const icon = normalized === "fidelity"
+    ? `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 19h16"></path>
+        <path d="M6 19V9"></path>
+        <path d="M10 19V9"></path>
+        <path d="M14 19V9"></path>
+        <path d="M18 19V9"></path>
+        <path d="M4 9l8-5 8 5"></path>
+      </svg>
+    `
+    : `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 16.5c1.6-1.8 3.7-2.8 7-2.8s5.4 1 7 2.8"></path>
+        <path d="M7.5 13.7c1.1-1.2 2.7-1.9 4.5-1.9s3.4.7 4.5 1.9"></path>
+        <path d="M10 11.1c.6-.6 1.3-1 2-1s1.4.4 2 1"></path>
+      </svg>
+    `;
+  const className = normalized === "fidelity" ? "is-fidelity" : "is-mtn";
+  return `
+    <span class="subscription-payment-brand ${className}">
+      ${icon}
+      <span>${escapeHtml(label || normalized.toUpperCase())}</span>
+    </span>
+  `;
+}
+
+function openSubscriptionScreen({ intent = "general", returnScreen = "quiz-menu" } = {}) {
+  subscriptionScreenState.intent = String(intent || "general").trim().toLowerCase() || "general";
+  subscriptionScreenState.returnScreen = String(returnScreen || "quiz-menu").trim() || "quiz-menu";
+  subscriptionScreenState.paymentModalOpen = false;
+  void loadSubscriptionScreenData({ force: true }).catch(() => false);
+  showScreen("subscription-screen");
+  window.requestAnimationFrame(() => {
+    const screen = document.getElementById("subscription-screen");
+    const shell = document.querySelector("#subscription-screen .subscription-shell");
+    screen?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (screen) screen.scrollTop = 0;
+    shell?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (shell) shell.scrollTop = 0;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
+}
+
+function syncSubscriptionPaymentModalVisibility() {
+  if (!subscriptionPaymentModalEl) return;
+  const isOpen = Boolean(subscriptionScreenState.paymentModalOpen);
+  subscriptionPaymentModalEl.classList.toggle("hidden", !isOpen);
+  subscriptionPaymentModalEl.setAttribute("aria-hidden", isOpen ? "false" : "true");
+  document.body.classList.toggle("subscription-modal-open", isOpen);
+}
+
+function syncSubscriptionPaymentProofVisibility() {
+  if (!subscriptionProofPanelEl) return;
+  const isOpen = Boolean(subscriptionScreenState.paymentProofOpen);
+  subscriptionProofPanelEl.classList.toggle("hidden", !isOpen);
+  subscriptionPaymentModalCardEl?.classList.toggle("is-proof-open", isOpen);
+}
+
+function isSubscriptionPurchaseBlocked(user = currentUser, snapshot = subscriptionStatusSnapshot) {
+  const latestRequest =
+    snapshot?.request ||
+    (Array.isArray(snapshot?.requests) ? snapshot.requests[0] : null) ||
+    user?.subscriptionRequest ||
+    null;
+  const currentAccess = snapshot?.subscription || user?.subscriptionAccess || null;
+  const currentStatus = String(currentAccess?.status || user?.subscriptionStatus || "").trim().toLowerCase();
+  const currentPlan = String(currentAccess?.plan || user?.subscriptionPlan || "").trim().toLowerCase();
+  const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+  const requestIsBlocking = latestRequestStatus === "pending";
+  const activePaidAccess = currentStatus === "active" && currentPlan !== "trial";
+  const pendingAccess = currentStatus === "pending";
+  return requestIsBlocking || activePaidAccess || pendingAccess;
+}
+
+function buildSubscriptionProofPlaceholderMarkup() {
+  return `
+    <div class="subscription-proof-preview-empty" title="Click to upload screenshot">
+      <span class="subscription-proof-preview-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 10.5 6 13v4.5A1.5 1.5 0 0 0 7.5 19h9A1.5 1.5 0 0 0 18 17.5V13l-2.2-2.2a1 1 0 0 0-1.4 0L11 14.2 9.4 12.6a1 1 0 0 0-1.4 0Z" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="subscription-proof-preview-copy">
+        <strong>Click to upload screenshot</strong>
+      </span>
+    </div>
+  `;
+}
+
+function clearSubscriptionProofSelection() {
+  if (subscriptionProofInput) {
+    subscriptionProofInput.value = "";
+  }
+  renderSubscriptionProofPreview();
+}
+
+function renderSubscriptionProofPreview({ dataUrl = "" } = {}) {
+  if (!subscriptionProofPreviewContent) return;
+  const safeDataUrl = String(dataUrl || "").trim();
+  if (!safeDataUrl) {
+    subscriptionProofPreviewContent.innerHTML = buildSubscriptionProofPlaceholderMarkup();
+    subscriptionProofPreview?.classList.remove("has-file");
+    return;
+  }
+
+  subscriptionProofPreviewContent.innerHTML = `
+    <div
+      class="subscription-proof-preview-file subscription-proof-preview-file--compact subscription-proof-preview-file--image"
+    >
+      <img
+        class="subscription-proof-preview-image"
+        src="${escapeHtml(safeDataUrl)}"
+        alt="Uploaded payment screenshot preview"
+      />
+      <button
+        type="button"
+        class="subscription-proof-preview-remove"
+        data-action="clear-subscription-proof"
+        aria-label="Remove uploaded screenshot"
+        title="Remove uploaded screenshot"
+        style="all: unset; position: absolute; top: 4px; right: 4px; z-index: 3; width: 18px; height: 18px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(18,24,35,0.88); color: #fff; font-size: 12px; line-height: 1; font-weight: 900; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.28); padding: 0; display: grid; place-items: center;"
+      >&times;</button>
+    </div>
+  `;
+  subscriptionProofPreview?.classList.add("has-file");
+}
+
+function openSubscriptionPaymentProof() {
+  subscriptionScreenState.paymentProofOpen = true;
+  syncSubscriptionPaymentProofVisibility();
+  window.requestAnimationFrame(() => {
+    const proofTop = subscriptionProofPanelEl?.offsetTop || 0;
+    subscriptionPaymentModalCardEl?.scrollTo?.({ top: proofTop, behavior: "smooth" });
+    try {
+      subscriptionTransactionInput?.focus?.({ preventScroll: true });
+    } catch {
+      subscriptionTransactionInput?.focus?.();
+    }
+  });
+}
+
+function openSubscriptionPaymentModal(planKey = "weekly") {
+  if (isSubscriptionPurchaseBlocked()) {
+    const feedbackEl = document.getElementById("subscription-form-feedback");
+    if (feedbackEl) {
+      feedbackEl.dataset.persist = "1";
+      feedbackEl.textContent = "A subscription is already active or under review.";
+    }
+    return false;
+  }
+  const normalizedPlan = String(planKey || "").trim() || "weekly";
+  if (subscriptionPlanInput) {
+    subscriptionPlanInput.value = normalizedPlan;
+  }
+  subscriptionScreenState.paymentModalOpen = true;
+  subscriptionScreenState.paymentProofOpen = false;
+  renderSubscriptionScreen();
+  syncSubscriptionPaymentModalVisibility();
+  window.requestAnimationFrame(() => {
+    subscriptionPaymentModalCardEl?.scrollTo?.({ top: 0, behavior: "auto" });
+    subscriptionPaymentModalCloseBtn?.focus?.();
+  });
+}
+
+function closeSubscriptionPaymentModal({ focusPlanButton = false } = {}) {
+  subscriptionScreenState.paymentModalOpen = false;
+  subscriptionScreenState.paymentProofOpen = false;
+  syncSubscriptionPaymentModalVisibility();
+  syncSubscriptionPaymentProofVisibility();
+  if (focusPlanButton) {
+    window.requestAnimationFrame(() => {
+      const selectedPlan = subscriptionPlanInput?.value || "weekly";
+      const trigger = document.querySelector(
+        `[data-subscription-plan="${CSS.escape(selectedPlan)}"], [data-subscription-plan-card="${CSS.escape(selectedPlan)}"]`,
+      );
+      trigger?.focus?.();
+    });
+  }
+}
+
+function renderSubscriptionScreen() {
+  const state = getSubscriptionAccessSummary(currentUser, subscriptionStatusSnapshot);
+  const titleEl = document.getElementById("subscription-status-title");
+  const subtitleEl = document.getElementById("subscription-status-subtitle");
+  const noteEl = document.getElementById("subscription-status-note");
+  const pillEl = document.getElementById("subscription-status-pill");
+  const planGridEl = document.getElementById("subscription-plan-grid");
+  const sectionTitleEl = document.getElementById("subscription-section-title");
+  const sectionNoteEl = document.getElementById("subscription-section-note");
+  const selectedTitleEl = document.getElementById("subscription-selected-plan-title");
+  const selectedCopyEl = document.getElementById("subscription-selected-plan-copy");
+  const modalTitleEl = subscriptionPaymentModalTitleEl;
+  const modalCopyEl = subscriptionPaymentModalCopyEl;
+  const amountEl = subscriptionPaymentAmountEl;
+  const accountNumberEl = subscriptionPaymentAccountNumberEl;
+  const accountNameEl = subscriptionPaymentAccountNameEl;
+  const detailsEl = subscriptionPaymentDetailsEl;
+  const planInputEl = document.getElementById("subscription-plan-input");
+  const feedbackEl = document.getElementById("subscription-form-feedback");
+  const requestStatusEl = document.getElementById("subscription-request-status");
+  const isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
+  const latestRequest =
+    subscriptionStatusSnapshot?.request ||
+    (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
+  const currentSubscriptionAccess = subscriptionStatusSnapshot?.subscription || currentUser?.subscriptionAccess || null;
+  const currentSubscriptionStatus = String(
+    currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+  )
+    .trim()
+    .toLowerCase();
+  const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || currentUser?.subscriptionPlan || "").trim().toLowerCase();
+  const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+  const subscriptionReviewing =
+    latestRequestStatus === "pending" ||
+    currentSubscriptionStatus === "pending";
+  const subscriptionActive =
+    currentSubscriptionStatus === "active" && currentSubscriptionPlan !== "trial";
+  const subscriptionActionDisabled = subscriptionReviewing || subscriptionActive;
+  const subscriptionActionDisabledReason = subscriptionActionDisabled
+    ? subscriptionActive
+      ? "Your subscription is already active."
+      : "A subscription request is already under review."
+    : "";
+  const plans = getSubscriptionPlanList();
+  const selectedPlan = planInputEl?.value || plans.find((plan) => plan.key !== "trial")?.key || "weekly";
+  const selectedPlanData = plans.find((plan) => plan.key === selectedPlan) || plans[0];
+  const featureSets = {
+    weekly: [
+      "Unlock all drill modes",
+      "Unlock exams, library, and community",
+      "Perfect for short study bursts",
+    ],
+    monthly: [
+      "Unlock all drill modes",
+      "Unlock exams, library, and community",
+      "Best value for ongoing practice",
+    ],
+    yearly: [
+      "Unlock all drill modes",
+      "Unlock exams, library, and community",
+      "Best value for long-term access",
+      "Priority renewal path",
+    ],
+  };
+  const displayName = selectedPlanData?.label || selectedPlanData?.shortLabel || "Choose a pass";
+  const proofPlanName = selectedPlanData?.shortLabel || selectedPlanData?.label || displayName;
+  const priceText = Number(selectedPlanData?.priceGhs) === 0 ? "Free" : `GHS ${selectedPlanData?.priceGhs}`;
+  const durationText = Number(selectedPlanData?.durationDays) === 1 ? "1 day" : `${selectedPlanData?.durationDays} days`;
+  const proofReference = getSubscriptionProofReference(selectedPlan);
+
+  if (titleEl) titleEl.textContent = `Subscription: ${state.title}`;
+  if (subtitleEl) subtitleEl.textContent = state.subtitle;
+  if (noteEl) noteEl.textContent = state.note;
+  if (pillEl) pillEl.textContent = state.pill || (state.isActive ? "active" : "inactive");
+  if (modalTitleEl) modalTitleEl.textContent = displayName;
+  if (modalCopyEl) modalCopyEl.textContent = selectedPlanData?.description || "Pick a payment pass to continue.";
+  if (amountEl) amountEl.textContent = priceText;
+  if (requestStatusEl) {
+    requestStatusEl.textContent = "Enter your transaction ID and/or upload a screenshot so admin can activate your subscription.";
+  }
+  if (subscriptionProofPlanTitleEl) {
+    subscriptionProofPlanTitleEl.textContent = proofPlanName;
+  }
+  if (subscriptionProofPlanReferenceEl) {
+    subscriptionProofPlanReferenceEl.textContent = `ID: ${proofReference}`;
+  }
+  if (sectionTitleEl) {
+    sectionTitleEl.textContent = subscriptionActionDisabled ? "Plans locked" : "Choose a plan";
+  }
+  if (sectionNoteEl) {
+    sectionNoteEl.textContent = subscriptionActionDisabled
+      ? "Your subscription is active or under review, so new plans stay locked for now."
+      : "";
+  }
+  if (planGridEl) {
+    planGridEl.innerHTML = plans
+      .filter((plan) => plan.key !== "trial")
+      .map((plan) => {
+        const active = String(plan.key) === String(selectedPlan);
+        const planName = plan.label || plan.shortLabel || "Plan";
+        const priceLabel = Number(plan.priceGhs) === 0 ? "Free" : `GHS ${plan.priceGhs}`;
+        const durationLabel = Number(plan.durationDays) === 1 ? "1 day" : `${plan.durationDays} days`;
+        const badgeText =
+          plan.key === "weekly"
+            ? "Full access for 7 days"
+            : plan.key === "monthly"
+              ? "Full access for 30 days"
+              : "Full access for 12 months";
+        const bullets = featureSets[plan.key] || featureSets.monthly;
+        const disabledCardStyle = subscriptionActionDisabled
+          ? "cursor:not-allowed;opacity:0.82;filter:grayscale(0.88) brightness(0.94) saturate(0.72);box-shadow:none;"
+          : "";
+        const disabledButtonStyle = subscriptionActionDisabled
+          ? "background:#aeb8c4;color:#f4f7fb;box-shadow:none;cursor:not-allowed;"
+          : "";
+        return `
+          <article class="subscription-plan-card ${active ? "is-active" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}" style="${disabledCardStyle}">
+            <div class="subscription-plan-card-head">
+              <div>
+                <div class="subscription-plan-card-title">${escapeHtml(planName)}</div>
+                <div class="subscription-plan-card-copy">${escapeHtml(plan.description || "")}</div>
+              </div>
+              <div class="subscription-plan-card-price">
+                <span class="subscription-plan-price-amount">GHS ${escapeHtml(String(plan.priceGhs || 0))}</span>
+                <span class="subscription-plan-price-meta">${escapeHtml(durationLabel)}</span>
+              </div>
+            </div>
+            <div class="subscription-plan-card-chip">${escapeHtml(badgeText)}</div>
+            <ul class="subscription-plan-benefits">
+              ${bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}
+            </ul>
+            <button type="button" class="subscription-plan-card-button" data-subscription-plan="${escapeHtml(plan.key)}" ${subscriptionActionDisabled ? "disabled aria-disabled=\"true\"" : ""} style="${disabledButtonStyle}">Subscribe</button>
+          </article>
+        `;
+      })
+      .join("");
+    planGridEl.querySelectorAll("[data-subscription-plan], [data-subscription-plan-card]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        if (subscriptionActionDisabled) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (subscriptionFormFeedback && subscriptionActionDisabledReason) {
+            subscriptionFormFeedback.dataset.persist = "1";
+            subscriptionFormFeedback.textContent = subscriptionActionDisabledReason;
+          }
+          return;
+        }
+        const nextPlan =
+          String(button.getAttribute("data-subscription-plan") || button.getAttribute("data-subscription-plan-card") || "").trim();
+        if (!nextPlan) return;
+        openSubscriptionPaymentModal(nextPlan);
+        if (event.target.closest(".subscription-plan-card-button")) {
+          subscriptionPaymentModalEl?.scrollTo?.({ top: 0, behavior: "smooth" });
+        }
+      });
+    });
+  }
+  if (selectedTitleEl) selectedTitleEl.textContent = displayName;
+  if (selectedCopyEl) selectedCopyEl.textContent = selectedPlanData?.description || "Select a payment pass to see the review instructions.";
+  if (detailsEl) {
+    detailsEl.innerHTML = `
+      <div class="subscription-payment-method-item">
+        <div class="subscription-payment-method-left">
+          ${renderSubscriptionPaymentBrand("mtn", "MTN")}
+          <span class="subscription-payment-method-label">Mobile Money</span>
+        </div>
+        <div class="subscription-payment-method-number">0595597218</div>
+      </div>
+      <div class="subscription-payment-method-divider"></div>
+      <div class="subscription-payment-method-item">
+        <div class="subscription-payment-method-left">
+          ${renderSubscriptionPaymentBrand("fidelity", "Fidelity")}
+          <span class="subscription-payment-method-label">Bank</span>
+        </div>
+        <div class="subscription-payment-method-number">2100316766815</div>
+      </div>
+      <div class="subscription-payment-method-name">NAME: ISRAEL JOHN ASKENT</div>
+    `;
+  }
+  syncSubscriptionPaymentProofVisibility();
+  if (feedbackEl && !feedbackEl.dataset.persist) feedbackEl.textContent = "";
+  syncSubscriptionPaymentModalVisibility();
+  try {
+    history.scrollRestoration = "manual";
+  } catch {}
+  window.requestAnimationFrame(() => {
+    const screen = document.getElementById("subscription-screen");
+    const shell = document.querySelector("#subscription-screen .subscription-shell");
+    screen?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (screen) screen.scrollTop = 0;
+    shell?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (shell) shell.scrollTop = 0;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
+}
+
+async function loadSubscriptionScreenData({ force = false } = {}) {
+  if (!backendClient.isAuthenticated() || !currentUser) {
+    return false;
+  }
+  if (subscriptionPlansCache.length && !force) {
+    renderSubscriptionScreen();
+    return true;
+  }
+
+  try {
+    const [plansResponse, meResponse] = await Promise.all([
+      backendClient.fetchSubscriptionPlans({ preferCache: !force }),
+      backendClient.fetchMySubscription({ preferCache: !force }),
+    ]);
+    subscriptionPlansCache = Array.isArray(plansResponse?.plans) ? plansResponse.plans : [];
+    subscriptionStatusSnapshot = meResponse || null;
+    renderSubscriptionScreen();
+    return true;
+  } catch (error) {
+    console.warn("Failed to load subscription screen:", error);
+    renderSubscriptionScreen();
+    return false;
+  }
+}
+
+const SUBSCRIPTION_LOCKED_FEATURES = new Set(["exam", "topic-library", "community", "rapid", "sudden", "clinical", "law"]);
+
+function getSubscriptionGateFeature(feature = "") {
+  const normalized = String(feature || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (["exam-setup", "exam", "exams", "smart"].includes(normalized)) return "exam";
+  if (["topic-viewer", "topic-library", "library"].includes(normalized)) return "topic-library";
+  if (
+    ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen", "community"].includes(
+      normalized,
+    )
+  ) {
+    return "community";
+  }
+  return normalized;
+}
+
+function isSubscriptionLockedForFeature(feature = "") {
+  const access = currentUser?.subscriptionAccess;
+  if (!currentUser || !access) return false;
+  if (!access.isLocked) return false;
+  return SUBSCRIPTION_LOCKED_FEATURES.has(getSubscriptionGateFeature(feature));
+}
+
+function requireSubscriptionAccess(feature = "feature", returnScreen = getActiveScreenId() || "quiz-menu") {
+  const gateFeature = getSubscriptionGateFeature(feature);
+  if (!isSubscriptionLockedForFeature(gateFeature)) {
+    return true;
+  }
+  openSubscriptionScreen({
+    intent: gateFeature || feature,
+    returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",
+  });
+  return false;
+}
 /* ==============================
                            START MODES
                         ================================= */
@@ -33337,6 +34524,9 @@ async function startStudy() {
   timerEl.innerText = "";
 
   const studyType = getCurrentStudyType();
+  if (studyType === "law" && !requireSubscriptionAccess("law")) {
+    return;
+  }
 
   // Check for a paused study session before loading data so the resume modal appears immediately.
   const modalState = buildResumeStudySessionModalState();
@@ -33400,7 +34590,7 @@ async function startStudy() {
           console.warn("Failed to start backend attempt:", err);
         });
     }
-    // 🔥 Start From Logic (Normal Study Only)
+    // ðŸ”¥ Start From Logic (Normal Study Only)
     const startNumberInput =
       document.getElementById("study-start-number").value;
 
@@ -33458,6 +34648,10 @@ async function startExam(count, requestedVariant = null) {
   const variant = String(requestedVariant || examTypeSelect?.value || "normal")
     .trim()
     .toLowerCase();
+  const gateFeature = ["rapid", "sudden", "clinical", "law"].includes(variant) ? variant : "exam";
+  if (!requireSubscriptionAccess(gateFeature)) {
+    return;
+  }
   examVariant = variant;
   mode = variant === "smart" ? "smart" : "exam";
   clearAiExplainStateSession();
@@ -33595,7 +34789,7 @@ function showQuestion() {
     return;
   }
 
-  // 🔥 HARD RESET NAVIGATION STATE
+  // ðŸ”¥ HARD RESET NAVIGATION STATE
   const isLawLadderView = isLawStudyMode() && getLawDrillView() === "ladder";
   prevBtn.classList.toggle("hidden", isLawLadderView);
   nextBtn.classList.toggle("hidden", isLawLadderView);
@@ -33683,7 +34877,7 @@ function showQuestion() {
   if (isStudyLikeMode()) {
     if (isLawStudyMode()) {
       const currentLevel = lawDrillState?.currentLevelIndex ?? 0;
-      progressEl.innerText = `Level ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS} • Q ${current + 1}/${active.length}`;
+      progressEl.innerText = `Level ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS} â€¢ Q ${current + 1}/${active.length}`;
     } else {
       progressEl.innerText = `Q ${current + 1}/${active.length}`;
     }
@@ -33691,7 +34885,7 @@ function showQuestion() {
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
     if (isTopicQuizMode()) {
-      progressEl.innerText += ` • ${getTopicQuizSessionTitle()}`;
+      progressEl.innerText += ` â€¢ ${getTopicQuizSessionTitle()}`;
     }
   } else if (mode === "exam" && examVariant === "sudden") {
     const suddenScore = calculateScore();
@@ -33747,12 +34941,12 @@ function showQuestion() {
       performanceBits.push(`${questionRotation} ${rotationAccuracy}%`);
     }
     performanceBits.push(`${q.category} ${categoryAccuracy}%`);
-    progressEl.innerText += ` • ${performanceBits.join(" • ")}`;
+    progressEl.innerText += ` â€¢ ${performanceBits.join(" â€¢ ")}`;
     if (isLawStudyMode()) {
-      progressEl.innerText = `Level ${lawDrillState?.currentLevelIndex + 1 || 1}/${LAW_DRILL_TOTAL_LEVELS} • Q ${current + 1}/${active.length}`;
+      progressEl.innerText = `Level ${lawDrillState?.currentLevelIndex + 1 || 1}/${LAW_DRILL_TOTAL_LEVELS} â€¢ Q ${current + 1}/${active.length}`;
     }
   } else if (isTopicQuizMode()) {
-    progressEl.innerText += ` • Topic Quiz`;
+    progressEl.innerText += ` â€¢ Topic Quiz`;
   }
 
   let displayText = String(q.question || "").trim();
@@ -33944,7 +35138,7 @@ function selectAnswer(value, q) {
     if (isCorrect) {
       weakTracker[q.id].roundsPassed++;
 
-      // If 2 consecutive rounds passed → remove permanently
+      // If 2 consecutive rounds passed â†’ remove permanently
       if (weakTracker[q.id].roundsPassed >= 2) {
         delete weakTracker[q.id];
       }
@@ -33955,7 +35149,7 @@ function selectAnswer(value, q) {
 
     saveWeakTracker();
   }
-  // 🔥 Mastery Engine Refresh
+  // ðŸ”¥ Mastery Engine Refresh
   if (mode === "study") {
     const studyType = document.getElementById("study-type-select").value;
   }
@@ -34393,7 +35587,7 @@ function goHome() {
                         ================================= */
 
 function startExamTimer() {
-  // 🔥 IMPORTANT — Prevent multiple timers
+  // ðŸ”¥ IMPORTANT â€” Prevent multiple timers
   if (examTimer) {
     clearInterval(examTimer);
   }
@@ -34426,7 +35620,7 @@ function updateTimerDisplay() {
   const formatted =
     String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
 
-  timerEl.innerHTML = `<span class="timer-icon">⏱</span> ${formatted}`;
+  timerEl.innerHTML = `<span class="timer-icon">â±</span> ${formatted}`;
 
   updateTimerColor();
   renderCompactHeaderMeta();
@@ -34478,7 +35672,7 @@ function renderLawDrillInlineMetaLegacy() {
     parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
   }
 
-  parts.push(`<span class="header-inline-points">🪙 ${sessionPoints}</span>`);
+  parts.push(`<span class="header-inline-points">ðŸª™ ${sessionPoints}</span>`);
   return parts.join("");
 }
 
@@ -35087,7 +36281,7 @@ function finishStudy() {
     backendAttemptId = null;
   }
 
-  // 🔥 Clear both study and practice sessions
+  // ðŸ”¥ Clear both study and practice sessions
   localStorage.removeItem("studySession");
   localStorage.removeItem("practiceSession");
 
@@ -35141,7 +36335,7 @@ function endStudySession() {
       : Math.round((correctAnswers / totalAnswered) * 100);
   const setupPointsBucket = getCurrentSetupPointsBucket();
 
-  // 🔥 Store result AFTER calculating
+  // ðŸ”¥ Store result AFTER calculating
   window.lastStudyResult = {
     correct: correctAnswers,
     total: totalAnswered,
@@ -35254,7 +36448,7 @@ function goToMenu() {
   const detailedReview = document.getElementById("detailed-review");
   if (detailedReview) detailedReview.remove();
 
-  // 🔥 Reset review states
+  // ðŸ”¥ Reset review states
   inStudyReview = false;
   answeredCurrent = false;
 
@@ -35395,7 +36589,7 @@ function showDetailedReview() {
     card.innerHTML = `
       <div class="analysis-header">
         <div>Question ${index + 1}</div>
-        <div>${isCorrect ? "✓ Correct" : "✕ Incorrect"}</div>
+        <div>${isCorrect ? "âœ“ Correct" : "âœ• Incorrect"}</div>
       </div>
       <div class="analysis-question">
         ${q.question.replace(/^Q\\d+\\.\\s*/, "")}
@@ -35793,7 +36987,7 @@ function saveStudyProgress() {
 }
 
 /* ==============================
-                     PAGE LOAD – STUDY RESUME ONLY
+                     PAGE LOAD â€“ STUDY RESUME ONLY
                   ================================= */
 
 window.addEventListener("load", function () {
@@ -35804,11 +36998,8 @@ window.addEventListener("load", function () {
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
   renderAuthState();
-  restoreAuthSession();
   closeCommunityConversationActions();
   closeCommunityFriendActions();
-  startQuestionBankBootstrap();
-  startBackendBootstrap();
   void primeInstantLocalCaches();
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
@@ -35884,6 +37075,17 @@ window.addEventListener("load", function () {
       showScreen("home-screen", { recordHistory: false });
     }
   }
+
+  void handlePortalEntry();
+
+  window.setTimeout(() => {
+    if (getActiveScreenId() === "subscription-screen") {
+      closeSubscriptionPaymentModal({ focusPlanButton: false });
+      showScreen(currentUser || backendClient.isAuthenticated() ? "quiz-menu" : "home-screen", {
+        recordHistory: false,
+      });
+    }
+  }, 0);
 
   const runDeferredBootstrap = () => {
     wireSessionResumeModal();
@@ -35990,7 +37192,7 @@ function returnToStudyReviewPalette() {
 
 function showStudyReviewQuestion() {
   document.getElementById("end-study-btn").classList.add("hidden");
-  // 🔥 Hide quiz header buttons during review
+  // ðŸ”¥ Hide quiz header buttons during review
   document.getElementById("back-btn-quiz").classList.add("hidden");
   if (menuBtnQuiz) menuBtnQuiz.classList.add("hidden");
   renderDetailedQuestion();
@@ -36037,6 +37239,14 @@ function toggleModeHistory(containerId) {
 
 function showScreen(id, options = {}) {
   const { recordHistory = true } = options;
+  const normalizedId = String(id || "").trim();
+  if (isSubscriptionLockedForFeature(normalizedId)) {
+    openSubscriptionScreen({
+      intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
+      returnScreen: getActiveScreenId() || "quiz-menu",
+    });
+    return;
+  }
   const screens = [
     "welcome-screen",
     "home-screen",
@@ -36045,6 +37255,7 @@ function showScreen(id, options = {}) {
     "study-setup",
     "exam-setup",
     "daily-setup",
+    "subscription-screen",
     "topic-library",
     "topic-viewer",
     "tour-screen",
@@ -36061,6 +37272,9 @@ function showScreen(id, options = {}) {
   ];
 
   const currentActiveId = getActiveScreenId();
+  if (currentActiveId === "subscription-screen" && normalizedId !== "subscription-screen") {
+    closeSubscriptionPaymentModal({ focusPlanButton: false });
+  }
   const wasCommunityScreen = isCommunityScreenId(currentActiveId);
   const nextCommunityScreen = isCommunityScreenId(id);
   if (wasCommunityScreen && !nextCommunityScreen) {
@@ -36232,6 +37446,10 @@ function shuffle(array) {
 }
 
 document.addEventListener("keydown", function (e) {
+  if (subscriptionPaymentModalEl && !subscriptionPaymentModalEl.classList.contains("hidden") && e.key === "Escape") {
+    closeSubscriptionPaymentModal({ focusPlanButton: true });
+    return;
+  }
   if (appUpdateModalEl && !appUpdateModalEl.classList.contains("hidden") && e.key === "Escape") {
     if (!Boolean(appUpdateCurrentPayload?.forceUpdate)) {
       closeAppUpdateModal();
@@ -36457,7 +37675,7 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  // 1️⃣ If Study exit modal is open → close it
+  // 1ï¸âƒ£ If Study exit modal is open â†’ close it
   const studyModal = document.getElementById("study-exit-modal");
   if (studyModal && !studyModal.classList.contains("hidden")) {
     studyModal.classList.add("hidden");
@@ -36470,13 +37688,13 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  // 2️⃣ If Exam exit modal is open → close it
+  // 2ï¸âƒ£ If Exam exit modal is open â†’ close it
   if (!examExitModal.classList.contains("hidden")) {
     closeExamExitModal();
     return;
   }
 
-  // 3️⃣ Navigation based on CURRENT SCREEN (not mode)
+  // 3ï¸âƒ£ Navigation based on CURRENT SCREEN (not mode)
 
   const stateScreenId = String(state?.screen || "").trim();
   if (
@@ -36571,3 +37789,4 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 });
+

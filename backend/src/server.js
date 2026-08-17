@@ -213,13 +213,63 @@ const USERNAME_REGEX = /^[a-z0-9][a-z0-9_.-]{2,29}$/;
 const PHONE_CONTACT_REGEX = /^\+?[0-9][0-9()\-\s]{5,19}$/;
 const USER_ROLE_VALUES = new Set(["student", "worker"]);
 const SUBSCRIPTION_TIER_VALUES = new Set(["free", "premium"]);
+const SUBSCRIPTION_PLAN_VALUES = new Set(["trial", "weekly", "monthly", "yearly"]);
+const SUBSCRIPTION_STATUS_VALUES = new Set([
+  "none",
+  "trial",
+  "pending",
+  "active",
+  "expired",
+  "rejected",
+]);
+const SUBSCRIPTION_TRIAL_DAYS = 7;
+const SUBSCRIPTION_APPROVAL_WINDOW_HOURS = 24;
+const SUBSCRIPTION_PLAN_CATALOG = {
+  trial: {
+    key: "trial",
+    label: "Free Trial",
+    shortLabel: "Trial",
+    priceGhs: 0,
+    durationDays: 7,
+    description: "Try the app free for 7 days after signup.",
+    ctaLabel: "Current free access",
+  },
+  weekly: {
+    key: "weekly",
+    label: "Weekly Access",
+    shortLabel: "Week Pass",
+    priceGhs: 2,
+    durationDays: 7,
+    description: "Unlock drills, exams, library, and community for 7 days.",
+    ctaLabel: "Buy weekly access",
+  },
+  monthly: {
+    key: "monthly",
+    label: "Monthly Access",
+    shortLabel: "Month Pass",
+    priceGhs: 5,
+    durationDays: 30,
+    description: "Unlock everything for 30 days.",
+    ctaLabel: "Buy monthly access",
+  },
+  yearly: {
+    key: "yearly",
+    label: "Annual Access",
+    shortLabel: "Annual Pass",
+    priceGhs: 50,
+    durationDays: 365,
+    description: "Unlock everything for a full year.",
+    ctaLabel: "Buy annual access",
+  },
+};
+const SUBSCRIPTION_LOCKED_FEATURES = ["drills", "exams", "topic library", "community"];
 const PROFESSIONAL_TYPE_VALUES = new Set([
   "Doctor of Pharmacy",
   "Pharmacy Technician",
   "MCA",
   "Other",
 ]);
-const RESET_CODE_TTL_MINUTES = 15;
+const RESET_CODE_TTL_HOURS = 24;
 const DEACTIVATE_MAX_DAYS = 30;
 const DELETE_ACCOUNT_CONFIRM_TOKEN = "DELETE_MY_ACCOUNT_CONFIRMED";
 const DAILY_QUIZ_SEASON = {
@@ -3198,6 +3248,58 @@ function detectContactType(contact) {
   return isValidEmail(contact) ? "email" : "phone";
 }
 
+function maskEmailAddress(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  const atIndex = normalized.indexOf("@");
+  if (atIndex <= 0) {
+    return "";
+  }
+
+  const localPart = normalized.slice(0, atIndex);
+  const domainPart = normalized.slice(atIndex + 1);
+  if (!domainPart) {
+    return "";
+  }
+
+  const localPrefix = localPart.slice(0, 1) || "";
+  const localSuffix = localPart.length > 2 ? localPart.slice(-1) : "";
+  const maskedLocal = localPart.length <= 2 ? `${localPrefix}***` : `${localPrefix}***${localSuffix}`;
+  return `${maskedLocal}@${domainPart}`;
+}
+
+function maskPhoneNumber(phone) {
+  const normalized = String(phone || "").trim();
+  const digits = normalizePhoneComparable(normalized);
+  if (!digits) {
+    return "";
+  }
+
+  const visibleDigits = digits.slice(-4);
+  const maskedDigits = digits.length > 4 ? `${"*".repeat(Math.max(3, digits.length - 4))}${visibleDigits}` : digits;
+  return `${normalized.startsWith("+") ? "+" : ""}${maskedDigits}`;
+}
+
+function describeResetDeliveryTarget(user = {}) {
+  const contact = normalizeContactValue(user.contact || user.email);
+  if (!contact) {
+    return null;
+  }
+
+  if (isValidEmail(contact)) {
+    return {
+      method: "email",
+      label: "email address",
+      target: maskEmailAddress(contact),
+    };
+  }
+
+  return {
+    method: "phone",
+    label: "phone number",
+    target: maskPhoneNumber(contact),
+  };
+}
+
 function splitLegacyName(rawName) {
   const clean = normalizeWhitespace(rawName);
   if (!clean) {
@@ -3225,6 +3327,203 @@ function buildDisplayName(title, firstName, lastName, fallback = "User") {
 function normalizeSubscriptionTierValue(value) {
   const tier = String(value || "").trim().toLowerCase();
   return SUBSCRIPTION_TIER_VALUES.has(tier) ? tier : null;
+}
+
+function normalizeSubscriptionPlanValue(value) {
+  const tier = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+  if (!tier) return null;
+  if (["free", "free trial", "trial", "starter", "starter trial"].includes(tier)) return "trial";
+  if (
+    [
+      "weekly",
+      "daily",
+      "day",
+      "day pass",
+      "daily access",
+      "daily plan",
+      "weekly access",
+      "weekly plan",
+      "week pass",
+      "week access",
+    ].includes(tier)
+  ) {
+    return "weekly";
+  }
+  if (
+    [
+      "monthly",
+      "month",
+      "month pass",
+      "monthly access",
+      "monthly plan",
+    ].includes(tier)
+  ) {
+    return "monthly";
+  }
+  if (
+    [
+      "year",
+      "yearly",
+      "annual",
+      "annual access",
+      "annual plan",
+      "year pass",
+      "yearly access",
+    ].includes(tier)
+  ) {
+    return "yearly";
+  }
+  return SUBSCRIPTION_PLAN_VALUES.has(tier) ? tier : null;
+}
+
+function normalizeSubscriptionStatusValue(value) {
+  const status = String(value || "").trim().toLowerCase();
+  if (!status) return null;
+  if (status === "approved" || status === "enabled" || status === "paid") return "active";
+  if (status === "awaiting" || status === "waiting" || status === "review") return "pending";
+  if (status === "locked" || status === "inactive") return "expired";
+  return SUBSCRIPTION_STATUS_VALUES.has(status) ? status : null;
+}
+
+function getSubscriptionPlanMeta(plan = "trial") {
+  const normalized = normalizeSubscriptionPlanValue(plan) || "trial";
+  return SUBSCRIPTION_PLAN_CATALOG[normalized] || SUBSCRIPTION_PLAN_CATALOG.trial;
+}
+
+function addDaysToIsoDate(isoValue, days) {
+  const timestamp = Date.parse(String(isoValue || ""));
+  if (!Number.isFinite(timestamp) || !Number.isFinite(Number(days))) {
+    return null;
+  }
+  return new Date(timestamp + Number(days) * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function getIsoTimeValue(value) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  const timestamp = Date.parse(clean);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
+function getSubscriptionStatusLabel(status = "none") {
+  switch (normalizeSubscriptionStatusValue(status) || "none") {
+    case "trial":
+      return "Free Trial";
+    case "pending":
+      return "Pending Review";
+    case "active":
+      return "Active";
+    case "expired":
+      return "Expired";
+    case "rejected":
+      return "Rejected";
+    default:
+      return "Not Active";
+  }
+}
+
+function getSubscriptionPlanLabel(plan = "trial") {
+  return getSubscriptionPlanMeta(plan).label;
+}
+
+function computeSubscriptionState(rawUser = {}) {
+  const createdAt = getIsoTimeValue(rawUser.createdAt) || new Date().toISOString();
+  const requestedAt = getIsoTimeValue(rawUser.subscriptionRequestedAt);
+  const reviewedAt = getIsoTimeValue(rawUser.subscriptionReviewedAt);
+  const approvedAt = getIsoTimeValue(rawUser.subscriptionApprovedAt);
+  const rejectedAt = getIsoTimeValue(rawUser.subscriptionRejectedAt);
+  const startedAt = getIsoTimeValue(rawUser.subscriptionStartedAt) || approvedAt || requestedAt || createdAt;
+  const plan = normalizeSubscriptionPlanValue(rawUser.subscriptionPlan) || "trial";
+  const rawStatus = normalizeSubscriptionStatusValue(rawUser.subscriptionStatus);
+  const planMeta = getSubscriptionPlanMeta(plan);
+  const trialEndsAt = getIsoTimeValue(rawUser.trialEndsAt) || addDaysToIsoDate(createdAt, SUBSCRIPTION_TRIAL_DAYS);
+  const subscriptionEndsAt =
+    getIsoTimeValue(rawUser.subscriptionEndsAt) ||
+    (plan === "trial"
+      ? trialEndsAt
+      : startedAt && planMeta.durationDays
+        ? addDaysToIsoDate(startedAt, planMeta.durationDays)
+        : null);
+  const now = Date.now();
+  let status = rawStatus;
+
+  if (!status) {
+    if (plan === "trial") {
+      status = trialEndsAt && Date.parse(trialEndsAt) > now ? "trial" : "expired";
+    } else if (requestedAt && !approvedAt && !rejectedAt) {
+      status = "pending";
+    } else if (subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now) {
+      status = "active";
+    } else if (approvedAt) {
+      status = "expired";
+    } else if (requestedAt) {
+      status = "pending";
+    } else {
+      status = trialEndsAt && Date.parse(trialEndsAt) > now ? "trial" : "expired";
+    }
+  }
+
+  if (status === "trial" && trialEndsAt && Date.parse(trialEndsAt) <= now) {
+    status = "expired";
+  }
+  if (status === "active" && subscriptionEndsAt && Date.parse(subscriptionEndsAt) <= now) {
+    status = "expired";
+  }
+  if (status === "pending" && (approvedAt || rejectedAt)) {
+    status = approvedAt ? "active" : "rejected";
+  }
+  if (status === "pending" || status === "rejected") {
+    if (subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now) {
+      status = "active";
+    } else if (trialEndsAt && Date.parse(trialEndsAt) > now) {
+      status = "trial";
+    }
+  }
+
+  const isActive = status === "trial" || status === "active";
+  const isLocked = !isActive;
+  const durationDays = planMeta.durationDays || 0;
+  const expirationAt = plan === "trial" ? trialEndsAt : subscriptionEndsAt;
+  const daysRemaining = expirationAt
+    ? Math.max(0, Math.ceil((Date.parse(expirationAt) - now) / (24 * 60 * 60 * 1000)))
+    : null;
+  const approvalDeadlineAt = requestedAt
+    ? new Date(Date.parse(requestedAt) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
+    : null;
+  const lockedReason =
+    status === "pending"
+      ? "Waiting for admin approval."
+      : status === "expired"
+        ? "Your trial or paid access has ended."
+        : status === "rejected"
+          ? String(rawUser.subscriptionRejectedReason || rawUser.subscriptionReviewNote || "").trim() ||
+            "The last payment proof was not approved."
+          : "";
+
+  return {
+    plan,
+    planMeta,
+    status,
+    requestedAt,
+    reviewedAt,
+    approvedAt,
+    rejectedAt,
+    startedAt,
+    trialEndsAt,
+    subscriptionEndsAt,
+    expirationAt,
+    approvalDeadlineAt,
+    isActive,
+    isLocked,
+    daysRemaining,
+    lockedReason,
+    source: {
+      subscriptionTier: normalizeSubscriptionTierValue(rawUser.subscriptionTier) || "free",
+    },
+  };
 }
 
 function normalizePointsValue(value) {
@@ -3486,6 +3785,7 @@ function normalizeExistingUser(rawUser = {}) {
     : "student";
   const subscriptionTier =
     normalizeSubscriptionTierValue(rawUser.subscriptionTier) || "free";
+  const subscriptionState = computeSubscriptionState(rawUser);
   const professionalType = PROFESSIONAL_TYPE_VALUES.has(rawUser.professionalType)
     ? rawUser.professionalType
     : "Other";
@@ -3510,6 +3810,18 @@ function normalizeExistingUser(rawUser = {}) {
     email: email || "",
     role,
     subscriptionTier,
+    subscriptionPlan: subscriptionState.plan,
+    subscriptionStatus: subscriptionState.status,
+    subscriptionRequestedAt: subscriptionState.requestedAt,
+    subscriptionReviewedAt: subscriptionState.reviewedAt,
+    subscriptionApprovedAt: subscriptionState.approvedAt,
+    subscriptionRejectedAt: subscriptionState.rejectedAt,
+    subscriptionReviewNote: String(rawUser.subscriptionReviewNote || "").trim(),
+    subscriptionRejectedReason: String(rawUser.subscriptionRejectedReason || "").trim(),
+    subscriptionStartedAt: subscriptionState.startedAt,
+    trialEndsAt: subscriptionState.trialEndsAt,
+    subscriptionEndsAt: subscriptionState.subscriptionEndsAt,
+    subscriptionApprovalDeadlineAt: subscriptionState.approvalDeadlineAt,
     professionalType,
     country: normalizeWhitespace(rawUser.country),
     institution: normalizeWhitespace(rawUser.institution),
@@ -3535,6 +3847,7 @@ function normalizeExistingUser(rawUser = {}) {
 
 function toPublicUser(user) {
   const normalized = normalizeExistingUser(user);
+  const subscriptionState = computeSubscriptionState(normalized);
   return {
     id: normalized.id,
     title: normalized.title,
@@ -3548,6 +3861,37 @@ function toPublicUser(user) {
     email: normalized.email,
     role: normalized.role,
     subscriptionTier: normalized.subscriptionTier,
+    subscriptionPlan: subscriptionState.plan,
+    subscriptionPlanLabel: subscriptionState.planMeta.label,
+    subscriptionPlanShortLabel: subscriptionState.planMeta.shortLabel,
+    subscriptionPlanPriceGhs: subscriptionState.planMeta.priceGhs,
+    subscriptionStatus: subscriptionState.status,
+    subscriptionStatusLabel: getSubscriptionStatusLabel(subscriptionState.status),
+    subscriptionRequestedAt: subscriptionState.requestedAt,
+    subscriptionReviewedAt: subscriptionState.reviewedAt,
+    subscriptionApprovedAt: subscriptionState.approvedAt,
+    subscriptionRejectedAt: subscriptionState.rejectedAt,
+    subscriptionStartedAt: subscriptionState.startedAt,
+    trialEndsAt: subscriptionState.trialEndsAt,
+    subscriptionEndsAt: subscriptionState.subscriptionEndsAt,
+    subscriptionExpirationAt: subscriptionState.expirationAt,
+    subscriptionApprovalDeadlineAt: subscriptionState.approvalDeadlineAt,
+    subscriptionAccess: {
+      isActive: subscriptionState.isActive,
+      isLocked: subscriptionState.isLocked,
+      lockedReason: subscriptionState.lockedReason,
+      daysRemaining: subscriptionState.daysRemaining,
+      expirationAt: subscriptionState.expirationAt,
+      trialEndsAt: subscriptionState.trialEndsAt,
+      approvalDeadlineAt: subscriptionState.approvalDeadlineAt,
+      plan: subscriptionState.plan,
+      planLabel: subscriptionState.planMeta.label,
+      status: subscriptionState.status,
+      statusLabel: getSubscriptionStatusLabel(subscriptionState.status),
+      reviewNote: String(normalized.subscriptionReviewNote || "").trim(),
+      rejectionReason: String(normalized.subscriptionRejectedReason || "").trim(),
+      lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+    },
     professionalType: normalized.professionalType,
     country: normalized.country,
     institution: normalized.institution,
@@ -3564,6 +3908,302 @@ function toPublicUser(user) {
     setupPoints: normalizeSetupPointsValue(normalized.setupPoints),
     lawDrillSession: normalizeLawDrillSessionValue(normalized.lawDrillSession),
   };
+}
+
+function normalizeSubscriptionRequest(rawRequest = {}) {
+  const plan = normalizeSubscriptionPlanValue(rawRequest.plan) || "trial";
+  const rawStatus = String(rawRequest.status || "").trim().toLowerCase();
+  const status = ["pending", "approved", "rejected", "active", "expired"].includes(rawStatus)
+    ? rawStatus
+    : "pending";
+  const requestedAt = getIsoTimeValue(rawRequest.requestedAt) || new Date().toISOString();
+  const reviewedAt = getIsoTimeValue(rawRequest.reviewedAt);
+  const approvedAt = getIsoTimeValue(rawRequest.approvedAt);
+  const rejectedAt = getIsoTimeValue(rawRequest.rejectedAt);
+  const planMeta = getSubscriptionPlanMeta(plan);
+  const reviewDeadlineAt =
+    getIsoTimeValue(rawRequest.reviewDeadlineAt) ||
+    new Date(Date.parse(requestedAt) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+
+  return {
+    id: String(rawRequest.id || crypto.randomUUID()),
+    userId: String(rawRequest.userId || "").trim(),
+    userName: String(rawRequest.userName || "").trim(),
+    username: String(rawRequest.username || "").trim(),
+    contact: String(rawRequest.contact || "").trim(),
+    plan,
+    planLabel: planMeta.label,
+    planShortLabel: planMeta.shortLabel,
+    priceGhs: planMeta.priceGhs,
+    durationDays: planMeta.durationDays,
+    status,
+    requestedAt,
+    reviewedAt,
+    approvedAt,
+    rejectedAt,
+    reviewDeadlineAt,
+    reviewerId: String(rawRequest.reviewerId || "").trim(),
+    reviewerName: String(rawRequest.reviewerName || "").trim(),
+    reviewNote: String(rawRequest.reviewNote || "").trim(),
+    paymentReference: String(rawRequest.paymentReference || rawRequest.transactionId || "").trim(),
+    proofText: String(rawRequest.proofText || "").trim(),
+    proofDataUrl: String(rawRequest.proofDataUrl || "").trim(),
+    proofFileName: String(rawRequest.proofFileName || "").trim(),
+    proofMimeType: String(rawRequest.proofMimeType || "").trim(),
+    proofType: String(rawRequest.proofType || "").trim(),
+    paymentMethod: String(rawRequest.paymentMethod || "").trim(),
+    createdAt: requestedAt,
+    updatedAt: String(rawRequest.updatedAt || requestedAt),
+  };
+}
+
+function getSubscriptionRequestActivatedAt(request = {}) {
+  return getIsoTimeValue(request.activatedAt) || getIsoTimeValue(request.approvedAt) || null;
+}
+
+function getSubscriptionRequestExpiresAt(request = {}) {
+  const explicitExpiresAt = getIsoTimeValue(request.expiresAt);
+  if (explicitExpiresAt) {
+    return explicitExpiresAt;
+  }
+
+  const activatedAt = getSubscriptionRequestActivatedAt(request);
+  if (!activatedAt) {
+    return null;
+  }
+
+  const plan = normalizeSubscriptionPlanValue(request.plan) || "trial";
+  const planMeta = getSubscriptionPlanMeta(plan);
+  if (!planMeta.durationDays) {
+    return null;
+  }
+
+  return addDaysToIsoDate(activatedAt, planMeta.durationDays);
+}
+
+function getSubscriptionRequestStatus(request = {}, now = Date.now()) {
+  const rawStatus = String(request.status || "pending").trim().toLowerCase();
+  if (rawStatus === "rejected" || rawStatus === "expired") {
+    return rawStatus;
+  }
+
+  const requestedAt = getIsoTimeValue(request.requestedAt);
+  const activatedAt = getSubscriptionRequestActivatedAt(request);
+  const expiresAt = getSubscriptionRequestExpiresAt(request);
+  const expiresMs = Date.parse(String(expiresAt || ""));
+
+  if (rawStatus === "pending") {
+    return activatedAt ? (Number.isFinite(expiresMs) && expiresMs <= now ? "expired" : "active") : "pending";
+  }
+
+  if (activatedAt || rawStatus === "approved" || rawStatus === "active") {
+    if (Number.isFinite(expiresMs) && expiresMs <= now) {
+      return "expired";
+    }
+    return "active";
+  }
+
+  return requestedAt ? "pending" : "pending";
+}
+
+function toPublicSubscriptionRequest(rawRequest = {}, usersById = new Map()) {
+  const request = normalizeSubscriptionRequest(rawRequest);
+  const user = usersById.get(request.userId) || null;
+  const userState = user ? computeSubscriptionState(user) : null;
+  const activatedAt = request.activatedAt || userState?.approvedAt || userState?.startedAt || null;
+  const expiresAt =
+    request.expiresAt ||
+    (activatedAt && userState?.subscriptionEndsAt
+      ? userState.subscriptionEndsAt
+      : activatedAt
+        ? getSubscriptionRequestExpiresAt({ ...request, activatedAt })
+        : null);
+  const status = getSubscriptionRequestStatus({ ...request, activatedAt, expiresAt });
+  const expiredAt = request.expiredAt || (status === "expired" ? expiresAt : null);
+
+  return {
+    ...request,
+    activatedAt,
+    expiresAt,
+    expiredAt,
+    status,
+    isExpired: status === "expired",
+    user: user ? toPublicUser(user) : null,
+  };
+}
+
+function buildLegacySubscriptionRequestFromUser(user = {}) {
+  const normalized = normalizeExistingUser(user);
+  const subscriptionState = computeSubscriptionState(normalized);
+  const hasSubscriptionHistory =
+    subscriptionState.status !== "trial" &&
+    Boolean(
+      subscriptionState.requestedAt ||
+        subscriptionState.reviewedAt ||
+        subscriptionState.approvedAt ||
+        subscriptionState.rejectedAt ||
+        subscriptionState.subscriptionEndsAt,
+    );
+
+  if (!hasSubscriptionHistory) {
+    return null;
+  }
+
+  const activatedAt =
+    subscriptionState.approvedAt ||
+    (["active", "expired"].includes(subscriptionState.status) ? subscriptionState.startedAt : null);
+  const expiresAt = subscriptionState.subscriptionEndsAt || null;
+
+  return normalizeSubscriptionRequest({
+    id: `legacy-subscription-${normalized.id}`,
+    userId: normalized.id,
+    userName: normalized.name,
+    username: normalized.username,
+    contact: normalized.contact,
+    plan: subscriptionState.plan,
+    status:
+      subscriptionState.status === "rejected"
+        ? "rejected"
+        : subscriptionState.status === "expired"
+          ? "expired"
+          : subscriptionState.status === "active"
+            ? "active"
+            : "pending",
+    requestedAt: subscriptionState.requestedAt || normalized.createdAt,
+    reviewedAt: subscriptionState.reviewedAt || activatedAt || null,
+    approvedAt: subscriptionState.approvedAt || activatedAt || null,
+    rejectedAt: subscriptionState.rejectedAt || null,
+    activatedAt,
+    expiresAt,
+    expiredAt: subscriptionState.status === "expired" ? expiresAt : null,
+    reviewDeadlineAt: subscriptionState.approvalDeadlineAt || null,
+    reviewerId: "",
+    reviewerName: "",
+    reviewNote: String(normalized.subscriptionReviewNote || normalized.subscriptionRejectedReason || "").trim(),
+    paymentReference: String(normalized.subscriptionPaymentReference || "").trim(),
+    proofText: String(normalized.subscriptionPaymentReference || "").trim(),
+    proofDataUrl: "",
+    proofFileName: "",
+    proofMimeType: "",
+    proofType: "",
+    paymentMethod: "",
+    source: "legacy-user-sync",
+    updatedAt: normalized.updatedAt,
+  });
+}
+
+function synchronizeSubscriptionRequestsWithUsers(users = [], requests = []) {
+  const safeUsers = Array.isArray(users) ? users.map(normalizeExistingUser) : [];
+  const safeRequests = Array.isArray(requests) ? requests.map(normalizeSubscriptionRequest) : [];
+  const requestUserIds = new Set(
+    safeRequests.map((request) => String(request.userId || "").trim()).filter(Boolean),
+  );
+  const missingRequests = safeUsers
+    .map((user) => buildLegacySubscriptionRequestFromUser(user))
+    .filter((request) => request && request.userId && !requestUserIds.has(request.userId));
+
+  return {
+    changed: missingRequests.length > 0,
+    requests: [...missingRequests, ...safeRequests],
+  };
+}
+
+function normalizePasswordResetRequest(rawRequest = {}) {
+  const requestedAt = getIsoTimeValue(rawRequest.requestedAt) || new Date().toISOString();
+  const rawStatus = String(rawRequest.status || "").trim().toLowerCase();
+  const status = ["pending", "sent", "resolved", "expired", "cancelled"].includes(rawStatus)
+    ? rawStatus
+    : "pending";
+  const contact = normalizeContactValue(rawRequest.contact) || normalizeWhitespace(rawRequest.contact);
+  const contactType = String(
+    rawRequest.contactType || (contact ? detectContactType(contact) : ""),
+  )
+    .trim()
+    .toLowerCase();
+  const email = isValidEmail(rawRequest.email)
+    ? normalizeContactValue(rawRequest.email)
+    : isValidEmail(contact)
+      ? normalizeContactValue(contact)
+      : "";
+  const deliveryMethod =
+    String(rawRequest.deliveryMethod || contactType || "").trim().toLowerCase() ||
+    (contactType === "email" ? "email" : contactType === "phone" ? "phone" : "");
+
+  return {
+    id: String(rawRequest.id || crypto.randomUUID()),
+    userId: String(rawRequest.userId || "").trim(),
+    username: String(rawRequest.username || "").trim(),
+    name: String(rawRequest.name || "").trim(),
+    contact,
+    contactType,
+    email,
+    deliveryMethod,
+    deliveryLabel:
+      String(rawRequest.deliveryLabel || "").trim() ||
+      (deliveryMethod === "email"
+        ? "email address"
+        : deliveryMethod === "phone"
+          ? "phone number"
+          : "registered contact"),
+    resetCode: String(rawRequest.resetCode || "").trim(),
+    resetCodeHash: String(rawRequest.resetCodeHash || "").trim(),
+    status,
+    requestedAt,
+    sentAt: rawRequest.sentAt ? String(rawRequest.sentAt) : null,
+    resolvedAt: rawRequest.resolvedAt ? String(rawRequest.resolvedAt) : null,
+    expiresAt: rawRequest.expiresAt ? String(rawRequest.expiresAt) : null,
+    note: String(rawRequest.note || "").trim(),
+    updatedAt: String(rawRequest.updatedAt || requestedAt),
+  };
+}
+
+function getPasswordResetRequestExpiresAt(request = {}) {
+  const explicitExpiresAt = getIsoTimeValue(request.expiresAt);
+  if (explicitExpiresAt) {
+    return explicitExpiresAt;
+  }
+
+  const sentAt = getIsoTimeValue(request.sentAt);
+  if (!sentAt) {
+    return null;
+  }
+
+  return new Date(sentAt + RESET_CODE_TTL_HOURS * 60 * 60 * 1000).toISOString();
+}
+
+function getPasswordResetRequestStatus(request = {}) {
+  const rawStatus = String(request.status || "pending").trim().toLowerCase();
+  if (["resolved", "cancelled"].includes(rawStatus)) {
+    return rawStatus;
+  }
+  if (rawStatus === "sent") {
+    const expiresMs = Date.parse(String(getPasswordResetRequestExpiresAt(request) || ""));
+    if (Number.isFinite(expiresMs) && expiresMs < Date.now()) {
+      return "expired";
+    }
+    return "sent";
+  }
+  return "pending";
+}
+
+function toPublicPasswordResetRequest(rawRequest = {}, usersById = new Map()) {
+  const request = normalizePasswordResetRequest(rawRequest);
+  const status = getPasswordResetRequestStatus(request);
+  const user = usersById.get(request.userId) || null;
+  return {
+    ...request,
+    status,
+    isExpired: status === "expired",
+    user: user ? toPublicUser(user) : null,
+  };
+}
+
+function coerceCollectionArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") {
+    return Object.values(value).filter((entry) => entry && typeof entry === "object");
+  }
+  return [];
 }
 
 function normalizeLawDrillLevelStatus(levelStatus, index, currentLevelIndex, reviewLevelIndex) {
@@ -3796,10 +4436,7 @@ function buildAdminWarningNoticeBody(report = {}, warningTitle = "") {
   const reportDate = normalizedReport.createdAt ? new Date(normalizedReport.createdAt) : null;
   const formattedDate =
     reportDate && !Number.isNaN(reportDate.getTime())
-      ? reportDate.toLocaleString("en-US", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })
+      ? `${String(reportDate.getDate()).padStart(2, "0")}/${String(reportDate.getMonth() + 1).padStart(2, "0")}/${String(reportDate.getFullYear()).slice(-2)}, ${reportDate.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" })}`
       : "the reported time";
   const reason = normalizeWhitespace(normalizedReport.reason || "a community standards concern").slice(0, 240);
   const closingLineByTitle = {
@@ -4294,6 +4931,17 @@ function findUserByIdentifier(users, identifierRaw) {
     }
 
     return false;
+  });
+}
+
+function findUserByRegisteredContact(users, contactRaw) {
+  const contact = normalizeContactValue(contactRaw);
+  if (!contact) return null;
+
+  return users.find((rawUser) => {
+    const user = normalizeExistingUser(rawUser);
+    const userContact = normalizeContactValue(user.contact);
+    return Boolean(userContact && userContact === contact);
   });
 }
 
@@ -5450,6 +6098,7 @@ app.post(
 
     const createdAt = new Date().toISOString();
     const name = buildDisplayName(title, firstName, lastName, username);
+    const trialEndsAt = addDaysToIsoDate(createdAt, SUBSCRIPTION_TRIAL_DAYS);
     const user = {
       id: crypto.randomUUID(),
       title,
@@ -5463,6 +6112,16 @@ app.post(
       email: isValidEmail(contact) ? contact : "",
       role,
       subscriptionTier: "free",
+      subscriptionPlan: "trial",
+      subscriptionStatus: "trial",
+      subscriptionRequestedAt: null,
+      subscriptionReviewedAt: null,
+      subscriptionApprovedAt: null,
+      subscriptionRejectedAt: null,
+      subscriptionStartedAt: createdAt,
+      trialEndsAt,
+      subscriptionEndsAt: trialEndsAt,
+      subscriptionApprovalDeadlineAt: null,
       professionalType,
       country,
       institution,
@@ -5534,10 +6193,27 @@ app.post(
       return;
     }
 
-    const token = createToken(user);
+    const signedInAt = new Date().toISOString();
+    const updatedUsers = users.map((entry) =>
+      entry.id === user.id
+        ? {
+            ...entry,
+            updatedAt: signedInAt,
+            lastSeenAt: signedInAt,
+          }
+        : entry,
+    );
+    const updatedUser = updatedUsers.find((entry) => entry.id === user.id) || user;
+    try {
+      await writeCollection("users", updatedUsers);
+    } catch (writeError) {
+      console.warn("Failed to persist login timestamp", writeError?.message || writeError);
+    }
+
+    const token = createToken(updatedUser);
     res.json({
       token,
-      user: toPublicUser(user),
+      user: toPublicUser(updatedUser),
     });
 
     void (async () => {
@@ -5590,7 +6266,183 @@ app.get(
       return;
     }
 
+    await touchUserLastSeen(user.id);
     res.json(toPublicUser(user));
+  }),
+);
+
+app.get(
+  "/api/subscriptions/plans",
+  asyncHandler(async (_req, res) => {
+    res.json({
+      ok: true,
+      approvalWindowHours: SUBSCRIPTION_APPROVAL_WINDOW_HOURS,
+      trialDays: SUBSCRIPTION_TRIAL_DAYS,
+      lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+      plans: Object.values(SUBSCRIPTION_PLAN_CATALOG).map((plan) => ({
+        ...plan,
+        currency: "GHS",
+      })),
+    });
+  }),
+);
+
+app.get(
+  "/api/subscriptions/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const rawRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
+    const syncedRequests = synchronizeSubscriptionRequestsWithUsers([user], rawRequests);
+    if (syncedRequests.changed) {
+      await writeCollection("subscriptionRequests", syncedRequests.requests);
+    }
+    const requests = syncedRequests.requests
+      .map((request) => toPublicSubscriptionRequest(request, new Map([[user.id, user]])))
+      .filter((entry) => entry.userId === user.id)
+      .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+
+    res.json({
+      ok: true,
+      user: toPublicUser(user),
+      subscription: toPublicUser(user).subscriptionAccess,
+      request: requests[0] || null,
+      requests,
+      plans: Object.values(SUBSCRIPTION_PLAN_CATALOG).map((plan) => ({
+        ...plan,
+        currency: "GHS",
+      })),
+      lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+      approvalWindowHours: SUBSCRIPTION_APPROVAL_WINDOW_HOURS,
+      trialDays: SUBSCRIPTION_TRIAL_DAYS,
+    });
+  }),
+);
+
+app.post(
+  "/api/subscriptions/requests",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const requestedPlan = normalizeSubscriptionPlanValue(
+      req.body?.plan || req.body?.subscriptionPlan || req.body?.tier,
+    );
+    if (!requestedPlan || requestedPlan === "trial") {
+      res.status(400).json({ error: "Choose a paid plan before submitting payment proof." });
+      return;
+    }
+
+    const proofText = String(
+      req.body?.proofText || req.body?.transactionId || req.body?.paymentReference || "",
+    ).trim();
+    const proofDataUrl = String(
+      req.body?.proofDataUrl || req.body?.proofImageDataUrl || req.body?.proofScreenshot || "",
+    ).trim();
+    const proofFileName = String(req.body?.proofFileName || "").trim();
+    const proofMimeType = String(req.body?.proofMimeType || "").trim();
+    const paymentMethod = String(req.body?.paymentMethod || "").trim();
+    const reviewNote = String(req.body?.note || req.body?.message || "").trim();
+
+    if (!proofText && !proofDataUrl) {
+      res.status(400).json({
+        error: "Add a transaction ID, screenshot, or payment reference before submitting.",
+      });
+      return;
+    }
+
+    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
+    if (userIndex < 0) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const currentUser = users[userIndex];
+    const currentState = computeSubscriptionState(currentUser);
+    if (currentState.status === "active" || currentState.status === "pending") {
+      res.status(409).json({
+        error:
+          currentState.status === "pending"
+            ? "A subscription request is already under review."
+            : "Your subscription is already active.",
+      });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const requests = (await readCollection("subscriptionRequests")).map(normalizeSubscriptionRequest);
+    const existingPendingIndex = requests.findIndex(
+      (entry) => entry.userId === currentUser.id && entry.status === "pending",
+    );
+    const existingPending = existingPendingIndex >= 0 ? requests[existingPendingIndex] : null;
+    if (existingPending) {
+      res.status(409).json({ error: "A subscription request is already under review." });
+      return;
+    }
+
+    const request = normalizeSubscriptionRequest({
+      ...(existingPending || {}),
+      id: existingPending?.id || crypto.randomUUID(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      username: currentUser.username,
+      contact: currentUser.contact,
+      plan: requestedPlan,
+      status: "pending",
+      requestedAt: existingPending?.requestedAt || now,
+      reviewedAt: null,
+      approvedAt: null,
+      rejectedAt: null,
+      reviewDeadlineAt:
+        existingPending?.reviewDeadlineAt ||
+        new Date(Date.parse(existingPending?.requestedAt || now) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString(),
+      reviewerId: "",
+      reviewerName: "",
+      reviewNote,
+      paymentReference: proofText,
+      proofText,
+      proofDataUrl,
+      proofFileName,
+      proofMimeType,
+      proofType: proofDataUrl ? "image" : "text",
+      paymentMethod,
+      updatedAt: now,
+    });
+
+    if (existingPendingIndex >= 0) {
+      requests[existingPendingIndex] = request;
+    } else {
+      requests.unshift(request);
+    }
+
+    users[userIndex] = {
+      ...currentUser,
+      subscriptionPlan: requestedPlan,
+      subscriptionStatus: "pending",
+      subscriptionRequestedAt: now,
+      subscriptionReviewedAt: null,
+      subscriptionApprovedAt: null,
+      subscriptionRejectedAt: null,
+      subscriptionReviewNote: reviewNote,
+      subscriptionRejectedReason: null,
+      subscriptionPaymentReference: proofText,
+      updatedAt: now,
+    };
+
+    await writeCollection("subscriptionRequests", requests);
+    await writeCollection("users", users);
+
+    res.status(existingPending ? 200 : 201).json({
+      ok: true,
+      request,
+      user: toPublicUser(users[userIndex]),
+      subscription: toPublicUser(users[userIndex]).subscriptionAccess,
+    });
   }),
 );
 
@@ -5687,57 +6539,86 @@ app.post(
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
     const genericResetMessage =
-      "If the account exists, a reset code has been sent to the registered contact.";
-    const identifier = String(
-      req.body?.identifier ||
-        req.body?.contact ||
-        req.body?.email ||
-        req.body?.username ||
-        "",
-    ).trim();
+      "Your reset request has been queued for admin review. When the code is sent, use Have reset code? to finish resetting your password.";
+    const contact = String(req.body?.contact || "").trim();
 
-    if (!identifier) {
-      res.status(400).json({ error: "identifier is required" });
+    if (!contact) {
+      res.status(400).json({ error: "contact is required" });
+      return;
+    }
+    if (!normalizeContactValue(contact)) {
+      res.status(400).json({ error: "Enter a valid email address or phone number." });
       return;
     }
 
     const users = (await readCollection("users")).map(normalizeExistingUser);
-    const user = findUserByIdentifier(users, identifier);
+    const user = findUserByRegisteredContact(users, contact);
 
     if (!user) {
-      res.json({ ok: true, message: genericResetMessage });
+      res.status(400).json({
+        error: "Wrong contact. Use the registered email or phone number on this account.",
+      });
       return;
     }
 
     const resetCode = createResetCode();
-    const expiresAt = new Date(
-      Date.now() + RESET_CODE_TTL_MINUTES * 60 * 1000,
-    ).toISOString();
+    const deliveryTarget = describeResetDeliveryTarget(user);
+    const deliveryChannel = deliveryTarget?.method === "email" ? "email" : "WhatsApp";
+    const deliverySummary = deliveryTarget?.target
+      ? `${deliveryChannel} (${deliveryTarget.target})`
+      : deliveryChannel;
+    const now = new Date().toISOString();
 
     const nextUsers = users.map((entry) => {
       if (entry.id !== user.id) return entry;
       return {
         ...entry,
         resetCodeHash: hashResetCode(resetCode),
-        resetCodeExpiresAt: expiresAt,
+        resetCodeExpiresAt: null,
         updatedAt: new Date().toISOString(),
       };
     });
     await writeCollection("users", nextUsers);
 
-    errorLogStream.write(
-      `${new Date().toISOString()} password-reset-request userId=${user.id} expiresAt=${expiresAt}\n`,
+    const resetRequests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
     );
+    const nextResetRequest = normalizePasswordResetRequest({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      username: user.username,
+      name: user.name,
+      contact: user.contact || user.email,
+      contactType: user.contactType || (deliveryTarget?.method === "email" ? "email" : "phone"),
+      email: user.email || "",
+      deliveryMethod: deliveryTarget?.method || "",
+      deliveryLabel: deliveryTarget?.label || "",
+      resetCode,
+      resetCodeHash: hashResetCode(resetCode),
+      status: "pending",
+      requestedAt: now,
+      sentAt: null,
+      resolvedAt: null,
+      expiresAt: null,
+      note: "Password reset requested from the app.",
+      updatedAt: now,
+    });
+    const nextResetRequests = [
+      nextResetRequest,
+      ...resetRequests.filter((entry) => entry.userId !== user.id),
+    ];
+    await writeCollection("passwordResetRequests", nextResetRequests);
+
+    errorLogStream.write(`${new Date().toISOString()} password-reset-request userId=${user.id} pending\n`);
 
     const response = {
       ok: true,
-      message: genericResetMessage,
+      message: `Your reset request has been received. Reset code will be sent to you via ${deliverySummary}. Use that to reset your password.`,
+      deliveryMethod: deliveryTarget?.method || "",
+      deliveryTarget: deliveryTarget?.target || "",
+      deliveryLabel: deliveryTarget?.label || "",
+      resetRequestId: nextResetRequest.id,
     };
-
-    if (config.exposeResetCode) {
-      response.devResetCode = resetCode;
-      response.expiresAt = expiresAt;
-    }
 
     res.json(response);
   }),
@@ -5747,20 +6628,18 @@ app.post(
   "/api/auth/reset-password",
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-    const identifier = String(
-      req.body?.identifier ||
-        req.body?.contact ||
-        req.body?.email ||
-        req.body?.username ||
-        "",
-    ).trim();
+    const contact = String(req.body?.contact || "").trim();
     const code = String(req.body?.code || "").trim();
     const newPassword = String(req.body?.newPassword || "");
 
-    if (!identifier || !code || !newPassword) {
+    if (!contact || !code || !newPassword) {
       res.status(400).json({
-        error: "identifier, code and newPassword are required",
+        error: "contact, code and newPassword are required",
       });
+      return;
+    }
+    if (!normalizeContactValue(contact)) {
+      res.status(400).json({ error: "Enter a valid email address or phone number." });
       return;
     }
     if (newPassword.length < 6) {
@@ -5769,18 +6648,33 @@ app.post(
     }
 
     const users = (await readCollection("users")).map(normalizeExistingUser);
-    const user = findUserByIdentifier(users, identifier);
-    if (!user || !user.resetCodeHash || !user.resetCodeExpiresAt) {
+    const user = findUserByRegisteredContact(users, contact);
+    if (!user) {
+      res.status(400).json({
+        error: "Wrong contact. Use the registered email or phone number on this account.",
+      });
+      return;
+    }
+
+    const resetRequests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
+    );
+    const codeHash = hashResetCode(code);
+    const matchingRequest = [...resetRequests]
+      .reverse()
+      .find((entry) => entry.userId === user.id && entry.resetCodeHash === codeHash);
+    if (!matchingRequest) {
+      res.status(400).json({ error: "invalid or expired reset code" });
+      return;
+    }
+    if (getPasswordResetRequestStatus(matchingRequest) !== "sent") {
       res.status(400).json({ error: "invalid or expired reset code" });
       return;
     }
 
-    const expiresMs = Date.parse(String(user.resetCodeExpiresAt));
+    const expiresAt = getPasswordResetRequestExpiresAt(matchingRequest);
+    const expiresMs = Date.parse(String(expiresAt || ""));
     if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) {
-      res.status(400).json({ error: "invalid or expired reset code" });
-      return;
-    }
-    if (hashResetCode(code) !== user.resetCodeHash) {
       res.status(400).json({ error: "invalid or expired reset code" });
       return;
     }
@@ -5798,6 +6692,19 @@ app.post(
       }),
     );
     await writeCollection("users", updatedUsers);
+
+    const nextResetRequests = resetRequests.map((entry) => {
+      if (entry.id !== matchingRequest.id) return entry;
+      return {
+        ...entry,
+        status: "resolved",
+        resetCode: "",
+        resetCodeHash: "",
+        resolvedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    await writeCollection("passwordResetRequests", nextResetRequests);
     res.json({ ok: true, message: "Password reset successful. You can now sign in." });
   }),
 );
@@ -9883,9 +10790,7 @@ app.post(
       date: req.body?.date || new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+        year: "2-digit",
       }).format(new Date()),
       createdAt: new Date().toISOString(),
     };
@@ -11233,6 +12138,251 @@ app.put(
   }),
 );
 
+app.get(
+  "/api/admin/subscription-requests",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const rawRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
+    const syncedRequests = synchronizeSubscriptionRequestsWithUsers(users, rawRequests);
+    if (syncedRequests.changed) {
+      await writeCollection("subscriptionRequests", syncedRequests.requests);
+    }
+    const requests = syncedRequests.requests
+      .map((request) => toPublicSubscriptionRequest(request, usersById))
+      .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+
+    res.json({
+      ok: true,
+      pendingCount: requests.filter((entry) => getSubscriptionRequestStatus(entry) === "pending").length,
+      requests,
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/subscription-requests/:requestId/approve",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestId = String(req.params.requestId || "").trim();
+    const reviewNote = String(req.body?.reviewNote || req.body?.note || "").trim();
+    const now = new Date().toISOString();
+
+    const requests = (await readCollection("subscriptionRequests")).map(normalizeSubscriptionRequest);
+    const requestIndex = requests.findIndex((entry) => entry.id === requestId);
+    if (requestIndex < 0) {
+      res.status(404).json({ error: "Subscription request not found" });
+      return;
+    }
+
+    const request = requests[requestIndex];
+    const plan = normalizeSubscriptionPlanValue(request.plan) || "daily";
+    const planMeta = getSubscriptionPlanMeta(plan);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === request.userId);
+    if (userIndex < 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const subscriptionStartedAt = now;
+    const subscriptionEndsAt =
+      plan === "trial"
+        ? addDaysToIsoDate(subscriptionStartedAt, SUBSCRIPTION_TRIAL_DAYS)
+        : addDaysToIsoDate(subscriptionStartedAt, planMeta.durationDays);
+
+    requests[requestIndex] = {
+      ...request,
+      status: "active",
+      reviewedAt: now,
+      approvedAt: now,
+      activatedAt: now,
+      rejectedAt: null,
+      expiresAt: subscriptionEndsAt,
+      expiredAt: null,
+      reviewerId: getActorId(req),
+      reviewerName: "Admin",
+      reviewNote,
+      updatedAt: now,
+    };
+
+    users[userIndex] = {
+      ...users[userIndex],
+      subscriptionPlan: plan,
+      subscriptionStatus: plan === "trial" ? "trial" : "active",
+      subscriptionRequestedAt: request.requestedAt,
+      subscriptionReviewedAt: now,
+      subscriptionApprovedAt: now,
+      subscriptionRejectedAt: null,
+      subscriptionReviewNote: reviewNote,
+      subscriptionRejectedReason: null,
+      subscriptionStartedAt,
+      trialEndsAt: plan === "trial" ? subscriptionEndsAt : users[userIndex].trialEndsAt,
+      subscriptionEndsAt,
+      subscriptionApprovalDeadlineAt: request.reviewDeadlineAt,
+      subscriptionPaymentReference: request.paymentReference,
+      updatedAt: now,
+    };
+
+    await writeCollection("subscriptionRequests", requests);
+    await writeCollection("users", users);
+
+    res.json({
+      ok: true,
+      request: requests[requestIndex],
+      user: toPublicUser(users[userIndex]),
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/password-reset-requests",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const requests = coerceCollectionArray(await readCollection("passwordResetRequests"))
+      .map((request) => toPublicPasswordResetRequest(request, usersById))
+      .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+
+    res.json({
+      ok: true,
+      pendingCount: requests.filter((entry) => entry.status === "pending").length,
+      requests,
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/password-reset-requests/:requestId/mark-sent",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestId = String(req.params.requestId || "").trim();
+    if (!requestId) {
+      res.status(400).json({ error: "requestId is required" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const requests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
+    );
+    const requestIndex = requests.findIndex((entry) => entry.id === requestId);
+    if (requestIndex < 0) {
+      res.status(404).json({ error: "Password reset request not found" });
+      return;
+    }
+
+    const currentRequest = requests[requestIndex];
+    if (getPasswordResetRequestStatus(currentRequest) !== "pending") {
+      res.status(400).json({ error: "Password reset request is no longer pending" });
+      return;
+    }
+
+    const expiresAt = new Date(
+      Date.parse(now) + RESET_CODE_TTL_HOURS * 60 * 60 * 1000,
+    ).toISOString();
+    requests[requestIndex] = {
+      ...currentRequest,
+      status: "sent",
+      sentAt: now,
+      expiresAt,
+      updatedAt: now,
+    };
+    await writeCollection("passwordResetRequests", requests);
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const nextUsers = users.map((entry) => {
+      if (entry.id !== currentRequest.userId) return entry;
+      return {
+        ...entry,
+        resetCodeExpiresAt: expiresAt,
+        updatedAt: now,
+      };
+    });
+    await writeCollection("users", nextUsers);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    res.json({
+      ok: true,
+      request: toPublicPasswordResetRequest(requests[requestIndex], usersById),
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/subscription-requests/:requestId/reject",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestId = String(req.params.requestId || "").trim();
+    const reviewNote = String(req.body?.reviewNote || req.body?.note || "").trim();
+    const now = new Date().toISOString();
+
+    const requests = (await readCollection("subscriptionRequests")).map(normalizeSubscriptionRequest);
+    const requestIndex = requests.findIndex((entry) => entry.id === requestId);
+    if (requestIndex < 0) {
+      res.status(404).json({ error: "Subscription request not found" });
+      return;
+    }
+
+    const request = requests[requestIndex];
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === request.userId);
+    if (userIndex < 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    requests[requestIndex] = {
+      ...request,
+      status: "rejected",
+      reviewedAt: now,
+      approvedAt: null,
+      rejectedAt: now,
+      reviewerId: getActorId(req),
+      reviewerName: "Admin",
+      reviewNote,
+      updatedAt: now,
+    };
+
+    users[userIndex] = {
+      ...users[userIndex],
+      subscriptionReviewNote: reviewNote,
+      subscriptionRejectedReason: reviewNote,
+      updatedAt: now,
+    };
+
+    await writeCollection("subscriptionRequests", requests);
+    await writeCollection("users", users);
+
+    res.json({
+      ok: true,
+      request: requests[requestIndex],
+      user: toPublicUser(users[userIndex]),
+    });
+  }),
+);
+
 // Admin: Get all questions
 app.get(
   "/api/admin/questions",
@@ -11513,6 +12663,306 @@ app.delete(
   }),
 );
 
+function getAnalyticsTimeParts(dateInput = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const lookup = Object.create(null);
+  parts.forEach((part) => {
+    lookup[part.type] = part.value;
+  });
+  return {
+    year: String(lookup.year || "1970"),
+    month: String(lookup.month || "01"),
+    day: String(lookup.day || "01"),
+    hour: String(lookup.hour || "00"),
+  };
+}
+
+function getAnalyticsBucketKey(dateInput = new Date(), period = "week", timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const parts = getAnalyticsTimeParts(dateInput, timeZone);
+  if (period === "day") {
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}`;
+  }
+  if (period === "year") {
+    return `${parts.year}-${parts.month}`;
+  }
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatAnalyticsBucketLabel(dateInput = new Date(), period = "week", timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const parts = getAnalyticsTimeParts(dateInput, timeZone);
+  if (period === "day") {
+    return `${parts.day}/${parts.month} ${parts.hour}:00`;
+  }
+  if (period === "year") {
+    return `${parts.month}/${parts.year.slice(-2)}`;
+  }
+  return `${parts.day}/${parts.month}`;
+}
+
+function shiftAnalyticsDate(dateInput = new Date(), { days = 0, months = 0, hours = 0 } = {}) {
+  const date = dateInput instanceof Date ? new Date(dateInput) : new Date(dateInput);
+  if (Number(days)) date.setDate(date.getDate() - Number(days));
+  if (Number(months)) date.setMonth(date.getMonth() - Number(months));
+  if (Number(hours)) date.setHours(date.getHours() - Number(hours));
+  return date;
+}
+
+function buildAnalyticsBuckets(period = "week", now = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const buckets = [];
+  if (period === "day") {
+    for (let index = 23; index >= 0; index -= 1) {
+      const date = shiftAnalyticsDate(now, { hours: index });
+      buckets.push({
+        key: getAnalyticsBucketKey(date, period, timeZone),
+        label: formatAnalyticsBucketLabel(date, period, timeZone),
+      });
+    }
+    return buckets;
+  }
+
+  if (period === "year") {
+    for (let index = 11; index >= 0; index -= 1) {
+      const date = shiftAnalyticsDate(now, { months: index });
+      buckets.push({
+        key: getAnalyticsBucketKey(date, period, timeZone),
+        label: formatAnalyticsBucketLabel(date, period, timeZone),
+      });
+    }
+    return buckets;
+  }
+
+  const totalDays = period === "month" ? 30 : 7;
+  for (let index = totalDays - 1; index >= 0; index -= 1) {
+    const date = shiftAnalyticsDate(now, { days: index });
+    buckets.push({
+      key: getAnalyticsBucketKey(date, period, timeZone),
+      label: formatAnalyticsBucketLabel(date, period, timeZone),
+    });
+  }
+  return buckets;
+}
+
+function buildAdminActivityAnalytics({
+  users = [],
+  syncSessions = [],
+  passwordResetRequests = [],
+  subscriptionRequests = [],
+  timeZone = DAILY_QUIZ_SEASON.timezone,
+  now = new Date(),
+} = {}) {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeSessions = Array.isArray(syncSessions) ? syncSessions : [];
+  const safePasswordResetRequests = Array.isArray(passwordResetRequests) ? passwordResetRequests : [];
+  const safeSubscriptionRequests = Array.isArray(subscriptionRequests) ? subscriptionRequests : [];
+  const usersById = new Map(
+    safeUsers.map((user) => [String(user?.id || "").trim(), normalizeExistingUser(user)]),
+  );
+
+  function buildPeriod(period = "week") {
+    const buckets = buildAnalyticsBuckets(period, now, timeZone).map((bucket) => ({
+      ...bucket,
+      signups: 0,
+      sessions: 0,
+      resets: 0,
+      subscriptions: 0,
+      durationSeconds: 0,
+      activeUsers: new Set(),
+    }));
+    const bucketByKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+
+    const addEntry = (dateInput, kind, extra = {}) => {
+      const bucket = bucketByKey.get(getAnalyticsBucketKey(dateInput, period, timeZone));
+      if (!bucket) return;
+      if (kind === "signup") bucket.signups += 1;
+      if (kind === "session") {
+        bucket.sessions += 1;
+        bucket.durationSeconds += Math.max(0, Number(extra.durationSeconds) || 0);
+        if (extra.actorId) bucket.activeUsers.add(String(extra.actorId));
+      }
+      if (kind === "presence" && extra.actorId) {
+        bucket.activeUsers.add(String(extra.actorId));
+      }
+      if (kind === "reset") bucket.resets += 1;
+      if (kind === "subscription") bucket.subscriptions += 1;
+    };
+
+    safeUsers.forEach((user) => {
+      const createdAt = String(user?.createdAt || "").trim();
+      const parsed = Date.parse(createdAt);
+      if (Number.isFinite(parsed)) addEntry(new Date(parsed), "signup");
+
+      const lastSeenAt = String(user?.lastSeenAt || "").trim();
+      const lastSeenParsed = Date.parse(lastSeenAt);
+      if (Number.isFinite(lastSeenParsed)) {
+        addEntry(new Date(lastSeenParsed), "presence", {
+          actorId: String(user?.id || "").trim(),
+        });
+      }
+    });
+
+    safeSessions.forEach((session) => {
+      const createdAt = String(session?.createdAt || "").trim();
+      const parsed = Date.parse(createdAt);
+      if (!Number.isFinite(parsed)) return;
+      addEntry(new Date(parsed), "session", {
+        actorId: String(session?.actorId || "").trim(),
+        durationSeconds: parseDurationSeconds(session?.duration),
+      });
+    });
+
+    safePasswordResetRequests.forEach((request) => {
+      const requestedAt = String(request?.requestedAt || request?.createdAt || "").trim();
+      const parsed = Date.parse(requestedAt);
+      if (Number.isFinite(parsed)) addEntry(new Date(parsed), "reset");
+    });
+
+    safeSubscriptionRequests.forEach((request) => {
+      const requestedAt = String(request?.requestedAt || request?.createdAt || "").trim();
+      const parsed = Date.parse(requestedAt);
+      if (Number.isFinite(parsed)) addEntry(new Date(parsed), "subscription");
+    });
+
+    const series = buckets.map((bucket) => ({
+      label: bucket.label,
+      signups: bucket.signups,
+      sessions: bucket.sessions,
+      resets: bucket.resets,
+      subscriptions: bucket.subscriptions,
+      activeUsers: bucket.activeUsers.size,
+      avgSessionMinutes:
+        bucket.sessions > 0
+          ? Math.round(((bucket.durationSeconds / bucket.sessions) / 60) * 10) / 10
+          : 0,
+    }));
+
+    const summary = buckets.reduce(
+      (acc, bucket) => {
+        acc.signups += bucket.signups;
+        acc.sessions += bucket.sessions;
+        acc.resets += bucket.resets;
+        acc.subscriptions += bucket.subscriptions;
+        acc.durationSeconds += bucket.durationSeconds;
+        bucket.activeUsers.forEach((id) => acc.activeUsers.add(id));
+        return acc;
+      },
+      {
+        signups: 0,
+        sessions: 0,
+        resets: 0,
+        subscriptions: 0,
+        durationSeconds: 0,
+        activeUsers: new Set(),
+      },
+    );
+
+    return {
+      label:
+        period === "day"
+          ? "Last 24 hours"
+          : period === "month"
+            ? "Last 30 days"
+            : period === "year"
+              ? "Last 12 months"
+              : "Last 7 days",
+      series,
+      summary: {
+        signups: summary.signups,
+        sessions: summary.sessions,
+        resets: summary.resets,
+        subscriptions: summary.subscriptions,
+        activeUsers: summary.activeUsers.size,
+        avgSessionMinutes:
+          summary.sessions > 0
+            ? Math.round(((summary.durationSeconds / summary.sessions) / 60) * 10) / 10
+            : 0,
+      },
+    };
+  }
+
+  function buildRecentActivity(limit = 12) {
+    const feed = [];
+    const push = ({ type, title, subtitle = "", at = "" }) => {
+      const safeAt = String(at || "").trim();
+      if (!safeAt || !Number.isFinite(Date.parse(safeAt))) return;
+      feed.push({ type, title, subtitle, at: safeAt });
+    };
+
+    safeUsers.forEach((user) => {
+      push({
+        type: "signup",
+        title: `New user: ${String(user?.name || user?.username || user?.contact || "User").trim()}`,
+        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" • "),
+        at: user?.createdAt,
+      });
+      push({
+        type: "presence",
+        title: `Active user: ${String(user?.name || user?.username || user?.contact || "User").trim()}`,
+        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" • "),
+        at: user?.lastSeenAt || user?.updatedAt || user?.createdAt,
+      });
+    });
+
+    safeSessions.forEach((session) => {
+      const actorId = String(session?.actorId || "").trim();
+      const actor = actorId ? usersById.get(actorId) : null;
+      const actorLabel = actor
+        ? String(actor.name || actor.username || actor.contact || "User").trim()
+        : actorId || "User";
+      const durationSeconds = parseDurationSeconds(session?.duration);
+      push({
+        type: "session",
+        title: `${String(session?.mode || "Study").trim()} session`,
+        subtitle: `${actorLabel} • ${Number.isFinite(durationSeconds) ? `${Math.max(1, Math.round(durationSeconds / 60))} min` : "Session"}`,
+        at: session?.createdAt,
+      });
+    });
+
+    safePasswordResetRequests.forEach((request) => {
+      push({
+        type: "reset",
+        title: `Reset request: ${String(request?.name || request?.username || "User").trim()}`,
+        subtitle: [String(request?.deliveryLabel || "").trim(), String(request?.contact || "").trim()].filter(Boolean).join(" • "),
+        at: request?.requestedAt || request?.createdAt,
+      });
+    });
+
+    safeSubscriptionRequests.forEach((request) => {
+      push({
+        type: "subscription",
+        title: `Subscription: ${String(request?.name || request?.username || "User").trim()}`,
+        subtitle: [String(request?.planLabel || request?.plan || "").trim(), String(request?.status || "").trim()].filter(Boolean).join(" • "),
+        at: request?.requestedAt || request?.createdAt,
+      });
+    });
+
+    return feed.sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, limit);
+  }
+
+  return {
+    periods: {
+      day: buildPeriod("day"),
+      week: buildPeriod("week"),
+      month: buildPeriod("month"),
+      year: buildPeriod("year"),
+    },
+    recentActivity: buildRecentActivity(),
+    overall: {
+      totalUsers: safeUsers.length,
+      totalSessions: safeSessions.length,
+      totalPasswordResets: safePasswordResetRequests.length,
+      totalSubscriptionRequests: safeSubscriptionRequests.length,
+    },
+  };
+}
+
 // Admin: Get platform statistics
 app.get(
   "/api/admin/stats",
@@ -11522,14 +12972,32 @@ app.get(
       return;
     }
 
-    const users = await readCollection("users");
+    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
     const conversations = await readCollection("conversations");
     const reports = await readCollection("reports");
     const questions = await readCollection("questions");
     const attempts = await readCollection("attempts");
+    const rawSubscriptionRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
+    const syncedSubscriptionRequests = synchronizeSubscriptionRequestsWithUsers(users, rawSubscriptionRequests);
+    if (syncedSubscriptionRequests.changed) {
+      await writeCollection("subscriptionRequests", syncedSubscriptionRequests.requests);
+    }
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const subscriptionRequests = syncedSubscriptionRequests.requests.map((request) =>
+      toPublicSubscriptionRequest(request, usersById),
+    );
+    const passwordResetRequests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
+    );
     const syncPerformance = await readCollection("syncPerformance");
     const syncSessions = await readCollection("syncSessions");
     const aiUsage = await readCollection("aiUsage");
+    const activityAnalytics = buildAdminActivityAnalytics({
+      users,
+      syncSessions,
+      passwordResetRequests,
+      subscriptionRequests,
+    });
 
     const normalizedQuestions = questions.map(normalizeQuestionForApi);
     const finishedAttempts = attempts.filter((a) => a.finishedAt);
@@ -11565,6 +13033,20 @@ app.get(
         accuracy: row.accuracy,
       };
     });
+    const subscriptionCounts = {
+      request: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "pending").length,
+      activated: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "active").length,
+      rejected: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "rejected").length,
+      expired: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "expired").length,
+      total: subscriptionRequests.length,
+    };
+    const passwordResetCounts = {
+      pending: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "pending").length,
+      sent: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "sent").length,
+      resolved: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "resolved").length,
+      expired: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "expired").length,
+      total: passwordResetRequests.length,
+    };
 
     res.json({
       totalUsers: users.length,
@@ -11581,7 +13063,10 @@ app.get(
         (sum, row) => sum + (Number(row?.requests) || 0),
         0,
       ),
+      subscriptionCounts,
+      passwordResetCounts,
       averageScore: avgScore,
+      activityAnalytics,
       storageUsage: {
         users: users.length,
         groups: conversations.filter((conversation) => String(conversation?.type || "").toLowerCase() === "group").length,

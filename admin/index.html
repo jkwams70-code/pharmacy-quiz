@@ -3,8 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<<<<<<< HEAD
-<<<<<<< HEAD
     <meta name="theme-color" content="#0f3f7f" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -15,12 +13,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32-s3.png?v=20260324-applogo1" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16-s3.png?v=20260324-applogo1" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon-180-s3.png?v=20260324-applogo1" />
-=======
-    <title>Pharmacy Quiz - Admin Dashboard</title>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-    <title>Pharmacy Quiz - Admin Dashboard</title>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
     <style>
       * {
         margin: 0;
@@ -141,8 +133,6 @@
         background: #4b5563;
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       .icon-btn {
         width: 40px;
         height: 40px;
@@ -163,10 +153,6 @@
         color: #312e81;
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       .dashboard {
         display: none;
         max-width: 1200px;
@@ -175,6 +161,31 @@
 
       .dashboard.active {
         display: block;
+      }
+
+      body.admin-broadcast-active {
+        overflow: hidden;
+        height: 100dvh;
+        padding: 0;
+      }
+
+      .dashboard.broadcast-mode,
+      body.admin-broadcast-active .dashboard {
+        display: contents !important;
+        max-width: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+      }
+
+      .dashboard.broadcast-mode > .header,
+      .dashboard.broadcast-mode > .tabs,
+      .dashboard.broadcast-mode > .admin-notification-banner,
+      .dashboard.broadcast-mode > .content:not(#broadcast),
+      body.admin-broadcast-active .dashboard > .header,
+      body.admin-broadcast-active .dashboard > .tabs,
+      body.admin-broadcast-active .dashboard > .admin-notification-banner,
+      body.admin-broadcast-active .dashboard > .content:not(#broadcast) {
+        display: none !important;
       }
 
       .header {
@@ -204,8 +215,6 @@
         font-size: 14px;
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       .header-actions .header-btn {
         width: auto;
       }
@@ -226,10 +235,6 @@
         display: none;
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       .tabs {
         display: flex;
         gap: 10px;
@@ -268,8 +273,6 @@
         background: var(--theme-primary-strong);
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       .tab-btn .admin-tab-badge {
         display: inline-flex;
         align-items: center;
@@ -294,16 +297,22 @@
         display: none !important;
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       .content {
         display: none;
       }
 
       .content.active {
         display: block;
+      }
+
+      #groups.content.active,
+      #reports.content.active {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        height: calc(100vh - 220px);
+        overflow: hidden;
       }
 
       .stats-grid {
@@ -320,6 +329,71 @@
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       }
 
+      .stat-card.monetization-card {
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .stat-card.monetization-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      }
+
+      .stat-card.monetization-card.is-active {
+        border-color: var(--theme-primary);
+        box-shadow: 0 12px 28px rgba(15, 63, 127, 0.16);
+      }
+
+      #monetization .monetization-shell > div:first-child {
+        padding: 18px;
+      }
+
+      #monetization .stats-grid {
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      #monetization .stat-card.monetization-card {
+        padding: 16px;
+        min-height: 120px;
+      }
+
+      #monetization .stat-label {
+        font-size: 12px;
+        margin-bottom: 6px;
+        line-height: 1.1;
+      }
+
+      #monetization .stat-value {
+        font-size: 24px;
+        line-height: 1;
+      }
+
+      .monetization-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: -2px 2px 14px;
+        color: #475569;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .monetization-summary strong {
+        color: #0f172a;
+      }
+
+      .monetization-summary-total {
+        margin-left: auto;
+        color: #0f3f7f;
+        font-weight: 800;
+      }
+
       .stat-label {
         color: #999;
         font-size: 14px;
@@ -332,12 +406,188 @@
         color: #333;
       }
 
-      .table-container {
+      .analytics-panel {
+        display: grid;
+        gap: 18px;
+      }
+
+      .analytics-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+        padding: 22px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #0f3f7f 0%, #0f766e 100%);
+        color: #fff;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.2);
+      }
+
+      .analytics-hero h2 {
+        margin-bottom: 8px;
+        font-size: 24px;
+      }
+
+      .analytics-hero p {
+        max-width: 760px;
+        color: rgba(255, 255, 255, 0.88);
+        line-height: 1.5;
+      }
+
+      .analytics-periods {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .analytics-period-btn {
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        background: rgba(255, 255, 255, 0.14);
+        color: #fff;
+        border-radius: 999px;
+        padding: 9px 14px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .analytics-period-btn.active {
+        background: #fff;
+        color: #0f3f7f;
+      }
+
+      .analytics-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 14px;
+      }
+
+      .analytics-summary-grid .stat-card {
+        min-height: 120px;
+      }
+
+      .analytics-chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 18px;
+      }
+
+      .analytics-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .analytics-card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: baseline;
+        margin-bottom: 12px;
+        color: #0f172a;
+        font-weight: 800;
+      }
+
+      .analytics-card-note {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .analytics-chart-svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .analytics-feed-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .analytics-feed-item {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 10px;
+        align-items: start;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+      }
+
+      .analytics-feed-type {
+        text-transform: uppercase;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        color: #0f3f7f;
+        padding-top: 2px;
+      }
+
+      .analytics-feed-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .analytics-feed-subtitle {
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .analytics-feed-time {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .analytics-empty {
+        padding: 18px;
+        border-radius: 12px;
+        border: 1px dashed #cbd5e1;
+        color: #64748b;
+        background: #f8fafc;
+      }
+
+        .table-container {
         background: white;
         border-radius: 10px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
         margin-bottom: 20px;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        overscroll-behavior-y: contain;
+        touch-action: pan-x pan-y;
+      }
+
+      #groups .table-container,
+      #reports .table-container {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        max-height: none;
+        overflow-y: auto;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 0;
+        scrollbar-width: none;
+      }
+
+      #groups .table-container::-webkit-scrollbar,
+      #reports .table-container::-webkit-scrollbar {
+        width: 0;
+        height: 0;
       }
 
       table {
@@ -374,8 +624,6 @@
         gap: 8px;
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       .user-row {
         cursor: pointer;
       }
@@ -503,10 +751,6 @@
         width: 120px;
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       .btn-small {
         padding: 6px 12px;
         font-size: 12px;
@@ -530,14 +774,25 @@
         background: #fecaca;
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       .user-table th,
       .user-table td,
+      .group-table th,
+      .group-table td,
+      .report-table th,
+      .report-table td,
       .question-table th,
       .question-table td {
         white-space: nowrap;
         vertical-align: top;
+      }
+
+      .user-table,
+      .group-table,
+      .report-table,
+      .question-table,
+      .monetization-table {
+        width: max-content;
+        min-width: 100%;
       }
 
       .question-table th,
@@ -737,10 +992,6 @@
         font-weight: 600;
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       .modal {
         display: none;
         position: fixed;
@@ -785,8 +1036,788 @@
         flex: 1;
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
+      #monetization.content.active {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-height: calc(100vh - 220px);
+        height: auto;
+        min-width: 0;
+        overflow: visible;
+        padding-bottom: 12px;
+        scrollbar-gutter: stable;
+      }
+
+      .monetization-shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        height: auto;
+        gap: 18px;
+      }
+
+      .monetization-list-shell {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow: visible;
+      }
+
+      .monetization-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 10px;
+      }
+
+      .monetization-list-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .monetization-list-kicker {
+        color: #0f3f7f;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+
+      .monetization-list-title {
+        color: #0f172a;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .monetization-list-root {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
+        min-width: 0;
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: visible;
+        overflow-y: visible;
+        padding-right: 2px;
+      }
+
+      .monetization-table-container {
+        display: block;
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        max-height: none;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        overflow-y: auto;
+        overflow-x: scroll;
+        -webkit-overflow-scrolling: touch;
+        touch-action: auto;
+        scrollbar-width: thin;
+      }
+
+      .monetization-table {
+        width: max-content;
+        table-layout: auto;
+        min-width: 1200px;
+      }
+
+      .monetization-table th,
+      .monetization-table td {
+        padding: 14px 18px;
+        white-space: nowrap;
+        vertical-align: top;
+      }
+
+      .monetization-header-date {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .monetization-sort-toggle {
+        appearance: none;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #f8fafc;
+        color: #0f3f7f;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        display: inline-grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 1;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+
+      .monetization-sort-toggle:hover {
+        background: #e0ecff;
+        border-color: #93c5fd;
+      }
+
+      .monetization-table-row {
+        cursor: pointer;
+      }
+
+      .monetization-table .cell-wrap {
+        max-width: none;
+        white-space: nowrap;
+        word-break: normal;
+      }
+
+      .monetization-empty-state {
+        padding: 22px;
+        border-radius: 14px;
+        border: 1px dashed #cbd5e1;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 14px;
+      }
+
+      .monetization-toolbar {
+        margin-bottom: 12px;
+      }
+
+      .monetization-row {
+        background: #ffffff;
+        border: 1px solid #dbeafe;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+      }
+
+      .monetization-row-header {
+        border: 1px solid #dbeafe;
+        background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%);
+        box-shadow: none;
+      }
+
+      .monetization-row-main {
+        display: grid;
+        grid-template-columns: var(--monetization-columns, minmax(240px, 1.5fr) minmax(220px, 1fr) minmax(220px, 1.1fr) auto);
+        gap: 12px;
+        align-items: center;
+        padding: 16px;
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .monetization-row-header .monetization-row-main {
+        padding-top: 14px;
+        padding-bottom: 14px;
+      }
+
+      .monetization-row.expanded .monetization-row-main {
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+      }
+
+      .monetization-cell {
+        min-width: 0;
+        flex: 0 0 auto;
+      }
+
+      .monetization-cell-header {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .monetization-cell-primary {
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+
+      .monetization-cell-secondary {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.3;
+        margin-top: 4px;
+      }
+
+      .monetization-cell-action {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .monetization-cell-value {
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.4;
+        word-break: break-word;
+      }
+
+      .monetization-cell-value.is-muted {
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      .monetization-row-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        padding: 0 16px 16px;
+        border-top: 1px solid #eef2f7;
+      }
+
+      .monetization-row-actions button {
+        width: auto;
+        min-width: 104px;
+        padding: 10px 14px;
+        border-radius: 999px;
+      }
+
+      .monetization-row-actions .approve {
+        background: #16a34a;
+      }
+
+      .monetization-row-actions .approve:hover {
+        background: #15803d;
+      }
+
+      .monetization-row-actions .reject {
+        background: #dc2626;
+      }
+
+      .monetization-row-actions .reject:hover {
+        background: #b91c1c;
+      }
+
+      .password-reset-table .password-reset-code-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .password-reset-code {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #1e293b;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+
+      .password-reset-copyable {
+        cursor: copy;
+        user-select: all;
+      }
+
+      .password-reset-code.is-muted {
+        background: transparent;
+        padding: 0;
+        color: #64748b;
+      }
+
+      .password-reset-contact-link {
+        color: #1d4ed8;
+        font-weight: 700;
+        text-decoration: none;
+        word-break: break-word;
+      }
+
+      .password-reset-contact-link:hover {
+        text-decoration: underline;
+      }
+
+      .password-reset-contact-link.is-muted {
+        color: #64748b;
+      }
+
+      .password-reset-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .password-reset-status.is-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .password-reset-status.is-sent {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .password-reset-status.is-good {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .password-reset-status.is-muted {
+        background: #e2e8f0;
+        color: #475569;
+      }
+
+      .password-reset-status.is-bad {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+
+      .password-reset-status-action {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        font: inherit;
+        box-shadow: none;
+      }
+
+      .password-reset-status-action:hover {
+        filter: brightness(0.97);
+      }
+
+      .password-reset-status-action:focus-visible {
+        outline: 2px solid rgba(29, 78, 216, 0.35);
+        outline-offset: 2px;
+      }
+
+      .monetization-proof-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #0f3f7f;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid #dbeafe;
+        cursor: pointer;
+      }
+
+      .monetization-proof-chip img {
+        width: 28px;
+        height: 28px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      .subscription-request-modal {
+        max-width: 520px;
+      }
+
+      .subscription-proof-modal {
+        max-width: 620px;
+      }
+
+      .subscription-reject-modal {
+        max-width: 480px;
+      }
+
+      .subscription-approve-modal {
+        max-width: 480px;
+      }
+
+      .subscription-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .subscription-modal-header button {
+        width: auto;
+        min-width: 92px;
+        padding: 10px 14px;
+      }
+
+      .subscription-modal-title {
+        color: #0f172a;
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .subscription-modal-subtitle {
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.5;
+        margin-top: 6px;
+      }
+
+      .subscription-detail-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .subscription-detail-grid--compact {
+        gap: 12px;
+      }
+
+      .subscription-detail-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        padding: 14px;
+      }
+
+      .subscription-detail-card--hero {
+        padding: 16px;
+      }
+
+      .subscription-detail-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .subscription-detail-amount-label {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .subscription-detail-amount {
+        color: #0f3f7f;
+        font-size: 30px;
+        font-weight: 900;
+        line-height: 1.1;
+        margin-top: 4px;
+      }
+
+      .subscription-detail-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .subscription-detail-pill strong {
+        color: #0f3f7f;
+      }
+
+      .subscription-detail-mini-label {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+
+      .subscription-detail-value {
+        color: #0f172a;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+
+      .subscription-detail-meta {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.45;
+        margin-top: 6px;
+      }
+
+      .subscription-proof-thumb-wrap {
+        margin-top: 10px;
+      }
+
+      .subscription-proof-thumb {
+        width: 100%;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+      }
+
+      .subscription-proof-thumb img {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+      }
+
+      .subscription-detail-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 2px;
+      }
+
+      .subscription-detail-actions button {
+        width: auto;
+        min-width: 120px;
+      }
+
+      .subscription-reject-body {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .subscription-reject-summary {
+        display: grid;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #f8fbff;
+        color: #0f172a;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .subscription-approve-body {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .subscription-approve-summary {
+        display: grid;
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #f8fbff;
+        color: #0f172a;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .subscription-approve-note {
+        margin: 0;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .subscription-reject-label {
+        color: #334155;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .subscription-reject-select {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fff;
+        color: #0f172a;
+        font: inherit;
+      }
+
+      .subscription-reject-actions {
+        justify-content: flex-end;
+      }
+
+      .subscription-approval-card {
+        display: grid;
+        gap: 10px;
+        padding: 18px;
+      }
+
+      .subscription-approval-row {
+        display: grid;
+        grid-template-columns: 130px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+      }
+
+      .subscription-approval-label {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.4;
+      }
+
+      .subscription-approval-value {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.45;
+        word-break: break-word;
+      }
+
+      .subscription-approval-proof {
+        padding-top: 4px;
+      }
+
+      .subscription-proof-link {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: #7c3aed;
+        padding: 0;
+        font-size: 13px;
+        font-weight: 800;
+        text-align: left;
+        cursor: pointer;
+        box-shadow: none;
+        border-radius: 0;
+      }
+
+      .subscription-proof-link:hover {
+        color: #7c3aed;
+        text-decoration: underline;
+        background: transparent;
+      }
+
+      .subscription-proof-link:focus,
+      .subscription-proof-link:active {
+        color: #7c3aed;
+        background: transparent;
+        outline: none;
+      }
+
+      .subscription-proof-empty {
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .subscription-payment-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #ffffff;
+      }
+
+      .subscription-payment-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 14px 16px;
+        border-bottom: 1px solid #eef2f7;
+      }
+
+      .subscription-payment-row:last-child {
+        border-bottom: none;
+      }
+
+      .subscription-payment-left {
+        min-width: 0;
+      }
+
+      .subscription-payment-method {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 11px;
+        margin-bottom: 6px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #0f3f7f;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .subscription-payment-name {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .subscription-payment-value {
+        color: #0f172a;
+        font-size: 16px;
+        font-weight: 800;
+        text-align: right;
+      }
+
+      .subscription-proof-preview {
+        display: grid;
+        gap: 10px;
+      }
+
+      .subscription-proof-thumb {
+        width: 100%;
+        max-height: 300px;
+        object-fit: cover;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        cursor: zoom-in;
+        background: #0f172a;
+      }
+
+      .subscription-proof-placeholder {
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px dashed #cbd5e1;
+        color: #64748b;
+        background: #f8fafc;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .subscription-proof-stage {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 320px;
+        background: radial-gradient(circle at top, #0f1a2f 0%, #050816 100%);
+        border-radius: 18px;
+        overflow: hidden;
+      }
+
+      .subscription-proof-stage img {
+        max-width: 100%;
+        max-height: 78vh;
+        object-fit: contain;
+      }
+
+      .subscription-proof-stage .subscription-proof-placeholder {
+        background: transparent;
+        border: none;
+        color: #e2e8f0;
+        text-align: center;
+      }
+
       .deleted-users-modal {
         max-width: 980px;
       }
@@ -1052,15 +2083,58 @@
         margin-bottom: 12px;
       }
 
+      .broadcast-page-back-btn {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 42px;
+        min-width: 42px;
+        height: 42px;
+        min-height: 42px;
+        padding: 0;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.26);
+        background: rgba(255, 255, 255, 0.9);
+        color: #4c1d95;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+      }
+
+      .broadcast-page-back-btn:hover {
+        background: rgba(243, 232, 255, 0.96);
+      }
+
+      .broadcast-page-back-btn svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
       .broadcast-shell {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        min-height: calc(100vh - 150px);
+        gap: 8px;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow: hidden;
       }
 
       #broadcast.content.active {
-        min-height: calc(100vh - 150px);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+        height: 100dvh;
+        overflow: hidden;
       }
 
       .broadcast-status-panel,
@@ -1081,7 +2155,8 @@
       }
 
       .broadcast-status-panel {
-        padding: 16px;
+        position: relative;
+        padding: 10px 10px 10px 66px;
       }
 
       .broadcast-panel-heading,
@@ -1130,7 +2205,7 @@
       }
 
       .broadcast-status-strip {
-        margin-top: 14px;
+        margin-top: 0;
         display: flex;
         gap: 12px;
         align-items: stretch;
@@ -1139,23 +2214,23 @@
       }
 
       .broadcast-status-strip::-webkit-scrollbar {
-        height: 8px;
+        width: 0;
+        height: 0;
       }
 
       .broadcast-status-strip::-webkit-scrollbar-thumb {
-        background: rgba(124, 58, 237, 0.2);
-        border-radius: 999px;
+        background: transparent;
       }
 
       .broadcast-status-card,
       .broadcast-status-add {
-        width: 80px;
-        min-width: 80px;
-        max-width: 80px;
-        height: 80px;
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
+        height: 64px;
         flex: 0 0 auto;
         border-radius: 50%;
-        padding: 9px;
+        padding: 7px;
         border: 1px solid rgba(148, 163, 184, 0.22);
         background: linear-gradient(180deg, rgba(244, 235, 255, 0.95), rgba(255, 255, 255, 0.95));
         box-shadow: 0 10px 24px rgba(103, 80, 164, 0.08);
@@ -1178,7 +2253,7 @@
         color: #7c3aed;
         font-weight: 800;
         border-style: dashed;
-        font-size: 10px;
+        font-size: 8px;
         line-height: 1;
         text-align: center;
         white-space: normal;
@@ -1204,16 +2279,16 @@
 
       .broadcast-main {
         display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 16px;
+        grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+        gap: 12px;
         min-height: 0;
         flex: 1 1 auto;
       }
 
       .broadcast-main.thread-open {
-        grid-template-columns: 320px minmax(0, 1fr);
         align-items: stretch;
-        min-height: calc(100vh - 240px);
+        min-height: 0;
+        height: 100%;
       }
 
       .broadcast-thread-list-panel,
@@ -1223,11 +2298,12 @@
       }
 
       .broadcast-thread-list-panel {
-        padding: 14px;
+        padding: 12px;
         display: flex;
         flex-direction: column;
         min-height: 0;
-        height: calc(100vh - 240px);
+        height: 100%;
+        max-height: none;
       }
 
       .broadcast-thread-list-heading {
@@ -1242,6 +2318,13 @@
         min-height: 0;
         overflow-y: auto;
         padding-right: 4px;
+        scrollbar-width: none;
+      }
+
+      .broadcast-thread-list::-webkit-scrollbar,
+      .broadcast-thread-messages::-webkit-scrollbar {
+        width: 0;
+        height: 0;
       }
 
       .broadcast-thread-row {
@@ -1335,24 +2418,21 @@
       }
 
       .broadcast-thread-panel {
-        display: none;
+        display: flex;
         flex-direction: column;
         min-height: 0;
         flex: 1 1 auto;
-        height: calc(100vh - 150px);
+        height: 100%;
+        min-height: 0;
         max-height: none;
-        padding: 16px;
-        overflow: visible;
-      }
-
-      .broadcast-main.thread-open .broadcast-thread-panel {
-        display: flex;
+        padding: 12px;
+        overflow: hidden;
       }
 
       .broadcast-thread-header {
-        padding-bottom: 14px;
+        padding-bottom: 10px;
         border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-        margin-bottom: 14px;
+        margin-bottom: 10px;
         justify-content: flex-start;
       }
 
@@ -1392,6 +2472,8 @@
         overflow-y: auto;
         min-height: 0;
         padding-right: 4px;
+        padding-bottom: 10px;
+        scrollbar-width: none;
       }
 
       .broadcast-thread-empty {
@@ -1588,6 +2670,46 @@
         border: 1px solid rgba(148, 163, 184, 0.16);
       }
 
+      .broadcast-attachment-viewer-modal.is-simple-view {
+        max-width: min(96vw, 1100px);
+        width: min(96vw, 1100px);
+        background: rgba(5, 10, 18, 0.96);
+        border: none;
+        box-shadow: none;
+        padding: 14px;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .modal-header {
+        margin-bottom: 8px !important;
+        justify-content: flex-end !important;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .modal-title,
+      .broadcast-attachment-viewer-modal.is-simple-view .modal-subtitle {
+        display: none !important;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-body {
+        min-height: calc(100dvh - 120px);
+        justify-content: center;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-stage {
+        min-height: calc(100dvh - 190px);
+        background: transparent;
+        border: none;
+        padding: 0;
+        border-radius: 0;
+      }
+
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-stage img,
+      .broadcast-attachment-viewer-modal.is-simple-view .broadcast-attachment-viewer-stage video {
+        max-width: 100%;
+        max-height: calc(100dvh - 200px);
+        border-radius: 18px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+      }
+
       .broadcast-attachment-viewer-stage img,
       .broadcast-attachment-viewer-stage video {
         max-width: 100%;
@@ -1652,11 +2774,13 @@
       }
 
       .broadcast-thread-composer {
-        margin-top: 14px;
+        margin-top: 12px;
         padding-top: 14px;
         border-top: 1px solid rgba(148, 163, 184, 0.16);
-        position: relative;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.98));
+        backdrop-filter: blur(10px);
         overflow: visible;
+        z-index: 5;
       }
 
       .broadcast-chat-emoji-panel {
@@ -1987,10 +3111,6 @@
         margin-bottom: 12px;
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       .alert {
         padding: 15px;
         border-radius: 5px;
@@ -2150,15 +3270,7 @@
         input[type="number"],
         select,
         textarea,
-<<<<<<< HEAD
-<<<<<<< HEAD
         button:not(.header-btn):not(.btn-small),
-=======
-        button,
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-        button,
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         label,
         td,
         th,
@@ -2173,8 +3285,6 @@
         input[type="number"],
         select,
         textarea,
-<<<<<<< HEAD
-<<<<<<< HEAD
         button:not(.header-btn):not(.btn-small) {
           min-height: 44px;
         }
@@ -2218,6 +3328,15 @@
           margin-left: 6px;
           padding: 0 5px;
           font-size: 11px;
+        }
+
+        .broadcast-page-back-btn {
+          width: 38px;
+          min-width: 38px;
+          height: 38px;
+          min-height: 38px;
+          border-radius: 12px;
+          left: 10px;
         }
 
         .users-toolbar {
@@ -2268,35 +3387,15 @@
           border-radius: 8px;
         }
 
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        button {
-          min-height: 44px;
-        }
-
-        /* Keep key user columns visible on narrow screens. */
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         #users .table-container {
           overflow-x: auto;
+          min-width: 0;
         }
 
         #users table {
-<<<<<<< HEAD
-<<<<<<< HEAD
           table-layout: auto;
           min-width: 680px;
-=======
-          table-layout: fixed;
-          width: 100%;
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          table-layout: fixed;
-          width: 100%;
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+          width: max-content;
         }
 
         #users th,
@@ -2306,134 +3405,64 @@
           vertical-align: middle;
         }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
+        #groups .table-container,
+        #reports .table-container {
+          max-height: none;
+          overflow-y: auto;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          min-width: 0;
+        }
+
+        #groups table,
+        #reports table {
+          table-layout: auto;
+          min-width: 760px;
+          width: max-content;
+        }
+
+        #broadcast .broadcast-shell {
+          max-height: none;
+        }
+
         #questions .table-container {
-          overflow-x: hidden;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          min-width: 0;
+          touch-action: auto;
         }
 
         #questions table {
-          table-layout: fixed;
-          min-width: 0;
-          width: 100%;
+          table-layout: auto;
+          min-width: 900px;
+          width: max-content;
         }
 
-        #questions thead {
-          display: none;
-        }
-
-        #questions tbody,
-        #questions tr,
+        #questions th,
         #questions td {
-          display: block;
-          width: 100%;
-        }
-
-        #questions tr {
-          background: #ffffff;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          margin-bottom: 10px;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        #questions td {
-          border-bottom: none;
-          padding: 8px 10px;
-          white-space: normal;
-        }
-
-        #questions td.question-id-cell,
-        #questions td.question-category-cell {
-          display: none;
-        }
-
-        #questions td.question-text-cell {
-          padding-bottom: 4px;
+          white-space: nowrap;
+          vertical-align: top;
         }
 
         #questions td.question-text-cell .question-preview {
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        #questions td.question-correct-cell {
-          padding-top: 0;
-          color: #14532d;
-          font-weight: 600;
-        }
-
-        #questions td.question-correct-cell::before {
-          content: "Correct: ";
-          color: #374151;
-          font-weight: 600;
-        }
-
-        #questions td.question-actions-cell {
-          padding-top: 6px;
+          display: block;
+          max-width: 280px;
+          white-space: normal;
+          word-break: break-word;
         }
 
         #questions td.question-actions-cell .actions {
-          width: 100%;
+          width: auto;
           justify-content: flex-start;
           gap: 8px;
         }
 
-        #questions td.question-actions-cell .btn-small {
-          flex: 0 0 auto;
-          min-width: 82px;
-        }
-
         #users .btn-small,
         #questions .btn-small {
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        #users th:nth-child(1),
-        #users td:nth-child(1) {
-          display: none;
-        }
-
-        #users th:nth-child(2),
-        #users td:nth-child(2) {
-          width: 22%;
-        }
-
-        #users th:nth-child(3),
-        #users td:nth-child(3) {
-          display: none;
-        }
-
-        #users th:nth-child(4),
-        #users td:nth-child(4) {
-          width: 30%;
-          white-space: nowrap;
-        }
-
-        #users th:nth-child(5),
-        #users td:nth-child(5) {
-          width: 24%;
-          text-align: right;
-        }
-
-        #users .actions {
-          justify-content: flex-end;
-        }
-
-        #users .btn-small {
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           min-height: 34px;
           font-size: 12px;
           padding: 6px 8px;
         }
-<<<<<<< HEAD
-<<<<<<< HEAD
 
         .broadcast-shell {
           min-height: 0;
@@ -2457,10 +3486,18 @@
         }
 
         .broadcast-thread-panel {
+          display: none;
           flex: 1 1 auto;
           min-height: 0;
-          height: calc(100dvh - 150px);
+          height: 100%;
+          min-height: 0;
           overflow: hidden;
+        }
+
+        .broadcast-thread-list-panel {
+          display: flex;
+          height: 100%;
+          max-height: none;
         }
 
         .broadcast-main.thread-open .broadcast-thread-list-panel {
@@ -2518,9 +3555,6 @@
 
         .broadcast-thread-composer {
           position: relative;
-          left: auto;
-          right: auto;
-          bottom: auto;
           margin-top: 12px;
           padding: 10px;
           background: rgba(255, 255, 255, 0.98);
@@ -2615,10 +3649,139 @@
           width: 20px;
           height: 20px;
         }
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+
+        #monetization.content.active {
+          height: auto;
+          overflow: visible;
+        }
+
+        .monetization-shell {
+          gap: 12px;
+        }
+
+        .monetization-list-shell {
+          padding: 14px;
+          border-radius: 14px;
+        }
+
+        .monetization-list-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .monetization-list-root {
+          gap: 10px;
+          min-width: 0;
+          width: 100%;
+          max-width: 100%;
+          overflow-x: visible;
+        }
+
+        #monetization .table-container {
+          display: block;
+          max-height: none;
+          min-width: 0;
+          width: 100%;
+          max-width: 100%;
+          overflow-y: hidden;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        #monetization .monetization-table {
+          width: max-content;
+          min-width: 1200px;
+          table-layout: auto;
+        }
+
+        #monetization .monetization-table td {
+          padding: 8px 12px;
+          white-space: nowrap;
+          vertical-align: middle;
+          font-size: 13px;
+        }
+
+        .monetization-cell-value {
+          font-size: 13px;
+        }
+
+        #users .table-container,
+        #groups .table-container,
+        #reports .table-container,
+        #questions .table-container,
+        #monetization .table-container {
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-x pan-y;
+          overscroll-behavior: contain;
+        }
+
+        #users table {
+          table-layout: auto;
+          min-width: 680px;
+        }
+
+        #groups table,
+        #reports table {
+          table-layout: auto;
+          min-width: 760px;
+        }
+
+        .monetization-row-actions {
+          padding: 0 14px 14px;
+        }
+
+        .monetization-row-actions button {
+          flex: 1 1 0;
+          min-width: 0;
+        }
+
+        .subscription-request-modal,
+        .subscription-proof-modal,
+        .subscription-reject-modal,
+        .subscription-approve-modal {
+          width: 96%;
+          padding: 18px;
+        }
+
+        .subscription-modal-title {
+          font-size: 20px;
+        }
+
+        .subscription-detail-amount {
+          font-size: 24px;
+        }
+
+        .subscription-payment-row {
+          grid-template-columns: 1fr;
+          text-align: left;
+        }
+
+        .subscription-payment-value {
+          text-align: left;
+        }
+
+        .subscription-proof-stage {
+          min-height: 240px;
+          padding: 8px;
+        }
+      }
+
+      /* Hide native scrollbars while preserving scroll behavior. */
+      html,
+      body,
+      * {
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
+      }
+
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar,
+      *::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
+        display: none !important;
       }
     </style>
   </head>
@@ -2630,7 +3793,15 @@
       <div class="form-group">
         <label>Admin Key</label>
         <div class="password-wrapper">
-          <input type="password" id="admin-key" placeholder="Enter admin key" />
+          <input
+            type="password"
+            id="admin-key"
+            placeholder="Enter admin key"
+            autocomplete="new-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
           <button
             type="button"
             id="admin-key-toggle" class="password-toggle"
@@ -2664,8 +3835,6 @@
           <h1>Admin Dashboard</h1>
         </div>
         <div class="header-actions">
-<<<<<<< HEAD
-<<<<<<< HEAD
           <button id="refresh-data-btn" class="secondary header-btn">
             Refresh
           </button>
@@ -2675,36 +3844,22 @@
 
       <div id="admin-notification-banner" class="admin-notification-banner hidden" aria-live="polite" aria-atomic="true"></div>
 
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-          <button id="refresh-data-btn" class="secondary">Refresh</button>
-          <button id="logout-btn" class="danger">Logout</button>
-        </div>
-      </div>
-
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       <div class="tabs">
         <button class="tab-btn active" data-tab="stats">
           Statistics
         </button>
+        <button class="tab-btn" data-tab="analytics">Activity</button>
         <button class="tab-btn" data-tab="users">Users</button>
-<<<<<<< HEAD
-<<<<<<< HEAD
         <button class="tab-btn" data-tab="groups">Groups</button>
         <button class="tab-btn" data-tab="reports">Reports <span id="reports-tab-badge" class="admin-tab-badge hidden">0</span></button>
         <button class="tab-btn" data-tab="broadcast">Broadcast</button>
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         <button class="tab-btn" data-tab="questions">
           Questions
         </button>
-        <button class="tab-btn" data-tab="export">Export</button>
+        <button class="tab-btn" data-tab="monetization">Monetization</button>
+        <button class="tab-btn" data-tab="password-resets">
+          Password Resets <span id="password-reset-tab-badge" class="admin-tab-badge hidden">0</span>
+        </button>
         <button class="tab-btn" data-tab="settings">
           Settings
         </button>
@@ -2720,8 +3875,6 @@
             <div class="stat-value" id="stat-users">0</div>
           </div>
           <div class="stat-card">
-<<<<<<< HEAD
-<<<<<<< HEAD
             <div class="stat-label">Total Groups</div>
             <div class="stat-value" id="stat-groups">0</div>
           </div>
@@ -2730,10 +3883,6 @@
             <div class="stat-value" id="stat-reports">0</div>
           </div>
           <div class="stat-card">
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
             <div class="stat-label">Total Questions</div>
             <div class="stat-value" id="stat-questions">0</div>
           </div>
@@ -2761,11 +3910,83 @@
         <div id="category-performance"></div>
       </div>
 
+      <!-- ACTIVITY TAB -->
+      <div id="analytics" class="content">
+        <div class="analytics-panel">
+          <div class="analytics-hero">
+            <div>
+              <h2>Activity Watchover</h2>
+              <p>
+                Track signups, active study sessions, average session time, and reset pressure across
+                day, week, month, and year views.
+              </p>
+            </div>
+            <div class="analytics-periods" role="tablist" aria-label="Analytics period">
+              <button type="button" class="analytics-period-btn active" data-analytics-period="day">Day</button>
+              <button type="button" class="analytics-period-btn" data-analytics-period="week">Week</button>
+              <button type="button" class="analytics-period-btn" data-analytics-period="month">Month</button>
+              <button type="button" class="analytics-period-btn" data-analytics-period="year">Year</button>
+            </div>
+          </div>
+
+          <div class="analytics-summary-grid">
+            <div class="stat-card">
+              <div class="stat-label">New Users</div>
+              <div class="stat-value" id="analytics-new-users">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Active Users</div>
+              <div class="stat-value" id="analytics-active-users">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Sessions</div>
+              <div class="stat-value" id="analytics-sessions">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg. Session Time</div>
+              <div class="stat-value" id="analytics-avg-time">0m</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Reset Requests</div>
+              <div class="stat-value" id="analytics-resets">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Subscription Requests</div>
+              <div class="stat-value" id="analytics-subscriptions">0</div>
+            </div>
+          </div>
+
+          <div class="analytics-chart-grid">
+            <div class="analytics-card">
+              <div class="analytics-card-head">
+                <span>Signups and Sessions</span>
+                <span id="analytics-period-label" class="analytics-card-note">Last 7 days</span>
+              </div>
+              <div id="analytics-main-chart"></div>
+            </div>
+
+            <div class="analytics-card">
+              <div class="analytics-card-head">
+                <span>Reset and Subscription Load</span>
+                <span id="analytics-activity-note" class="analytics-card-note">Recent activity</span>
+              </div>
+              <div id="analytics-secondary-chart"></div>
+            </div>
+          </div>
+
+          <div class="analytics-card">
+            <div class="analytics-card-head">
+              <span>Recent Activity</span>
+              <span id="analytics-feed-count" class="analytics-card-note">0 items</span>
+            </div>
+            <div id="analytics-feed" class="analytics-feed-list"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- USERS TAB -->
       <div id="users" class="content">
         <div style="margin-bottom: 20px">
-<<<<<<< HEAD
-<<<<<<< HEAD
           <button id="add-user-btn" class="toolbar-button">Add User</button>
         </div>
         <div class="users-toolbar">
@@ -2799,38 +4020,11 @@
                 <th>Username</th>
                 <th>Institution</th>
                 <th>Created</th>
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-          <button id="add-user-btn">Add User</button>
-        </div>
-        <div id="users-alerts"></div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Contact</th>
-                <th>Created</th>
-                <th>Actions</th>
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
               </tr>
             </thead>
             <tbody id="users-table">
               <tr>
-<<<<<<< HEAD
-<<<<<<< HEAD
                 <td colspan="4" style="text-align: center; color: #ccc">
-=======
-                <td colspan="5" style="text-align: center; color: #ccc">
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-                <td colspan="5" style="text-align: center; color: #ccc">
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
                   Loading...
                 </td>
               </tr>
@@ -2839,8 +4033,6 @@
         </div>
       </div>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       <!-- GROUPS TAB -->
       <div id="groups" class="content">
         <div class="users-toolbar">
@@ -2941,6 +4133,11 @@
         <div id="broadcast-alerts"></div>
         <div class="broadcast-shell">
           <section class="broadcast-status-panel">
+            <button id="broadcast-page-back-btn" type="button" class="broadcast-page-back-btn" aria-label="Back to dashboard" title="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+              </svg>
+            </button>
             <div id="broadcast-status-strip" class="broadcast-status-strip"></div>
           </section>
 
@@ -3073,17 +4270,100 @@
         </div>
       </div>
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+      <div id="subscription-request-modal" class="modal">
+        <div class="modal-content subscription-request-modal">
+          <div class="subscription-modal-header">
+            <div>
+              <div class="subscription-modal-title" id="subscription-request-title">Accept Subscription Request</div>
+            </div>
+            <button id="subscription-request-close-btn" class="secondary">Close</button>
+          </div>
+          <div id="subscription-request-body" class="subscription-detail-grid"></div>
+        </div>
+      </div>
+
+      <div id="subscription-proof-modal" class="modal">
+        <div class="modal-content subscription-proof-modal">
+          <div class="subscription-modal-header">
+            <div>
+              <div class="subscription-modal-title" id="subscription-proof-title">Payment Proof</div>
+              <div class="subscription-modal-subtitle" id="subscription-proof-subtitle">
+                Expanded transaction screenshot.
+              </div>
+            </div>
+            <button id="subscription-proof-close-btn" class="secondary">Close</button>
+          </div>
+          <div class="subscription-proof-stage">
+            <img id="subscription-proof-image" alt="Expanded payment proof" class="hidden" />
+            <div id="subscription-proof-placeholder" class="subscription-proof-placeholder">
+              No payment screenshot available.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="subscription-reject-modal" class="modal">
+        <div class="modal-content subscription-reject-modal">
+          <div class="subscription-modal-header">
+            <div>
+              <div class="subscription-modal-title" id="subscription-reject-title">Reject with Reason</div>
+              <div class="subscription-modal-subtitle" id="subscription-reject-subtitle">Choose a reason and confirm the rejection.</div>
+            </div>
+            <button id="subscription-reject-close-btn" class="secondary">Close</button>
+          </div>
+
+          <div class="subscription-reject-body">
+            <div id="subscription-reject-summary" class="subscription-reject-summary"></div>
+
+            <div>
+              <label class="subscription-reject-label" for="subscription-reject-reason">Select reason</label>
+              <select id="subscription-reject-reason" class="subscription-reject-select">
+                <option>Payment not received</option>
+                <option>Invalid or unclear screenshot</option>
+                <option>Amount does not match</option>
+                <option>Other reason</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-actions subscription-reject-actions">
+            <button id="subscription-reject-cancel-btn" type="button" class="secondary">Cancel</button>
+            <button id="subscription-reject-confirm-btn" type="button" class="reject">Confirm reject</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="subscription-approve-modal" class="modal">
+        <div class="modal-content subscription-approve-modal">
+          <div class="subscription-modal-header">
+            <div>
+              <div class="subscription-modal-title" id="subscription-approve-title">Activate Subscription</div>
+              <div class="subscription-modal-subtitle" id="subscription-approve-subtitle">
+                Confirm this request to unlock access immediately.
+              </div>
+            </div>
+            <button id="subscription-approve-close-btn" class="secondary">Close</button>
+          </div>
+
+          <div class="subscription-approve-body">
+            <div id="subscription-approve-summary" class="subscription-approve-summary"></div>
+            <p class="subscription-approve-note">
+              This action activates the subscription and notifies the user right away.
+            </p>
+          </div>
+
+          <div class="modal-actions subscription-reject-actions">
+            <button id="subscription-approve-cancel-btn" type="button" class="secondary">Cancel</button>
+            <button id="subscription-approve-confirm-btn" type="button" class="primary">Activate</button>
+          </div>
+        </div>
+      </div>
+
       <!-- QUESTIONS TAB -->
       <div id="questions" class="content">
         <div style="margin-bottom: 20px">
           <button id="add-question-btn">Add Question</button>
         </div>
-<<<<<<< HEAD
-<<<<<<< HEAD
         <div class="users-search" style="margin-bottom: 20px">
           <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -3101,30 +4381,12 @@
         <div id="questions-alerts"></div>
         <div class="table-container">
           <table class="question-table">
-=======
-        <div id="questions-alerts"></div>
-        <div class="table-container">
-          <table>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-        <div id="questions-alerts"></div>
-        <div class="table-container">
-          <table>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Text</th>
                 <th>Category</th>
-<<<<<<< HEAD
-<<<<<<< HEAD
                 <th>Correct Answer</th>
-=======
-                <th>Options</th>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-                <th>Options</th>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
                 <th>Actions</th>
               </tr>
             </thead>
@@ -3139,57 +4401,165 @@
         </div>
       </div>
 
-      <!-- EXPORT TAB -->
-      <div id="export" class="content">
-        <div
-          style="
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-          "
-        >
-          <h3 style="margin-bottom: 20px; color: #333">Export Data</h3>
-          <div id="export-alerts"></div>
+      <!-- MONETIZATION TAB -->
+      <div id="monetization" class="content">
+        <div class="monetization-shell">
+          <div style="background: white; padding: 30px; border-radius: 10px">
+            <div style="display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px;">
+              <div>
+                <h3 style="margin-bottom: 8px; color: #333">Monetization</h3>
+                <p style="color: #777; max-width: 760px; font-size: 14px; line-height: 1.5">
+                  Track subscription requests and lifecycle states here. This becomes the control center for paid access and proof review.
+                </p>
+              </div>
+              <div style="align-self: flex-start; padding: 10px 14px; border-radius: 999px; background: #f8fafc; color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">
+                Subscription palette
+              </div>
+            </div>
 
-          <div style="margin-bottom: 30px">
-            <h4 style="margin-bottom: 15px; color: #666">
-              Full Database Export
-            </h4>
-            <div class="export-options">
-              <button id="export-json-btn">Export as JSON</button>
-              <button id="export-csv-btn">
-                Export Attempts as CSV
-              </button>
+            <div class="stats-grid">
+              <div
+                class="stat-card monetization-card is-active"
+                style="border-top: 4px solid #f59e0b;"
+                data-monetization-bucket="request"
+                role="button"
+                tabindex="0"
+                aria-pressed="true"
+              >
+                <div class="stat-label">Requests</div>
+                <div class="stat-value" id="monetization-request-count">0</div>
+                <div style="margin-top: 8px; color: #7c6a2e; font-size: 13px; line-height: 1.4;">
+                  Awaiting review within the 24 hour window.
+                </div>
+              </div>
+              <div
+                class="stat-card monetization-card"
+                style="border-top: 4px solid #16a34a;"
+                data-monetization-bucket="activated"
+                role="button"
+                tabindex="0"
+                aria-pressed="false"
+              >
+                <div class="stat-label">Activated</div>
+                <div class="stat-value" id="monetization-activated-count">0</div>
+                <div style="margin-top: 8px; color: #2f6f44; font-size: 13px; line-height: 1.4;">
+                  Approved and currently unlocked.
+                </div>
+              </div>
+              <div
+                class="stat-card monetization-card"
+                style="border-top: 4px solid #dc2626;"
+                data-monetization-bucket="rejected"
+                role="button"
+                tabindex="0"
+                aria-pressed="false"
+              >
+                <div class="stat-label">Rejected</div>
+                <div class="stat-value" id="monetization-rejected-count">0</div>
+                <div style="margin-top: 8px; color: #8b3a3a; font-size: 13px; line-height: 1.4;">
+                  Submitted proofs that were declined.
+                </div>
+              </div>
+              <div
+                class="stat-card monetization-card"
+                style="border-top: 4px solid #475569;"
+                data-monetization-bucket="expired"
+                role="button"
+                tabindex="0"
+                aria-pressed="false"
+              >
+                <div class="stat-label">Expired</div>
+                <div class="stat-value" id="monetization-expired-count">0</div>
+                <div style="margin-top: 8px; color: #475569; font-size: 13px; line-height: 1.4;">
+                  Requests or access windows that lapsed.
+                </div>
+              </div>
             </div>
           </div>
 
-          <div
-            style="
-              margin-bottom: 30px;
-              padding-top: 30px;
-              border-top: 1px solid #e5e7eb;
-            "
-          >
-            <h4 style="margin-bottom: 15px; color: #666">Data Summary</h4>
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-label">Users</div>
-                <div class="stat-value" id="export-users">0</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">Questions</div>
-                <div class="stat-value" id="export-questions">0</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">Attempts</div>
-                <div class="stat-value" id="export-attempts">0</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">Sync Events</div>
-                <div class="stat-value" id="export-sync">0</div>
+          <div class="monetization-list-shell">
+            <div class="monetization-list-header">
+              <div class="monetization-list-copy">
+                <div class="monetization-list-kicker" id="monetization-panel-kicker">Requests</div>
+                <div class="monetization-list-title" id="monetization-panel-title">Incoming payment proofs</div>
               </div>
             </div>
+            <div class="users-toolbar monetization-toolbar">
+              <div class="users-search">
+                <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <input
+                  type="search"
+                  id="monetization-search"
+                  placeholder="Search by name, plan, contact, amount, reference, or date..."
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+            <div class="monetization-summary">
+              <div id="monetization-summary-count">Showing <strong>0</strong> requests</div>
+              <div class="monetization-summary-total" id="monetization-summary-total">Total: GHS 0</div>
+            </div>
+            <div id="monetization-list-root" class="monetization-list-root">
+              <div class="monetization-empty-state">Loading subscription requests...</div>
+            </div>
+            <div id="monetization-alerts"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASSWORD RESET TAB -->
+      <div id="password-resets" class="content">
+        <div class="monetization-shell">
+          <div style="background: white; padding: 30px; border-radius: 10px">
+            <div style="display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px;">
+              <div>
+                <h3 style="margin-bottom: 8px; color: #333">Password Resets</h3>
+                <p style="color: #777; max-width: 780px; font-size: 14px; line-height: 1.5">
+                  Review reset requests, click the contact to open a pre-filled email or WhatsApp message, then mark the request sent once you finish sending the code.
+                </p>
+              </div>
+              <div style="align-self: flex-start; padding: 10px 14px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">
+                Admin-assisted flow
+              </div>
+            </div>
+          </div>
+
+          <div class="monetization-list-shell">
+            <div class="monetization-list-header">
+              <div class="monetization-list-copy">
+                <div class="monetization-list-kicker" id="password-reset-panel-kicker">Queue</div>
+                <div class="monetization-list-title" id="password-reset-panel-title">Incoming password reset requests</div>
+              </div>
+            </div>
+            <div class="users-toolbar monetization-toolbar">
+              <div class="users-search">
+                <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <input
+                  type="search"
+                  id="password-reset-search"
+                  placeholder="Search by name, contact, code, or status..."
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+            <div class="monetization-summary">
+              <div id="password-reset-summary-count">Showing <strong>0</strong> reset requests</div>
+              <div class="monetization-summary-total" id="password-reset-summary-total">Pending: 0</div>
+            </div>
+            <div id="password-reset-list-root" class="monetization-list-root">
+              <div class="monetization-empty-state">Loading password reset requests...</div>
+            </div>
+            <div id="password-reset-alerts"></div>
           </div>
         </div>
       </div>
@@ -3208,24 +4578,11 @@
           >
             <h4 style="margin-bottom: 15px; color: #666">Seed Questions</h4>
             <p style="color: #999; margin-bottom: 15px; font-size: 14px">
-<<<<<<< HEAD
-<<<<<<< HEAD
               Import questions from <code>Quiz/data.js</code>. You can run safe
               seed (only if empty) or force replace all existing questions.
             </p>
             <button id="seed-questions-btn">
               Seed / Reseed Questions from Frontend Data
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-              Reload questions from the Quiz/data.js file
-            </p>
-            <button id="seed-questions-btn">
-              Seed Questions from Frontend Data
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
             </button>
           </div>
 
@@ -3245,14 +4602,56 @@
             </button>
           </div>
 
+          <div
+            style="
+              margin-bottom: 30px;
+              padding-bottom: 30px;
+              border-bottom: 1px solid #e5e7eb;
+            "
+          >
+            <h4 style="margin-bottom: 15px; color: #666">Data Export</h4>
+            <div id="export-alerts"></div>
+
+            <div style="margin-bottom: 30px">
+              <p style="color: #999; margin-bottom: 15px; font-size: 14px">
+                Export the full database or download attempt records directly from
+                the settings area.
+              </p>
+              <div class="export-options">
+                <button id="export-json-btn">Export as JSON</button>
+                <button id="export-csv-btn">Export Attempts as CSV</button>
+              </div>
+            </div>
+
+            <div>
+              <h4 style="margin-bottom: 15px; color: #666">Data Summary</h4>
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-label">Users</div>
+                  <div class="stat-value" id="export-users">0</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-label">Questions</div>
+                  <div class="stat-value" id="export-questions">0</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-label">Attempts</div>
+                  <div class="stat-value" id="export-attempts">0</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-label">Sync Events</div>
+                  <div class="stat-value" id="export-sync">0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div id="settings-alerts"></div>
         </div>
       </div>
     </div>
 
     <!-- MODALS -->
-<<<<<<< HEAD
-<<<<<<< HEAD
     <div id="user-details-modal" class="modal">
       <div class="modal-content user-details-modal">
         <div class="modal-title">User Details</div>
@@ -3453,10 +4852,6 @@
       </div>
     </div>
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
     <div id="user-modal" class="modal">
       <div class="modal-content">
         <div class="modal-title">Add User</div>
@@ -3510,8 +4905,6 @@
             <option value="Rheumatology & Pain">Rheumatology & Pain</option>
             <option value="Women's & Men's Health">Women's & Men's Health</option>
             <option value="Immunizations">Immunizations</option>
-<<<<<<< HEAD
-<<<<<<< HEAD
             <option value="Pharmacy Practice">Pharmacy Practice</option>
             <option value="Manufacturing and Calculation">Manufacturing and Calculation</option>
           </select>
@@ -3528,12 +4921,6 @@
             <option value="Mental Health">Mental Health</option>
             <option value="Oncology">Oncology</option>
             <option value="ENT/Dental">ENT/Dental</option>
-=======
-            <option value="Pharmacy Law & Ethics">Pharmacy Law & Ethics</option>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-            <option value="Pharmacy Law & Ethics">Pharmacy Law & Ethics</option>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           </select>
         </div>
         <div class="form-group">
@@ -3570,18 +4957,8 @@
           </div>
         </div>
         <div class="form-group">
-<<<<<<< HEAD
-<<<<<<< HEAD
           <label>Correct Answer Index (0 = Option A, 1 = Option B, ...)</label>
           <input type="number" id="q-correct" placeholder="0" min="0" />
-=======
-          <label>Correct Answer (0-3)</label>
-          <input type="number" id="q-correct" placeholder="0" min="0" max="3" />
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          <label>Correct Answer (0-3)</label>
-          <input type="number" id="q-correct" placeholder="0" min="0" max="3" />
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         </div>
         <div class="modal-actions">
           <button id="question-cancel-btn">Cancel</button>
@@ -3592,25 +4969,19 @@
       </div>
     </div>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    <script src="admin.js?v=20260613-broadcast-mobilefix1"></script>
+    <script src="admin.js?v=20260816-admin-tabletouch4"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/sw.js").catch((error) => {
-            console.warn("Service worker registration failed:", error);
-          });
+          navigator.serviceWorker
+            .getRegistrations()
+            .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+            .catch(() => {});
+          if ("caches" in window) {
+            caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => {});
+          }
         });
       }
     </script>
-=======
-        <script src="admin.js"></script>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-        <script src="admin.js"></script>
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
   </body>
 </html>
-
-

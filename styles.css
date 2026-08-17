@@ -1417,8 +1417,30 @@ body.theme-light.theme-violet {
 
 .auth-phone-grid {
   display: grid;
-  grid-template-columns: minmax(120px, 180px) 1fr;
+  grid-template-columns: minmax(108px, 180px) minmax(0, 1fr);
   gap: 8px;
+  align-items: center;
+}
+
+.auth-contact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(96px, 28vw, 136px);
+  gap: 12px;
+  align-items: end;
+  width: 100%;
+}
+
+.auth-contact-row .auth-contact-input-field {
+  min-width: 0;
+}
+
+.auth-contact-row .auth-contact-format-field {
+  min-width: 0;
+}
+
+.auth-contact-row .auth-contact-format-field select {
+  width: 100%;
+  min-width: 0;
 }
 
 .auth-field.field-invalid input,
@@ -8162,8 +8184,13 @@ body.theme-sunset .global-quick-nav-panel {
     width: 100%;
   }
 
+  .auth-contact-row {
+    grid-template-columns: minmax(0, 1fr) clamp(88px, 31vw, 128px);
+    gap: 10px;
+  }
+
   .auth-phone-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(92px, 132px) minmax(0, 1fr);
   }
 
   .profile-toast {

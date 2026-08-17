@@ -23618,7 +23618,7 @@ body.community-status-open {
 }
 
 .community-profile-leaderboard-points::before {
-  content: "👑";
+  content: none;
   background: linear-gradient(180deg, #dfefff, #bfd7fb);
   color: #1f5fa1;
 }
@@ -38770,4 +38770,16 @@ body::-webkit-scrollbar,
   width: 0 !important;
   height: 0 !important;
   display: none !important;
+}
+
+.leaderboard-podium-crown,
+.leaderboard-points-icon {
+  display: none !important;
+}
+
+.community-profile-leaderboard-rank::before,
+.community-profile-leaderboard-points::before {
+  content: none !important;
+  background: none !important;
+  box-shadow: none !important;
 }

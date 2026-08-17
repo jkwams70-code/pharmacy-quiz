@@ -4036,7 +4036,7 @@ function buildLegacySubscriptionRequestFromUser(user = {}) {
   const normalized = normalizeExistingUser(user);
   const subscriptionState = computeSubscriptionState(normalized);
   const hasSubscriptionHistory =
-    subscriptionState.status !== "trial" &&
+    subscriptionState.status === "trial" ||
     Boolean(
       subscriptionState.requestedAt ||
         subscriptionState.reviewedAt ||
@@ -4051,7 +4051,7 @@ function buildLegacySubscriptionRequestFromUser(user = {}) {
 
   const activatedAt =
     subscriptionState.approvedAt ||
-    (["active", "expired"].includes(subscriptionState.status) ? subscriptionState.startedAt : null);
+    (["active", "expired", "trial"].includes(subscriptionState.status) ? subscriptionState.startedAt : null);
   const expiresAt = subscriptionState.subscriptionEndsAt || null;
 
   return normalizeSubscriptionRequest({
@@ -4066,9 +4066,7 @@ function buildLegacySubscriptionRequestFromUser(user = {}) {
         ? "rejected"
         : subscriptionState.status === "expired"
           ? "expired"
-          : subscriptionState.status === "active"
-            ? "active"
-            : "pending",
+          : "active",
     requestedAt: subscriptionState.requestedAt || normalized.createdAt,
     reviewedAt: subscriptionState.reviewedAt || activatedAt || null,
     approvedAt: subscriptionState.approvedAt || activatedAt || null,

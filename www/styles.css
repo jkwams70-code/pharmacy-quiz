@@ -10569,7 +10569,11 @@ body.reduce-motion *::after {
 
 .leaderboard-podium-crown {
   top: -8px;
+  color: #d8a22a;
   font-size: 1.12rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .leaderboard-podium-name {
@@ -20251,8 +20255,11 @@ body #quiz-menu .menu-modern-points-pill {
   font-weight: 800;
 }
 
-.leaderboard-points-icon {
+.leaderboard-points-icon,
+.leaderboard-points-label {
   font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   line-height: 1;
 }
 
@@ -23728,7 +23735,7 @@ body.community-status-open {
 }
 
 .community-profile-leaderboard-points::before {
-  content: "👑";
+  content: none;
   background: linear-gradient(180deg, #dfefff, #bfd7fb);
   color: #1f5fa1;
 }
@@ -40114,4 +40121,23 @@ body::-webkit-scrollbar,
   font-size: 15px;
   font-weight: 900;
   line-height: 1;
+}
+#subscription-screen .subscription-plan-card.is-disabled .subscription-plan-card-button {
+  padding-left: 16px !important;
+}
+
+#subscription-screen .subscription-plan-card.is-disabled .subscription-plan-card-button::before {
+  content: none !important;
+}
+
+.leaderboard-podium-crown,
+.leaderboard-points-icon {
+  display: none !important;
+}
+
+.community-profile-leaderboard-rank::before,
+.community-profile-leaderboard-points::before {
+  content: none !important;
+  background: none !important;
+  box-shadow: none !important;
 }

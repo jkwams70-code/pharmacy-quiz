@@ -6417,7 +6417,6 @@ function renderLeaderboardPodium(entries = []) {
       const points = Math.max(0, Math.round(Number(entry.points) || 0));
       return `
         <div class="leaderboard-podium-card ${podiumClass}">
-          ${rank === 1 ? '<div class="leaderboard-podium-crown" aria-hidden="true">ðŸ‘‘</div>' : ""}
           <div class="leaderboard-podium-avatar-shell">
             ${getLeaderboardAvatarHtml(entry, "is-podium")}
             <div class="leaderboard-podium-medal">${rank}</div>
@@ -6426,7 +6425,7 @@ function renderLeaderboardPodium(entries = []) {
           <button type="button" class="community-name-link leaderboard-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(entry.userId || "")}">${escapeHtml(displayName)}</button>
           <div class="leaderboard-podium-username">@${escapeHtml(entry.username || "user")}</div>
           <div class="leaderboard-podium-rank">${rankLabel}</div>
-          <div class="leaderboard-podium-points"><span class="leaderboard-points-icon" aria-hidden="true">ðŸ‘‘</span>${points}</div>
+          <div class="leaderboard-podium-points">${points}</div>
         </div>
       `;
     })
@@ -6453,7 +6452,7 @@ function renderLeaderboardYourRank(entry = null, totalPlayers = 0) {
       <div class="leaderboard-your-rank-subtitle">${escapeHtml(getCommunityLeaderboardName(entry))}</div>
       <div class="leaderboard-your-rank-handle">@${escapeHtml(entry.username || "user")}</div>
     </div>
-    <div class="leaderboard-rank-points"><span class="leaderboard-points-icon" aria-hidden="true">ðŸ‘‘</span>${points}</div>
+    <div class="leaderboard-rank-points">${points}</div>
   `;
 }
 
@@ -6478,7 +6477,7 @@ function renderLeaderboardList(entries = []) {
             <button type="button" class="community-name-link leaderboard-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(entry.userId || "")}">${escapeHtml(displayName)}</button>
             <div class="leaderboard-list-username">@${escapeHtml(entry.username || "user")}</div>
           </div>
-          <div class="leaderboard-list-points"><span class="leaderboard-points-icon" aria-hidden="true">ðŸ‘‘</span>${Math.max(0, Math.round(Number(entry.points) || 0))}</div>
+          <div class="leaderboard-list-points">${Math.max(0, Math.round(Number(entry.points) || 0))}</div>
         </div>
       `;
     })

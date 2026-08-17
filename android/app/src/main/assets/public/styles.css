@@ -11983,7 +11983,7 @@ body.theme-dark .leaderboard-self-label {
   }
 
   .home-minimal-content::before {
-    display: none;
+    display: block;
   }
 
   #home-screen::before {

@@ -315,6 +315,24 @@
         overflow: hidden;
       }
 
+      @media (min-width: 769px) {
+        #users.content.active,
+        #questions.content.active {
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          min-width: 0;
+          height: calc(100vh - 220px);
+          overflow: hidden;
+        }
+
+        #users.content.active > .table-container,
+        #questions.content.active > .table-container {
+          flex: 1 1 auto;
+          min-height: 0;
+        }
+      }
+
       .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -563,7 +581,7 @@
         max-width: 100%;
         min-width: 0;
         overflow-x: auto;
-        overflow-y: hidden;
+        overflow-y: auto;
         margin-bottom: 20px;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
@@ -582,6 +600,17 @@
         -webkit-overflow-scrolling: touch;
         margin-bottom: 0;
         scrollbar-width: none;
+      }
+
+      #users .table-container,
+      #questions .table-container,
+      #monetization .table-container {
+        min-width: 0;
+        max-height: min(68dvh, 560px);
+        overflow-y: auto;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
       }
 
       #groups .table-container::-webkit-scrollbar,
@@ -788,11 +817,15 @@
 
       .user-table,
       .group-table,
-      .report-table,
+      .report-table {
+        width: 100%;
+        min-width: 100%;
+      }
+
       .question-table,
       .monetization-table {
         width: max-content;
-        min-width: 100%;
+        min-width: max-content;
       }
 
       .question-table th,
@@ -805,6 +838,18 @@
         max-width: 280px;
         white-space: normal;
         word-break: break-word;
+      }
+
+      .question-table th:last-child,
+      .question-table td.question-actions-cell {
+        width: 1%;
+        white-space: nowrap;
+      }
+
+      .question-table td.question-actions-cell .actions {
+        display: inline-flex;
+        width: fit-content;
+        flex-wrap: nowrap;
       }
 
       .user-avatar-cell {
@@ -1215,7 +1260,7 @@
         align-items: center;
         padding: 16px;
         width: max-content;
-        min-width: 100%;
+        min-width: max-content;
       }
 
       .monetization-row-header .monetization-row-main {
@@ -3389,7 +3434,12 @@
 
         #users .table-container {
           overflow-x: auto;
+          overflow-y: auto;
           min-width: 0;
+          max-height: min(68dvh, 560px);
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-x pan-y;
+          overscroll-behavior: contain;
         }
 
         #users table {
@@ -3412,6 +3462,9 @@
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           min-width: 0;
+          max-height: min(68dvh, 560px);
+          touch-action: pan-x pan-y;
+          overscroll-behavior: contain;
         }
 
         #groups table,
@@ -3427,21 +3480,31 @@
 
         #questions .table-container {
           overflow-x: auto;
+          overflow-y: auto;
           -webkit-overflow-scrolling: touch;
           min-width: 0;
-          touch-action: auto;
+          max-height: min(68dvh, 560px);
+          touch-action: pan-x pan-y;
+          overscroll-behavior: contain;
         }
 
         #questions table {
           table-layout: auto;
-          min-width: 900px;
+          min-width: 0;
           width: max-content;
+          display: inline-table;
         }
 
         #questions th,
         #questions td {
-          white-space: nowrap;
           vertical-align: top;
+          white-space: normal;
+        }
+
+        #questions th:last-child,
+        #questions td.question-id-cell,
+        #questions td.question-actions-cell {
+          white-space: nowrap;
         }
 
         #questions td.question-text-cell .question-preview {
@@ -3449,6 +3512,65 @@
           max-width: 280px;
           white-space: normal;
           word-break: break-word;
+        }
+
+        #password-resets .password-reset-table {
+          width: max-content;
+          min-width: 980px;
+          table-layout: auto;
+        }
+
+        #password-resets .password-reset-table th,
+        #password-resets .password-reset-table td {
+          white-space: nowrap;
+          vertical-align: top;
+        }
+
+        #password-resets .password-reset-table th:first-child,
+        #password-resets .password-reset-table td:first-child {
+          min-width: 220px;
+        }
+
+        #password-resets .password-reset-table th:nth-child(2),
+        #password-resets .password-reset-table td:nth-child(2) {
+          min-width: 190px;
+        }
+
+        #password-resets .password-reset-table th:nth-child(3),
+        #password-resets .password-reset-table td:nth-child(3) {
+          min-width: 120px;
+        }
+
+        #password-resets .password-reset-table th:nth-child(4),
+        #password-resets .password-reset-table td:nth-child(4),
+        #password-resets .password-reset-table th:nth-child(5),
+        #password-resets .password-reset-table td:nth-child(5) {
+          min-width: 150px;
+        }
+
+        #password-resets .password-reset-table th:last-child,
+        #password-resets .password-reset-table td:last-child {
+          min-width: 110px;
+        }
+
+        #password-resets .password-reset-table .cell-wrap {
+          display: inline-flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+          max-width: none;
+          width: max-content;
+          white-space: nowrap;
+          word-break: normal;
+          overflow-wrap: normal;
+        }
+
+        #password-resets .password-reset-table .cell-wrap strong,
+        #password-resets .password-reset-table .cell-wrap .cell-subtle,
+        #password-resets .password-reset-table .cell-wrap .password-reset-contact-link {
+          white-space: nowrap;
+          word-break: normal;
+          overflow-wrap: normal;
         }
 
         #questions td.question-actions-cell .actions {
@@ -3683,9 +3805,12 @@
           min-width: 0;
           width: 100%;
           max-width: 100%;
-          overflow-y: hidden;
+          overflow-y: auto;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
+          max-height: min(68dvh, 560px);
+          touch-action: pan-x pan-y;
+          overscroll-behavior: contain;
         }
 
         #monetization .monetization-table {
@@ -3711,10 +3836,11 @@
         #questions .table-container,
         #monetization .table-container {
           overflow-x: auto;
-          overflow-y: hidden;
+          overflow-y: auto;
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
           overscroll-behavior: contain;
+          max-height: min(68dvh, 560px);
         }
 
         #users table {
@@ -3766,6 +3892,81 @@
           min-height: 240px;
           padding: 8px;
         }
+
+        #analytics.content {
+          overflow-x: hidden;
+          min-width: 0;
+        }
+
+        #analytics .analytics-panel {
+          overflow-x: hidden;
+          min-width: 0;
+        }
+
+        #analytics .analytics-hero {
+          flex-direction: column;
+          align-items: stretch;
+          min-width: 0;
+        }
+
+        #analytics .analytics-hero > div:first-child {
+          min-width: 0;
+        }
+
+        #analytics .analytics-periods {
+          width: 100%;
+          flex-wrap: nowrap;
+          gap: 6px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        #analytics .analytics-period-btn {
+          flex: 1 1 0;
+          min-width: 0;
+          padding: 7px 8px;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+
+        #analytics .analytics-summary-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          min-width: 0;
+        }
+
+        #analytics .analytics-chart-grid {
+          grid-template-columns: 1fr;
+          min-width: 0;
+        }
+
+        #analytics .analytics-card {
+          min-width: 0;
+          overflow-x: hidden;
+        }
+
+        #analytics .analytics-card-head {
+          flex-wrap: wrap;
+          align-items: flex-start;
+        }
+
+        #analytics .analytics-feed-list {
+          min-width: 0;
+        }
+
+        #analytics .analytics-feed-item {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        #analytics .analytics-feed-type,
+        #analytics .analytics-feed-title,
+        #analytics .analytics-feed-subtitle,
+        #analytics .analytics-feed-time {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
       }
 
       /* Hide native scrollbars while preserving scroll behavior. */

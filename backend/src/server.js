@@ -737,7 +737,7 @@ function normalizeConversation(raw = {}) {
   const inviteTokenCreatedAt = String(raw.inviteTokenCreatedAt || createdAt);
   const noticeTitle = normalizeWhitespace(raw.noticeTitle).slice(0, 72);
   const noticeSubtitle = normalizeWhitespace(raw.noticeSubtitle).slice(0, 180);
-  const noticeBody = normalizeWhitespace(raw.noticeBody).slice(0, 240);
+  const noticeBody = normalizeMultilineText(raw.noticeBody).slice(0, 240);
   const noticeAvatarUploadId = String(raw.noticeAvatarUploadId || "").trim();
   const noticeOriginType = normalizeWhitespace(raw.noticeOriginType).slice(0, 32);
   const noticeOriginId = String(raw.noticeOriginId || "").trim();
@@ -1506,7 +1506,7 @@ function normalizeMessage(raw = {}) {
     senderUserId: String(raw.senderUserId || ""),
     senderName: normalizeWhitespace(raw.senderName || raw.senderDisplayName || raw.senderLabel || "").slice(0, 80),
     type: MESSAGE_TYPE_VALUES.has(type) ? type : "text",
-    text: String(raw.text || "").trim(),
+    text: normalizeMultilineText(raw.text || "").slice(0, 2000),
     attachment: raw.attachment && typeof raw.attachment === "object" ? raw.attachment : null,
     call: normalizeMessageCall(raw.call),
     replyTo: normalizeMessageReply(raw.replyTo),
@@ -1589,7 +1589,7 @@ function normalizeMessageReply(raw = null) {
     type: type === "status" ? "status" : "message",
     sourceId: String(raw.sourceId || raw.messageId || raw.statusId || "").trim(),
     senderName: normalizeWhitespace(raw.senderName || raw.ownerName || raw.title || "").slice(0, 80),
-    text: normalizeWhitespace(raw.text || raw.caption || "").slice(0, 240),
+    text: normalizeMultilineText(raw.text || raw.caption || "").slice(0, 240),
     imageDataUrl: String(raw.imageDataUrl || "").trim().slice(0, 5_000_000),
   };
 }
@@ -2171,7 +2171,7 @@ async function persistCommunityConversationMessage({
   upload = null,
 } = {}) {
   const safeConversationId = String(conversationId || "");
-  const safeText = String(text || "").trim();
+  const safeText = normalizeMultilineText(text || "");
   const safeReplyTo = normalizeMessageReply(replyTo || null);
   const conversations = (await readCollection("conversations")).map(normalizeConversation);
   const messages = (await readCollection("messages")).map(normalizeMessage);
@@ -4525,7 +4525,7 @@ async function persistGlobalAdminBroadcastMessage({
   upload = null,
   noticeBatchId = "",
 } = {}) {
-  const safeText = String(text || "").trim();
+  const safeText = normalizeMultilineText(text || "");
   const safeSenderName = normalizeWhitespace(senderName).slice(0, 80) || ADMIN_NOTICE_SENDER_NAME;
   const safeBatchId = String(noticeBatchId || "").trim() || crypto.randomUUID();
   let storedUpload = null;
@@ -9093,9 +9093,9 @@ app.post(
       res.status(403).json({ error: "admin broadcast is restricted" });
       return;
     }
-    const caption = normalizeWhitespace(req.body?.caption || "").slice(0, 140);
+    const caption = normalizeMultilineText(req.body?.caption || "").slice(0, 140);
     const imageDataUrl = String(req.body?.imageDataUrl || req.body?.mediaDataUrl || "").trim();
-    const text = normalizeWhitespace(req.body?.text || "").slice(0, 280);
+    const text = normalizeMultilineText(req.body?.text || "").slice(0, 280);
     const background = String(req.body?.background || "#2f80d0").trim().slice(0, 160);
     const style = req.body?.style && typeof req.body.style === "object" ? req.body.style : {};
     const fileName = String(req.body?.fileName || "").trim();
@@ -9655,7 +9655,7 @@ app.post(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const conversationId = String(req.params.conversationId || "");
-    const text = String(req.body?.text || "").trim();
+    const text = normalizeMultilineText(req.body?.text || "");
     const replyTo = normalizeMessageReply(req.body?.replyTo || null);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
@@ -9814,7 +9814,7 @@ app.post(
     await touchUserLastSeen(viewerId);
     const conversationId = String(req.params.conversationId || "");
     const meta = parseMessageMetaHeader(req.get("x-message-meta"));
-    const text = String(meta?.text || "").trim();
+    const text = normalizeMultilineText(meta?.text || "");
     const replyTo = normalizeMessageReply(meta?.replyTo || null);
     const fileName = String(meta?.fileName || "attachment").trim().slice(0, 160) || "attachment";
     const mediaStyle = meta?.mediaStyle && typeof meta.mediaStyle === "object" ? meta.mediaStyle : null;
@@ -9891,7 +9891,7 @@ app.patch(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const messageId = String(req.params.messageId || "");
-    const text = String(req.body?.text || "").trim();
+    const text = normalizeMultilineText(req.body?.text || "");
     if (!text) {
       res.status(400).json({ error: "message text is required" });
       return;
@@ -11476,7 +11476,7 @@ app.post(
     }
 
     const userId = String(req.params.userId || "").trim();
-    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
     if (!userId) {
       res.status(400).json({ error: "userId is required" });
       return;
@@ -11521,7 +11521,7 @@ app.post(
     }
 
     const groupId = String(req.params.groupId || "").trim();
-    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
     if (!groupId) {
       res.status(400).json({ error: "groupId is required" });
       return;
@@ -11572,7 +11572,7 @@ app.post(
       return;
     }
 
-    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
     const attachmentMimeType = String(req.body?.attachmentMimeType || "").trim().toLowerCase();
@@ -11656,8 +11656,8 @@ app.post(
       return;
     }
 
-    const caption = normalizeWhitespace(req.body?.caption || "").slice(0, 140);
-    const text = normalizeWhitespace(req.body?.text || "").slice(0, 280);
+    const caption = normalizeMultilineText(req.body?.caption || "").slice(0, 140);
+    const text = normalizeMultilineText(req.body?.text || "").slice(0, 280);
     const background = String(req.body?.background || "#2f80d0").trim().slice(0, 160);
     const style = req.body?.style && typeof req.body.style === "object" ? req.body.style : {};
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || req.body?.mediaDataUrl || "").trim();
@@ -11833,7 +11833,7 @@ app.post(
     }
 
     const threadKey = String(req.params.threadKey || "").trim();
-    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
     if (!threadKey) {
@@ -12887,7 +12887,7 @@ function buildAdminActivityAnalytics({
     };
   }
 
-  function buildRecentActivity(limit = 12) {
+  function buildRecentActivity(limit = 30) {
     const feed = [];
     const push = ({ type, title, subtitle = "", at = "" }) => {
       const safeAt = String(at || "").trim();
@@ -12912,10 +12912,7 @@ function buildAdminActivityAnalytics({
 
     safeSessions.forEach((session) => {
       const actorId = String(session?.actorId || "").trim();
-      const actor = actorId ? usersById.get(actorId) : null;
-      const actorLabel = actor
-        ? String(actor.name || actor.username || actor.contact || "User").trim()
-        : actorId || "User";
+      const actorLabel = displayNameForActor(actorId, usersById, "");
       const durationSeconds = parseDurationSeconds(session?.duration);
       push({
         type: "session",

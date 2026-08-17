@@ -243,6 +243,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
         const interactiveSelector =
           "button, a, input, textarea, select, option, label, summary, [contenteditable='true'], [data-no-table-drag]";
         const dragThreshold = 8;
+        const shouldUseNativeTouchScroll =
+          window.matchMedia?.("(pointer: coarse)")?.matches || window.matchMedia?.("(hover: none)")?.matches;
         let activePointerId = null;
         let activePointerType = "";
         let startX = 0;
@@ -315,10 +317,12 @@ async function ensureAdminApiBase({ force = false } = {}) {
           clearPointerState();
         };
 
-        root.addEventListener("pointerdown", onPointerDown);
-        root.addEventListener("pointermove", onPointerMove);
-        root.addEventListener("pointerup", onPointerUp);
-        root.addEventListener("pointercancel", onPointerCancel);
+        if (!shouldUseNativeTouchScroll) {
+          root.addEventListener("pointerdown", onPointerDown);
+          root.addEventListener("pointermove", onPointerMove);
+          root.addEventListener("pointerup", onPointerUp);
+          root.addEventListener("pointercancel", onPointerCancel);
+        }
 
         if (enableClickBinding && typeof onActivate === "function") {
           root.addEventListener("click", (event) => {
@@ -1897,6 +1901,27 @@ async function ensureAdminApiBase({ force = false } = {}) {
         `;
       }
 
+      function renderIdentityStack(primary = "", secondary = "", fallback = "--") {
+        const safePrimary = String(primary || "").trim() || String(fallback || "--").trim() || "--";
+        const safeSecondary = String(secondary || "").trim();
+        if (!safeSecondary || safeSecondary.toLowerCase() === safePrimary.toLowerCase()) {
+          return escapeHtml(safePrimary);
+        }
+        return `
+          <div style="color:#0f172a;font-weight:600;line-height:1.2;">${escapeHtml(safePrimary)}</div>
+          <div style="font-size:12px;color:#64748b;line-height:1.2;">${escapeHtml(safeSecondary)}</div>
+        `;
+      }
+
+      function renderDetailIdentityItem(label, primary, secondary, fallback) {
+        return `
+          <div class="detail-item">
+            <span class="detail-label">${escapeHtml(label)}</span>
+            <div class="detail-value">${renderIdentityStack(primary, secondary, fallback)}</div>
+          </div>
+        `;
+      }
+
       function buildUserDetailsHtml(user) {
         const profileImage = String(user?.profileImage || "").trim();
         const initials = String(user?.name || user?.username || "U")
@@ -2305,16 +2330,17 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       function buildReportDetailsHtml(report) {
+        const reporterUsername = displayValue(report?.reporter?.username || report?.reporterUsername || report?.reporterName);
         const reporterName = displayValue(report?.reporter?.name || report?.reporterName);
-        const targetName = displayValue(report?.target?.name || report?.targetName || report?.target?.username);
-        const targetUsername = displayValue(report?.target?.username || report?.targetUsername);
+        const targetUsername = displayValue(report?.target?.username || report?.targetUsername || report?.targetName);
+        const targetName = displayValue(report?.target?.name || report?.targetName);
         const targetType = String(report?.type || "").trim().toLowerCase() === "group" ? "Group" : "User";
         const status = String(report?.status || "open").trim();
         return `
           <div class="report-details-grid">
             ${renderDetailItem("Type", targetType)}
-            ${renderDetailItem("Reporter", reporterName)}
-            ${renderDetailItem("Target", targetName)}
+            ${renderDetailIdentityItem("Reporter", reporterUsername, reporterName, "Unknown reporter")}
+            ${renderDetailIdentityItem("Target", targetUsername, targetName, "Unknown target")}
             ${renderDetailItem("Target username", targetUsername)}
             ${renderDetailItem("Reason", report?.reason)}
             ${renderDetailItem("Reported at", formatDate(report?.createdAt))}
@@ -2815,17 +2841,23 @@ async function ensureAdminApiBase({ force = false } = {}) {
               })
               .join("")}
             <line x1="${paddingX}" y1="${baselineY}" x2="${width - paddingX}" y2="${baselineY}" stroke="#cbd5e1" stroke-width="1.4" />
-            <path d="${primaryPath}" fill="none" stroke="${primaryColor}" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="${secondaryPath}" fill="none" stroke="${secondaryColor}" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="${primaryPath}" fill="none" stroke="${primaryColor}" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="${secondaryPath}" fill="none" stroke="${secondaryColor}" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round" />
             ${primary.map((value, index) => {
               const cx = paddingX + index * xStep;
               const cy = yFor(value);
-              return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.25" fill="${primaryColor}" />`;
+              return `
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#ffffff" opacity="0.9" />
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.25" fill="#ffffff" stroke="${primaryColor}" stroke-width="2.6" vector-effect="non-scaling-stroke" />
+              `;
             }).join("")}
             ${secondary.map((value, index) => {
               const cx = paddingX + index * xStep;
               const cy = yFor(value);
-              return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.25" fill="${secondaryColor}" />`;
+              return `
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#ffffff" opacity="0.9" />
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.25" fill="#ffffff" stroke="${secondaryColor}" stroke-width="2.6" vector-effect="non-scaling-stroke" />
+              `;
             }).join("")}
             ${ticks}
             <text x="${width - paddingX}" y="${paddingTop + 12}" text-anchor="end" fill="${primaryColor}" font-size="11" font-weight="800">${escapeHtml(primaryLabel)}</text>

@@ -549,17 +549,20 @@ async function ensureAdminApiBase({ force = false } = {}) {
         if (requestStatus === "rejected") {
           return "rejected";
         }
+        if (requestStatus === "pending") {
+          return "request";
+        }
+        if (userStatus === "pending") {
+          return "request";
+        }
+        if (userStatus === "rejected") {
+          return "rejected";
+        }
         if (requestStatus === "expired" || userStatus === "expired" || isExpiredByDate) {
           return "expired";
         }
         if (["approved", "active"].includes(requestStatus) || ["active", "trial"].includes(userStatus)) {
           return "activated";
-        }
-        if (requestStatus === "pending" || userStatus === "pending") {
-          return "request";
-        }
-        if (userStatus === "rejected") {
-          return "rejected";
         }
         return "request";
       }
@@ -2927,7 +2930,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
       }
 
-      async function loadStats({ silent = false } = {}) {
+      async function loadStats() {
         try {
           const res = await fetch(withNoCache(`${API_BASE}/admin/stats`), {
             headers: getHeaders(),
@@ -3047,16 +3050,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
           return true;
         } catch (err) {
           console.error("Failed to load stats:", err);
-          if (!silent) showAlert("stats-alerts", "Failed to load statistics", "error");
+          showAlert("stats-alerts", "Failed to load statistics", "error");
           return false;
         }
       }
-
-      window.setInterval(() => {
-        if (adminActiveTab === "analytics") {
-          void loadStats({ silent: true });
-        }
-      }, 30000);
 
       async function loadUsers() {
         try {
@@ -4486,8 +4483,9 @@ async function ensureAdminApiBase({ force = false } = {}) {
         if (requestedTab === "analytics") {
           if (cachedAdminStats) {
             renderAdminAnalyticsPanel();
+          } else {
+            void loadStats();
           }
-          void loadStats({ silent: Boolean(cachedAdminStats) });
         }
         if (requestedTab === "password-resets") {
           if (passwordResetRequestsLoaded) {

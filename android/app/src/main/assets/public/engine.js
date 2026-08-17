@@ -32068,11 +32068,8 @@ if (subscriptionForm) {
       if (subscriptionFormFeedback) {
         subscriptionFormFeedback.dataset.persist = "1";
         subscriptionFormFeedback.textContent = isUnauthorized
-          ? "Your session expired. Please sign in again and resubmit your payment proof."
-          : generalApiErrorMessage(
-              error,
-              "Unable to submit your payment proof. Please try again.",
-            );
+          ? "We couldn't verify your current session. Please refresh the page once and try again."
+          : authErrorMessage(error);
       }
     } finally {
       if (subscriptionSubmitBtn) subscriptionSubmitBtn.disabled = false;
@@ -37078,6 +37075,8 @@ window.addEventListener("load", function () {
       showScreen("home-screen", { recordHistory: false });
     }
   }
+
+  void handlePortalEntry();
 
   window.setTimeout(() => {
     if (getActiveScreenId() === "subscription-screen") {

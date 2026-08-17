@@ -1457,36 +1457,34 @@
 
           <div id="auth-contact-wrap" class="auth-field hidden">
             <span>Contact</span>
-            <div class="auth-contact-row">
-              <label id="auth-contact-phone-wrap" class="auth-field auth-contact-input-field">
-                <span>Contact Number</span>
-                <div class="auth-phone-grid">
-                  <select id="auth-contact-country-code" autocomplete="tel-country-code"></select>
-                  <input
-                    id="auth-contact-phone"
-                    type="tel"
-                    inputmode="numeric"
-                    autocomplete="tel-national"
-                    placeholder="Enter mobile number"
-                  />
-                </div>
-              </label>
-              <label id="auth-contact-email-wrap" class="auth-field auth-contact-input-field hidden">
-                <span>Email Address</span>
+            <label class="auth-field">
+              <span>Format</span>
+              <select id="auth-contact-format">
+                <option value="phone" selected>Contact</option>
+                <option value="email">Email</option>
+              </select>
+            </label>
+            <label id="auth-contact-email-wrap" class="auth-field hidden">
+              <span>Email Address</span>
+              <input
+                id="auth-contact-email"
+                type="email"
+                autocomplete="email"
+                placeholder="name@example.com"
+              />
+            </label>
+            <div id="auth-contact-phone-wrap" class="auth-field">
+              <span>Contact Number</span>
+              <div class="auth-phone-grid">
+                <select id="auth-contact-country-code" autocomplete="tel-country-code"></select>
                 <input
-                  id="auth-contact-email"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="name@example.com"
+                  id="auth-contact-phone"
+                  type="tel"
+                  inputmode="numeric"
+                  autocomplete="tel-national"
+                  placeholder="Enter mobile number"
                 />
-              </label>
-              <label class="auth-field auth-contact-format-field">
-                <span>Format</span>
-                <select id="auth-contact-format">
-                  <option value="phone" selected>Contact</option>
-                  <option value="email">Email</option>
-                </select>
-              </label>
+              </div>
             </div>
           </div>
 
@@ -2700,36 +2698,34 @@
                   </label>
                   <div id="profile-contact-wrap" class="auth-field">
                     <span>Contact</span>
-                    <div class="auth-contact-row">
-                      <label id="profile-contact-phone-wrap" class="auth-field auth-contact-input-field">
-                        <span>Contact Number</span>
-                        <div class="auth-phone-grid">
-                          <select id="profile-contact-country-code" autocomplete="tel-country-code"></select>
-                          <input
-                            id="profile-contact-phone"
-                            type="tel"
-                            inputmode="numeric"
-                            autocomplete="tel-national"
-                            placeholder="Enter mobile number"
-                          />
-                        </div>
-                      </label>
-                      <label id="profile-contact-email-wrap" class="auth-field auth-contact-input-field hidden">
-                        <span>Email Address</span>
+                    <label class="auth-field">
+                      <span>Format</span>
+                      <select id="profile-contact-format">
+                        <option value="phone" selected>Contact</option>
+                        <option value="email">Email</option>
+                      </select>
+                    </label>
+                    <label id="profile-contact-email-wrap" class="auth-field hidden">
+                      <span>Email Address</span>
+                      <input
+                        id="profile-contact-email"
+                        type="email"
+                        autocomplete="email"
+                        placeholder="name@example.com"
+                      />
+                    </label>
+                    <div id="profile-contact-phone-wrap" class="auth-field">
+                      <span>Contact Number</span>
+                      <div class="auth-phone-grid">
+                        <select id="profile-contact-country-code" autocomplete="tel-country-code"></select>
                         <input
-                          id="profile-contact-email"
-                          type="email"
-                          autocomplete="email"
-                          placeholder="name@example.com"
+                          id="profile-contact-phone"
+                          type="tel"
+                          inputmode="numeric"
+                          autocomplete="tel-national"
+                          placeholder="Enter mobile number"
                         />
-                      </label>
-                      <label class="auth-field auth-contact-format-field">
-                        <span>Format</span>
-                        <select id="profile-contact-format">
-                          <option value="phone" selected>Contact</option>
-                          <option value="email">Email</option>
-                        </select>
-                      </label>
+                      </div>
                     </div>
                   </div>
                   <div class="auth-field profile-role-field">
@@ -5391,9 +5387,9 @@
         }
       };
     </script>
-    <script type="module" src="/engine.js?v=20260816-authmodalfix1"></script>
+    <script type="module" src="/engine.js?v=20260816-subscriptionstatuscompact4"></script>
     <script>
-      const APP_BUILD_ID = "20260816-authmodalfix1";
+      const APP_BUILD_ID = "20260623-resume-modal-fix4";
       const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
       const APP_NATIVE_VERSION = "1.1.14";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
@@ -5442,6 +5438,5 @@
     </script>
   </body>
 </html>
-
 
 

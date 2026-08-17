@@ -358,6 +358,18 @@ export const backendClient = {
     return put("/auth/profile", payload);
   },
 
+  fetchSubscriptionPlans() {
+    return get("/subscriptions/plans");
+  },
+
+  fetchMySubscription() {
+    return get("/subscriptions/me");
+  },
+
+  submitSubscriptionRequest(payload = {}) {
+    return post("/subscriptions/requests", payload);
+  },
+
   fetchCommunityOverview() {
     return get("/community/overview");
   },

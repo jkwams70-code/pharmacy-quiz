@@ -21,9 +21,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Ajix Quiz" />
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
     <title>Ajix Pharmacy Quiz | Pharmacy Practice & Assessment Portal</title>
     <script type="application/ld+json">
       {
@@ -86,1258 +83,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260817-crownfix3" />
-    <style>
-      #subscription-screen.subscription-page {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100dvh;
-        min-height: 100dvh;
-        display: none;
-        overflow: hidden;
-        overscroll-behavior: none;
-        isolation: isolate;
-        flex-direction: column;
-        padding: clamp(16px, 3vw, 28px);
-        background:
-          radial-gradient(circle at top left, rgba(15, 63, 127, 0.06), transparent 30%),
-          radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 30%),
-          linear-gradient(180deg, #fbfdff 0%, #f3f7fb 100%);
-        font-family: var(--font-body);
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-shell {
-        flex: 1;
-        min-height: 0;
-        max-width: 1180px;
-        margin: 0 auto;
-        display: grid;
-        gap: 14px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-bottom: 4px;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      #subscription-screen .subscription-header-row,
-      #subscription-screen .subscription-section-row {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-      }
-
-      #subscription-screen .subscription-page-title {
-        margin: 0;
-        font-family: var(--font-heading);
-        font-size: clamp(24px, 2.6vw, 36px);
-        line-height: 1.05;
-        font-weight: 900;
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-page-subtitle {
-        margin: 6px 0 0;
-        color: #64748b;
-        font-size: 14px;
-        line-height: 1.45;
-      }
-
-      #subscription-screen .subscription-close-btn {
-        border: 0;
-        background: transparent;
-        color: #64748b;
-        font-size: 15px;
-        font-weight: 700;
-        padding: 8px 0;
-        cursor: pointer;
-      }
-
-      #subscription-screen .subscription-status-card,
-      #subscription-screen .subscription-payment-card,
-      #subscription-screen .subscription-proof-card {
-        background: #fff;
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
-      }
-
-      #subscription-screen .subscription-status-card {
-        position: relative;
-        overflow: hidden;
-        border-radius: 24px;
-        padding: 18px 18px 17px;
-        background:
-          radial-gradient(circle at top right, rgba(15, 123, 194, 0.12), transparent 34%),
-          radial-gradient(circle at left center, rgba(13, 148, 136, 0.08), transparent 28%),
-          linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%);
-        border-color: rgba(122, 172, 230, 0.28);
-        box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
-      }
-
-      #subscription-screen .subscription-status-card::before {
-        content: "";
-        position: absolute;
-        inset: 0 auto auto 0;
-        width: 100%;
-        height: 4px;
-        background: linear-gradient(90deg, #0f7bc2, #14b8a6 58%, #f59e0b);
-      }
-
-      #subscription-screen .subscription-status-label,
-      #subscription-screen .subscription-section-title {
-        margin: 0;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        font-weight: 800;
-        color: #64748b;
-      }
-
-      #subscription-screen .subscription-status-label {
-        display: inline-flex;
-        width: fit-content;
-        align-items: center;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(237, 247, 255, 0.95);
-        color: #0f7bc2;
-        letter-spacing: 0.12em;
-        box-shadow: inset 0 0 0 1px rgba(122, 172, 230, 0.22);
-      }
-
-      #subscription-screen .subscription-status-line {
-        margin-top: 10px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-status-title {
-        margin: 0;
-        font-size: clamp(18px, 2vw, 24px);
-        line-height: 1.15;
-        font-weight: 900;
-        color: #10233f;
-        letter-spacing: -0.02em;
-      }
-
-      #subscription-screen .subscription-status-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 82px;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: linear-gradient(180deg, #eef8ff 0%, #dff2ff 100%);
-        color: #0f7bc2;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        box-shadow: 0 10px 18px rgba(14, 116, 144, 0.12);
-      }
-
-      #subscription-screen .subscription-status-subtitle,
-      #subscription-screen .subscription-status-note,
-      #subscription-screen .subscription-request-status,
-      #subscription-screen .subscription-section-note,
-      #subscription-screen .subscription-payment-head p,
-      #subscription-screen .subscription-payment-note {
-        margin: 0;
-        color: #64748b;
-        line-height: 1.5;
-      }
-
-      #subscription-screen .subscription-status-subtitle {
-        margin-top: 10px;
-        font-size: 13px;
-        font-weight: 800;
-        color: #174271;
-      }
-
-      #subscription-screen .subscription-status-note {
-        font-size: 13px;
-      }
-
-      #subscription-screen .subscription-section-note {
-        font-size: 12px;
-        text-align: right;
-      }
-
-      #subscription-screen .subscription-plan-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-plan-card {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-height: 236px;
-        padding: 14px;
-        border-radius: 16px;
-        background: #fff;
-        border: 2px solid #d6e4f0;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="daily"] {
-        border-color: #53c2f6;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] {
-        border-color: #26d7c3;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] {
-        border-color: #ffb52f;
-      }
-
-      #subscription-screen .subscription-plan-card-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-plan-card-title {
-        font-size: 16px;
-        font-weight: 900;
-        color: #1f2937;
-      }
-
-      #subscription-screen .subscription-plan-card-copy {
-        margin-top: 4px;
-        font-size: 12px;
-        line-height: 1.45;
-        color: #64748b;
-      }
-
-      #subscription-screen .subscription-plan-card-price {
-        text-align: right;
-        min-width: 74px;
-      }
-
-      #subscription-screen .subscription-plan-price-amount {
-        display: block;
-        font-size: 16px;
-        font-weight: 900;
-        color: #0f7bc2;
-      }
-
-      #subscription-screen .subscription-plan-price-meta {
-        display: block;
-        margin-top: 4px;
-        font-size: 12px;
-        color: #64748b;
-        font-weight: 700;
-      }
-
-      #subscription-screen .subscription-plan-card-chip {
-        display: inline-flex;
-        align-self: flex-start;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #eef6ff;
-        color: #0f7bc2;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-screen .subscription-plan-benefits {
-        list-style: none;
-        display: grid;
-        gap: 8px;
-        margin: 0;
-        padding: 0;
-      }
-
-      #subscription-screen .subscription-plan-benefits li {
-        position: relative;
-        padding-left: 24px;
-        color: #334155;
-        font-size: 12px;
-        line-height: 1.45;
-      }
-
-      #subscription-screen .subscription-plan-benefits li::before {
-        content: "◌";
-        position: absolute;
-        left: 0;
-        top: 0;
-        color: #0f7bc2;
-        font-weight: 900;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-chip,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-price-amount,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-benefits li::before {
-        color: #0f9f73;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-chip,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-price-amount,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-benefits li::before {
-        color: #d97706;
-      }
-
-      #subscription-screen .subscription-plan-card-button {
-        margin-top: auto;
-        width: 100%;
-        border: 0;
-        border-radius: 12px;
-        padding: 10px 12px;
-        color: #fff;
-        background: #0f7bc2;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-button {
-        background: #0f9f73;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-button {
-        background: #f59e0b;
-      }
-
-      #subscription-screen .subscription-payment-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
-        gap: 14px;
-      }
-
-      #subscription-screen .subscription-payment-card,
-      #subscription-screen .subscription-proof-card {
-        border-radius: 20px;
-        padding: 14px;
-      }
-
-      #subscription-screen .subscription-payment-head h3,
-      #subscription-screen .subscription-proof-card h3 {
-        margin: 0;
-        font-size: 17px;
-        line-height: 1.2;
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-payment-head p {
-        margin-top: 6px;
-      }
-
-      #subscription-screen .subscription-payment-details {
-        margin-top: 12px;
-      }
-
-      #subscription-screen .subscription-payment-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: #f8fafc;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        margin-bottom: 8px;
-      }
-
-      #subscription-screen .subscription-form {
-        margin-top: 10px;
-        display: grid;
-        gap: 10px;
-      }
-
-      #subscription-screen .subscription-field span {
-        font-weight: 700;
-        font-size: 12px;
-        line-height: 1.2;
-      }
-
-      #subscription-screen .subscription-field {
-        gap: 6px;
-      }
-
-      #subscription-screen .subscription-field input,
-      #subscription-screen .subscription-field textarea {
-        min-height: 38px;
-        padding-top: 9px;
-        padding-bottom: 9px;
-      }
-
-      #subscription-screen .subscription-proof-preview {
-        max-width: 100%;
-        min-height: 76px;
-      }
-
-      #subscription-screen .subscription-form button {
-        border: 0;
-        border-radius: 12px;
-        padding: 10px 12px;
-        color: #fff;
-        background: #0f7bc2;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      @media (max-width: 900px) {
-        #home-screen .home-minimal-shape,
-        #home-screen .home-minimal-bg-image {
-          display: none !important;
-        }
-
-        #home-screen .home-minimal-container {
-          padding-top: 16px !important;
-          padding-bottom: 10px !important;
-        }
-
-        #home-screen .home-minimal-content {
-          padding: 28px 18px 22px !important;
-        }
-
-        #home-screen .home-minimal-button-row {
-          position: relative !important;
-          z-index: 999 !important;
-        }
-
-        #home-screen .home-minimal-button {
-          position: relative !important;
-          z-index: 1000 !important;
-          pointer-events: auto !important;
-        }
-      }
-
-      @media (min-width: 1025px) {
-        #subscription-screen.subscription-page {
-          padding-top: 18px;
-          padding-bottom: 18px;
-        }
-
-        #subscription-screen .subscription-shell {
-          gap: 12px;
-        }
-
-        #subscription-screen .subscription-status-card {
-          padding: 12px 16px;
-        }
-
-        #subscription-screen .subscription-plan-card {
-          min-height: 224px;
-        }
-
-        #subscription-screen .subscription-payment-card,
-        #subscription-screen .subscription-proof-card {
-          padding: 12px;
-        }
-
-        #subscription-screen .subscription-field input,
-        #subscription-screen .subscription-field textarea {
-          min-height: 36px;
-        }
-      }
-
-      @media (max-width: 1024px) {
-        #subscription-screen .subscription-plan-grid,
-        #subscription-screen .subscription-payment-grid {
-          grid-template-columns: 1fr;
-        }
-
-        #subscription-screen .subscription-shell {
-          gap: 12px;
-        }
-      }
-
-      @media (max-width: 720px) {
-        #subscription-screen.subscription-page {
-          padding: 14px 12px 16px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          -webkit-overflow-scrolling: touch;
-          padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-        }
-
-        #subscription-screen .subscription-shell {
-          width: 100%;
-          max-width: none;
-          gap: 12px;
-          padding-bottom: 24px;
-          flex: none;
-          min-height: auto;
-          overflow: visible;
-        }
-
-        #subscription-screen .subscription-header-row,
-        #subscription-screen .subscription-section-row {
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-section-row {
-          flex-direction: column;
-        }
-
-        #subscription-screen .subscription-header-copy {
-          flex: 1 1 auto;
-          min-width: 0;
-        }
-
-        #subscription-screen .subscription-close-btn {
-          padding-top: 2px;
-          white-space: nowrap;
-        }
-
-        #subscription-screen .subscription-page-title {
-          font-size: clamp(20px, 6vw, 26px);
-        }
-
-        #subscription-screen .subscription-page-subtitle {
-          font-size: 12px;
-        }
-
-        #subscription-screen .subscription-section-note {
-          display: block;
-          margin: 0;
-          font-size: 11px;
-          line-height: 1.45;
-          color: #64748b;
-        }
-
-        #subscription-screen .subscription-status-card {
-          display: grid;
-          gap: 6px;
-          padding: 14px 14px 13px;
-          border-radius: 18px;
-          background:
-            radial-gradient(circle at top right, rgba(15, 123, 194, 0.16), transparent 38%),
-            radial-gradient(circle at left center, rgba(13, 148, 136, 0.1), transparent 26%),
-            linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
-        }
-
-        #subscription-screen .subscription-status-line {
-          margin-top: 0;
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: center;
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-status-title {
-          font-size: 15px;
-          color: #10233f;
-        }
-
-        #subscription-screen .subscription-status-pill {
-          min-width: 64px;
-          padding: 4px 8px;
-          font-size: 8px;
-        }
-
-        #subscription-screen .subscription-status-subtitle {
-          margin-top: 0;
-          font-size: 12px;
-        }
-
-        #subscription-screen .subscription-status-note {
-          display: block;
-          margin: 0;
-          font-size: 11px;
-          line-height: 1.45;
-        }
-
-        #subscription-screen .subscription-plan-grid {
-          grid-template-columns: 1fr;
-          gap: 14px;
-        }
-
-        #subscription-screen .subscription-plan-card {
-          width: 100%;
-          padding: 18px 16px 16px;
-          border-radius: 18px;
-          min-height: 0;
-        }
-
-        #subscription-screen .subscription-plan-card-head {
-          align-items: flex-start;
-        }
-
-        #subscription-screen .subscription-plan-card-title {
-          font-size: 18px;
-        }
-
-        #subscription-screen .subscription-plan-card-copy {
-          font-size: 13px;
-        }
-
-        #subscription-screen .subscription-plan-card-price {
-          min-width: 72px;
-        }
-
-        #subscription-screen .subscription-plan-price-amount {
-          font-size: 18px;
-        }
-
-        #subscription-screen .subscription-plan-benefits {
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-plan-benefits li {
-          font-size: 13px;
-        }
-
-        #subscription-screen .subscription-plan-card-button {
-          min-height: 46px;
-          padding: 13px 14px;
-          border-radius: 13px;
-        }
-
-        #subscription-screen .subscription-form {
-          gap: 10px;
-        }
-      }
-
-      body.subscription-modal-open {
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal.subscription-payment-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 6000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-        background: rgba(2, 6, 23, 0.72);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-      }
-
-      #subscription-payment-modal.hidden {
-        display: none !important;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-card {
-        width: min(456px, calc(100vw - 24px));
-        max-height: calc(100dvh - 24px);
-        overflow-y: auto;
-        overflow-x: hidden;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        padding: 0;
-        border-radius: 28px;
-        background: linear-gradient(180deg, #08101d 0%, #050913 100%);
-        color: #dbe5f5;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58);
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-card {
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 12px 14px 12px;
-        padding-right: 104px;
-        position: relative;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-eyebrow {
-        color: #ffd76a;
-        font-size: 13px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header h3,
-      #subscription-payment-modal .subscription-proof-panel h3 {
-        margin: 6px 0 0;
-        color: #ffe08a;
-        font-family: var(--font-heading);
-        font-size: clamp(16px, 1.8vw, 22px);
-        line-height: 1.1;
-        font-weight: 900;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header p,
-      #subscription-payment-modal .subscription-request-status {
-        margin: 6px 0 0;
-        color: #97a6bf;
-        line-height: 1.45;
-        font-size: 12px;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-close {
-        position: absolute;
-        top: 12px;
-        right: 14px;
-        z-index: 1;
-        flex: 0 0 auto;
-        align-self: auto;
-        margin-left: 0;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.03);
-        color: #f8fafc;
-        border-radius: 14px;
-        padding: 8px 12px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-payment-summary-panel,
-      #subscription-payment-modal .subscription-proof-panel {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px 14px;
-        margin: 10px 14px 10px;
-        border-radius: 22px;
-        background: linear-gradient(180deg, rgba(9, 18, 33, 0.96), rgba(5, 11, 22, 0.96));
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-summary-panel {
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-        flex: 0 0 auto;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        min-height: 68px;
-        padding: 10px 14px;
-        border-radius: 18px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        text-align: center;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-label {
-        color: #a7b5cc;
-        font-size: 10px;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        font-weight: 800;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-value {
-        color: #ffe08a;
-        font-size: clamp(22px, 2.6vw, 34px);
-        line-height: 1;
-        font-weight: 900;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row {
-        display: none;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row strong {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: #ffffff;
-        font-size: 12px;
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        line-height: 1.2;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-label {
-        color: #dbe5f5;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row span {
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.35;
-        font-weight: 900;
-        letter-spacing: 0.02em;
-        text-align: right;
-      }
-
-      #subscription-payment-modal .subscription-payment-details {
-        display: grid;
-        gap: 10px;
-        margin-top: 2px;
-        padding: 10px 12px;
-        border-radius: 18px;
-        background: rgba(15, 23, 42, 0.82);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      #subscription-payment-modal .subscription-payment-method-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-left {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 9px;
-        border-radius: 999px;
-        font-size: 10px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        line-height: 1;
-        text-transform: uppercase;
-        white-space: nowrap;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand svg {
-        width: 13px;
-        height: 13px;
-        flex: 0 0 auto;
-        stroke: currentColor;
-        fill: none;
-        stroke-width: 2.1;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand.is-mtn {
-        background: rgba(255, 204, 51, 0.14);
-        border: 1px solid rgba(255, 204, 51, 0.2);
-        color: #ffe08a;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand.is-fidelity {
-        background: rgba(59, 130, 246, 0.14);
-        border: 1px solid rgba(59, 130, 246, 0.22);
-        color: #9fc1ff;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-label {
-        color: #dbe5f5;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-number {
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.3;
-        font-weight: 900;
-        letter-spacing: 0.02em;
-        text-align: right;
-        white-space: nowrap;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-divider {
-        width: 100%;
-        height: 1px;
-        background: rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-method-name {
-        margin-top: 2px;
-        color: #9fb0c7;
-        font-size: 11px;
-        line-height: 1.45;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-align: center;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-note {
-        margin: 2px 0 0;
-        color: #9fb0c7;
-        font-size: 11px;
-        line-height: 1.5;
-      }
-
-      #subscription-payment-modal .subscription-payment-steps {
-        display: grid;
-        gap: 8px;
-        padding: 9px 12px;
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.72);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      #subscription-payment-modal .subscription-payment-steps-title {
-        color: #ffe08a;
-        font-size: 11px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-steps ol {
-        margin: 0;
-        padding-left: 16px;
-        display: grid;
-        gap: 5px;
-        color: #e2e8f0;
-        line-height: 1.5;
-        font-size: 11px;
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn,
-      #subscription-payment-modal .subscription-modal-submit-btn {
-        width: 100%;
-        border: 0;
-        border-radius: 14px;
-        padding: 13px 16px;
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn {
-        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
-        color: #140f07;
-        box-shadow: 0 12px 28px rgba(255, 152, 0, 0.24);
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn:hover,
-      #subscription-payment-modal .subscription-modal-submit-btn:hover,
-      #subscription-payment-modal .subscription-modal-cancel-btn:hover,
-      #subscription-payment-modal .subscription-payment-modal-close:hover {
-        transform: translateY(-1px);
-      }
-
-      #subscription-payment-modal .subscription-proof-panel h3 {
-        color: #ffd76a;
-        margin-top: 0;
-        font-size: 15px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-form {
-        display: grid;
-        gap: 8px;
-        margin-top: 6px;
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-card {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 9px 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-title {
-        color: #eef4ff;
-        font-size: 12px;
-        font-weight: 800;
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-reference {
-        color: #97a6bf;
-        font-size: 11px;
-        font-weight: 600;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field {
-        display: grid;
-        gap: 8px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field span {
-        color: #dbe5f5;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field input,
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
-        width: 100%;
-        min-height: 40px;
-        border-radius: 13px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(7, 15, 27, 0.94);
-        color: #eef4ff;
-        padding: 9px 11px;
-        font-size: 14px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
-        min-height: 72px;
-        resize: vertical;
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 58px;
-        padding: 12px 12px;
-        border-radius: 14px;
-        border: 1px dashed rgba(116, 152, 203, 0.4);
-        background: rgba(7, 15, 27, 0.94);
-        color: #8ea0ba;
-        cursor: pointer;
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone:hover {
-        border-color: rgba(255, 255, 255, 0.2);
-      }
-
-      #subscription-payment-modal .subscription-proof-file-input {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        opacity: 0;
-        pointer-events: none;
-        overflow: hidden;
-        clip-path: inset(50%);
-        clip: rect(0 0 0 0);
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone-copy {
-        position: relative;
-        z-index: 1;
-        text-align: center;
-        font-size: 12px;
-        font-weight: 600;
-        color: #7f92ac;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field input::placeholder,
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea::placeholder {
-        color: #6f8099;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        width: 112px;
-        height: 112px;
-        min-height: 112px;
-        padding: 0;
-        border-radius: 16px;
-        background:
-          radial-gradient(circle at 50% 38%, rgba(79, 145, 255, 0.12), transparent 42%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-        border: 1px dashed rgba(255, 255, 255, 0.14);
-        flex: 0 0 auto;
-        align-self: flex-start;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-content {
-        min-height: 112px;
-        padding: 0;
-        pointer-events: auto;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-empty {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        height: 100%;
-        min-height: 112px;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        padding: 14px 12px 12px;
-        border: 1px dashed rgba(255, 255, 255, 0.16);
-        background:
-          radial-gradient(circle at 50% 32%, rgba(79, 145, 255, 0.1), transparent 36%),
-          rgba(255, 255, 255, 0.04);
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 11px;
-        background: rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-icon svg {
-        width: 18px;
-        height: 18px;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-        text-align: center;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy strong {
-        font-size: 9px;
-        line-height: 1.25;
-        font-weight: 800;
-        color: #e5eefb;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy span {
-        font-size: 8px;
-        line-height: 1.25;
-        color: #7f92ac;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-image {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        background: #fff;
-        object-fit: contain;
-        object-position: center center;
-        display: block;
-        pointer-events: none;
-        user-select: none;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-file--image {
-        position: relative;
-        width: 112px;
-        height: 112px;
-        min-width: 112px;
-        min-height: 112px;
-        max-width: 112px;
-        max-height: 112px;
-        background-color: #fff;
-        background-position: center center;
-        background-repeat: no-repeat;
-        background-size: contain;
-        flex: 0 0 112px;
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal .subscription-modal-actions {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
-        gap: 10px;
-        margin-top: 24px;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-remove {
-        top: 4px;
-        right: 4px;
-        width: 18px;
-        height: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 999px;
-        background: rgba(18, 24, 35, 0.88);
-        color: #fff;
-        font-size: 12px;
-        line-height: 1;
-        font-weight: 900;
-        padding: 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-        pointer-events: auto;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-remove:hover {
-        background: rgba(30, 37, 49, 0.96);
-      }
-
-      #subscription-payment-modal .subscription-modal-cancel-btn {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        color: #e2e8f0;
-        border-radius: 14px;
-        padding: 13px 16px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-modal-submit-btn {
-        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
-        color: #140f07;
-        box-shadow: 0 14px 30px rgba(255, 152, 0, 0.24);
-      }
-
-      #subscription-payment-modal .subscription-form-feedback {
-        min-height: 22px;
-        color: #a7f3d0;
-        font-weight: 700;
-        font-size: 11px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow: visible;
-      }
-
-      @media (max-width: 900px) {
-        #subscription-payment-modal.subscription-payment-modal {
-          align-items: center;
-          padding: 8px;
-        }
-
-        #subscription-payment-modal .subscription-payment-modal-card {
-          max-height: calc(100dvh - 16px);
-          width: min(456px, calc(100vw - 16px));
-        }
-
-        #subscription-payment-modal .subscription-payment-modal-header {
-          flex-direction: column;
-          padding: 12px 13px 9px;
-        }
-
-        #subscription-payment-modal .subscription-payment-summary-panel,
-        #subscription-payment-modal .subscription-proof-panel {
-          margin: 9px 10px 9px;
-          padding: 11px 11px;
-        }
-
-        #subscription-payment-modal .subscription-modal-actions {
-          grid-template-columns: 1fr;
-        }
-
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css?v=20260818-crownfix4" />
   </head>
 
   <body>
@@ -1951,20 +697,6 @@
                 </span>
               </button>
 
-              <button id="menu-subscription-btn" class="menu-modern-settings-link" type="button">
-                <span class="menu-modern-settings-link-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M5 7h14v10H5z"></path>
-                    <path d="M5 10h14"></path>
-                    <path d="M8 14h4"></path>
-                  </svg>
-                </span>
-                <span class="menu-modern-settings-link-copy">
-                  <span class="menu-modern-settings-link-title">Subscription</span>
-                  <span class="menu-modern-settings-link-text">Choose a pass and submit proof</span>
-                </span>
-              </button>
-
               <button id="quiz-logout-btn" class="menu-modern-settings-link hidden" type="button">
                 <span class="menu-modern-settings-link-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -1999,108 +731,6 @@
           </div>
         </div>
       </div>
-      <div id="subscription-screen" class="setup-page subscription-page">
-        <div class="subscription-shell">
-          <div class="subscription-header-row">
-            <div class="subscription-header-copy">
-              <h2 class="subscription-page-title">Subscription</h2>
-              <p class="subscription-page-subtitle">Choose a plan and complete payment.</p>
-            </div>
-            <button id="subscription-back-btn" class="subscription-close-btn" type="button">Close</button>
-          </div>
-
-          <section class="subscription-status-card">
-            <div class="subscription-status-label">Current status</div>
-            <div class="subscription-status-line">
-              <span id="subscription-status-title" class="subscription-status-title">Free Trial</span>
-              <span id="subscription-status-pill" class="subscription-status-pill">active</span>
-            </div>
-            <p id="subscription-status-subtitle" class="subscription-status-subtitle">7 days after signup</p>
-            <p id="subscription-status-note" class="subscription-status-note">You are currently on the trial access path.</p>
-          </section>
-          <div class="subscription-section-row">
-            <div>
-              <h3 id="subscription-section-title" class="subscription-section-title">Choose a plan</h3>
-            </div>
-            <p id="subscription-section-note" class="subscription-section-note"></p>
-          </div>
-
-          <section class="subscription-plan-grid-wrap">
-            <div id="subscription-plan-grid" class="subscription-plan-grid"></div>
-          </section>
-
-          <div id="subscription-payment-modal" class="subscription-payment-modal modal hidden" aria-hidden="true">
-            <div class="subscription-payment-modal-card" role="dialog" aria-modal="true" aria-labelledby="subscription-payment-modal-title">
-            <div class="subscription-payment-modal-header">
-              <div class="subscription-payment-modal-header-copy">
-                <div class="subscription-payment-modal-eyebrow">Payment Details</div>
-                <h3 id="subscription-payment-modal-title">Select a plan</h3>
-                <p id="subscription-payment-modal-copy">Pick a plan to see the payment details.</p>
-              </div>
-              <button id="subscription-payment-modal-close-btn" class="subscription-payment-modal-close" type="button">Close</button>
-            </div>
-
-              <section class="subscription-payment-summary-panel">
-                <div class="subscription-payment-amount-card">
-                  <div class="subscription-payment-amount-label">Amount due</div>
-                  <div id="subscription-payment-amount" class="subscription-payment-amount-value">GHS 0</div>
-                </div>
-
-                <div id="subscription-payment-details" class="subscription-payment-details"></div>
-
-                <div class="subscription-payment-steps">
-                  <div class="subscription-payment-steps-title">Steps</div>
-                  <ol>
-                    <li>Send the exact amount via Momo or bank transfer</li>
-                    <li>Take a screenshot of the transaction confirmation</li>
-                    <li>Return to this app and upload the screenshot</li>
-                    <li>Your subscription will be activated within 24 hours after verification</li>
-                  </ol>
-                </div>
-
-                <button id="subscription-proof-jump-btn" class="subscription-proof-jump-btn" type="button">Upload Payment Proof</button>
-              </section>
-
-              <section id="subscription-proof-panel" class="subscription-proof-panel hidden">
-                <h3>Upload Payment Proof</h3>
-                <p id="subscription-request-status" class="subscription-request-status">Enter your transaction ID and/or upload a screenshot so admin can activate your subscription.</p>
-                <div class="subscription-proof-plan-card">
-                  <div id="subscription-proof-plan-title" class="subscription-proof-plan-title">Day Pass</div>
-                  <div id="subscription-proof-plan-reference" class="subscription-proof-plan-reference">ID: AJIX-PHARMACY-DAY-1786277702691</div>
-                </div>
-                <form id="subscription-form" class="subscription-form">
-                  <input id="subscription-plan-input" type="hidden" value="daily" />
-                  <label class="setup-field subscription-field">
-                    <input id="subscription-transaction-input" type="text" placeholder="Enter transaction ID" />
-                  </label>
-                  <div class="subscription-field">
-                    <div id="subscription-proof-preview" class="subscription-proof-preview subscription-proof-uploader">
-                      <input id="subscription-proof-input" class="subscription-proof-file-input" type="file" accept="image/*" />
-                      <div id="subscription-proof-preview-content" class="subscription-proof-preview-content">
-                        <div class="subscription-proof-preview-empty">
-                          <span class="subscription-proof-preview-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                              <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 10.5 6 13v4.5A1.5 1.5 0 0 0 7.5 19h9A1.5 1.5 0 0 0 18 17.5V13l-2.2-2.2a1 1 0 0 0-1.4 0L11 14.2 9.4 12.6a1 1 0 0 0-1.4 0Z" fill="currentColor" />
-                            </svg>
-                          </span>
-                          <span class="subscription-proof-preview-copy">
-                            <strong>Click to upload screenshot</strong>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                <div class="subscription-modal-actions">
-                    <button id="subscription-payment-cancel-btn" class="subscription-modal-cancel-btn" type="button">Cancel</button>
-                    <button id="subscription-submit-btn" class="subscription-modal-submit-btn" type="submit">Confirm complete transaction</button>
-                  </div>
-                </form>
-                <div id="subscription-form-feedback" class="subscription-form-feedback"></div>
-              </section>
-            </div>
-          </div>
-        </div>
-      </div>
       <div id="study-setup" class="setup-page">
         <div class="study-fixed-header">
           <div class="study-reference-topbar">
@@ -2110,7 +740,7 @@
               alt="Ajix Pharmacy"
             />
             <div class="setup-points-chip study-setup-points-chip" aria-live="polite" aria-label="Study points">
-              <span class="setup-points-icon" aria-hidden="true">&#10022;</span>
+              <span class="setup-points-icon" aria-hidden="true">👑</span>
               <span class="setup-points-copy">
                 <span class="setup-points-label">Study Points</span>
                 <span id="study-setup-points-value" class="setup-points-value">0</span>
@@ -2217,7 +847,7 @@
                 />
               </label>
 
-              <button id="start-study-btn" type="button" class="study-reference-start-btn">
+              <button id="start-study-btn" class="study-reference-start-btn">
                 Start Session
               </button>
             </section>
@@ -2252,7 +882,7 @@
               alt="AJIX Pharmacy"
             />
             <div class="setup-points-chip exam-setup-points-chip" aria-live="polite" aria-label="Exam points">
-              <span class="setup-points-icon" aria-hidden="true">&#10022;</span>
+              <span class="setup-points-icon" aria-hidden="true">👑</span>
               <span class="setup-points-copy">
                 <span class="setup-points-label">Exam Points</span>
                 <span id="exam-setup-points-value" class="setup-points-value">0</span>
@@ -2385,7 +1015,7 @@
               alt="AJIX Pharmacy"
             />
             <div class="setup-points-chip daily-setup-points-chip" aria-live="polite" aria-label="Daily points">
-              <span class="setup-points-icon" aria-hidden="true">&#10022;</span>
+              <span class="setup-points-icon" aria-hidden="true">👑</span>
               <span class="setup-points-copy">
                 <span class="setup-points-label">Daily Points</span>
                 <span id="daily-setup-points-value" class="setup-points-value">0</span>
@@ -2448,7 +1078,7 @@
             </div>
 
             <div id="daily-celebration" class="daily-celebration hidden" aria-live="polite">
-              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">&#10003;</span>
+              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">✓</span>
               <span id="daily-gems-ribbon" class="daily-gems-ribbon">+0 Gems</span>
             </div>
 
@@ -3001,7 +1631,7 @@
                           <span class="community-settings-item-note">Profile, bio, password, and account actions.</span>
                         </span>
                         <span id="community-settings-account-value" class="community-settings-item-value">Profile</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="appearance">
                         <span class="community-settings-item-copy">
@@ -3009,7 +1639,7 @@
                           <span class="community-settings-item-note">Theme and visual style.</span>
                         </span>
                         <span id="community-settings-appearance-value" class="community-settings-item-value">Light</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="global-notifications">
                         <span class="community-settings-item-copy">
@@ -3017,7 +1647,7 @@
                           <span class="community-settings-item-note">Alerts, previews, and sound preferences.</span>
                         </span>
                         <span id="community-settings-global-notifications-value" class="community-settings-item-value">Enabled</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="storage">
                         <span class="community-settings-item-copy">
@@ -3025,7 +1655,7 @@
                           <span class="community-settings-item-note">Media cache and download handling.</span>
                         </span>
                         <span id="community-settings-storage-value" class="community-settings-item-value">Manage</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                     </div>
                     <div class="community-settings-section">
@@ -3036,7 +1666,7 @@
                           <span class="community-settings-item-note">Who can message you and view your status.</span>
                         </span>
                         <span id="community-settings-privacy-value" class="community-settings-item-value">Friends</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="security">
                         <span class="community-settings-item-copy">
@@ -3044,7 +1674,7 @@
                           <span class="community-settings-item-note">Community lock and encryption details.</span>
                         </span>
                         <span id="community-settings-security-value" class="community-settings-item-value">Off</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="chat-behavior">
                         <span class="community-settings-item-copy">
@@ -3052,7 +1682,7 @@
                           <span class="community-settings-item-note">Read receipts and typing indicators.</span>
                         </span>
                         <span id="community-settings-chat-value" class="community-settings-item-value">Balanced</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="community-notifications">
                         <span class="community-settings-item-copy">
@@ -3060,7 +1690,7 @@
                           <span class="community-settings-item-note">Mute chats and set custom alerts.</span>
                         </span>
                         <span id="community-settings-community-notifications-value" class="community-settings-item-value">Active</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="media">
                         <span class="community-settings-item-copy">
@@ -3068,7 +1698,7 @@
                           <span class="community-settings-item-note">Auto-download and upload quality.</span>
                         </span>
                         <span id="community-settings-media-value" class="community-settings-item-value">Wi-Fi only</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="status">
                         <span class="community-settings-item-copy">
@@ -3076,7 +1706,7 @@
                           <span class="community-settings-item-note">Replies, archiving, and status defaults.</span>
                         </span>
                         <span id="community-settings-status-value" class="community-settings-item-value">Replies on</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                     </div>
                   </section>
@@ -3097,7 +1727,7 @@
                             aria-expanded="false"
                           >
                             <span id="community-settings-theme-trigger-label">System</span>
-                            <span class="community-settings-theme-trigger-chevron" aria-hidden="true">&#9662;</span>
+                            <span class="community-settings-theme-trigger-chevron" aria-hidden="true">▾</span>
                           </button>
                           <div id="community-settings-theme-menu" class="community-settings-theme-menu hidden" role="listbox" aria-label="Choose theme">
                             <button type="button" class="community-settings-theme-option" data-community-settings-theme-option="system" role="option">System</button>
@@ -3448,7 +2078,7 @@
                           <span class="community-settings-item-note">Send a read-only announcement to every user.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">â€º</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-admin-action="broadcast-status">
                         <span class="community-settings-item-copy">
@@ -3456,7 +2086,7 @@
                           <span class="community-settings-item-note">Publish an announcement status with no replies.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">â€º</span>
                       </button>
                       <button type="button" id="community-settings-admin-target-btn" class="community-settings-item is-link hidden" data-community-settings-target="admin">
                         <span class="community-settings-item-copy">
@@ -3464,7 +2094,7 @@
                           <span class="community-settings-item-note">Send announcements to everyone.</span>
                         </span>
                         <span class="community-settings-item-value">Open</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
                       </button>
                     </div>
                   </section>
@@ -4227,20 +2857,6 @@
               </div>
 
               <div class="settings-device-card">
-                <div class="settings-app-download-copy">
-                  <h4 class="settings-app-download-title">Android App</h4>
-                  <p class="settings-help">
-                    Download Ajix Pharm for your phone and install the latest release directly from the site.
-                  </p>
-                </div>
-                <div class="settings-actions">
-                  <button id="settings-download-app-btn" type="button" class="settings-primary-btn">
-                    Download APK
-                  </button>
-                </div>
-              </div>
-
-              <div class="settings-device-card">
                 <p class="settings-help">
                   Clear local practice cache on this device only. This removes saved local sessions and temporary progress, but it
                   does not delete your online account data.
@@ -4315,7 +2931,7 @@
           <div class="header-meta">
             <div id="progress"></div>
             <div id="session-points-chip" class="session-points-chip hidden" aria-live="polite">
-              <span class="session-points-icon" aria-hidden="true">&#10022;</span>
+              <span class="session-points-icon" aria-hidden="true">👑</span>
               <span id="session-points-value" class="session-points-value">0</span>
             </div>
             <div id="timer"></div>
@@ -4490,19 +3106,21 @@
                 </section>
 
                 <section class="dashboard-panel dashboard-trend-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-trend-head-copy">
-                      <div class="dashboard-section-title">Score Trend</div>
-                      <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent 12 sessions</div>
+                  <div class="dashboard-trend-top">
+                    <div class="dashboard-trend-headline">
+                      <div class="dashboard-trend-copy-block">
+                        <div class="dashboard-section-title">Score Trend</div>
+                        <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent sessions</div>
+                      </div>
+                      <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
                     </div>
-                    <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
-                  </div>
-                  <div class="dashboard-trend-tabs" id="dash-trend-tabs" role="tablist" aria-label="Score trend scope">
-                    <button class="dashboard-trend-tab is-active" type="button" data-dashboard-trend-scope="session" aria-pressed="true">Session</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="daily" aria-pressed="false">Daily</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="weekly" aria-pressed="false">Weekly</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="monthly" aria-pressed="false">Monthly</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="yearly" aria-pressed="false">Yearly</button>
+                    <div class="dashboard-trend-scopes" role="tablist" aria-label="Trend scope">
+                      <button type="button" class="dashboard-trend-scope is-active" data-trend-scope="session">Session</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="daily">Daily</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="weekly">Weekly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="monthly">Monthly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="yearly">Yearly</button>
+                    </div>
                   </div>
                   <div class="dashboard-trend-stage">
                     <div class="dashboard-trend-chart" id="dash-trend-chart"></div>
@@ -4577,37 +3195,6 @@
               </button>
               <button id="result-menu-btn" class="result-btn secondary-btn">
                 Back to Menu
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="law-drill-result-screen">
-        <div class="result-wrapper">
-          <div class="result-card">
-            <div class="result-title" id="law-drill-result-title"></div>
-            <div id="law-drill-result-badge" class="result-badge hidden"></div>
-
-            <div class="result-body">
-              <div class="result-score-block">
-                <div class="result-percentage" id="law-drill-result-percentage"></div>
-                <div class="result-score" id="law-drill-result-score"></div>
-              </div>
-
-              <div class="result-feedback" id="law-drill-result-feedback"></div>
-              <div id="law-drill-result-stack" class="law-drill-stack law-drill-result-stack hidden" aria-live="polite"></div>
-            </div>
-
-            <div class="result-actions">
-              <button id="law-drill-next-level-btn" class="result-btn primary-btn hidden" type="button">
-                Level 2
-              </button>
-              <button id="law-drill-close-btn" class="result-btn secondary-btn" type="button">
-                Close
-              </button>
-              <button id="law-drill-menu-btn" class="result-btn secondary-btn" type="button">
-                Menu
               </button>
             </div>
           </div>
@@ -4848,7 +3435,6 @@
           <div class="community-admin-broadcast-attachment">
             <button id="community-admin-broadcast-attach-btn" type="button" class="modal-btn secondary">Attach file</button>
             <div id="community-admin-broadcast-attachment-name" class="community-admin-broadcast-attachment-name">No attachment selected.</div>
-            <button id="community-admin-broadcast-preview-btn" type="button" class="modal-btn secondary hidden">Preview</button>
             <button id="community-admin-broadcast-clear-btn" type="button" class="modal-btn secondary hidden">Remove</button>
           </div>
           <input id="community-admin-broadcast-file-input" type="file" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.ppt,.pptx,.txt" hidden />
@@ -4889,7 +3475,9 @@
       <div id="community-thread-actions-modal" class="modal hidden">
         <div class="modal-card community-thread-actions-card">
           <button id="community-thread-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Conversation actions</div>
           <div id="community-thread-actions-title" class="modal-title">Select action</div>
+          <div id="community-thread-actions-summary" class="modal-text">Choose what you want to do with the selected threads.</div>
           <div id="community-thread-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-thread-actions-grid">
             <button id="community-thread-actions-view-btn" type="button" class="modal-btn secondary">View</button>
@@ -4906,7 +3494,9 @@
       <div id="community-friend-actions-modal" class="modal hidden">
         <div class="modal-card community-friend-actions-card">
           <button id="community-friend-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Friend actions</div>
           <div id="community-friend-actions-title" class="modal-title">Select action</div>
+          <div id="community-friend-actions-summary" class="modal-text">Choose what you want to do with this learner.</div>
           <div id="community-friend-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-friend-actions-grid">
             <button id="community-friend-actions-view-btn" type="button" class="modal-btn secondary">View Profile</button>
@@ -4999,25 +3589,38 @@
 
       <div id="community-group-invite-modal" class="modal hidden">
         <div class="modal-card community-group-invite-card">
-          <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close invite">&times;</button>
-          <div class="community-group-invite-top">
-            <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
-            <div class="community-group-invite-copy">
+          <div class="community-group-invite-header">
+            <div>
               <div id="community-group-invite-name" class="modal-title">Study Group</div>
-              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready.</div>
+              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready to share.</div>
             </div>
+            <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-group-invite-close-btn" aria-label="Close invite">
+              &times;
+            </button>
           </div>
-          <div class="community-group-invite-members-wrap">
-            <div class="community-group-invite-members-title">Members</div>
-            <div id="community-group-invite-members" class="community-group-invite-members"></div>
-          </div>
-          <div class="community-group-invite-link-box">
-            <div id="community-group-invite-short-link" class="community-group-invite-short-link"></div>
+
+          <div class="community-group-invite-body">
+            <div class="community-group-invite-top">
+              <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
+              <div class="community-group-invite-copy">
+                <div class="community-group-invite-label">Members</div>
+                <div id="community-group-invite-members" class="community-group-invite-members"></div>
+              </div>
+            </div>
+
+            <div class="community-group-invite-link-card">
+              <div class="community-group-invite-label">Invite link</div>
+              <div class="community-group-invite-link-row">
+                <button id="community-group-invite-short-link" type="button" class="community-group-invite-short-link" aria-label="Invite link"></button>
+                <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
+              </div>
+            </div>
+
             <div id="community-group-invite-note" class="community-group-invite-note"></div>
           </div>
-          <div class="community-group-invite-actions">
-            <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
-            <button id="community-group-invite-primary-btn" type="button" class="modal-btn primary">Share link</button>
+
+          <div class="modal-actions community-group-invite-actions">
+            <button id="community-group-invite-primary-btn" type="button" class="modal-btn resume-primary">Share link</button>
           </div>
         </div>
       </div>
@@ -5390,11 +3993,12 @@
         }
       };
     </script>
-    <script type="module" src="/engine.js?v=20260817-crownfix3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="engine.js?v=20260818-crownfix4"></script>
     <script>
-      const APP_BUILD_ID = "20260817-crownfix3";
-      const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
-      const APP_NATIVE_VERSION = "1.1.14";
+      const APP_BUILD_ID = "20260818-crownfix4";
+      const APP_STANDALONE_BUILD = "20260619-release107";
+      const APP_NATIVE_VERSION = "1.0.7";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
       document.documentElement.dataset.nativeAppVersion = APP_NATIVE_VERSION;
 
@@ -5418,22 +4022,39 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", async () => {
-          try {
-            const registration = await navigator.serviceWorker.register("/sw.js?v=20260818-crownfix4", {
-              scope: "/",
-            });
+          const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(location.hostname);
 
-            if (registration && "update" in registration) {
-              void registration.update().catch(() => {});
+          try {
+            const previousBuild = localStorage.getItem("quizAppBuild");
+            const needsCutoverRefresh = previousBuild !== APP_BUILD_ID;
+            const didHardCutover = sessionStorage.getItem("quizHardCutoverDone") === APP_BUILD_ID;
+
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(
+              registrations
+                .filter((registration) => {
+                  const scriptUrl =
+                    registration.active?.scriptURL ||
+                    registration.waiting?.scriptURL ||
+                    registration.installing?.scriptURL ||
+                    "";
+                  return /\/sw\.js(?:[?#]|$)/i.test(String(scriptUrl || ""));
+                })
+                .map((registration) => registration.unregister()),
+            );
+
+            if ("caches" in window) {
+              const cacheKeys = await caches.keys();
+              await Promise.all(cacheKeys.map((key) => caches.delete(key)));
             }
 
             localStorage.setItem("quizAppBuild", APP_BUILD_ID);
             sessionStorage.setItem("quizHardCutoverDone", APP_BUILD_ID);
+            document.documentElement.removeAttribute("data-app-boot");
           } catch (error) {
-            console.warn("Service worker registration failed:", error);
+            console.warn(isProductionHost ? "Production cache reset failed:" : "Local preview cache reset failed:", error);
+            document.documentElement.removeAttribute("data-app-boot");
           }
-
-          document.documentElement.removeAttribute("data-app-boot");
         });
       } else {
         document.documentElement.removeAttribute("data-app-boot");

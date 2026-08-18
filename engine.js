@@ -22852,7 +22852,7 @@ function renderDailyQuizUi() {
         : todayCompleted
           ? "Completed today"
           : "Ready today";
-    dailyQuizMetaEl.textContent = `You have ${totalQuestions} questions. ${status}`;
+    dailyQuizMetaEl.textContent = `${totalQuestions} questions â€¢ ${status}`;
   }
 
   if (menuDailyProgressFillEl) {
@@ -22867,7 +22867,7 @@ function renderDailyQuizUi() {
 
   if (dailyWindowLineEl) {
     if (todayDate) {
-      dailyWindowLineEl.textContent = `Today renews at 12:00 AM`;
+      dailyWindowLineEl.textContent = `${formatDateKey(todayDate)} â€¢ Renews 12:00 AM`;
     } else {
       dailyWindowLineEl.textContent = "Loading today...";
     }

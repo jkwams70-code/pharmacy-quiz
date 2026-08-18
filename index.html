@@ -5419,7 +5419,7 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", async () => {
           try {
-            const registration = await navigator.serviceWorker.register("/sw.js", {
+            const registration = await navigator.serviceWorker.register("/sw.js?v=20260818-crownfix4", {
               scope: "/",
             });
 

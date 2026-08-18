@@ -1,11 +1,11 @@
-const CACHE_VERSION = "ajix-app-shell-v65";
+const CACHE_VERSION = "ajix-app-shell-v66";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-  "/engine.js?v=20260817-crownfix1",
+  "/engine.js?v=20260817-crownfix3",
   "/backendClient.js?v=20260619-cross-device-sync-fix3",
   "/styles.css",
   "/data.js?v=20260613-manufacturing-set2",

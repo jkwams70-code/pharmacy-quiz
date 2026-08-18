@@ -23612,7 +23612,7 @@ body.community-status-open {
 }
 
 .community-profile-leaderboard-rank::before {
-  content: "★";
+  content: none;
   background: linear-gradient(180deg, #ffd772, #f7b733);
   color: #7b4c00;
 }

@@ -3475,7 +3475,7 @@ function computeSubscriptionState(rawUser = {}) {
   if (status === "pending" && (approvedAt || rejectedAt)) {
     status = approvedAt ? "active" : "rejected";
   }
-  if (status === "pending" || status === "rejected") {
+  if (status === "rejected" && !approvedAt) {
     if (subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now) {
       status = "active";
     } else if (trialEndsAt && Date.parse(trialEndsAt) > now) {
@@ -4010,7 +4010,10 @@ function toPublicSubscriptionRequest(rawRequest = {}, usersById = new Map()) {
   const request = normalizeSubscriptionRequest(rawRequest);
   const user = usersById.get(request.userId) || null;
   const userState = user ? computeSubscriptionState(user) : null;
-  const activatedAt = request.activatedAt || userState?.approvedAt || userState?.startedAt || null;
+  const activatedAt =
+    request.activatedAt ||
+    request.approvedAt ||
+    (request.status === "pending" ? null : userState?.approvedAt || userState?.startedAt || null);
   const expiresAt =
     request.expiresAt ||
     (activatedAt && userState?.subscriptionEndsAt

@@ -61,6 +61,415 @@ function shuffle(items) {
   return copy;
 }
 
+function normalizeNewsStatus(status = "") {
+  const next = String(status || "").trim().toLowerCase();
+  if (!next) return "pending_review";
+  if (next === "review" || next === "in_review" || next === "draft") return "pending_review";
+  if (next === "approved" || next === "ready") return "approved";
+  if (next === "published" || next === "live") return "published";
+  if (next === "rejected" || next === "declined") return "rejected";
+  return next;
+}
+
+function getNewsTimestamp(item = {}) {
+  return String(
+    item.publishedAt || item.updatedAt || item.createdAt || item.collectedAt || "",
+  ).trim();
+}
+
+function sortNewsItemsDesc(items = []) {
+  return [...items].sort((a, b) => {
+    const aTime = new Date(getNewsTimestamp(a)).getTime() || 0;
+    const bTime = new Date(getNewsTimestamp(b)).getTime() || 0;
+    return bTime - aTime || String(b.storyKey || b.title || b.id || "").localeCompare(String(a.storyKey || a.title || a.id || ""));
+  });
+}
+
+function getNewsItemIdentity(item = {}) {
+  return String(item.id || item.storyKey || item.slug || item.title || "").trim();
+}
+
+function findNewsItemIndex(items = [], identifier = "") {
+  const safeId = String(identifier || "").trim();
+  if (!safeId) return -1;
+  const normalized = safeId.toLowerCase();
+  return items.findIndex((item) => {
+    const identity = getNewsItemIdentity(item);
+    const storyKey = String(item.storyKey || "").trim();
+    return (
+      identity === safeId ||
+      storyKey === safeId ||
+      identity.toLowerCase() === normalized ||
+      storyKey.toLowerCase() === normalized
+    );
+  });
+}
+
+function applyNewsItemDefaults(item = {}, fallback = {}) {
+  const now = new Date().toISOString();
+  const title = String(item.title || fallback.title || "").trim();
+  const storyKey = String(item.storyKey || fallback.storyKey || title || item.id || "").trim();
+  const status = normalizeNewsStatus(item.status || fallback.status || "pending_review");
+
+  return {
+    id: String(item.id || fallback.id || crypto.randomUUID()).trim(),
+    storyKey: storyKey || String(item.id || fallback.id || crypto.randomUUID()).trim(),
+    title,
+    summary: String(item.summary || item.excerpt || fallback.summary || "").trim(),
+    content: String(item.content || item.body || fallback.content || "").trim(),
+    category: String(item.category || fallback.category || "clinical-news").trim() || "clinical-news",
+    tags: Array.isArray(item.tags)
+      ? item.tags.map((tag) => String(tag || "").trim()).filter(Boolean)
+      : Array.isArray(fallback.tags)
+        ? fallback.tags.map((tag) => String(tag || "").trim()).filter(Boolean)
+        : [],
+    sourceName: String(item.sourceName || item.publishedByName || fallback.sourceName || "AjixPharmacy Desk").trim(),
+    publishedByName: String(item.publishedByName || item.sourceName || fallback.publishedByName || "").trim(),
+    author: String(item.author || fallback.author || item.publishedByName || item.sourceName || "AjixPharmacy Desk").trim(),
+    sourceId: String(item.sourceId || fallback.sourceId || "").trim(),
+    sourceType: String(item.sourceType || fallback.sourceType || "").trim(),
+    feedSlot: String(item.feedSlot || fallback.feedSlot || "").trim(),
+    importance: String(item.importance || fallback.importance || "").trim(),
+    imageUrl: String(item.imageUrl || fallback.imageUrl || item.heroBackgroundImage || "").trim(),
+    imageAlt: String(item.imageAlt || fallback.imageAlt || title || "").trim(),
+    reviewNote: String(item.reviewNote || fallback.reviewNote || "").trim(),
+    status,
+    featured: Boolean(item.featured ?? fallback.featured ?? false),
+    commentsEnabled: Boolean(item.commentsEnabled ?? fallback.commentsEnabled ?? true),
+    newsletterEnabled: Boolean(item.newsletterEnabled ?? fallback.newsletterEnabled ?? false),
+    likes: safeNumber(item.likes ?? fallback.likes) ?? 0,
+    views: safeNumber(item.views ?? fallback.views) ?? 0,
+    collectedAt: String(item.collectedAt || fallback.collectedAt || "").trim(),
+    createdAt: String(item.createdAt || fallback.createdAt || now).trim() || now,
+    updatedAt: String(item.updatedAt || fallback.updatedAt || now).trim() || now,
+    publishedAt: String(item.publishedAt || fallback.publishedAt || "").trim(),
+  };
+}
+
+function upsertNewsItem(items = [], item = {}, fallback = {}) {
+  const nextItem = applyNewsItemDefaults(item, fallback);
+  const existingIndex = findNewsItemIndex(items, nextItem.id || nextItem.storyKey);
+  const existingItem = existingIndex >= 0 ? items[existingIndex] : null;
+  const now = new Date().toISOString();
+
+  const merged = {
+    ...existingItem,
+    ...nextItem,
+    id: nextItem.id || existingItem?.id || crypto.randomUUID(),
+    storyKey: nextItem.storyKey || existingItem?.storyKey || nextItem.id || existingItem?.id || "",
+    createdAt: existingItem?.createdAt || nextItem.createdAt || now,
+    updatedAt: now,
+  };
+
+  merged.status = normalizeNewsStatus(merged.status);
+  if (merged.status === "published") {
+    merged.publishedAt = merged.publishedAt || existingItem?.publishedAt || now;
+  } else if (!merged.publishedAt) {
+    merged.publishedAt = existingItem?.publishedAt || "";
+  }
+
+  if (!merged.summary) merged.summary = merged.content ? merged.content.slice(0, 220) : "";
+
+  if (existingIndex >= 0) {
+    items[existingIndex] = merged;
+  } else {
+    items.push(merged);
+  }
+
+  return merged;
+}
+
+function buildPublishedNewsSections(items = []) {
+  const heroCandidates = items.filter((item) => {
+    const slot = String(item.feedSlot || "").trim().toLowerCase();
+    const importance = String(item.importance || "").trim().toLowerCase();
+    const category = String(item.category || "").trim().toLowerCase();
+    return (
+      item.featured ||
+      importance === "high" ||
+      slot === "hero" ||
+      slot === "popular-stories" ||
+      category === "trending" ||
+      category === "alert"
+    );
+  });
+
+  const medicineCandidates = items.filter((item) => {
+    const category = String(item.category || "").trim().toLowerCase();
+    const slot = String(item.feedSlot || "").trim().toLowerCase();
+    return category === "medicine" || category === "clinical-news" || slot === "medicine";
+  });
+
+  const trendingCandidates = items.filter((item) => {
+    const category = String(item.category || "").trim().toLowerCase();
+    const slot = String(item.feedSlot || "").trim().toLowerCase();
+    const importance = String(item.importance || "").trim().toLowerCase();
+    return category === "trending" || category === "alert" || slot === "trending-now" || importance === "high";
+  });
+
+  return {
+    hero: heroCandidates.slice(0, 3),
+    latest: items.slice(0, 4),
+    medicine: medicineCandidates.slice(0, 5),
+    trendingNow: trendingCandidates.slice(0, 5),
+  };
+}
+
+function buildPublicNewsFeed(items = []) {
+  const publishedItems = sortNewsItemsDesc(
+    items.filter((item) => normalizeNewsStatus(item.status) === "published"),
+  );
+
+  return {
+    ok: true,
+    total: publishedItems.length,
+    items: publishedItems,
+    sections: buildPublishedNewsSections(publishedItems),
+    updatedAt: publishedItems[0]?.updatedAt || publishedItems[0]?.publishedAt || null,
+  };
+}
+
+function slugifyNewsKey(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+function requireAdminNewsAccess(req, res) {
+  if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+    res.status(403).json({ error: "Forbidden" });
+    return false;
+  }
+  return true;
+}
+
+function normalizeNewsSourceEntry(raw = {}, fallback = {}) {
+  const now = new Date().toISOString();
+  const name = String(raw.name || raw.title || fallback.name || "Source").trim() || "Source";
+  const slug = slugifyNewsKey(raw.slug || raw.id || fallback.slug || name || "source") || "source";
+
+  return {
+    id: String(raw.id || fallback.id || slug || crypto.randomUUID()).trim() || slug,
+    name,
+    slug,
+    url: String(raw.url || fallback.url || "").trim(),
+    description: String(raw.description || fallback.description || "").trim(),
+    category: String(raw.category || fallback.category || "clinical-news").trim() || "clinical-news",
+    extractMode: String(raw.extractMode || raw.type || fallback.extractMode || "structured").trim().toLowerCase() || "structured",
+    priority: safeNumber(raw.priority ?? fallback.priority) ?? 50,
+    enabled: Boolean(raw.enabled ?? fallback.enabled ?? true),
+    reviewRequired: Boolean(raw.reviewRequired ?? fallback.reviewRequired ?? true),
+    system: Boolean(raw.system ?? fallback.system ?? false),
+    createdAt: String(raw.createdAt || fallback.createdAt || now).trim() || now,
+    updatedAt: String(raw.updatedAt || fallback.updatedAt || now).trim() || now,
+    lastFetchedAt: String(raw.lastFetchedAt || fallback.lastFetchedAt || "").trim(),
+    lastError: String(raw.lastError || fallback.lastError || "").trim(),
+  };
+}
+
+function normalizeNewsCategoryEntry(raw = {}, fallback = {}) {
+  const now = new Date().toISOString();
+  const name = String(raw.name || raw.title || raw.label || fallback.name || "Category").trim() || "Category";
+  const slug = slugifyNewsKey(raw.slug || raw.id || fallback.slug || name || "category") || "category";
+
+  return {
+    id: String(raw.id || fallback.id || slug || crypto.randomUUID()).trim() || slug,
+    name,
+    slug,
+    color: String(raw.color || fallback.color || "#64748b").trim() || "#64748b",
+    description: String(raw.description || fallback.description || "").trim(),
+    system: Boolean(raw.system ?? fallback.system ?? false),
+    createdAt: String(raw.createdAt || fallback.createdAt || now).trim() || now,
+    updatedAt: String(raw.updatedAt || fallback.updatedAt || now).trim() || now,
+  };
+}
+
+function normalizeNewsRunEntry(raw = {}, fallback = {}) {
+  const now = new Date().toISOString();
+  const status = String(raw.status || fallback.status || "success").trim().toLowerCase() || "success";
+
+  return {
+    id: String(raw.id || fallback.id || crypto.randomUUID()).trim(),
+    status,
+    sourceCount: safeNumber(raw.sourceCount ?? fallback.sourceCount) ?? 0,
+    addedCount: safeNumber(raw.addedCount ?? fallback.addedCount) ?? 0,
+    updatedCount: safeNumber(raw.updatedCount ?? fallback.updatedCount) ?? 0,
+    errorCount: safeNumber(raw.errorCount ?? fallback.errorCount) ?? 0,
+    triggeredBy: String(raw.triggeredBy || fallback.triggeredBy || "system").trim() || "system",
+    message: String(raw.message || fallback.message || "").trim(),
+    startedAt: String(raw.startedAt || fallback.startedAt || now).trim() || now,
+    finishedAt: String(raw.finishedAt || fallback.finishedAt || now).trim() || now,
+    createdAt: String(raw.createdAt || fallback.createdAt || now).trim() || now,
+    updatedAt: String(raw.updatedAt || fallback.updatedAt || now).trim() || now,
+  };
+}
+
+function upsertNewsSource(items = [], item = {}, fallback = {}) {
+  const nextItem = normalizeNewsSourceEntry(item, fallback);
+  const existingIndex = findNewsItemIndex(items, nextItem.id || nextItem.slug);
+  const existingItem = existingIndex >= 0 ? items[existingIndex] : null;
+  const now = new Date().toISOString();
+
+  const merged = {
+    ...existingItem,
+    ...nextItem,
+    id: nextItem.id || existingItem?.id || crypto.randomUUID(),
+    slug: nextItem.slug || existingItem?.slug || slugifyNewsKey(nextItem.name || existingItem?.name || nextItem.id || ""),
+    createdAt: existingItem?.createdAt || nextItem.createdAt || now,
+    updatedAt: now,
+  };
+
+  if (existingIndex >= 0) {
+    items[existingIndex] = merged;
+  } else {
+    items.push(merged);
+  }
+
+  return merged;
+}
+
+function upsertNewsCategory(items = [], item = {}, fallback = {}) {
+  const nextItem = normalizeNewsCategoryEntry(item, fallback);
+  const existingIndex = findNewsItemIndex(items, nextItem.id || nextItem.slug);
+  const existingItem = existingIndex >= 0 ? items[existingIndex] : null;
+  const now = new Date().toISOString();
+
+  const merged = {
+    ...existingItem,
+    ...nextItem,
+    id: nextItem.id || existingItem?.id || crypto.randomUUID(),
+    slug: nextItem.slug || existingItem?.slug || slugifyNewsKey(nextItem.name || existingItem?.name || nextItem.id || ""),
+    createdAt: existingItem?.createdAt || nextItem.createdAt || now,
+    updatedAt: now,
+  };
+
+  if (existingIndex >= 0) {
+    items[existingIndex] = merged;
+  } else {
+    items.push(merged);
+  }
+
+  return merged;
+}
+
+async function loadNewsState() {
+  const [items, sources, categories, runs] = await Promise.all([
+    readCollection("newsItems"),
+    readCollection("newsSources"),
+    readCollection("newsCategories"),
+    readCollection("newsRuns"),
+  ]);
+
+  return {
+    items: Array.isArray(items) ? items.map((item) => applyNewsItemDefaults(item, item)) : [],
+    sources: Array.isArray(sources) ? sources.map((entry) => normalizeNewsSourceEntry(entry, entry)) : [],
+    categories: Array.isArray(categories) ? categories.map((entry) => normalizeNewsCategoryEntry(entry, entry)) : [],
+    runs: Array.isArray(runs) ? runs.map((entry) => normalizeNewsRunEntry(entry, entry)) : [],
+  };
+}
+
+function buildNewsAdminResponse(state, { limit = 200, status = "all" } = {}) {
+  const normalizedStatus = String(status || "all").trim().toLowerCase() || "all";
+  const filteredItems = sortNewsItemsDesc(state.items).filter((item) => (
+    normalizedStatus === "all" ? true : normalizeNewsStatus(item.status) === normalizedStatus
+  ));
+
+  return {
+    ok: true,
+    total: filteredItems.length,
+    items: filteredItems.slice(0, Math.max(1, limit || 200)),
+    sources: state.sources,
+    categories: state.categories,
+    runs: sortNewsItemsDesc(state.runs).slice(0, Math.max(1, limit || 200)),
+  };
+}
+
+async function replacePublishedNewsFeed(items = []) {
+  const publishedById = new Map();
+  for (const item of items) {
+    const normalized = applyNewsItemDefaults(item, item);
+    if (normalizeNewsStatus(normalized.status) !== "published") continue;
+    const identity = getNewsItemIdentity(normalized) || normalized.id || normalized.storyKey;
+    if (identity) {
+      publishedById.set(identity.toLowerCase(), normalized);
+    }
+  }
+
+  let nextItems = [];
+  await updateCollection("newsItems", async (currentItems) => {
+    const sourceItems = Array.isArray(currentItems) ? [...currentItems] : [];
+    const publishedMap = new Map(publishedById);
+
+    sourceItems.forEach((item) => {
+      const normalized = applyNewsItemDefaults(item, item);
+      const identity = (getNewsItemIdentity(normalized) || normalized.id || normalized.storyKey || "").trim().toLowerCase();
+      if (!identity || !publishedMap.has(identity)) {
+        return;
+      }
+      publishedMap.set(identity, applyNewsItemDefaults(publishedMap.get(identity), normalized));
+    });
+
+    for (const [identity, item] of publishedMap.entries()) {
+      const normalized = applyNewsItemDefaults(item, item);
+      const index = sourceItems.findIndex((entry) => {
+        const entryIdentity = (getNewsItemIdentity(entry) || entry.id || entry.storyKey || "").trim().toLowerCase();
+        return entryIdentity === identity;
+      });
+      if (index >= 0) {
+        sourceItems[index] = upsertNewsItem(sourceItems, normalized, sourceItems[index]);
+      } else {
+        upsertNewsItem(sourceItems, normalized, normalized);
+      }
+    }
+
+    nextItems = sortNewsItemsDesc(sourceItems);
+    return nextItems;
+  });
+
+  return buildPublicNewsFeed(nextItems);
+}
+
+async function updateNewsItemStatus(req, res, status) {
+  const safeId = String(req.params.newsId || "").trim();
+  if (!safeId) {
+    res.status(400).json({ error: "newsId is required" });
+    return;
+  }
+
+  const payload = req.body && typeof req.body === "object" ? req.body : {};
+  const state = await loadNewsState();
+  const item = state.items.find((entry) => {
+    const identity = getNewsItemIdentity(entry);
+    const slug = String(entry.storyKey || entry.slug || "").trim();
+    const requested = safeId.toLowerCase();
+    return identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested;
+  });
+
+  if (!item) {
+    res.status(404).json({ error: "News item not found" });
+    return;
+  }
+
+  const updatedItem = upsertNewsItem(
+    state.items,
+    {
+      ...item,
+      ...payload,
+      id: item.id,
+      storyKey: item.storyKey || item.id,
+      status,
+      publishedAt: status === "published" ? item.publishedAt || new Date().toISOString() : item.publishedAt || "",
+    },
+    item,
+  );
+
+  await writeCollection("newsItems", sortNewsItemsDesc(state.items));
+  res.json({ ok: true, item: updatedItem });
+}
+
 function summarizeAttempt(attempt) {
   return {
     id: attempt.id,
@@ -726,6 +1135,127 @@ app.get(
   }),
 );
 
+app.get(
+  "/api/admin/news",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const state = await loadNewsState();
+    const limit = safeNumber(req.query.limit) || 200;
+    const status = String(req.query.status || "all").trim().toLowerCase() || "all";
+
+    res.json(buildNewsAdminResponse(state, { limit, status }));
+  }),
+);
+
+app.get(
+  "/api/admin/news/:newsId",
+  asyncHandler(async (req, res, next) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const safeId = String(req.params.newsId || "").trim();
+    const reserved = new Set(["feed", "collect", "sources", "categories"]);
+    if (reserved.has(safeId.toLowerCase())) {
+      next();
+      return;
+    }
+    if (!safeId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const item = sortNewsItemsDesc(state.items).find((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.storyKey || entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested;
+    }) || null;
+
+    if (!item) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    res.json({ ok: true, item });
+  }),
+);
+
+app.post(
+  "/api/admin/news",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const payload = req.body && typeof req.body === "object" ? req.body : {};
+    const title = String(payload.title || payload.headline || "").trim();
+    const content = String(payload.content || payload.body || "").trim();
+    if (!title) {
+      res.status(400).json({ error: "title is required" });
+      return;
+    }
+    if (!content) {
+      res.status(400).json({ error: "content is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const nextItem = upsertNewsItem(state.items, {
+      ...payload,
+      title,
+      content,
+      status: payload.status || "pending_review",
+      storyKey: payload.storyKey || payload.slug || slugifyNewsKey(title),
+    });
+
+    await writeCollection("newsItems", sortNewsItemsDesc(state.items));
+    res.status(201).json({ ok: true, item: nextItem });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/:newsId",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const safeId = String(req.params.newsId || "").trim();
+    if (!safeId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const item = state.items.find((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.storyKey || entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested;
+    });
+
+    if (!item) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const updatedItem = upsertNewsItem(state.items, {
+      ...item,
+      ...(req.body && typeof req.body === "object" ? req.body : {}),
+      id: item.id,
+      storyKey: item.storyKey || item.id,
+    }, item);
+
+    await writeCollection("newsItems", sortNewsItemsDesc(state.items));
+    res.json({ ok: true, item: updatedItem });
+  }),
+);
+
 app.post(
   "/api/admin/seed-questions",
   asyncHandler(async (req, res) => {
@@ -736,6 +1266,335 @@ app.post(
 
     const result = await ensureQuestionsSeeded();
     res.json(result);
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/approve",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+    await updateNewsItemStatus(req, res, "approved");
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/publish",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+    await updateNewsItemStatus(req, res, "published");
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/reject",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+    await updateNewsItemStatus(req, res, "rejected");
+  }),
+);
+
+app.post(
+  "/api/admin/news/feed",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const feed = await replacePublishedNewsFeed(items);
+    res.json(feed);
+  }),
+);
+
+app.post(
+  "/api/admin/news/collect",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const state = await loadNewsState();
+    const run = normalizeNewsRunEntry({
+      status: "success",
+      sourceCount: state.sources.length,
+      addedCount: 0,
+      updatedCount: 0,
+      errorCount: 0,
+      triggeredBy: "admin",
+      message: "News collection is driven by the admin-published feed.",
+      startedAt: now,
+      finishedAt: now,
+    });
+
+    state.runs.unshift(run);
+    await writeCollection("newsRuns", state.runs.slice(0, 50));
+    res.json({ ok: true, run, items: state.items });
+  }),
+);
+
+app.get(
+  "/api/admin/news/sources",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const state = await loadNewsState();
+    res.json({ ok: true, sources: state.sources });
+  }),
+);
+
+app.post(
+  "/api/admin/news/sources",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const payload = req.body && typeof req.body === "object" ? req.body : {};
+    const name = String(payload.name || "").trim();
+    const url = String(payload.url || "").trim();
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+    if (!url) {
+      res.status(400).json({ error: "url is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const nextItem = upsertNewsSource(state.sources, {
+      ...payload,
+      name,
+      url,
+      id: payload.id || slugifyNewsKey(name),
+    });
+
+    await writeCollection("newsSources", sortNewsItemsDesc(state.sources));
+    res.status(201).json({ ok: true, source: nextItem });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/sources/:sourceId",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const safeId = String(req.params.sourceId || "").trim();
+    if (!safeId) {
+      res.status(400).json({ error: "sourceId is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const source = state.sources.find((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested;
+    });
+
+    if (!source) {
+      res.status(404).json({ error: "Source not found" });
+      return;
+    }
+
+    const updatedSource = upsertNewsSource(state.sources, {
+      ...source,
+      ...(req.body && typeof req.body === "object" ? req.body : {}),
+      id: source.id,
+      slug: source.slug || source.id,
+    }, source);
+
+    await writeCollection("newsSources", sortNewsItemsDesc(state.sources));
+    res.json({ ok: true, source: updatedSource });
+  }),
+);
+
+app.delete(
+  "/api/admin/news/sources/:sourceId",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const safeId = String(req.params.sourceId || "").trim();
+    if (!safeId) {
+      res.status(400).json({ error: "sourceId is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const source = state.sources.find((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested;
+    });
+
+    if (!source) {
+      res.status(404).json({ error: "Source not found" });
+      return;
+    }
+
+    state.sources = state.sources.filter((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return !(identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested);
+    });
+
+    state.items = state.items.map((item) => {
+      if (String(item.sourceId || "").trim() === safeId || String(item.sourceName || "").trim().toLowerCase() === String(source.name || "").trim().toLowerCase()) {
+        return {
+          ...item,
+          sourceId: "",
+          sourceName: "",
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return item;
+    });
+
+    await writeCollection("newsItems", sortNewsItemsDesc(state.items));
+    await writeCollection("newsSources", sortNewsItemsDesc(state.sources));
+    res.json({ ok: true, message: "Source removed" });
+  }),
+);
+
+app.get(
+  "/api/admin/news/categories",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const state = await loadNewsState();
+    res.json({ ok: true, categories: state.categories });
+  }),
+);
+
+app.post(
+  "/api/admin/news/categories",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const payload = req.body && typeof req.body === "object" ? req.body : {};
+    const name = String(payload.name || "").trim();
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const nextItem = upsertNewsCategory(state.categories, {
+      ...payload,
+      name,
+      id: payload.id || slugifyNewsKey(name),
+    });
+
+    await writeCollection("newsCategories", sortNewsItemsDesc(state.categories));
+    res.status(201).json({ ok: true, category: nextItem });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/categories/:categoryId",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const safeId = String(req.params.categoryId || "").trim();
+    if (!safeId) {
+      res.status(400).json({ error: "categoryId is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const category = state.categories.find((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested;
+    });
+
+    if (!category) {
+      res.status(404).json({ error: "Category not found" });
+      return;
+    }
+
+    const updatedCategory = upsertNewsCategory(state.categories, {
+      ...category,
+      ...(req.body && typeof req.body === "object" ? req.body : {}),
+      id: category.id,
+      slug: category.slug || category.id,
+    }, category);
+
+    await writeCollection("newsCategories", sortNewsItemsDesc(state.categories));
+    res.json({ ok: true, category: updatedCategory });
+  }),
+);
+
+app.delete(
+  "/api/admin/news/categories/:categoryId",
+  asyncHandler(async (req, res) => {
+    if (!requireAdminNewsAccess(req, res)) {
+      return;
+    }
+
+    const safeId = String(req.params.categoryId || "").trim();
+    if (!safeId) {
+      res.status(400).json({ error: "categoryId is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const category = state.categories.find((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested;
+    });
+
+    if (!category) {
+      res.status(404).json({ error: "Category not found" });
+      return;
+    }
+
+    state.categories = state.categories.filter((entry) => {
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.slug || "").trim();
+      const requested = safeId.toLowerCase();
+      return !(identity === safeId || slug === safeId || identity.toLowerCase() === requested || slug.toLowerCase() === requested);
+    });
+
+    state.items = state.items.map((item) => {
+      if (String(item.category || "").trim().toLowerCase() === String(category.slug || category.id || "").trim().toLowerCase()) {
+        return {
+          ...item,
+          category: "clinical-news",
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return item;
+    });
+
+    await writeCollection("newsItems", sortNewsItemsDesc(state.items));
+    await writeCollection("newsCategories", sortNewsItemsDesc(state.categories));
+    res.json({ ok: true, message: "Category removed" });
   }),
 );
 
@@ -1071,6 +1930,72 @@ app.post(
       message: "All data reset. Questions re-seeded.",
       seeded: result.seeded,
     });
+  }),
+);
+
+app.get(
+  "/api/news/feed",
+  asyncHandler(async (req, res) => {
+    const state = await loadNewsState();
+    const limit = safeNumber(req.query.limit) || 50;
+    const feed = buildPublicNewsFeed(state.items);
+
+    res.json({
+      ...feed,
+      items: feed.items.slice(0, limit),
+      sections: {
+        hero: feed.sections.hero.slice(0, Math.min(limit, feed.sections.hero.length)),
+        latest: feed.sections.latest.slice(0, Math.min(limit, feed.sections.latest.length)),
+        medicine: feed.sections.medicine.slice(0, Math.min(limit, feed.sections.medicine.length)),
+        trendingNow: feed.sections.trendingNow.slice(0, Math.min(limit, feed.sections.trendingNow.length)),
+      },
+    });
+  }),
+);
+
+app.post(
+  "/api/news/feed",
+  asyncHandler(async (req, res) => {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const feed = await replacePublishedNewsFeed(items);
+    res.json(feed);
+  }),
+);
+
+app.get(
+  "/api/news/:newsId",
+  asyncHandler(async (req, res) => {
+    const safeId = String(req.params.newsId || "").trim();
+    if (!safeId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+
+    const state = await loadNewsState();
+    const item = sortNewsItemsDesc(state.items).find((entry) => {
+      if (normalizeNewsStatus(entry.status) !== "published") {
+        return false;
+      }
+      const identity = getNewsItemIdentity(entry);
+      const slug = String(entry.storyKey || entry.slug || "").trim();
+      const title = String(entry.title || "").trim();
+      const requested = safeId.toLowerCase();
+      return (
+        identity === safeId ||
+        slug === safeId ||
+        title === safeId ||
+        identity.toLowerCase() === requested ||
+        slug.toLowerCase() === requested ||
+        title.toLowerCase() === requested
+      );
+    }) || null;
+
+    if (!item) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    res.json({ ok: true, item });
   }),
 );
 

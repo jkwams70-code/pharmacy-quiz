@@ -21,9 +21,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Ajix Quiz" />
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
     <title>Ajix Pharmacy Quiz | Pharmacy Practice & Assessment Portal</title>
     <script type="application/ld+json">
       {
@@ -86,1258 +83,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260817-crownfix3" />
-    <style>
-      #subscription-screen.subscription-page {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100dvh;
-        min-height: 100dvh;
-        display: none;
-        overflow: hidden;
-        overscroll-behavior: none;
-        isolation: isolate;
-        flex-direction: column;
-        padding: clamp(16px, 3vw, 28px);
-        background:
-          radial-gradient(circle at top left, rgba(15, 63, 127, 0.06), transparent 30%),
-          radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 30%),
-          linear-gradient(180deg, #fbfdff 0%, #f3f7fb 100%);
-        font-family: var(--font-body);
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-shell {
-        flex: 1;
-        min-height: 0;
-        max-width: 1180px;
-        margin: 0 auto;
-        display: grid;
-        gap: 14px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-bottom: 4px;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      #subscription-screen .subscription-header-row,
-      #subscription-screen .subscription-section-row {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-      }
-
-      #subscription-screen .subscription-page-title {
-        margin: 0;
-        font-family: var(--font-heading);
-        font-size: clamp(24px, 2.6vw, 36px);
-        line-height: 1.05;
-        font-weight: 900;
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-page-subtitle {
-        margin: 6px 0 0;
-        color: #64748b;
-        font-size: 14px;
-        line-height: 1.45;
-      }
-
-      #subscription-screen .subscription-close-btn {
-        border: 0;
-        background: transparent;
-        color: #64748b;
-        font-size: 15px;
-        font-weight: 700;
-        padding: 8px 0;
-        cursor: pointer;
-      }
-
-      #subscription-screen .subscription-status-card,
-      #subscription-screen .subscription-payment-card,
-      #subscription-screen .subscription-proof-card {
-        background: #fff;
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
-      }
-
-      #subscription-screen .subscription-status-card {
-        position: relative;
-        overflow: hidden;
-        border-radius: 24px;
-        padding: 18px 18px 17px;
-        background:
-          radial-gradient(circle at top right, rgba(15, 123, 194, 0.12), transparent 34%),
-          radial-gradient(circle at left center, rgba(13, 148, 136, 0.08), transparent 28%),
-          linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%);
-        border-color: rgba(122, 172, 230, 0.28);
-        box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
-      }
-
-      #subscription-screen .subscription-status-card::before {
-        content: "";
-        position: absolute;
-        inset: 0 auto auto 0;
-        width: 100%;
-        height: 4px;
-        background: linear-gradient(90deg, #0f7bc2, #14b8a6 58%, #f59e0b);
-      }
-
-      #subscription-screen .subscription-status-label,
-      #subscription-screen .subscription-section-title {
-        margin: 0;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        font-weight: 800;
-        color: #64748b;
-      }
-
-      #subscription-screen .subscription-status-label {
-        display: inline-flex;
-        width: fit-content;
-        align-items: center;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(237, 247, 255, 0.95);
-        color: #0f7bc2;
-        letter-spacing: 0.12em;
-        box-shadow: inset 0 0 0 1px rgba(122, 172, 230, 0.22);
-      }
-
-      #subscription-screen .subscription-status-line {
-        margin-top: 10px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-status-title {
-        margin: 0;
-        font-size: clamp(18px, 2vw, 24px);
-        line-height: 1.15;
-        font-weight: 900;
-        color: #10233f;
-        letter-spacing: -0.02em;
-      }
-
-      #subscription-screen .subscription-status-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 82px;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: linear-gradient(180deg, #eef8ff 0%, #dff2ff 100%);
-        color: #0f7bc2;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        box-shadow: 0 10px 18px rgba(14, 116, 144, 0.12);
-      }
-
-      #subscription-screen .subscription-status-subtitle,
-      #subscription-screen .subscription-status-note,
-      #subscription-screen .subscription-request-status,
-      #subscription-screen .subscription-section-note,
-      #subscription-screen .subscription-payment-head p,
-      #subscription-screen .subscription-payment-note {
-        margin: 0;
-        color: #64748b;
-        line-height: 1.5;
-      }
-
-      #subscription-screen .subscription-status-subtitle {
-        margin-top: 10px;
-        font-size: 13px;
-        font-weight: 800;
-        color: #174271;
-      }
-
-      #subscription-screen .subscription-status-note {
-        font-size: 13px;
-      }
-
-      #subscription-screen .subscription-section-note {
-        font-size: 12px;
-        text-align: right;
-      }
-
-      #subscription-screen .subscription-plan-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-plan-card {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-height: 236px;
-        padding: 14px;
-        border-radius: 16px;
-        background: #fff;
-        border: 2px solid #d6e4f0;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="daily"] {
-        border-color: #53c2f6;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] {
-        border-color: #26d7c3;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] {
-        border-color: #ffb52f;
-      }
-
-      #subscription-screen .subscription-plan-card-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-plan-card-title {
-        font-size: 16px;
-        font-weight: 900;
-        color: #1f2937;
-      }
-
-      #subscription-screen .subscription-plan-card-copy {
-        margin-top: 4px;
-        font-size: 12px;
-        line-height: 1.45;
-        color: #64748b;
-      }
-
-      #subscription-screen .subscription-plan-card-price {
-        text-align: right;
-        min-width: 74px;
-      }
-
-      #subscription-screen .subscription-plan-price-amount {
-        display: block;
-        font-size: 16px;
-        font-weight: 900;
-        color: #0f7bc2;
-      }
-
-      #subscription-screen .subscription-plan-price-meta {
-        display: block;
-        margin-top: 4px;
-        font-size: 12px;
-        color: #64748b;
-        font-weight: 700;
-      }
-
-      #subscription-screen .subscription-plan-card-chip {
-        display: inline-flex;
-        align-self: flex-start;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #eef6ff;
-        color: #0f7bc2;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-screen .subscription-plan-benefits {
-        list-style: none;
-        display: grid;
-        gap: 8px;
-        margin: 0;
-        padding: 0;
-      }
-
-      #subscription-screen .subscription-plan-benefits li {
-        position: relative;
-        padding-left: 24px;
-        color: #334155;
-        font-size: 12px;
-        line-height: 1.45;
-      }
-
-      #subscription-screen .subscription-plan-benefits li::before {
-        content: "◌";
-        position: absolute;
-        left: 0;
-        top: 0;
-        color: #0f7bc2;
-        font-weight: 900;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-chip,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-price-amount,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-benefits li::before {
-        color: #0f9f73;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-chip,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-price-amount,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-benefits li::before {
-        color: #d97706;
-      }
-
-      #subscription-screen .subscription-plan-card-button {
-        margin-top: auto;
-        width: 100%;
-        border: 0;
-        border-radius: 12px;
-        padding: 10px 12px;
-        color: #fff;
-        background: #0f7bc2;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-button {
-        background: #0f9f73;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-button {
-        background: #f59e0b;
-      }
-
-      #subscription-screen .subscription-payment-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
-        gap: 14px;
-      }
-
-      #subscription-screen .subscription-payment-card,
-      #subscription-screen .subscription-proof-card {
-        border-radius: 20px;
-        padding: 14px;
-      }
-
-      #subscription-screen .subscription-payment-head h3,
-      #subscription-screen .subscription-proof-card h3 {
-        margin: 0;
-        font-size: 17px;
-        line-height: 1.2;
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-payment-head p {
-        margin-top: 6px;
-      }
-
-      #subscription-screen .subscription-payment-details {
-        margin-top: 12px;
-      }
-
-      #subscription-screen .subscription-payment-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: #f8fafc;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        margin-bottom: 8px;
-      }
-
-      #subscription-screen .subscription-form {
-        margin-top: 10px;
-        display: grid;
-        gap: 10px;
-      }
-
-      #subscription-screen .subscription-field span {
-        font-weight: 700;
-        font-size: 12px;
-        line-height: 1.2;
-      }
-
-      #subscription-screen .subscription-field {
-        gap: 6px;
-      }
-
-      #subscription-screen .subscription-field input,
-      #subscription-screen .subscription-field textarea {
-        min-height: 38px;
-        padding-top: 9px;
-        padding-bottom: 9px;
-      }
-
-      #subscription-screen .subscription-proof-preview {
-        max-width: 100%;
-        min-height: 76px;
-      }
-
-      #subscription-screen .subscription-form button {
-        border: 0;
-        border-radius: 12px;
-        padding: 10px 12px;
-        color: #fff;
-        background: #0f7bc2;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      @media (max-width: 900px) {
-        #home-screen .home-minimal-shape,
-        #home-screen .home-minimal-bg-image {
-          display: none !important;
-        }
-
-        #home-screen .home-minimal-container {
-          padding-top: 16px !important;
-          padding-bottom: 10px !important;
-        }
-
-        #home-screen .home-minimal-content {
-          padding: 28px 18px 22px !important;
-        }
-
-        #home-screen .home-minimal-button-row {
-          position: relative !important;
-          z-index: 999 !important;
-        }
-
-        #home-screen .home-minimal-button {
-          position: relative !important;
-          z-index: 1000 !important;
-          pointer-events: auto !important;
-        }
-      }
-
-      @media (min-width: 1025px) {
-        #subscription-screen.subscription-page {
-          padding-top: 18px;
-          padding-bottom: 18px;
-        }
-
-        #subscription-screen .subscription-shell {
-          gap: 12px;
-        }
-
-        #subscription-screen .subscription-status-card {
-          padding: 12px 16px;
-        }
-
-        #subscription-screen .subscription-plan-card {
-          min-height: 224px;
-        }
-
-        #subscription-screen .subscription-payment-card,
-        #subscription-screen .subscription-proof-card {
-          padding: 12px;
-        }
-
-        #subscription-screen .subscription-field input,
-        #subscription-screen .subscription-field textarea {
-          min-height: 36px;
-        }
-      }
-
-      @media (max-width: 1024px) {
-        #subscription-screen .subscription-plan-grid,
-        #subscription-screen .subscription-payment-grid {
-          grid-template-columns: 1fr;
-        }
-
-        #subscription-screen .subscription-shell {
-          gap: 12px;
-        }
-      }
-
-      @media (max-width: 720px) {
-        #subscription-screen.subscription-page {
-          padding: 14px 12px 16px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          -webkit-overflow-scrolling: touch;
-          padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-        }
-
-        #subscription-screen .subscription-shell {
-          width: 100%;
-          max-width: none;
-          gap: 12px;
-          padding-bottom: 24px;
-          flex: none;
-          min-height: auto;
-          overflow: visible;
-        }
-
-        #subscription-screen .subscription-header-row,
-        #subscription-screen .subscription-section-row {
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-section-row {
-          flex-direction: column;
-        }
-
-        #subscription-screen .subscription-header-copy {
-          flex: 1 1 auto;
-          min-width: 0;
-        }
-
-        #subscription-screen .subscription-close-btn {
-          padding-top: 2px;
-          white-space: nowrap;
-        }
-
-        #subscription-screen .subscription-page-title {
-          font-size: clamp(20px, 6vw, 26px);
-        }
-
-        #subscription-screen .subscription-page-subtitle {
-          font-size: 12px;
-        }
-
-        #subscription-screen .subscription-section-note {
-          display: block;
-          margin: 0;
-          font-size: 11px;
-          line-height: 1.45;
-          color: #64748b;
-        }
-
-        #subscription-screen .subscription-status-card {
-          display: grid;
-          gap: 6px;
-          padding: 14px 14px 13px;
-          border-radius: 18px;
-          background:
-            radial-gradient(circle at top right, rgba(15, 123, 194, 0.16), transparent 38%),
-            radial-gradient(circle at left center, rgba(13, 148, 136, 0.1), transparent 26%),
-            linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
-        }
-
-        #subscription-screen .subscription-status-line {
-          margin-top: 0;
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: center;
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-status-title {
-          font-size: 15px;
-          color: #10233f;
-        }
-
-        #subscription-screen .subscription-status-pill {
-          min-width: 64px;
-          padding: 4px 8px;
-          font-size: 8px;
-        }
-
-        #subscription-screen .subscription-status-subtitle {
-          margin-top: 0;
-          font-size: 12px;
-        }
-
-        #subscription-screen .subscription-status-note {
-          display: block;
-          margin: 0;
-          font-size: 11px;
-          line-height: 1.45;
-        }
-
-        #subscription-screen .subscription-plan-grid {
-          grid-template-columns: 1fr;
-          gap: 14px;
-        }
-
-        #subscription-screen .subscription-plan-card {
-          width: 100%;
-          padding: 18px 16px 16px;
-          border-radius: 18px;
-          min-height: 0;
-        }
-
-        #subscription-screen .subscription-plan-card-head {
-          align-items: flex-start;
-        }
-
-        #subscription-screen .subscription-plan-card-title {
-          font-size: 18px;
-        }
-
-        #subscription-screen .subscription-plan-card-copy {
-          font-size: 13px;
-        }
-
-        #subscription-screen .subscription-plan-card-price {
-          min-width: 72px;
-        }
-
-        #subscription-screen .subscription-plan-price-amount {
-          font-size: 18px;
-        }
-
-        #subscription-screen .subscription-plan-benefits {
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-plan-benefits li {
-          font-size: 13px;
-        }
-
-        #subscription-screen .subscription-plan-card-button {
-          min-height: 46px;
-          padding: 13px 14px;
-          border-radius: 13px;
-        }
-
-        #subscription-screen .subscription-form {
-          gap: 10px;
-        }
-      }
-
-      body.subscription-modal-open {
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal.subscription-payment-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 6000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-        background: rgba(2, 6, 23, 0.72);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-      }
-
-      #subscription-payment-modal.hidden {
-        display: none !important;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-card {
-        width: min(456px, calc(100vw - 24px));
-        max-height: calc(100dvh - 24px);
-        overflow-y: auto;
-        overflow-x: hidden;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        padding: 0;
-        border-radius: 28px;
-        background: linear-gradient(180deg, #08101d 0%, #050913 100%);
-        color: #dbe5f5;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58);
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-card {
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 12px 14px 12px;
-        padding-right: 104px;
-        position: relative;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-eyebrow {
-        color: #ffd76a;
-        font-size: 13px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header h3,
-      #subscription-payment-modal .subscription-proof-panel h3 {
-        margin: 6px 0 0;
-        color: #ffe08a;
-        font-family: var(--font-heading);
-        font-size: clamp(16px, 1.8vw, 22px);
-        line-height: 1.1;
-        font-weight: 900;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header p,
-      #subscription-payment-modal .subscription-request-status {
-        margin: 6px 0 0;
-        color: #97a6bf;
-        line-height: 1.45;
-        font-size: 12px;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-close {
-        position: absolute;
-        top: 12px;
-        right: 14px;
-        z-index: 1;
-        flex: 0 0 auto;
-        align-self: auto;
-        margin-left: 0;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.03);
-        color: #f8fafc;
-        border-radius: 14px;
-        padding: 8px 12px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-payment-summary-panel,
-      #subscription-payment-modal .subscription-proof-panel {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px 14px;
-        margin: 10px 14px 10px;
-        border-radius: 22px;
-        background: linear-gradient(180deg, rgba(9, 18, 33, 0.96), rgba(5, 11, 22, 0.96));
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-summary-panel {
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-        flex: 0 0 auto;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        min-height: 68px;
-        padding: 10px 14px;
-        border-radius: 18px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        text-align: center;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-label {
-        color: #a7b5cc;
-        font-size: 10px;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        font-weight: 800;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-value {
-        color: #ffe08a;
-        font-size: clamp(22px, 2.6vw, 34px);
-        line-height: 1;
-        font-weight: 900;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row {
-        display: none;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row strong {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: #ffffff;
-        font-size: 12px;
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        line-height: 1.2;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-label {
-        color: #dbe5f5;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row span {
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.35;
-        font-weight: 900;
-        letter-spacing: 0.02em;
-        text-align: right;
-      }
-
-      #subscription-payment-modal .subscription-payment-details {
-        display: grid;
-        gap: 10px;
-        margin-top: 2px;
-        padding: 10px 12px;
-        border-radius: 18px;
-        background: rgba(15, 23, 42, 0.82);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      #subscription-payment-modal .subscription-payment-method-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-left {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 9px;
-        border-radius: 999px;
-        font-size: 10px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        line-height: 1;
-        text-transform: uppercase;
-        white-space: nowrap;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand svg {
-        width: 13px;
-        height: 13px;
-        flex: 0 0 auto;
-        stroke: currentColor;
-        fill: none;
-        stroke-width: 2.1;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand.is-mtn {
-        background: rgba(255, 204, 51, 0.14);
-        border: 1px solid rgba(255, 204, 51, 0.2);
-        color: #ffe08a;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand.is-fidelity {
-        background: rgba(59, 130, 246, 0.14);
-        border: 1px solid rgba(59, 130, 246, 0.22);
-        color: #9fc1ff;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-label {
-        color: #dbe5f5;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-number {
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.3;
-        font-weight: 900;
-        letter-spacing: 0.02em;
-        text-align: right;
-        white-space: nowrap;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-divider {
-        width: 100%;
-        height: 1px;
-        background: rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-method-name {
-        margin-top: 2px;
-        color: #9fb0c7;
-        font-size: 11px;
-        line-height: 1.45;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-align: center;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-note {
-        margin: 2px 0 0;
-        color: #9fb0c7;
-        font-size: 11px;
-        line-height: 1.5;
-      }
-
-      #subscription-payment-modal .subscription-payment-steps {
-        display: grid;
-        gap: 8px;
-        padding: 9px 12px;
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.72);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      #subscription-payment-modal .subscription-payment-steps-title {
-        color: #ffe08a;
-        font-size: 11px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-steps ol {
-        margin: 0;
-        padding-left: 16px;
-        display: grid;
-        gap: 5px;
-        color: #e2e8f0;
-        line-height: 1.5;
-        font-size: 11px;
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn,
-      #subscription-payment-modal .subscription-modal-submit-btn {
-        width: 100%;
-        border: 0;
-        border-radius: 14px;
-        padding: 13px 16px;
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn {
-        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
-        color: #140f07;
-        box-shadow: 0 12px 28px rgba(255, 152, 0, 0.24);
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn:hover,
-      #subscription-payment-modal .subscription-modal-submit-btn:hover,
-      #subscription-payment-modal .subscription-modal-cancel-btn:hover,
-      #subscription-payment-modal .subscription-payment-modal-close:hover {
-        transform: translateY(-1px);
-      }
-
-      #subscription-payment-modal .subscription-proof-panel h3 {
-        color: #ffd76a;
-        margin-top: 0;
-        font-size: 15px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-form {
-        display: grid;
-        gap: 8px;
-        margin-top: 6px;
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-card {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 9px 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-title {
-        color: #eef4ff;
-        font-size: 12px;
-        font-weight: 800;
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-reference {
-        color: #97a6bf;
-        font-size: 11px;
-        font-weight: 600;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field {
-        display: grid;
-        gap: 8px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field span {
-        color: #dbe5f5;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field input,
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
-        width: 100%;
-        min-height: 40px;
-        border-radius: 13px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(7, 15, 27, 0.94);
-        color: #eef4ff;
-        padding: 9px 11px;
-        font-size: 14px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
-        min-height: 72px;
-        resize: vertical;
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 58px;
-        padding: 12px 12px;
-        border-radius: 14px;
-        border: 1px dashed rgba(116, 152, 203, 0.4);
-        background: rgba(7, 15, 27, 0.94);
-        color: #8ea0ba;
-        cursor: pointer;
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone:hover {
-        border-color: rgba(255, 255, 255, 0.2);
-      }
-
-      #subscription-payment-modal .subscription-proof-file-input {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        opacity: 0;
-        pointer-events: none;
-        overflow: hidden;
-        clip-path: inset(50%);
-        clip: rect(0 0 0 0);
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone-copy {
-        position: relative;
-        z-index: 1;
-        text-align: center;
-        font-size: 12px;
-        font-weight: 600;
-        color: #7f92ac;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field input::placeholder,
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea::placeholder {
-        color: #6f8099;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        width: 112px;
-        height: 112px;
-        min-height: 112px;
-        padding: 0;
-        border-radius: 16px;
-        background:
-          radial-gradient(circle at 50% 38%, rgba(79, 145, 255, 0.12), transparent 42%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-        border: 1px dashed rgba(255, 255, 255, 0.14);
-        flex: 0 0 auto;
-        align-self: flex-start;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-content {
-        min-height: 112px;
-        padding: 0;
-        pointer-events: auto;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-empty {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        height: 100%;
-        min-height: 112px;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        padding: 14px 12px 12px;
-        border: 1px dashed rgba(255, 255, 255, 0.16);
-        background:
-          radial-gradient(circle at 50% 32%, rgba(79, 145, 255, 0.1), transparent 36%),
-          rgba(255, 255, 255, 0.04);
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 11px;
-        background: rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-icon svg {
-        width: 18px;
-        height: 18px;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-        text-align: center;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy strong {
-        font-size: 9px;
-        line-height: 1.25;
-        font-weight: 800;
-        color: #e5eefb;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy span {
-        font-size: 8px;
-        line-height: 1.25;
-        color: #7f92ac;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-image {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        background: #fff;
-        object-fit: contain;
-        object-position: center center;
-        display: block;
-        pointer-events: none;
-        user-select: none;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-file--image {
-        position: relative;
-        width: 112px;
-        height: 112px;
-        min-width: 112px;
-        min-height: 112px;
-        max-width: 112px;
-        max-height: 112px;
-        background-color: #fff;
-        background-position: center center;
-        background-repeat: no-repeat;
-        background-size: contain;
-        flex: 0 0 112px;
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal .subscription-modal-actions {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
-        gap: 10px;
-        margin-top: 24px;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-remove {
-        top: 4px;
-        right: 4px;
-        width: 18px;
-        height: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 999px;
-        background: rgba(18, 24, 35, 0.88);
-        color: #fff;
-        font-size: 12px;
-        line-height: 1;
-        font-weight: 900;
-        padding: 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-        pointer-events: auto;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-remove:hover {
-        background: rgba(30, 37, 49, 0.96);
-      }
-
-      #subscription-payment-modal .subscription-modal-cancel-btn {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        color: #e2e8f0;
-        border-radius: 14px;
-        padding: 13px 16px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-modal-submit-btn {
-        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
-        color: #140f07;
-        box-shadow: 0 14px 30px rgba(255, 152, 0, 0.24);
-      }
-
-      #subscription-payment-modal .subscription-form-feedback {
-        min-height: 22px;
-        color: #a7f3d0;
-        font-weight: 700;
-        font-size: 11px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow: visible;
-      }
-
-      @media (max-width: 900px) {
-        #subscription-payment-modal.subscription-payment-modal {
-          align-items: center;
-          padding: 8px;
-        }
-
-        #subscription-payment-modal .subscription-payment-modal-card {
-          max-height: calc(100dvh - 16px);
-          width: min(456px, calc(100vw - 16px));
-        }
-
-        #subscription-payment-modal .subscription-payment-modal-header {
-          flex-direction: column;
-          padding: 12px 13px 9px;
-        }
-
-        #subscription-payment-modal .subscription-payment-summary-panel,
-        #subscription-payment-modal .subscription-proof-panel {
-          margin: 9px 10px 9px;
-          padding: 11px 11px;
-        }
-
-        #subscription-payment-modal .subscription-modal-actions {
-          grid-template-columns: 1fr;
-        }
-
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css?v=20260822-menu-tabs2" />
   </head>
 
   <body>
@@ -1456,34 +202,36 @@
 
           <div id="auth-contact-wrap" class="auth-field hidden">
             <span>Contact</span>
-            <label class="auth-field">
-              <span>Format</span>
-              <select id="auth-contact-format">
-                <option value="phone" selected>Contact</option>
-                <option value="email">Email</option>
-              </select>
-            </label>
-            <label id="auth-contact-email-wrap" class="auth-field hidden">
-              <span>Email Address</span>
-              <input
-                id="auth-contact-email"
-                type="email"
-                autocomplete="email"
-                placeholder="name@example.com"
-              />
-            </label>
-            <div id="auth-contact-phone-wrap" class="auth-field">
-              <span>Contact Number</span>
-              <div class="auth-phone-grid">
-                <select id="auth-contact-country-code" autocomplete="tel-country-code"></select>
+            <div class="auth-contact-row">
+              <label id="auth-contact-phone-wrap" class="auth-field auth-contact-input-field">
+                <span>Contact Number</span>
+                <div class="auth-phone-grid">
+                  <select id="auth-contact-country-code" autocomplete="tel-country-code"></select>
+                  <input
+                    id="auth-contact-phone"
+                    type="tel"
+                    inputmode="numeric"
+                    autocomplete="tel-national"
+                    placeholder="Enter mobile number"
+                  />
+                </div>
+              </label>
+              <label id="auth-contact-email-wrap" class="auth-field auth-contact-input-field hidden">
+                <span>Email Address</span>
                 <input
-                  id="auth-contact-phone"
-                  type="tel"
-                  inputmode="numeric"
-                  autocomplete="tel-national"
-                  placeholder="Enter mobile number"
+                  id="auth-contact-email"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="name@example.com"
                 />
-              </div>
+              </label>
+              <label class="auth-field auth-contact-format-field">
+                <span>Format</span>
+                <select id="auth-contact-format">
+                  <option value="phone" selected>Contact</option>
+                  <option value="email">Email</option>
+                </select>
+              </label>
             </div>
           </div>
 
@@ -1680,6 +428,7 @@
               </button>
             </section>
 
+            <div class="menu-modern-centered-band">
             <button
               id="daily-quiz-btn"
               type="button"
@@ -1711,82 +460,19 @@
               </span>
             </button>
 
-            <section class="menu-modern-section">
-              <div class="menu-modern-section-head">
-                <h2 class="menu-modern-section-title">Drills</h2>
-                <span class="menu-modern-section-note">Quick launches</span>
-              </div>
-
-              <div class="menu-modern-drills-grid" aria-label="Quiz drills and quick tools">
-                <button id="rapid-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Rapid points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-rapid-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-rapid" aria-hidden="true">
-                    <img src="images/rapid.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Rapid</span>
-                </button>
-
-                <button id="sudden-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Sudden points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-sudden-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-sudden" aria-hidden="true">
-                    <img src="images/sudden.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Sudden</span>
-                </button>
-
-                <button id="clinical-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Clinical points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-clinical-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-clinical" aria-hidden="true">
-                    <img src="images/clinical.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Clinical</span>
-                </button>
-
-                <button
-                  id="law-drill-btn"
-                  type="button"
-                  class="menu-modern-drill-tile"
-                  style="position:relative;overflow:hidden;"
-                  aria-label="Start law drill"
-                  title="Law Drill"
-                >
-                  <span
-                    class="menu-modern-card-points-badge is-drill"
-                    style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;"
-                    title="Law points"
-                  >
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-law-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-law" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 3v18"></path>
-                      <path d="M5 7h14"></path>
-                      <path d="M6 7 3 12h6L6 7Z"></path>
-                      <path d="M18 7 15 12h6L18 7Z"></path>
-                      <path d="M6 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M21 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M8 21h8"></path>
-                    </svg>
-                  </span>
-                  <span class="menu-modern-drill-label">Law</span>
-                </button>
+            <section class="menu-modern-section menu-modern-hub-tabs-section">
+              <div class="menu-modern-hub-tabs" role="tablist" aria-label="Menu sections">
+                <button id="menu-drills-tab" type="button" class="menu-modern-hub-tab is-active" data-menu-section="drills">Drills</button>
+                <button id="menu-law-tab" type="button" class="menu-modern-hub-tab" data-menu-section="law">Law</button>
+                <button id="menu-gppqe-tab" type="button" class="menu-modern-hub-tab" data-menu-section="gppqe">GPPQE</button>
+                <button id="menu-extra-tab" type="button" class="menu-modern-hub-tab" data-menu-section="extra">Extra</button>
               </div>
             </section>
 
             <section class="menu-modern-section">
               <div class="menu-modern-section-head">
                 <h2 class="menu-modern-section-title">Main Quiz</h2>
-                <span class="menu-modern-section-note">Build or test mastery</span>
+                <span class="menu-modern-section-note">Build or Test Mastery</span>
               </div>
 
               <div class="menu-modern-feature-grid">
@@ -1800,7 +486,7 @@
                     <span id="menu-study-points-badge">0</span>
                   </span>
                   <span class="menu-modern-feature-art is-study" aria-hidden="true">
-                    <img src="images/stduy.png" alt="" class="menu-modern-art-image is-feature-art" />
+                    <img src="images/study-tool.png" alt="" class="menu-modern-art-image is-feature-art" />
                   </span>
                   <span class="menu-modern-feature-title">Study</span>
                   <span class="menu-modern-feature-text">Learn with a steady question flow and resume where you left off.</span>
@@ -1823,6 +509,7 @@
                 </button>
               </div>
             </section>
+            </div>
             </div>
           </div>
 
@@ -1997,6 +684,7 @@
           </div>
         </div>
       </div>
+
       <div id="subscription-screen" class="setup-page subscription-page">
         <div class="subscription-shell">
           <div class="subscription-header-row">
@@ -2007,20 +695,12 @@
             <button id="subscription-back-btn" class="subscription-close-btn" type="button">Close</button>
           </div>
 
-          <section class="subscription-status-card">
-            <div class="subscription-status-label">Current status</div>
-            <div class="subscription-status-line">
-              <span id="subscription-status-title" class="subscription-status-title">Free Trial</span>
-              <span id="subscription-status-pill" class="subscription-status-pill">active</span>
-            </div>
-            <p id="subscription-status-subtitle" class="subscription-status-subtitle">7 days after signup</p>
-            <p id="subscription-status-note" class="subscription-status-note">You are currently on the trial access path.</p>
-          </section>
           <div class="subscription-section-row">
-            <div>
-              <h3 id="subscription-section-title" class="subscription-section-title">Choose a plan</h3>
+            <div class="subscription-section-copy">
+              <h3 id="subscription-section-title" class="subscription-section-title">Plans</h3>
+              <p id="subscription-section-note" class="subscription-section-note">Choose the subscription that works best for you.</p>
             </div>
-            <p id="subscription-section-note" class="subscription-section-note"></p>
+            <div id="subscription-status-badges" class="subscription-status-badges" aria-label="Subscription status badges"></div>
           </div>
 
           <section class="subscription-plan-grid-wrap">
@@ -2099,7 +779,728 @@
           </div>
         </div>
       </div>
-      <div id="study-setup" class="setup-page">
+
+      <div id="drills-screen" class="setup-page drills-page">
+        <div class="study-fixed-header drills-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title drills-page-title">Drills</div>
+            <div class="study-reference-topbar-actions">
+              <button id="drills-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="drills-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell drill-lobby-shell">
+            <div class="drill-lobby-tabs" role="tablist" aria-label="Drill variants">
+              <button class="drill-lobby-tab is-rapid is-active" type="button" data-drill-variant="rapid">Rapid</button>
+              <button class="drill-lobby-tab is-sudden" type="button" data-drill-variant="sudden">Sudden</button>
+              <button class="drill-lobby-tab is-clinical" type="button" data-drill-variant="clinical">Clinical</button>
+            </div>
+
+            <div class="drill-lobby-panels">
+              <section class="drill-lobby-panel is-rapid is-active" data-drill-panel="rapid">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-rapid" aria-hidden="true">&#128293;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Rapid</div>
+                        <div class="drill-lobby-points-badge">PTS 1</div>
+                      </div>
+                      <div class="drill-lobby-copy">A fast 5-question sprint that rewards sharp recall and clean streaks.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>5 questions, quick pace.</li>
+                    <li>Answer fast and keep your streak alive.</li>
+                    <li>Best runs are saved in your history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="rapid">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="rapid">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-sudden" data-drill-panel="sudden">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-sudden" aria-hidden="true">&#127919;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Sudden</div>
+                        <div class="drill-lobby-points-badge">PTS 9</div>
+                      </div>
+                      <div class="drill-lobby-copy">A sharper race with mixed timing and tougher selections.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>All questions are timed.</li>
+                    <li>Accuracy matters more than speed.</li>
+                    <li>Each win is tracked in history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="sudden">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="sudden">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-clinical" data-drill-panel="clinical">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-clinical" aria-hidden="true">&#129516;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Clinical</div>
+                        <div class="drill-lobby-points-badge">PTS 0</div>
+                      </div>
+                      <div class="drill-lobby-copy">Clinical judgment questions with a steadier, decision-based rhythm.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>Choose the safest option.</li>
+                    <li>Think through the case before you tap.</li>
+                    <li>Previous runs stay in the trail.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="clinical">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="clinical">Play Now</button>
+                </article>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="gppqe-screen" class="setup-page gppqe-page">
+        <div class="study-fixed-header gppqe-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title drills-page-title gppqe-page-title">GPPQE</div>
+            <div class="study-reference-topbar-actions">
+              <button id="gppqe-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="gppqe-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content"></div>
+      </div>
+
+      <div id="extra-screen" class="setup-page extra-page">
+        <div class="study-fixed-header extra-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title">Extra</div>
+            <div class="study-reference-topbar-actions">
+              <button id="extra-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="extra-view-toggle-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Toggle list or card view" title="Toggle list or card view">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="5" width="16" height="4" rx="1"></rect>
+                  <rect x="4" y="11" width="10" height="4" rx="1"></rect>
+                  <rect x="4" y="17" width="16" height="2" rx="1"></rect>
+                </svg>
+              </button>
+              <button id="extra-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell extra-shell">
+            <style>
+              #extra-screen .menu-extra-item::before,
+              #extra-screen .menu-extra-item::after {
+                content: none !important;
+                display: none !important;
+              }
+
+              #extra-screen .menu-extra-grid.is-list .menu-extra-item {
+                grid-template-columns: 36px minmax(0, 1fr) !important;
+              }
+            </style>
+            <div id="menu-extra-grid" class="menu-extra-grid is-cards" aria-label="Extra resources">
+              <button id="menu-news-btn" type="button" class="menu-extra-item is-news">
+                <span class="menu-extra-icon is-news" aria-hidden="true">&#128240;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">News</span>
+                  <span class="menu-extra-item-text">Open the news feed.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-guidelines" aria-hidden="true">&#128196;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Guidelines</span>
+                  <span class="menu-extra-item-text">Clinical references and practice notes.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-articles" aria-hidden="true">&#128218;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Articles</span>
+                  <span class="menu-extra-item-text">Deep reads for study and revision.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-medlens" aria-hidden="true">&#128269;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">MedLens</span>
+                  <span class="menu-extra-item-text">Search tools for better clinical clarity.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-calculator" aria-hidden="true">&#129518;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Calculator</span>
+                  <span class="menu-extra-item-text">Dose and score helper tools.</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="coming-soon-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="coming-soon-title">
+        <div class="modal-card coming-soon-card">
+          <div class="coming-soon-emoji" aria-hidden="true">&#128640;</div>
+          <div id="coming-soon-title" class="modal-title">Coming Soon</div>
+          <div class="modal-text">This section is being prepared for a future release.</div>
+          <div class="modal-actions">
+            <button id="coming-soon-ok-btn" type="button" class="modal-btn primary">Got it</button>
+          </div>
+        </div>
+      </div>
+      <!-- ================= NEWS ================= -->
+      <div id="news-screen" class="setup-page news-page">
+        <style>
+          #news-screen {
+            background: #e8f4fc;
+            color: #0f172a;
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            min-width: 100vw !important;
+            display: grid !important;
+            grid-template-rows: auto auto minmax(0, 1fr) auto;
+            overflow: hidden !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            -webkit-overflow-scrolling: touch;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+          }
+          #news-screen .news-dashboard-topbar,
+          #news-screen .news-shell,
+          #news-screen .news-nav-shell,
+          #news-screen .news-layout,
+          #news-screen .news-detail-panel,
+          #news-screen .news-mobile-bottom-nav,
+          #news-screen .news-alert {
+            display: none !important;
+          }
+          #news-screen > :not(.ajix-news-shell):not(script):not(style) {
+            display: none !important;
+          }
+          #news-screen .ajix-news-shell {
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            height: 100%;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            padding: 12px 12px 12px;
+            display: grid !important;
+            grid-template-rows: auto auto minmax(0, 1fr) auto;
+            gap: 12px;
+            overflow: hidden !important;
+          }
+          #news-screen .ajix-news-top {
+            display: grid;
+            grid-row: 1;
+            gap: 12px;
+            min-height: 0;
+          }
+          #news-screen .ajix-news-header,
+          #news-screen .ajix-news-left,
+          #news-screen .ajix-news-brand,
+          #news-screen .ajix-news-actions,
+          #news-screen .ajix-news-search,
+          #news-screen .ajix-news-card-top,
+          #news-screen .ajix-news-card-meta {
+            display: flex;
+          }
+          #news-screen .ajix-icon-btn,
+          #news-screen .ajix-news-tab,
+          #news-screen .ajix-news-nav-btn {
+            font: inherit;
+            border: 0;
+            cursor: pointer;
+          }
+          #news-screen .ajix-news-header {
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 2px 2px;
+          }
+          #news-screen .ajix-news-left,
+          #news-screen .ajix-news-brand,
+          #news-screen .ajix-news-actions {
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+          }
+          #news-screen .ajix-news-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: #fff;
+            box-shadow: 0 8px 18px rgba(30, 107, 168, 0.12);
+            flex-shrink: 0;
+          }
+          #news-screen .ajix-news-brand-copy { display: flex; flex-direction: column; min-width: 0; }
+          #news-screen .ajix-news-brand-name { font-size: 18px; font-weight: 900; line-height: 1; }
+          #news-screen .ajix-news-brand-sub { margin-top: 2px; color: #475569; font-size: 12px; font-weight: 600; }
+          #news-screen .ajix-icon-btn {
+            width: 38px; height: 38px; border-radius: 12px; background: rgba(255,255,255,.96);
+            color: #1e6ba8; border: 1px solid #d0e3f0; display: inline-flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 22px rgba(30, 107, 168, 0.08);
+          }
+          #news-screen .ajix-icon-btn svg,
+          #news-screen .ajix-news-search svg,
+          #news-screen .ajix-news-thumb svg,
+          #news-screen .ajix-news-nav-btn svg {
+            stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
+          }
+          #news-screen .ajix-icon-btn svg { width: 18px; height: 18px; }
+          #news-screen .ajix-news-search {
+            gap: 10px; align-items: center; background: rgba(255,255,255,.96); border: 1px solid #d0e3f0;
+            border-radius: 18px; padding: 12px 14px; box-shadow: 0 10px 24px rgba(30, 107, 168, 0.08);
+          }
+          #news-screen .ajix-news-search svg { width: 16px; height: 16px; color: #94a3b8; flex-shrink: 0; }
+          #news-screen .ajix-news-search-input {
+            width: 100%; border: 0; outline: 0; background: transparent; color: #0f172a; font-size: 14px; font-weight: 600;
+          }
+          #news-screen .ajix-news-search-input::placeholder { color: #94a3b8; }
+          #news-screen .ajix-news-tabs {
+            display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px;
+          }
+          #news-screen .ajix-news-tab {
+            border-radius: 14px; padding: 11px 8px; background: rgba(248,251,254,.96); color: #475569;
+            font-size: 12px; font-weight: 800; text-align: center; border: 1px solid rgba(208,227,240,.95);
+          }
+          #news-screen .ajix-news-tab.is-active,
+          #news-screen .ajix-news-nav-btn.is-active { background: #1e6ba8; color: #fff; }
+          #news-screen .ajix-news-hero {
+            grid-row: 2;
+            border-radius: 22px; overflow: hidden; background: #0f172a; border: 1px solid rgba(208,227,240,.75);
+            box-shadow: 0 18px 32px rgba(15, 23, 42, 0.15);
+          }
+          #news-screen .ajix-news-hero-media {
+            position: relative; min-height: 192px; padding: 18px; display: flex; align-items: flex-end;
+            background: linear-gradient(135deg, #164e63 0%, #0f766e 48%, #0f172a 100%);
+          }
+          #news-screen .ajix-news-hero-media::before {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,.45) 0%, rgba(0,0,0,.02) 62%);
+          }
+          #news-screen .ajix-news-hero-badge {
+            position: absolute; top: 14px; left: 14px; z-index: 1; background: #dc2626; color: #fff; border-radius: 999px;
+            padding: 4px 10px; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+          }
+          #news-screen .ajix-news-hero-copy { position: relative; z-index: 1; color: #fff; max-width: 30ch; }
+          #news-screen .ajix-news-hero-kicker { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: rgba(186,230,253,.92); }
+          #news-screen .ajix-news-hero-title { margin-top: 8px; font-size: 22px; line-height: 1.1; font-weight: 900; }
+          #news-screen .ajix-news-hero-meta,
+          #news-screen .ajix-news-hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+          #news-screen .ajix-news-hero-meta { margin-top: 10px; color: rgba(255,255,255,.8); font-size: 12px; font-weight: 600; }
+          #news-screen .ajix-news-pill {
+            border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.08); color: #fff; border-radius: 999px;
+            padding: 7px 10px; font-size: 11px; font-weight: 800;
+          }
+          #news-screen .ajix-news-feed {
+            grid-row: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            padding-right: 2px;
+            padding-bottom: 12px;
+            overscroll-behavior: contain;
+          }
+          #news-screen .ajix-news-card {
+            display: grid; grid-template-columns: 88px 1fr; gap: 12px; align-items: start; background: #fff;
+            border: 1px solid #d0e3f0; border-radius: 20px; padding: 12px; box-shadow: 0 12px 28px rgba(30,107,168,.08);
+          }
+          #news-screen .ajix-news-thumb {
+            width: 88px; height: 88px; border-radius: 18px; background: linear-gradient(180deg, #dbeafe, #eff6ff);
+            border: 1px solid rgba(30,107,168,.12); display: flex; align-items: center; justify-content: center;
+            color: #1e6ba8; flex-shrink: 0;
+          }
+          #news-screen .ajix-news-thumb svg { width: 40px; height: 40px; }
+          #news-screen .ajix-news-card-body { min-width: 0; }
+          #news-screen .ajix-news-card-top,
+          #news-screen .ajix-news-card-meta { justify-content: space-between; gap: 8px; align-items: center; }
+          #news-screen .ajix-news-card-tag { font-size: 11px; font-weight: 900; color: #1e6ba8; text-transform: uppercase; letter-spacing: .08em; }
+          #news-screen .ajix-news-card-time { font-size: 11px; color: #94a3b8; font-weight: 800; }
+          #news-screen .ajix-news-card-title { margin-top: 4px; font-size: 15px; font-weight: 900; line-height: 1.28; }
+          #news-screen .ajix-news-card-summary { margin-top: 8px; font-size: 13px; line-height: 1.5; color: #475569; }
+          #news-screen .ajix-news-card-meta { margin-top: 10px; flex-wrap: wrap; color: #94a3b8; font-size: 11px; font-weight: 800; }
+          #news-screen .ajix-news-empty {
+            display: none; background: rgba(255,255,255,.9); border: 1px dashed #d0e3f0; border-radius: 20px;
+            padding: 24px 18px; text-align: center; color: #475569; font-size: 14px; font-weight: 600;
+          }
+          #news-screen .ajix-news-bottom-nav {
+            grid-row: 4;
+            position: relative;
+            left: auto;
+            right: auto;
+            bottom: auto;
+            transform: none;
+            width: auto;
+            max-width: none;
+            z-index: 40;
+            margin-top: 0;
+            background: #fff; border: 1px solid #d0e3f0; border-radius: 22px; box-shadow: 0 16px 30px rgba(30,107,168,.15);
+            padding: 10px 8px 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;
+          }
+          #news-screen .ajix-news-nav-btn {
+            display: flex; background: transparent; border-radius: 18px; color: #64748b; flex-direction: column; align-items: center;
+            justify-content: center; gap: 5px; padding: 10px 6px; font-size: 11px; font-weight: 800;
+          }
+          #news-screen .ajix-news-nav-btn svg { width: 20px; height: 20px; }
+          #news-screen .ajix-news-nav-dot {
+            width: 8px; height: 8px; border-radius: 999px; background: #ef4444; margin-left: 4px; margin-top: -10px; align-self: flex-start;
+          }
+          #news-screen .hidden-news { display: none !important; }
+        </style>
+        <div class="ajix-news-shell">
+          <div class="ajix-news-top">
+            <header class="ajix-news-header">
+              <div class="ajix-news-left">
+                <button id="ajix-news-back-btn" class="ajix-icon-btn" type="button" aria-label="Back">
+                  <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"></path></svg>
+                </button>
+                <div class="ajix-news-brand">
+                  <img class="ajix-news-logo" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="Ajix" />
+                  <div class="ajix-news-brand-copy">
+                    <div class="ajix-news-brand-name">Ajix</div>
+                    <div class="ajix-news-brand-sub">Health News</div>
+                  </div>
+                </div>
+              </div>
+              <div class="ajix-news-actions">
+                <button id="ajix-news-search-btn" class="ajix-icon-btn" type="button" aria-label="Search">
+                  <svg viewBox="0 0 24 24"><path d="M11.5 3C16.2 3 20 6.8 20 11.5c0 2-.7 3.9-1.9 5.4l3 3c.4.4.4 1 0 1.4s-1 .4-1.4 0l-3-3c-1.5 1.2-3.4 1.9-5.2 1.9C6.8 20 3 16.2 3 11.5S6.8 3 11.5 3zm0 2A6.5 6.5 0 1 0 11.5 18a6.5 6.5 0 0 0 0-13z"></path></svg>
+                </button>
+                <button id="ajix-news-alerts-btn" class="ajix-icon-btn" type="button" aria-label="Notifications">
+                  <svg viewBox="0 0 24 24"><path d="M12 4a5 5 0 0 0-5 5v2.5c0 .8-.3 1.6-.8 2.2L5 15h14l-1.2-1.3c-.5-.6-.8-1.4-.8-2.2V9a5 5 0 0 0-5-5z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+                </button>
+              </div>
+            </header>
+            <div class="ajix-news-search">
+              <svg viewBox="0 0 24 24"><path d="M11.5 3C16.2 3 20 6.8 20 11.5c0 2-.7 3.9-1.9 5.4l3 3c.4.4.4 1 0 1.4s-1 .4-1.4 0l-3-3c-1.5 1.2-3.4 1.9-5.2 1.9C6.8 20 3 16.2 3 11.5S6.8 3 11.5 3zm0 2A6.5 6.5 0 1 0 11.5 18a6.5 6.5 0 0 0 0-13z"></path></svg>
+              <input id="ajix-news-search-input" class="ajix-news-search-input" type="search" placeholder="Search health topics, drugs, symptoms..." autocomplete="off" />
+            </div>
+            <nav class="ajix-news-tabs" aria-label="News categories">
+              <button class="ajix-news-tab is-active" type="button" data-ajix-news-tab="all">For you</button>
+              <button class="ajix-news-tab" type="button" data-ajix-news-tab="trending">Trending</button>
+              <button class="ajix-news-tab" type="button" data-ajix-news-tab="medicine">Medicine</button>
+              <button class="ajix-news-tab" type="button" data-ajix-news-tab="wellness">Wellness</button>
+              <button class="ajix-news-tab" type="button" data-ajix-news-tab="research">Research</button>
+            </nav>
+          </div>
+          <section class="ajix-news-hero" data-ajix-news-hero data-cat="trending">
+            <div class="ajix-news-hero-media">
+              <div class="ajix-news-hero-badge">Breaking</div>
+              <div class="ajix-news-hero-copy">
+                <div class="ajix-news-hero-kicker">Editor reviewed</div>
+                <div class="ajix-news-hero-title">Your trusted source for health news</div>
+                <div class="ajix-news-hero-meta"><span>Updated daily</span><span>Trusted sources</span><span>4 min read</span></div>
+                <div class="ajix-news-hero-pills"><span class="ajix-news-pill">Pharmacy updates</span><span class="ajix-news-pill">Guidelines</span><span class="ajix-news-pill">Research</span></div>
+              </div>
+            </div>
+          </section>
+          <section class="ajix-news-feed" id="ajix-news-feed">
+            <article class="ajix-news-card" data-ajix-news-item data-cat="medicine">
+              <div class="ajix-news-thumb"><svg viewBox="0 0 24 24"><path d="M8 7h8"></path><path d="M8 12h8"></path><path d="M10 4h4v3h3v13H7V7h3z"></path></svg></div>
+              <div class="ajix-news-card-body">
+                <div class="ajix-news-card-top"><div class="ajix-news-card-tag">Medicine</div><div class="ajix-news-card-time">2h ago</div></div>
+                <div class="ajix-news-card-title">New antibiotic class shows promise against resistant superbugs</div>
+                <div class="ajix-news-card-summary">Researchers report early but encouraging results against a group of difficult infections.</div>
+                <div class="ajix-news-card-meta"><span>The Lancet</span><span>|</span><span>6 min read</span></div>
+              </div>
+            </article>
+            <article class="ajix-news-card" data-ajix-news-item data-cat="wellness">
+              <div class="ajix-news-thumb"><svg viewBox="0 0 24 24"><path d="M12 20s7-3.5 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 10c0 6.5 7 10 7 10z"></path><path d="M12 8v8"></path></svg></div>
+              <div class="ajix-news-card-body">
+                <div class="ajix-news-card-top"><div class="ajix-news-card-tag" style="color:#16a34a;">Wellness</div><div class="ajix-news-card-time">4h ago</div></div>
+                <div class="ajix-news-card-title">Sleep quality linked to lower cardiovascular risk in a new long-term study</div>
+                <div class="ajix-news-card-summary">Consistent sleep routines continue to show benefits beyond daytime energy and focus.</div>
+                <div class="ajix-news-card-meta"><span>Harvard Health</span><span>|</span><span>5 min read</span></div>
+              </div>
+            </article>
+            <article class="ajix-news-card" data-ajix-news-item data-cat="research">
+              <div class="ajix-news-thumb"><svg viewBox="0 0 24 24"><path d="M9 3h6"></path><path d="M10 3v4L5 19a4 4 0 0 0 3.7 2h6.6a4 4 0 0 0 3.7-2l-5-12V3"></path><path d="M8 14h8"></path></svg></div>
+              <div class="ajix-news-card-body">
+                <div class="ajix-news-card-top"><div class="ajix-news-card-tag" style="color:#9333ea;">Research</div><div class="ajix-news-card-time">6h ago</div></div>
+                <div class="ajix-news-card-title">CRISPR therapy achieves sustained remission in sickle cell trial</div>
+                <div class="ajix-news-card-summary">A new clinical study suggests gene editing can remain effective over a much longer follow-up period.</div>
+                <div class="ajix-news-card-meta"><span>Nature Medicine</span><span>|</span><span>8 min read</span></div>
+              </div>
+            </article>
+            <article class="ajix-news-card" data-ajix-news-item data-cat="trending">
+              <div class="ajix-news-thumb"><svg viewBox="0 0 24 24"><path d="M13 3L4 14h6l-1 7 9-11h-6z"></path></svg></div>
+              <div class="ajix-news-card-body">
+                <div class="ajix-news-card-top"><div class="ajix-news-card-tag" style="color:#dc2626;">Trending</div><div class="ajix-news-card-time">8h ago</div></div>
+                <div class="ajix-news-card-title">WHO updates preparedness guidance for the next respiratory season</div>
+                <div class="ajix-news-card-summary">Health systems are encouraged to review readiness plans and medication supply chains.</div>
+                <div class="ajix-news-card-meta"><span>BBC Health</span><span>|</span><span>4 min read</span></div>
+              </div>
+            </article>
+            <article class="ajix-news-card" data-ajix-news-item data-cat="medicine">
+              <div class="ajix-news-thumb"><svg viewBox="0 0 24 24"><path d="M8 7h8"></path><path d="M8 12h8"></path><path d="M10 4h4v3h3v13H7V7h3z"></path></svg></div>
+              <div class="ajix-news-card-body">
+                <div class="ajix-news-card-top"><div class="ajix-news-card-tag">Pharmacy</div><div class="ajix-news-card-time">Today</div></div>
+                <div class="ajix-news-card-title">Pharmacists warn of shortages in common blood pressure medications</div>
+                <div class="ajix-news-card-summary">Supply constraints are being monitored as several manufacturers adjust their output.</div>
+                <div class="ajix-news-card-meta"><span>AJHP</span><span>|</span><span>3 min read</span></div>
+              </div>
+            </article>
+            <div id="ajix-news-empty" class="ajix-news-empty">No matching articles yet. Try a different tab or search term.</div>
+          </section>
+          <nav class="ajix-news-bottom-nav" aria-label="News quick navigation">
+            <button type="button" class="ajix-news-nav-btn is-active" data-ajix-news-nav="news" aria-current="page">
+              <svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"></path><path d="M15 4v4h4"></path><path d="M8 11h8"></path><path d="M8 15h8"></path></svg>
+              <span>News</span>
+            </button>
+            <button type="button" class="ajix-news-nav-btn" data-ajix-news-nav="saved">
+              <svg viewBox="0 0 24 24"><path d="M6 4h12v17l-6-4-6 4z"></path></svg>
+              <span>Saved</span>
+            </button>
+            <button type="button" class="ajix-news-nav-btn" data-ajix-news-nav="foryou">
+              <svg viewBox="0 0 24 24"><path d="M12 21s7-3.5 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 11c0 6.5 7 10 7 10z"></path><path d="M12 8v8"></path></svg>
+              <span>For you</span>
+            </button>
+            <button type="button" class="ajix-news-nav-btn" data-ajix-news-nav="alerts">
+              <svg viewBox="0 0 24 24"><path d="M12 4a5 5 0 0 0-5 5v2.5c0 .8-.3 1.6-.8 2.2L5 15h14l-1.2-1.3c-.5-.6-.8-1.4-.8-2.2V9a5 5 0 0 0-5-5z"></path><path d="M10 19a2 2 0 0 0 4 0"></path></svg>
+              <span>Alerts</span>
+            </button>
+          </nav>
+        </div>
+        <script>
+          (function () {
+            const screen = document.getElementById("news-screen");
+            if (!screen) return;
+            const back = document.getElementById("ajix-news-back-btn");
+            const tabs = Array.from(screen.querySelectorAll("[data-ajix-news-tab]"));
+            const items = Array.from(screen.querySelectorAll("[data-ajix-news-item]"));
+            const hero = screen.querySelector("[data-ajix-news-hero]");
+            const empty = document.getElementById("ajix-news-empty");
+            const search = document.getElementById("ajix-news-search-input");
+            const nav = Array.from(screen.querySelectorAll("[data-ajix-news-nav]"));
+            let active = "all";
+            const apply = () => {
+              const query = String(search?.value || "").trim().toLowerCase();
+              let visible = 0;
+              items.forEach((item) => {
+                const cat = String(item.dataset.cat || "").trim().toLowerCase();
+                const text = String(item.textContent || "").toLowerCase();
+                const show = (active === "all" || cat === active) && (!query || text.includes(query));
+                item.classList.toggle("hidden-news", !show);
+                if (show) visible += 1;
+              });
+              if (hero) hero.classList.toggle("hidden-news", !(active === "all" || active === "trending"));
+              if (empty) empty.style.display = visible ? "none" : "block";
+            };
+            if (back) back.addEventListener("click", () => window.goToPreviousScreen ? window.goToPreviousScreen("quiz-menu") : history.back());
+            tabs.forEach((tab) => tab.addEventListener("click", () => {
+              tabs.forEach((node) => node.classList.remove("is-active"));
+              tab.classList.add("is-active");
+              active = String(tab.dataset.ajixNewsTab || "all").trim().toLowerCase() || "all";
+              apply();
+            }));
+            if (search) search.addEventListener("input", apply);
+            nav.forEach((button) => button.addEventListener("click", () => {
+              nav.forEach((node) => node.classList.remove("is-active"));
+              button.classList.add("is-active");
+            }));
+            apply();
+          })();
+        </script>
+        <div class="news-dashboard-topbar menu-fixed-header news-fixed-header">
+          <div class="news-header-brand">
+            <img class="news-header-logo" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+          </div>
+          <div id="news-header-title" class="news-header-title">News</div>
+          <div class="news-header-actions" aria-label="News actions">
+            <div id="news-search-shell" class="news-header-search-shell">
+              <button id="news-search-btn" class="news-search-btn" type="button" aria-label="Search news" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+              </button>
+              <input id="news-search-input" class="news-header-search-input" type="search" placeholder="Search health topics, drugs, symptoms..." autocomplete="off" />
+            </div>
+            <button id="news-refresh-btn" class="news-header-btn news-refresh-btn" type="button" aria-label="Refresh news">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M21 12a9 9 0 0 0-15.36-6.36L4 7.27M4 4v3.27h3.27M3 12a9 9 0 0 0 15.36 6.36L20 16.73M20 20v-3.27h-3.27" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </button>
+            <button id="news-alerts-btn" class="news-header-btn news-alerts-btn" type="button" aria-label="Alerts">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M12 4c-2.8 0-5 2.2-5 5v2.3c0 .8-.3 1.6-.9 2.1L5 14.6c-.4.4-.1 1 .5 1h13c.6 0 .9-.6.5-1l-1.1-1.2c-.5-.5-.9-1.3-.9-2.1V9c0-2.8-2.2-5-5-5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </button>
+            <button id="news-back-btn" class="news-header-btn news-back-btn" type="button" aria-label="Back">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M15 19L8 12L15 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </button>
+            <button id="news-dashboard-btn" class="news-header-btn dashboard-mode" type="button" data-open-dashboard="true" aria-label="Dashboard">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M4 6.5H20M4 12H20M4 17.5H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
+            </button>
+          </div>
+        </div>
+        <div id="news-shell" class="news-shell">
+          <section class="news-hero">
+            <article class="news-hero-banner">
+              <span class="news-hero-kicker">Editor reviewed</span>
+              <h2 class="news-hero-title">Your trusted source for health news</h2>
+              <p class="news-hero-text">Updated daily with the latest from top medical journals, guideline updates, health concerns, and pharmacy news.</p>
+            </article>
+            <aside class="news-hero-panel" aria-label="News overview">
+              <div class="news-hero-metrics">
+                <div class="news-hero-metric">
+                  <span class="news-hero-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"></path><path d="M15 4v4h4"></path><path d="M8 11h8"></path><path d="M8 15h8"></path></svg></span>
+                  <div class="news-hero-metric-copy">
+                    <div id="news-feed-meta-count" class="news-hero-metric-value">0</div>
+                    <div class="news-hero-metric-label">Published items</div>
+                    <div class="news-hero-metric-sub">New today</div>
+                  </div>
+                </div>
+                <div class="news-hero-metric">
+                  <span class="news-hero-metric-icon is-globe" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3c2.5 2.5 4 5.6 4 9s-1.5 6.5-4 9c-2.5-2.5-4-5.6-4-9s1.5-6.5 4-9Z"></path></svg></span>
+                  <div class="news-hero-metric-copy">
+                    <div id="news-feed-meta-source-count" class="news-hero-metric-value">0</div>
+                    <div class="news-hero-metric-label">Curated sources</div>
+                    <div class="news-hero-metric-sub">Trusted sources</div>
+                  </div>
+                </div>
+              </div>
+              <button class="news-hero-link" type="button" data-news-filter="all">
+                View all updates
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M9 18l6-6-6-6"></path></svg>
+              </button>
+            </aside>
+          </section>
+          <div id="news-alert" class="news-alert hidden" aria-live="polite"></div>
+          <div class="news-nav-shell">
+            <div id="news-filter-strip" class="news-filter-strip" role="tablist" aria-label="News categories"></div>
+            <button id="news-mobile-menu-btn" class="news-mobile-menu-btn" type="button" aria-label="Open news categories" aria-expanded="false" data-news-mobile-menu-toggle="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M5 7.5H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M5 16.5H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
+            </button>
+            <div id="news-mobile-menu" class="news-mobile-menu hidden" aria-hidden="true"></div>
+          </div>
+          <div class="news-layout">
+            <section class="news-main-panel" aria-label="Latest updates">
+              <div class="news-main-panel-head">
+                <div class="news-list-heading">Latest updates</div>
+                <button type="button" class="news-view-link" data-news-filter="all">View all</button>
+              </div>
+              <div id="news-feed-list" class="news-feed-list"></div>
+            </section>
+            <aside class="news-sidebar" aria-label="Trending news">
+              <section class="news-sidebar-card">
+                <div class="news-sidebar-head">
+                  <div class="news-sidebar-title">Trending this week</div>
+                  <span class="news-sidebar-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 3L4 14h6l-1 7 9-11h-6z"></path></svg></span>
+                </div>
+                <div id="news-trending-list" class="news-trending-list"></div>
+              </section>
+            </aside>
+          </div>
+          <section id="news-detail-panel" class="news-detail-panel hidden" aria-label="Selected story">
+            <div id="news-detail-empty" class="news-empty-state hidden">Select a story to read more.</div>
+            <div id="news-detail-card" class="news-detail-card hidden"></div>
+          </section>
+        </div>
+        <div class="news-mobile-bottom-nav" aria-label="News quick navigation">
+          <button type="button" class="news-mobile-bottom-nav-item is-active" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M6 4h9l3 3v13H6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M15 4v4h4" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M8 11h8M8 15h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            <span>News</span>
+          </button>
+          <button type="button" class="news-mobile-bottom-nav-item">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M11.2 16.9 6.1 19.5c-.6.3-1.3-.2-1.3-.9V5.3c0-.6.5-1.1 1.1-1.1h12.2c.6 0 1.1.5 1.1 1.1v13.3c0 .7-.7 1.2-1.3.9l-5.1-2.6c-.5-.3-1.1-.3-1.6 0Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M8 8h8M8 12h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            <span>Saved</span>
+          </button>
+          <button type="button" class="news-mobile-bottom-nav-item">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M12 2.8c5.1 0 9.2 4.1 9.2 9.2s-4.1 9.2-9.2 9.2S2.8 17.1 2.8 12 6.9 2.8 12 2.8Z" stroke="currentColor" stroke-width="1.8"></path><path d="M12 6.8V12l3.6 2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span>For you</span>
+          </button>
+          <button type="button" class="news-mobile-bottom-nav-item">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M12 4c-2.8 0-5 2.2-5 5v2.3c0 .8-.3 1.6-.9 2.1L5 14.6c-.4.4-.1 1 .5 1h13c.6 0 .9-.6.5-1l-1.1-1.2c-.5-.5-.9-1.3-.9-2.1V9c0-2.8-2.2-5-5-5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            <span>Alerts</span>
+          </button>
+        </div>
+      </div>
+<div id="study-setup" class="setup-page">
         <div class="study-fixed-header">
           <div class="study-reference-topbar">
             <img
@@ -2215,7 +1616,7 @@
                 />
               </label>
 
-              <button id="start-study-btn" type="button" class="study-reference-start-btn">
+              <button id="start-study-btn" class="study-reference-start-btn">
                 Start Session
               </button>
             </section>
@@ -2446,7 +1847,7 @@
             </div>
 
             <div id="daily-celebration" class="daily-celebration hidden" aria-live="polite">
-              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">&#10003;</span>
+              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">✓</span>
               <span id="daily-gems-ribbon" class="daily-gems-ribbon">+0 Gems</span>
             </div>
 
@@ -2697,34 +2098,36 @@
                   </label>
                   <div id="profile-contact-wrap" class="auth-field">
                     <span>Contact</span>
-                    <label class="auth-field">
-                      <span>Format</span>
-                      <select id="profile-contact-format">
-                        <option value="phone" selected>Contact</option>
-                        <option value="email">Email</option>
-                      </select>
-                    </label>
-                    <label id="profile-contact-email-wrap" class="auth-field hidden">
-                      <span>Email Address</span>
-                      <input
-                        id="profile-contact-email"
-                        type="email"
-                        autocomplete="email"
-                        placeholder="name@example.com"
-                      />
-                    </label>
-                    <div id="profile-contact-phone-wrap" class="auth-field">
-                      <span>Contact Number</span>
-                      <div class="auth-phone-grid">
-                        <select id="profile-contact-country-code" autocomplete="tel-country-code"></select>
+                    <div class="auth-contact-row">
+                      <label id="profile-contact-phone-wrap" class="auth-field auth-contact-input-field">
+                        <span>Contact Number</span>
+                        <div class="auth-phone-grid">
+                          <select id="profile-contact-country-code" autocomplete="tel-country-code"></select>
+                          <input
+                            id="profile-contact-phone"
+                            type="tel"
+                            inputmode="numeric"
+                            autocomplete="tel-national"
+                            placeholder="Enter mobile number"
+                          />
+                        </div>
+                      </label>
+                      <label id="profile-contact-email-wrap" class="auth-field auth-contact-input-field hidden">
+                        <span>Email Address</span>
                         <input
-                          id="profile-contact-phone"
-                          type="tel"
-                          inputmode="numeric"
-                          autocomplete="tel-national"
-                          placeholder="Enter mobile number"
+                          id="profile-contact-email"
+                          type="email"
+                          autocomplete="email"
+                          placeholder="name@example.com"
                         />
-                      </div>
+                      </label>
+                      <label class="auth-field auth-contact-format-field">
+                        <span>Format</span>
+                        <select id="profile-contact-format">
+                          <option value="phone" selected>Contact</option>
+                          <option value="email">Email</option>
+                        </select>
+                      </label>
                     </div>
                   </div>
                   <div class="auth-field profile-role-field">
@@ -2997,7 +2400,7 @@
                           <span class="community-settings-item-note">Profile, bio, password, and account actions.</span>
                         </span>
                         <span id="community-settings-account-value" class="community-settings-item-value">Profile</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="appearance">
                         <span class="community-settings-item-copy">
@@ -3005,7 +2408,7 @@
                           <span class="community-settings-item-note">Theme and visual style.</span>
                         </span>
                         <span id="community-settings-appearance-value" class="community-settings-item-value">Light</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="global-notifications">
                         <span class="community-settings-item-copy">
@@ -3013,7 +2416,7 @@
                           <span class="community-settings-item-note">Alerts, previews, and sound preferences.</span>
                         </span>
                         <span id="community-settings-global-notifications-value" class="community-settings-item-value">Enabled</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="storage">
                         <span class="community-settings-item-copy">
@@ -3021,7 +2424,7 @@
                           <span class="community-settings-item-note">Media cache and download handling.</span>
                         </span>
                         <span id="community-settings-storage-value" class="community-settings-item-value">Manage</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                     </div>
                     <div class="community-settings-section">
@@ -3032,7 +2435,7 @@
                           <span class="community-settings-item-note">Who can message you and view your status.</span>
                         </span>
                         <span id="community-settings-privacy-value" class="community-settings-item-value">Friends</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="security">
                         <span class="community-settings-item-copy">
@@ -3040,7 +2443,7 @@
                           <span class="community-settings-item-note">Community lock and encryption details.</span>
                         </span>
                         <span id="community-settings-security-value" class="community-settings-item-value">Off</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="chat-behavior">
                         <span class="community-settings-item-copy">
@@ -3048,7 +2451,7 @@
                           <span class="community-settings-item-note">Read receipts and typing indicators.</span>
                         </span>
                         <span id="community-settings-chat-value" class="community-settings-item-value">Balanced</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="community-notifications">
                         <span class="community-settings-item-copy">
@@ -3056,7 +2459,7 @@
                           <span class="community-settings-item-note">Mute chats and set custom alerts.</span>
                         </span>
                         <span id="community-settings-community-notifications-value" class="community-settings-item-value">Active</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="media">
                         <span class="community-settings-item-copy">
@@ -3064,7 +2467,7 @@
                           <span class="community-settings-item-note">Auto-download and upload quality.</span>
                         </span>
                         <span id="community-settings-media-value" class="community-settings-item-value">Wi-Fi only</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="status">
                         <span class="community-settings-item-copy">
@@ -3072,7 +2475,7 @@
                           <span class="community-settings-item-note">Replies, archiving, and status defaults.</span>
                         </span>
                         <span id="community-settings-status-value" class="community-settings-item-value">Replies on</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                     </div>
                   </section>
@@ -3444,7 +2847,7 @@
                           <span class="community-settings-item-note">Send a read-only announcement to every user.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-admin-action="broadcast-status">
                         <span class="community-settings-item-copy">
@@ -3452,7 +2855,7 @@
                           <span class="community-settings-item-note">Publish an announcement status with no replies.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" id="community-settings-admin-target-btn" class="community-settings-item is-link hidden" data-community-settings-target="admin">
                         <span class="community-settings-item-copy">
@@ -3460,7 +2863,7 @@
                           <span class="community-settings-item-note">Send announcements to everyone.</span>
                         </span>
                         <span class="community-settings-item-value">Open</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                     </div>
                   </section>
@@ -4223,20 +3626,6 @@
               </div>
 
               <div class="settings-device-card">
-                <div class="settings-app-download-copy">
-                  <h4 class="settings-app-download-title">Android App</h4>
-                  <p class="settings-help">
-                    Download Ajix Pharm for your phone and install the latest release directly from the site.
-                  </p>
-                </div>
-                <div class="settings-actions">
-                  <button id="settings-download-app-btn" type="button" class="settings-primary-btn">
-                    Download APK
-                  </button>
-                </div>
-              </div>
-
-              <div class="settings-device-card">
                 <p class="settings-help">
                   Clear local practice cache on this device only. This removes saved local sessions and temporary progress, but it
                   does not delete your online account data.
@@ -4304,6 +3693,13 @@
                   <span class="inline-label">Streak:</span>
                   <span id="streak-value" class="inline-value"></span>
                 </div>
+              </div>
+              <div class="ajix-mobile-cats-panel" hidden>
+                <button class="ajix-mobile-cat-item active" type="button" data-cat="all">For you</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="trending">Trending</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="medicine">Medicine</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="wellness">Wellness</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="research">Research</button>
               </div>
             </div>
           </div>
@@ -4486,19 +3882,21 @@
                 </section>
 
                 <section class="dashboard-panel dashboard-trend-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-trend-head-copy">
-                      <div class="dashboard-section-title">Score Trend</div>
-                      <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent 12 sessions</div>
+                  <div class="dashboard-trend-top">
+                    <div class="dashboard-trend-headline">
+                      <div class="dashboard-trend-copy-block">
+                        <div class="dashboard-section-title">Score Trend</div>
+                        <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent sessions</div>
+                      </div>
+                      <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
                     </div>
-                    <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
-                  </div>
-                  <div class="dashboard-trend-tabs" id="dash-trend-tabs" role="tablist" aria-label="Score trend scope">
-                    <button class="dashboard-trend-tab is-active" type="button" data-dashboard-trend-scope="session" aria-pressed="true">Session</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="daily" aria-pressed="false">Daily</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="weekly" aria-pressed="false">Weekly</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="monthly" aria-pressed="false">Monthly</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="yearly" aria-pressed="false">Yearly</button>
+                    <div class="dashboard-trend-scopes" role="tablist" aria-label="Trend scope">
+                      <button type="button" class="dashboard-trend-scope is-active" data-trend-scope="session">Session</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="daily">Daily</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="weekly">Weekly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="monthly">Monthly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="yearly">Yearly</button>
+                    </div>
                   </div>
                   <div class="dashboard-trend-stage">
                     <div class="dashboard-trend-chart" id="dash-trend-chart"></div>
@@ -4573,37 +3971,6 @@
               </button>
               <button id="result-menu-btn" class="result-btn secondary-btn">
                 Back to Menu
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="law-drill-result-screen">
-        <div class="result-wrapper">
-          <div class="result-card">
-            <div class="result-title" id="law-drill-result-title"></div>
-            <div id="law-drill-result-badge" class="result-badge hidden"></div>
-
-            <div class="result-body">
-              <div class="result-score-block">
-                <div class="result-percentage" id="law-drill-result-percentage"></div>
-                <div class="result-score" id="law-drill-result-score"></div>
-              </div>
-
-              <div class="result-feedback" id="law-drill-result-feedback"></div>
-              <div id="law-drill-result-stack" class="law-drill-stack law-drill-result-stack hidden" aria-live="polite"></div>
-            </div>
-
-            <div class="result-actions">
-              <button id="law-drill-next-level-btn" class="result-btn primary-btn hidden" type="button">
-                Level 2
-              </button>
-              <button id="law-drill-close-btn" class="result-btn secondary-btn" type="button">
-                Close
-              </button>
-              <button id="law-drill-menu-btn" class="result-btn secondary-btn" type="button">
-                Menu
               </button>
             </div>
           </div>
@@ -4844,7 +4211,6 @@
           <div class="community-admin-broadcast-attachment">
             <button id="community-admin-broadcast-attach-btn" type="button" class="modal-btn secondary">Attach file</button>
             <div id="community-admin-broadcast-attachment-name" class="community-admin-broadcast-attachment-name">No attachment selected.</div>
-            <button id="community-admin-broadcast-preview-btn" type="button" class="modal-btn secondary hidden">Preview</button>
             <button id="community-admin-broadcast-clear-btn" type="button" class="modal-btn secondary hidden">Remove</button>
           </div>
           <input id="community-admin-broadcast-file-input" type="file" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.ppt,.pptx,.txt" hidden />
@@ -4885,7 +4251,9 @@
       <div id="community-thread-actions-modal" class="modal hidden">
         <div class="modal-card community-thread-actions-card">
           <button id="community-thread-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Conversation actions</div>
           <div id="community-thread-actions-title" class="modal-title">Select action</div>
+          <div id="community-thread-actions-summary" class="modal-text">Choose what you want to do with the selected threads.</div>
           <div id="community-thread-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-thread-actions-grid">
             <button id="community-thread-actions-view-btn" type="button" class="modal-btn secondary">View</button>
@@ -4902,7 +4270,9 @@
       <div id="community-friend-actions-modal" class="modal hidden">
         <div class="modal-card community-friend-actions-card">
           <button id="community-friend-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Friend actions</div>
           <div id="community-friend-actions-title" class="modal-title">Select action</div>
+          <div id="community-friend-actions-summary" class="modal-text">Choose what you want to do with this learner.</div>
           <div id="community-friend-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-friend-actions-grid">
             <button id="community-friend-actions-view-btn" type="button" class="modal-btn secondary">View Profile</button>
@@ -4995,25 +4365,38 @@
 
       <div id="community-group-invite-modal" class="modal hidden">
         <div class="modal-card community-group-invite-card">
-          <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close invite">&times;</button>
-          <div class="community-group-invite-top">
-            <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
-            <div class="community-group-invite-copy">
+          <div class="community-group-invite-header">
+            <div>
               <div id="community-group-invite-name" class="modal-title">Study Group</div>
-              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready.</div>
+              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready to share.</div>
             </div>
+            <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-group-invite-close-btn" aria-label="Close invite">
+              &times;
+            </button>
           </div>
-          <div class="community-group-invite-members-wrap">
-            <div class="community-group-invite-members-title">Members</div>
-            <div id="community-group-invite-members" class="community-group-invite-members"></div>
-          </div>
-          <div class="community-group-invite-link-box">
-            <div id="community-group-invite-short-link" class="community-group-invite-short-link"></div>
+
+          <div class="community-group-invite-body">
+            <div class="community-group-invite-top">
+              <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
+              <div class="community-group-invite-copy">
+                <div class="community-group-invite-label">Members</div>
+                <div id="community-group-invite-members" class="community-group-invite-members"></div>
+              </div>
+            </div>
+
+            <div class="community-group-invite-link-card">
+              <div class="community-group-invite-label">Invite link</div>
+              <div class="community-group-invite-link-row">
+                <button id="community-group-invite-short-link" type="button" class="community-group-invite-short-link" aria-label="Invite link"></button>
+                <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
+              </div>
+            </div>
+
             <div id="community-group-invite-note" class="community-group-invite-note"></div>
           </div>
-          <div class="community-group-invite-actions">
-            <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
-            <button id="community-group-invite-primary-btn" type="button" class="modal-btn primary">Share link</button>
+
+          <div class="modal-actions community-group-invite-actions">
+            <button id="community-group-invite-primary-btn" type="button" class="modal-btn resume-primary">Share link</button>
           </div>
         </div>
       </div>
@@ -5327,6 +4710,7 @@
           <div class="global-quick-nav-links">
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="home">Home</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="menu">Menu</button>
+            <button class="global-quick-nav-link" type="button" data-quick-nav-destination="news">News</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="community">Community</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="settings">Settings</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="profile">Profile</button>
@@ -5386,11 +4770,12 @@
         }
       };
     </script>
-    <script type="module" src="/engine.js?v=20260817-crownfix3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="engine.js?v=20260822-menu-tabs2"></script>
     <script>
-      const APP_BUILD_ID = "20260817-crownfix3";
-      const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
-      const APP_NATIVE_VERSION = "1.1.14";
+      const APP_BUILD_ID = "20260822-menu-tabs2";
+      const APP_STANDALONE_BUILD = "20260619-release107";
+      const APP_NATIVE_VERSION = "1.0.7";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
       document.documentElement.dataset.nativeAppVersion = APP_NATIVE_VERSION;
 
@@ -5414,22 +4799,39 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", async () => {
-          try {
-            const registration = await navigator.serviceWorker.register("/sw.js?v=20260818-crownfix4", {
-              scope: "/",
-            });
+          const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(location.hostname);
 
-            if (registration && "update" in registration) {
-              void registration.update().catch(() => {});
+          try {
+            const previousBuild = localStorage.getItem("quizAppBuild");
+            const needsCutoverRefresh = previousBuild !== APP_BUILD_ID;
+            const didHardCutover = sessionStorage.getItem("quizHardCutoverDone") === APP_BUILD_ID;
+
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(
+              registrations
+                .filter((registration) => {
+                  const scriptUrl =
+                    registration.active?.scriptURL ||
+                    registration.waiting?.scriptURL ||
+                    registration.installing?.scriptURL ||
+                    "";
+                  return /\/sw\.js(?:[?#]|$)/i.test(String(scriptUrl || ""));
+                })
+                .map((registration) => registration.unregister()),
+            );
+
+            if ("caches" in window) {
+              const cacheKeys = await caches.keys();
+              await Promise.all(cacheKeys.map((key) => caches.delete(key)));
             }
 
             localStorage.setItem("quizAppBuild", APP_BUILD_ID);
             sessionStorage.setItem("quizHardCutoverDone", APP_BUILD_ID);
+            document.documentElement.removeAttribute("data-app-boot");
           } catch (error) {
-            console.warn("Service worker registration failed:", error);
+            console.warn(isProductionHost ? "Production cache reset failed:" : "Local preview cache reset failed:", error);
+            document.documentElement.removeAttribute("data-app-boot");
           }
-
-          document.documentElement.removeAttribute("data-app-boot");
         });
       } else {
         document.documentElement.removeAttribute("data-app-boot");
@@ -5437,5 +4839,8 @@
     </script>
   </body>
 </html>
+
+
+
 
 

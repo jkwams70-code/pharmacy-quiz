@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -21,9 +21,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Ajix Quiz" />
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
     <title>Ajix Pharmacy Quiz | Pharmacy Practice & Assessment Portal</title>
     <script type="application/ld+json">
       {
@@ -86,1207 +83,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260816-subscriptionstatuscompact4" />
-    <style>
-      #subscription-screen.subscription-page {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100dvh;
-        min-height: 100dvh;
-        display: none;
-        overflow: hidden;
-        overscroll-behavior: none;
-        isolation: isolate;
-        flex-direction: column;
-        padding: clamp(16px, 3vw, 28px);
-        background:
-          radial-gradient(circle at top left, rgba(15, 63, 127, 0.06), transparent 30%),
-          radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 30%),
-          linear-gradient(180deg, #fbfdff 0%, #f3f7fb 100%);
-        font-family: var(--font-body);
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-shell {
-        flex: 1;
-        min-height: 0;
-        max-width: 1180px;
-        margin: 0 auto;
-        display: grid;
-        gap: 14px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-bottom: 4px;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      #subscription-screen .subscription-header-row,
-      #subscription-screen .subscription-section-row {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-      }
-
-      #subscription-screen .subscription-page-title {
-        margin: 0;
-        font-family: var(--font-heading);
-        font-size: clamp(24px, 2.6vw, 36px);
-        line-height: 1.05;
-        font-weight: 900;
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-page-subtitle {
-        margin: 6px 0 0;
-        color: #64748b;
-        font-size: 14px;
-        line-height: 1.45;
-      }
-
-      #subscription-screen .subscription-close-btn {
-        border: 0;
-        background: transparent;
-        color: #64748b;
-        font-size: 15px;
-        font-weight: 700;
-        padding: 8px 0;
-        cursor: pointer;
-      }
-
-      #subscription-screen .subscription-status-card,
-      #subscription-screen .subscription-payment-card,
-      #subscription-screen .subscription-proof-card {
-        background: #fff;
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
-      }
-
-      #subscription-screen .subscription-status-card {
-        border-radius: 20px;
-        padding: 14px 16px;
-      }
-
-      #subscription-screen .subscription-status-label,
-      #subscription-screen .subscription-section-title {
-        margin: 0;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        font-weight: 800;
-        color: #64748b;
-      }
-
-      #subscription-screen .subscription-status-line {
-        margin-top: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-status-title {
-        margin: 0;
-        font-size: 16px;
-        line-height: 1.2;
-        font-weight: 800;
-        color: #1f2937;
-      }
-
-      #subscription-screen .subscription-status-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 74px;
-        padding: 5px 10px;
-        border-radius: 999px;
-        background: #edf7ff;
-        color: #0f7bc2;
-        font-size: 12px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-
-      #subscription-screen .subscription-status-subtitle,
-      #subscription-screen .subscription-status-note,
-      #subscription-screen .subscription-request-status,
-      #subscription-screen .subscription-section-note,
-      #subscription-screen .subscription-payment-head p,
-      #subscription-screen .subscription-payment-note {
-        margin: 0;
-        color: #64748b;
-        line-height: 1.5;
-      }
-
-      #subscription-screen .subscription-status-subtitle {
-        margin-top: 8px;
-        font-size: 13px;
-        font-weight: 700;
-        color: #334155;
-      }
-
-      #subscription-screen .subscription-section-note {
-        font-size: 12px;
-        text-align: right;
-      }
-
-      #subscription-screen .subscription-plan-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-plan-card {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-height: 236px;
-        padding: 14px;
-        border-radius: 16px;
-        background: #fff;
-        border: 2px solid #d6e4f0;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="daily"] {
-        border-color: #53c2f6;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] {
-        border-color: #26d7c3;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] {
-        border-color: #ffb52f;
-      }
-
-      #subscription-screen .subscription-plan-card-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-      }
-
-      #subscription-screen .subscription-plan-card-title {
-        font-size: 16px;
-        font-weight: 900;
-        color: #1f2937;
-      }
-
-      #subscription-screen .subscription-plan-card-copy {
-        margin-top: 4px;
-        font-size: 12px;
-        line-height: 1.45;
-        color: #64748b;
-      }
-
-      #subscription-screen .subscription-plan-card-price {
-        text-align: right;
-        min-width: 74px;
-      }
-
-      #subscription-screen .subscription-plan-price-amount {
-        display: block;
-        font-size: 16px;
-        font-weight: 900;
-        color: #0f7bc2;
-      }
-
-      #subscription-screen .subscription-plan-price-meta {
-        display: block;
-        margin-top: 4px;
-        font-size: 12px;
-        color: #64748b;
-        font-weight: 700;
-      }
-
-      #subscription-screen .subscription-plan-card-chip {
-        display: inline-flex;
-        align-self: flex-start;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #eef6ff;
-        color: #0f7bc2;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-screen .subscription-plan-benefits {
-        list-style: none;
-        display: grid;
-        gap: 8px;
-        margin: 0;
-        padding: 0;
-      }
-
-      #subscription-screen .subscription-plan-benefits li {
-        position: relative;
-        padding-left: 24px;
-        color: #334155;
-        font-size: 12px;
-        line-height: 1.45;
-      }
-
-      #subscription-screen .subscription-plan-benefits li::before {
-        content: "◌";
-        position: absolute;
-        left: 0;
-        top: 0;
-        color: #0f7bc2;
-        font-weight: 900;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-chip,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-price-amount,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-benefits li::before {
-        color: #0f9f73;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-chip,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-price-amount,
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-benefits li::before {
-        color: #d97706;
-      }
-
-      #subscription-screen .subscription-plan-card-button {
-        margin-top: auto;
-        width: 100%;
-        border: 0;
-        border-radius: 12px;
-        padding: 10px 12px;
-        color: #fff;
-        background: #0f7bc2;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-button {
-        background: #0f9f73;
-      }
-
-      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-button {
-        background: #f59e0b;
-      }
-
-      #subscription-screen .subscription-payment-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
-        gap: 14px;
-      }
-
-      #subscription-screen .subscription-payment-card,
-      #subscription-screen .subscription-proof-card {
-        border-radius: 20px;
-        padding: 14px;
-      }
-
-      #subscription-screen .subscription-payment-head h3,
-      #subscription-screen .subscription-proof-card h3 {
-        margin: 0;
-        font-size: 17px;
-        line-height: 1.2;
-        color: #10233f;
-      }
-
-      #subscription-screen .subscription-payment-head p {
-        margin-top: 6px;
-      }
-
-      #subscription-screen .subscription-payment-details {
-        margin-top: 12px;
-      }
-
-      #subscription-screen .subscription-payment-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: #f8fafc;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        margin-bottom: 8px;
-      }
-
-      #subscription-screen .subscription-form {
-        margin-top: 10px;
-        display: grid;
-        gap: 10px;
-      }
-
-      #subscription-screen .subscription-field span {
-        font-weight: 700;
-        font-size: 12px;
-        line-height: 1.2;
-      }
-
-      #subscription-screen .subscription-field {
-        gap: 6px;
-      }
-
-      #subscription-screen .subscription-field input,
-      #subscription-screen .subscription-field textarea {
-        min-height: 38px;
-        padding-top: 9px;
-        padding-bottom: 9px;
-      }
-
-      #subscription-screen .subscription-proof-preview {
-        max-width: 100%;
-        min-height: 76px;
-      }
-
-      #subscription-screen .subscription-form button {
-        border: 0;
-        border-radius: 12px;
-        padding: 10px 12px;
-        color: #fff;
-        background: #0f7bc2;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      @media (max-width: 900px) {
-        #home-screen .home-minimal-shape,
-        #home-screen .home-minimal-bg-image,
-        #home-screen .home-minimal-content::before {
-          display: none !important;
-        }
-
-        #home-screen .home-minimal-container {
-          padding-top: 16px !important;
-          padding-bottom: 10px !important;
-        }
-
-        #home-screen .home-minimal-content {
-          padding: 28px 18px 22px !important;
-        }
-
-        #home-screen .home-minimal-button-row {
-          position: relative !important;
-          z-index: 999 !important;
-        }
-
-        #home-screen .home-minimal-button {
-          position: relative !important;
-          z-index: 1000 !important;
-          pointer-events: auto !important;
-        }
-      }
-
-      @media (min-width: 1025px) {
-        #subscription-screen.subscription-page {
-          padding-top: 18px;
-          padding-bottom: 18px;
-        }
-
-        #subscription-screen .subscription-shell {
-          gap: 12px;
-        }
-
-        #subscription-screen .subscription-status-card {
-          padding: 12px 16px;
-        }
-
-        #subscription-screen .subscription-plan-card {
-          min-height: 224px;
-        }
-
-        #subscription-screen .subscription-payment-card,
-        #subscription-screen .subscription-proof-card {
-          padding: 12px;
-        }
-
-        #subscription-screen .subscription-field input,
-        #subscription-screen .subscription-field textarea {
-          min-height: 36px;
-        }
-      }
-
-      @media (max-width: 1024px) {
-        #subscription-screen .subscription-plan-grid,
-        #subscription-screen .subscription-payment-grid {
-          grid-template-columns: 1fr;
-        }
-
-        #subscription-screen .subscription-shell {
-          gap: 12px;
-        }
-      }
-
-      @media (max-width: 720px) {
-        #subscription-screen.subscription-page {
-          padding: 14px 12px 16px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          -webkit-overflow-scrolling: touch;
-          padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-        }
-
-        #subscription-screen .subscription-shell {
-          width: 100%;
-          max-width: none;
-          gap: 12px;
-          padding-bottom: 24px;
-          flex: none;
-          min-height: auto;
-          overflow: visible;
-        }
-
-        #subscription-screen .subscription-header-row,
-        #subscription-screen .subscription-section-row {
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-section-row {
-          flex-direction: column;
-        }
-
-        #subscription-screen .subscription-page-title {
-          font-size: clamp(20px, 6vw, 26px);
-        }
-
-        #subscription-screen .subscription-page-subtitle {
-          font-size: 12px;
-        }
-
-        #subscription-screen .subscription-section-note {
-          display: block;
-          margin: 0;
-          font-size: 11px;
-          line-height: 1.45;
-          color: #64748b;
-        }
-
-        #subscription-screen .subscription-status-card {
-          display: grid;
-          gap: 6px;
-          padding: 14px 14px 13px;
-          border-radius: 18px;
-          background:
-            radial-gradient(circle at top right, rgba(15, 123, 194, 0.16), transparent 38%),
-            radial-gradient(circle at left center, rgba(13, 148, 136, 0.1), transparent 26%),
-            linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
-        }
-
-        #subscription-screen .subscription-status-line {
-          margin-top: 0;
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: center;
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-status-title {
-          font-size: 15px;
-          color: #10233f;
-        }
-
-        #subscription-screen .subscription-status-pill {
-          min-width: 64px;
-          padding: 4px 8px;
-          font-size: 8px;
-        }
-
-        #subscription-screen .subscription-status-subtitle {
-          margin-top: 0;
-          font-size: 12px;
-        }
-
-        #subscription-screen .subscription-status-note {
-          display: block;
-          margin: 0;
-          font-size: 11px;
-          line-height: 1.45;
-        }
-
-        #subscription-screen .subscription-plan-grid {
-          grid-template-columns: 1fr;
-          gap: 14px;
-        }
-
-        #subscription-screen .subscription-plan-card {
-          width: 100%;
-          padding: 18px 16px 16px;
-          border-radius: 18px;
-          min-height: 0;
-        }
-
-        #subscription-screen .subscription-plan-card-head {
-          align-items: flex-start;
-        }
-
-        #subscription-screen .subscription-plan-card-title {
-          font-size: 18px;
-        }
-
-        #subscription-screen .subscription-plan-card-copy {
-          font-size: 13px;
-        }
-
-        #subscription-screen .subscription-plan-card-price {
-          min-width: 72px;
-        }
-
-        #subscription-screen .subscription-plan-price-amount {
-          font-size: 18px;
-        }
-
-        #subscription-screen .subscription-plan-benefits {
-          gap: 8px;
-        }
-
-        #subscription-screen .subscription-plan-benefits li {
-          font-size: 13px;
-        }
-
-        #subscription-screen .subscription-plan-card-button {
-          min-height: 46px;
-          padding: 13px 14px;
-          border-radius: 13px;
-        }
-
-        #subscription-screen .subscription-form {
-          gap: 10px;
-        }
-      }
-
-      body.subscription-modal-open {
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal.subscription-payment-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 6000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-        background: rgba(2, 6, 23, 0.72);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-      }
-
-      #subscription-payment-modal.hidden {
-        display: none !important;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-card {
-        width: min(456px, calc(100vw - 24px));
-        max-height: calc(100dvh - 24px);
-        overflow-y: auto;
-        overflow-x: hidden;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        padding: 0;
-        border-radius: 28px;
-        background: linear-gradient(180deg, #08101d 0%, #050913 100%);
-        color: #dbe5f5;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58);
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-card {
-        overscroll-behavior: contain;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 12px 14px 12px;
-        padding-right: 104px;
-        position: relative;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-eyebrow {
-        color: #ffd76a;
-        font-size: 13px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header h3,
-      #subscription-payment-modal .subscription-proof-panel h3 {
-        margin: 6px 0 0;
-        color: #ffe08a;
-        font-family: var(--font-heading);
-        font-size: clamp(16px, 1.8vw, 22px);
-        line-height: 1.1;
-        font-weight: 900;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-header p,
-      #subscription-payment-modal .subscription-request-status {
-        margin: 6px 0 0;
-        color: #97a6bf;
-        line-height: 1.45;
-        font-size: 12px;
-      }
-
-      #subscription-payment-modal .subscription-payment-modal-close {
-        position: absolute;
-        top: 12px;
-        right: 14px;
-        z-index: 1;
-        flex: 0 0 auto;
-        align-self: auto;
-        margin-left: 0;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.03);
-        color: #f8fafc;
-        border-radius: 14px;
-        padding: 8px 12px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-payment-summary-panel,
-      #subscription-payment-modal .subscription-proof-panel {
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px 14px;
-        margin: 10px 14px 10px;
-        border-radius: 22px;
-        background: linear-gradient(180deg, rgba(9, 18, 33, 0.96), rgba(5, 11, 22, 0.96));
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-summary-panel {
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-        flex: 0 0 auto;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        min-height: 68px;
-        padding: 10px 14px;
-        border-radius: 18px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        text-align: center;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-label {
-        color: #a7b5cc;
-        font-size: 10px;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        font-weight: 800;
-      }
-
-      #subscription-payment-modal .subscription-payment-amount-value {
-        color: #ffe08a;
-        font-size: clamp(22px, 2.6vw, 34px);
-        line-height: 1;
-        font-weight: 900;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row {
-        display: none;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row strong {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: #ffffff;
-        font-size: 12px;
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        line-height: 1.2;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-label {
-        color: #dbe5f5;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-account-row span {
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.35;
-        font-weight: 900;
-        letter-spacing: 0.02em;
-        text-align: right;
-      }
-
-      #subscription-payment-modal .subscription-payment-details {
-        display: grid;
-        gap: 10px;
-        margin-top: 2px;
-        padding: 10px 12px;
-        border-radius: 18px;
-        background: rgba(15, 23, 42, 0.82);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      #subscription-payment-modal .subscription-payment-method-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-left {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 9px;
-        border-radius: 999px;
-        font-size: 10px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        line-height: 1;
-        text-transform: uppercase;
-        white-space: nowrap;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand svg {
-        width: 13px;
-        height: 13px;
-        flex: 0 0 auto;
-        stroke: currentColor;
-        fill: none;
-        stroke-width: 2.1;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand.is-mtn {
-        background: rgba(255, 204, 51, 0.14);
-        border: 1px solid rgba(255, 204, 51, 0.2);
-        color: #ffe08a;
-      }
-
-      #subscription-payment-modal .subscription-payment-brand.is-fidelity {
-        background: rgba(59, 130, 246, 0.14);
-        border: 1px solid rgba(59, 130, 246, 0.22);
-        color: #9fc1ff;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-label {
-        color: #dbe5f5;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-number {
-        color: #ffffff;
-        font-size: 14px;
-        line-height: 1.3;
-        font-weight: 900;
-        letter-spacing: 0.02em;
-        text-align: right;
-        white-space: nowrap;
-      }
-
-      #subscription-payment-modal .subscription-payment-method-divider {
-        width: 100%;
-        height: 1px;
-        background: rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-payment-method-name {
-        margin-top: 2px;
-        color: #9fb0c7;
-        font-size: 11px;
-        line-height: 1.45;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-align: center;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-note {
-        margin: 2px 0 0;
-        color: #9fb0c7;
-        font-size: 11px;
-        line-height: 1.5;
-      }
-
-      #subscription-payment-modal .subscription-payment-steps {
-        display: grid;
-        gap: 8px;
-        padding: 9px 12px;
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.72);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      #subscription-payment-modal .subscription-payment-steps-title {
-        color: #ffe08a;
-        font-size: 11px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-payment-steps ol {
-        margin: 0;
-        padding-left: 16px;
-        display: grid;
-        gap: 5px;
-        color: #e2e8f0;
-        line-height: 1.5;
-        font-size: 11px;
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn,
-      #subscription-payment-modal .subscription-modal-submit-btn {
-        width: 100%;
-        border: 0;
-        border-radius: 14px;
-        padding: 13px 16px;
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn {
-        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
-        color: #140f07;
-        box-shadow: 0 12px 28px rgba(255, 152, 0, 0.24);
-      }
-
-      #subscription-payment-modal .subscription-proof-jump-btn:hover,
-      #subscription-payment-modal .subscription-modal-submit-btn:hover,
-      #subscription-payment-modal .subscription-modal-cancel-btn:hover,
-      #subscription-payment-modal .subscription-payment-modal-close:hover {
-        transform: translateY(-1px);
-      }
-
-      #subscription-payment-modal .subscription-proof-panel h3 {
-        color: #ffd76a;
-        margin-top: 0;
-        font-size: 15px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-form {
-        display: grid;
-        gap: 8px;
-        margin-top: 6px;
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-card {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 9px 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-title {
-        color: #eef4ff;
-        font-size: 12px;
-        font-weight: 800;
-      }
-
-      #subscription-payment-modal .subscription-proof-plan-reference {
-        color: #97a6bf;
-        font-size: 11px;
-        font-weight: 600;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field {
-        display: grid;
-        gap: 8px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field span {
-        color: #dbe5f5;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field input,
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
-        width: 100%;
-        min-height: 40px;
-        border-radius: 13px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(7, 15, 27, 0.94);
-        color: #eef4ff;
-        padding: 9px 11px;
-        font-size: 14px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
-        min-height: 72px;
-        resize: vertical;
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 58px;
-        padding: 12px 12px;
-        border-radius: 14px;
-        border: 1px dashed rgba(116, 152, 203, 0.4);
-        background: rgba(7, 15, 27, 0.94);
-        color: #8ea0ba;
-        cursor: pointer;
-        overflow: hidden;
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone:hover {
-        border-color: rgba(255, 255, 255, 0.2);
-      }
-
-      #subscription-payment-modal .subscription-proof-file-input {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-proof-dropzone-copy {
-        position: relative;
-        z-index: 1;
-        text-align: center;
-        font-size: 12px;
-        font-weight: 600;
-        color: #7f92ac;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel .subscription-field input::placeholder,
-      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea::placeholder {
-        color: #6f8099;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        width: 112px;
-        height: 112px;
-        min-height: 112px;
-        padding: 0;
-        border-radius: 16px;
-        background:
-          radial-gradient(circle at 50% 38%, rgba(79, 145, 255, 0.12), transparent 42%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-        border: 1px dashed rgba(255, 255, 255, 0.14);
-        flex: 0 0 auto;
-        align-self: flex-start;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-content {
-        min-height: 112px;
-        padding: 0;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-empty {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        height: 100%;
-        min-height: 112px;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        padding: 14px 12px 12px;
-        border: 1px dashed rgba(255, 255, 255, 0.16);
-        background:
-          radial-gradient(circle at 50% 32%, rgba(79, 145, 255, 0.1), transparent 36%),
-          rgba(255, 255, 255, 0.04);
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 11px;
-        background: rgba(255, 255, 255, 0.08);
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-icon svg {
-        width: 18px;
-        height: 18px;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-        text-align: center;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy strong {
-        font-size: 9px;
-        line-height: 1.25;
-        font-weight: 800;
-        color: #e5eefb;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-copy span {
-        font-size: 8px;
-        line-height: 1.25;
-        color: #7f92ac;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-image {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        background: #fff;
-        object-fit: contain;
-        object-position: center center;
-        display: block;
-        pointer-events: none;
-        user-select: none;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-file--image {
-        width: 112px;
-        height: 112px;
-        min-width: 112px;
-        min-height: 112px;
-        max-width: 112px;
-        max-height: 112px;
-        background-color: #fff;
-        background-position: center center;
-        background-repeat: no-repeat;
-        background-size: contain;
-        flex: 0 0 112px;
-      }
-
-      #subscription-payment-modal .subscription-modal-actions {
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
-        gap: 10px;
-        margin-top: 24px;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-remove {
-        top: 4px;
-        right: 4px;
-        width: 18px;
-        height: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 999px;
-        background: rgba(18, 24, 35, 0.88);
-        color: #fff;
-        font-size: 12px;
-        line-height: 1;
-        font-weight: 900;
-        padding: 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-proof-preview-remove:hover {
-        background: rgba(30, 37, 49, 0.96);
-      }
-
-      #subscription-payment-modal .subscription-modal-cancel-btn {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        color: #e2e8f0;
-        border-radius: 14px;
-        padding: 13px 16px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      #subscription-payment-modal .subscription-modal-submit-btn {
-        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
-        color: #140f07;
-        box-shadow: 0 14px 30px rgba(255, 152, 0, 0.24);
-      }
-
-      #subscription-payment-modal .subscription-form-feedback {
-        min-height: 22px;
-        color: #a7f3d0;
-        font-weight: 700;
-        font-size: 11px;
-      }
-
-      #subscription-payment-modal .subscription-proof-panel {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow: visible;
-      }
-
-      @media (max-width: 900px) {
-        #subscription-payment-modal.subscription-payment-modal {
-          align-items: center;
-          padding: 8px;
-        }
-
-        #subscription-payment-modal .subscription-payment-modal-card {
-          max-height: calc(100dvh - 16px);
-          width: min(456px, calc(100vw - 16px));
-        }
-
-        #subscription-payment-modal .subscription-payment-modal-header {
-          flex-direction: column;
-          padding: 12px 13px 9px;
-        }
-
-        #subscription-payment-modal .subscription-payment-summary-panel,
-        #subscription-payment-modal .subscription-proof-panel {
-          margin: 9px 10px 9px;
-          padding: 11px 11px;
-        }
-
-        #subscription-payment-modal .subscription-modal-actions {
-          grid-template-columns: 1fr;
-        }
-
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css?v=20260820-menu-tabs1" />
   </head>
 
   <body>
@@ -1403,15 +200,40 @@
             <input id="auth-username" type="text" autocomplete="username" />
           </label>
 
-          <label id="auth-contact-wrap" class="auth-field hidden">
+          <div id="auth-contact-wrap" class="auth-field hidden">
             <span>Contact</span>
-            <input
-              id="auth-contact"
-              type="text"
-              autocomplete="email"
-              placeholder="Email or phone number"
-            />
-          </label>
+            <div class="auth-contact-row">
+              <label id="auth-contact-phone-wrap" class="auth-field auth-contact-input-field">
+                <span>Contact Number</span>
+                <div class="auth-phone-grid">
+                  <select id="auth-contact-country-code" autocomplete="tel-country-code"></select>
+                  <input
+                    id="auth-contact-phone"
+                    type="tel"
+                    inputmode="numeric"
+                    autocomplete="tel-national"
+                    placeholder="Enter mobile number"
+                  />
+                </div>
+              </label>
+              <label id="auth-contact-email-wrap" class="auth-field auth-contact-input-field hidden">
+                <span>Email Address</span>
+                <input
+                  id="auth-contact-email"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="name@example.com"
+                />
+              </label>
+              <label class="auth-field auth-contact-format-field">
+                <span>Format</span>
+                <select id="auth-contact-format">
+                  <option value="phone" selected>Contact</option>
+                  <option value="email">Email</option>
+                </select>
+              </label>
+            </div>
+          </div>
 
           <label id="auth-reset-code-wrap" class="auth-field hidden">
             <span>Reset Code</span>
@@ -1606,6 +428,7 @@
               </button>
             </section>
 
+            <div class="menu-modern-centered-band">
             <button
               id="daily-quiz-btn"
               type="button"
@@ -1637,82 +460,19 @@
               </span>
             </button>
 
-            <section class="menu-modern-section">
-              <div class="menu-modern-section-head">
-                <h2 class="menu-modern-section-title">Drills</h2>
-                <span class="menu-modern-section-note">Quick launches</span>
-              </div>
-
-              <div class="menu-modern-drills-grid" aria-label="Quiz drills and quick tools">
-                <button id="rapid-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Rapid points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-rapid-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-rapid" aria-hidden="true">
-                    <img src="images/rapid.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Rapid</span>
-                </button>
-
-                <button id="sudden-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Sudden points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-sudden-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-sudden" aria-hidden="true">
-                    <img src="images/sudden.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Sudden</span>
-                </button>
-
-                <button id="clinical-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Clinical points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-clinical-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-clinical" aria-hidden="true">
-                    <img src="images/clinical.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Clinical</span>
-                </button>
-
-                <button
-                  id="law-drill-btn"
-                  type="button"
-                  class="menu-modern-drill-tile"
-                  style="position:relative;overflow:hidden;"
-                  aria-label="Start law drill"
-                  title="Law Drill"
-                >
-                  <span
-                    class="menu-modern-card-points-badge is-drill"
-                    style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;"
-                    title="Law points"
-                  >
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-law-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-law" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 3v18"></path>
-                      <path d="M5 7h14"></path>
-                      <path d="M6 7 3 12h6L6 7Z"></path>
-                      <path d="M18 7 15 12h6L18 7Z"></path>
-                      <path d="M6 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M21 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M8 21h8"></path>
-                    </svg>
-                  </span>
-                  <span class="menu-modern-drill-label">Law</span>
-                </button>
+            <section class="menu-modern-section menu-modern-hub-tabs-section">
+              <div class="menu-modern-hub-tabs" role="tablist" aria-label="Menu sections">
+                <button id="menu-drills-tab" type="button" class="menu-modern-hub-tab is-active" data-menu-section="drills">Drills</button>
+                <button id="menu-law-tab" type="button" class="menu-modern-hub-tab" data-menu-section="law">Law</button>
+                <button id="menu-gppqe-tab" type="button" class="menu-modern-hub-tab" data-menu-section="gppqe">GPPQE</button>
+                <button id="menu-extra-tab" type="button" class="menu-modern-hub-tab" data-menu-section="extra">Extra</button>
               </div>
             </section>
 
             <section class="menu-modern-section">
               <div class="menu-modern-section-head">
                 <h2 class="menu-modern-section-title">Main Quiz</h2>
-                <span class="menu-modern-section-note">Build or test mastery</span>
+                <span class="menu-modern-section-note">Build or Test Mastery</span>
               </div>
 
               <div class="menu-modern-feature-grid">
@@ -1726,7 +486,7 @@
                     <span id="menu-study-points-badge">0</span>
                   </span>
                   <span class="menu-modern-feature-art is-study" aria-hidden="true">
-                    <img src="images/stduy.png" alt="" class="menu-modern-art-image is-feature-art" />
+                    <img src="images/study-tool.png" alt="" class="menu-modern-art-image is-feature-art" />
                   </span>
                   <span class="menu-modern-feature-title">Study</span>
                   <span class="menu-modern-feature-text">Learn with a steady question flow and resume where you left off.</span>
@@ -1749,6 +509,7 @@
                 </button>
               </div>
             </section>
+            </div>
             </div>
           </div>
 
@@ -1923,6 +684,7 @@
           </div>
         </div>
       </div>
+
       <div id="subscription-screen" class="setup-page subscription-page">
         <div class="subscription-shell">
           <div class="subscription-header-row">
@@ -1933,20 +695,12 @@
             <button id="subscription-back-btn" class="subscription-close-btn" type="button">Close</button>
           </div>
 
-          <section class="subscription-status-card">
-            <div class="subscription-status-label">Current status</div>
-            <div class="subscription-status-line">
-              <span id="subscription-status-title" class="subscription-status-title">Free Trial</span>
-              <span id="subscription-status-pill" class="subscription-status-pill">active</span>
-            </div>
-            <p id="subscription-status-subtitle" class="subscription-status-subtitle">7 days after signup</p>
-            <p id="subscription-status-note" class="subscription-status-note">You are currently on the trial access path.</p>
-          </section>
           <div class="subscription-section-row">
-            <div>
-              <h3 class="subscription-section-title">Choose a plan</h3>
+            <div class="subscription-section-copy">
+              <h3 id="subscription-section-title" class="subscription-section-title">Plans</h3>
+              <p id="subscription-section-note" class="subscription-section-note">Choose the subscription that works best for you.</p>
             </div>
-            <p class="subscription-section-note"></p>
+            <div id="subscription-status-badges" class="subscription-status-badges" aria-label="Subscription status badges"></div>
           </div>
 
           <section class="subscription-plan-grid-wrap">
@@ -2025,7 +779,1269 @@
           </div>
         </div>
       </div>
-      <div id="study-setup" class="setup-page">
+
+      <div id="drills-screen" class="setup-page drills-page">
+        <div class="study-fixed-header drills-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title drills-page-title">Drills</div>
+            <div class="study-reference-topbar-actions">
+              <button id="drills-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="drills-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell drill-lobby-shell">
+            <div class="drill-lobby-tabs" role="tablist" aria-label="Drill variants">
+              <button class="drill-lobby-tab is-rapid is-active" type="button" data-drill-variant="rapid">Rapid</button>
+              <button class="drill-lobby-tab is-sudden" type="button" data-drill-variant="sudden">Sudden</button>
+              <button class="drill-lobby-tab is-clinical" type="button" data-drill-variant="clinical">Clinical</button>
+            </div>
+
+            <div class="drill-lobby-panels">
+              <section class="drill-lobby-panel is-rapid is-active" data-drill-panel="rapid">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-rapid" aria-hidden="true">&#128293;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Rapid</div>
+                        <div class="drill-lobby-points-badge">PTS 1</div>
+                      </div>
+                      <div class="drill-lobby-copy">A fast 5-question sprint that rewards sharp recall and clean streaks.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>5 questions, quick pace.</li>
+                    <li>Answer fast and keep your streak alive.</li>
+                    <li>Best runs are saved in your history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="rapid">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="rapid">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-sudden" data-drill-panel="sudden">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-sudden" aria-hidden="true">&#127919;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Sudden</div>
+                        <div class="drill-lobby-points-badge">PTS 9</div>
+                      </div>
+                      <div class="drill-lobby-copy">A sharper race with mixed timing and tougher selections.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>All questions are timed.</li>
+                    <li>Accuracy matters more than speed.</li>
+                    <li>Each win is tracked in history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="sudden">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="sudden">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-clinical" data-drill-panel="clinical">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-clinical" aria-hidden="true">&#129516;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Clinical</div>
+                        <div class="drill-lobby-points-badge">PTS 0</div>
+                      </div>
+                      <div class="drill-lobby-copy">Clinical judgment questions with a steadier, decision-based rhythm.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>Choose the safest option.</li>
+                    <li>Think through the case before you tap.</li>
+                    <li>Previous runs stay in the trail.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="clinical">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="clinical">Play Now</button>
+                </article>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="gppqe-screen" class="setup-page gppqe-page">
+        <style>
+          #gppqe-screen {
+            background: #f8fafc;
+            color: #0f172a;
+            overflow: hidden;
+            height: 100vh;
+          }
+
+          #gppqe-screen.screen-active {
+            display: block !important;
+          }
+
+          #gppqe-screen,
+          #gppqe-screen * {
+            box-sizing: border-box;
+          }
+
+          #gppqe-screen * {
+            margin: 0;
+            padding: 0;
+          }
+
+          #gppqe-screen .gppqe-wrap {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 900px;
+            margin: 0 auto;
+          }
+
+          #gppqe-screen .gppqe-hd {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 16px 10px;
+            flex-shrink: 0;
+          }
+
+          #gppqe-screen .gppqe-hd-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: #059669;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 12px;
+            flex-shrink: 0;
+          }
+
+          #gppqe-screen .gppqe-hd-title {
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.1;
+          }
+
+          #gppqe-screen .gppqe-hd-sub {
+            font-size: 10px;
+            color: #64748b;
+          }
+
+          #gppqe-screen .gppqe-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 16px 20px;
+            gap: 16px;
+            min-height: 0;
+          }
+
+          #gppqe-screen.is-compact .gppqe-body {
+            display: flex !important;
+          }
+
+          #gppqe-screen .gppqe-tiles {
+            display: flex;
+            gap: 8px;
+            position: relative;
+            z-index: 10;
+          }
+
+          #gppqe-screen .gppqe-tile {
+            flex: 1;
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 14px 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+          }
+
+          #gppqe-screen .gppqe-tile:hover {
+            border-color: #cbd5e1;
+          }
+
+          #gppqe-screen .gppqe-tile.on {
+            border-color: #059669;
+            background: #ecfdf5;
+          }
+
+          #gppqe-screen .gppqe-tile-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          #gppqe-screen .gppqe-tile-val {
+            font-size: 15px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+
+          #gppqe-screen .gppqe-tile.on .gppqe-tile-val {
+            color: #047857;
+          }
+
+          #gppqe-screen .gppqe-panels {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            z-index: 20;
+          }
+
+          #gppqe-screen .gppqe-panel {
+            display: none;
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            max-height: 220px;
+            overflow-y: auto;
+          }
+
+          #gppqe-screen .gppqe-panel.open {
+            display: block;
+          }
+
+          #gppqe-screen .gppqe-ygrid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+          }
+
+          #gppqe-screen .gppqe-ybtn {
+            padding: 8px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            background: #f1f5f9;
+            color: #475569;
+            transition: all 0.15s;
+          }
+
+          #gppqe-screen .gppqe-ybtn:hover {
+            background: #e2e8f0;
+          }
+
+          #gppqe-screen .gppqe-ybtn.on {
+            background: #059669;
+            color: #fff;
+          }
+
+          #gppqe-screen .gppqe-tgrid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+          }
+
+          #gppqe-screen .gppqe-tchip {
+            padding: 8px 6px;
+            border-radius: 8px;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          #gppqe-screen .gppqe-tchip:hover {
+            border-color: #cbd5e1;
+          }
+
+          #gppqe-screen .gppqe-tchip.on {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+          }
+
+          #gppqe-screen .gppqe-hlist {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          #gppqe-screen .gppqe-hitem {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 11px;
+          }
+
+          #gppqe-screen .gppqe-hitem-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+
+          #gppqe-screen .gppqe-hitem-year {
+            font-weight: 700;
+            color: #0f172a;
+          }
+
+          #gppqe-screen .gppqe-hitem-topic {
+            color: #64748b;
+            font-size: 10px;
+          }
+
+          #gppqe-screen .gppqe-hitem-score {
+            font-weight: 800;
+            font-size: 13px;
+            color: #059669;
+          }
+
+          #gppqe-screen .gppqe-hitem-score.low {
+            color: #dc2626;
+          }
+
+          #gppqe-screen .gppqe-modes {
+            display: flex;
+            gap: 12px;
+          }
+
+          #gppqe-screen .gppqe-mode {
+            flex: 1;
+            background: #fff;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+          }
+
+          #gppqe-screen .gppqe-mode:hover {
+            border-color: #cbd5e1;
+          }
+
+          #gppqe-screen .gppqe-mode.on-study {
+            border-color: #059669;
+            background: #ecfdf5;
+          }
+
+          #gppqe-screen .gppqe-mode.on-exam {
+            border-color: #7c3aed;
+            background: #f5f3ff;
+          }
+
+          #gppqe-screen .gppqe-mode-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2px;
+          }
+
+          #gppqe-screen .gppqe-mode.on-study .gppqe-mode-icon {
+            background: #d1fae5;
+          }
+
+          #gppqe-screen .gppqe-mode.on-study .gppqe-mode-icon svg {
+            color: #059669;
+          }
+
+          #gppqe-screen .gppqe-mode.on-exam .gppqe-mode-icon {
+            background: #ede9fe;
+          }
+
+          #gppqe-screen .gppqe-mode.on-exam .gppqe-mode-icon svg {
+            color: #7c3aed;
+          }
+
+          #gppqe-screen .gppqe-mode:not(.on-study):not(.on-exam) .gppqe-mode-icon {
+            background: #f1f5f9;
+          }
+
+          #gppqe-screen .gppqe-mode:not(.on-study):not(.on-exam) .gppqe-mode-icon svg {
+            color: #94a3b8;
+          }
+
+          #gppqe-screen .gppqe-mode-name {
+            font-size: 15px;
+            font-weight: 800;
+          }
+
+          #gppqe-screen .gppqe-mode.on-study .gppqe-mode-name {
+            color: #047857;
+          }
+
+          #gppqe-screen .gppqe-mode.on-exam .gppqe-mode-name {
+            color: #5b21b6;
+          }
+
+          #gppqe-screen .gppqe-mode-desc {
+            font-size: 11px;
+            color: #64748b;
+            line-height: 1.3;
+          }
+
+          #gppqe-screen .gppqe-start-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+          }
+
+          #gppqe-screen .gppqe-start {
+            padding: 14px 48px;
+            border-radius: 14px;
+            border: none;
+            background: #059669;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.22);
+            cursor: pointer;
+            transition: transform 0.15s;
+          }
+
+          #gppqe-screen .gppqe-start:active {
+            transform: scale(0.97);
+          }
+
+          #gppqe-screen .gppqe-meta {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+          }
+
+          #gppqe-screen .gppqe-meta span {
+            color: #059669;
+            font-weight: 700;
+          }
+
+          @media (min-width: 640px) {
+            #gppqe-screen .gppqe-wrap {
+              padding: 20px;
+              justify-content: center;
+              overflow: visible;
+            }
+
+            #gppqe-screen .gppqe-hd {
+              padding: 0 0 20px;
+              max-width: 900px;
+              margin: 0 auto;
+              width: 100%;
+            }
+
+            #gppqe-screen .gppqe-hd-icon {
+              width: 40px;
+              height: 40px;
+              font-size: 14px;
+            }
+
+            #gppqe-screen .gppqe-hd-title {
+              font-size: 20px;
+            }
+
+            #gppqe-screen .gppqe-hd-sub {
+              font-size: 12px;
+            }
+
+            #gppqe-screen .gppqe-body {
+              display: grid;
+              grid-template-columns: 1fr 220px 1fr;
+              grid-template-rows: auto auto;
+              gap: 16px;
+              padding: 0;
+              max-width: 900px;
+              margin: 0 auto;
+              width: 100%;
+              align-content: center;
+            }
+
+            #gppqe-screen .gppqe-tiles {
+              display: none;
+            }
+
+            #gppqe-screen .gppqe-left {
+              grid-column: 1;
+              grid-row: 1 / 3;
+              display: flex;
+              flex-direction: column;
+              gap: 16px;
+            }
+
+            #gppqe-screen .gppqe-dk-card {
+              background: #fff;
+              border: 1.5px solid #e2e8f0;
+              border-radius: 18px;
+              padding: 16px;
+            }
+
+            #gppqe-screen .gppqe-dk-hd {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 13px;
+              font-weight: 700;
+              color: #0f172a;
+              margin-bottom: 12px;
+            }
+
+            #gppqe-screen .gppqe-dk-hd svg {
+              width: 16px;
+              height: 16px;
+            }
+
+            #gppqe-screen .gppqe-dk-ygrid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 8px;
+            }
+
+            #gppqe-screen .gppqe-dk-ybtn {
+              padding: 10px 0;
+              border-radius: 10px;
+              border: none;
+              font-size: 13px;
+              font-weight: 700;
+              cursor: pointer;
+              background: #f1f5f9;
+              color: #475569;
+              transition: all 0.15s;
+            }
+
+            #gppqe-screen .gppqe-dk-ybtn:hover {
+              background: #e2e8f0;
+            }
+
+            #gppqe-screen .gppqe-dk-ybtn.on {
+              background: #059669;
+              color: #fff;
+            }
+
+            #gppqe-screen .gppqe-dk-tgrid {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 8px;
+            }
+
+            #gppqe-screen .gppqe-dk-tchip {
+              padding: 8px 14px;
+              border-radius: 10px;
+              border: 1.5px solid #e2e8f0;
+              background: #fff;
+              font-size: 12px;
+              font-weight: 600;
+              color: #475569;
+              cursor: pointer;
+              transition: all 0.15s;
+            }
+
+            #gppqe-screen .gppqe-dk-tchip:hover {
+              border-color: #cbd5e1;
+            }
+
+            #gppqe-screen .gppqe-dk-tchip.on {
+              background: #eff6ff;
+              border-color: #3b82f6;
+              color: #1d4ed8;
+            }
+
+            #gppqe-screen .gppqe-center {
+              grid-column: 2;
+              grid-row: 1;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+            }
+
+            #gppqe-screen .gppqe-mode {
+              padding: 20px 16px;
+              border-radius: 16px;
+            }
+
+            #gppqe-screen .gppqe-mode-icon {
+              width: 36px;
+              height: 36px;
+            }
+
+            #gppqe-screen .gppqe-mode-name {
+              font-size: 15px;
+            }
+
+            #gppqe-screen .gppqe-mode-desc {
+              font-size: 11px;
+            }
+
+            #gppqe-screen .gppqe-right {
+              grid-column: 3;
+              grid-row: 1 / 3;
+              display: flex;
+              flex-direction: column;
+            }
+
+            #gppqe-screen .gppqe-right .gppqe-dk-card {
+              flex: 1;
+            }
+
+            #gppqe-screen .gppqe-dk-hlist {
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+            }
+
+            #gppqe-screen .gppqe-dk-hitem {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 10px 12px;
+              background: #f8fafc;
+              border-radius: 10px;
+            }
+
+            #gppqe-screen .gppqe-dk-hitem-left {
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+            }
+
+            #gppqe-screen .gppqe-dk-hitem-year {
+              font-size: 12px;
+              font-weight: 700;
+              color: #0f172a;
+            }
+
+            #gppqe-screen .gppqe-dk-hitem-topic {
+              font-size: 11px;
+              color: #64748b;
+            }
+
+            #gppqe-screen .gppqe-dk-hitem-score {
+              font-size: 14px;
+              font-weight: 800;
+              color: #059669;
+            }
+
+            #gppqe-screen .gppqe-dk-hitem-score.low {
+              color: #dc2626;
+            }
+
+            #gppqe-screen .gppqe-start-area {
+              grid-column: 2;
+              grid-row: 2;
+              justify-self: center;
+              align-self: start;
+              padding-top: 4px;
+            }
+
+            #gppqe-screen .gppqe-start {
+              padding: 14px 40px;
+              font-size: 15px;
+            }
+
+            #gppqe-screen .gppqe-meta {
+              font-size: 12px;
+            }
+          }
+
+          @media (max-width: 639px) {
+            #gppqe-screen .gppqe-left,
+            #gppqe-screen .gppqe-center,
+            #gppqe-screen .gppqe-right {
+              display: none !important;
+            }
+
+            #gppqe-screen .gppqe-tiles {
+              display: flex !important;
+            }
+          }
+
+          #gppqe-screen.is-compact .gppqe-left,
+          #gppqe-screen.is-compact .gppqe-center,
+          #gppqe-screen.is-compact .gppqe-right {
+            display: none !important;
+          }
+
+          #gppqe-screen.is-compact .gppqe-tiles {
+            display: flex !important;
+          }
+
+          #gppqe-screen.is-compact .gppqe-start-area {
+            display: flex !important;
+          }
+        </style>
+
+        <div class="gppqe-wrap">
+          <div class="gppqe-hd">
+            <div class="gppqe-hd-icon">Rx</div>
+            <div>
+              <div class="gppqe-hd-title">GPPQE Setup</div>
+              <div class="gppqe-hd-sub">General Pharmacy Practice Qualifying Exam</div>
+            </div>
+          </div>
+
+          <div class="gppqe-body">
+            <div class="gppqe-tiles">
+              <div class="gppqe-tile" id="tile-year">
+                <span class="gppqe-tile-label">Year</span>
+                <span class="gppqe-tile-val" id="tv-year">2025</span>
+              </div>
+              <div class="gppqe-tile" id="tile-topic">
+                <span class="gppqe-tile-label">Topic</span>
+                <span class="gppqe-tile-val" id="tv-topic">All</span>
+              </div>
+              <div class="gppqe-tile" id="tile-history">
+                <span class="gppqe-tile-label">History</span>
+                <span class="gppqe-tile-val" id="tv-history">View</span>
+              </div>
+
+              <div class="gppqe-panels">
+                <div class="gppqe-panel" id="panel-year">
+                  <div class="gppqe-ygrid">
+                    <button class="gppqe-ybtn on" data-y="2025">2025</button>
+                    <button class="gppqe-ybtn" data-y="2024">2024</button>
+                    <button class="gppqe-ybtn" data-y="2023">2023</button>
+                    <button class="gppqe-ybtn" data-y="2022">2022</button>
+                    <button class="gppqe-ybtn" data-y="2021">2021</button>
+                    <button class="gppqe-ybtn" data-y="2020">2020</button>
+                    <button class="gppqe-ybtn" data-y="2019">2019</button>
+                    <button class="gppqe-ybtn" data-y="2018">2018</button>
+                    <button class="gppqe-ybtn" data-y="2017">2017</button>
+                    <button class="gppqe-ybtn" data-y="2016">2016</button>
+                    <button class="gppqe-ybtn" data-y="2015">2015</button>
+                    <button class="gppqe-ybtn" data-y="2014">2014</button>
+                  </div>
+                </div>
+
+                <div class="gppqe-panel" id="panel-topic">
+                  <div class="gppqe-tgrid">
+                    <button class="gppqe-tchip on" data-t="All">All Topics</button>
+                    <button class="gppqe-tchip" data-t="Cardiovascular">Cardiovascular</button>
+                    <button class="gppqe-tchip" data-t="Endocrine">Endocrine</button>
+                    <button class="gppqe-tchip" data-t="Infectious Disease">Infectious Disease</button>
+                    <button class="gppqe-tchip" data-t="Gastrointestinal">Gastrointestinal</button>
+                    <button class="gppqe-tchip" data-t="Neurology">Neurology</button>
+                    <button class="gppqe-tchip" data-t="Oncology">Oncology</button>
+                    <button class="gppqe-tchip" data-t="Renal">Renal</button>
+                    <button class="gppqe-tchip" data-t="Respiratory">Respiratory</button>
+                    <button class="gppqe-tchip" data-t="Psychiatry">Psychiatry</button>
+                    <button class="gppqe-tchip" data-t="Obstetrics/Gyn">Obstetrics/Gyn</button>
+                    <button class="gppqe-tchip" data-t="Pharmacology">Pharmacology</button>
+                    <button class="gppqe-tchip" data-t="Pharmaceutics">Pharmaceutics</button>
+                    <button class="gppqe-tchip" data-t="Pharmacy Practice">Pharmacy Practice</button>
+                  </div>
+                </div>
+
+                <div class="gppqe-panel" id="panel-history">
+                  <div class="gppqe-hlist">
+                    <div class="gppqe-hitem">
+                      <div class="gppqe-hitem-left">
+                        <span class="gppqe-hitem-year">2025 &middot; Cardiovascular</span>
+                        <span class="gppqe-hitem-topic">Study &middot; 2 days ago</span>
+                      </div>
+                      <span class="gppqe-hitem-score">85%</span>
+                    </div>
+                    <div class="gppqe-hitem">
+                      <div class="gppqe-hitem-left">
+                        <span class="gppqe-hitem-year">2024 &middot; All Topics</span>
+                        <span class="gppqe-hitem-topic">Exam &middot; 1 week ago</span>
+                      </div>
+                      <span class="gppqe-hitem-score low">72%</span>
+                    </div>
+                    <div class="gppqe-hitem">
+                      <div class="gppqe-hitem-left">
+                        <span class="gppqe-hitem-year">2025 &middot; Endocrine</span>
+                        <span class="gppqe-hitem-topic">Study &middot; 2 weeks ago</span>
+                      </div>
+                      <span class="gppqe-hitem-score">91%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="gppqe-left">
+              <div class="gppqe-dk-card">
+                <div class="gppqe-dk-hd">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  Select Year
+                </div>
+                <div class="gppqe-dk-ygrid">
+                  <button class="gppqe-dk-ybtn on" data-y="2025">2025</button>
+                  <button class="gppqe-dk-ybtn" data-y="2024">2024</button>
+                  <button class="gppqe-dk-ybtn" data-y="2023">2023</button>
+                  <button class="gppqe-dk-ybtn" data-y="2022">2022</button>
+                  <button class="gppqe-dk-ybtn" data-y="2021">2021</button>
+                  <button class="gppqe-dk-ybtn" data-y="2020">2020</button>
+                  <button class="gppqe-dk-ybtn" data-y="2019">2019</button>
+                  <button class="gppqe-dk-ybtn" data-y="2018">2018</button>
+                  <button class="gppqe-dk-ybtn" data-y="2017">2017</button>
+                  <button class="gppqe-dk-ybtn" data-y="2016">2016</button>
+                  <button class="gppqe-dk-ybtn" data-y="2015">2015</button>
+                  <button class="gppqe-dk-ybtn" data-y="2014">2014</button>
+                </div>
+              </div>
+
+              <div class="gppqe-dk-card">
+                <div class="gppqe-dk-hd">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                  </svg>
+                  Topic Area
+                </div>
+                <div class="gppqe-dk-tgrid">
+                  <button class="gppqe-dk-tchip on" data-t="All">All Topics</button>
+                  <button class="gppqe-dk-tchip" data-t="Cardiovascular">Cardiovascular</button>
+                  <button class="gppqe-dk-tchip" data-t="Endocrine">Endocrine</button>
+                  <button class="gppqe-dk-tchip" data-t="Infectious Disease">Infectious Disease</button>
+                  <button class="gppqe-dk-tchip" data-t="Gastrointestinal">Gastrointestinal</button>
+                  <button class="gppqe-dk-tchip" data-t="Neurology">Neurology</button>
+                  <button class="gppqe-dk-tchip" data-t="Oncology">Oncology</button>
+                  <button class="gppqe-dk-tchip" data-t="Renal">Renal</button>
+                  <button class="gppqe-dk-tchip" data-t="Respiratory">Respiratory</button>
+                  <button class="gppqe-dk-tchip" data-t="Psychiatry">Psychiatry</button>
+                  <button class="gppqe-dk-tchip" data-t="Obstetrics/Gyn">Obstetrics/Gyn</button>
+                  <button class="gppqe-dk-tchip" data-t="Pharmacology">Pharmacology</button>
+                  <button class="gppqe-dk-tchip" data-t="Pharmaceutics">Pharmaceutics</button>
+                  <button class="gppqe-dk-tchip" data-t="Pharmacy Practice">Pharmacy Practice</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="gppqe-center">
+              <div class="gppqe-mode on-study" id="mode-study">
+                <div class="gppqe-mode-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                  </svg>
+                </div>
+                <div class="gppqe-mode-name">Study</div>
+                <div class="gppqe-mode-desc">See answer immediately</div>
+              </div>
+
+              <div class="gppqe-mode" id="mode-exam">
+                <div class="gppqe-mode-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+                <div class="gppqe-mode-name">Exam</div>
+                <div class="gppqe-mode-desc">Timed, score at the end</div>
+              </div>
+            </div>
+
+            <div class="gppqe-right">
+              <div class="gppqe-dk-card">
+                <div class="gppqe-dk-hd">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round">
+                    <polyline points="1 4 1 10 7 10"></polyline>
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                  </svg>
+                  Recent Sessions
+                </div>
+                <div class="gppqe-dk-hlist">
+                  <div class="gppqe-dk-hitem">
+                    <div class="gppqe-dk-hitem-left">
+                      <span class="gppqe-dk-hitem-year">2025 &middot; Cardiovascular</span>
+                      <span class="gppqe-dk-hitem-topic">Study Mode &middot; 2 days ago</span>
+                    </div>
+                    <span class="gppqe-dk-hitem-score">85%</span>
+                  </div>
+                  <div class="gppqe-dk-hitem">
+                    <div class="gppqe-dk-hitem-left">
+                      <span class="gppqe-dk-hitem-year">2024 &middot; All Topics</span>
+                      <span class="gppqe-dk-hitem-topic">Exam Mode &middot; 1 week ago</span>
+                    </div>
+                    <span class="gppqe-dk-hitem-score low">72%</span>
+                  </div>
+                  <div class="gppqe-dk-hitem">
+                    <div class="gppqe-dk-hitem-left">
+                      <span class="gppqe-dk-hitem-year">2025 &middot; Endocrine</span>
+                      <span class="gppqe-dk-hitem-topic">Study Mode &middot; 2 weeks ago</span>
+                    </div>
+                    <span class="gppqe-dk-hitem-score">91%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="gppqe-start-area">
+              <button class="gppqe-start" type="button">Start GPPQE</button>
+              <div class="gppqe-meta">
+                <span id="meta-q">120</span> Q &middot; <span id="meta-t">180m</span> &middot; <span id="meta-m">Study</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          (() => {
+            const root = document.getElementById("gppqe-screen");
+            if (!root) return;
+
+            let selYear = 2025;
+            let selMode = "study";
+            let selTopics = ["All"];
+            let openPanelName = null;
+            const yData = {
+              2025: 120,
+              2024: 115,
+              2023: 118,
+              2022: 110,
+              2021: 105,
+              2020: 108,
+              2019: 112,
+              2018: 106,
+              2017: 104,
+              2016: 100,
+              2015: 98,
+              2014: 95,
+            };
+
+            const tvYear = root.querySelector("#tv-year");
+            const tvTopic = root.querySelector("#tv-topic");
+            const metaQ = root.querySelector("#meta-q");
+            const metaT = root.querySelector("#meta-t");
+            const metaM = root.querySelector("#meta-m");
+            const startBtn = root.querySelector(".gppqe-start");
+            const modeStudy = root.querySelector("#mode-study");
+            const modeExam = root.querySelector("#mode-exam");
+            const mobileTiles = {
+              year: root.querySelector("#tile-year"),
+              topic: root.querySelector("#tile-topic"),
+              history: root.querySelector("#tile-history"),
+            };
+            const panels = {
+              year: root.querySelector("#panel-year"),
+              topic: root.querySelector("#panel-topic"),
+              history: root.querySelector("#panel-history"),
+            };
+            const yearButtons = Array.from(root.querySelectorAll(".gppqe-ybtn"));
+            const desktopYearButtons = Array.from(root.querySelectorAll(".gppqe-dk-ybtn"));
+            const topicButtons = Array.from(root.querySelectorAll(".gppqe-tchip, .gppqe-dk-tchip"));
+
+            function syncCompactLayout() {
+              const compact = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 767;
+              root.classList.toggle("is-compact", compact);
+              return compact;
+            }
+
+            function closePanels() {
+              ["year", "topic", "history"].forEach((name) => {
+                panels[name]?.classList.remove("open");
+                mobileTiles[name]?.classList.remove("on");
+              });
+              openPanelName = null;
+            }
+
+            function togglePanel(name) {
+              if (!root.classList.contains("is-compact")) return;
+              const panel = panels[name];
+              const tile = mobileTiles[name];
+              if (!panel || !tile) return;
+              ["year", "topic", "history"].forEach((other) => {
+                if (other !== name) {
+                  panels[other]?.classList.remove("open");
+                  mobileTiles[other]?.classList.remove("on");
+                }
+              });
+              if (openPanelName === name) {
+                panel.classList.remove("open");
+                tile.classList.remove("on");
+                openPanelName = null;
+              } else {
+                panel.classList.add("open");
+                tile.classList.add("on");
+                openPanelName = name;
+              }
+            }
+
+            function syncYearButtons() {
+              yearButtons.forEach((button) => {
+                button.classList.toggle("on", Number(button.dataset.y) === selYear);
+              });
+              desktopYearButtons.forEach((button) => {
+                button.classList.toggle("on", Number(button.dataset.y) === selYear);
+              });
+            }
+
+            function syncTopics() {
+              const label = selTopics.includes("All")
+                ? "All"
+                : (selTopics.length === 1 ? selTopics[0].slice(0, 10) : `${selTopics.length} topics`);
+              if (tvTopic) tvTopic.textContent = label;
+              topicButtons.forEach((button) => {
+                button.classList.toggle("on", selTopics.includes(button.dataset.t));
+              });
+            }
+
+            function update() {
+              let count = yData[selYear] || 100;
+              if (!selTopics.includes("All") && selTopics.length > 0) {
+                count = Math.max(3, Math.round(count * (selTopics.length / 14)));
+              }
+              if (metaQ) metaQ.textContent = count;
+              if (metaT) metaT.textContent = selMode === "study" ? `${Math.ceil(count * 1.5)}m` : `${Math.ceil(count * 1.2)}m`;
+              if (metaM) metaM.textContent = selMode === "study" ? "Study" : "Exam";
+            }
+
+            function setYear(year, { syncTileLabel = false } = {}) {
+              selYear = year;
+              syncYearButtons();
+              if (syncTileLabel && tvYear) {
+                tvYear.textContent = String(selYear);
+              }
+              update();
+            }
+
+            function toggleTopic(topic) {
+              if (topic === "All") {
+                selTopics = ["All"];
+              } else {
+                if (selTopics.includes("All")) selTopics = [];
+                if (selTopics.includes(topic)) {
+                  selTopics = selTopics.filter((value) => value !== topic);
+                } else {
+                  selTopics.push(topic);
+                }
+                if (selTopics.length === 0) selTopics = ["All"];
+              }
+              syncTopics();
+              update();
+            }
+
+            function setMode(mode) {
+              selMode = mode;
+              if (modeStudy) {
+                modeStudy.className = `gppqe-mode${mode === "study" ? " on-study" : ""}`;
+              }
+              if (modeExam) {
+                modeExam.className = `gppqe-mode${mode === "exam" ? " on-exam" : ""}`;
+              }
+              update();
+            }
+
+            function startQuiz() {
+              if (!startBtn) return;
+              const originalLabel = startBtn.textContent;
+              startBtn.textContent = "Loading...";
+              startBtn.disabled = true;
+              window.setTimeout(() => {
+                startBtn.textContent = originalLabel;
+                startBtn.disabled = false;
+                const payload = {
+                  source: "gppqe",
+                  year: selYear,
+                  topics: selTopics.includes("All") ? null : selTopics,
+                  mode: selMode,
+                };
+                console.log("GPPQE Start:", payload);
+              }, 800);
+            }
+
+            mobileTiles.year?.addEventListener("click", () => togglePanel("year"));
+            mobileTiles.topic?.addEventListener("click", () => togglePanel("topic"));
+            mobileTiles.history?.addEventListener("click", () => togglePanel("history"));
+
+            yearButtons.forEach((button) => {
+              button.addEventListener("click", () => {
+                yearButtons.forEach((node) => node.classList.remove("on"));
+                button.classList.add("on");
+                setYear(Number(button.dataset.y) || 2025, { syncTileLabel: true });
+              });
+            });
+
+            desktopYearButtons.forEach((button) => {
+              button.addEventListener("click", () => {
+                desktopYearButtons.forEach((node) => node.classList.remove("on"));
+                button.classList.add("on");
+                setYear(Number(button.dataset.y) || 2025);
+              });
+            });
+
+            topicButtons.forEach((button) => {
+              button.addEventListener("click", () => toggleTopic(String(button.dataset.t || "All")));
+            });
+
+            modeStudy?.addEventListener("click", () => setMode("study"));
+            modeExam?.addEventListener("click", () => setMode("exam"));
+            startBtn?.addEventListener("click", startQuiz);
+
+            window.addEventListener("resize", () => {
+              const compact = syncCompactLayout();
+              if (!compact) {
+                closePanels();
+              }
+            });
+
+            if (tvYear) tvYear.textContent = String(selYear);
+            syncCompactLayout();
+            syncYearButtons();
+            syncTopics();
+            update();
+          })();
+        </script>
+      </div>
+
+      <div id="extra-screen" class="setup-page extra-page">
+        <div class="study-fixed-header extra-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title">Extra</div>
+            <div class="study-reference-topbar-actions">
+              <button id="extra-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="extra-view-toggle-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Toggle list or card view" title="Toggle list or card view">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="5" width="16" height="4" rx="1"></rect>
+                  <rect x="4" y="11" width="10" height="4" rx="1"></rect>
+                  <rect x="4" y="17" width="16" height="2" rx="1"></rect>
+                </svg>
+              </button>
+              <button id="extra-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell extra-shell">
+            <div id="menu-extra-grid" class="menu-extra-grid is-cards" aria-label="Extra resources">
+              <button id="menu-news-btn" type="button" class="menu-extra-item is-news">
+                <span class="menu-extra-icon is-news" aria-hidden="true">&#128240;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">News</span>
+                  <span class="menu-extra-item-text">Open the news feed.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-guidelines" aria-hidden="true">&#128196;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Guidelines</span>
+                  <span class="menu-extra-item-text">Clinical references and practice notes.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-articles" aria-hidden="true">&#128218;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Articles</span>
+                  <span class="menu-extra-item-text">Deep reads for study and revision.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-medlens" aria-hidden="true">&#128269;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">MedLens</span>
+                  <span class="menu-extra-item-text">Search tools for better clinical clarity.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-calculator" aria-hidden="true">&#129518;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Calculator</span>
+                  <span class="menu-extra-item-text">Dose and score helper tools.</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="coming-soon-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="coming-soon-title">
+        <div class="modal-card coming-soon-card">
+          <div class="coming-soon-emoji" aria-hidden="true">&#128640;</div>
+          <div id="coming-soon-title" class="modal-title">Coming Soon</div>
+          <div class="modal-text">This section is being prepared for a future release.</div>
+          <div class="modal-actions">
+            <button id="coming-soon-ok-btn" type="button" class="modal-btn primary">Got it</button>
+          </div>
+        </div>
+      </div>
+
+<div id="study-setup" class="setup-page">
         <div class="study-fixed-header">
           <div class="study-reference-topbar">
             <img
@@ -2141,7 +2157,7 @@
                 />
               </label>
 
-              <button id="start-study-btn" type="button" class="study-reference-start-btn">
+              <button id="start-study-btn" class="study-reference-start-btn">
                 Start Session
               </button>
             </section>
@@ -2372,7 +2388,7 @@
             </div>
 
             <div id="daily-celebration" class="daily-celebration hidden" aria-live="polite">
-              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">&#10003;</span>
+              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“</span>
               <span id="daily-gems-ribbon" class="daily-gems-ribbon">+0 Gems</span>
             </div>
 
@@ -2393,7 +2409,7 @@
         </div>
       </div>
 
-      <div id="topic-library" class="setup-page">
+      <div id="topic-library" class="setup-page topic-library-modern">
         <div class="study-fixed-header topic-library-fixed-header">
           <div class="topic-library-topbar">
             <img
@@ -2431,9 +2447,24 @@
           <div class="topic-library-shell">
             <section class="topic-library-hero">
               <div class="topic-library-intro-copy">
+                <div class="topic-library-kicker">Clinical Topic Library</div>
                 <h2 class="topic-library-page-title">Topic Library</h2>
                 <p class="topic-library-intro-text">Browse focused clinical study notes.</p>
                 <div id="topic-library-count" class="topic-library-count"></div>
+                <div class="topic-library-mini-stats" aria-label="Quick topic stats">
+                  <div class="topic-library-mini-stat">
+                    <strong id="topic-library-hero-topics">0</strong>
+                    <span>Topics</span>
+                  </div>
+                  <div class="topic-library-mini-stat">
+                    <strong id="topic-library-hero-categories">0</strong>
+                    <span>Categories</span>
+                  </div>
+                  <div class="topic-library-mini-stat">
+                    <strong id="topic-library-hero-sections">0</strong>
+                    <span>Sections</span>
+                  </div>
+                </div>
               </div>
               <div class="topic-library-hero-visual" aria-hidden="true">
                 <svg viewBox="0 0 320 180">
@@ -2477,32 +2508,41 @@
                     placeholder="Search topics..."
                   />
                 </label>
-                <button
-                  id="topic-library-category-toggle"
-                  class="topic-library-tool-btn topic-library-filter-btn"
-                  type="button"
-                  aria-label="Show category filter"
-                  aria-pressed="false"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M4 7h16"></path>
-                    <path d="M7 12h10"></path>
-                    <path d="M10 17h4"></path>
-                  </svg>
-                </button>
-                <div id="topic-library-controls" class="topic-library-controls hidden">
-                  <label id="topic-library-category-field" class="topic-library-field hidden">
-                    <span class="topic-library-field-label">Category</span>
-                    <button id="topic-library-category-picker-btn" type="button" class="setup-picker-trigger topic-library-select" aria-haspopup="dialog" aria-expanded="false">
-                      <span class="setup-picker-trigger-label">All Categories</span>
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="m7 9 5 5 5-5"></path>
-                      </svg>
-                    </button>
-                    <select id="topic-library-category" class="setup-select topic-library-select setup-picker-source" hidden aria-hidden="true" tabindex="-1">
-                      <option value="all">All Categories</option>
-                    </select>
-                  </label>
+                <select id="topic-library-category" class="setup-select topic-library-select topic-library-category-select">
+                  <option value="all">All Categories</option>
+                </select>
+                <div class="topic-library-view-toggle" role="group" aria-label="View mode">
+                  <button id="topic-library-view-card" class="topic-library-view-btn is-active" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-1 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-1 2h-2a2 2 0 01-2-2v-2z"></path>
+                    </svg>
+                    Cards
+                  </button>
+                  <button id="topic-library-view-list" class="topic-library-view-btn" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                    List
+                  </button>
+                </div>
+              </div>
+              <div id="topic-library-active-filters" class="topic-library-active-filters"></div>
+              <div class="topic-library-stats" aria-label="Catalog statistics">
+                <div class="topic-library-stat">
+                  <strong id="topic-library-stat-topics">0</strong>
+                  <span>Topics</span>
+                </div>
+                <div class="topic-library-stat">
+                  <strong id="topic-library-stat-categories">0</strong>
+                  <span>Categories</span>
+                </div>
+                <div class="topic-library-stat">
+                  <strong id="topic-library-stat-sections">0</strong>
+                  <span>Sections</span>
+                </div>
+                <div class="topic-library-stat">
+                  <strong id="topic-library-stat-tags">0</strong>
+                  <span>Tags</span>
                 </div>
               </div>
 
@@ -2621,10 +2661,40 @@
                     <span>Username</span>
                     <input id="profile-username" type="text" />
                   </label>
-                  <label class="auth-field">
-                    <span>Contact (Email or Mobile)</span>
-                    <input id="profile-contact" type="text" placeholder="name@example.com or +233..." />
-                  </label>
+                  <div id="profile-contact-wrap" class="auth-field">
+                    <span>Contact</span>
+                    <div class="auth-contact-row">
+                      <label id="profile-contact-phone-wrap" class="auth-field auth-contact-input-field">
+                        <span>Contact Number</span>
+                        <div class="auth-phone-grid">
+                          <select id="profile-contact-country-code" autocomplete="tel-country-code"></select>
+                          <input
+                            id="profile-contact-phone"
+                            type="tel"
+                            inputmode="numeric"
+                            autocomplete="tel-national"
+                            placeholder="Enter mobile number"
+                          />
+                        </div>
+                      </label>
+                      <label id="profile-contact-email-wrap" class="auth-field auth-contact-input-field hidden">
+                        <span>Email Address</span>
+                        <input
+                          id="profile-contact-email"
+                          type="email"
+                          autocomplete="email"
+                          placeholder="name@example.com"
+                        />
+                      </label>
+                      <label class="auth-field auth-contact-format-field">
+                        <span>Format</span>
+                        <select id="profile-contact-format">
+                          <option value="phone" selected>Contact</option>
+                          <option value="email">Email</option>
+                        </select>
+                      </label>
+                    </div>
+                  </div>
                   <div class="auth-field profile-role-field">
                     <span>Role</span>
                     <div class="auth-inline-options profile-role-options">
@@ -2895,7 +2965,7 @@
                           <span class="community-settings-item-note">Profile, bio, password, and account actions.</span>
                         </span>
                         <span id="community-settings-account-value" class="community-settings-item-value">Profile</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="appearance">
                         <span class="community-settings-item-copy">
@@ -2903,7 +2973,7 @@
                           <span class="community-settings-item-note">Theme and visual style.</span>
                         </span>
                         <span id="community-settings-appearance-value" class="community-settings-item-value">Light</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="global-notifications">
                         <span class="community-settings-item-copy">
@@ -2911,7 +2981,7 @@
                           <span class="community-settings-item-note">Alerts, previews, and sound preferences.</span>
                         </span>
                         <span id="community-settings-global-notifications-value" class="community-settings-item-value">Enabled</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="storage">
                         <span class="community-settings-item-copy">
@@ -2919,7 +2989,7 @@
                           <span class="community-settings-item-note">Media cache and download handling.</span>
                         </span>
                         <span id="community-settings-storage-value" class="community-settings-item-value">Manage</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                     </div>
                     <div class="community-settings-section">
@@ -2930,7 +3000,7 @@
                           <span class="community-settings-item-note">Who can message you and view your status.</span>
                         </span>
                         <span id="community-settings-privacy-value" class="community-settings-item-value">Friends</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="security">
                         <span class="community-settings-item-copy">
@@ -2938,7 +3008,7 @@
                           <span class="community-settings-item-note">Community lock and encryption details.</span>
                         </span>
                         <span id="community-settings-security-value" class="community-settings-item-value">Off</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="chat-behavior">
                         <span class="community-settings-item-copy">
@@ -2946,7 +3016,7 @@
                           <span class="community-settings-item-note">Read receipts and typing indicators.</span>
                         </span>
                         <span id="community-settings-chat-value" class="community-settings-item-value">Balanced</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="community-notifications">
                         <span class="community-settings-item-copy">
@@ -2954,7 +3024,7 @@
                           <span class="community-settings-item-note">Mute chats and set custom alerts.</span>
                         </span>
                         <span id="community-settings-community-notifications-value" class="community-settings-item-value">Active</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="media">
                         <span class="community-settings-item-copy">
@@ -2962,7 +3032,7 @@
                           <span class="community-settings-item-note">Auto-download and upload quality.</span>
                         </span>
                         <span id="community-settings-media-value" class="community-settings-item-value">Wi-Fi only</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="status">
                         <span class="community-settings-item-copy">
@@ -2970,7 +3040,7 @@
                           <span class="community-settings-item-note">Replies, archiving, and status defaults.</span>
                         </span>
                         <span id="community-settings-status-value" class="community-settings-item-value">Replies on</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                     </div>
                   </section>
@@ -3342,7 +3412,7 @@
                           <span class="community-settings-item-note">Send a read-only announcement to every user.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Âº</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-admin-action="broadcast-status">
                         <span class="community-settings-item-copy">
@@ -3350,7 +3420,7 @@
                           <span class="community-settings-item-note">Publish an announcement status with no replies.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Âº</span>
                       </button>
                       <button type="button" id="community-settings-admin-target-btn" class="community-settings-item is-link hidden" data-community-settings-target="admin">
                         <span class="community-settings-item-copy">
@@ -3358,7 +3428,7 @@
                           <span class="community-settings-item-note">Send announcements to everyone.</span>
                         </span>
                         <span class="community-settings-item-value">Open</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#8250;</span>
                       </button>
                     </div>
                   </section>
@@ -4121,20 +4191,6 @@
               </div>
 
               <div class="settings-device-card">
-                <div class="settings-app-download-copy">
-                  <h4 class="settings-app-download-title">Android App</h4>
-                  <p class="settings-help">
-                    Download Ajix Pharm for your phone and install the latest release directly from the site.
-                  </p>
-                </div>
-                <div class="settings-actions">
-                  <button id="settings-download-app-btn" type="button" class="settings-primary-btn">
-                    Download APK
-                  </button>
-                </div>
-              </div>
-
-              <div class="settings-device-card">
                 <p class="settings-help">
                   Clear local practice cache on this device only. This removes saved local sessions and temporary progress, but it
                   does not delete your online account data.
@@ -4202,6 +4258,13 @@
                   <span class="inline-label">Streak:</span>
                   <span id="streak-value" class="inline-value"></span>
                 </div>
+              </div>
+              <div class="ajix-mobile-cats-panel" hidden>
+                <button class="ajix-mobile-cat-item active" type="button" data-cat="all">For you</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="trending">Trending</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="medicine">Medicine</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="wellness">Wellness</button>
+                <button class="ajix-mobile-cat-item" type="button" data-cat="research">Research</button>
               </div>
             </div>
           </div>
@@ -4384,19 +4447,21 @@
                 </section>
 
                 <section class="dashboard-panel dashboard-trend-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-trend-head-copy">
-                      <div class="dashboard-section-title">Score Trend</div>
-                      <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent 12 sessions</div>
+                  <div class="dashboard-trend-top">
+                    <div class="dashboard-trend-headline">
+                      <div class="dashboard-trend-copy-block">
+                        <div class="dashboard-section-title">Score Trend</div>
+                        <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent sessions</div>
+                      </div>
+                      <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
                     </div>
-                    <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
-                  </div>
-                  <div class="dashboard-trend-tabs" id="dash-trend-tabs" role="tablist" aria-label="Score trend scope">
-                    <button class="dashboard-trend-tab is-active" type="button" data-dashboard-trend-scope="session" aria-pressed="true">Session</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="daily" aria-pressed="false">Daily</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="weekly" aria-pressed="false">Weekly</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="monthly" aria-pressed="false">Monthly</button>
-                    <button class="dashboard-trend-tab" type="button" data-dashboard-trend-scope="yearly" aria-pressed="false">Yearly</button>
+                    <div class="dashboard-trend-scopes" role="tablist" aria-label="Trend scope">
+                      <button type="button" class="dashboard-trend-scope is-active" data-trend-scope="session">Session</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="daily">Daily</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="weekly">Weekly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="monthly">Monthly</button>
+                      <button type="button" class="dashboard-trend-scope" data-trend-scope="yearly">Yearly</button>
+                    </div>
                   </div>
                   <div class="dashboard-trend-stage">
                     <div class="dashboard-trend-chart" id="dash-trend-chart"></div>
@@ -4471,37 +4536,6 @@
               </button>
               <button id="result-menu-btn" class="result-btn secondary-btn">
                 Back to Menu
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="law-drill-result-screen">
-        <div class="result-wrapper">
-          <div class="result-card">
-            <div class="result-title" id="law-drill-result-title"></div>
-            <div id="law-drill-result-badge" class="result-badge hidden"></div>
-
-            <div class="result-body">
-              <div class="result-score-block">
-                <div class="result-percentage" id="law-drill-result-percentage"></div>
-                <div class="result-score" id="law-drill-result-score"></div>
-              </div>
-
-              <div class="result-feedback" id="law-drill-result-feedback"></div>
-              <div id="law-drill-result-stack" class="law-drill-stack law-drill-result-stack hidden" aria-live="polite"></div>
-            </div>
-
-            <div class="result-actions">
-              <button id="law-drill-next-level-btn" class="result-btn primary-btn hidden" type="button">
-                Level 2
-              </button>
-              <button id="law-drill-close-btn" class="result-btn secondary-btn" type="button">
-                Close
-              </button>
-              <button id="law-drill-menu-btn" class="result-btn secondary-btn" type="button">
-                Menu
               </button>
             </div>
           </div>
@@ -4742,7 +4776,6 @@
           <div class="community-admin-broadcast-attachment">
             <button id="community-admin-broadcast-attach-btn" type="button" class="modal-btn secondary">Attach file</button>
             <div id="community-admin-broadcast-attachment-name" class="community-admin-broadcast-attachment-name">No attachment selected.</div>
-            <button id="community-admin-broadcast-preview-btn" type="button" class="modal-btn secondary hidden">Preview</button>
             <button id="community-admin-broadcast-clear-btn" type="button" class="modal-btn secondary hidden">Remove</button>
           </div>
           <input id="community-admin-broadcast-file-input" type="file" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.ppt,.pptx,.txt" hidden />
@@ -4783,7 +4816,9 @@
       <div id="community-thread-actions-modal" class="modal hidden">
         <div class="modal-card community-thread-actions-card">
           <button id="community-thread-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Conversation actions</div>
           <div id="community-thread-actions-title" class="modal-title">Select action</div>
+          <div id="community-thread-actions-summary" class="modal-text">Choose what you want to do with the selected threads.</div>
           <div id="community-thread-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-thread-actions-grid">
             <button id="community-thread-actions-view-btn" type="button" class="modal-btn secondary">View</button>
@@ -4800,7 +4835,9 @@
       <div id="community-friend-actions-modal" class="modal hidden">
         <div class="modal-card community-friend-actions-card">
           <button id="community-friend-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
+          <div class="community-thread-actions-kicker">Friend actions</div>
           <div id="community-friend-actions-title" class="modal-title">Select action</div>
+          <div id="community-friend-actions-summary" class="modal-text">Choose what you want to do with this learner.</div>
           <div id="community-friend-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-friend-actions-grid">
             <button id="community-friend-actions-view-btn" type="button" class="modal-btn secondary">View Profile</button>
@@ -4893,25 +4930,38 @@
 
       <div id="community-group-invite-modal" class="modal hidden">
         <div class="modal-card community-group-invite-card">
-          <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close invite">&times;</button>
-          <div class="community-group-invite-top">
-            <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
-            <div class="community-group-invite-copy">
+          <div class="community-group-invite-header">
+            <div>
               <div id="community-group-invite-name" class="modal-title">Study Group</div>
-              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready.</div>
+              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready to share.</div>
             </div>
+            <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-group-invite-close-btn" aria-label="Close invite">
+              &times;
+            </button>
           </div>
-          <div class="community-group-invite-members-wrap">
-            <div class="community-group-invite-members-title">Members</div>
-            <div id="community-group-invite-members" class="community-group-invite-members"></div>
-          </div>
-          <div class="community-group-invite-link-box">
-            <div id="community-group-invite-short-link" class="community-group-invite-short-link"></div>
+
+          <div class="community-group-invite-body">
+            <div class="community-group-invite-top">
+              <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
+              <div class="community-group-invite-copy">
+                <div class="community-group-invite-label">Members</div>
+                <div id="community-group-invite-members" class="community-group-invite-members"></div>
+              </div>
+            </div>
+
+            <div class="community-group-invite-link-card">
+              <div class="community-group-invite-label">Invite link</div>
+              <div class="community-group-invite-link-row">
+                <button id="community-group-invite-short-link" type="button" class="community-group-invite-short-link" aria-label="Invite link"></button>
+                <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
+              </div>
+            </div>
+
             <div id="community-group-invite-note" class="community-group-invite-note"></div>
           </div>
-          <div class="community-group-invite-actions">
-            <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
-            <button id="community-group-invite-primary-btn" type="button" class="modal-btn primary">Share link</button>
+
+          <div class="modal-actions community-group-invite-actions">
+            <button id="community-group-invite-primary-btn" type="button" class="modal-btn resume-primary">Share link</button>
           </div>
         </div>
       </div>
@@ -5225,6 +5275,7 @@
           <div class="global-quick-nav-links">
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="home">Home</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="menu">Menu</button>
+            <button class="global-quick-nav-link" type="button" data-quick-nav-destination="news">News</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="community">Community</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="settings">Settings</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="profile">Profile</button>
@@ -5284,11 +5335,12 @@
         }
       };
     </script>
-    <script type="module" src="/engine.js?v=20260816-subscriptionstatuscompact4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="engine.js?v=20260820-menu-tabs1"></script>
     <script>
-      const APP_BUILD_ID = "20260623-resume-modal-fix4";
-      const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
-      const APP_NATIVE_VERSION = "1.1.14";
+      const APP_BUILD_ID = "20260818-crownfix5";
+      const APP_STANDALONE_BUILD = "20260619-release107";
+      const APP_NATIVE_VERSION = "1.0.7";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
       document.documentElement.dataset.nativeAppVersion = APP_NATIVE_VERSION;
 
@@ -5312,22 +5364,39 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", async () => {
-          try {
-            const registration = await navigator.serviceWorker.register("/sw.js", {
-              scope: "/",
-            });
+          const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(location.hostname);
 
-            if (registration && "update" in registration) {
-              void registration.update().catch(() => {});
+          try {
+            const previousBuild = localStorage.getItem("quizAppBuild");
+            const needsCutoverRefresh = previousBuild !== APP_BUILD_ID;
+            const didHardCutover = sessionStorage.getItem("quizHardCutoverDone") === APP_BUILD_ID;
+
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(
+              registrations
+                .filter((registration) => {
+                  const scriptUrl =
+                    registration.active?.scriptURL ||
+                    registration.waiting?.scriptURL ||
+                    registration.installing?.scriptURL ||
+                    "";
+                  return /\/sw\.js(?:[?#]|$)/i.test(String(scriptUrl || ""));
+                })
+                .map((registration) => registration.unregister()),
+            );
+
+            if ("caches" in window) {
+              const cacheKeys = await caches.keys();
+              await Promise.all(cacheKeys.map((key) => caches.delete(key)));
             }
 
             localStorage.setItem("quizAppBuild", APP_BUILD_ID);
             sessionStorage.setItem("quizHardCutoverDone", APP_BUILD_ID);
+            document.documentElement.removeAttribute("data-app-boot");
           } catch (error) {
-            console.warn("Service worker registration failed:", error);
+            console.warn(isProductionHost ? "Production cache reset failed:" : "Local preview cache reset failed:", error);
+            document.documentElement.removeAttribute("data-app-boot");
           }
-
-          document.documentElement.removeAttribute("data-app-boot");
         });
       } else {
         document.documentElement.removeAttribute("data-app-boot");
@@ -5335,5 +5404,8 @@
     </script>
   </body>
 </html>
+
+
+
 
 

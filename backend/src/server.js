@@ -25,7 +25,7 @@ import {
   ensureQuestionsSeeded,
   normalizeStoredQuestionCategories,
 } from "./services/questions.js";
-import { generateAiExplanation } from "./services/ai.js";
+import { generateAiExplanation, generateNewsDraft } from "./services/ai.js";
 import {
   ensureStore,
   readCollection,
@@ -238,7 +238,7 @@ const SUBSCRIPTION_PLAN_CATALOG = {
     key: "weekly",
     label: "Weekly Access",
     shortLabel: "Week Pass",
-    priceGhs: 2,
+    priceGhs: 5,
     durationDays: 7,
     description: "Unlock drills, exams, library, and community for 7 days.",
     ctaLabel: "Buy weekly access",
@@ -247,7 +247,7 @@ const SUBSCRIPTION_PLAN_CATALOG = {
     key: "monthly",
     label: "Monthly Access",
     shortLabel: "Month Pass",
-    priceGhs: 5,
+    priceGhs: 15,
     durationDays: 30,
     description: "Unlock everything for 30 days.",
     ctaLabel: "Buy monthly access",
@@ -256,7 +256,7 @@ const SUBSCRIPTION_PLAN_CATALOG = {
     key: "yearly",
     label: "Annual Access",
     shortLabel: "Annual Pass",
-    priceGhs: 50,
+    priceGhs: 120,
     durationDays: 365,
     description: "Unlock everything for a full year.",
     ctaLabel: "Buy annual access",
@@ -737,7 +737,7 @@ function normalizeConversation(raw = {}) {
   const inviteTokenCreatedAt = String(raw.inviteTokenCreatedAt || createdAt);
   const noticeTitle = normalizeWhitespace(raw.noticeTitle).slice(0, 72);
   const noticeSubtitle = normalizeWhitespace(raw.noticeSubtitle).slice(0, 180);
-  const noticeBody = normalizeMultilineText(raw.noticeBody).slice(0, 240);
+  const noticeBody = normalizeWhitespace(raw.noticeBody).slice(0, 240);
   const noticeAvatarUploadId = String(raw.noticeAvatarUploadId || "").trim();
   const noticeOriginType = normalizeWhitespace(raw.noticeOriginType).slice(0, 32);
   const noticeOriginId = String(raw.noticeOriginId || "").trim();
@@ -1497,6 +1497,1121 @@ function removeStatusActor(entries = [], userId = "", at = new Date().toISOStrin
   );
 }
 
+const NEWS_DEFAULT_SOURCES = [
+  {
+    id: "fda-medwatch",
+    name: "FDA MedWatch Safety Alerts",
+    url: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/medwatch/rss.xml",
+    category: "health-concern",
+    extractMode: "rss",
+    priority: 100,
+    enabled: true,
+    reviewRequired: true,
+    description: "Clinically important medical product safety alerts from the FDA.",
+  },
+  {
+    id: "who-newsroom",
+    name: "WHO Newsroom",
+    url: "https://www.who.int/news-room",
+    category: "clinical-news",
+    extractMode: "structured",
+    priority: 92,
+    enabled: true,
+    reviewRequired: true,
+    description: "Global health news and medical product updates from WHO.",
+  },
+  {
+    id: "nice-news",
+    name: "NICE News",
+    url: "https://www.nice.org.uk/news",
+    category: "guideline-update",
+    extractMode: "structured",
+    priority: 96,
+    enabled: true,
+    reviewRequired: true,
+    description: "Guideline and evidence updates from NICE.",
+  },
+];
+
+const NEWS_DEFAULT_CATEGORIES = [
+  {
+    id: "clinical-news",
+    name: "Clinical News",
+    slug: "clinical-news",
+    color: "#64748b",
+    description: "General clinical updates and uncategorized news.",
+    system: true,
+  },
+  {
+    id: "medicine",
+    name: "Medicine",
+    slug: "medicine",
+    color: "#2563eb",
+    description: "General medicine and treatment updates.",
+  },
+  {
+    id: "wellness",
+    name: "Wellness",
+    slug: "wellness",
+    color: "#16a34a",
+    description: "Wellness, prevention, and lifestyle stories.",
+  },
+  {
+    id: "research",
+    name: "Research",
+    slug: "research",
+    color: "#9333ea",
+    description: "Trials, studies, and scientific findings.",
+  },
+  {
+    id: "trending",
+    name: "Trending",
+    slug: "trending",
+    color: "#dc2626",
+    description: "Popular or breaking updates.",
+  },
+];
+
+const NEWS_ITEM_STATUS_ORDER = new Map([
+  ["pending_review", 0],
+  ["approved", 1],
+  ["published", 2],
+  ["rejected", 3],
+  ["archived", 4],
+]);
+
+function normalizeNewsCategory(rawCategory = "", fallback = "clinical-news") {
+  const text = normalizeWhitespace(rawCategory).toLowerCase();
+  if (!text) return fallback || "clinical-news";
+  return slugifyNewsText(text) || fallback || "clinical-news";
+}
+
+function normalizeNewsCategoryEntry(raw = {}) {
+  const now = new Date().toISOString();
+  const fallback = NEWS_DEFAULT_CATEGORIES.find((entry) => entry.slug === normalizeNewsCategory(raw.slug || raw.id || raw.name || "", "")) || {};
+  const name = cleanNewsText(raw.name || raw.title || raw.label || fallback.name || "Category", 80) || "Category";
+  const slug = normalizeNewsCategory(raw.slug || raw.id || name || "", slugifyNewsText(name) || fallback.slug || "category");
+  return {
+    id: String(raw.id || slug || crypto.randomUUID()).trim() || slug || crypto.randomUUID(),
+    name,
+    slug,
+    color: String(raw.color || fallback.color || "#64748b").trim() || fallback.color || "#64748b",
+    description: cleanNewsText(raw.description || fallback.description || "", 240),
+    system: raw.system === true || fallback.system === true,
+    createdAt: String(raw.createdAt || now).trim(),
+    updatedAt: String(raw.updatedAt || now).trim(),
+  };
+}
+
+async function seedDefaultNewsCategories() {
+  const stored = (await readCollection("newsCategories")).map(normalizeNewsCategoryEntry);
+  const bySlug = new Map(stored.map((entry) => [entry.slug, entry]));
+  let changed = false;
+
+  for (const category of NEWS_DEFAULT_CATEGORIES) {
+    const normalized = normalizeNewsCategoryEntry(category);
+    if (!bySlug.has(normalized.slug)) {
+      stored.push(normalized);
+      bySlug.set(normalized.slug, normalized);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    await writeCollection("newsCategories", stored);
+  }
+
+  return stored;
+}
+
+async function updateNewsCategoryReferences(previousSlug = "", nextSlug = "") {
+  const oldSlug = normalizeNewsCategory(previousSlug || "", "");
+  const newSlug = normalizeNewsCategory(nextSlug || "", oldSlug);
+  if (!oldSlug || !newSlug || oldSlug === newSlug) return { itemsChanged: 0, sourcesChanged: 0 };
+
+  const [items, sources] = await Promise.all([
+    readCollection("newsItems"),
+    readCollection("newsSources"),
+  ]);
+
+  let itemsChanged = 0;
+  const nextItems = items.map((raw) => {
+    const item = normalizeNewsItem(raw);
+    if (normalizeNewsCategory(item.category || "", "") !== oldSlug) return item;
+    itemsChanged += 1;
+    return normalizeNewsItem({ ...item, category: newSlug, updatedAt: new Date().toISOString() });
+  });
+
+  let sourcesChanged = 0;
+  const nextSources = sources.map((raw) => {
+    const source = normalizeNewsSource(raw);
+    if (normalizeNewsCategory(source.category || "", "") !== oldSlug) return source;
+    sourcesChanged += 1;
+    return normalizeNewsSource({ ...source, category: newSlug, updatedAt: new Date().toISOString() });
+  });
+
+  if (itemsChanged > 0) {
+    await writeCollection("newsItems", sortNewsItemsForAdmin(nextItems));
+  }
+  if (sourcesChanged > 0) {
+    await writeCollection("newsSources", nextSources);
+  }
+
+  return { itemsChanged, sourcesChanged };
+}
+
+function buildNewsFallbackContent({
+  title = "",
+  summary = "",
+  sourceName = "",
+  sourceUrl = "",
+  sourceCategory = "",
+  sourcePublishedAt = "",
+} = {}) {
+  const lead = cleanNewsText(summary || title || "News update", 500) || "News update";
+  const sourceLabel = cleanNewsText(sourceName || "the source", 120) || "the source";
+  const categoryLabel = cleanNewsText(sourceCategory || "clinical-news", 80) || "clinical-news";
+  const publishedLabel = cleanNewsText(sourcePublishedAt || "", 80);
+  const storyBody = [
+    lead,
+    `According to ${sourceLabel}, the update is being tracked under the ${categoryLabel} category for editorial review and publishing.`,
+    `The item remains grounded in the source material and is being prepared as a fuller newsroom-style brief so the preview has enough detail for admin review.`,
+    `Reviewers should confirm the final wording, check the source link${sourceUrl ? ` (${sourceUrl})` : ""}, and make sure the article is published only after the editorial pass is complete.`,
+    publishedLabel
+      ? `Original source timing: ${publishedLabel}.`
+      : "The original source timing was not supplied, so the story should be reviewed against the live source page before publishing.",
+  ];
+  return storyBody.map((part) => cleanNewsText(part, 1600)).filter(Boolean).join("\n\n");
+}
+
+function normalizeNewsRichContent(value = "", limit = 12000) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const rawLimit = Math.max(0, Math.round(Number(limit) || 0) || 0);
+  const clipped = rawLimit > 0 && raw.length > rawLimit * 2 ? raw.slice(0, rawLimit * 2) : raw;
+  if (!/<[a-z][\s\S]*>/i.test(clipped)) {
+    const text = normalizeWhitespace(decodeHtmlEntities(clipped));
+    if (!text) return "";
+    return text
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeNewsHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+      .join("")
+      .slice(0, rawLimit || clipped.length);
+  }
+
+  let html = clipped
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<\/?(?:iframe|object|embed|form|input|button|textarea|select|option|noscript|svg|math)[^>]*>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(href|src)\s*=\s*("|')?\s*javascript:[^"'\s>]*\2?/gi, "");
+
+  if (rawLimit > 0 && html.length > rawLimit * 2) {
+    html = html.slice(0, rawLimit * 2);
+  }
+  return html.trim();
+}
+
+function resolveNewsCategoryChoice({
+  categoryCatalog = [],
+  sourceCategory = "",
+  aiCategory = "",
+  fallback = "clinical-news",
+} = {}) {
+  const normalizedCatalog = Array.isArray(categoryCatalog)
+    ? categoryCatalog.map((entry) => normalizeNewsCategoryEntry(entry))
+    : [];
+  const catalogBySlug = new Map(normalizedCatalog.map((entry) => [entry.slug, entry]));
+  const choices = [
+    aiCategory,
+    sourceCategory,
+    fallback,
+    "clinical-news",
+  ]
+    .map((entry) => normalizeNewsCategory(entry || "", ""))
+    .filter(Boolean);
+
+  for (const choice of choices) {
+    if (catalogBySlug.has(choice)) {
+      return choice;
+    }
+  }
+
+  return catalogBySlug.has("clinical-news") ? "clinical-news" : normalizedCatalog[0]?.slug || "clinical-news";
+}
+
+function getNewsDraftProviderConfig() {
+  const premium = resolveAiProviderConfig("premium");
+  if (premium?.apiKey) return premium;
+  const free = resolveAiProviderConfig("free");
+  if (free?.apiKey) return free;
+  return null;
+}
+
+function normalizeNewsDraftValue(value = "", limit = 12000) {
+  return cleanNewsText(value || "", limit);
+}
+
+function escapeNewsHtml(value = "") {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeNewsStatus(rawStatus = "") {
+  const text = normalizeWhitespace(rawStatus).toLowerCase().replace(/\s+/g, "_");
+  if (!text) return "pending_review";
+  if (text === "draft" || text === "queued" || text === "pending") return "pending_review";
+  if (text === "approved" || text === "reviewed") return "approved";
+  if (text === "published" || text === "live") return "published";
+  if (text === "rejected" || text === "rejected_by_admin") return "rejected";
+  if (text === "archived" || text === "hidden") return "archived";
+  return NEWS_ITEM_STATUS_ORDER.has(text) ? text : "pending_review";
+}
+
+function normalizeNewsSourceType(rawType = "", fallback = "structured") {
+  const text = normalizeWhitespace(rawType).toLowerCase();
+  if (text === "rss" || text === "atom") return "rss";
+  if (text === "html" || text === "structured" || text === "page" || text === "web") return "structured";
+  if (!text && fallback) return fallback;
+  return "structured";
+}
+
+function normalizeNewsImportance(rawImportance = "", fallback = "medium") {
+  const text = normalizeWhitespace(rawImportance).toLowerCase();
+  if (text === "high" || text === "urgent" || text === "critical") return "high";
+  if (text === "low" || text === "minor") return "low";
+  if (text === "medium" || text === "normal") return "medium";
+  return fallback || "medium";
+}
+
+function decodeHtmlEntities(value = "") {
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code) || 32))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(Number.parseInt(code, 16) || 32));
+}
+
+function stripHtmlTags(value = "") {
+  return String(value || "")
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/p\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+}
+
+function cleanNewsText(value = "", limit = 280) {
+  const maxLength = Math.max(0, Math.round(Number(limit) || 0) || 0);
+  const text = normalizeWhitespace(decodeHtmlEntities(stripHtmlTags(value)));
+  return maxLength > 0 ? text.slice(0, maxLength) : text;
+}
+
+function normalizeNewsUrl(value = "", fallbackBase = "") {
+  const text = normalizeWhitespace(value);
+  if (!text) return "";
+  try {
+    return new URL(text, fallbackBase || undefined).toString();
+  } catch {
+    return text;
+  }
+}
+
+function slugifyNewsText(value = "") {
+  return normalizeWhitespace(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+function buildNewsItemKey(item = {}) {
+  const canonicalUrl = normalizeNewsUrl(item.canonicalUrl || item.sourceUrl || item.url || "");
+  if (canonicalUrl) return canonicalUrl.toLowerCase();
+  const sourceId = normalizeWhitespace(item.sourceId || "").toLowerCase();
+  const title = slugifyNewsText(item.title || item.headline || item.summary || "");
+  return `${sourceId || "news"}:${title || "item"}`;
+}
+
+function normalizeNewsSource(raw = {}) {
+  const createdAt = String(raw.createdAt || new Date().toISOString());
+  const updatedAt = String(raw.updatedAt || createdAt);
+  const url = normalizeNewsUrl(raw.url || raw.feedUrl || raw.sourceUrl || "");
+  const sourceType = normalizeNewsSourceType(raw.extractMode || raw.sourceType || raw.type || "", url.endsWith(".xml") ? "rss" : "structured");
+  return {
+    id: String(raw.id || raw.slug || crypto.randomUUID()).trim(),
+    name: cleanNewsText(raw.name || raw.title || "News Source", 120) || "News Source",
+    url,
+    category: normalizeNewsCategory(raw.category || "", "clinical-news"),
+    extractMode: sourceType,
+    priority: Math.max(0, Math.min(100, Math.round(Number(raw.priority) || 50))),
+    enabled: raw.enabled !== false,
+    reviewRequired: raw.reviewRequired !== false,
+    description: cleanNewsText(raw.description || "", 220),
+    lastCollectedAt: String(raw.lastCollectedAt || "").trim(),
+    lastStatus: String(raw.lastStatus || "").trim(),
+    lastError: cleanNewsText(raw.lastError || "", 240),
+    createdAt,
+    updatedAt,
+  };
+}
+
+function normalizeNewsItem(raw = {}) {
+  const createdAt = String(raw.createdAt || raw.collectedAt || new Date().toISOString());
+  const updatedAt = String(raw.updatedAt || createdAt);
+  const sourceCategory = normalizeNewsCategory(raw.sourceCategory || raw.category || "", "clinical-news");
+  const title = cleanNewsText(raw.title || raw.headline || raw.name || "", 180);
+  const summary = cleanNewsText(raw.summary || raw.excerpt || raw.description || "", 420);
+  const content = normalizeNewsRichContent(raw.content || raw.body || raw.articleBody || "", 12000);
+  const canonicalUrl = normalizeNewsUrl(raw.canonicalUrl || raw.sourceUrl || raw.url || raw.link || "");
+  const sourceUrl = normalizeNewsUrl(raw.sourceUrl || raw.url || raw.link || canonicalUrl);
+  const sourceId = String(raw.sourceId || raw.sourceSlug || "").trim();
+  const isManualSource = sourceId.toLowerCase().startsWith("manual-");
+  const status = normalizeNewsStatus(raw.status || "");
+  const tags = Array.isArray(raw.tags)
+    ? [...new Set(raw.tags.map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+    : [];
+  const publishedAt = String(raw.publishedAt || raw.sourcePublishedAt || createdAt).trim();
+  const collectedAt = String(raw.collectedAt || createdAt).trim();
+  const reviewedAt = String(raw.reviewedAt || "").trim();
+  const approvedAt = String(raw.approvedAt || "").trim();
+  const publishedById = String(raw.publishedById || "").trim();
+  const publishedByName = cleanNewsText(raw.publishedByName || "", 80);
+  const reviewedById = String(raw.reviewedById || "").trim();
+  const reviewedByName = cleanNewsText(raw.reviewedByName || "", 80);
+  const reviewNote = cleanNewsText(raw.reviewNote || "", 240);
+  const allowComments = raw.allowComments === true || raw.comments === true || String(raw.allowComments || raw.comments || "").trim().toLowerCase() === "true";
+  const aiGenerated = raw.aiGenerated === true || String(raw.aiGenerated || "").trim().toLowerCase() === "true";
+  const aiProvider = cleanNewsText(raw.aiProvider || "", 40);
+  const aiModel = cleanNewsText(raw.aiModel || "", 80);
+  const aiGeneratedAt = String(raw.aiGeneratedAt || "").trim();
+  const aiCategory = normalizeNewsCategory(raw.aiCategory || "", "");
+  const views = Math.max(0, Math.round(Number(raw.views ?? raw.viewCount ?? raw.readCount ?? raw.metrics?.views) || 0));
+  const likes = Math.max(0, Math.round(Number(raw.likes ?? raw.likesCount ?? raw.likeCount ?? raw.metrics?.likes) || 0));
+  return {
+    id: String(raw.id || crypto.randomUUID()).trim(),
+    sourceId,
+    sourceName: isManualSource ? "Manual feed" : cleanNewsText(raw.sourceName || "", 120) || "News Source",
+    sourceType: isManualSource ? "manual" : normalizeNewsSourceType(raw.sourceType || raw.extractMode || "", "structured"),
+    sourceUrl,
+    canonicalUrl,
+    title: title || "Untitled update",
+    summary,
+    content,
+    category: sourceCategory,
+    importance: normalizeNewsImportance(raw.importance || "", raw.priority >= 85 ? "high" : "medium"),
+    status,
+    featured: raw.featured === true || String(raw.featured || "").trim().toLowerCase() === "true",
+    reviewRequired: raw.reviewRequired !== false,
+    allowComments,
+    commentsEnabled: allowComments,
+    comments: allowComments,
+    reviewNote,
+    sourcePublishedAt: String(raw.sourcePublishedAt || "").trim(),
+    sourcePublishedLabel: cleanNewsText(raw.sourcePublishedLabel || "", 80),
+    publishedAt,
+    collectedAt,
+    reviewedAt,
+    reviewedById,
+    reviewedByName,
+    approvedAt,
+    publishedById,
+    publishedByName,
+    sourceRank: Math.max(0, Math.round(Number(raw.sourceRank) || 0)),
+    sourceCategory,
+    aiGenerated,
+    aiProvider,
+    aiModel,
+    aiGeneratedAt,
+    aiCategory,
+    imageUrl: normalizeNewsUrl(raw.imageUrl || raw.image || ""),
+    imageAlt: cleanNewsText(raw.imageAlt || "", 120),
+    author: cleanNewsText(raw.author || "", 120),
+    tags,
+    views,
+    viewCount: views,
+    readCount: views,
+    likes,
+    likesCount: likes,
+    likeCount: likes,
+    metrics: {
+      views,
+      likes,
+    },
+    createdAt,
+    updatedAt,
+  };
+}
+
+function normalizeNewsCollectRun(raw = {}) {
+  const createdAt = String(raw.createdAt || new Date().toISOString());
+  const updatedAt = String(raw.updatedAt || createdAt);
+  return {
+    id: String(raw.id || crypto.randomUUID()).trim(),
+    startedAt: String(raw.startedAt || createdAt).trim(),
+    finishedAt: String(raw.finishedAt || "").trim(),
+    triggeredBy: cleanNewsText(raw.triggeredBy || "", 80) || "system",
+    sourceCount: Math.max(0, Math.round(Number(raw.sourceCount) || 0)),
+    addedCount: Math.max(0, Math.round(Number(raw.addedCount) || 0)),
+    updatedCount: Math.max(0, Math.round(Number(raw.updatedCount) || 0)),
+    skippedCount: Math.max(0, Math.round(Number(raw.skippedCount) || 0)),
+    errorCount: Math.max(0, Math.round(Number(raw.errorCount) || 0)),
+    status: normalizeWhitespace(raw.status || "success").toLowerCase() || "success",
+    errors: Array.isArray(raw.errors)
+      ? raw.errors.map((entry) => cleanNewsText(entry, 240)).filter(Boolean).slice(0, 12)
+      : [],
+    createdAt,
+    updatedAt,
+  };
+}
+
+function extractXmlTagValue(block = "", tagName = "") {
+  const safeTag = String(tagName || "").trim();
+  if (!safeTag) return "";
+  const pattern = new RegExp(`<${safeTag}\\b[^>]*>([\\s\\S]*?)<\\/${safeTag}>`, "i");
+  const match = String(block || "").match(pattern);
+  return match ? String(match[1] || "").trim() : "";
+}
+
+function extractXmlTagAttribute(block = "", tagName = "", attributeName = "") {
+  const safeTag = String(tagName || "").trim();
+  const safeAttribute = String(attributeName || "").trim();
+  if (!safeTag || !safeAttribute) return "";
+  const pattern = new RegExp(`<${safeTag}\\b([^>]*)>`, "i");
+  const match = String(block || "").match(pattern);
+  if (!match) return "";
+  const attributes = String(match[1] || "");
+  const attrMatch = attributes.match(new RegExp(`${safeAttribute}\\s*=\\s*["']([^"']+)["']`, "i"));
+  return attrMatch ? String(attrMatch[1] || "").trim() : "";
+}
+
+function extractStructuredNewsCandidatesFromJson(value, source, results, seenKeys, depth = 0) {
+  if (!value || depth > 7) return;
+  if (Array.isArray(value)) {
+    value.forEach((entry) => extractStructuredNewsCandidatesFromJson(entry, source, results, seenKeys, depth + 1));
+    return;
+  }
+  if (typeof value !== "object") return;
+
+  const types = []
+    .concat(value["@type"] || [])
+    .flat()
+    .map((entry) => String(entry || "").toLowerCase())
+    .filter(Boolean);
+  const candidateUrl = normalizeNewsUrl(
+    value.url || value.link || value.mainEntityOfPage?.["@id"] || value.mainEntityOfPage?.url || "",
+    source.url,
+  );
+  const candidateTitle = cleanNewsText(value.headline || value.name || value.title || "", 180);
+  const candidateSummary = cleanNewsText(value.description || value.abstract || value.text || value.articleBody || "", 420);
+  const candidatePublishedAt = String(value.datePublished || value.dateCreated || value.dateModified || "").trim();
+
+  if (types.some((type) => type.includes("itemlist")) && Array.isArray(value.itemListElement)) {
+    value.itemListElement.forEach((entry) => {
+      const item = entry?.item && typeof entry.item === "object" ? entry.item : entry;
+      extractStructuredNewsCandidatesFromJson(item, source, results, seenKeys, depth + 1);
+    });
+  }
+
+  if (candidateTitle && candidateUrl) {
+    const key = `${candidateUrl.toLowerCase()}|${candidateTitle.toLowerCase()}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      results.push({
+        title: candidateTitle,
+        summary: candidateSummary,
+        canonicalUrl: candidateUrl,
+        sourcePublishedAt: candidatePublishedAt,
+      });
+    }
+  }
+
+  if (value["@graph"]) {
+    extractStructuredNewsCandidatesFromJson(value["@graph"], source, results, seenKeys, depth + 1);
+  }
+  if (value.mainEntity) {
+    extractStructuredNewsCandidatesFromJson(value.mainEntity, source, results, seenKeys, depth + 1);
+  }
+  if (value.itemListElement && !Array.isArray(value.itemListElement)) {
+    extractStructuredNewsCandidatesFromJson(value.itemListElement, source, results, seenKeys, depth + 1);
+  }
+
+  Object.values(value).forEach((entry) => {
+    if (!entry || typeof entry !== "object") return;
+    extractStructuredNewsCandidatesFromJson(entry, source, results, seenKeys, depth + 1);
+  });
+}
+
+function extractStructuredNewsCandidates(html = "", source = {}) {
+  const text = String(html || "");
+  const results = [];
+  const seenKeys = new Set();
+  const scriptRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match = null;
+  while ((match = scriptRegex.exec(text))) {
+    const raw = decodeHtmlEntities(String(match[1] || "").trim());
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      extractStructuredNewsCandidatesFromJson(parsed, source, results, seenKeys);
+    } catch {
+      // Ignore malformed structured data and fall back to other extraction modes.
+    }
+  }
+
+  const nextDataMatch = text.match(/<script\b[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (nextDataMatch) {
+    try {
+      const parsed = JSON.parse(String(nextDataMatch[1] || "").trim());
+      extractStructuredNewsCandidatesFromJson(parsed, source, results, seenKeys);
+    } catch {
+      // Ignore malformed Next.js data.
+    }
+  }
+
+  return results;
+}
+
+function extractAnchoredNewsCandidates(html = "", source = {}) {
+  const text = String(html || "");
+  const results = [];
+  const seen = new Set();
+  const anchorRegex = /<a\b([^>]*)href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match = null;
+  while ((match = anchorRegex.exec(text))) {
+    const href = String(match[2] || "").trim();
+    const title = cleanNewsText(match[3] || "", 180);
+    if (!href || !title) continue;
+    if (title.length < 20 || title.length > 180) continue;
+    if (/^(read more|learn more|view all|home|menu|search|skip to|download|submit|sign in)$/i.test(title)) continue;
+    const absoluteUrl = normalizeNewsUrl(href, source.url);
+    if (!absoluteUrl) continue;
+    const key = `${absoluteUrl.toLowerCase()}|${title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const after = text.slice(match.index + match[0].length, match.index + match[0].length + 360);
+    const summaryMatch = after.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i);
+    const summary = cleanNewsText(summaryMatch?.[1] || "", 280);
+    results.push({
+      title,
+      summary,
+      canonicalUrl: absoluteUrl,
+      sourcePublishedAt: "",
+    });
+    if (results.length >= 20) break;
+  }
+  return results;
+}
+
+function extractRssNewsCandidates(xml = "", source = {}) {
+  const text = String(xml || "");
+  const blocks = [
+    ...text.matchAll(/<item\b[\s\S]*?<\/item>/gi),
+    ...text.matchAll(/<entry\b[\s\S]*?<\/entry>/gi),
+  ].map((match) => String(match[0] || ""));
+  const results = [];
+  const seen = new Set();
+  for (const block of blocks) {
+    const title = cleanNewsText(extractXmlTagValue(block, "title"), 180);
+    const link =
+      cleanNewsText(extractXmlTagValue(block, "link"), 240) ||
+      cleanNewsText(extractXmlTagAttribute(block, "link", "href"), 240) ||
+      cleanNewsText(extractXmlTagValue(block, "guid"), 240);
+    if (!title || !link) continue;
+    const canonicalUrl = normalizeNewsUrl(link, source.url);
+    if (!canonicalUrl) continue;
+    const key = `${canonicalUrl.toLowerCase()}|${title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const summary = cleanNewsText(
+      extractXmlTagValue(block, "description") ||
+        extractXmlTagValue(block, "summary") ||
+        extractXmlTagValue(block, "content:encoded"),
+      420,
+    );
+    const sourcePublishedAt = cleanNewsText(
+      extractXmlTagValue(block, "pubDate") ||
+        extractXmlTagValue(block, "published") ||
+        extractXmlTagValue(block, "updated"),
+      80,
+    );
+    results.push({
+      title,
+      summary,
+      canonicalUrl,
+      sourcePublishedAt,
+    });
+    if (results.length >= 20) break;
+  }
+  return results;
+}
+
+function deriveNewsCandidatesFromText(source, candidates = []) {
+  const results = [];
+  const seen = new Set();
+  candidates.forEach((candidate) => {
+    const title = cleanNewsText(candidate?.title || "", 180);
+    const summary = cleanNewsText(candidate?.summary || "", 420);
+    const canonicalUrl = normalizeNewsUrl(candidate?.canonicalUrl || "", source.url);
+    if (!title || !canonicalUrl) return;
+    const key = `${canonicalUrl.toLowerCase()}|${title.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({
+      title,
+      summary,
+      canonicalUrl,
+      sourcePublishedAt: cleanNewsText(candidate?.sourcePublishedAt || "", 80),
+    });
+  });
+  return results;
+}
+
+async function buildNewsItemForSource(
+  source = {},
+  candidate = {},
+  index = 0,
+  collectedAt = new Date().toISOString(),
+  categoryCatalog = [],
+) {
+  const sourceCategory = normalizeNewsCategory(source.category || "", "clinical-news");
+  const title = cleanNewsText(candidate.title || "", 180);
+  const summary = cleanNewsText(candidate.summary || "", 420) || title;
+  const canonicalUrl = normalizeNewsUrl(candidate.canonicalUrl || "", source.url);
+  const sourcePublishedAt = String(candidate.sourcePublishedAt || "").trim();
+  const aiProviderConfig = getNewsDraftProviderConfig();
+  let draft = null;
+
+  if (config.aiEnabled && aiProviderConfig?.apiKey) {
+    try {
+      const result = await generateNewsDraft({
+        provider: aiProviderConfig.provider,
+        apiKey: aiProviderConfig.apiKey,
+        model: aiProviderConfig.model,
+        maxOutputTokens: config.aiPremiumMaxOutputTokens || config.aiFreeMaxOutputTokens || 1200,
+        timeoutMs: config.aiRequestTimeoutMs,
+        source: {
+          id: source.id,
+          name: source.name,
+          url: source.url,
+          category: sourceCategory,
+          priority: source.priority,
+        },
+        candidate: {
+          title,
+          summary,
+          canonicalUrl,
+          sourcePublishedAt,
+        },
+        categories: categoryCatalog,
+      });
+      draft = result?.draft && typeof result.draft === "object" ? result.draft : null;
+    } catch (error) {
+      console.warn("News draft enrichment failed", error?.message || error);
+    }
+  }
+
+  const aiCategory = normalizeNewsCategory(draft?.category || draft?.categorySlug || "", "");
+  const category = resolveNewsCategoryChoice({
+    categoryCatalog,
+    sourceCategory,
+    aiCategory,
+    fallback: sourceCategory || "clinical-news",
+  });
+  const richSummary = normalizeNewsDraftValue(draft?.summary || summary || title, 600) || title;
+  const richContent = normalizeNewsRichContent(
+    draft?.content || buildNewsFallbackContent({
+      title,
+      summary: richSummary,
+      sourceName: source.name,
+      sourceUrl: source.url,
+      sourceCategory: category,
+      sourcePublishedAt,
+    }),
+    12000,
+  ) || richSummary;
+  const keyPoints = Array.isArray(draft?.keyPoints)
+    ? draft.keyPoints.map((point) => cleanNewsText(point, 160)).filter(Boolean).slice(0, 5)
+    : [];
+  const tags = [
+    sourceCategory,
+    category,
+    aiCategory,
+    source.name,
+    ...keyPoints.slice(0, 3),
+  ]
+    .map((tag) => cleanNewsText(tag, 48))
+    .filter(Boolean);
+
+  return normalizeNewsItem({
+    id: crypto.randomUUID(),
+    sourceId: source.id,
+    sourceName: source.name,
+    sourceType: source.extractMode,
+    sourceUrl: source.url,
+    sourceCategory,
+    canonicalUrl,
+    title: cleanNewsText(draft?.headline || title || candidate.title || "", 180) || title,
+    summary: richSummary,
+    content: richContent,
+    category,
+    aiGenerated: Boolean(draft),
+    aiProvider: draft ? aiProviderConfig.provider : "",
+    aiModel: draft ? aiProviderConfig.model : "",
+    aiGeneratedAt: draft ? collectedAt : "",
+    aiCategory: aiCategory || category,
+    importance: source.priority >= 90 ? "high" : source.priority >= 70 ? "medium" : "low",
+    status: "pending_review",
+    reviewRequired: source.reviewRequired !== false,
+    allowComments: true,
+    sourcePublishedAt,
+    sourcePublishedLabel: sourcePublishedAt,
+    sourceRank: Math.max(0, Math.round(Number(source.priority) || 0)) * 100 - index,
+    tags,
+    collectedAt,
+    updatedAt: collectedAt,
+  });
+}
+
+function mergeNewsItems(existing = [], incoming = []) {
+  const merged = Array.isArray(existing) ? existing.map((item) => normalizeNewsItem(item)) : [];
+  const indexByKey = new Map();
+  merged.forEach((item, index) => {
+    indexByKey.set(buildNewsItemKey(item), index);
+  });
+
+  let addedCount = 0;
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  incoming.forEach((candidate) => {
+    const item = normalizeNewsItem(candidate);
+    const key = buildNewsItemKey(item);
+    const existingIndex = indexByKey.get(key);
+    if (existingIndex === undefined) {
+      merged.push(item);
+      indexByKey.set(key, merged.length - 1);
+      addedCount += 1;
+      return;
+    }
+
+    const previous = merged[existingIndex];
+    const next = {
+      ...previous,
+      sourceId: item.sourceId || previous.sourceId,
+      sourceName: item.sourceName || previous.sourceName,
+      sourceType: item.sourceType || previous.sourceType,
+      sourceUrl: item.sourceUrl || previous.sourceUrl,
+      canonicalUrl: item.canonicalUrl || previous.canonicalUrl,
+      title: item.title || previous.title,
+      summary: item.summary || previous.summary,
+      content: item.content || previous.content,
+      category: item.category || previous.category,
+      importance: item.importance || previous.importance,
+      sourcePublishedAt: item.sourcePublishedAt || previous.sourcePublishedAt,
+      sourcePublishedLabel: item.sourcePublishedLabel || previous.sourcePublishedLabel,
+      sourceRank: Math.max(previous.sourceRank || 0, item.sourceRank || 0),
+      imageUrl: item.imageUrl || previous.imageUrl,
+      imageAlt: item.imageAlt || previous.imageAlt,
+      author: item.author || previous.author,
+      tags: [...new Set([...(Array.isArray(previous.tags) ? previous.tags : []), ...(Array.isArray(item.tags) ? item.tags : [])])].filter(Boolean),
+      reviewRequired: previous.reviewRequired !== false && item.reviewRequired !== false,
+      updatedAt: item.updatedAt || previous.updatedAt,
+      collectedAt: item.collectedAt || previous.collectedAt,
+    };
+    if (previous.status === "published" || previous.status === "approved" || previous.status === "rejected" || previous.status === "archived") {
+      next.status = previous.status;
+      next.reviewNote = previous.reviewNote || item.reviewNote || "";
+      next.reviewedAt = previous.reviewedAt || item.reviewedAt || "";
+      next.reviewedById = previous.reviewedById || item.reviewedById || "";
+      next.reviewedByName = previous.reviewedByName || item.reviewedByName || "";
+      next.publishedAt = previous.publishedAt || item.publishedAt || "";
+      next.publishedById = previous.publishedById || item.publishedById || "";
+      next.publishedByName = previous.publishedByName || item.publishedByName || "";
+      next.approvedAt = previous.approvedAt || item.approvedAt || "";
+    }
+    merged[existingIndex] = normalizeNewsItem(next);
+    updatedCount += 1;
+  });
+
+  return { items: merged, addedCount, updatedCount, skippedCount };
+}
+
+function sortNewsItemsForPublic(items = []) {
+  return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+    const aTime = String(a?.publishedAt || a?.updatedAt || a?.collectedAt || a?.createdAt || "");
+    const bTime = String(b?.publishedAt || b?.updatedAt || b?.collectedAt || b?.createdAt || "");
+    return bTime.localeCompare(aTime) || Number(b?.sourceRank || 0) - Number(a?.sourceRank || 0);
+  });
+}
+
+function sortNewsItemsForAdmin(items = []) {
+  return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+    const aStatus = NEWS_ITEM_STATUS_ORDER.get(normalizeNewsStatus(a?.status || "")) ?? 99;
+    const bStatus = NEWS_ITEM_STATUS_ORDER.get(normalizeNewsStatus(b?.status || "")) ?? 99;
+    if (aStatus !== bStatus) return aStatus - bStatus;
+    const aTime = String(a?.updatedAt || a?.createdAt || a?.collectedAt || "");
+    const bTime = String(b?.updatedAt || b?.createdAt || b?.collectedAt || "");
+    return bTime.localeCompare(aTime) || Number(b?.sourceRank || 0) - Number(a?.sourceRank || 0);
+  });
+}
+
+function getNewsPopularityScore(item = {}) {
+  const views = Math.max(
+    0,
+    Math.round(Number(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views) || 0),
+  );
+  const likes = Math.max(
+    0,
+    Math.round(Number(item.likes ?? item.likesCount ?? item.likeCount ?? item.metrics?.likes) || 0),
+  );
+  const featuredBoost = item.featured ? 2500 : 0;
+  const importanceBoost = normalizeNewsImportance(item.importance || "", "medium") === "high" ? 1200 : 0;
+  const sourceBoost = Math.max(0, Math.round(Number(item.sourceRank || 0)));
+  const timeBoost = Number(new Date(String(item.publishedAt || item.updatedAt || item.createdAt || "")).getTime()) || 0;
+  return views * 10 + likes * 120 + featuredBoost + importanceBoost + sourceBoost + timeBoost / 1e10;
+}
+
+function pickDistinctNewsItems(candidates = [], count = 0, usedIds = new Set()) {
+  const safeCount = Math.max(0, Math.round(Number(count) || 0));
+  const chosen = [];
+  const seen = new Set();
+  const pick = (item) => {
+    if (!item) return false;
+    const id = String(item.id || "").trim();
+    if (!id || seen.has(id) || usedIds.has(id)) return false;
+    seen.add(id);
+    usedIds.add(id);
+    chosen.push(item);
+    return true;
+  };
+
+  for (const item of Array.isArray(candidates) ? candidates : []) {
+    if (chosen.length >= safeCount) break;
+    pick(item);
+  }
+
+  if (chosen.length < safeCount) {
+    for (const item of Array.isArray(candidates) ? candidates : []) {
+      if (chosen.length >= safeCount) break;
+      const id = String(item?.id || "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      chosen.push(item);
+    }
+  }
+
+  return chosen.slice(0, safeCount);
+}
+
+function buildNewsFeedSections(items = []) {
+  const published = sortNewsItemsForPublic((Array.isArray(items) ? items : []).filter((item) => item.status === "published"));
+  const byPopularity = [...published].sort((a, b) => {
+    const scoreDiff = getNewsPopularityScore(b) - getNewsPopularityScore(a);
+    if (Math.abs(scoreDiff) > 0.0001) return scoreDiff;
+    const aTime = String(a?.publishedAt || a?.updatedAt || a?.collectedAt || a?.createdAt || "");
+    const bTime = String(b?.publishedAt || b?.updatedAt || b?.collectedAt || b?.createdAt || "");
+    return bTime.localeCompare(aTime);
+  });
+
+  const heroCandidates = [
+    ...published.filter((item) => item.featured),
+    ...byPopularity,
+    ...published,
+  ];
+  const popularCandidates = [...byPopularity];
+  const latestCandidates = [...published];
+  const medicineCandidates = [
+    ...published.filter((item) => ["medicine", "clinical-news"].includes(normalizeNewsCategory(item.category || "", ""))),
+    ...published.filter((item) => !["medicine", "clinical-news"].includes(normalizeNewsCategory(item.category || "", ""))),
+  ];
+  const trendingCandidates = [
+    ...published.filter((item) => normalizeNewsCategory(item.category || "", "") === "trending"),
+    ...published.filter((item) => item.featured || normalizeNewsImportance(item.importance || "", "medium") === "high"),
+    ...byPopularity,
+  ];
+  const usedIds = new Set();
+
+  return {
+    hero: pickDistinctNewsItems(heroCandidates, 3, usedIds),
+    popularStories: pickDistinctNewsItems(popularCandidates, 3, usedIds),
+    latest: pickDistinctNewsItems(latestCandidates, 4, usedIds),
+    medicine: pickDistinctNewsItems(medicineCandidates, 6, usedIds),
+    trendingNow: pickDistinctNewsItems(trendingCandidates, 5, usedIds),
+  };
+}
+
+async function seedDefaultNewsSources() {
+  const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+  if (sources.length > 0) return sources;
+  const seededSources = NEWS_DEFAULT_SOURCES.map((source) => normalizeNewsSource({
+    ...source,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
+  await writeCollection("newsSources", seededSources);
+  return seededSources;
+}
+
+async function collectNewsFromSource(
+  source = {},
+  { collectedAt = new Date().toISOString(), categoryCatalog = [] } = {},
+) {
+  const safeSource = normalizeNewsSource(source);
+  if (!safeSource.enabled || !safeSource.url) {
+    return { items: [], error: null };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(safeSource.url, {
+      signal: controller.signal,
+      headers: {
+        accept: "application/rss+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.1",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const body = await response.text();
+    const extractMode = normalizeNewsSourceType(safeSource.extractMode, "structured");
+    let candidates = [];
+    if (extractMode === "rss" || /xml|rss/i.test(contentType) || /\.xml(\?|$)/i.test(safeSource.url)) {
+      candidates = extractRssNewsCandidates(body, safeSource);
+    } else {
+      const structured = extractStructuredNewsCandidates(body, safeSource);
+      candidates = structured.length > 0 ? structured : extractAnchoredNewsCandidates(body, safeSource);
+    }
+
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      const structuredFallback = extractStructuredNewsCandidates(body, safeSource);
+      candidates = structuredFallback.length > 0 ? structuredFallback : extractAnchoredNewsCandidates(body, safeSource);
+    }
+
+    const drafts = await Promise.all(
+      deriveNewsCandidatesFromText(safeSource, candidates)
+        .slice(0, 8)
+        .map((candidate, index) =>
+          buildNewsItemForSource(safeSource, candidate, index, collectedAt, categoryCatalog),
+        ),
+    );
+    return {
+      items: drafts,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      items: [],
+      error: String(error?.message || error || "Failed to collect source"),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+let newsCollectionLock = null;
+
+async function collectAndStoreNews({ sourceId = "", triggeredBy = "system" } = {}) {
+  if (newsCollectionLock) return newsCollectionLock;
+
+  newsCollectionLock = (async () => {
+    const runStartedAt = new Date().toISOString();
+    const runDayKey = runStartedAt.slice(0, 10);
+    const categoryCatalog = await seedDefaultNewsCategories();
+    const sources = await seedDefaultNewsSources();
+    const selectedSources = sources
+      .filter((source) => source.enabled !== false && (!String(sourceId || "").trim() || source.id === String(sourceId || "").trim()))
+      .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0) || String(a.name || "").localeCompare(String(b.name || "")));
+    const currentItems = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const runErrors = [];
+    let incomingItems = [];
+
+    for (const source of selectedSources) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await collectNewsFromSource(source, { collectedAt: runStartedAt, categoryCatalog });
+      if (result.error) {
+        runErrors.push(`${source.name}: ${result.error}`);
+      }
+      incomingItems = incomingItems.concat(result.items || []);
+    }
+
+    const currentKeys = new Set(currentItems.map((item) => buildNewsItemKey(item)));
+    const currentAutoCount = currentItems.filter((item) => {
+      const collectedDay = String(item.collectedAt || item.createdAt || item.updatedAt || "").slice(0, 10);
+      return item.sourceType !== "manual" && collectedDay === runDayKey;
+    }).length;
+    let remainingDailySlots = Math.max(0, 5 - currentAutoCount);
+    const selectedIncoming = [];
+    const seenIncomingKeys = new Set();
+    const rankedIncoming = [...incomingItems].sort((a, b) => {
+      const rankDiff = Number(b?.sourceRank || 0) - Number(a?.sourceRank || 0);
+      if (Math.abs(rankDiff) > 0.0001) return rankDiff;
+      const aTime = String(a?.sourcePublishedAt || a?.publishedAt || a?.collectedAt || a?.updatedAt || "");
+      const bTime = String(b?.sourcePublishedAt || b?.publishedAt || b?.collectedAt || b?.updatedAt || "");
+      return bTime.localeCompare(aTime) || String(b?.title || "").localeCompare(String(a?.title || ""));
+    });
+
+    for (const item of rankedIncoming) {
+      const key = buildNewsItemKey(item);
+      if (!key || seenIncomingKeys.has(key)) continue;
+      seenIncomingKeys.add(key);
+      if (currentKeys.has(key)) {
+        selectedIncoming.push(item);
+        continue;
+      }
+      if (remainingDailySlots <= 0) continue;
+      selectedIncoming.push(item);
+      remainingDailySlots -= 1;
+    }
+
+    const { items: mergedItems, addedCount, updatedCount, skippedCount } = mergeNewsItems(currentItems, selectedIncoming);
+    const nextSources = sources.map((source) =>
+      normalizeNewsSource({
+        ...source,
+        lastCollectedAt: runStartedAt,
+        lastStatus: runErrors.length > 0 ? "partial" : "success",
+        lastError: runErrors[0] || "",
+        updatedAt: runStartedAt,
+      }),
+    );
+    const run = normalizeNewsCollectRun({
+      startedAt: runStartedAt,
+      finishedAt: new Date().toISOString(),
+      triggeredBy,
+      sourceCount: selectedSources.length,
+      addedCount,
+      updatedCount,
+      skippedCount: skippedCount + Math.max(0, incomingItems.length - selectedIncoming.length),
+      errorCount: runErrors.length,
+      status: runErrors.length > 0 ? (addedCount > 0 || updatedCount > 0 ? "partial" : "failed") : "success",
+      errors: runErrors,
+    });
+
+    await writeCollection("newsSources", nextSources);
+    await writeCollection("newsItems", mergedItems);
+    const priorRuns = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
+    await writeCollection("newsCollectRuns", [run, ...priorRuns].slice(0, 100));
+
+    return run;
+  })();
+
+  try {
+    return await newsCollectionLock;
+  } finally {
+    newsCollectionLock = null;
+  }
+}
+
 function normalizeMessage(raw = {}) {
   const createdAt = String(raw.createdAt || new Date().toISOString());
   const type = String(raw.type || "text").trim().toLowerCase();
@@ -1506,7 +2621,7 @@ function normalizeMessage(raw = {}) {
     senderUserId: String(raw.senderUserId || ""),
     senderName: normalizeWhitespace(raw.senderName || raw.senderDisplayName || raw.senderLabel || "").slice(0, 80),
     type: MESSAGE_TYPE_VALUES.has(type) ? type : "text",
-    text: normalizeMultilineText(raw.text || "").slice(0, 2000),
+    text: String(raw.text || "").trim(),
     attachment: raw.attachment && typeof raw.attachment === "object" ? raw.attachment : null,
     call: normalizeMessageCall(raw.call),
     replyTo: normalizeMessageReply(raw.replyTo),
@@ -1589,7 +2704,7 @@ function normalizeMessageReply(raw = null) {
     type: type === "status" ? "status" : "message",
     sourceId: String(raw.sourceId || raw.messageId || raw.statusId || "").trim(),
     senderName: normalizeWhitespace(raw.senderName || raw.ownerName || raw.title || "").slice(0, 80),
-    text: normalizeMultilineText(raw.text || raw.caption || "").slice(0, 240),
+    text: normalizeWhitespace(raw.text || raw.caption || "").slice(0, 240),
     imageDataUrl: String(raw.imageDataUrl || "").trim().slice(0, 5_000_000),
   };
 }
@@ -2171,7 +3286,7 @@ async function persistCommunityConversationMessage({
   upload = null,
 } = {}) {
   const safeConversationId = String(conversationId || "");
-  const safeText = normalizeMultilineText(text || "");
+  const safeText = String(text || "").trim();
   const safeReplyTo = normalizeMessageReply(replyTo || null);
   const conversations = (await readCollection("conversations")).map(normalizeConversation);
   const messages = (await readCollection("messages")).map(normalizeMessage);
@@ -3475,7 +4590,7 @@ function computeSubscriptionState(rawUser = {}) {
   if (status === "pending" && (approvedAt || rejectedAt)) {
     status = approvedAt ? "active" : "rejected";
   }
-  if (status === "rejected" && !approvedAt) {
+  if (status === "pending" || status === "rejected") {
     if (subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now) {
       status = "active";
     } else if (trialEndsAt && Date.parse(trialEndsAt) > now) {
@@ -3941,6 +5056,9 @@ function normalizeSubscriptionRequest(rawRequest = {}) {
     reviewedAt,
     approvedAt,
     rejectedAt,
+    activatedAt: getIsoTimeValue(rawRequest.activatedAt),
+    expiresAt: getIsoTimeValue(rawRequest.expiresAt),
+    expiredAt: getIsoTimeValue(rawRequest.expiredAt),
     reviewDeadlineAt,
     reviewerId: String(rawRequest.reviewerId || "").trim(),
     reviewerName: String(rawRequest.reviewerName || "").trim(),
@@ -3957,155 +5075,202 @@ function normalizeSubscriptionRequest(rawRequest = {}) {
   };
 }
 
-function getSubscriptionRequestActivatedAt(request = {}) {
-  return getIsoTimeValue(request.activatedAt) || getIsoTimeValue(request.approvedAt) || null;
-}
-
 function getSubscriptionRequestExpiresAt(request = {}) {
   const explicitExpiresAt = getIsoTimeValue(request.expiresAt);
   if (explicitExpiresAt) {
     return explicitExpiresAt;
   }
 
-  const activatedAt = getSubscriptionRequestActivatedAt(request);
+  const activatedAt =
+    getIsoTimeValue(request.activatedAt) ||
+    getIsoTimeValue(request.approvedAt) ||
+    getIsoTimeValue(request.reviewedAt);
   if (!activatedAt) {
     return null;
   }
 
-  const plan = normalizeSubscriptionPlanValue(request.plan) || "trial";
-  const planMeta = getSubscriptionPlanMeta(plan);
-  if (!planMeta.durationDays) {
-    return null;
-  }
-
-  return addDaysToIsoDate(activatedAt, planMeta.durationDays);
+  const planMeta = getSubscriptionPlanMeta(request.plan || "trial");
+  const durationDays = Math.max(
+    1,
+    Math.round(Number(request.durationDays) || planMeta.durationDays || SUBSCRIPTION_TRIAL_DAYS),
+  );
+  return addDaysToIsoDate(activatedAt, durationDays);
 }
 
-function getSubscriptionRequestStatus(request = {}, now = Date.now()) {
+function getSubscriptionRequestStatus(request = {}) {
   const rawStatus = String(request.status || "pending").trim().toLowerCase();
-  if (rawStatus === "rejected" || rawStatus === "expired") {
-    return rawStatus;
+  if (rawStatus === "rejected") {
+    return "rejected";
+  }
+  if (rawStatus === "expired") {
+    return "expired";
+  }
+  if (rawStatus === "pending") {
+    return "pending";
   }
 
-  const requestedAt = getIsoTimeValue(request.requestedAt);
-  const activatedAt = getSubscriptionRequestActivatedAt(request);
   const expiresAt = getSubscriptionRequestExpiresAt(request);
   const expiresMs = Date.parse(String(expiresAt || ""));
-
-  if (rawStatus === "pending") {
-    return activatedAt ? (Number.isFinite(expiresMs) && expiresMs <= now ? "expired" : "active") : "pending";
+  if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) {
+    return "expired";
   }
 
-  if (activatedAt || rawStatus === "approved" || rawStatus === "active") {
-    if (Number.isFinite(expiresMs) && expiresMs <= now) {
-      return "expired";
-    }
+  if (["approved", "active", "trial"].includes(rawStatus)) {
     return "active";
   }
 
-  return requestedAt ? "pending" : "pending";
+  return "pending";
+}
+
+function buildSubscriptionRequestFromUser(user = {}, rawRequest = {}) {
+  const subscriptionState = computeSubscriptionState(user);
+  const plan = normalizeSubscriptionPlanValue(user.subscriptionPlan) || subscriptionState.plan || "trial";
+  const requestedAt =
+    getIsoTimeValue(rawRequest.requestedAt) ||
+    subscriptionState.requestedAt ||
+    getIsoTimeValue(user.subscriptionRequestedAt) ||
+    getIsoTimeValue(user.createdAt) ||
+    new Date().toISOString();
+  const status =
+    subscriptionState.status === "rejected"
+      ? "rejected"
+      : subscriptionState.status === "expired"
+        ? "expired"
+        : subscriptionState.status === "pending"
+          ? "pending"
+          : "active";
+  const reviewedAt = getIsoTimeValue(rawRequest.reviewedAt) || subscriptionState.reviewedAt || null;
+  const approvedAt = getIsoTimeValue(rawRequest.approvedAt) || subscriptionState.approvedAt || null;
+  const activatedAt =
+    getIsoTimeValue(rawRequest.activatedAt) ||
+    subscriptionState.startedAt ||
+    approvedAt ||
+    (status === "active" ? requestedAt : null);
+  const expiresAt =
+    getIsoTimeValue(rawRequest.expiresAt) ||
+    subscriptionState.expirationAt ||
+    (status === "pending" ? null : getSubscriptionRequestExpiresAt({ ...rawRequest, activatedAt, plan }));
+  const expiredAt =
+    getIsoTimeValue(rawRequest.expiredAt) ||
+    (status === "expired" ? expiresAt : null);
+  const reviewDeadlineAt =
+    getIsoTimeValue(rawRequest.reviewDeadlineAt) ||
+    subscriptionState.approvalDeadlineAt ||
+    new Date(Date.parse(requestedAt) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+
+  return normalizeSubscriptionRequest({
+    ...rawRequest,
+    id: String(rawRequest.id || crypto.randomUUID()),
+    userId: String(user.id || rawRequest.userId || "").trim(),
+    userName: String(rawRequest.userName || user.name || "").trim(),
+    username: String(rawRequest.username || user.username || "").trim(),
+    contact: String(rawRequest.contact || user.contact || "").trim(),
+    plan,
+    status,
+    requestedAt,
+    reviewedAt,
+    approvedAt,
+    rejectedAt: getIsoTimeValue(rawRequest.rejectedAt) || subscriptionState.rejectedAt || null,
+    activatedAt,
+    expiresAt,
+    expiredAt,
+    reviewDeadlineAt,
+    reviewerId: String(rawRequest.reviewerId || "").trim(),
+    reviewerName: String(rawRequest.reviewerName || "").trim(),
+    reviewNote: String(rawRequest.reviewNote || user.subscriptionReviewNote || "").trim(),
+    paymentReference:
+      String(rawRequest.paymentReference || rawRequest.transactionId || user.subscriptionPaymentReference || "").trim(),
+    proofText: String(rawRequest.proofText || user.subscriptionPaymentReference || "").trim(),
+    proofDataUrl: String(rawRequest.proofDataUrl || "").trim(),
+    proofFileName: String(rawRequest.proofFileName || "").trim(),
+    proofMimeType: String(rawRequest.proofMimeType || "").trim(),
+    proofType: String(rawRequest.proofType || "").trim() || (rawRequest.proofDataUrl ? "image" : "text"),
+    paymentMethod: String(rawRequest.paymentMethod || "").trim(),
+    updatedAt: String(rawRequest.updatedAt || user.updatedAt || requestedAt),
+  });
+}
+
+function synchronizeSubscriptionRequestsWithUsers(users = [], rawRequests = []) {
+  const normalizedUsers = coerceCollectionArray(users).map(normalizeExistingUser);
+  const normalizedRequests = coerceCollectionArray(rawRequests).map(normalizeSubscriptionRequest);
+  const requests = [...normalizedRequests];
+  const requestsByUserId = new Map();
+  for (const request of requests) {
+    const userId = String(request.userId || "").trim();
+    if (!userId) continue;
+    if (!requestsByUserId.has(userId)) {
+      requestsByUserId.set(userId, []);
+    }
+    requestsByUserId.get(userId).push(request);
+  }
+
+  let changed = false;
+  for (const user of normalizedUsers) {
+    const userId = String(user.id || "").trim();
+    if (!userId) continue;
+    const userRequests = requestsByUserId.get(userId) || [];
+    if (!userRequests.length) {
+      requests.push(buildSubscriptionRequestFromUser(user));
+      changed = true;
+      continue;
+    }
+
+    if (userRequests.length === 1) {
+      const currentRequest = userRequests[0];
+      const subscriptionState = computeSubscriptionState(user);
+      const desiredStatus =
+        subscriptionState.status === "rejected"
+          ? "rejected"
+          : subscriptionState.status === "expired"
+            ? "expired"
+            : subscriptionState.status === "pending"
+              ? "pending"
+              : "active";
+      const nextRequest = buildSubscriptionRequestFromUser(user, currentRequest);
+      const nextStatus = getSubscriptionRequestStatus(nextRequest);
+      if (
+        String(currentRequest.status || "").trim().toLowerCase() !== nextStatus ||
+        String(currentRequest.userName || "") !== String(nextRequest.userName || "") ||
+        String(currentRequest.username || "") !== String(nextRequest.username || "") ||
+        String(currentRequest.contact || "") !== String(nextRequest.contact || "") ||
+        String(currentRequest.plan || "") !== String(nextRequest.plan || "") ||
+        String(currentRequest.requestedAt || "") !== String(nextRequest.requestedAt || "") ||
+        String(currentRequest.reviewDeadlineAt || "") !== String(nextRequest.reviewDeadlineAt || "") ||
+        String(currentRequest.activatedAt || "") !== String(nextRequest.activatedAt || "") ||
+        String(currentRequest.expiresAt || "") !== String(nextRequest.expiresAt || "") ||
+        String(currentRequest.expiredAt || "") !== String(nextRequest.expiredAt || "")
+      ) {
+        const requestIndex = requests.findIndex((entry) => entry.id === currentRequest.id);
+        if (requestIndex >= 0) {
+          requests[requestIndex] = {
+            ...currentRequest,
+            ...nextRequest,
+            status: desiredStatus,
+          };
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return {
+    changed,
+    requests,
+  };
 }
 
 function toPublicSubscriptionRequest(rawRequest = {}, usersById = new Map()) {
   const request = normalizeSubscriptionRequest(rawRequest);
+  const status = getSubscriptionRequestStatus(request);
   const user = usersById.get(request.userId) || null;
-  const userState = user ? computeSubscriptionState(user) : null;
-  const activatedAt =
-    request.activatedAt ||
-    request.approvedAt ||
-    (request.status === "pending" ? null : userState?.approvedAt || userState?.startedAt || null);
-  const expiresAt =
-    request.expiresAt ||
-    (activatedAt && userState?.subscriptionEndsAt
-      ? userState.subscriptionEndsAt
-      : activatedAt
-        ? getSubscriptionRequestExpiresAt({ ...request, activatedAt })
-        : null);
-  const status = getSubscriptionRequestStatus({ ...request, activatedAt, expiresAt });
-  const expiredAt = request.expiredAt || (status === "expired" ? expiresAt : null);
-
+  const expirationAt = getSubscriptionRequestExpiresAt(request);
   return {
     ...request,
-    activatedAt,
-    expiresAt,
-    expiredAt,
     status,
+    expirationAt,
     isExpired: status === "expired",
+    isActive: status === "active",
     user: user ? toPublicUser(user) : null,
-  };
-}
-
-function buildLegacySubscriptionRequestFromUser(user = {}) {
-  const normalized = normalizeExistingUser(user);
-  const subscriptionState = computeSubscriptionState(normalized);
-  const hasSubscriptionHistory =
-    subscriptionState.status === "trial" ||
-    Boolean(
-      subscriptionState.requestedAt ||
-        subscriptionState.reviewedAt ||
-        subscriptionState.approvedAt ||
-        subscriptionState.rejectedAt ||
-        subscriptionState.subscriptionEndsAt,
-    );
-
-  if (!hasSubscriptionHistory) {
-    return null;
-  }
-
-  const activatedAt =
-    subscriptionState.approvedAt ||
-    (["active", "expired", "trial"].includes(subscriptionState.status) ? subscriptionState.startedAt : null);
-  const expiresAt = subscriptionState.subscriptionEndsAt || null;
-
-  return normalizeSubscriptionRequest({
-    id: `legacy-subscription-${normalized.id}`,
-    userId: normalized.id,
-    userName: normalized.name,
-    username: normalized.username,
-    contact: normalized.contact,
-    plan: subscriptionState.plan,
-    status:
-      subscriptionState.status === "rejected"
-        ? "rejected"
-        : subscriptionState.status === "expired"
-          ? "expired"
-          : "active",
-    requestedAt: subscriptionState.requestedAt || normalized.createdAt,
-    reviewedAt: subscriptionState.reviewedAt || activatedAt || null,
-    approvedAt: subscriptionState.approvedAt || activatedAt || null,
-    rejectedAt: subscriptionState.rejectedAt || null,
-    activatedAt,
-    expiresAt,
-    expiredAt: subscriptionState.status === "expired" ? expiresAt : null,
-    reviewDeadlineAt: subscriptionState.approvalDeadlineAt || null,
-    reviewerId: "",
-    reviewerName: "",
-    reviewNote: String(normalized.subscriptionReviewNote || normalized.subscriptionRejectedReason || "").trim(),
-    paymentReference: String(normalized.subscriptionPaymentReference || "").trim(),
-    proofText: String(normalized.subscriptionPaymentReference || "").trim(),
-    proofDataUrl: "",
-    proofFileName: "",
-    proofMimeType: "",
-    proofType: "",
-    paymentMethod: "",
-    source: "legacy-user-sync",
-    updatedAt: normalized.updatedAt,
-  });
-}
-
-function synchronizeSubscriptionRequestsWithUsers(users = [], requests = []) {
-  const safeUsers = Array.isArray(users) ? users.map(normalizeExistingUser) : [];
-  const safeRequests = Array.isArray(requests) ? requests.map(normalizeSubscriptionRequest) : [];
-  const requestUserIds = new Set(
-    safeRequests.map((request) => String(request.userId || "").trim()).filter(Boolean),
-  );
-  const missingRequests = safeUsers
-    .map((user) => buildLegacySubscriptionRequestFromUser(user))
-    .filter((request) => request && request.userId && !requestUserIds.has(request.userId));
-
-  return {
-    changed: missingRequests.length > 0,
-    requests: [...missingRequests, ...safeRequests],
   };
 }
 
@@ -4526,7 +5691,7 @@ async function persistGlobalAdminBroadcastMessage({
   upload = null,
   noticeBatchId = "",
 } = {}) {
-  const safeText = normalizeMultilineText(text || "");
+  const safeText = String(text || "").trim();
   const safeSenderName = normalizeWhitespace(senderName).slice(0, 80) || ADMIN_NOTICE_SENDER_NAME;
   const safeBatchId = String(noticeBatchId || "").trim() || crypto.randomUUID();
   let storedUpload = null;
@@ -9094,9 +10259,9 @@ app.post(
       res.status(403).json({ error: "admin broadcast is restricted" });
       return;
     }
-    const caption = normalizeMultilineText(req.body?.caption || "").slice(0, 140);
+    const caption = normalizeWhitespace(req.body?.caption || "").slice(0, 140);
     const imageDataUrl = String(req.body?.imageDataUrl || req.body?.mediaDataUrl || "").trim();
-    const text = normalizeMultilineText(req.body?.text || "").slice(0, 280);
+    const text = normalizeWhitespace(req.body?.text || "").slice(0, 280);
     const background = String(req.body?.background || "#2f80d0").trim().slice(0, 160);
     const style = req.body?.style && typeof req.body.style === "object" ? req.body.style : {};
     const fileName = String(req.body?.fileName || "").trim();
@@ -9656,7 +10821,7 @@ app.post(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const conversationId = String(req.params.conversationId || "");
-    const text = normalizeMultilineText(req.body?.text || "");
+    const text = String(req.body?.text || "").trim();
     const replyTo = normalizeMessageReply(req.body?.replyTo || null);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
@@ -9815,7 +10980,7 @@ app.post(
     await touchUserLastSeen(viewerId);
     const conversationId = String(req.params.conversationId || "");
     const meta = parseMessageMetaHeader(req.get("x-message-meta"));
-    const text = normalizeMultilineText(meta?.text || "");
+    const text = String(meta?.text || "").trim();
     const replyTo = normalizeMessageReply(meta?.replyTo || null);
     const fileName = String(meta?.fileName || "attachment").trim().slice(0, 160) || "attachment";
     const mediaStyle = meta?.mediaStyle && typeof meta.mediaStyle === "object" ? meta.mediaStyle : null;
@@ -9892,7 +11057,7 @@ app.patch(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const messageId = String(req.params.messageId || "");
-    const text = normalizeMultilineText(req.body?.text || "");
+    const text = String(req.body?.text || "").trim();
     if (!text) {
       res.status(400).json({ error: "message text is required" });
       return;
@@ -11477,7 +12642,7 @@ app.post(
     }
 
     const userId = String(req.params.userId || "").trim();
-    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
     if (!userId) {
       res.status(400).json({ error: "userId is required" });
       return;
@@ -11522,7 +12687,7 @@ app.post(
     }
 
     const groupId = String(req.params.groupId || "").trim();
-    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
     if (!groupId) {
       res.status(400).json({ error: "groupId is required" });
       return;
@@ -11573,7 +12738,7 @@ app.post(
       return;
     }
 
-    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
     const attachmentMimeType = String(req.body?.attachmentMimeType || "").trim().toLowerCase();
@@ -11657,8 +12822,8 @@ app.post(
       return;
     }
 
-    const caption = normalizeMultilineText(req.body?.caption || "").slice(0, 140);
-    const text = normalizeMultilineText(req.body?.text || "").slice(0, 280);
+    const caption = normalizeWhitespace(req.body?.caption || "").slice(0, 140);
+    const text = normalizeWhitespace(req.body?.text || "").slice(0, 280);
     const background = String(req.body?.background || "#2f80d0").trim().slice(0, 160);
     const style = req.body?.style && typeof req.body.style === "object" ? req.body.style : {};
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || req.body?.mediaDataUrl || "").trim();
@@ -11834,7 +12999,7 @@ app.post(
     }
 
     const threadKey = String(req.params.threadKey || "").trim();
-    const message = normalizeMultilineText(req.body?.message || "").slice(0, 2000);
+    const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
     if (!threadKey) {
@@ -12664,6 +13829,651 @@ app.delete(
   }),
 );
 
+app.get(
+  "/api/news/feed",
+  asyncHandler(async (req, res) => {
+    const requestedCategory = normalizeNewsCategory(req.query?.category || "", "");
+    const requestedSourceId = String(req.query?.sourceId || "").trim();
+    const limit = Math.max(1, Math.min(50, Math.round(Number(req.query?.limit) || 20)));
+    const allItems = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const items = sortNewsItemsForPublic(allItems)
+      .filter((item) => item.status === "published")
+      .filter((item) => !requestedCategory || normalizeNewsCategory(item.category || "") === requestedCategory)
+      .filter((item) => !requestedSourceId || item.sourceId === requestedSourceId)
+      .slice(0, limit);
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource).filter((source) => source.enabled !== false);
+    const sections = buildNewsFeedSections(allItems);
+    const categoryCounts = items.reduce((accumulator, item) => {
+      const category = normalizeNewsCategory(item.category || "", "clinical-news");
+      accumulator[category] = (accumulator[category] || 0) + 1;
+      return accumulator;
+    }, {});
+    res.json({
+      ok: true,
+      total: items.length,
+      items,
+      sections,
+      categories: categoryCounts,
+      sources: sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        url: source.url,
+        category: source.category,
+        extractMode: source.extractMode,
+        priority: source.priority,
+        lastCollectedAt: source.lastCollectedAt,
+        description: source.description,
+      })),
+    });
+  }),
+);
+
+app.get(
+  "/api/news/:newsId",
+  asyncHandler(async (req, res) => {
+    const newsId = String(req.params.newsId || "").trim();
+    if (!newsId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const item = items.find((entry) => entry.id === newsId);
+    if (!item || item.status !== "published") {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  }),
+);
+
+app.get(
+  "/api/admin/news",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestedStatusRaw = String(req.query?.status || "").trim().toLowerCase();
+    const requestedStatus = requestedStatusRaw && requestedStatusRaw !== "all"
+      ? normalizeNewsStatus(requestedStatusRaw)
+      : "";
+    const requestedSourceId = String(req.query?.sourceId || "").trim();
+    const limit = Math.max(1, Math.min(200, Math.round(Number(req.query?.limit) || 100)));
+    const items = sortNewsItemsForAdmin((await readCollection("newsItems")).map(normalizeNewsItem))
+      .filter((item) => !requestedStatus || normalizeNewsStatus(item.status || "") === requestedStatus)
+      .filter((item) => !requestedSourceId || item.sourceId === requestedSourceId)
+      .slice(0, limit);
+    const categories = await seedDefaultNewsCategories();
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const runs = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
+    res.json({
+      ok: true,
+      total: items.length,
+      items,
+      categories,
+      sources,
+      runs,
+      summary: {
+        pendingReview: items.filter((item) => normalizeNewsStatus(item.status || "") === "pending_review").length,
+        approved: items.filter((item) => normalizeNewsStatus(item.status || "") === "approved").length,
+        published: items.filter((item) => normalizeNewsStatus(item.status || "") === "published").length,
+        rejected: items.filter((item) => normalizeNewsStatus(item.status || "") === "rejected").length,
+      },
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/news/sources",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const runs = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
+    res.json({ ok: true, sources, runs });
+  }),
+);
+
+app.get(
+  "/api/admin/news/categories",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const categories = await seedDefaultNewsCategories();
+    res.json({ ok: true, categories });
+  }),
+);
+
+app.post(
+  "/api/admin/news/categories",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const name = cleanNewsText(req.body?.name || req.body?.title || "", 80);
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const candidate = normalizeNewsCategoryEntry({
+      ...req.body,
+      id: String(req.body?.id || req.body?.slug || "").trim(),
+      name,
+      slug: String(req.body?.slug || "").trim(),
+      color: String(req.body?.color || "").trim(),
+      description: cleanNewsText(req.body?.description || "", 240),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const categories = await seedDefaultNewsCategories();
+    const index = categories.findIndex((entry) => entry.id === candidate.id || entry.slug === candidate.slug);
+    if (index === -1) {
+      categories.unshift(candidate);
+    } else {
+      categories[index] = normalizeNewsCategoryEntry({
+        ...categories[index],
+        ...candidate,
+        id: categories[index].id,
+        createdAt: categories[index].createdAt,
+        updatedAt: now,
+      });
+    }
+
+    await writeCollection("newsCategories", categories);
+    res.status(index === -1 ? 201 : 200).json({ ok: true, category: index === -1 ? candidate : categories[index] });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/categories/:categoryId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const categoryId = String(req.params.categoryId || "").trim();
+    if (!categoryId) {
+      res.status(400).json({ error: "categoryId is required" });
+      return;
+    }
+
+    const categories = await seedDefaultNewsCategories();
+    const index = categories.findIndex((entry) => entry.id === categoryId || entry.slug === categoryId);
+    if (index === -1) {
+      res.status(404).json({ error: "Category not found" });
+      return;
+    }
+
+    const current = categories[index];
+    const nextSlug = req.body?.slug !== undefined ? normalizeNewsCategory(req.body.slug || "", current.slug) : current.slug;
+    const next = normalizeNewsCategoryEntry({
+      ...current,
+      ...req.body,
+      id: current.id,
+      slug: nextSlug,
+      name: req.body?.name !== undefined ? cleanNewsText(req.body.name, 80) || current.name : current.name,
+      color: req.body?.color !== undefined ? String(req.body.color || "").trim() : current.color,
+      description: req.body?.description !== undefined ? cleanNewsText(req.body.description, 240) : current.description,
+      system: current.system,
+      createdAt: current.createdAt,
+      updatedAt: new Date().toISOString(),
+    });
+    categories[index] = next;
+    await writeCollection("newsCategories", categories);
+    if (current.slug !== next.slug) {
+      await updateNewsCategoryReferences(current.slug, next.slug);
+    }
+    res.json({ ok: true, category: next });
+  }),
+);
+
+app.delete(
+  "/api/admin/news/categories/:categoryId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const categoryId = String(req.params.categoryId || "").trim();
+    if (!categoryId) {
+      res.status(400).json({ error: "categoryId is required" });
+      return;
+    }
+
+    const categories = await seedDefaultNewsCategories();
+    const index = categories.findIndex((entry) => entry.id === categoryId || entry.slug === categoryId);
+    if (index === -1) {
+      res.status(404).json({ error: "Category not found" });
+      return;
+    }
+
+    const current = categories[index];
+    if (current.system) {
+      res.status(400).json({ error: "System categories cannot be removed" });
+      return;
+    }
+
+    categories.splice(index, 1);
+    await writeCollection("newsCategories", categories);
+    await updateNewsCategoryReferences(current.slug, "clinical-news");
+    res.json({ ok: true, removed: current.id });
+  }),
+);
+
+app.post(
+  "/api/admin/news/sources",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const candidate = normalizeNewsSource({
+      ...req.body,
+      id: String(req.body?.id || req.body?.sourceId || "").trim(),
+      name: cleanNewsText(req.body?.name || req.body?.title || "", 120),
+      url: normalizeNewsUrl(req.body?.url || req.body?.feedUrl || req.body?.sourceUrl || ""),
+      category: normalizeNewsCategory(req.body?.category || "", "clinical-news"),
+      extractMode: normalizeNewsSourceType(req.body?.extractMode || req.body?.sourceType || req.body?.type || "", "structured"),
+      priority: Math.max(0, Math.min(100, Math.round(Number(req.body?.priority) || 50))),
+      enabled: req.body?.enabled !== false,
+      reviewRequired: req.body?.reviewRequired !== false,
+      description: cleanNewsText(req.body?.description || "", 220),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (!candidate.url) {
+      res.status(400).json({ error: "url is required" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const lookup = candidate.id
+      ? sources.findIndex((source) => source.id === candidate.id)
+      : sources.findIndex((source) => source.url === candidate.url || source.name.toLowerCase() === candidate.name.toLowerCase());
+    if (lookup === -1) {
+      sources.unshift(candidate);
+    } else {
+      sources[lookup] = normalizeNewsSource({
+        ...sources[lookup],
+        ...candidate,
+        id: sources[lookup].id,
+        createdAt: sources[lookup].createdAt,
+        updatedAt: now,
+      });
+    }
+
+    await writeCollection("newsSources", sources);
+    res.status(lookup === -1 ? 201 : 200).json({ ok: true, source: lookup === -1 ? candidate : sources[lookup] });
+  }),
+);
+
+app.get(
+  "/api/admin/news/:newsId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    if (!newsId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const item = items.find((entry) => entry.id === newsId);
+    if (!item) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    res.json({ ok: true, item });
+  }),
+);
+
+app.post(
+  "/api/admin/news",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const title = cleanNewsText(req.body?.title || req.body?.headline || "", 180);
+    if (!title) {
+      res.status(400).json({ error: "title is required" });
+      return;
+    }
+
+    const summary = cleanNewsText(req.body?.summary || req.body?.excerpt || "", 420);
+    const content = normalizeNewsRichContent(req.body?.content || req.body?.body || "", 12000);
+    const sourceLabel = cleanNewsText(req.body?.sourceName || req.body?.sourceLabel || "Manual submission", 120) || "Manual submission";
+    const sourceId = cleanNewsText(req.body?.sourceId || "", 120) || `manual-${crypto.randomUUID()}`;
+    const sourceType = normalizeNewsSourceType(req.body?.sourceType || "structured", "structured");
+    const sourcePublishedAt = cleanNewsText(req.body?.sourcePublishedAt || "", 80);
+    const sourcePublishedLabel = cleanNewsText(req.body?.sourcePublishedLabel || "", 80);
+    const reviewNote = cleanNewsText(req.body?.reviewNote || "", 240);
+    const tags = Array.isArray(req.body?.tags)
+      ? [...new Set(req.body.tags.map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+      : typeof req.body?.tags === "string"
+        ? [...new Set(req.body.tags.split(",").map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+        : [];
+    const requestedStatus = normalizeNewsStatus(req.body?.status || "");
+    const requestedFeatured = req.body?.featured === true || String(req.body?.featured || "").trim().toLowerCase() === "true";
+    const requestedReviewRequired = req.body?.reviewRequired !== false;
+    const allowComments = req.body?.allowComments === true || req.body?.comments === true || String(req.body?.allowComments || req.body?.comments || "").trim().toLowerCase() === "true";
+    const baseItem = normalizeNewsItem({
+      id: String(req.body?.id || crypto.randomUUID()).trim(),
+      sourceId,
+      sourceName: sourceLabel,
+      sourceType,
+      sourceUrl: normalizeNewsUrl(req.body?.sourceUrl || ""),
+      canonicalUrl: normalizeNewsUrl(req.body?.canonicalUrl || req.body?.sourceUrl || ""),
+      title,
+      summary,
+      content,
+      category: normalizeNewsCategory(req.body?.category || "", "clinical-news"),
+      importance: normalizeNewsImportance(req.body?.importance || "", "medium"),
+      status: "pending_review",
+      featured: requestedFeatured,
+      reviewRequired: true,
+      allowComments,
+      reviewNote,
+      sourcePublishedAt,
+      sourcePublishedLabel,
+      publishedAt: String(req.body?.publishedAt || "").trim(),
+      collectedAt: now,
+      reviewedAt: String(req.body?.reviewedAt || "").trim(),
+      approvedAt: String(req.body?.approvedAt || "").trim(),
+      reviewedById: String(req.body?.reviewedById || "").trim(),
+      reviewedByName: cleanNewsText(req.body?.reviewedByName || "", 80),
+      publishedById: String(req.body?.publishedById || "").trim(),
+      publishedByName: cleanNewsText(req.body?.publishedByName || "", 80),
+      sourceRank: Math.max(0, Math.round(Number(req.body?.sourceRank) || 0)),
+      imageUrl: normalizeNewsUrl(req.body?.imageUrl || ""),
+      imageAlt: cleanNewsText(req.body?.imageAlt || "", 120),
+      author: "Ajixpharmacy Desk",
+      tags,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const item = normalizeNewsItem({
+      ...baseItem,
+      status: "pending_review",
+      reviewNote,
+      updatedAt: now,
+    });
+
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const existingIndex = items.findIndex((entry) => buildNewsItemKey(entry) === buildNewsItemKey(item));
+    if (existingIndex === -1) {
+      items.unshift(item);
+    } else {
+      items[existingIndex] = normalizeNewsItem({
+        ...items[existingIndex],
+        ...item,
+        createdAt: items[existingIndex].createdAt || item.createdAt,
+        updatedAt: now,
+      });
+    }
+    await writeCollection("newsItems", sortNewsItemsForAdmin(items));
+
+    res.status(201).json({ ok: true, item });
+  }),
+);
+
+app.post(
+  "/api/admin/news/collect",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sourceId = String(req.body?.sourceId || "").trim();
+    const run = await collectAndStoreNews({ sourceId, triggeredBy: "admin" });
+    res.json({ ok: true, run });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/sources/:sourceId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sourceId = String(req.params.sourceId || "").trim();
+    if (!sourceId) {
+      res.status(400).json({ error: "sourceId is required" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const index = sources.findIndex((source) => source.id === sourceId);
+    if (index === -1) {
+      res.status(404).json({ error: "News source not found" });
+      return;
+    }
+
+    const next = normalizeNewsSource({
+      ...sources[index],
+      ...req.body,
+      id: sources[index].id,
+      createdAt: sources[index].createdAt,
+      updatedAt: new Date().toISOString(),
+    });
+    sources[index] = next;
+    await writeCollection("newsSources", sources);
+    res.json({ ok: true, source: next });
+  }),
+);
+
+app.delete(
+  "/api/admin/news/sources/:sourceId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sourceId = String(req.params.sourceId || "").trim();
+    if (!sourceId) {
+      res.status(400).json({ error: "sourceId is required" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const nextSources = sources.filter((source) => source.id !== sourceId);
+    if (nextSources.length === sources.length) {
+      res.status(404).json({ error: "News source not found" });
+      return;
+    }
+
+    await writeCollection("newsSources", nextSources);
+    res.json({ ok: true, removed: sourceId });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/:newsId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    if (!newsId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const current = items[index];
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...current,
+      title: req.body?.title !== undefined ? cleanNewsText(req.body.title, 180) || current.title : current.title,
+      summary: req.body?.summary !== undefined ? cleanNewsText(req.body.summary, 420) : current.summary,
+      content: req.body?.content !== undefined ? normalizeNewsRichContent(req.body.content, 12000) : current.content,
+      category: req.body?.category !== undefined ? normalizeNewsCategory(req.body.category || "", current.category) : current.category,
+      importance: req.body?.importance !== undefined ? normalizeNewsImportance(req.body.importance || "", current.importance) : current.importance,
+      reviewNote: req.body?.reviewNote !== undefined ? cleanNewsText(req.body.reviewNote, 240) : current.reviewNote,
+      featured: req.body?.featured !== undefined ? Boolean(req.body.featured) : current.featured,
+      sourceName: req.body?.sourceName !== undefined ? cleanNewsText(req.body.sourceName, 120) || current.sourceName : current.sourceName,
+      sourceUrl: req.body?.sourceUrl !== undefined ? normalizeNewsUrl(req.body.sourceUrl || current.sourceUrl) : current.sourceUrl,
+      sourceType: req.body?.sourceType !== undefined ? normalizeNewsSourceType(req.body.sourceType || "", current.sourceType) : current.sourceType,
+      sourcePublishedAt: req.body?.sourcePublishedAt !== undefined ? cleanNewsText(req.body.sourcePublishedAt, 80) : current.sourcePublishedAt,
+      sourcePublishedLabel: req.body?.sourcePublishedLabel !== undefined ? cleanNewsText(req.body.sourcePublishedLabel, 80) : current.sourcePublishedLabel,
+      imageUrl: req.body?.imageUrl !== undefined ? normalizeNewsUrl(req.body.imageUrl || "") : current.imageUrl,
+      imageAlt: req.body?.imageAlt !== undefined ? cleanNewsText(req.body.imageAlt, 120) : current.imageAlt,
+      author: req.body?.author !== undefined ? cleanNewsText(req.body.author, 120) : current.author,
+      tags: Array.isArray(req.body?.tags)
+        ? [...new Set(req.body.tags.map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+        : current.tags,
+      allowComments:
+        req.body?.allowComments !== undefined || req.body?.comments !== undefined
+          ? req.body?.allowComments === true ||
+            req.body?.comments === true ||
+            String(req.body?.allowComments || req.body?.comments || "").trim().toLowerCase() === "true"
+          : current.allowComments,
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/approve",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...items[index],
+      status: "approved",
+      reviewedAt: now,
+      approvedAt: now,
+      reviewedById: "admin",
+      reviewedByName: ADMIN_NOTICE_SENDER_NAME,
+      reviewNote: cleanNewsText(req.body?.reviewNote || items[index].reviewNote || "", 240),
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/publish",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...items[index],
+      status: "published",
+      reviewedAt: items[index].reviewedAt || now,
+      approvedAt: items[index].approvedAt || now,
+      publishedAt: now,
+      reviewedById: items[index].reviewedById || "admin",
+      reviewedByName: items[index].reviewedByName || ADMIN_NOTICE_SENDER_NAME,
+      publishedById: "admin",
+      publishedByName: ADMIN_NOTICE_SENDER_NAME,
+      reviewNote: cleanNewsText(req.body?.reviewNote || items[index].reviewNote || "", 240),
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/reject",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...items[index],
+      status: "rejected",
+      reviewedAt: now,
+      reviewedById: "admin",
+      reviewedByName: ADMIN_NOTICE_SENDER_NAME,
+      reviewNote: cleanNewsText(req.body?.reviewNote || items[index].reviewNote || "", 240),
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
 function getAnalyticsTimeParts(dateInput = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
   const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -12888,7 +14698,7 @@ function buildAdminActivityAnalytics({
     };
   }
 
-  function buildRecentActivity(limit = 30) {
+  function buildRecentActivity(limit = 12) {
     const feed = [];
     const push = ({ type, title, subtitle = "", at = "" }) => {
       const safeAt = String(at || "").trim();
@@ -12900,25 +14710,28 @@ function buildAdminActivityAnalytics({
       push({
         type: "signup",
         title: `New user: ${String(user?.name || user?.username || user?.contact || "User").trim()}`,
-        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" • "),
+        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" and "),
         at: user?.createdAt,
       });
       push({
         type: "presence",
         title: `Active user: ${String(user?.name || user?.username || user?.contact || "User").trim()}`,
-        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" • "),
+        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" and "),
         at: user?.lastSeenAt || user?.updatedAt || user?.createdAt,
       });
     });
 
     safeSessions.forEach((session) => {
       const actorId = String(session?.actorId || "").trim();
-      const actorLabel = displayNameForActor(actorId, usersById, "");
+      const actor = actorId ? usersById.get(actorId) : null;
+      const actorLabel = actor
+        ? String(actor.name || actor.username || actor.contact || "User").trim()
+        : actorId || "User";
       const durationSeconds = parseDurationSeconds(session?.duration);
       push({
         type: "session",
         title: `${String(session?.mode || "Study").trim()} session`,
-        subtitle: `${actorLabel} • ${Number.isFinite(durationSeconds) ? `${Math.max(1, Math.round(durationSeconds / 60))} min` : "Session"}`,
+        subtitle: `${actorLabel} and ${Number.isFinite(durationSeconds) ? `${Math.max(1, Math.round(durationSeconds / 60))} min` : "Session"}`,
         at: session?.createdAt,
       });
     });
@@ -12927,7 +14740,7 @@ function buildAdminActivityAnalytics({
       push({
         type: "reset",
         title: `Reset request: ${String(request?.name || request?.username || "User").trim()}`,
-        subtitle: [String(request?.deliveryLabel || "").trim(), String(request?.contact || "").trim()].filter(Boolean).join(" • "),
+        subtitle: [String(request?.deliveryLabel || "").trim(), String(request?.contact || "").trim()].filter(Boolean).join(" and "),
         at: request?.requestedAt || request?.createdAt,
       });
     });
@@ -12936,7 +14749,7 @@ function buildAdminActivityAnalytics({
       push({
         type: "subscription",
         title: `Subscription: ${String(request?.name || request?.username || "User").trim()}`,
-        subtitle: [String(request?.planLabel || request?.plan || "").trim(), String(request?.status || "").trim()].filter(Boolean).join(" • "),
+        subtitle: [String(request?.planLabel || request?.plan || "").trim(), String(request?.status || "").trim()].filter(Boolean).join(" and "),
         at: request?.requestedAt || request?.createdAt,
       });
     });
@@ -13240,6 +15053,7 @@ async function start() {
   const purgedDeactivatedUsers = await purgeExpiredDeactivatedUsers();
   const seedInfo = await ensureQuestionsSeeded();
   const categoryNormalizeInfo = await normalizeStoredQuestionCategories();
+  const newsSourceSeedInfo = await seedDefaultNewsSources();
   if (userNormalizeInfo.changed > 0) {
     console.log(
       `[users] normalized ${userNormalizeInfo.changed}/${userNormalizeInfo.total} user records`,
@@ -13259,6 +15073,9 @@ async function start() {
     console.log(
       `[taxonomy] normalized ${categoryNormalizeInfo.changed}/${categoryNormalizeInfo.total} question categories and rotation tags`,
     );
+  }
+  if (Array.isArray(newsSourceSeedInfo) && newsSourceSeedInfo.length > 0) {
+    console.log(`[news] ready with ${newsSourceSeedInfo.length} curated source(s)`);
   }
 
   const purgeTimer = setInterval(async () => {

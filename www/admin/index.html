@@ -315,24 +315,6 @@
         overflow: hidden;
       }
 
-      @media (min-width: 769px) {
-        #users.content.active,
-        #questions.content.active {
-          display: flex;
-          flex-direction: column;
-          min-height: 0;
-          min-width: 0;
-          height: calc(100vh - 220px);
-          overflow: hidden;
-        }
-
-        #users.content.active > .table-container,
-        #questions.content.active > .table-container {
-          flex: 1 1 auto;
-          min-height: 0;
-        }
-      }
-
       .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -581,7 +563,7 @@
         max-width: 100%;
         min-width: 0;
         overflow-x: auto;
-        overflow-y: auto;
+        overflow-y: hidden;
         margin-bottom: 20px;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
@@ -600,17 +582,6 @@
         -webkit-overflow-scrolling: touch;
         margin-bottom: 0;
         scrollbar-width: none;
-      }
-
-      #users .table-container,
-      #questions .table-container,
-      #monetization .table-container {
-        min-width: 0;
-        max-height: min(68dvh, 560px);
-        overflow-y: auto;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
       }
 
       #groups .table-container::-webkit-scrollbar,
@@ -817,15 +788,11 @@
 
       .user-table,
       .group-table,
-      .report-table {
-        width: 100%;
-        min-width: 100%;
-      }
-
+      .report-table,
       .question-table,
       .monetization-table {
         width: max-content;
-        min-width: max-content;
+        min-width: 100%;
       }
 
       .question-table th,
@@ -838,18 +805,6 @@
         max-width: 280px;
         white-space: normal;
         word-break: break-word;
-      }
-
-      .question-table th:last-child,
-      .question-table td.question-actions-cell {
-        width: 1%;
-        white-space: nowrap;
-      }
-
-      .question-table td.question-actions-cell .actions {
-        display: inline-flex;
-        width: fit-content;
-        flex-wrap: nowrap;
       }
 
       .user-avatar-cell {
@@ -1260,7 +1215,7 @@
         align-items: center;
         padding: 16px;
         width: max-content;
-        min-width: max-content;
+        min-width: 100%;
       }
 
       .monetization-row-header .monetization-row-main {
@@ -3434,12 +3389,7 @@
 
         #users .table-container {
           overflow-x: auto;
-          overflow-y: auto;
           min-width: 0;
-          max-height: min(68dvh, 560px);
-          -webkit-overflow-scrolling: touch;
-          touch-action: pan-x pan-y;
-          overscroll-behavior: contain;
         }
 
         #users table {
@@ -3462,9 +3412,6 @@
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           min-width: 0;
-          max-height: min(68dvh, 560px);
-          touch-action: pan-x pan-y;
-          overscroll-behavior: contain;
         }
 
         #groups table,
@@ -3480,31 +3427,21 @@
 
         #questions .table-container {
           overflow-x: auto;
-          overflow-y: auto;
           -webkit-overflow-scrolling: touch;
           min-width: 0;
-          max-height: min(68dvh, 560px);
-          touch-action: pan-x pan-y;
-          overscroll-behavior: contain;
+          touch-action: auto;
         }
 
         #questions table {
           table-layout: auto;
-          min-width: 0;
+          min-width: 900px;
           width: max-content;
-          display: inline-table;
         }
 
         #questions th,
         #questions td {
-          vertical-align: top;
-          white-space: normal;
-        }
-
-        #questions th:last-child,
-        #questions td.question-id-cell,
-        #questions td.question-actions-cell {
           white-space: nowrap;
+          vertical-align: top;
         }
 
         #questions td.question-text-cell .question-preview {
@@ -3512,65 +3449,6 @@
           max-width: 280px;
           white-space: normal;
           word-break: break-word;
-        }
-
-        #password-resets .password-reset-table {
-          width: max-content;
-          min-width: 980px;
-          table-layout: auto;
-        }
-
-        #password-resets .password-reset-table th,
-        #password-resets .password-reset-table td {
-          white-space: nowrap;
-          vertical-align: top;
-        }
-
-        #password-resets .password-reset-table th:first-child,
-        #password-resets .password-reset-table td:first-child {
-          min-width: 220px;
-        }
-
-        #password-resets .password-reset-table th:nth-child(2),
-        #password-resets .password-reset-table td:nth-child(2) {
-          min-width: 190px;
-        }
-
-        #password-resets .password-reset-table th:nth-child(3),
-        #password-resets .password-reset-table td:nth-child(3) {
-          min-width: 120px;
-        }
-
-        #password-resets .password-reset-table th:nth-child(4),
-        #password-resets .password-reset-table td:nth-child(4),
-        #password-resets .password-reset-table th:nth-child(5),
-        #password-resets .password-reset-table td:nth-child(5) {
-          min-width: 150px;
-        }
-
-        #password-resets .password-reset-table th:last-child,
-        #password-resets .password-reset-table td:last-child {
-          min-width: 110px;
-        }
-
-        #password-resets .password-reset-table .cell-wrap {
-          display: inline-flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-          max-width: none;
-          width: max-content;
-          white-space: nowrap;
-          word-break: normal;
-          overflow-wrap: normal;
-        }
-
-        #password-resets .password-reset-table .cell-wrap strong,
-        #password-resets .password-reset-table .cell-wrap .cell-subtle,
-        #password-resets .password-reset-table .cell-wrap .password-reset-contact-link {
-          white-space: nowrap;
-          word-break: normal;
-          overflow-wrap: normal;
         }
 
         #questions td.question-actions-cell .actions {
@@ -3805,12 +3683,9 @@
           min-width: 0;
           width: 100%;
           max-width: 100%;
-          overflow-y: auto;
+          overflow-y: hidden;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
-          max-height: min(68dvh, 560px);
-          touch-action: pan-x pan-y;
-          overscroll-behavior: contain;
         }
 
         #monetization .monetization-table {
@@ -3836,11 +3711,10 @@
         #questions .table-container,
         #monetization .table-container {
           overflow-x: auto;
-          overflow-y: auto;
+          overflow-y: hidden;
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
           overscroll-behavior: contain;
-          max-height: min(68dvh, 560px);
         }
 
         #users table {
@@ -3892,81 +3766,6 @@
           min-height: 240px;
           padding: 8px;
         }
-
-        #analytics.content {
-          overflow-x: hidden;
-          min-width: 0;
-        }
-
-        #analytics .analytics-panel {
-          overflow-x: hidden;
-          min-width: 0;
-        }
-
-        #analytics .analytics-hero {
-          flex-direction: column;
-          align-items: stretch;
-          min-width: 0;
-        }
-
-        #analytics .analytics-hero > div:first-child {
-          min-width: 0;
-        }
-
-        #analytics .analytics-periods {
-          width: 100%;
-          flex-wrap: nowrap;
-          gap: 6px;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-        }
-
-        #analytics .analytics-period-btn {
-          flex: 1 1 0;
-          min-width: 0;
-          padding: 7px 8px;
-          font-size: 11px;
-          white-space: nowrap;
-        }
-
-        #analytics .analytics-summary-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
-          min-width: 0;
-        }
-
-        #analytics .analytics-chart-grid {
-          grid-template-columns: 1fr;
-          min-width: 0;
-        }
-
-        #analytics .analytics-card {
-          min-width: 0;
-          overflow-x: hidden;
-        }
-
-        #analytics .analytics-card-head {
-          flex-wrap: wrap;
-          align-items: flex-start;
-        }
-
-        #analytics .analytics-feed-list {
-          min-width: 0;
-        }
-
-        #analytics .analytics-feed-item {
-          grid-template-columns: minmax(0, 1fr);
-        }
-
-        #analytics .analytics-feed-type,
-        #analytics .analytics-feed-title,
-        #analytics .analytics-feed-subtitle,
-        #analytics .analytics-feed-time {
-          min-width: 0;
-          overflow-wrap: anywhere;
-          word-break: break-word;
-        }
-
       }
 
       /* Hide native scrollbars while preserving scroll behavior. */
@@ -4036,6 +3835,7 @@
           <h1>Admin Dashboard</h1>
         </div>
         <div class="header-actions">
+          <button type="button" class="secondary header-btn" onclick="window.location.href='./news-studio.html'">News Studio</button>
           <button id="refresh-data-btn" class="secondary header-btn">
             Refresh
           </button>
@@ -4054,6 +3854,8 @@
         <button class="tab-btn" data-tab="groups">Groups</button>
         <button class="tab-btn" data-tab="reports">Reports <span id="reports-tab-badge" class="admin-tab-badge hidden">0</span></button>
         <button class="tab-btn" data-tab="broadcast">Broadcast</button>
+        <button class="tab-btn" type="button" onclick="window.location.href='./news-studio.html'">News Studio</button>
+        <button class="tab-btn" data-tab="news">News</button>
         <button class="tab-btn" data-tab="questions">
           Questions
         </button>
@@ -4411,6 +4213,88 @@
                 </div>
               </div>
             </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEWS TAB -->
+      <div id="news" class="content">
+        <div id="news-alerts"></div>
+        <div class="news-review-shell">
+          <section class="news-review-header">
+            <div class="news-review-header-copy">
+              <div class="news-review-kicker">Curated intake</div>
+              <h2 class="news-review-title">News review workspace</h2>
+              <p class="news-review-subtitle">
+                Auto-collected items are reviewed here before they are published to the public news feed.
+              </p>
+            </div>
+            <div class="news-review-actions">
+              <button id="news-collect-btn" type="button" class="primary">Collect now</button>
+              <button id="news-refresh-btn" type="button" class="secondary">Refresh</button>
+            </div>
+          </section>
+
+          <div class="news-review-stats">
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Pending</div>
+              <div class="stat-value" id="news-pending-count">0</div>
+            </div>
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Approved</div>
+              <div class="stat-value" id="news-approved-count">0</div>
+            </div>
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Published</div>
+              <div class="stat-value" id="news-published-count">0</div>
+            </div>
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Sources</div>
+              <div class="stat-value" id="news-source-count">0</div>
+            </div>
+          </div>
+
+          <div class="news-review-layout">
+            <aside class="news-review-side">
+              <div class="news-review-panel">
+                <div class="news-review-panel-head">
+                  <h3>Sources</h3>
+                  <span class="news-review-panel-note">Enabled feeds</span>
+                </div>
+                <div id="news-source-list" class="news-source-list"></div>
+              </div>
+              <div class="news-review-panel">
+                <div class="news-review-panel-head">
+                  <h3>Recent runs</h3>
+                  <span class="news-review-panel-note">Latest collection jobs</span>
+                </div>
+                <div id="news-run-list" class="news-run-list"></div>
+              </div>
+            </aside>
+
+            <section class="news-review-main">
+              <div class="news-review-toolbar">
+                <div class="news-review-status-filters">
+                  <button type="button" class="news-review-filter is-active" data-news-status-filter="pending_review">Pending</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="approved">Approved</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="published">Published</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="rejected">Rejected</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="all">All</button>
+                </div>
+                <div class="users-search news-review-search">
+                  <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" fill="currentColor"/>
+                  </svg>
+                  <input type="search" id="news-search" placeholder="Search by title, source, or category..." autocomplete="off" />
+                </div>
+              </div>
+              <div id="news-review-list" class="news-review-list"></div>
+            </section>
+
+            <aside class="news-review-detail">
+              <div id="news-review-empty" class="news-review-empty">Select a news item to review its details and publish controls.</div>
+              <div id="news-review-detail-card" class="news-review-detail-card hidden"></div>
+            </aside>
           </div>
         </div>
       </div>

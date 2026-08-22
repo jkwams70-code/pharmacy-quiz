@@ -1,30 +1,14 @@
-function normalizeApiBase(value = "") {
-  return String(value || "").trim().replace(/\/+$/, "");
-}
-
-function parseApiBase(value = "") {
-  const safeValue = normalizeApiBase(value);
-  if (!safeValue) return null;
-  try {
-    return new URL(safeValue);
-  } catch {
-    return null;
-  }
-}
-
-const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "::1", "[::1]"];
-const storedApiBase = normalizeApiBase(localStorage.getItem("quizApiBase"));
+const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const currentHost = String(window.location.hostname || "").trim();
 const currentProtocol = String(window.location.protocol || "").trim().toLowerCase();
 const currentPort = String(window.location.port || "").trim();
-const isLoopbackHost = LOOPBACK_HOSTS.includes(currentHost);
 const userAgent = String(
   typeof navigator !== "undefined" ? navigator.userAgent || "" : "",
 );
 const hasCapacitorGlobal =
   typeof window !== "undefined" && typeof window.Capacitor === "object";
 const isAndroidWebView = /\bwv\b/i.test(userAgent);
-const isLikelyNativeHost = isLoopbackHost && !currentPort;
+const isLikelyNativeHost = ["localhost", "127.0.0.1"].includes(currentHost) && !currentPort;
 const isNativeShell =
   currentProtocol.startsWith("capacitor:") ||
   currentProtocol.startsWith("ionic:") ||
@@ -37,7 +21,7 @@ const isNativeShell =
       typeof window.Capacitor.isNativePlatform === "function" &&
       window.Capacitor.isNativePlatform(),
   );
-const isLocalHost = isLoopbackHost;
+const isLocalHost = ["localhost", "127.0.0.1"].includes(currentHost);
 const isFilePreview = currentProtocol === "file:";
 const isProductionHost = /ajixpharmacy\.online$/i.test(currentHost);
 const isLanPreview =
@@ -47,33 +31,24 @@ const isLanPreview =
   window.location.protocol === "http:";
 const sameOriginApiBase =
   currentHost && currentProtocol.startsWith("http")
-    ? normalizeApiBase(`${window.location.origin}/api`)
+    ? `${window.location.origin.replace(/\/+$/, "")}/api`
     : "";
 const productionFallbackApiBase = "https://api.ajixpharmacy.online/api";
-const localApiHost = isLoopbackHost ? "127.0.0.1" : currentHost || "localhost";
-const shouldUseLocalApi = (isFilePreview || isLocalHost) && !isNativeShell;
+const shouldUseLocalApi = (isFilePreview || (isLocalHost && !isLikelyNativeHost)) && !isNativeShell;
 const inferredApiBase = shouldUseLocalApi
-  ? `http://${localApiHost}:4000/api`
+  ? "http://localhost:4000/api"
   : isLanPreview
     ? `http://${currentHost}:4000/api`
     : isProductionHost
-      ? productionFallbackApiBase || sameOriginApiBase
+      ? sameOriginApiBase || productionFallbackApiBase
       : productionFallbackApiBase;
-const productionApiBaseCandidates = [productionFallbackApiBase, sameOriginApiBase].filter(Boolean);
-const parsedStoredApiBase = parseApiBase(storedApiBase);
-const storedApiHost = String(parsedStoredApiBase?.hostname || "").trim().toLowerCase();
-const storedApiPort = String(parsedStoredApiBase?.port || "").trim();
-const isStoredApiLocalBackend =
-  !!parsedStoredApiBase &&
-  storedApiPort === "4000" &&
-  ((shouldUseLocalApi && LOOPBACK_HOSTS.includes(storedApiHost)) ||
-    (isLanPreview && storedApiHost === currentHost.toLowerCase()));
 const apiBaseCandidates = Array.from(
   new Set(
     [
-      isProductionHost ? "" : storedApiBase,
+      storedApiBase,
       inferredApiBase,
-      ...productionApiBaseCandidates,
+      isProductionHost ? sameOriginApiBase : "",
+      isProductionHost ? productionFallbackApiBase : "",
     ].filter(Boolean),
   ),
 );
@@ -84,16 +59,11 @@ const hasStaleStoredApiBase =
     /your-new-tunnel/i.test(storedApiBase) ||
     /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase) ||
     (isLanPreview && /localhost:4000/i.test(storedApiBase)) ||
-    ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)) ||
-    ((shouldUseLocalApi || isLanPreview) && !isStoredApiLocalBackend));
+    ((isNativeShell || isLikelyNativeHost) && /localhost:4000/i.test(storedApiBase)));
 if (hasStaleStoredApiBase) {
   localStorage.removeItem("quizApiBase");
 }
-const API_BASE = hasStaleStoredApiBase
-  ? inferredApiBase
-  : isProductionHost
-    ? productionFallbackApiBase || sameOriginApiBase
-    : storedApiBase || inferredApiBase;
+const API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || inferredApiBase;
 
 const CLIENT_ID_KEY = "quizClientId";
 const AUTH_TOKEN_KEY = "quizAuthToken";
@@ -201,21 +171,14 @@ async function request(method, path, payload = undefined) {
       continue;
     }
 
+    if (response?.ok) {
+      break;
+    }
+
     const contentType = String(response.headers.get("content-type") || "").toLowerCase();
     const isAuthOrValidationError = [400, 401, 403, 409].includes(response.status);
-    const looksLikeJson = contentType.includes("application/json");
-    const looksLikeWrongEndpoint =
-      response.status === 404 || contentType.includes("text/html") || !looksLikeJson;
-
-    if (response.ok && looksLikeJson) {
-      break;
-    }
-
-    if (isAuthOrValidationError) {
-      break;
-    }
-
-    if (!looksLikeWrongEndpoint) {
+    const looksLikeWrongEndpoint = response.status === 404 || contentType.includes("text/html");
+    if (!looksLikeWrongEndpoint || isAuthOrValidationError) {
       break;
     }
     response = null;
@@ -438,14 +401,6 @@ export const backendClient = {
 
   submitSubscriptionRequest(payload = {}) {
     return post("/subscriptions/requests", payload);
-  },
-
-  updateSetupPoints(payload = {}) {
-    return put("/auth/setup-points", payload);
-  },
-
-  updateLawDrillSession(payload = {}) {
-    return put("/auth/law-drill-session", payload);
   },
 
   fetchCommunityOverview() {
@@ -733,6 +688,49 @@ export const backendClient = {
       attachmentFileName: attachment?.fileName || "",
       attachmentMimeType: attachment?.mimeType || "",
     });
+  },
+
+  fetchNewsFeed(filters = {}) {
+    const query = toQuery(filters);
+    return get(`/news/feed${query}`);
+  },
+
+  fetchNewsItem(newsId) {
+    if (!newsId) return Promise.resolve({ ok: false, item: null });
+    return get(`/news/${encodeURIComponent(newsId)}`);
+  },
+
+  fetchAdminNews(filters = {}) {
+    const query = toQuery(filters);
+    return get(`/admin/news${query}`);
+  },
+
+  fetchAdminNewsSources() {
+    return get("/admin/news/sources");
+  },
+
+  collectAdminNews(sourceId = "") {
+    return post("/admin/news/collect", { sourceId });
+  },
+
+  updateAdminNewsItem(newsId, payload = {}) {
+    return patch(`/admin/news/${encodeURIComponent(newsId)}`, payload);
+  },
+
+  approveAdminNewsItem(newsId, reviewNote = "") {
+    return post(`/admin/news/${encodeURIComponent(newsId)}/approve`, { reviewNote });
+  },
+
+  publishAdminNewsItem(newsId, reviewNote = "") {
+    return post(`/admin/news/${encodeURIComponent(newsId)}/publish`, { reviewNote });
+  },
+
+  rejectAdminNewsItem(newsId, reviewNote = "") {
+    return post(`/admin/news/${encodeURIComponent(newsId)}/reject`, { reviewNote });
+  },
+
+  updateAdminNewsSource(sourceId, payload = {}) {
+    return patch(`/admin/news/sources/${encodeURIComponent(sourceId)}`, payload);
   },
 
   editConversationMessage(messageId, text = "") {

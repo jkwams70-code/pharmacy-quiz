@@ -3835,6 +3835,7 @@
           <h1>Admin Dashboard</h1>
         </div>
         <div class="header-actions">
+          <button type="button" class="secondary header-btn" onclick="window.location.href='./news-studio.html'">News Studio</button>
           <button id="refresh-data-btn" class="secondary header-btn">
             Refresh
           </button>
@@ -3853,6 +3854,8 @@
         <button class="tab-btn" data-tab="groups">Groups</button>
         <button class="tab-btn" data-tab="reports">Reports <span id="reports-tab-badge" class="admin-tab-badge hidden">0</span></button>
         <button class="tab-btn" data-tab="broadcast">Broadcast</button>
+        <button class="tab-btn" type="button" onclick="window.location.href='./news-studio.html'">News Studio</button>
+        <button class="tab-btn" data-tab="news">News</button>
         <button class="tab-btn" data-tab="questions">
           Questions
         </button>
@@ -4210,6 +4213,88 @@
                 </div>
               </div>
             </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEWS TAB -->
+      <div id="news" class="content">
+        <div id="news-alerts"></div>
+        <div class="news-review-shell">
+          <section class="news-review-header">
+            <div class="news-review-header-copy">
+              <div class="news-review-kicker">Curated intake</div>
+              <h2 class="news-review-title">News review workspace</h2>
+              <p class="news-review-subtitle">
+                Auto-collected items are reviewed here before they are published to the public news feed.
+              </p>
+            </div>
+            <div class="news-review-actions">
+              <button id="news-collect-btn" type="button" class="primary">Collect now</button>
+              <button id="news-refresh-btn" type="button" class="secondary">Refresh</button>
+            </div>
+          </section>
+
+          <div class="news-review-stats">
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Pending</div>
+              <div class="stat-value" id="news-pending-count">0</div>
+            </div>
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Approved</div>
+              <div class="stat-value" id="news-approved-count">0</div>
+            </div>
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Published</div>
+              <div class="stat-value" id="news-published-count">0</div>
+            </div>
+            <div class="stat-card news-review-stat">
+              <div class="stat-label">Sources</div>
+              <div class="stat-value" id="news-source-count">0</div>
+            </div>
+          </div>
+
+          <div class="news-review-layout">
+            <aside class="news-review-side">
+              <div class="news-review-panel">
+                <div class="news-review-panel-head">
+                  <h3>Sources</h3>
+                  <span class="news-review-panel-note">Enabled feeds</span>
+                </div>
+                <div id="news-source-list" class="news-source-list"></div>
+              </div>
+              <div class="news-review-panel">
+                <div class="news-review-panel-head">
+                  <h3>Recent runs</h3>
+                  <span class="news-review-panel-note">Latest collection jobs</span>
+                </div>
+                <div id="news-run-list" class="news-run-list"></div>
+              </div>
+            </aside>
+
+            <section class="news-review-main">
+              <div class="news-review-toolbar">
+                <div class="news-review-status-filters">
+                  <button type="button" class="news-review-filter is-active" data-news-status-filter="pending_review">Pending</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="approved">Approved</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="published">Published</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="rejected">Rejected</button>
+                  <button type="button" class="news-review-filter" data-news-status-filter="all">All</button>
+                </div>
+                <div class="users-search news-review-search">
+                  <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" fill="currentColor"/>
+                  </svg>
+                  <input type="search" id="news-search" placeholder="Search by title, source, or category..." autocomplete="off" />
+                </div>
+              </div>
+              <div id="news-review-list" class="news-review-list"></div>
+            </section>
+
+            <aside class="news-review-detail">
+              <div id="news-review-empty" class="news-review-empty">Select a news item to review its details and publish controls.</div>
+              <div id="news-review-detail-card" class="news-review-detail-card hidden"></div>
+            </aside>
           </div>
         </div>
       </div>

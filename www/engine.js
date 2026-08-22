@@ -130,6 +130,76 @@ const QUESTION_CATEGORY_OVERRIDES = {
   720: "Cardiovascular Disorders",
 };
 
+const MOJIBAKE_REPLACEMENTS = [
+  ["â€¢", "•"],
+  ["â€¦", "…"],
+  ["â€™", "’"],
+  ["â€œ", "“"],
+  ["â€", "”"],
+  ["â€˜", "‘"],
+  ["â€”", "—"],
+  ["â€“", "–"],
+  ["Ã—", "×"],
+];
+
+function normalizeMojibake(value = "") {
+  let text = String(value ?? "");
+  try {
+    const decoded = decodeURIComponent(escape(text));
+    if (decoded && decoded !== text) text = decoded;
+  } catch {
+    // Ignore strings that are already valid Unicode or not UTF-8 mojibake.
+  }
+  for (const [bad, good] of MOJIBAKE_REPLACEMENTS) {
+    text = text.split(bad).join(good);
+  }
+  return text;
+}
+
+function sanitizeMojibakeNode(node) {
+  if (!(node instanceof Text)) return;
+  const next = normalizeMojibake(node.nodeValue || "");
+  if (next !== node.nodeValue) node.nodeValue = next;
+}
+
+function sanitizeMojibakeElement(element) {
+  if (!(element instanceof Element)) return;
+  for (const attribute of ["aria-label", "title", "placeholder", "alt"]) {
+    if (!element.hasAttribute(attribute)) continue;
+    const current = element.getAttribute(attribute) || "";
+    const next = normalizeMojibake(current);
+    if (next !== current) element.setAttribute(attribute, next);
+  }
+}
+
+function sanitizeMojibakeTree(root = document.body) {
+  if (!(root instanceof Element)) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let current = walker.nextNode(); current; current = walker.nextNode()) {
+    sanitizeMojibakeNode(current);
+  }
+  root.querySelectorAll("[aria-label],[title],[placeholder],[alt]").forEach(sanitizeMojibakeElement);
+}
+
+function installMojibakeSanitizer() {
+  if (typeof document === "undefined" || typeof MutationObserver === "undefined") return;
+  const runSanitizer = () => {
+    if (document.body) sanitizeMojibakeTree(document.body);
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runSanitizer, { once: true });
+  } else {
+    runSanitizer();
+  }
+  const observer = new MutationObserver((mutations) => {
+    if (!mutations.some((mutation) => mutation.addedNodes && mutation.addedNodes.length > 0)) return;
+    runSanitizer();
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+installMojibakeSanitizer();
+
 function clearQuestionIdDependentLocalCache() {
   const keysToClear = [
     "studySession",
@@ -879,11 +949,19 @@ function getCurrentDrillCumulativeScore() {
   return Math.max(0, Math.round(Number(readCurrentSetupPoints()?.[bucket]) || 0));
 }
 
+function buildPointsIconMarkup() {
+  return `
+    <svg class="header-inline-points-icon-svg" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path d="M12 2.5 14.9 8h5.9l-4.8 3.5 1.8 5.9L12 13.9 6.2 17.4 8 11.5 3.2 8h5.9L12 2.5Z" fill="currentColor"/>
+    </svg>
+  `.trim();
+}
+
 function buildDrillCumulativePointsBadgeMarkup(points = 0, label = "Total") {
   const safePoints = Math.max(0, Math.round(Number(points) || 0));
   return `
     <span class="header-inline-points is-cumulative" title="Cumulative drill points">
-      <span class="header-inline-points-icon" aria-hidden="true">ðŸ†</span>
+      <span class="header-inline-points-icon" aria-hidden="true">${buildPointsIconMarkup()}</span>
       <span class="header-inline-points-label">${escapeHtml(label)}</span>
       <span class="header-inline-points-value">${safePoints}</span>
     </span>
@@ -1438,7 +1516,7 @@ function updateLawDrillHeaderMeta() {
     : LAW_DRILL_QUESTIONS_PER_LEVEL;
   const levelScore = getLawDrillLevelScore(currentLevel);
   if (progressEl) {
-    progressEl.innerText = `${reviewLabel} ${levelNumber}/${lawDrillState.totalLevels} â€¢ Q ${current + 1}/${active.length}`;
+    progressEl.innerText = `${reviewLabel} ${levelNumber} of ${lawDrillState.totalLevels} and question ${current + 1} of ${active.length}`;
   }
 }
 
@@ -1485,7 +1563,7 @@ function renderLawDrillReviewLevelViewLegacy(levelIndex = 0) {
   }
 
   if (progressEl) {
-    progressEl.innerText = `Level ${levelIndex + 1} Review â€¢ ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.innerText = `Level ${levelIndex + 1} Review and ${correct} of ${Math.max(1, answered)} correct`;
     progressEl.style.color = "";
   }
   if (liveScore) liveScore.innerText = "";
@@ -1602,7 +1680,7 @@ function renderLawDrillReviewLevelView(levelIndex = 0) {
   }
 
   if (progressEl) {
-    progressEl.innerText = `Level ${levelIndex + 1} Review â€¢ ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.innerText = `Level ${levelIndex + 1} Review and ${correct} of ${Math.max(1, answered)} correct`;
     progressEl.style.color = "";
   }
   if (liveScore) liveScore.innerText = "";
@@ -1705,7 +1783,7 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
           <div class="law-drill-stack-eyebrow">Law Drill Review</div>
           <div class="law-drill-stack-title">${final ? "Final Level Review" : `Level ${levelIndex + 1} Review`}</div>
         </div>
-        <div class="law-drill-stack-meta">${answered} answered â€¢ ${correct} correct</div>
+        <div class="law-drill-stack-meta">${answered} answered and ${correct} correct</div>
       </div>
       <div class="law-drill-stack-list">
         ${buildLawDrillResultReviewMarkup(levelIndex)}
@@ -2270,6 +2348,21 @@ let performanceStateSyncHandle = null;
 let performanceStateSyncInFlight = false;
 let performanceStateSyncQueued = false;
 let backendBootstrapStarted = false;
+let newsFeedState = {
+  loaded: false,
+  loading: false,
+  items: [],
+  categories: {},
+  sources: [],
+  selectedNewsId: "",
+  selectedCategory: "all",
+  selectedSourceId: "",
+  searchQuery: "",
+  lastUpdatedAt: "",
+  error: "",
+  errorTone: "info",
+};
+const NEWS_FEED_CACHE_KEY = "news-feed-cache-v1";
 const communityStatusVideoMetaCache = new Map();
 const communityStatusVideoFrameCache = new Map();
 const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
@@ -3046,6 +3139,27 @@ const dailyQuizBtn = document.getElementById("daily-quiz-btn");
 const dailyQuizMetaEl = document.getElementById("daily-quiz-meta");
 const topicLibraryBtns = Array.from(document.querySelectorAll('[data-open-topic-library="true"]'));
 const menuCommunityBtn = document.getElementById("menu-community-btn");
+const menuDrillsTab = document.getElementById("menu-drills-tab");
+const menuLawTab = document.getElementById("menu-law-tab");
+const menuGppqeTab = document.getElementById("menu-gppqe-tab");
+const menuExtraTab = document.getElementById("menu-extra-tab");
+const drillsScreen = document.getElementById("drills-screen");
+const drillsBackBtn = document.getElementById("drills-back-btn");
+const drillsMenuBtn = document.getElementById("drills-menu-btn");
+const drillsLobbyTabs = Array.from(document.querySelectorAll("#drills-screen .drill-lobby-tab"));
+const drillsLobbyPanels = Array.from(document.querySelectorAll("#drills-screen .drill-lobby-panel"));
+const drillsPlayBtns = Array.from(document.querySelectorAll("#drills-screen [data-drill-play-btn]"));
+const gppqeScreen = document.getElementById("gppqe-screen");
+const gppqeBackBtn = document.getElementById("gppqe-back-btn");
+const gppqeMenuBtn = document.getElementById("gppqe-menu-btn");
+const extraScreen = document.getElementById("extra-screen");
+const extraBackBtn = document.getElementById("extra-back-btn");
+const extraViewToggleBtn = document.getElementById("extra-view-toggle-btn");
+const extraMenuBtn = document.getElementById("extra-menu-btn");
+const menuExtraGrid = document.getElementById("menu-extra-grid");
+const menuNewsBtn = document.getElementById("menu-news-btn");
+const comingSoonModal = document.getElementById("coming-soon-modal");
+const comingSoonOkBtn = document.getElementById("coming-soon-ok-btn");
 const rapidDrillBtn = document.getElementById("rapid-drill-btn");
 const suddenDrillBtn = document.getElementById("sudden-drill-btn");
 const clinicalDrillBtn = document.getElementById("clinical-drill-btn");
@@ -3064,6 +3178,163 @@ if (historyBtn) {
     // whatever it was supposed to do
   };
 }
+
+const MENU_DRILL_HISTORY_STORAGE_KEY = "menuDrillHistoryV1";
+const EXTRA_VIEW_STORAGE_KEY = "menuExtraViewV1";
+let extraViewMode = "cards";
+
+function readMenuDrillHistory() {
+  try {
+    const raw = localStorage.getItem(MENU_DRILL_HISTORY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeMenuDrillHistory(entries = []) {
+  try {
+    localStorage.setItem(MENU_DRILL_HISTORY_STORAGE_KEY, JSON.stringify(Array.isArray(entries) ? entries : []));
+  } catch {}
+}
+
+function recordMenuDrillHistory(variant = "") {
+  const safeVariant = String(variant || "").trim().toLowerCase();
+  if (!safeVariant) return;
+  const history = readMenuDrillHistory();
+  history.unshift({
+    variant: safeVariant,
+    timestamp: Date.now(),
+  });
+  writeMenuDrillHistory(history.slice(0, 5));
+}
+
+function renderMenuDrillHistory() {
+  if (!drillsLobbyPanels.length) return;
+  const history = readMenuDrillHistory();
+  const grouped = history.reduce((acc, entry) => {
+    const key = String(entry?.variant || "").trim().toLowerCase();
+    if (!key) return acc;
+    acc[key] = acc[key] || [];
+    acc[key].push(entry);
+    return acc;
+  }, {});
+
+  drillsLobbyPanels.forEach((panel) => {
+    const variant = String(panel.dataset.drillPanel || "").trim().toLowerCase();
+    const list = panel.querySelector("[data-drill-history-list]");
+    if (!list) return;
+    const rows = Array.isArray(grouped[variant]) ? grouped[variant].slice(0, 5) : [];
+    if (!rows.length) {
+      list.innerHTML = '<div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>';
+      return;
+    }
+    list.innerHTML = rows
+      .map((entry, index) => {
+        const when = Number(entry?.timestamp) ? new Date(Number(entry.timestamp)) : null;
+        const label = when && !Number.isNaN(when.getTime())
+          ? when.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+          : "Just now";
+        return `<div class="drill-history-item"><span>${index + 1}. ${escapeHtml(variant)}</span><span>${escapeHtml(label)}</span></div>`;
+      })
+      .join("");
+  });
+}
+
+function setMenuHubActiveTab(section = "drills") {
+  const safeSection = String(section || "").trim().toLowerCase();
+  const tabs = [
+    [menuDrillsTab, "drills"],
+    [menuLawTab, "law"],
+    [menuGppqeTab, "gppqe"],
+    [menuExtraTab, "extra"],
+  ];
+
+  tabs.forEach(([tab, value]) => {
+    if (!tab) return;
+    const isActive = value === safeSection;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+}
+
+function setDrillLobbyVariant(variant = "rapid") {
+  const safeVariant = ["rapid", "sudden", "clinical"].includes(String(variant || "").toLowerCase())
+    ? String(variant || "").toLowerCase()
+    : "rapid";
+  drillsLobbyTabs.forEach((tab) => {
+    const isActive = String(tab.dataset.drillVariant || "").toLowerCase() === safeVariant;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  drillsLobbyPanels.forEach((panel) => {
+    const isActive = String(panel.dataset.drillPanel || "").toLowerCase() === safeVariant;
+    panel.classList.toggle("is-active", isActive);
+  });
+  renderMenuDrillHistory();
+}
+
+function openDrillsScreen(variant = "rapid") {
+  showScreen("drills-screen");
+  setDrillLobbyVariant(variant);
+}
+
+function openGppqeScreen() {
+  if (!requireSubscriptionAccess("gppqe")) {
+    return;
+  }
+  showScreen("gppqe-screen");
+  window.requestAnimationFrame(() => {
+    openComingSoonModal();
+  });
+}
+
+function setExtraViewMode(mode = "cards", { persist = true } = {}) {
+  const nextMode = String(mode || "").toLowerCase() === "list" ? "list" : "cards";
+  extraViewMode = nextMode;
+  if (menuExtraGrid) {
+    menuExtraGrid.classList.toggle("is-list", nextMode === "list");
+    menuExtraGrid.classList.toggle("is-cards", nextMode === "cards");
+  }
+  if (extraViewToggleBtn) {
+    extraViewToggleBtn.setAttribute("aria-pressed", nextMode === "list" ? "true" : "false");
+    extraViewToggleBtn.setAttribute("title", nextMode === "list" ? "Switch to card view" : "Switch to list view");
+    extraViewToggleBtn.setAttribute("aria-label", nextMode === "list" ? "Switch to card view" : "Switch to list view");
+  }
+  if (persist) {
+    try {
+      localStorage.setItem(EXTRA_VIEW_STORAGE_KEY, nextMode);
+    } catch {}
+  }
+}
+
+function openExtraScreen() {
+  showScreen("extra-screen");
+  setExtraViewMode(extraViewMode, { persist: false });
+}
+
+function openComingSoonModal() {
+  if (!comingSoonModal) return;
+  comingSoonModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeComingSoonModal() {
+  if (!comingSoonModal) return;
+  comingSoonModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+try {
+  extraViewMode = String(localStorage.getItem(EXTRA_VIEW_STORAGE_KEY) || "cards").trim().toLowerCase() === "list" ? "list" : "cards";
+} catch {
+  extraViewMode = "cards";
+}
+setExtraViewMode(extraViewMode, { persist: false });
+renderMenuDrillHistory();
+setDrillLobbyVariant("rapid");
+
 const questionEl = document.getElementById("question");
 const answersEl = document.getElementById("answers");
 const nextBtn = document.getElementById("next-btn");
@@ -3108,6 +3379,27 @@ const lawDrillMenuBtn = document.getElementById("law-drill-menu-btn");
 const resultBadgeEl = document.getElementById("result-badge");
 const backReviewBtn = document.getElementById("back-review-btn");
 const quizMenu = document.getElementById("quiz-menu");
+const newsScreen = document.getElementById("news-screen");
+const newsShellEl = document.getElementById("news-shell");
+const newsHeaderTitleEl = document.getElementById("news-header-title");
+const newsBackBtn = document.getElementById("news-back-btn");
+const newsSearchShell = document.getElementById("news-search-shell");
+const newsSearchBtn = document.getElementById("news-search-btn");
+const newsSearchInput = document.getElementById("news-search-input");
+const newsRefreshBtn = document.getElementById("news-refresh-btn");
+const newsAlertsBtn = document.getElementById("news-alerts-btn");
+const newsFilterStrip = document.getElementById("news-filter-strip");
+const newsMobileMenuBtn = document.getElementById("news-mobile-menu-btn");
+const newsMobileMenu = document.getElementById("news-mobile-menu");
+const newsFeedList = document.getElementById("news-feed-list");
+const newsTrendingList = document.getElementById("news-trending-list");
+const newsCategoryGrid = document.getElementById("news-category-grid");
+const newsDetailPanel = document.getElementById("news-detail-panel");
+const newsDetailEmpty = document.getElementById("news-detail-empty");
+const newsDetailCard = document.getElementById("news-detail-card");
+const newsFeedMetaCount = document.getElementById("news-feed-meta-count");
+const newsFeedMetaSourceCount = document.getElementById("news-feed-meta-source-count");
+const newsAlert = document.getElementById("news-alert");
 const homeScreen = document.getElementById("home-screen");
 const welcomeScreen = document.getElementById("welcome-screen");
 const backHomeBtn = document.getElementById("back-home-btn");
@@ -3180,6 +3472,7 @@ const profileBtnAvatarEl = profileBtn?.querySelector(".menu-modern-profile-avata
 const menuProfileNameEl = document.getElementById("menu-profile-name");
 const menuProfileSubtitleEl = document.getElementById("menu-profile-subtitle");
 const menuPointsBtn = document.getElementById("menu-points-btn");
+const newsMenuBtn = document.getElementById("news-feed-btn");
 const menuPointsValueEl = document.getElementById("menu-points-value");
 const menuStreakCardBtn = document.getElementById("menu-streak-card");
 const menuPointsCardBtn = document.getElementById("menu-points-card");
@@ -6417,7 +6710,6 @@ function renderLeaderboardPodium(entries = []) {
       const points = Math.max(0, Math.round(Number(entry.points) || 0));
       return `
         <div class="leaderboard-podium-card ${podiumClass}">
-          
           <div class="leaderboard-podium-avatar-shell">
             ${getLeaderboardAvatarHtml(entry, "is-podium")}
             <div class="leaderboard-podium-medal">${rank}</div>
@@ -7533,7 +7825,7 @@ function getCommunityMessageReceiptState(message = {}) {
 function renderCommunityMessageReceipt(message = {}) {
   const state = getCommunityMessageReceiptState(message);
   const label = state === "read" ? "Read" : state === "received" ? "Received" : "Sent";
-  const mark = state === "sent" ? "âœ“" : "âœ“âœ“";
+  const mark = state === "sent" ? "?" : "??";
   return `<span class="community-message-receipt is-${escapeHtml(state)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${escapeHtml(mark)}</span>`;
 }
 
@@ -16577,7 +16869,7 @@ function getCommunityConversationCardMarkup(row = {}) {
   const draftClass = draft ? " has-draft" : "";
   const draftBadge = draft ? '<span class="community-chat-draft-badge">Draft</span>' : "";
   const actionSelectedClass = getCommunityConversationActionSelectedIds().includes(String(row.id || "").trim()) ? " is-selected" : "";
-  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">â˜…</span>' : "";
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">?</span>' : "";
   const avatarMarkup = isNotice
     ? `<button type="button" class="community-avatar-action-btn" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}" aria-label="Open ${escapeHtml(getCommunityUiDisplayName(partner))}">${getCommunityPlainAvatarMarkup(partner, "is-inline")}</button>`
     : isGroup
@@ -16656,7 +16948,7 @@ function getCommunityGroupConversationCardMarkup(row = {}) {
   const previewText = bio || getCommunityConversationPreviewText(conversation) || "Open group";
   const updatedLabel = formatCommunityTimestamp(conversation?.updatedAt || group?.updatedAt || row?.updatedAt || "");
   const unreadCount = Math.max(0, Math.round(Number(conversation?.unreadCount ?? row?.unreadCount) || 0));
-  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">â˜…</span>' : "";
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">?</span>' : "";
   const ariaLabel = `Open ${groupName} chat`;
   const forwardSelectedClass = isCommunityForwardTargetSelected(
     getCommunityForwardTargetId({
@@ -17121,7 +17413,7 @@ function renderCommunityFriendActionSelection() {
   if (communityFriendActionsSelectedEl) {
     communityFriendActionsSelectedEl.innerHTML = `
       <span class="community-thread-actions-selected-pill is-empty" style="display:inline-flex;gap:6px;align-items:center;">
-        <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} â€¢ ${escapeHtml(subtitle)}</span>
+        <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} and ${escapeHtml(subtitle)}</span>
       </span>
     `;
   }
@@ -17433,7 +17725,7 @@ function renderCommunityConversationActionSelection() {
         const partner = row?.partner || {};
         const label = truncateWithEllipsis(getCommunityUiDisplayName(partner), 22);
         const meta = partner?.isGroup ? "Group" : partner?.isNotice ? "Notice" : "Chat";
-        const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">â˜…</span>' : "";
+        const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">?</span>' : "";
         return `<span class="community-thread-actions-selected-pill">${flag}${escapeHtml(label)}<span class="community-thread-actions-selected-meta">${escapeHtml(meta)}</span></span>`;
       }).join("");
       communityThreadActionsSelectedEl.innerHTML = badges || `<span class="community-thread-actions-selected-pill is-empty">No thread selected</span>`;
@@ -18104,7 +18396,7 @@ function renderCommunityProfileView() {
         ["Contact", getProfileFieldValue(profile.contact)],
       ];
   const pointsLine = canShowLeaderboard
-    ? `${leaderboardRank ? `#${escapeHtml(leaderboardRank)}` : "Rank hidden"} â€¢ ${escapeHtml(String(leaderboardPoints))} pts`
+    ? `${leaderboardRank ? `Rank ${escapeHtml(leaderboardRank)}` : "Rank hidden"} and ${escapeHtml(String(leaderboardPoints))} points`
     : "";
   const quickActions = [];
   if (isSelf) {
@@ -18327,7 +18619,7 @@ function renderCommunityGroupProfileHeader(group = {}, bio = "", members = [], q
         ${getCommunityExpandableAvatarMarkup(group, "is-group-profile")}
         <div class="community-group-header-copy">
           <div class="community-group-profile-name">${escapeHtml(group.name || "Study Group")}</div>
-          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` â€¢ ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
+          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` and ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
         </div>
       </div>
       <div class="community-profile-quick-actions community-group-header-actions">${quickActions.join("")}</div>
@@ -18396,7 +18688,7 @@ function renderCommunityGroupProfileView() {
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Description</div>
         <div class="community-group-flat-copy">${escapeHtml(bio || "No group description yet.")}</div>
-        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} â€¢ ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
+        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} on ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
       </section>
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Group options</div>
@@ -18501,7 +18793,7 @@ function renderCommunityGroupProfileView() {
         ${getCommunityPlainAvatarMarkup(group, "is-group-profile")}
         <div class="community-group-profile-copy community-group-info-copy">
           <div class="community-group-profile-name">${escapeHtml(group.name || "Study Group")}</div>
-          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` â€¢ ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
+          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` and ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
         </div>
       </div>
       <div class="community-profile-quick-actions">${quickActions.join("")}</div>
@@ -18510,7 +18802,7 @@ function renderCommunityGroupProfileView() {
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Description</div>
         <div class="community-group-flat-copy">${escapeHtml(bio || "No group description yet.")}</div>
-        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} â€¢ ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
+        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} on ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
       </section>
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Group options</div>
@@ -19893,7 +20185,7 @@ function buildCommunityGroupInviteHref(groupId = "", inviteToken = "") {
 function getCommunityGroupInviteShortLabel(inviteToken = "", inviteUrl = "") {
   const token = String(inviteToken || "").trim();
   if (token.length >= 10) {
-    return `${token.slice(0, 4)}â€¦${token.slice(-4)}`;
+    return `${token.slice(0, 4)}...${token.slice(-4)}`;
   }
   const url = String(inviteUrl || "").trim();
   if (url) {
@@ -19901,12 +20193,12 @@ function getCommunityGroupInviteShortLabel(inviteToken = "", inviteUrl = "") {
       const parsed = new URL(url, window.location.origin);
       const path = `${parsed.pathname || ""}${parsed.search || ""}`.replace(/^\/+/, "");
       if (path.length > 18) {
-        return `${path.slice(0, 8)}â€¦${path.slice(-6)}`;
+        return `${path.slice(0, 8)}...${path.slice(-6)}`;
       }
       return path;
     } catch {
       if (url.length > 18) {
-        return `${url.slice(0, 8)}â€¦${url.slice(-6)}`;
+        return `${url.slice(0, 8)}...${url.slice(-6)}`;
       }
       return url;
     }
@@ -21037,7 +21329,7 @@ async function executeCommunityAction(action = "", payload = {}) {
           : null)
         : null;
       if (matchingConversation?.partner?.isGroup || matchingConversation?.partner?.isNotice) {
-        setCommunityFeedback("Groups and admin notices canâ€™t receive forwarded items.", true);
+        setCommunityFeedback("Groups and admin notices can't receive forwarded items.", true);
         return;
       }
       toggleCommunityForwardTarget({
@@ -22193,6 +22485,14 @@ async function handleGlobalQuickNavDestination(destination) {
     return;
   }
 
+  if (destination === "news") {
+    if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
+      return;
+    }
+    openNewsScreen();
+    return;
+  }
+
   if (destination === "menu") {
     showScreen("quiz-menu");
     return;
@@ -22268,6 +22568,7 @@ function getScreenBackFallback(screenId = "") {
   if (currentId === "topic-viewer") return topicViewerReturnScreen || "topic-library";
   if (currentId === "topic-library") return topicLibraryReturnScreen || "quiz-menu";
   if (currentId === "settings-screen" || currentId === "profile-screen" || currentId === "tour-screen") return "quiz-menu";
+  if (currentId === "news-screen") return "quiz-menu";
   if (currentId === "study-setup" || currentId === "exam-setup" || currentId === "daily-setup") return "quiz-menu";
   if (currentId === "quiz-menu") return "home-screen";
   return "quiz-menu";
@@ -22281,6 +22582,531 @@ function goBackByHistory(currentScreenId = "", fallbackId = "") {
 function returnToParentScreen(screenId) {
   if (!screenId) return;
   showScreen(screenId, { recordHistory: false });
+}
+
+function resetNewsScrollPosition() {
+  if (newsScreen instanceof HTMLElement) {
+    newsScreen.scrollTop = 0;
+    newsScreen.scrollLeft = 0;
+  }
+  if (newsShellEl instanceof HTMLElement) {
+    newsShellEl.scrollTop = 0;
+    newsShellEl.scrollLeft = 0;
+  }
+  if (newsFeedList instanceof HTMLElement) {
+    newsFeedList.scrollTop = 0;
+    newsFeedList.scrollLeft = 0;
+  }
+  if (newsDetailCard instanceof HTMLElement) {
+    newsDetailCard.scrollTop = 0;
+    newsDetailCard.scrollLeft = 0;
+  }
+}
+
+function getNewsCategoryLabel(category = "") {
+  const value = String(category || "").trim().toLowerCase();
+  if (value === "guideline-update") return "Guideline updates";
+  if (value === "health-concern") return "Health concerns";
+  if (value === "pharmacy-update") return "Pharmacy updates";
+  if (value === "clinical-news") return "Clinical news";
+  return "All news";
+}
+
+function getNewsCategoryIcon(category = "") {
+  const value = String(category || "").trim().toLowerCase();
+  if (value === "guideline-update") return "GUIDE";
+  if (value === "health-concern") return "SAFE";
+  if (value === "pharmacy-update") return "RX";
+  if (value === "clinical-news") return "CLIN";
+  return "ALL";
+}
+
+function getNewsVisibleItems() {
+  const category = String(newsFeedState.selectedCategory || "all").trim().toLowerCase();
+  const sourceId = String(newsFeedState.selectedSourceId || "").trim();
+  const query = String(newsFeedState.searchQuery || "").trim().toLowerCase();
+  return Array.isArray(newsFeedState.items)
+    ? newsFeedState.items.filter((item) => {
+        const itemCategory = String(item?.category || "").trim().toLowerCase();
+        const itemSourceId = String(item?.sourceId || "").trim();
+        const searchable = `${item?.title || ""} ${item?.summary || ""} ${item?.content || ""} ${item?.sourceName || ""} ${item?.category || ""}`.toLowerCase();
+        if (category && category !== "all" && itemCategory !== category) return false;
+        if (sourceId && itemSourceId !== sourceId) return false;
+        if (query && !searchable.includes(query)) return false;
+        return true;
+      })
+    : [];
+}
+
+function getSelectedNewsItem() {
+  const selectedId = String(newsFeedState.selectedNewsId || "").trim();
+  if (!selectedId) return null;
+  return getNewsVisibleItems().find((item) => String(item?.id || "") === selectedId) || null;
+}
+
+function getNewsCategoryCounts(items = []) {
+  return Array.isArray(items)
+    ? items.reduce(
+        (accumulator, item) => {
+          const category = String(item?.category || "clinical-news").trim().toLowerCase();
+          accumulator.all += 1;
+          accumulator[category] = (accumulator[category] || 0) + 1;
+          return accumulator;
+        },
+        { all: 0, "clinical-news": 0, "guideline-update": 0, "health-concern": 0, "pharmacy-update": 0 },
+      )
+    : { all: 0, "clinical-news": 0, "guideline-update": 0, "health-concern": 0, "pharmacy-update": 0 };
+}
+
+function getNewsTrendingItems(limit = 3) {
+  const items = Array.isArray(newsFeedState.items) ? [...newsFeedState.items] : [];
+  const rank = (item = {}) => {
+    const importance = String(item?.importance || "").trim().toLowerCase();
+    if (importance === "high") return 3;
+    if (importance === "medium") return 2;
+    if (importance === "low") return 1;
+    return 2;
+  };
+  items.sort((left, right) => {
+    const importanceDiff = rank(right) - rank(left);
+    if (importanceDiff) return importanceDiff;
+    const rightDate = new Date(right?.publishedAt || right?.collectedAt || right?.updatedAt || 0).getTime();
+    const leftDate = new Date(left?.publishedAt || left?.collectedAt || left?.updatedAt || 0).getTime();
+    return rightDate - leftDate;
+  });
+  return items.slice(0, Math.max(1, Number(limit) || 3));
+}
+
+function formatNewsDate(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "Recently";
+  try {
+    return formatAppDateTime(text);
+  } catch {
+    return text;
+  }
+}
+
+function buildNewsTrendingItemMarkup(item = {}, index = 0) {
+  const title = escapeHtml(item?.title || "Untitled update");
+  const category = escapeHtml(getNewsCategoryLabel(item?.category || ""));
+  const active = String(item?.id || "") === String(newsFeedState.selectedNewsId || "") ? " is-active" : "";
+  return `
+    <button type="button" class="news-trending-item${active}" data-news-id="${escapeHtml(item?.id || "")}">
+      <span class="news-trending-rank">${index + 1}</span>
+      <span class="news-trending-copy">
+        <span class="news-trending-title">${title}</span>
+        <span class="news-trending-category">${category}</span>
+      </span>
+      <span class="news-trending-chevron" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="m9 6 6 6-6 6"></path>
+        </svg>
+      </span>
+    </button>
+  `;
+}
+
+function buildNewsBadgeMarkup(item = {}) {
+  const category = String(item?.category || "").trim().toLowerCase();
+  const label = getNewsCategoryLabel(category);
+  const tone = category === "health-concern" ? "is-danger" : category === "guideline-update" ? "is-accent" : category === "pharmacy-update" ? "is-soft" : "is-neutral";
+  return `<span class="news-badge ${tone}">${escapeHtml(label)}</span>`;
+}
+
+function buildNewsCardMarkup(item = {}, isActive = false) {
+  const title = escapeHtml(item?.title || "Untitled update");
+  const summary = escapeHtml(item?.summary || item?.content || "No summary available.");
+  const sourceName = escapeHtml(item?.sourceName || "Curated source");
+  const publishedAt = escapeHtml(formatNewsDate(item?.publishedAt || item?.collectedAt || item?.updatedAt || ""));
+  const category = escapeHtml(getNewsCategoryLabel(item?.category || ""));
+  const activeClass = isActive ? " is-active" : "";
+  return `
+    <button type="button" class="news-card${activeClass}" data-news-id="${escapeHtml(item?.id || "")}">
+      <div class="news-card-head">
+        <div class="news-card-category">${category}</div>
+        <div class="news-card-time">${publishedAt}</div>
+      </div>
+      <div class="news-card-title">${title}</div>
+      <div class="news-card-summary">${summary}</div>
+      <div class="news-card-foot">
+        <span class="news-card-source">${sourceName}</span>
+        <span class="news-card-separator" aria-hidden="true">|</span>
+        <span class="news-card-time">${publishedAt}</span>
+      </div>
+    </button>
+  `;
+}
+
+function buildNewsDetailMarkup(item = null) {
+  if (!item) return "";
+  const title = escapeHtml(item.title || "News item");
+  const summary = escapeHtml(item.summary || "");
+  const content = escapeHtml(item.content || item.summary || "");
+  const sourceName = escapeHtml(item.sourceName || "Curated source");
+  const sourceUrl = String(item.sourceUrl || item.canonicalUrl || "").trim();
+  const publishedAt = escapeHtml(formatNewsDate(item.publishedAt || item.collectedAt || item.updatedAt || ""));
+  const category = escapeHtml(getNewsCategoryLabel(item.category || ""));
+  const reviewNote = item.reviewNote ? `<div class="news-detail-note"><strong>Editor note:</strong> ${escapeHtml(item.reviewNote)}</div>` : "";
+  const linkMarkup = sourceUrl
+    ? `<a class="news-detail-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">Open source update</a>`
+    : "";
+  return `
+    <article class="news-detail-card-inner">
+      <div class="news-detail-topline">
+        ${buildNewsBadgeMarkup(item)}
+        <span class="news-detail-source">${sourceName}</span>
+      </div>
+      <h3 class="news-detail-title">${title}</h3>
+      <div class="news-detail-meta">
+        <span>${publishedAt}</span>
+        <span>${category}</span>
+      </div>
+      <div class="news-detail-summary">${summary}</div>
+      <div class="news-detail-body">${content}</div>
+      ${reviewNote}
+      <div class="news-detail-actions">
+        ${linkMarkup}
+      </div>
+    </article>
+  `;
+}
+
+function renderNewsFilters() {
+  const items = Array.isArray(newsFeedState.items) ? newsFeedState.items : [];
+  const categories = ["all", "clinical-news", "guideline-update", "health-concern", "pharmacy-update"];
+  const activeCategory = String(newsFeedState.selectedCategory || "all").trim().toLowerCase() || "all";
+  if (newsFilterStrip) {
+    newsFilterStrip.innerHTML = categories
+      .map((category) => {
+        const active = activeCategory === category;
+        return `
+          <button type="button" class="news-filter-chip${active ? " is-active" : ""}" data-news-filter="${escapeHtml(category)}">
+            <span class="news-filter-chip-label">${escapeHtml(category === "all" ? "All news" : getNewsCategoryLabel(category))}</span>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
+  if (newsMobileMenu) {
+    newsMobileMenu.innerHTML = categories
+      .map((category) => {
+        const active = activeCategory === category;
+        const label = category === "all" ? "All news" : getNewsCategoryLabel(category);
+        return `
+          <button type="button" class="news-mobile-menu-item${active ? " is-active" : ""}" data-news-filter-mobile-item="${escapeHtml(category)}">
+            ${escapeHtml(label)}
+          </button>
+        `;
+      })
+      .join("");
+  }
+}
+
+function renderNewsList() {
+  if (!newsFeedList) return;
+  const items = getNewsVisibleItems();
+  if (!items.length) {
+    const hasFilters =
+      String(newsFeedState.searchQuery || "").trim() ||
+      String(newsFeedState.selectedCategory || "all").trim().toLowerCase() !== "all" ||
+      String(newsFeedState.selectedSourceId || "").trim();
+    const message = newsFeedState.loading ? "Loading curated updates..." : hasFilters ? "No matching updates" : "No updates yet";
+    const subMessage = newsFeedState.loading
+      ? "Please wait while we collect the latest curated items."
+      : hasFilters
+        ? "Try another search term or switch back to All news."
+        : "Check back soon for the latest news and updates.";
+    newsFeedList.innerHTML = `
+      <div class="news-empty-state">
+        <div class="news-empty-art" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 4h9l3 3v13H6z"></path>
+            <path d="M15 4v4h4"></path>
+            <path d="M8 11h8"></path>
+            <path d="M8 15h8"></path>
+          </svg>
+        </div>
+        <div class="news-empty-copy">
+          <div class="news-empty-title">${escapeHtml(message)}</div>
+          <div class="news-empty-subtitle">${escapeHtml(subMessage)}</div>
+        </div>
+        <button type="button" class="news-empty-action" data-news-refresh-inline="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12a8 8 0 0 1 13.66-5.66L20 9"></path>
+            <path d="M20 4v5h-5"></path>
+            <path d="M20 12a8 8 0 0 1-13.66 5.66L4 15"></path>
+            <path d="M4 20v-5h5"></path>
+          </svg>
+          Check again later
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  if (!items.some((item) => String(item?.id || "") === String(newsFeedState.selectedNewsId || ""))) {
+    newsFeedState.selectedNewsId = "";
+  }
+
+  newsFeedList.innerHTML = items
+    .map((item) => buildNewsCardMarkup(item, String(item?.id || "") === String(newsFeedState.selectedNewsId || "")))
+    .join("");
+}
+
+function renderNewsDetail() {
+  if (!newsDetailPanel || !newsDetailEmpty || !newsDetailCard) return;
+  const item = getSelectedNewsItem();
+  if (!item) {
+    newsDetailPanel.classList.add("hidden");
+    newsDetailEmpty.classList.remove("hidden");
+    newsDetailCard.classList.add("hidden");
+    newsDetailCard.innerHTML = "";
+    return;
+  }
+
+  newsDetailPanel.classList.remove("hidden");
+  newsDetailEmpty.classList.add("hidden");
+  newsDetailCard.classList.remove("hidden");
+  newsDetailCard.innerHTML = buildNewsDetailMarkup(item);
+}
+
+function renderNewsMeta() {
+  if (newsFeedMetaCount) {
+    newsFeedMetaCount.textContent = String(getNewsVisibleItems().length);
+  }
+  if (newsFeedMetaSourceCount) {
+    newsFeedMetaSourceCount.textContent = String(Array.isArray(newsFeedState.sources) ? newsFeedState.sources.length : 0);
+  }
+}
+
+function updateNewsHeaderTitle() {
+  if (!(newsHeaderTitleEl instanceof HTMLElement)) return;
+  const item = getSelectedNewsItem();
+  const nextTitle = String(item?.authorName || item?.sourceName || item?.publisher || "News").trim() || "News";
+  newsHeaderTitleEl.textContent = nextTitle;
+}
+
+function renderNewsSearchInput() {
+  if (newsSearchInput instanceof HTMLInputElement) {
+    const nextValue = String(newsFeedState.searchQuery || "");
+    if (newsSearchInput.value !== nextValue) {
+      newsSearchInput.value = nextValue;
+    }
+  }
+}
+
+function openNewsSearch() {
+  if (!newsScreen || !(newsSearchInput instanceof HTMLInputElement)) return;
+  newsScreen.classList.add("news-search-open");
+  newsSearchBtn?.setAttribute("aria-expanded", "true");
+  window.requestAnimationFrame(() => {
+    newsSearchInput.focus({ preventScroll: true });
+    const cursor = newsSearchInput.value.length;
+    try {
+      newsSearchInput.setSelectionRange(cursor, cursor);
+    } catch {
+      // Some browsers block selection on type=search.
+    }
+  });
+}
+
+function closeNewsSearch() {
+  if (!newsScreen) return;
+  newsScreen.classList.remove("news-search-open");
+  newsSearchBtn?.setAttribute("aria-expanded", "false");
+}
+
+function toggleNewsSearch() {
+  if (!newsScreen) return;
+  if (newsScreen.classList.contains("news-search-open")) {
+    closeNewsSearch();
+    return;
+  }
+  openNewsSearch();
+}
+
+function openNewsMobileMenu() {
+  if (!newsScreen || !newsMobileMenuBtn || !newsMobileMenu) return;
+  newsScreen.classList.add("news-mobile-menu-open");
+  newsMobileMenuBtn.setAttribute("aria-expanded", "true");
+  newsMobileMenu.classList.remove("hidden");
+  newsMobileMenu.setAttribute("aria-hidden", "false");
+}
+
+function closeNewsMobileMenu() {
+  if (!newsScreen || !newsMobileMenuBtn || !newsMobileMenu) return;
+  newsScreen.classList.remove("news-mobile-menu-open");
+  newsMobileMenuBtn.setAttribute("aria-expanded", "false");
+  newsMobileMenu.classList.add("hidden");
+  newsMobileMenu.setAttribute("aria-hidden", "true");
+}
+
+function toggleNewsMobileMenu() {
+  if (!newsScreen) return;
+  if (newsScreen.classList.contains("news-mobile-menu-open")) {
+    closeNewsMobileMenu();
+    return;
+  }
+  openNewsMobileMenu();
+}
+
+function renderNewsAlert(message = "", tone = "info") {
+  if (!newsAlert) return;
+  const text = String(message || "").trim();
+  if (!text) {
+    newsAlert.className = "news-alert hidden";
+    newsAlert.textContent = "";
+    return;
+  }
+
+  const normalizedTone = tone === "success" ? "good" : tone === "error" ? "bad" : "info";
+  newsAlert.className = `news-alert tone-${normalizedTone}`;
+  newsAlert.textContent = text;
+}
+
+function renderNewsSidebar() {
+  if (newsTrendingList) {
+    const trendingItems = getNewsTrendingItems(3);
+    newsTrendingList.innerHTML = trendingItems.length
+      ? trendingItems
+          .map((item, index) => buildNewsTrendingItemMarkup(item, index))
+          .join("")
+      : `
+        <div class="news-sidebar-empty">
+          No trending items yet.
+        </div>
+      `;
+  }
+}
+
+function renderNewsScreen() {
+  updateNewsHeaderTitle();
+  renderNewsSearchInput();
+  renderNewsAlert(newsFeedState.error, newsFeedState.errorTone || "info");
+  renderNewsFilters();
+  renderNewsList();
+  renderNewsDetail();
+  renderNewsMeta();
+  renderNewsSidebar();
+}
+
+async function hydrateNewsFeedFromCache() {
+  try {
+    const cached = await getOfflineEntry(NEWS_FEED_CACHE_KEY);
+    const payload = cached?.value && typeof cached.value === "object" ? cached.value : null;
+    if (!payload) return false;
+    newsFeedState.items = Array.isArray(payload.items) ? payload.items : [];
+    newsFeedState.categories = payload.categories && typeof payload.categories === "object" ? payload.categories : {};
+    newsFeedState.sources = Array.isArray(payload.sources) ? payload.sources : [];
+    newsFeedState.selectedNewsId = String(payload.selectedNewsId || newsFeedState.selectedNewsId || "").trim();
+    newsFeedState.selectedCategory = String(payload.selectedCategory || newsFeedState.selectedCategory || "all").trim() || "all";
+    newsFeedState.selectedSourceId = String(payload.selectedSourceId || newsFeedState.selectedSourceId || "").trim();
+    newsFeedState.searchQuery = String(payload.searchQuery || newsFeedState.searchQuery || "").trim();
+    newsFeedState.lastUpdatedAt = String(payload.lastUpdatedAt || cached.updatedAt || "").trim();
+    newsFeedState.loaded = true;
+    renderNewsScreen();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function persistNewsFeedCache() {
+  try {
+    await setOfflineEntry(NEWS_FEED_CACHE_KEY, {
+      items: Array.isArray(newsFeedState.items) ? newsFeedState.items : [],
+      categories: newsFeedState.categories || {},
+      sources: Array.isArray(newsFeedState.sources) ? newsFeedState.sources : [],
+      selectedNewsId: String(newsFeedState.selectedNewsId || "").trim(),
+      selectedCategory: String(newsFeedState.selectedCategory || "all").trim() || "all",
+      selectedSourceId: String(newsFeedState.selectedSourceId || "").trim(),
+      searchQuery: String(newsFeedState.searchQuery || "").trim(),
+      lastUpdatedAt: String(newsFeedState.lastUpdatedAt || new Date().toISOString()).trim(),
+    });
+  } catch {
+    // Cache is a convenience layer only.
+  }
+}
+
+async function ensureNewsFeedLoaded({ force = false, silent = false } = {}) {
+  if (newsFeedState.loading) return false;
+  if (newsFeedState.loaded && !force && Array.isArray(newsFeedState.items) && newsFeedState.items.length > 0) {
+    if (!silent) renderNewsScreen();
+    return true;
+  }
+
+  newsFeedState.loading = true;
+  newsFeedState.error = "";
+  newsFeedState.errorTone = "info";
+  if (!silent) renderNewsScreen();
+
+  try {
+    const payload = await backendClient.fetchNewsFeed({ limit: 50 });
+    newsFeedState.items = Array.isArray(payload?.items) ? payload.items : [];
+    newsFeedState.categories = payload?.categories && typeof payload.categories === "object" ? payload.categories : {};
+    newsFeedState.sources = Array.isArray(payload?.sources) ? payload.sources : [];
+    const selectedCandidate = String(newsFeedState.selectedNewsId || "").trim();
+    newsFeedState.selectedNewsId = newsFeedState.items.some((item) => String(item?.id || "") === selectedCandidate)
+      ? selectedCandidate
+      : "";
+    newsFeedState.loaded = true;
+    newsFeedState.lastUpdatedAt = new Date().toISOString();
+    await persistNewsFeedCache();
+    renderNewsScreen();
+    return true;
+  } catch (error) {
+    const message = String(error?.message || error || "Failed to load news feed");
+    const cached = await hydrateNewsFeedFromCache();
+    newsFeedState.errorTone = cached ? "info" : "error";
+    newsFeedState.error = cached ? `${message} Showing the last saved feed.` : message;
+    if (!cached) {
+      renderNewsScreen();
+    }
+    if (!silent) renderNewsScreen();
+    return cached;
+  } finally {
+    newsFeedState.loading = false;
+    renderNewsScreen();
+  }
+}
+
+function selectNewsCategory(category = "all") {
+  newsFeedState.selectedCategory = String(category || "all").trim().toLowerCase() || "all";
+  const visibleItems = getNewsVisibleItems();
+  if (!visibleItems.some((item) => String(item?.id || "") === String(newsFeedState.selectedNewsId || ""))) {
+    newsFeedState.selectedNewsId = "";
+  }
+  renderNewsScreen();
+}
+
+function selectNewsItem(newsId = "") {
+  const selectedId = String(newsId || "").trim();
+  if (!selectedId) return;
+  newsFeedState.selectedNewsId = selectedId;
+  renderNewsScreen();
+}
+
+function selectNewsSearchQuery(query = "") {
+  newsFeedState.searchQuery = String(query || "").trim();
+  const visibleItems = getNewsVisibleItems();
+  if (!visibleItems.some((item) => String(item?.id || "") === String(newsFeedState.selectedNewsId || ""))) {
+    newsFeedState.selectedNewsId = "";
+  }
+  renderNewsScreen();
+}
+
+async function openNewsScreen({ refresh = false } = {}) {
+  if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
+    return;
+  }
+  window.location.href = "./news.html";
+  closeMenuUserHub();
+  closeGlobalQuickNav();
+  closeNewsSearch();
+  closeNewsMobileMenu();
+  resetNewsScrollPosition();
 }
 
 function clearDeviceLocalCache() {
@@ -22443,7 +23269,7 @@ function renderDailyHistoryPanel() {
 
     const score = document.createElement("div");
     score.className = "daily-history-score";
-    score.textContent = `${row.score}/${row.total} â€¢ ${row.percent}%`;
+    score.textContent = `Score ${row.score} of ${row.total} and ${row.percent} percent`;
 
     left.appendChild(date);
     left.appendChild(score);
@@ -22853,7 +23679,7 @@ function renderDailyQuizUi() {
         : todayCompleted
           ? "Completed today"
           : "Ready today";
-    dailyQuizMetaEl.textContent = `You have ${totalQuestions} questions. ${status}`;
+    dailyQuizMetaEl.textContent = `${totalQuestions} questions and ${status}`;
   }
 
   if (menuDailyProgressFillEl) {
@@ -22868,7 +23694,7 @@ function renderDailyQuizUi() {
 
   if (dailyWindowLineEl) {
     if (todayDate) {
-      dailyWindowLineEl.textContent = `Today renews at 12:00 AM`;
+      dailyWindowLineEl.textContent = `${formatDateKey(todayDate)} and renews at midnight`;
     } else {
       dailyWindowLineEl.textContent = "Loading today...";
     }
@@ -22893,7 +23719,7 @@ function renderDailyQuizUi() {
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =
-      `+${rules.completion || 0} finish â€¢ +${rules.perCorrect || 0}/correct â€¢ +${rules.perfect || 0} perfect`;
+      `Finish gives ${rules.completion || 0} points and each correct answer gives ${rules.perCorrect || 0} points and a perfect score gives ${rules.perfect || 0} points`;
   }
 
   if (dailyResultLineEl) {
@@ -25747,7 +26573,7 @@ function handleCommunityForwardSelection(target) {
     const isGroup = conversationCard.classList.contains("community-group-row");
     const conversationType = isGroup ? "group" : isNotice ? "notice" : "direct";
     if (conversationType === "group" || conversationType === "notice") {
-      setCommunityFeedback("Groups and admin notices canâ€™t receive forwarded items.", true);
+      setCommunityFeedback("Groups and admin notices can't receive forwarded items.", true);
       return true;
     }
     if (toggleCommunityForwardTarget({ userId, conversationId, conversationType })) {
@@ -29094,6 +29920,40 @@ function hasPendingTopicQuizLaunch() {
   }
 }
 
+function consumePendingScreenLaunch() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const screenId = String(params.get("screen") || "").trim();
+    if (!screenId) return false;
+    showScreen(screenId, { recordHistory: false });
+    setMenuHubActiveTab(
+      screenId === "drills-screen"
+        ? "drills"
+        : screenId === "gppqe-screen"
+          ? "gppqe"
+          : screenId === "extra-screen"
+            ? "extra"
+            : "drills",
+    );
+    if (screenId === "drills-screen") {
+      setDrillLobbyVariant("rapid");
+    } else if (screenId === "extra-screen") {
+      setExtraViewMode(extraViewMode, { persist: false });
+    }
+    params.delete("screen");
+    const nextQuery = params.toString();
+    const nextUrl =
+      window.location.pathname +
+      (nextQuery ? `?${nextQuery}` : "") +
+      (window.location.hash || "");
+    window.history.replaceState(window.history.state, "", nextUrl);
+    return true;
+  } catch (error) {
+    console.debug("Pending screen launch skipped:", error);
+    return false;
+  }
+}
+
 function buildTopicQuizLaunchHref(topicSlug = "", topicTitle = "Topic") {
   const slug = normalizeTopicPathToken(topicSlug);
   if (!slug) return window.location.pathname || "index.html";
@@ -31292,8 +32152,98 @@ if (profileBtn) {
   };
 }
 
+if (newsMenuBtn) {
+  newsMenuBtn.onclick = async () => {
+    closeMenuUserHub();
+    await openNewsScreen();
+  };
+}
+
 if (profileBackBtn) {
   profileBackBtn.onclick = () => goToPreviousScreen("quiz-menu");
+}
+
+if (newsBackBtn) {
+  newsBackBtn.onclick = () => {
+    goToPreviousScreen("quiz-menu");
+  };
+}
+
+if (newsRefreshBtn) {
+  newsRefreshBtn.onclick = () => {
+    void ensureNewsFeedLoaded({ force: true, silent: true });
+  };
+}
+
+if (newsAlertsBtn) {
+  newsAlertsBtn.onclick = () => {
+    closeNewsSearch();
+    closeNewsMobileMenu();
+    selectNewsCategory("health-concern");
+    if (newsShellEl instanceof HTMLElement) {
+      newsShellEl.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+}
+
+if (newsSearchBtn) {
+  newsSearchBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openNewsSearch();
+  });
+}
+
+if (newsSearchInput) {
+  newsSearchInput.addEventListener("focus", () => {
+    newsScreen?.classList.add("news-search-open");
+    newsSearchBtn?.setAttribute("aria-expanded", "true");
+  });
+  newsSearchInput.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      if (!newsSearchInput.matches(":focus")) {
+        closeNewsSearch();
+      }
+    }, 0);
+  });
+  newsSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeNewsSearch();
+      newsSearchBtn?.focus();
+    }
+  });
+  newsSearchInput.addEventListener("input", (event) => {
+    const query = event.target instanceof HTMLInputElement ? event.target.value : "";
+    selectNewsSearchQuery(query);
+  });
+}
+
+if (newsScreen) {
+  newsScreen.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement
+      ? event.target.closest("[data-news-filter], [data-news-filter-mobile-item], [data-news-id], [data-news-refresh-inline], [data-news-mobile-menu-toggle]")
+      : null;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.hasAttribute("data-news-mobile-menu-toggle")) {
+      toggleNewsMobileMenu();
+      return;
+    }
+    if (target.hasAttribute("data-news-refresh-inline")) {
+      void ensureNewsFeedLoaded({ force: true, silent: true });
+      return;
+    }
+    const category = String(target.dataset.newsFilter || target.dataset.newsFilterMobileItem || "").trim().toLowerCase();
+    if (category) {
+      selectNewsCategory(category);
+      closeNewsMobileMenu();
+      return;
+    }
+    const newsId = String(target.dataset.newsId || "").trim();
+    if (newsId) {
+      selectNewsItem(newsId);
+      closeNewsMobileMenu();
+    }
+  });
 }
 
 if (profileSaveBtn) {
@@ -32068,8 +33018,11 @@ if (subscriptionForm) {
       if (subscriptionFormFeedback) {
         subscriptionFormFeedback.dataset.persist = "1";
         subscriptionFormFeedback.textContent = isUnauthorized
-          ? "We couldn't verify your current session. Please refresh the page once and try again."
-          : authErrorMessage(error);
+          ? "Your session expired. Please sign in again and resubmit your payment proof."
+          : generalApiErrorMessage(
+              error,
+              "Unable to submit your payment proof. Please try again.",
+            );
       }
     } finally {
       if (subscriptionSubmitBtn) subscriptionSubmitBtn.disabled = false;
@@ -32111,11 +33064,12 @@ if (startExamBtn) {
 }
 
 async function startMenuDrill(variant = "rapid") {
+  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   const drill = String(variant || "").toLowerCase();
-  if (isSubscriptionLockedForFeature(drill) && !requireSubscriptionAccess(drill)) {
+  if (!requireSubscriptionAccess(drill)) {
     return;
   }
-  void refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
+  recordMenuDrillHistory(drill);
   if (drill === "rapid") {
     startExam("5", "rapid");
     return;
@@ -32216,6 +33170,126 @@ if (lawDrillBtn) {
     }
     void startMenuDrill("law");
   };
+}
+
+if (menuDrillsTab) {
+  menuDrillsTab.onclick = () => {
+    setMenuHubActiveTab("drills");
+    openDrillsScreen();
+  };
+}
+
+if (menuLawTab) {
+  menuLawTab.onclick = () => {
+    if (!requireSubscriptionAccess("law")) {
+      return;
+    }
+    setMenuHubActiveTab("law");
+    const savedSession = getSavedLawDrillSession();
+    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+  };
+}
+
+if (menuGppqeTab) {
+  menuGppqeTab.onclick = () => {
+    if (!requireSubscriptionAccess("gppqe")) {
+      return;
+    }
+    setMenuHubActiveTab("gppqe");
+    openGppqeScreen();
+  };
+}
+
+if (menuExtraTab) {
+  menuExtraTab.onclick = () => {
+    setMenuHubActiveTab("extra");
+    openExtraScreen();
+  };
+}
+
+if (drillsBackBtn) {
+  drillsBackBtn.onclick = () => showScreen("quiz-menu");
+}
+
+if (gppqeBackBtn) {
+  gppqeBackBtn.onclick = () => {
+    closeComingSoonModal();
+    showScreen("quiz-menu");
+  };
+}
+
+if (extraBackBtn) {
+  extraBackBtn.onclick = () => showScreen("quiz-menu");
+}
+
+if (drillsMenuBtn || gppqeMenuBtn || extraMenuBtn) {
+  [drillsMenuBtn, gppqeMenuBtn, extraMenuBtn].forEach((btn) => {
+    if (!btn) return;
+    btn.onclick = () => openGlobalQuickNav(btn);
+  });
+}
+
+if (drillsLobbyTabs.length) {
+  drillsLobbyTabs.forEach((tab) => {
+    tab.onclick = () => {
+      const variant = String(tab.dataset.drillVariant || "rapid").toLowerCase();
+      if (!requireSubscriptionAccess(variant)) {
+        return;
+      }
+      setDrillLobbyVariant(variant);
+    };
+  });
+}
+
+if (drillsPlayBtns.length) {
+  drillsPlayBtns.forEach((btn) => {
+    btn.onclick = () => {
+      const variant = String(btn.dataset.drillPlayBtn || "rapid").toLowerCase();
+      void startMenuDrill(variant);
+    };
+  });
+}
+
+if (extraViewToggleBtn) {
+  extraViewToggleBtn.onclick = () => {
+    setExtraViewMode(extraViewMode === "cards" ? "list" : "cards");
+  };
+}
+
+if (menuNewsBtn) {
+  menuNewsBtn.onclick = async () => {
+    closeMenuUserHub();
+    await openNewsScreen();
+  };
+}
+
+if (extraScreen) {
+  extraScreen.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target.closest("[data-coming-soon='true']") : null;
+    if (target instanceof HTMLElement) {
+      if (!requireSubscriptionAccess("extra-content")) {
+        return;
+      }
+      openComingSoonModal();
+    }
+  });
+}
+
+if (comingSoonModal) {
+  comingSoonModal.addEventListener("pointerdown", (event) => {
+    if (event.target === comingSoonModal) {
+      closeComingSoonModal();
+    }
+  });
+  comingSoonModal.addEventListener("click", (event) => {
+    if (event.target === comingSoonModal) {
+      closeComingSoonModal();
+    }
+  });
+}
+
+if (comingSoonOkBtn) {
+  comingSoonOkBtn.onclick = closeComingSoonModal;
 }
 
 function showCountTooltip() {
@@ -33209,7 +34283,7 @@ function renderDashboardRecentResults() {
     const createdAt = entry?.createdAt instanceof Date ? entry.createdAt : new Date(Number(entry?.timestamp) || Date.now());
     const dateLabel = Number.isNaN(createdAt.getTime())
       ? ""
-      : `${formatAppDate(createdAt)} â€¢ ${createdAt.toLocaleTimeString(undefined, {
+      : `${formatAppDate(createdAt)} on ${createdAt.toLocaleTimeString(undefined, {
           hour: "numeric",
           minute: "2-digit",
         })}`;
@@ -33345,9 +34419,9 @@ function getTrend() {
   const latest = sessionHistory[0].percent;
   const previous = sessionHistory[1].percent;
 
-  if (latest > previous) return "ðŸ“ˆ Improving";
-  if (latest < previous) return "ðŸ“‰ Declining";
-  return "âž¡ Stable";
+  if (latest > previous) return "Improving";
+  if (latest < previous) return "Declining";
+  return "Stable";
 }
 
 async function renderModeHistory(modeName, containerId) {
@@ -33863,14 +34937,6 @@ function updateModeIndicator(studyType = null) {
   if (mode === "study") {
     const resolvedStudyType = String(studyType || getCurrentStudyType()).trim().toLowerCase();
     const lawDrillActive = isLawStudyMode();
-    if (lawDrillActive) {
-      indicator.innerText = "Law Drill";
-    } else if (resolvedStudyType === "weak") {
-      indicator.innerText = "ðŸ“š Practice Weak Areas";
-    } else {
-      indicator.innerText = "ðŸ“š Study Mode";
-    }
-
     indicator.innerText =
       lawDrillActive
         ? "Law Drill"
@@ -34038,13 +35104,54 @@ function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptio
 }
 
 function getSubscriptionPlanList() {
-  return Array.isArray(subscriptionPlansCache) && subscriptionPlansCache.length
-    ? subscriptionPlansCache
-    : [
-        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 2, durationDays: 7, description: "Unlock everything for 7 days." },
-        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 5, durationDays: 30, description: "Unlock everything for 30 days." },
-        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 50, durationDays: 365, description: "Unlock everything for 365 days." },
+  const defaultPlans = [
+        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock everything for 7 days." },
+        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 15, durationDays: 30, description: "Unlock everything for 30 days." },
+        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 120, durationDays: 365, description: "Unlock everything for 365 days." },
       ];
+  if (Array.isArray(subscriptionPlansCache) && subscriptionPlansCache.length) {
+    return normalizeSubscriptionPlans(subscriptionPlansCache);
+  }
+  return defaultPlans;
+}
+
+function normalizeSubscriptionPlans(plans = []) {
+  const defaults = {
+    weekly: {
+      key: "weekly",
+      label: "Weekly Access",
+      shortLabel: "Week Pass",
+      priceGhs: 5,
+      durationDays: 7,
+      description: "Unlock everything for 7 days.",
+    },
+    monthly: {
+      key: "monthly",
+      label: "Monthly Access",
+      shortLabel: "Month Pass",
+      priceGhs: 15,
+      durationDays: 30,
+      description: "Unlock everything for 30 days.",
+    },
+    yearly: {
+      key: "yearly",
+      label: "Annual Access",
+      shortLabel: "Annual Pass",
+      priceGhs: 120,
+      durationDays: 365,
+      description: "Unlock everything for 365 days.",
+    },
+  };
+  return ["weekly", "monthly", "yearly"].map((key) => {
+    const source = Array.isArray(plans) ? plans.find((plan) => String(plan?.key || "").trim().toLowerCase() === key) : null;
+    return {
+      ...(source && typeof source === "object" ? source : {}),
+      ...defaults[key],
+      key,
+      priceGhs: defaults[key].priceGhs,
+      durationDays: defaults[key].durationDays,
+    };
+  });
 }
 
 function getSubscriptionFeatureList(intent = "general") {
@@ -34258,6 +35365,7 @@ function renderSubscriptionScreen() {
   const planGridEl = document.getElementById("subscription-plan-grid");
   const sectionTitleEl = document.getElementById("subscription-section-title");
   const sectionNoteEl = document.getElementById("subscription-section-note");
+  const statusBadgesEl = document.getElementById("subscription-status-badges");
   const selectedTitleEl = document.getElementById("subscription-selected-plan-title");
   const selectedCopyEl = document.getElementById("subscription-selected-plan-copy");
   const modalTitleEl = subscriptionPaymentModalTitleEl;
@@ -34313,6 +35421,24 @@ function renderSubscriptionScreen() {
       "Priority renewal path",
     ],
   };
+  const planCardMeta = {
+    weekly: {
+      title: "7 Days",
+      subtitle: "Short term access",
+      buttonTone: "is-accent-dark",
+    },
+    monthly: {
+      title: "1 Month",
+      subtitle: "Best value monthly",
+      buttonTone: "is-accent-green",
+      featured: true,
+    },
+    yearly: {
+      title: "1 Year",
+      subtitle: "Long term savings",
+      buttonTone: "is-accent-dark",
+    },
+  };
   const displayName = selectedPlanData?.label || selectedPlanData?.shortLabel || "Choose a pass";
   const proofPlanName = selectedPlanData?.shortLabel || selectedPlanData?.label || displayName;
   const priceText = Number(selectedPlanData?.priceGhs) === 0 ? "Free" : `GHS ${selectedPlanData?.priceGhs}`;
@@ -34336,12 +35462,33 @@ function renderSubscriptionScreen() {
     subscriptionProofPlanReferenceEl.textContent = `ID: ${proofReference}`;
   }
   if (sectionTitleEl) {
-    sectionTitleEl.textContent = subscriptionActionDisabled ? "Plans locked" : "Choose a plan";
+    sectionTitleEl.textContent = "Plans";
   }
   if (sectionNoteEl) {
     sectionNoteEl.textContent = subscriptionActionDisabled
       ? "Your subscription is active or under review, so new plans stay locked for now."
-      : "";
+      : "Select the subscription that works best for you.";
+  }
+  if (statusBadgesEl) {
+    const currentBadgeState = subscriptionReviewing
+      ? "pending"
+      : subscriptionActive
+        ? "active"
+        : "expired";
+    statusBadgesEl.innerHTML = [
+      { key: "active", label: "Active", active: currentBadgeState === "active" },
+      { key: "pending", label: "Pending", active: currentBadgeState === "pending" },
+      { key: "expired", label: "Expired", active: currentBadgeState === "expired" },
+    ]
+      .map(
+        (badge) => `
+          <span class="subscription-status-badge ${badge.active ? `is-${badge.key} is-current` : ""}">
+            <span class="subscription-status-badge-dot" aria-hidden="true"></span>
+            <span>${escapeHtml(badge.label)}</span>
+          </span>
+        `,
+      )
+      .join("");
   }
   if (planGridEl) {
     planGridEl.innerHTML = plans
@@ -34349,38 +35496,39 @@ function renderSubscriptionScreen() {
       .map((plan) => {
         const active = String(plan.key) === String(selectedPlan);
         const planName = plan.label || plan.shortLabel || "Plan";
+        const planMeta = planCardMeta[plan.key] || planCardMeta.monthly;
         const priceLabel = Number(plan.priceGhs) === 0 ? "Free" : `GHS ${plan.priceGhs}`;
-        const durationLabel = Number(plan.durationDays) === 1 ? "1 day" : `${plan.durationDays} days`;
-        const badgeText =
-          plan.key === "weekly"
-            ? "Full access for 7 days"
-            : plan.key === "monthly"
-              ? "Full access for 30 days"
-              : "Full access for 12 months";
+        const periodLabel =
+          Number(plan.durationDays) === 7
+            ? "week"
+            : Number(plan.durationDays) === 30
+              ? "month"
+              : "year";
         const bullets = featureSets[plan.key] || featureSets.monthly;
-        const disabledCardStyle = subscriptionActionDisabled
-          ? "cursor:not-allowed;opacity:0.82;filter:grayscale(0.88) brightness(0.94) saturate(0.72);box-shadow:none;"
-          : "";
-        const disabledButtonStyle = subscriptionActionDisabled
-          ? "background:#aeb8c4;color:#f4f7fb;box-shadow:none;cursor:not-allowed;"
-          : "";
         return `
-          <article class="subscription-plan-card ${active ? "is-active" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}" style="${disabledCardStyle}">
-            <div class="subscription-plan-card-head">
-              <div>
-                <div class="subscription-plan-card-title">${escapeHtml(planName)}</div>
-                <div class="subscription-plan-card-copy">${escapeHtml(plan.description || "")}</div>
-              </div>
-              <div class="subscription-plan-card-price">
-                <span class="subscription-plan-price-amount">GHS ${escapeHtml(String(plan.priceGhs || 0))}</span>
-                <span class="subscription-plan-price-meta">${escapeHtml(durationLabel)}</span>
-              </div>
+          <article class="subscription-plan-tile ${active ? "is-active" : ""} ${planMeta.featured ? "is-popular" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}">
+            ${planMeta.featured ? '<div class="subscription-plan-popular-badge">POPULAR</div>' : ""}
+            <div class="subscription-plan-name">${escapeHtml(planMeta.title)}</div>
+            <div class="subscription-plan-desc">${escapeHtml(plan.description || planMeta.subtitle)}</div>
+            <div class="subscription-plan-price">
+              <span class="subscription-plan-price-amount">${escapeHtml(priceLabel)}</span>
+              <span class="subscription-plan-price-period"> / ${escapeHtml(periodLabel)}</span>
             </div>
-            <div class="subscription-plan-card-chip">${escapeHtml(badgeText)}</div>
-            <ul class="subscription-plan-benefits">
-              ${bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}
+            <ul class="subscription-plan-features">
+              ${bullets
+                .map(
+                  (bullet) => `
+                    <li>
+                      <svg class="subscription-plan-feature-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      <span>${escapeHtml(bullet)}</span>
+                    </li>
+                  `,
+                )
+                .join("")}
             </ul>
-            <button type="button" class="subscription-plan-card-button" data-subscription-plan="${escapeHtml(plan.key)}" ${subscriptionActionDisabled ? "disabled aria-disabled=\"true\"" : ""} style="${disabledButtonStyle}">Subscribe</button>
+            <button type="button" class="subscription-plan-action ${planMeta.buttonTone}" data-subscription-plan="${escapeHtml(plan.key)}" ${subscriptionActionDisabled ? "disabled aria-disabled=\"true\"" : ""}>Subscribe</button>
           </article>
         `;
       })
@@ -34400,7 +35548,7 @@ function renderSubscriptionScreen() {
           String(button.getAttribute("data-subscription-plan") || button.getAttribute("data-subscription-plan-card") || "").trim();
         if (!nextPlan) return;
         openSubscriptionPaymentModal(nextPlan);
-        if (event.target.closest(".subscription-plan-card-button")) {
+        if (event.target.closest(".subscription-plan-action")) {
           subscriptionPaymentModalEl?.scrollTo?.({ top: 0, behavior: "smooth" });
         }
       });
@@ -34461,7 +35609,7 @@ async function loadSubscriptionScreenData({ force = false } = {}) {
       backendClient.fetchSubscriptionPlans({ preferCache: !force }),
       backendClient.fetchMySubscription({ preferCache: !force }),
     ]);
-    subscriptionPlansCache = Array.isArray(plansResponse?.plans) ? plansResponse.plans : [];
+    subscriptionPlansCache = normalizeSubscriptionPlans(plansResponse?.plans);
     subscriptionStatusSnapshot = meResponse || null;
     renderSubscriptionScreen();
     return true;
@@ -34472,7 +35620,18 @@ async function loadSubscriptionScreenData({ force = false } = {}) {
   }
 }
 
-const SUBSCRIPTION_LOCKED_FEATURES = new Set(["exam", "topic-library", "community", "rapid", "sudden", "clinical", "law"]);
+const SUBSCRIPTION_LOCKED_FEATURES = new Set([
+  "exam",
+  "topic-library",
+  "community",
+  "news",
+  "rapid",
+  "sudden",
+  "clinical",
+  "law",
+  "gppqe",
+  "extra-content",
+]);
 
 function getSubscriptionGateFeature(feature = "") {
   const normalized = String(feature || "").trim().toLowerCase();
@@ -34486,6 +35645,8 @@ function getSubscriptionGateFeature(feature = "") {
   ) {
     return "community";
   }
+  if (["gppqe-screen", "gppqe"].includes(normalized)) return "gppqe";
+  if (["news-screen", "news-feed", "news-story", "news"].includes(normalized)) return "news";
   return normalized;
 }
 
@@ -34877,7 +36038,7 @@ function showQuestion() {
   if (isStudyLikeMode()) {
     if (isLawStudyMode()) {
       const currentLevel = lawDrillState?.currentLevelIndex ?? 0;
-      progressEl.innerText = `Level ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS} â€¢ Q ${current + 1}/${active.length}`;
+      progressEl.innerText = `Level ${currentLevel + 1} of ${LAW_DRILL_TOTAL_LEVELS} and question ${current + 1} of ${active.length}`;
     } else {
       progressEl.innerText = `Q ${current + 1}/${active.length}`;
     }
@@ -34885,7 +36046,7 @@ function showQuestion() {
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
     if (isTopicQuizMode()) {
-      progressEl.innerText += ` â€¢ ${getTopicQuizSessionTitle()}`;
+      progressEl.innerText += ` and ${getTopicQuizSessionTitle()}`;
     }
   } else if (mode === "exam" && examVariant === "sudden") {
     const suddenScore = calculateScore();
@@ -34941,12 +36102,12 @@ function showQuestion() {
       performanceBits.push(`${questionRotation} ${rotationAccuracy}%`);
     }
     performanceBits.push(`${q.category} ${categoryAccuracy}%`);
-    progressEl.innerText += ` â€¢ ${performanceBits.join(" â€¢ ")}`;
+    progressEl.innerText += ` and ${performanceBits.join(" and ")}`;
     if (isLawStudyMode()) {
-      progressEl.innerText = `Level ${lawDrillState?.currentLevelIndex + 1 || 1}/${LAW_DRILL_TOTAL_LEVELS} â€¢ Q ${current + 1}/${active.length}`;
+      progressEl.innerText = `Level ${lawDrillState?.currentLevelIndex + 1 || 1} of ${LAW_DRILL_TOTAL_LEVELS} and question ${current + 1} of ${active.length}`;
     }
   } else if (isTopicQuizMode()) {
-    progressEl.innerText += ` â€¢ Topic Quiz`;
+    progressEl.innerText += ` and Topic Quiz`;
   }
 
   let displayText = String(q.question || "").trim();
@@ -35672,7 +36833,7 @@ function renderLawDrillInlineMetaLegacy() {
     parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
   }
 
-  parts.push(`<span class="header-inline-points">ðŸª™ ${sessionPoints}</span>`);
+  parts.push(`<span class="header-inline-points">${buildPointsIconMarkup()} ${sessionPoints}</span>`);
   return parts.join("");
 }
 
@@ -36589,7 +37750,7 @@ function showDetailedReview() {
     card.innerHTML = `
       <div class="analysis-header">
         <div>Question ${index + 1}</div>
-        <div>${isCorrect ? "âœ“ Correct" : "âœ• Incorrect"}</div>
+        <div>${isCorrect ? "Correct" : "Incorrect"}</div>
       </div>
       <div class="analysis-question">
         ${q.question.replace(/^Q\\d+\\.\\s*/, "")}
@@ -36992,17 +38153,15 @@ function saveStudyProgress() {
 
 window.addEventListener("load", function () {
   const pendingTopicQuizLaunch = hasPendingTopicQuizLaunch();
+  const pendingScreenLaunch = String(new URLSearchParams(window.location.search || "").get("screen") || "").trim().length > 0;
   setAuthMode("login");
   profileImageMarkedForDeletion = false;
   setProfileAvatarPreview("");
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
   renderAuthState();
-  restoreAuthSession();
   closeCommunityConversationActions();
   closeCommunityFriendActions();
-  startQuestionBankBootstrap();
-  startBackendBootstrap();
   void primeInstantLocalCaches();
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
@@ -37010,6 +38169,10 @@ window.addEventListener("load", function () {
 
   if (pendingTopicQuizLaunch) {
     consumePendingTopicQuizLaunch();
+  }
+
+  if (pendingScreenLaunch) {
+    consumePendingScreenLaunch();
   }
 
   renderModeHistory("Study", "study-history");
@@ -37070,12 +38233,12 @@ window.addEventListener("load", function () {
     }
   }
 
-  if (!pendingTopicQuizLaunch) {
+  if (!pendingTopicQuizLaunch && !pendingScreenLaunch) {
     if (shouldShowWelcomeIntro()) {
       markWelcomeIntroSeen();
       showScreen("welcome-screen", { recordHistory: false });
     } else {
-      showScreen("home-screen", { recordHistory: false });
+      showScreen("quiz-menu", { recordHistory: false });
     }
   }
 
@@ -37252,6 +38415,9 @@ function showScreen(id, options = {}) {
     "welcome-screen",
     "home-screen",
     "quiz-menu",
+    "drills-screen",
+    "gppqe-screen",
+    "extra-screen",
     "profile-screen",
     "study-setup",
     "exam-setup",
@@ -37319,6 +38485,11 @@ function showScreen(id, options = {}) {
     window.setTimeout(() => {
       void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
     }, 0);
+  }
+
+  if (id === "drills-screen" || id === "gppqe-screen" || id === "extra-screen") {
+    closeMenuUserHub();
+    closeGlobalQuickNav();
   }
 
   if (["dashboard", "daily-setup", "study-setup", "exam-setup"].includes(id)) {
@@ -37790,4 +38961,7 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 });
+
+
+
 

@@ -1,4 +1,4 @@
-const CUTOVER_VERSION = "ajix-quiz-cutover-v39";
+const CUTOVER_VERSION = "ajix-news-cutover-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

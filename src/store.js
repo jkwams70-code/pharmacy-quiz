@@ -13,6 +13,10 @@ const defaults = {
   attempts: [],
   syncSessions: [],
   syncPerformance: [],
+  newsItems: [],
+  newsSources: [],
+  newsCategories: [],
+  newsRuns: [],
 };
 
 const collectionCache = new Map();

@@ -112,6 +112,15 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let broadcastThreadOpen = false;
       let selectedBroadcastStatusId = "";
       let broadcastOverviewLoaded = false;
+      let cachedNewsItems = [];
+      let cachedNewsSources = [];
+      let cachedNewsRuns = [];
+      let selectedNewsItemId = "";
+      let selectedNewsPublishSlot = "latest";
+      let selectedNewsPublishSlotItemId = "";
+      let newsReviewLoaded = false;
+      let newsReviewStatusFilter = "pending_review";
+      let newsReviewSearchQuery = "";
       let adminActiveTab = "stats";
       let adminBroadcastReturnTab = "stats";
       const ADMIN_NOTIFICATION_BANNER_STORAGE_KEY = "adminReportsNotificationSignature";
@@ -243,8 +252,6 @@ async function ensureAdminApiBase({ force = false } = {}) {
         const interactiveSelector =
           "button, a, input, textarea, select, option, label, summary, [contenteditable='true'], [data-no-table-drag]";
         const dragThreshold = 8;
-        const shouldUseNativeTouchScroll =
-          window.matchMedia?.("(pointer: coarse)")?.matches || window.matchMedia?.("(hover: none)")?.matches;
         let activePointerId = null;
         let activePointerType = "";
         let startX = 0;
@@ -317,12 +324,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
           clearPointerState();
         };
 
-        if (!shouldUseNativeTouchScroll) {
-          root.addEventListener("pointerdown", onPointerDown);
-          root.addEventListener("pointermove", onPointerMove);
-          root.addEventListener("pointerup", onPointerUp);
-          root.addEventListener("pointercancel", onPointerCancel);
-        }
+        root.addEventListener("pointerdown", onPointerDown);
+        root.addEventListener("pointermove", onPointerMove);
+        root.addEventListener("pointerup", onPointerUp);
+        root.addEventListener("pointercancel", onPointerCancel);
 
         if (enableClickBinding && typeof onActivate === "function") {
           root.addEventListener("click", (event) => {
@@ -531,32 +536,6 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
       }
 
-      function getUserPrimaryLabel(user = {}, fallback = "") {
-        return String(
-          user?.username ||
-            user?.userName ||
-            user?.contact ||
-            fallback ||
-            "",
-        ).trim();
-      }
-
-      function getUserSecondaryLabel(user = {}) {
-        return String(user?.name || user?.fullName || user?.displayName || "").trim();
-      }
-
-      function renderIdentityStack(primary = "", secondary = "", fallback = "--") {
-        const safePrimary = String(primary || "").trim() || String(fallback || "--").trim() || "--";
-        const safeSecondary = String(secondary || "").trim();
-        if (!safeSecondary || safeSecondary.toLowerCase() === safePrimary.toLowerCase()) {
-          return escapeHtml(safePrimary);
-        }
-        return `
-          <div style="color:#0f172a;font-weight:600;line-height:1.2;">${escapeHtml(safePrimary)}</div>
-          <div style="font-size:12px;color:#64748b;line-height:1.2;">${escapeHtml(safeSecondary)}</div>
-        `;
-      }
-
       function getMonetizationBucket(request = {}) {
         const requestStatus = String(request?.status || "").trim().toLowerCase();
         const userStatus = String(
@@ -618,8 +597,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
           expired: {
             title: "Expired access",
             empty: "No expired subscriptions yet.",
-            rowColumns: "minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) auto",
-            rowLabels: ["Name", "Subscription Type", "Amount", "Contact", "Activated", "Expired", "View"],
+            rowColumns: "minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(0, 1fr) auto",
+            rowLabels: ["Name", "Subscription Type", "Amount", "Contact", "Expired", "View"],
           },
         };
         return meta[safeBucket] || meta.request;
@@ -637,16 +616,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       function getMonetizationRequestTitle(request = {}) {
-        return getUserPrimaryLabel(request?.user || request, "Subscription request") || "Subscription request";
-      }
-
-      function getMonetizationRequestSecondaryName(request = {}) {
-        const secondary = getUserSecondaryLabel(request?.user || request);
-        const primary = getMonetizationRequestTitle(request);
-        if (!secondary || secondary.toLowerCase() === primary.toLowerCase()) {
-          return "";
-        }
-        return secondary;
+        const name = String(request?.user?.name || request?.userName || request?.username || request?.contact || "").trim();
+        return name || "Subscription request";
       }
 
       function getMonetizationRequestContact(request = {}) {
@@ -670,19 +641,6 @@ async function ensureAdminApiBase({ force = false } = {}) {
           );
         }
         return formatDate(request?.requestedAt);
-      }
-
-      function getMonetizationRequestActivatedAt(request = {}) {
-        return formatDate(
-          request?.activatedAt ||
-            request?.approvedAt ||
-            request?.reviewedAt ||
-            request?.user?.subscriptionAccess?.activatedAt ||
-            request?.user?.subscriptionAccess?.activationAt ||
-            request?.user?.subscriptionActivatedAt ||
-            request?.user?.subscriptionApprovedAt ||
-            request?.user?.subscriptionReviewedAt,
-        );
       }
 
       function getMonetizationRequestExpiry(request = {}) {
@@ -819,24 +777,20 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function buildMonetizationRequestRow(request, bucket) {
         const safeId = escapeHtml(request?.id || "");
-        const titlePrimary = getMonetizationRequestTitle(request);
-        const titleSecondary = getMonetizationRequestSecondaryName(request);
+        const title = escapeHtml(getMonetizationRequestTitle(request));
         const subscriptionType = escapeHtml(
           request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "--",
         );
         const amount = getMonetizationRequestAmount(request);
         const amountLabel = amount ? formatGhsAmount(amount) : "None";
         const contact = escapeHtml(getMonetizationRequestContact(request));
-        const mainDate =
-          bucket === "expired"
-            ? escapeHtml(getMonetizationRequestActivatedAt(request))
-            : escapeHtml(getMonetizationRequestDate(request, bucket));
-        const dateLabel = escapeHtml(bucket === "expired" ? "Activated" : getMonetizationDateLabel(bucket));
+        const mainDate = escapeHtml(getMonetizationRequestDate(request, bucket));
+        const dateLabel = escapeHtml(getMonetizationDateLabel(bucket));
         const reasonLabel = escapeHtml(getMonetizationRequestReason(request));
         const proofLabel = escapeHtml(getMonetizationRequestProofLabel(request));
         const proofPreview = request?.proofDataUrl
-          ? `<button type="button" class="monetization-proof-chip" data-action="open-proof-image" data-request-id="${safeId}" data-proof-url="${escapeHtml(request.proofDataUrl)}" data-proof-title="${escapeHtml(titlePrimary)}">
-              <img src="${escapeHtml(request.proofDataUrl)}" alt="${escapeHtml(titlePrimary)} proof preview" />
+          ? `<button type="button" class="monetization-proof-chip" data-action="open-proof-image" data-request-id="${safeId}" data-proof-url="${escapeHtml(request.proofDataUrl)}" data-proof-title="${title}">
+              <img src="${escapeHtml(request.proofDataUrl)}" alt="${title} proof preview" />
               <span>${proofLabel || "Screenshot available"}</span>
             </button>`
           : `<div class="monetization-cell-value is-muted">No screenshot uploaded</div>`;
@@ -852,10 +806,6 @@ async function ensureAdminApiBase({ force = false } = {}) {
           bucket === "activated"
             ? `<td>${escapeHtml(getMonetizationRequestExpiry(request))}</td>`
             : "";
-        const expiredCell =
-          bucket === "expired"
-            ? `<td data-label="Expired"><div class="monetization-cell-value">${escapeHtml(getMonetizationRequestDate(request, bucket))}</div></td>`
-            : "";
 
         return `
           <tr
@@ -864,7 +814,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             data-action="open-subscription-request"
           >
             <td class="cell-wrap" data-label="Name">
-              <div class="monetization-cell-value">${renderIdentityStack(titlePrimary, titleSecondary, "Subscription request")}</div>
+              <div class="monetization-cell-value">${title}</div>
             </td>
             <td class="cell-wrap" data-label="Subscription Type">
               <div class="monetization-cell-value">${subscriptionType}</div>
@@ -884,7 +834,6 @@ async function ensureAdminApiBase({ force = false } = {}) {
                 : ""
             }
             ${expiryCell ? expiryCell.replace("<td>", '<td data-label="Expires">') : ""}
-            ${expiredCell}
             <td data-label="View">
               <button
                 type="button"
@@ -928,8 +877,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function buildMonetizationRequestDetailHtml(request = {}) {
         const bucket = getMonetizationBucket(request);
-        const titlePrimary = getMonetizationRequestTitle(request);
-        const titleSecondary = getMonetizationRequestSecondaryName(request);
+        const title = escapeHtml(getMonetizationRequestTitle(request));
         const contact = escapeHtml(getMonetizationRequestContact(request));
         const planLabel = escapeHtml(request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "--");
         const amount = getMonetizationRequestAmount(request);
@@ -954,11 +902,11 @@ async function ensureAdminApiBase({ force = false } = {}) {
                 class="monetization-proof-chip"
                 data-action="open-proof-image"
                 data-proof-url="${escapeHtml(proofUrl)}"
-                data-proof-title="${escapeHtml(titlePrimary)}"
+                data-proof-title="${title}"
                 style="width: 100%; justify-content: center; border-radius: 18px; padding: 12px 14px;"
               >
-                <img src="${escapeHtml(proofUrl)}" alt="${escapeHtml(titlePrimary)} proof preview" />
-                <span>${proofFileName} · ${proofMimeType}</span>
+                <img src="${escapeHtml(proofUrl)}" alt="${title} proof preview" />
+                <span>${proofFileName} and ${proofMimeType}</span>
               </button>
             </div>
           `
@@ -1028,7 +976,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
           <div class="subscription-detail-card">
             <div class="subscription-detail-pill" style="margin-bottom: 14px;">Request details</div>
             <div style="display: grid; gap: 10px;">
-              <div><strong>Name:</strong> ${renderIdentityStack(titlePrimary, titleSecondary, "Subscription request")}</div>
+              <div><strong>Name:</strong> ${title}</div>
               <div><strong>Contact:</strong> ${contact}</div>
               <div><strong>Requested:</strong> ${requestedAt}</div>
               <div><strong>Reviewed:</strong> ${reviewedAt}</div>
@@ -1047,8 +995,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function buildCompactMonetizationRequestDetailHtmlLegacy(request = {}) {
         const bucket = getMonetizationBucket(request);
-        const titlePrimary = getMonetizationRequestTitle(request);
-        const titleSecondary = getMonetizationRequestSecondaryName(request);
+        const title = escapeHtml(getMonetizationRequestTitle(request));
         const contact = escapeHtml(getMonetizationRequestContact(request));
         const planLabel = escapeHtml(request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "--");
         const amount = getMonetizationRequestAmount(request);
@@ -1065,9 +1012,9 @@ async function ensureAdminApiBase({ force = false } = {}) {
               class="monetization-proof-chip subscription-proof-thumb"
               data-action="open-proof-image"
               data-proof-url="${escapeHtml(proofUrl)}"
-              data-proof-title="${escapeHtml(titlePrimary)}"
+              data-proof-title="${title}"
             >
-              <img src="${escapeHtml(proofUrl)}" alt="${escapeHtml(titlePrimary)} proof preview" />
+              <img src="${escapeHtml(proofUrl)}" alt="${title} proof preview" />
               <span>Tap to expand screenshot</span>
             </button>
           `
@@ -1100,7 +1047,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             <div class="subscription-detail-card">
               <div class="subscription-detail-mini-label">Plan</div>
               <div class="subscription-detail-value">${planLabel}</div>
-              <div class="subscription-detail-meta">${renderIdentityStack(titlePrimary, titleSecondary, "Subscription request")} · ${contact}</div>
+              <div class="subscription-detail-meta">${title} and ${contact}</div>
             </div>
 
             <div class="subscription-detail-card">
@@ -1202,7 +1149,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
         const headerHtml = buildMonetizationHeader(bucket, filteredItems.length);
         const rowsHtml = filteredItems.map((request) => buildMonetizationRequestRow(request, bucket)).join("");
-        const columnCount = bucket === "activated" || bucket === "rejected" || bucket === "expired" ? 7 : 6;
+        const columnCount = bucket === "activated" || bucket === "rejected" ? 7 : 6;
         root.innerHTML = `
           <div class="table-container monetization-table-container">
             <table class="user-table monetization-table">
@@ -1543,8 +1490,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
         const title = document.getElementById("subscription-request-title");
         const subtitle = document.getElementById("subscription-request-subtitle");
         if (body) body.innerHTML = buildCompactMonetizationRequestDetailHtml(request);
-        if (title) title.textContent = `${getMonetizationRequestTitle(request)} • ${request.planLabel || request.plan || "Subscription"}`;
-        if (subtitle) subtitle.textContent = `${getMonetizationRequestContact(request)} • ${formatDate(request.requestedAt)}`;
+        if (title) title.textContent = `${getMonetizationRequestTitle(request)} and ${request.planLabel || request.plan || "Subscription"}`;
+        if (subtitle) subtitle.textContent = `${getMonetizationRequestContact(request)} on ${formatDate(request.requestedAt)}`;
         if (title) title.textContent = getMonetizationRequestModalTitle(getMonetizationBucket(request));
         modal?.classList.add("active");
       }
@@ -1584,8 +1531,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       function buildCompactMonetizationRequestDetailHtml(request = {}) {
-        const titlePrimary = getMonetizationRequestTitle(request);
-        const titleSecondary = getMonetizationRequestSecondaryName(request);
+        const title = escapeHtml(getMonetizationRequestTitle(request));
         const contact = escapeHtml(getMonetizationRequestContact(request));
         const planLabel = escapeHtml(request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "None");
         const amount = getMonetizationRequestAmount(request);
@@ -1599,7 +1545,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
               class="subscription-proof-link"
               data-action="open-proof-image"
               data-proof-url="${escapeHtml(proofUrl)}"
-              data-proof-title="${escapeHtml(titlePrimary)}"
+              data-proof-title="${title}"
             >
               View payment proof
             </button>
@@ -1620,7 +1566,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
           <div class="subscription-detail-card subscription-approval-card">
             <div class="subscription-approval-row">
               <div class="subscription-approval-label">Student:</div>
-              <div class="subscription-approval-value">${renderIdentityStack(titlePrimary, titleSecondary, "Subscription request")}</div>
+              <div class="subscription-approval-value">${title}</div>
             </div>
             <div class="subscription-approval-row">
               <div class="subscription-approval-label">Contact:</div>
@@ -1671,7 +1617,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         const select = document.getElementById("subscription-reject-reason");
         const amount = getMonetizationRequestAmount(request);
         if (title) title.textContent = "Reject with Reason";
-        if (subtitle) subtitle.textContent = `${getMonetizationRequestTitle(request)} · ${request.planLabel || request.plan || "Subscription"}`;
+        if (subtitle) subtitle.textContent = `${getMonetizationRequestTitle(request)} and ${request.planLabel || request.plan || "Subscription"}`;
         if (summary) {
           summary.innerHTML = `
             <div><strong>Student:</strong> ${escapeHtml(getMonetizationRequestTitle(request))}</div>
@@ -1689,15 +1635,14 @@ async function ensureAdminApiBase({ force = false } = {}) {
       window.openSubscriptionRejectModal = openSubscriptionRejectModal;
 
       function buildSubscriptionDecisionSummaryHtml(request = {}) {
-        const studentPrimary = getMonetizationRequestTitle(request);
-        const studentSecondary = getMonetizationRequestSecondaryName(request);
+        const student = getMonetizationRequestTitle(request);
         const contact = getMonetizationRequestContact(request);
         const plan = String(request.planLabel || request.plan || "Subscription").trim();
         const amount = getMonetizationRequestAmount(request);
         const amountText = amount ? `GHS ${amount}` : "GHS --";
         const requestedAt = formatDate(request.requestedAt);
         return `
-          <div><strong>Student:</strong> ${renderIdentityStack(studentPrimary, studentSecondary, "Subscription request")}</div>
+          <div><strong>Student:</strong> ${escapeHtml(student)}</div>
           <div><strong>Contact:</strong> ${escapeHtml(contact)}</div>
           <div><strong>Plan:</strong> ${escapeHtml(plan)}</div>
           <div><strong>Amount:</strong> ${escapeHtml(amountText)}</div>
@@ -1933,15 +1878,6 @@ async function ensureAdminApiBase({ force = false } = {}) {
           <div class="detail-item">
             <span class="detail-label">${safeLabel}</span>
             <div class="detail-value${preformatted ? " preformatted" : ""}">${safeValue}</div>
-          </div>
-        `;
-      }
-
-      function renderDetailIdentityItem(label, primary, secondary, fallback) {
-        return `
-          <div class="detail-item">
-            <span class="detail-label">${escapeHtml(label)}</span>
-            <div class="detail-value">${renderIdentityStack(primary, secondary, fallback)}</div>
           </div>
         `;
       }
@@ -2303,7 +2239,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             <div>
               <div class="group-details-name">${escapeHtml(displayValue(group?.name))}</div>
               <div class="group-details-subtitle">
-                <div><strong>Owner:</strong> ${renderIdentityStack(group?.ownerUsername, group?.ownerName, "Unknown owner")}</div>
+                <div><strong>Owner:</strong> ${escapeHtml(displayValue(group?.ownerName || group?.ownerUsername))}</div>
                 <div><strong>Group ID:</strong> ${escapeHtml(displayValue(group?.id))}</div>
               </div>
             </div>
@@ -2338,8 +2274,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
                                 : `<span class="group-member-avatar-fallback">${escapeHtml(memberInitials)}</span>`
                             }
                             <div>
-                              <div class="group-member-name">${renderIdentityStack(member?.username, member?.name, "Member")}</div>
-                              <div class="group-member-meta">@${escapeHtml(displayValue(member?.username))} • ${escapeHtml(displayValue(member?.country || member?.institution || "Member"))}</div>
+                              <div class="group-member-name">${escapeHtml(displayValue(member?.name || member?.username))}</div>
+                              <div class="group-member-meta">@${escapeHtml(displayValue(member?.username))} and ${escapeHtml(displayValue(member?.country || member?.institution || "Member"))}</div>
                             </div>
                             <div class="group-member-role">${escapeHtml(role.charAt(0).toUpperCase() + role.slice(1))}</div>
                           </div>
@@ -2354,17 +2290,16 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       function buildReportDetailsHtml(report) {
-        const reporterUsername = displayValue(report?.reporter?.username || report?.reporterUsername || report?.reporterName);
         const reporterName = displayValue(report?.reporter?.name || report?.reporterName);
-        const targetUsername = displayValue(report?.target?.username || report?.targetUsername || report?.targetName);
-        const targetName = displayValue(report?.target?.name || report?.targetName);
+        const targetName = displayValue(report?.target?.name || report?.targetName || report?.target?.username);
+        const targetUsername = displayValue(report?.target?.username || report?.targetUsername);
         const targetType = String(report?.type || "").trim().toLowerCase() === "group" ? "Group" : "User";
         const status = String(report?.status || "open").trim();
         return `
           <div class="report-details-grid">
             ${renderDetailItem("Type", targetType)}
-            ${renderDetailIdentityItem("Reporter", reporterUsername, reporterName, "Unknown reporter")}
-            ${renderDetailIdentityItem("Target", targetUsername, targetName, "Unknown target")}
+            ${renderDetailItem("Reporter", reporterName)}
+            ${renderDetailItem("Target", targetName)}
             ${renderDetailItem("Target username", targetUsername)}
             ${renderDetailItem("Reason", report?.reason)}
             ${renderDetailItem("Reported at", formatDate(report?.createdAt))}
@@ -2384,7 +2319,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
                       }
                       <div>
                         <div class="group-member-name">${escapeHtml(targetName)}</div>
-                        <div class="group-member-meta">Owner: ${escapeHtml(displayValue(report?.target?.ownerName || report?.target?.ownerUsername))} • ${escapeHtml(String(report?.target?.memberCount || 0))} members</div>
+                        <div class="group-member-meta">Owner ${escapeHtml(displayValue(report?.target?.ownerName || report?.target?.ownerUsername))} and ${escapeHtml(String(report?.target?.memberCount || 0))} members</div>
                       </div>
                       <div class="group-member-role">${escapeHtml(status)}</div>
                     </div>
@@ -2767,7 +2702,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
         await ensureAdminApiBase();
 
-        const [statsOk, usersOk, deletedUsersOk, deletedGroupsOk, groupsOk, reportsOk, questionsOk, exportOk, broadcastOk, monetizationOk, passwordResetOk] = await Promise.all([
+        const [statsOk, usersOk, deletedUsersOk, deletedGroupsOk, groupsOk, reportsOk, questionsOk, exportOk, broadcastOk, newsOk, monetizationOk, passwordResetOk] = await Promise.all([
           loadStats(),
           loadUsers(),
           loadDeletedUsers(),
@@ -2777,11 +2712,12 @@ async function ensureAdminApiBase({ force = false } = {}) {
           loadQuestions(),
           loadExportData(),
           loadBroadcastOverview(),
+          loadNewsReviewOverview(),
           loadMonetizationRequests(),
           loadPasswordResetRequests(),
         ]);
 
-        if (statsOk && usersOk && deletedUsersOk && deletedGroupsOk && groupsOk && reportsOk && questionsOk && exportOk && broadcastOk && monetizationOk && passwordResetOk) {
+        if (statsOk && usersOk && deletedUsersOk && deletedGroupsOk && groupsOk && reportsOk && questionsOk && exportOk && broadcastOk && newsOk && monetizationOk && passwordResetOk) {
           showAlert("stats-alerts", "Dashboard refreshed successfully", "success");
         } else {
           showAlert(
@@ -2865,23 +2801,17 @@ async function ensureAdminApiBase({ force = false } = {}) {
               })
               .join("")}
             <line x1="${paddingX}" y1="${baselineY}" x2="${width - paddingX}" y2="${baselineY}" stroke="#cbd5e1" stroke-width="1.4" />
-            <path d="${primaryPath}" fill="none" stroke="${primaryColor}" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="${secondaryPath}" fill="none" stroke="${secondaryColor}" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="${primaryPath}" fill="none" stroke="${primaryColor}" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="${secondaryPath}" fill="none" stroke="${secondaryColor}" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" />
             ${primary.map((value, index) => {
               const cx = paddingX + index * xStep;
               const cy = yFor(value);
-              return `
-                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#ffffff" opacity="0.9" />
-                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.25" fill="#ffffff" stroke="${primaryColor}" stroke-width="2.6" vector-effect="non-scaling-stroke" />
-              `;
+              return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.25" fill="${primaryColor}" />`;
             }).join("")}
             ${secondary.map((value, index) => {
               const cx = paddingX + index * xStep;
               const cy = yFor(value);
-              return `
-                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#ffffff" opacity="0.9" />
-                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.25" fill="#ffffff" stroke="${secondaryColor}" stroke-width="2.6" vector-effect="non-scaling-stroke" />
-              `;
+              return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.25" fill="${secondaryColor}" />`;
             }).join("")}
             ${ticks}
             <text x="${width - paddingX}" y="${paddingTop + 12}" text-anchor="end" fill="${primaryColor}" font-size="11" font-weight="800">${escapeHtml(primaryLabel)}</text>
@@ -4189,6 +4119,362 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
       }
 
+      function getNewsReviewStatusLabel(status = "") {
+        const next = String(status || "").trim().toLowerCase();
+        if (next === "pending_review") return "Pending review";
+        if (next === "approved") return "Approved";
+        if (next === "published") return "Published";
+        if (next === "rejected") return "Rejected";
+        if (next === "archived") return "Archived";
+        return next || "Unknown";
+      }
+
+      const NEWS_PUBLISH_SLOTS = [
+        { value: "latest", label: "Latest news" },
+        { value: "medicine", label: "More from medicine" },
+        { value: "trending-now", label: "Trending now" },
+      ];
+
+      function getNewsPublishSlotLabel(slot = "") {
+        const value = String(slot || "").trim().toLowerCase();
+        return NEWS_PUBLISH_SLOTS.find((entry) => entry.value === value)?.label || "Latest news";
+      }
+
+      function inferNewsPublishSlot(item = {}) {
+        const explicitSlot = String(item?.publishSlot || item?.targetSlot || item?.feedSlot || item?.sectionId || "").trim().toLowerCase();
+        if (NEWS_PUBLISH_SLOTS.some((entry) => entry.value === explicitSlot)) {
+          return explicitSlot;
+        }
+
+        const haystack = [
+          item?.category,
+          item?.section,
+          item?.sourceName,
+          item?.title,
+          item?.summary,
+          item?.content,
+          item?.tags,
+        ]
+          .flatMap((value) => (Array.isArray(value) ? value : [value]))
+          .join(" ")
+          .toLowerCase();
+
+        if (haystack.includes("trend")) return "trending-now";
+        if (haystack.includes("medicine") || haystack.includes("medical") || haystack.includes("clinical")) {
+          return "medicine";
+        }
+        return "latest";
+      }
+
+      function getNewsReviewVisibleItems() {
+        const query = String(newsReviewSearchQuery || "").trim().toLowerCase();
+        return Array.isArray(cachedNewsItems)
+          ? cachedNewsItems.filter((item) => {
+              const status = String(item?.status || "").trim().toLowerCase();
+              const matchesStatus =
+                newsReviewStatusFilter === "all" || status === newsReviewStatusFilter;
+              const haystack = [
+                item?.title,
+                item?.summary,
+                item?.sourceName,
+                item?.category,
+                item?.sourceUrl,
+                item?.reviewNote,
+              ]
+                .map((value) => String(value || "").toLowerCase())
+                .join(" ");
+              const matchesQuery = !query || haystack.includes(query);
+              return matchesStatus && matchesQuery;
+            })
+          : [];
+      }
+
+      function getSelectedNewsReviewItem() {
+        const visibleItems = getNewsReviewVisibleItems();
+        if (selectedNewsItemId) {
+          const selected = visibleItems.find((item) => String(item?.id || "") === selectedNewsItemId);
+          if (selected) return selected;
+        }
+        return visibleItems[0] || null;
+      }
+
+      function renderNewsReviewStats() {
+        const counts = {
+          pending_review: 0,
+          approved: 0,
+          published: 0,
+          rejected: 0,
+        };
+        cachedNewsItems.forEach((item) => {
+          const status = String(item?.status || "").trim().toLowerCase();
+          if (counts[status] !== undefined) counts[status] += 1;
+        });
+        document.getElementById("news-pending-count").textContent = counts.pending_review;
+        document.getElementById("news-approved-count").textContent = counts.approved;
+        document.getElementById("news-published-count").textContent = counts.published;
+        document.getElementById("news-source-count").textContent = cachedNewsSources.length;
+      }
+
+      function syncNewsReviewFilterButtons() {
+        document.querySelectorAll("[data-news-status-filter]").forEach((button) => {
+          const nextFilter = String(button.dataset.newsStatusFilter || "all").trim().toLowerCase();
+          button.classList.toggle("is-active", nextFilter === newsReviewStatusFilter);
+        });
+      }
+
+      function renderNewsReviewSources() {
+        const listEl = document.getElementById("news-source-list");
+        if (!listEl) return;
+        if (!cachedNewsSources.length) {
+          listEl.innerHTML = '<div class="news-review-empty-state">No sources configured.</div>';
+          return;
+        }
+        listEl.innerHTML = cachedNewsSources
+          .map((source) => {
+            const status = source.enabled === false ? "Disabled" : "Enabled";
+            const lastRun = source.lastCollectedAt ? formatBroadcastDateTime(source.lastCollectedAt) : "Never";
+            return `
+              <div class="news-source-row${source.enabled === false ? " is-disabled" : ""}">
+                <div class="news-source-title">${escapeHtml(source.name || source.id || "Source")}</div>
+                <div class="news-source-meta">${escapeHtml(status)} · ${escapeHtml(source.category || "clinical-news")}</div>
+                <div class="news-source-url">${escapeHtml(source.url || "")}</div>
+                <div class="news-source-foot">
+                  <span>Last run: ${escapeHtml(lastRun)}</span>
+                  <span>${escapeHtml(source.extractMode || "structured")}</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderNewsReviewRuns() {
+        const listEl = document.getElementById("news-run-list");
+        if (!listEl) return;
+        if (!cachedNewsRuns.length) {
+          listEl.innerHTML = '<div class="news-review-empty-state">No collection runs yet.</div>';
+          return;
+        }
+        listEl.innerHTML = cachedNewsRuns
+          .slice(0, 5)
+          .map((run) => {
+            const status = String(run.status || "").trim().toLowerCase();
+            const label = status === "failed" ? "Failed" : status === "partial" ? "Partial" : "Success";
+            const summary = `${run.addedCount || 0} added, ${run.updatedCount || 0} updated, ${run.errorCount || 0} errors`;
+            return `
+              <div class="news-run-row">
+                <div class="news-run-title">${escapeHtml(formatBroadcastDateTime(run.createdAt || run.startedAt || ""))}</div>
+                <div class="news-run-meta">${escapeHtml(label)} · ${escapeHtml(summary)}</div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderNewsReviewList() {
+        const listEl = document.getElementById("news-review-list");
+        if (!listEl) return;
+        const visibleItems = getNewsReviewVisibleItems();
+        if (!visibleItems.length) {
+          listEl.innerHTML = '<div class="news-review-empty-state">No news items match the current filter.</div>';
+          return;
+        }
+
+        if (!selectedNewsItemId || !visibleItems.some((item) => String(item?.id || "") === selectedNewsItemId)) {
+          selectedNewsItemId = String(visibleItems[0]?.id || "");
+          selectedNewsPublishSlot = inferNewsPublishSlot(visibleItems[0]);
+          selectedNewsPublishSlotItemId = selectedNewsItemId;
+        }
+
+        listEl.innerHTML = visibleItems
+          .map((item) => {
+            const active = String(item?.id || "") === selectedNewsItemId ? " is-active" : "";
+            const status = getNewsReviewStatusLabel(item.status || "");
+            const publishedAt = item.publishedAt || item.updatedAt || item.collectedAt || "";
+            return `
+              <button type="button" class="news-review-row${active}" data-news-item-id="${escapeHtml(item.id || "")}">
+                <div class="news-review-row-head">
+                  <div class="news-review-row-title">${escapeHtml(item.title || "Untitled item")}</div>
+                  <div class="news-review-row-status">${escapeHtml(status)}</div>
+                </div>
+                <div class="news-review-row-meta">
+                  <span>${escapeHtml(item.sourceName || "Source")}</span>
+                  <span>${escapeHtml(item.category || "clinical-news")}</span>
+                  <span>${escapeHtml(publishedAt ? formatBroadcastDateTime(publishedAt) : "Just collected")}</span>
+                </div>
+                <div class="news-review-row-summary">${escapeHtml(item.summary || "")}</div>
+              </button>
+            `;
+          })
+          .join("");
+      }
+
+      function renderNewsReviewDetail() {
+        const emptyEl = document.getElementById("news-review-empty");
+        const cardEl = document.getElementById("news-review-detail-card");
+        if (!emptyEl || !cardEl) return;
+        const item = getSelectedNewsReviewItem();
+        if (!item) {
+          emptyEl.classList.remove("hidden");
+          cardEl.classList.add("hidden");
+          cardEl.innerHTML = "";
+          return;
+        }
+
+        emptyEl.classList.add("hidden");
+        cardEl.classList.remove("hidden");
+        const reviewNote = escapeHtml(item.reviewNote || "");
+        const sourceLink = item.sourceUrl
+          ? `<a href="${escapeHtml(item.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.sourceUrl)}</a>`
+          : "No source URL";
+        const itemId = String(item.id || "");
+        if (selectedNewsPublishSlotItemId !== itemId) {
+          selectedNewsPublishSlot = inferNewsPublishSlot(item);
+          selectedNewsPublishSlotItemId = itemId;
+        }
+        cardEl.innerHTML = `
+          <div class="news-review-detail-head">
+            <div class="news-review-detail-title">${escapeHtml(item.title || "News item")}</div>
+            <div class="news-review-detail-status">${escapeHtml(getNewsReviewStatusLabel(item.status || ""))}</div>
+          </div>
+          <div class="news-review-detail-meta">
+            <div><strong>Source:</strong> ${escapeHtml(item.sourceName || "Source")}</div>
+            <div><strong>Category:</strong> ${escapeHtml(item.category || "clinical-news")}</div>
+            <div><strong>Published:</strong> ${escapeHtml(formatBroadcastDateTime(item.publishedAt || item.collectedAt || item.updatedAt || ""))}</div>
+            <div><strong>Link:</strong> ${sourceLink}</div>
+          </div>
+          <div class="news-review-detail-summary">${escapeHtml(item.summary || "")}</div>
+          <div class="news-review-detail-body">${escapeHtml(item.content || "")}</div>
+          <div class="news-review-detail-note">
+            <label class="news-review-label" for="news-review-slot">Publish target</label>
+            <select id="news-review-slot">
+              ${NEWS_PUBLISH_SLOTS.map((entry) => `<option value="${entry.value}">${escapeHtml(entry.label)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="news-review-detail-note">
+            <label class="news-review-label" for="news-review-note">Review note</label>
+            <textarea id="news-review-note" rows="4" placeholder="Add an internal review note...">${reviewNote}</textarea>
+          </div>
+          <div class="news-review-detail-actions">
+            <button type="button" class="primary" data-news-action="approve">Approve</button>
+            <button type="button" class="primary" data-news-action="publish">Publish</button>
+            <button type="button" class="reject" data-news-action="reject">Reject</button>
+          </div>
+        `;
+        const slotSelectEl = document.getElementById("news-review-slot");
+        if (slotSelectEl) {
+          slotSelectEl.value = selectedNewsPublishSlot || "latest";
+          slotSelectEl.onchange = () => {
+            selectedNewsPublishSlot = String(slotSelectEl.value || "latest").trim().toLowerCase();
+            selectedNewsPublishSlotItemId = itemId;
+          };
+        }
+      }
+
+      function renderNewsReviewOverview() {
+        syncNewsReviewFilterButtons();
+        renderNewsReviewStats();
+        renderNewsReviewSources();
+        renderNewsReviewRuns();
+        renderNewsReviewList();
+        renderNewsReviewDetail();
+      }
+
+      async function loadNewsReviewOverview() {
+        try {
+          const res = await fetch(`${API_BASE}/admin/news?limit=200`, {
+            headers: getHeaders(),
+            cache: "no-store",
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to load news review queue");
+          }
+          cachedNewsItems = Array.isArray(data.items) ? data.items : [];
+          cachedNewsSources = Array.isArray(data.sources) ? data.sources : [];
+          cachedNewsRuns = Array.isArray(data.runs) ? data.runs : [];
+          newsReviewLoaded = true;
+          if (!cachedNewsItems.some((item) => String(item?.id || "") === selectedNewsItemId)) {
+            selectedNewsItemId = "";
+          }
+          renderNewsReviewOverview();
+          return true;
+        } catch (err) {
+          newsReviewLoaded = true;
+          cachedNewsItems = Array.isArray(cachedNewsItems) ? cachedNewsItems : [];
+          renderNewsReviewOverview();
+          showAlert("news-alerts", "Error: " + err.message, "error");
+          return false;
+        }
+      }
+
+      async function collectNewsNow(sourceId = "") {
+        try {
+          const res = await fetch(`${API_BASE}/admin/news/collect`, {
+            method: "POST",
+            headers: getHeaders(),
+            cache: "no-store",
+            body: JSON.stringify({ sourceId }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to collect news");
+          }
+          showAlert("news-alerts", "Collection run started.", "success");
+          await loadNewsReviewOverview();
+          return true;
+        } catch (err) {
+          showAlert("news-alerts", "Error: " + err.message, "error");
+          return false;
+        }
+      }
+
+      async function runNewsReviewAction(action, newsId) {
+        const noteEl = document.getElementById("news-review-note");
+        const reviewNote = String(noteEl?.value || "").trim();
+        const safeNewsId = String(newsId || "").trim();
+        if (!safeNewsId) return false;
+
+        const endpointMap = {
+          approve: `/admin/news/${encodeURIComponent(safeNewsId)}/approve`,
+          publish: `/admin/news/${encodeURIComponent(safeNewsId)}/publish`,
+          reject: `/admin/news/${encodeURIComponent(safeNewsId)}/reject`,
+        };
+        const endpoint = endpointMap[action];
+        if (!endpoint) return false;
+
+        try {
+          const targetSlot = action === "publish" ? String(selectedNewsPublishSlot || "latest").trim().toLowerCase() : "";
+          const res = await fetch(`${API_BASE}${endpoint}`, {
+            method: "POST",
+            headers: getHeaders(),
+            cache: "no-store",
+            body: JSON.stringify({ reviewNote, targetSlot }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to update news item");
+          }
+          showAlert("news-alerts", `News item ${action}d successfully`, "success");
+          selectedNewsItemId = safeNewsId;
+          await loadNewsReviewOverview();
+          return true;
+        } catch (err) {
+          showAlert("news-alerts", "Error: " + err.message, "error");
+          return false;
+        }
+      }
+
+      function openNewsReviewItem(newsId = "") {
+        const safeNewsId = String(newsId || "").trim();
+        if (!safeNewsId) return;
+        selectedNewsItemId = safeNewsId;
+        const nextItem = Array.isArray(cachedNewsItems) ? cachedNewsItems.find((item) => String(item?.id || "") === safeNewsId) : null;
+        selectedNewsPublishSlot = inferNewsPublishSlot(nextItem || {});
+        selectedNewsPublishSlotItemId = safeNewsId;
+        renderNewsReviewOverview();
+      }
+
       async function loadBroadcastThreadDetail(threadKey = "") {
         const safeThreadKey = String(threadKey || "").trim();
         if (!safeThreadKey) return false;
@@ -4533,6 +4819,13 @@ async function ensureAdminApiBase({ force = false } = {}) {
             renderBroadcastOverview();
           } else {
             void loadBroadcastOverview();
+          }
+        }
+        if (requestedTab === "news") {
+          if (newsReviewLoaded) {
+            renderNewsReviewOverview();
+          } else {
+            void loadNewsReviewOverview();
           }
         }
         if (requestedTab === "monetization") {
@@ -5210,6 +5503,12 @@ async function ensureAdminApiBase({ force = false } = {}) {
             switchTab(button.dataset.tab, button);
           });
         });
+        document.querySelectorAll("[data-news-status-filter]").forEach((button) => {
+          button.addEventListener("click", () => {
+            newsReviewStatusFilter = String(button.dataset.newsStatusFilter || "all").trim().toLowerCase() || "all";
+            renderNewsReviewOverview();
+          });
+        });
         document.querySelectorAll("[data-analytics-period]").forEach((button) => {
           button.addEventListener("click", () => {
             selectedAnalyticsPeriod = String(button.dataset.analyticsPeriod || "week").trim().toLowerCase();
@@ -5264,6 +5563,33 @@ async function ensureAdminApiBase({ force = false } = {}) {
           onActivate: (row) => {
             openSubscriptionRequestModal(row.dataset.requestId || "");
           },
+        });
+
+        document.getElementById("news-search")?.addEventListener("input", (event) => {
+          newsReviewSearchQuery = String(event.target?.value || "");
+          renderNewsReviewOverview();
+        });
+
+        document.getElementById("news-collect-btn")?.addEventListener("click", () => {
+          void collectNewsNow();
+        });
+
+        document.getElementById("news-refresh-btn")?.addEventListener("click", () => {
+          void loadNewsReviewOverview();
+        });
+
+        document.getElementById("news-review-list")?.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-news-item-id]");
+          if (!button) return;
+          openNewsReviewItem(button.dataset.newsItemId || "");
+        });
+
+        document.getElementById("news-review-detail-card")?.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-news-action]");
+          if (!button) return;
+          const action = String(button.dataset.newsAction || "").trim().toLowerCase();
+          if (!selectedNewsItemId || !action) return;
+          void runNewsReviewAction(action, selectedNewsItemId);
         });
 
         document.querySelectorAll("[data-monetization-bucket]").forEach((button) => {

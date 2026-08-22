@@ -86,7 +86,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260816-subscriptionstatuscompact4" />
+    <link rel="stylesheet" href="/styles.css?v=20260817-crownfix3" />
     <style>
       #subscription-screen.subscription-page {
         position: fixed;
@@ -1711,75 +1711,12 @@
               </span>
             </button>
 
-            <section class="menu-modern-section">
-              <div class="menu-modern-section-head">
-                <h2 class="menu-modern-section-title">Drills</h2>
-                <span class="menu-modern-section-note">Quick launches</span>
-              </div>
-
-              <div class="menu-modern-drills-grid" aria-label="Quiz drills and quick tools">
-                <button id="rapid-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Rapid points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-rapid-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-rapid" aria-hidden="true">
-                    <img src="images/rapid.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Rapid</span>
-                </button>
-
-                <button id="sudden-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Sudden points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-sudden-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-sudden" aria-hidden="true">
-                    <img src="images/sudden.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Sudden</span>
-                </button>
-
-                <button id="clinical-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Clinical points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-clinical-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-clinical" aria-hidden="true">
-                    <img src="images/clinical.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Clinical</span>
-                </button>
-
-                <button
-                  id="law-drill-btn"
-                  type="button"
-                  class="menu-modern-drill-tile"
-                  style="position:relative;overflow:hidden;"
-                  aria-label="Start law drill"
-                  title="Law Drill"
-                >
-                  <span
-                    class="menu-modern-card-points-badge is-drill"
-                    style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;"
-                    title="Law points"
-                  >
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-law-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-law" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 3v18"></path>
-                      <path d="M5 7h14"></path>
-                      <path d="M6 7 3 12h6L6 7Z"></path>
-                      <path d="M18 7 15 12h6L18 7Z"></path>
-                      <path d="M6 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M21 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M8 21h8"></path>
-                    </svg>
-                  </span>
-                  <span class="menu-modern-drill-label">Law</span>
-                </button>
+            <section class="menu-modern-section menu-modern-hub-tabs-section">
+              <div class="menu-modern-hub-tabs" role="tablist" aria-label="Menu sections">
+                <button id="menu-drills-tab" type="button" class="menu-modern-hub-tab is-active" data-menu-section="drills">Drills</button>
+                <button id="menu-law-tab" type="button" class="menu-modern-hub-tab" data-menu-section="law">Law</button>
+                <button id="menu-gppqe-tab" type="button" class="menu-modern-hub-tab" data-menu-section="gppqe">GPPQE</button>
+                <button id="menu-extra-tab" type="button" class="menu-modern-hub-tab" data-menu-section="extra">Extra</button>
               </div>
             </section>
 
@@ -1997,6 +1934,258 @@
           </div>
         </div>
       </div>
+      <div id="drills-screen" class="setup-page drills-page">
+        <div class="study-fixed-header drills-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title drills-page-title">Drills</div>
+            <div class="study-reference-topbar-actions">
+              <button id="drills-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="drills-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell drill-lobby-shell">
+            <div class="drill-lobby-tabs" role="tablist" aria-label="Drill variants">
+              <button class="drill-lobby-tab is-rapid is-active" type="button" data-drill-variant="rapid">Rapid</button>
+              <button class="drill-lobby-tab is-sudden" type="button" data-drill-variant="sudden">Sudden</button>
+              <button class="drill-lobby-tab is-clinical" type="button" data-drill-variant="clinical">Clinical</button>
+            </div>
+
+            <div class="drill-lobby-panels">
+              <section class="drill-lobby-panel is-rapid is-active" data-drill-panel="rapid">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-rapid" aria-hidden="true">&#128293;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Rapid</div>
+                        <div class="drill-lobby-points-badge">PTS 1</div>
+                      </div>
+                      <div class="drill-lobby-copy">A fast 5-question sprint that rewards sharp recall and clean streaks.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>5 questions, quick pace.</li>
+                    <li>Answer fast and keep your streak alive.</li>
+                    <li>Best runs are saved in your history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="rapid">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="rapid">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-sudden" data-drill-panel="sudden">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-sudden" aria-hidden="true">&#127919;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Sudden</div>
+                        <div class="drill-lobby-points-badge">PTS 9</div>
+                      </div>
+                      <div class="drill-lobby-copy">A sharper race with mixed timing and tougher selections.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>All questions are timed.</li>
+                    <li>Accuracy matters more than speed.</li>
+                    <li>Each win is tracked in history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="sudden">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="sudden">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-clinical" data-drill-panel="clinical">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-clinical" aria-hidden="true">&#129516;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Clinical</div>
+                        <div class="drill-lobby-points-badge">PTS 0</div>
+                      </div>
+                      <div class="drill-lobby-copy">Clinical judgment questions with a steadier, decision-based rhythm.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>Choose the safest option.</li>
+                    <li>Think through the case before you tap.</li>
+                    <li>Previous runs stay in the trail.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="clinical">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="clinical">Play Now</button>
+                </article>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="gppqe-screen" class="setup-page gppqe-page">
+        <div class="study-fixed-header gppqe-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title drills-page-title gppqe-page-title">GPPQE</div>
+            <div class="study-reference-topbar-actions">
+              <button id="gppqe-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="gppqe-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content"></div>
+      </div>
+
+      <div id="extra-screen" class="setup-page extra-page">
+        <div class="study-fixed-header extra-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <div class="setup-page-title">Extra</div>
+            <div class="study-reference-topbar-actions">
+              <button id="extra-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="extra-view-toggle-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Toggle list or card view" title="Toggle list or card view">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="5" width="16" height="4" rx="1"></rect>
+                  <rect x="4" y="11" width="10" height="4" rx="1"></rect>
+                  <rect x="4" y="17" width="16" height="2" rx="1"></rect>
+                </svg>
+              </button>
+              <button id="extra-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell extra-shell">
+            <style>
+              #extra-screen .menu-extra-item::before,
+              #extra-screen .menu-extra-item::after {
+                content: none !important;
+                display: none !important;
+              }
+
+              #extra-screen .menu-extra-grid.is-list .menu-extra-item {
+                grid-template-columns: 36px minmax(0, 1fr) !important;
+              }
+            </style>
+            <div id="menu-extra-grid" class="menu-extra-grid is-cards" aria-label="Extra resources">
+              <button id="menu-news-btn" type="button" class="menu-extra-item is-news">
+                <span class="menu-extra-icon is-news" aria-hidden="true">&#128240;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">News</span>
+                  <span class="menu-extra-item-text">Open the news feed.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-guidelines" aria-hidden="true">&#128196;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Guidelines</span>
+                  <span class="menu-extra-item-text">Clinical references and practice notes.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-articles" aria-hidden="true">&#128218;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Articles</span>
+                  <span class="menu-extra-item-text">Deep reads for study and revision.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-medlens" aria-hidden="true">&#128269;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">MedLens</span>
+                  <span class="menu-extra-item-text">Search tools for better clinical clarity.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-calculator" aria-hidden="true">&#129518;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Calculator</span>
+                  <span class="menu-extra-item-text">Dose and score helper tools.</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="coming-soon-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="coming-soon-title">
+        <div class="modal-card coming-soon-card">
+          <div class="coming-soon-emoji" aria-hidden="true">&#128640;</div>
+          <div id="coming-soon-title" class="modal-title">Coming Soon</div>
+          <div class="modal-text">This section is being prepared for a future release.</div>
+          <div class="modal-actions">
+            <button id="coming-soon-ok-btn" type="button" class="modal-btn primary">Got it</button>
+          </div>
+        </div>
+      </div>
+
       <div id="subscription-screen" class="setup-page subscription-page">
         <div class="subscription-shell">
           <div class="subscription-header-row">
@@ -2007,20 +2196,12 @@
             <button id="subscription-back-btn" class="subscription-close-btn" type="button">Close</button>
           </div>
 
-          <section class="subscription-status-card">
-            <div class="subscription-status-label">Current status</div>
-            <div class="subscription-status-line">
-              <span id="subscription-status-title" class="subscription-status-title">Free Trial</span>
-              <span id="subscription-status-pill" class="subscription-status-pill">active</span>
-            </div>
-            <p id="subscription-status-subtitle" class="subscription-status-subtitle">7 days after signup</p>
-            <p id="subscription-status-note" class="subscription-status-note">You are currently on the trial access path.</p>
-          </section>
           <div class="subscription-section-row">
-            <div>
-              <h3 id="subscription-section-title" class="subscription-section-title">Choose a plan</h3>
+            <div class="subscription-section-copy">
+              <h3 id="subscription-section-title" class="subscription-section-title">Plans</h3>
+              <p id="subscription-section-note" class="subscription-section-note">Choose the subscription that works best for you.</p>
             </div>
-            <p id="subscription-section-note" class="subscription-section-note"></p>
+            <div id="subscription-status-badges" class="subscription-status-badges" aria-label="Subscription status badges"></div>
           </div>
 
           <section class="subscription-plan-grid-wrap">
@@ -5386,9 +5567,9 @@
         }
       };
     </script>
-    <script type="module" src="/engine.js?v=20260816-subscriptionstatuscompact4"></script>
+    <script type="module" src="/engine.js?v=20260817-crownfix3"></script>
     <script>
-      const APP_BUILD_ID = "20260623-resume-modal-fix4";
+      const APP_BUILD_ID = "20260817-crownfix3";
       const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
       const APP_NATIVE_VERSION = "1.1.14";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
@@ -5415,7 +5596,7 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", async () => {
           try {
-            const registration = await navigator.serviceWorker.register("/sw.js", {
+            const registration = await navigator.serviceWorker.register("/sw.js?v=20260818-crownfix4", {
               scope: "/",
             });
 

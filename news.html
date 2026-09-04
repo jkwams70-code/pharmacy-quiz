@@ -1,0 +1,3115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="auth-lock.js" data-login-url="index.html"></script>
+<script src="standalone-back.js" data-back-url="index.html?screen=quiz-menu"></script>
+<script>document.documentElement.setAttribute('data-news-shell', 'pending');</script>
+<link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
+<link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+<link rel="apple-touch-icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+<title>Ajix News — Health News (Desktop)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f7; --surface: #ffffff; --surface-hover: #f9f9fb; --border: #e5e5e7;
+    --text-primary: #1a1a1a; --text-secondary: #555; --text-tertiary: #888; --text-muted: #aaa;
+    --accent-blue: #2563eb; --accent-green: #16a34a; --accent-purple: #9333ea; --accent-red: #dc2626;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04); --shadow-md: 0 2px 8px rgba(0,0,0,0.06); --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  body { padding-top: 64px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--text-primary); background: var(--bg); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+  button { font: inherit; cursor: pointer; border: none; background: none; padding: 0; }
+  a { text-decoration: none; color: inherit; }
+  .top-nav { position: fixed; top: 0; left: 0; right: 0; width: 100%; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid var(--border); }
+  .top-nav-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 64px; }
+  .nav-left { display: flex; align-items: center; gap: 14px; }
+  .nav-logo { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+  .nav-logo span { color: var(--accent-blue); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-search { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 8px 14px; width: 280px; font-size: 14px; color: var(--text-tertiary); transition: border-color 0.15s ease; }
+  .nav-search:focus-within { border-color: var(--text-muted); }
+  .nav-search input { border: none; background: none; outline: none; font: inherit; color: var(--text-primary); width: 100%; }
+  .nav-search input::placeholder { color: var(--text-tertiary); }
+  .nav-icon-btn { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); position: relative; transition: all 0.15s ease; }
+  .nav-icon-btn:hover { background: var(--bg); color: var(--text-primary); }
+  .nav-icon-btn.active { background: var(--bg); color: var(--accent-blue); }
+  .nav-badge { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; background: var(--accent-red); border-radius: 50%; border: 2px solid #fff; }
+  .nav-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; }
+  .nav-dashboard-btn { display: none; }
+  .nav-search-toggle { display: none; }
+  .theme-icon-sun { display: none; }
+  .nav-back-btn { flex: 0 0 auto; }
+  .mobile-search-panel { display: none; position: sticky; top: 64px; z-index: 95; background: rgba(255,255,255,0.92); backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid var(--border); }
+  .mobile-search-panel-inner { max-width: 1280px; margin: 0 auto; padding: 12px 24px 16px; display: flex; align-items: center; gap: 10px; }
+  .mobile-search-shell { flex: 1; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
+  .mobile-search-shell svg { color: var(--text-tertiary); flex-shrink: 0; }
+  .mobile-search-input { width: 100%; border: none; outline: none; background: none; font: inherit; font-size: 14px; color: var(--text-primary); }
+  .mobile-search-input::placeholder { color: var(--text-tertiary); }
+  .mobile-search-close { width: 40px; height: 40px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); }
+  .mobile-search-close:hover { color: var(--text-primary); background: var(--bg); }
+  .mobile-search-panel.is-open { display: block; }
+  .mobile-dashboard-backdrop { display: none; position: fixed; inset: 0; z-index: 115; background: rgba(10, 10, 15, 0.38); backdrop-filter: blur(2px); }
+  .mobile-dashboard-backdrop.is-open { display: block; }
+  .mobile-dashboard-panel { display: none; position: fixed; top: 64px; left: 0; z-index: 120; width: min(70vw, 250px); height: calc(100vh - 64px); background: var(--surface); border-right: 1px solid var(--border); box-shadow: 18px 0 40px rgba(0, 0, 0, 0.14); overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none; transform: translateX(-12px); transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease; }
+  .mobile-dashboard-panel.is-open { display: block; }
+  .mobile-dashboard-panel.is-open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(0); }
+  .mobile-dashboard-panel-inner { height: 100%; display: flex; flex-direction: column; }
+  .mobile-dashboard-topbar { display: flex; justify-content: flex-end; padding: 10px 10px 0; }
+  .mobile-dashboard-close { width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--bg); border: 1px solid var(--border); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mobile-dashboard-close:hover { color: var(--text-primary); }
+  .mobile-dashboard-content { padding: 8px 12px 12px; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
+  .mobile-dashboard-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 10px; }
+  .mobile-dashboard-list { display: flex; flex-direction: column; gap: 8px; }
+  .mobile-dashboard-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg); color: var(--text-secondary); font-size: 14px; font-weight: 600; text-align: left; transition: all 0.15s ease; }
+  .mobile-dashboard-item:hover { color: var(--text-primary); border-color: var(--text-muted); }
+  .mobile-dashboard-item.active { background: var(--text-primary); border-color: var(--text-primary); color: #fff; }
+  .mobile-dashboard-item svg { flex-shrink: 0; }
+  .mobile-dashboard-item-count { margin-left: auto; font-size: 12px; font-weight: 600; color: inherit; opacity: 0.72; }
+  .app-layout { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 220px 1fr 300px; gap: 24px; padding: 24px; }
+  .sidebar-left { position: sticky; top: 88px; height: fit-content; }
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-tertiary); margin-bottom: 10px; padding-left: 12px; }
+  .sidebar-menu { display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-md); font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: all 0.15s ease; cursor: pointer; }
+  .sidebar-item:hover { background: var(--surface); color: var(--text-primary); }
+  .sidebar-item.active { background: var(--text-primary); color: #fff; }
+  .sidebar-item svg { flex-shrink: 0; }
+  .sidebar-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
+  .main-content { min-width: 0; }
+  .hero-section { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-bottom: 28px; }
+  .hero-main { position: relative; border-radius: var(--radius-lg); overflow: hidden; min-height: 320px; background: linear-gradient(135deg, #0b3d2e 0%, #145a45 60%, #1a7a5e 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 28px; cursor: pointer; box-shadow: var(--shadow-lg); }
+  .hero-main::after { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.24) 52%, transparent 100%); }
+  .hero-carousel { position: absolute; inset: 0; z-index: 1; }
+  .hero-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 28px;
+    opacity: 0;
+    transform: translateX(14px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .hero-slide::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 56%;
+    background-image: var(--hero-image);
+    background-size: cover;
+    background-position: center right;
+    background-repeat: no-repeat;
+    opacity: 0.96;
+    transform: scale(1.04);
+    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 46%, rgba(0,0,0,0.72) 74%, rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 46%, rgba(0,0,0,0.72) 74%, rgba(0,0,0,0) 100%);
+  }
+  .hero-slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  .hero-slide--medicine { --hero-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%2310b981'/><stop offset='100%' stop-color='%23043f35'/></linearGradient></defs><rect width='900' height='600' fill='url(%23g)'/><circle cx='690' cy='165' r='132' fill='%23ffffff' fill-opacity='.14'/><circle cx='740' cy='310' r='82' fill='%23ffffff' fill-opacity='.16'/><rect x='505' y='245' width='238' height='118' rx='59' fill='%23f8fafc' fill-opacity='.94'/><rect x='625' y='245' width='118' height='118' rx='59' fill='%23dbeafe'/><rect x='116' y='372' width='285' height='12' rx='6' fill='%23d1fae5' fill-opacity='.72'/><path d='M132 430h110l16-26 14 49 18-31 18 31h96' fill='none' stroke='%23d1fae5' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/><path d='M612 190h74v18h-26v64h-22v-64h-26z' fill='%23ffffff' fill-opacity='.9'/><path d='M174 166c45-24 117-34 200-24 66 8 121 33 167 71-78 31-166 46-258 46-41 0-82-4-123-12z' fill='%23ffffff' fill-opacity='.1'/></svg>"); }
+  .hero-slide--alert { --hero-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%237c3aed'/><stop offset='100%' stop-color='%231d4ed8'/></linearGradient></defs><rect width='900' height='600' fill='url(%23g)'/><circle cx='690' cy='150' r='138' fill='%23ffffff' fill-opacity='.12'/><circle cx='790' cy='300' r='80' fill='%23ffffff' fill-opacity='.10'/><path d='M592 145l124 214H468L592 145z' fill='%23ffffff' fill-opacity='.88'/><path d='M592 194v82' stroke='%234c1d95' stroke-width='22' stroke-linecap='round'/><circle cx='592' cy='314' r='13' fill='%234c1d95'/><path d='M126 418c92-10 156-30 215-68 64-41 117-55 198-50 62 4 124 21 186 50' fill='none' stroke='%23ddd6fe' stroke-width='10' stroke-linecap='round'/><path d='M118 462h104l18-26 16 52 20-33 20 33h126' fill='none' stroke='%23f5d0fe' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/></svg>"); }
+  .hero-slide--research { --hero-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23111827'/><stop offset='100%' stop-color='%234f46e5'/></linearGradient></defs><rect width='900' height='600' fill='url(%23g)'/><circle cx='684' cy='166' r='130' fill='%23ffffff' fill-opacity='.10'/><circle cx='760' cy='320' r='82' fill='%23ffffff' fill-opacity='.10'/><path d='M565 162c34 0 64 18 81 46 17 28 18 62 4 91-14 28-41 48-73 53-31 5-63-6-84-29-20-22-29-52-23-80 6-29 24-54 52-67 14-8 29-14 43-14z' fill='%23ffffff' fill-opacity='.16'/><path d='M558 179c40 14 69 47 83 92' fill='none' stroke='%23c7d2fe' stroke-width='10' stroke-linecap='round'/><path d='M144 404l92-68 72 34 78-56 90 36 86-72 104 50' fill='none' stroke='%23c4b5fd' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/><circle cx='146' cy='402' r='12' fill='%23ffffff' fill-opacity='.88'/><circle cx='236' cy='334' r='12' fill='%23ffffff' fill-opacity='.88'/><circle cx='308' cy='368' r='12' fill='%23ffffff' fill-opacity='.88'/><circle cx='386' cy='312' r='12' fill='%23ffffff' fill-opacity='.88'/><circle cx='476' cy='348' r='12' fill='%23ffffff' fill-opacity='.88'/><circle cx='562' cy='276' r='12' fill='%23ffffff' fill-opacity='.88'/><circle cx='666' cy='326' r='12' fill='%23ffffff' fill-opacity='.88'/></svg>"); }
+  .hero-badge { position: absolute; top: 20px; left: 20px; z-index: 2; background: var(--accent-red); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-sm); letter-spacing: 0.5px; }
+  .hero-content { position: relative; z-index: 1; color: #fff; max-width: 68%; }
+  .hero-category { font-size: 12px; font-weight: 600; opacity: 0.8; margin-bottom: 8px; letter-spacing: 0.5px; }
+  .hero-title { font-size: 24px; font-weight: 700; line-height: 1.2; margin-bottom: 12px; }
+  .hero-excerpt { font-size: 13px; line-height: 1.5; opacity: 0.85; margin-bottom: 16px; max-width: 82%; }
+  .hero-meta { display: flex; align-items: center; gap: 14px; font-size: 13px; opacity: 0.75; }
+  .hero-meta span { display: flex; align-items: center; gap: 6px; }
+  .hero-carousel-nav {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+    padding: 0 10px;
+  }
+  .hero-carousel-btn {
+    pointer-events: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+    opacity: 0.72;
+  }
+  .hero-carousel-btn:hover {
+    color: #fff;
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+  .hero-carousel-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .hero-side { display: flex; flex-direction: column; gap: 16px; }
+  .side-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; display: flex; flex-direction: column; gap: 10px; transition: all 0.15s ease; cursor: pointer; box-shadow: var(--shadow-sm); }
+  .side-card:hover { box-shadow: var(--shadow-md); border-color: var(--text-muted); }
+  .side-card-tag { font-size: 11px; font-weight: 600; }
+  .side-card-tag.medicine { color: var(--accent-blue); }
+  .side-card-tag.trending { color: var(--accent-red); }
+  .side-card-tag.research { color: var(--accent-purple); }
+  .side-card-tag.wellness { color: var(--accent-green); }
+  .side-card-tag.alert { color: var(--accent-red); }
+  .side-card-title { font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .side-card-meta { font-size: 12px; color: var(--text-tertiary); display: flex; gap: 10px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 20px; font-weight: 700; }
+  .section-actions { display: flex; gap: 8px; min-width: 0; }
+  .latest-filter-tabs { display: flex; gap: 8px; max-width: min(100%, 620px); overflow-x: auto; overflow-y: hidden; padding: 2px 1px 5px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; -webkit-overflow-scrolling: touch; }
+  .latest-filter-tabs::-webkit-scrollbar { height: 4px; }
+  .latest-filter-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  .latest-filter-tabs .filter-chip { flex: 0 0 auto; white-space: nowrap; }
+  .filter-chip { padding: 6px 14px; border-radius: var(--radius-lg); font-size: 13px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); transition: all 0.15s ease; }
+  .filter-chip:hover { border-color: var(--text-muted); }
+  .filter-chip.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+  .article-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 32px; }
+  .article-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: all 0.2s ease; cursor: pointer; box-shadow: var(--shadow-sm); }
+  .article-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .article-image { width: 100%; height: auto; min-height: 140px; aspect-ratio: 16 / 10; background: var(--card-backdrop, var(--bg)); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text-muted); font-weight: 500; position: relative; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
+  .article-image .tag-overlay { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; color: #fff; }
+  .image-art { color: transparent; font-size: 0; }
+  .image-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--card-image);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .art-medicine { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23dbeafe'/><stop offset='100%' stop-color='%2393c5fd'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='500' cy='90' r='96' fill='%23ffffff' fill-opacity='.36'/><rect x='118' y='110' width='176' height='214' rx='28' fill='%23ffffff' fill-opacity='.82'/><rect x='118' y='110' width='176' height='54' rx='28' fill='%232563eb' fill-opacity='.16'/><rect x='178' y='170' width='56' height='112' rx='28' fill='%231d4ed8'/><rect x='200' y='150' width='12' height='148' rx='6' fill='%23ffffff' fill-opacity='.55'/><circle cx='428' cy='268' r='34' fill='%23fff7ed'/><circle cx='478' cy='250' r='18' fill='%23fee2e2'/><circle cx='444' cy='314' r='18' fill='%23e0f2fe'/><path d='M362 134h144v10H362zM362 162h102v10H362zM362 190h118v10H362z' fill='%232563eb' fill-opacity='.18'/></svg>"); --card-backdrop: #dbeafe; }
+  .art-wellness { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23dcfce7'/><stop offset='100%' stop-color='%23bbf7d0'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='506' cy='92' r='94' fill='%23ffffff' fill-opacity='.32'/><path d='M170 270c0-77 62-139 139-139 31 0 59 10 82 28 23-18 51-28 82-28 77 0 139 62 139 139 0 80-68 144-180 193-8 3-17 3-25 0-112-49-197-113-197-193z' fill='%23ffffff' fill-opacity='.88'/><path d='M342 150c-44 10-79 47-88 95 30 5 58 22 77 48 28-15 49-40 59-71 7-22 8-46 3-67-17-5-35-6-51-5z' fill='%2316a34a' fill-opacity='.86'/><path d='M314 259c31-14 62-15 92-4' fill='none' stroke='%2310b981' stroke-width='10' stroke-linecap='round'/></svg>"); --card-backdrop: #dcfce7; }
+  .art-research { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23f3e8ff'/><stop offset='100%' stop-color='%23e9d5ff'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='510' cy='96' r='96' fill='%23ffffff' fill-opacity='.28'/><path d='M206 316l58-138h34l58 138h-35l-11-30h-59l-11 30h-34zm48-56h39l-19-52-20 52z' fill='%239333ea' fill-opacity='.84'/><path d='M392 132c30 0 54 24 54 54s-24 54-54 54h-20c-7 0-13 6-13 13 0 14 11 25 25 25h14' fill='none' stroke='%236b21a8' stroke-width='12' stroke-linecap='round' stroke-linejoin='round'/><circle cx='392' cy='186' r='18' fill='%23ffffff' fill-opacity='.74'/><circle cx='454' cy='238' r='12' fill='%236b21a8' fill-opacity='.72'/><circle cx='486' cy='270' r='12' fill='%236b21a8' fill-opacity='.72'/></svg>"); --card-backdrop: #f3e8ff; }
+  .art-alert { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23fee2e2'/><stop offset='100%' stop-color='%23fecaca'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='500' cy='92' r='96' fill='%23ffffff' fill-opacity='.28'/><path d='M328 92l130 226H198L328 92z' fill='%23ffffff' fill-opacity='.92'/><path d='M328 162v86' stroke='%23dc2626' stroke-width='24' stroke-linecap='round'/><circle cx='328' cy='278' r='14' fill='%23dc2626'/><path d='M136 282c38-3 71-14 101-32 32-19 65-29 101-29 49 0 91 17 134 40 31 16 63 27 96 33' fill='none' stroke='%23dc2626' stroke-width='10' stroke-linecap='round'/></svg>"); --card-backdrop: #fee2e2; }
+  .article-body { padding: 18px; }
+  .article-title { font-size: 16px; font-weight: 600; line-height: 1.4; margin-bottom: 10px; }
+  .article-excerpt { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .article-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border); }
+  .article-source { display: flex; align-items: center; gap: 8px; }
+  .source-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text-tertiary); }
+  .source-name { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+  .article-time { font-size: 12px; color: var(--text-tertiary); }
+  .article-actions { display: flex; gap: 4px; }
+  .action-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); transition: all 0.15s ease; }
+  .action-btn:hover { background: var(--bg); color: var(--text-primary); }
+  .action-btn.liked { color: var(--accent-red); }
+  .action-btn.saved { color: var(--accent-blue); }
+  html[data-news-shell="pending"] .main-content,
+  html[data-news-shell="pending"] .sidebar-right,
+  html[data-news-shell="pending"] .hero-section,
+  html[data-news-shell="pending"] .section-header,
+  html[data-news-shell="pending"] .article-grid,
+  html[data-news-shell="pending"] .article-list,
+  html[data-news-shell="pending"] .widget {
+    display: none !important;
+  }
+  .news-filter-hidden { display: none !important; }
+  .article-list { display: flex; flex-direction: column; gap: 12px; }
+  .article-list .list-item.is-extra { display: grid; }
+  .article-list.is-expanded .list-item.is-extra { display: grid; }
+  .list-item { display: grid; grid-template-columns: 140px 1fr auto; gap: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; transition: all 0.15s ease; cursor: pointer; box-shadow: var(--shadow-sm); }
+  .list-item:hover { box-shadow: var(--shadow-md); border-color: var(--text-muted); }
+  .list-thumb { width: clamp(96px, 22vw, 140px); height: auto; aspect-ratio: 7 / 5; min-height: 70px; border-radius: var(--radius-md); background: var(--card-backdrop, var(--bg)); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-muted); font-weight: 500; flex-shrink: 0; position: relative; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
+  .list-thumb.image-art { color: transparent; font-size: 0; }
+  .list-thumb.image-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--card-image);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .card-source-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; z-index: 0; }
+  .card-source-image { display: block; object-fit: cover; }
+  .list-thumb.has-real-image, .article-image.has-real-image { background-size: cover; }
+  .list-thumb.image-art::before, .article-image.image-art::before { background-size: cover; }
+  @media (max-width: 640px) {
+    .card-source-image { display: block; object-fit: cover; }
+    .list-thumb.has-real-image, .article-image.has-real-image { background-size: cover; }
+    .list-thumb.image-art::before, .article-image.image-art::before { background-size: cover; }
+  }
+
+  .article-image .tag-overlay { position: absolute; z-index: 1; }
+  .list-thumb.has-real-image { background-size: cover; background-position: center; background-repeat: no-repeat; }
+  .list-thumb.has-real-image::before { display: none; }
+  .list-body { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+  .list-tag { font-size: 11px; font-weight: 600; }
+  .list-title { font-size: 15px; font-weight: 600; line-height: 1.35; }
+  .list-meta { font-size: 12px; color: var(--text-tertiary); display: flex; gap: 12px; align-items: center; }
+  .list-actions { display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+  .sidebar-right { position: sticky; top: 88px; height: fit-content; }
+  .widget { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+  .widget-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .widget-title { font-size: 14px; font-weight: 700; }
+  .widget-link { font-size: 12px; color: var(--accent-blue); font-weight: 500; }
+  .widget-link:hover { text-decoration: underline; }
+  .trending-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .trending-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .trending-item:first-child { padding-top: 0; }
+  .trending-rank { width: 28px; height: 28px; border-radius: var(--radius-sm); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--text-tertiary); flex-shrink: 0; }
+  .trending-rank.top { background: var(--accent-red); color: #fff; }
+  .trending-content { flex: 1; min-width: 0; }
+  .trending-title { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+  .trending-meta { font-size: 11px; color: var(--text-tertiary); }
+  .topic-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+  .topic-tag { padding: 6px 12px; border-radius: var(--radius-lg); font-size: 12px; font-weight: 500; background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); transition: all 0.15s ease; cursor: pointer; }
+  .topic-tag:hover { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+  .topic-tag.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+  .newsletter-widget { background: linear-gradient(135deg, #0b3d2e 0%, #145a45 100%); color: #fff; text-align: center; }
+  .newsletter-widget .widget-title { color: #fff; }
+  .newsletter-desc { font-size: 13px; opacity: 0.85; margin-bottom: 14px; line-height: 1.5; }
+  .newsletter-input { width: 100%; padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 13px; margin-bottom: 10px; outline: none; }
+  .newsletter-input::placeholder { color: rgba(255,255,255,0.5); }
+  .newsletter-btn { width: 100%; padding: 10px; border-radius: var(--radius-md); background: #fff; color: var(--text-primary); font-size: 13px; font-weight: 600; transition: opacity 0.15s ease; }
+  .newsletter-btn:hover { opacity: 0.9; }
+  .app-footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 32px 24px; background: var(--surface); }
+  .footer-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+  .footer-brand { font-size: 16px; font-weight: 700; }
+  .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 24px; }
+  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; white-space: nowrap; }
+  .footer-links a:hover { color: var(--text-primary); }
+
+  .footer-copy { font-size: 12px; color: var(--text-muted); }
+  .footer-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 155;
+    background: rgba(8, 10, 15, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s ease;
+  }
+  .footer-sheet-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .footer-sheet {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 0;
+    z-index: 160;
+    max-width: 760px;
+    margin: 0 auto;
+    transform: translateY(110%) scale(0.985);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.28s ease, opacity 0.2s ease;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+  }
+  .footer-sheet.is-open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .footer-sheet-handle {
+    width: 52px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--border);
+    margin: 12px auto 0;
+  }
+  .footer-sheet-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px 10px;
+  }
+  .footer-sheet-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+  }
+  .footer-sheet-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .footer-sheet-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .footer-sheet-close:hover {
+    color: var(--text-primary);
+  }
+  .footer-sheet-body {
+    max-height: min(64vh, 520px);
+    overflow: auto;
+    padding: 0 18px 18px;
+    color: var(--text-secondary);
+    display: grid;
+    gap: 12px;
+  }
+  .footer-sheet-body p {
+    margin: 0;
+    line-height: 1.6;
+  }
+  .footer-sheet-body h3 {
+    margin: 8px 0 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+  .footer-sheet-body ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+  }
+  .footer-sheet-contact-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .footer-sheet-contact-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+  .footer-sheet-contact-btn:hover {
+    border-color: var(--text-muted);
+  }
+  body.is-footer-sheet-open {
+    overflow: hidden;
+  }
+
+  @media (max-width: 900px) {
+    .footer-sheet {
+      left: 8px;
+      right: 8px;
+    }
+    .footer-sheet-header {
+      padding: 12px 14px 8px;
+    }
+    .footer-sheet-title {
+      font-size: 18px;
+    }
+    .footer-sheet-body {
+      padding: 0 14px 16px;
+      max-height: 62vh;
+    }
+  }
+
+  .sidebar-left,
+  .main-content,
+  .sidebar-right,
+  .mobile-dashboard-content {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sidebar-left::-webkit-scrollbar,
+  .main-content::-webkit-scrollbar,
+  .sidebar-right::-webkit-scrollbar,
+  .mobile-dashboard-content::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+  html[data-theme="dark"] {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --surface-hover: #1a1a1a;
+    --border: #2a2a2a;
+    --text-primary: #e5e5e5;
+    --text-secondary: #aaa;
+    --text-tertiary: #666;
+    --text-muted: #444;
+  }
+  html[data-theme="dark"] .top-nav { background: rgba(17,17,17,0.85); }
+  html[data-theme="dark"] .nav-search { background: #1a1a1a; border-color: #2a2a2a; }
+  html[data-theme="dark"] .nav-badge { border-color: #111; }
+  html[data-theme="dark"] .mobile-search-panel { background: rgba(17,17,17,0.96); }
+  html[data-theme="dark"] .mobile-search-shell,
+  html[data-theme="dark"] .mobile-search-close { background: #111; border-color: #2a2a2a; }
+  html[data-theme="dark"] .article-image { background: #1a1a1a; }
+  html[data-theme="dark"] .list-thumb { background: #1a1a1a; }
+  html[data-theme="dark"] .trending-rank { background: #1a1a1a; }
+  html[data-theme="dark"] .topic-tag { background: #1a1a1a; border-color: #2a2a2a; }
+  html[data-theme="dark"] .source-avatar { background: #1a1a1a; }
+  html[data-theme="dark"] .theme-icon-moon { display: none; }
+  html[data-theme="dark"] .theme-icon-sun { display: block; }
+  html[data-theme="dark"] .theme-icon-sun path { fill: currentColor; }
+  html[data-theme="dark"] .theme-icon-moon path { fill: currentColor; }
+  .theme-icon-sun path,
+  .theme-icon-moon path { fill: currentColor; }
+  @media (max-width: 1100px) { .app-layout { grid-template-columns: 200px 1fr; } .sidebar-right { display: none; } }
+  @media (max-width: 900px) {
+    .app-layout { grid-template-columns: 1fr; padding: 16px; }
+    .sidebar-left { display: none; }
+    .hero-section { grid-template-columns: 1fr; }
+    .article-grid { grid-template-columns: 1fr; }
+    body { padding-top: 58px; }
+    .top-nav-inner { padding: 0 12px; gap: 8px; min-height: 58px; }
+    .nav-left { gap: 8px; }
+    .nav-right { gap: 6px; }
+    .nav-logo { font-size: 18px; letter-spacing: -0.2px; }
+    .nav-icon-btn { width: 34px; height: 34px; }
+    html, body { overflow-x: hidden; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .section-actions { width: 100%; overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap; gap: 8px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .section-actions::-webkit-scrollbar { display: none; }
+    .filter-chip { flex: 0 0 auto; }
+    .nav-search { display: none; }
+    .nav-search-toggle { display: flex; }
+    .nav-avatar { display: none; }
+    .nav-dashboard-btn { display: flex; }
+    .mobile-search-panel-inner { padding: 10px 14px 14px; }
+    .hero-slide { padding: 20px; }
+    .hero-content { max-width: 88%; }
+    .hero-title { font-size: 17px; line-height: 1.16; margin-bottom: 10px; letter-spacing: -0.2px; text-wrap: balance; }
+    .hero-excerpt { font-size: 13px; line-height: 1.46; max-width: 100%; margin-bottom: 12px; }
+    .hero-meta { gap: 8px; font-size: 12px; flex-wrap: wrap; }
+    .hero-slide::before {
+      width: 50%;
+      opacity: 0.34;
+      -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 58%, rgba(0,0,0,0.72) 78%, rgba(0,0,0,0) 100%);
+      mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 58%, rgba(0,0,0,0.72) 78%, rgba(0,0,0,0) 100%);
+      background-position: center right;
+    }
+  }
+  @media (min-width: 901px) {
+    html, body { height: 100%; overflow: hidden; }
+    .app-layout {
+      height: calc(100vh - 64px);
+      overflow: hidden;
+      align-items: stretch;
+    }
+    .sidebar-left,
+    .main-content,
+    .sidebar-right {
+      min-height: 0;
+    }
+    .sidebar-left {
+      position: static;
+      height: 100%;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .main-content {
+      height: 100%;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-right: 4px;
+    }
+    .sidebar-right {
+      position: static;
+      height: 100%;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-right: 4px;
+    }
+    .app-footer {
+      display: none;
+    }
+  }
+</style>
+<style id="mobile-news-card-layout">
+@media (max-width: 640px) {
+  .article-grid { gap: 12px !important; margin-bottom: 22px !important; }
+  .article-card {
+    display: grid !important;
+    grid-template-columns: 112px minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    min-height: 0 !important;
+    border-radius: 14px !important;
+  }
+  .article-card > .article-image {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 112px !important;
+    aspect-ratio: auto !important;
+  }
+  .article-card > .article-body,
+  .article-card > .article-content {
+    min-width: 0 !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+  .article-card .article-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    min-width: 0 !important;
+    margin-bottom: 6px !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+  .article-card .source-avatar { width: 20px !important; height: 20px !important; font-size: 9px !important; }
+  .article-card .source-name,
+  .article-card .article-time { font-size: 10px !important; line-height: 1.25 !important; }
+  .article-card .article-title {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 3 !important;
+    overflow: hidden !important;
+    margin: 0 0 6px !important;
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+    letter-spacing: -.1px !important;
+  }
+  .article-card .article-excerpt {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    margin: 0 0 7px !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  .article-card .article-footer,
+  .article-card .article-actions { gap: 4px !important; }
+  .article-card .article-footer { padding-top: 7px !important; }
+  .article-card .action-btn { width: 26px !important; height: 26px !important; }
+  .article-card .action-btn svg { width: 16px !important; height: 16px !important; }
+  .article-image .tag-overlay { top: 8px !important; left: 8px !important; padding: 3px 6px !important; font-size: 9px !important; }
+}
+@media (max-width: 380px) {
+  .article-card { grid-template-columns: 92px minmax(0, 1fr) !important; }
+  .article-card > .article-image { min-height: 92px !important; }
+  .article-card > .article-body,
+  .article-card > .article-content { padding: 10px !important; }
+  .article-card .article-title { font-size: 14px !important; }
+}
+</style><style id="mobile-medicine-list-layout">
+@media (max-width: 640px) {
+  .article-list { gap: 8px !important; }
+  .list-item {
+    grid-template-columns: 64px minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    min-height: 0 !important;
+  }
+  .list-thumb {
+    width: 64px !important;
+    height: 52px !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    border-radius: 8px !important;
+  }
+  .list-body { min-width: 0 !important; gap: 3px !important; }
+  .list-tag { font-size: 9px !important; line-height: 1.2 !important; }
+  .list-title {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+  }
+  .list-meta {
+    min-width: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+  .list-actions { gap: 2px !important; }
+  .list-actions .action-btn { width: 25px !important; height: 25px !important; }
+  .list-actions .action-btn svg { width: 15px !important; height: 15px !important; }
+}
+@media (max-width: 380px) {
+  .list-item { grid-template-columns: 56px minmax(0, 1fr) auto !important; gap: 8px !important; padding: 8px !important; }
+  .list-thumb { width: 56px !important; height: 46px !important; }
+  .list-title { font-size: 12px !important; }
+  .list-meta { font-size: 9px !important; }
+}
+</style>  <style>
+/* AjiX named header colors */
+  .nav-logo .brand-core { color: #111827; }
+  .nav-logo .brand-news { color: #1d4ed8; }
+  html[data-theme="dark"] .nav-logo .brand-core { color: #f3f4f6; }
+  html[data-theme="dark"] .nav-logo .brand-news { color: #93c5fd; }
+</style>
+</head>
+<body>
+
+<!-- TOP NAVIGATION -->
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <div class="nav-left">
+      <button class="nav-icon-btn nav-back-btn" aria-label="Back to previous page" title="Back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15.5 5L9 11.5L15.5 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="nav-logo"><span class="brand-core">AjiX</span><span class="brand-news">News</span></div>
+    </div>
+    <div class="nav-right">
+      <div class="nav-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+        <input type="text" placeholder="Search health topics, drugs, symptoms...">
+      </div>
+      <button class="nav-icon-btn nav-search-toggle" aria-label="Search" title="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+      </button>
+      <button class="nav-icon-btn nav-theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 13.2A8.6 8.6 0 0 1 10.8 3a9.2 9.2 0 1 0 10.2 10.2Z" fill="currentColor"/></svg>
+        <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.2a6.8 6.8 0 1 0 6.8 6.8A6.81 6.81 0 0 0 12 5.2Zm0 11.2A4.4 4.4 0 1 1 16.4 12 4.41 4.41 0 0 1 12 16.4ZM12 2.4a1.1 1.1 0 0 1 1.1 1.1v1a1.1 1.1 0 0 1-2.2 0v-1A1.1 1.1 0 0 1 12 2.4Zm0 17a1.1 1.1 0 0 1 1.1 1.1v1a1.1 1.1 0 0 1-2.2 0v-1A1.1 1.1 0 0 1 12 19.4ZM4.2 11a1.1 1.1 0 0 1 1.1-1.1h1a1.1 1.1 0 0 1 0 2.2h-1A1.1 1.1 0 0 1 4.2 11Zm13.5 0a1.1 1.1 0 0 1 1.1-1.1h1a1.1 1.1 0 0 1 0 2.2h-1A1.1 1.1 0 0 1 17.7 11ZM6.5 5.9a1.1 1.1 0 0 1 1.55 0l.71.71a1.1 1.1 0 1 1-1.56 1.56l-.7-.71a1.1 1.1 0 0 1 0-1.56Zm9.95 9.95a1.1 1.1 0 0 1 1.56 0l.7.71a1.1 1.1 0 0 1-1.55 1.56l-.71-.71a1.1 1.1 0 0 1 0-1.56ZM17.5 5.9a1.1 1.1 0 0 1 0 1.56l-.71.71a1.1 1.1 0 0 1-1.56-1.56l.71-.71a1.1 1.1 0 0 1 1.56 0ZM7.26 16.14a1.1 1.1 0 0 1 0 1.56l-.71.71A1.1 1.1 0 0 1 4.99 16.85l.71-.71a1.1 1.1 0 0 1 1.56 0Z" fill="currentColor"/></svg>
+      </button>
+      <button class="nav-icon-btn nav-dashboard-btn" id="mobile-dashboard-toggle" aria-label="Dashboard" title="Dashboard">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 4.8C4 4.35817 4.35817 4 4.8 4H9.2C9.64183 4 10 4.35817 10 4.8V9.2C10 9.64183 9.64183 10 9.2 10H4.8C4.35817 10 4 9.64183 4 9.2V4.8ZM14.8 4C14.3582 4 14 4.35817 14 4.8V9.2C14 9.64183 14.3582 10 14.8 10H19.2C19.6418 10 20 9.64183 20 9.2V4.8C20 4.35817 19.6418 4 19.2 4H14.8ZM4 14.8C4 14.3582 4.35817 14 4.8 14H9.2C9.64183 14 10 14.3582 10 14.8V19.2C10 19.6418 9.64183 20 9.2 20H4.8C4.35817 20 4 19.6418 4 19.2V14.8ZM14.8 14C14.3582 14 14 14.3582 14 14.8V19.2C14 19.6418 14.3582 20 14.8 20H19.2C19.6418 20 20 19.6418 20 19.2V14.8C20 14.3582 19.6418 14 19.2 14H14.8Z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+<div class="mobile-search-panel" id="mobile-search-panel" aria-hidden="true">
+  <div class="mobile-search-panel-inner">
+    <div class="mobile-search-shell">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+      <input id="mobile-search-input" class="mobile-search-input" type="text" placeholder="Search health topics, drugs, symptoms..." />
+    </div>
+    <button class="mobile-search-close" id="mobile-search-close" aria-label="Close search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+<div class="mobile-dashboard-backdrop" id="mobile-dashboard-backdrop" hidden></div>
+<aside class="mobile-dashboard-panel" id="mobile-dashboard-panel" aria-hidden="true">
+  <div class="mobile-dashboard-panel-inner">
+    <div class="mobile-dashboard-topbar">
+      <button class="mobile-dashboard-close" id="mobile-dashboard-close" aria-label="Close dashboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="mobile-dashboard-content">
+      <section>
+        <div class="mobile-dashboard-section-title">Discover</div>
+        <div class="mobile-dashboard-list">
+          <button class="mobile-dashboard-item active" data-dashboard-item="for-you">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.9004 2.19995C17.3678 2.20016 21.7998 6.63285 21.7998 12.1003C21.7996 17.5677 17.3677 21.9995 11.9004 21.9998H3.80078C2.72946 21.9996 2.00334 20.9089 2.41699 19.9207L3.49805 17.3386C2.54871 15.8189 2.00007 14.0226 2 12.1003C2 6.63272 6.43277 2.19995 11.9004 2.19995Z" fill="currentColor"/></svg>
+            For you
+          </button>
+          <button class="mobile-dashboard-item" data-dashboard-item="trending">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7.02V9.02L17 9V16.5C17 17.88 15.88 19 14.5 19H9.5C8.12 19 7 17.88 7 16.5V9L9 9.02V7.02L3 7V9L5 9V16.5C5 19.54 7.46 22 10.5 22H13.5C16.54 22 19 19.54 19 16.5V9H21Z" fill="currentColor"/></svg>
+            Trending
+            <span class="mobile-dashboard-item-count">New</span>
+          </button>
+          <button class="mobile-dashboard-item" data-dashboard-item="medicine">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM12 6C9.79 6 8 7.79 8 10H10C10 8.9 10.9 8 12 8C13.1 8 14 8.9 14 10C14 12 11 12.5 11 15H13C13 13.5 16 13 16 10C16 7.79 14.21 6 12 6ZM11 17H13V19H11V17Z" fill="currentColor"/></svg>
+            Medicine
+          </button>
+          <button class="mobile-dashboard-item" data-dashboard-item="wellness">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.41 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.08C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.41 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="currentColor"/></svg>
+            Wellness
+          </button>
+          <button class="mobile-dashboard-item" data-dashboard-item="research">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>
+            Research
+          </button>
+        </div>
+      </section>
+      <section>
+        <div class="mobile-dashboard-section-title">Saved</div>
+        <div class="mobile-dashboard-list">
+          <button class="mobile-dashboard-item" data-dashboard-item="bookmarks">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 3H7C5.9 3 5 3.9 5 5V21L12 18L19 21V5C19 3.9 18.1 3 17 3Z" fill="currentColor"/></svg>
+            Bookmarks
+          <span class="mobile-dashboard-item-count" data-news-count="bookmarks">0</span>
+          </button>
+          <button class="mobile-dashboard-item" data-dashboard-item="read-later">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.45 13.97L5.82 21L12 17.27Z" fill="currentColor"/></svg>
+            Like
+            <span class="mobile-dashboard-item-count" data-news-count="read-later">0</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN LAYOUT -->
+<div class="app-layout">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar-left">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Discover</div>
+      <div class="sidebar-menu">
+        <div class="sidebar-item active" data-news-filter="all">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.9004 2.19995C17.3678 2.20016 21.7998 6.63285 21.7998 12.1003C21.7996 17.5677 17.3677 21.9995 11.9004 21.9998H3.80078C2.72946 21.9996 2.00334 20.9089 2.41699 19.9207L3.49805 17.3386C2.54871 15.8189 2.00007 14.0226 2 12.1003C2 6.63272 6.43277 2.19995 11.9004 2.19995Z" fill="currentColor"/></svg>
+          For you
+        </div>
+        <div class="sidebar-item" data-news-filter="trending">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 7.02V9.02L17 9V16.5C17 17.88 15.88 19 14.5 19H9.5C8.12 19 7 17.88 7 16.5V9L9 9.02V7.02L3 7V9L5 9V16.5C5 19.54 7.46 22 10.5 22H13.5C16.54 22 19 19.54 19 16.5V9H21Z" fill="currentColor"/></svg>
+          Trending
+          <span class="sidebar-dot" style="background:var(--accent-red);"></span>
+        </div>
+        <div class="sidebar-item" data-news-filter="medicine">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM12 6C9.79 6 8 7.79 8 10H10C10 8.9 10.9 8 12 8C13.1 8 14 8.9 14 10C14 12 11 12.5 11 15H13C13 13.5 16 13 16 10C16 7.79 14.21 6 12 6ZM11 17H13V19H11V17Z" fill="currentColor"/></svg>
+          Medicine
+        </div>
+        <div class="sidebar-item" data-news-filter="wellness">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.41 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.08C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.41 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" fill="currentColor"/></svg>
+          Wellness
+        </div>
+        <div class="sidebar-item" data-news-filter="research">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>
+          Research
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">Saved</div>
+      <div class="sidebar-menu">
+        <div class="sidebar-item" data-news-filter="bookmarks">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 3H7C5.9 3 5 3.9 5 5V21L12 18L19 21V5C19 3.9 18.1 3 17 3Z" fill="currentColor"/></svg>
+          Bookmarks
+          <span data-news-count="bookmarks" style="margin-left:auto;font-size:12px;color:var(--text-tertiary);">0</span>
+        </div>
+        <div class="sidebar-item" data-news-filter="read-later">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.62L12 2L9.19 8.62L2 9.24L7.45 13.97L5.82 21L12 17.27Z" fill="currentColor"/></svg>
+           Like
+           <span data-news-count="read-later" style="margin-left:auto;font-size:12px;color:var(--text-tertiary);">0</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CENTER CONTENT -->
+  <main class="main-content">
+
+    <!-- HERO SECTION -->
+    <div class="hero-section">
+      <div class="hero-main">
+        <div class="hero-carousel" aria-live="polite">
+          <article class="hero-slide hero-slide--medicine active" data-news-filter="medicine" data-news-topics="diabetes,medicine" data-news-alert="true" style="background: linear-gradient(135deg, #0b3d2e 0%, #145a45 60%, #1a7a5e 100%);">
+            <div class="hero-badge">BREAKING</div>
+            <div class="hero-content">
+              <div class="hero-category">MEDICINE</div>
+              <h1 class="hero-title">FDA approves novel oral GLP-1 drug for type 2 diabetes in landmark decision</h1>
+              <p class="hero-excerpt">The once-daily pill offers a needle-free alternative to injectable semaglutide, with Phase III data showing comparable HbA1c reduction and weight loss outcomes.</p>
+              <div class="hero-meta">
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>4 min read</span>
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>2 hours ago</span>
+                <span>Reuters</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="hero-slide hero-slide--alert" data-news-filter="trending" data-news-topics="covid-19,pandemic,trending,public-health" data-news-alert="true" style="background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #2563eb 100%);">
+            <div class="hero-badge">ALERT</div>
+            <div class="hero-content">
+              <div class="hero-category">TRENDING</div>
+              <h1 class="hero-title">WHO updates pandemic preparedness guidance as new variants spread</h1>
+              <p class="hero-excerpt">The revised playbook sharpens response timelines, hospital coordination, and reporting standards for regional health systems.</p>
+              <div class="hero-meta">
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>3 min read</span>
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>25 minutes ago</span>
+                <span>BBC Health</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="hero-slide hero-slide--research" data-news-filter="research" data-news-topics="research,ai-in-medicine,medicine" style="background: linear-gradient(135deg, #111827 0%, #312e81 55%, #4f46e5 100%);">
+            <div class="hero-badge">INSIGHT</div>
+            <div class="hero-content">
+              <div class="hero-category">RESEARCH</div>
+              <h1 class="hero-title">AI model predicts drug interactions with 94% accuracy in clinical validation</h1>
+              <p class="hero-excerpt">Researchers at Stanford trained a transformer model on 2.3 million drug pair records, outperforming existing pharmacovigilance tools.</p>
+              <div class="hero-meta">
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>7 min read</span>
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 2.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>1 hour ago</span>
+                <span>Stanford Medicine</span>
+              </div>
+            </div>
+          </article>
+        </div>
+        <div class="hero-carousel-nav" aria-hidden="false">
+          <button type="button" class="hero-carousel-btn" id="hero-carousel-prev" aria-label="Previous breaking story">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M14.5 6L8.5 12L14.5 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button type="button" class="hero-carousel-btn" id="hero-carousel-next" aria-label="Next breaking story">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M9.5 6L15.5 12L9.5 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="hero-side" data-news-feed-slot="popular-stories">
+        <div class="side-card" data-news-feed-slot="popular-stories" data-news-filter="trending" data-news-topics="covid-19,pandemic,trending,public-health" data-news-alert="true">
+          <div class="side-card-tag trending">TRENDING</div>
+          <div class="side-card-title">WHO updates pandemic preparedness guidelines for 2026</div>
+          <div class="side-card-meta">BBC Health &middot; 4 min read</div>
+        </div>
+        <div class="side-card" data-news-feed-slot="popular-stories" data-news-filter="research" data-news-topics="research,cancer,medicine">
+          <div class="side-card-tag research">RESEARCH</div>
+          <div class="side-card-title">CRISPR therapy achieves sustained remission in sickle cell trial</div>
+          <div class="side-card-meta">Nature Medicine &middot; 8 min read</div>
+        </div>
+        <div class="side-card" data-news-feed-slot="popular-stories" data-news-filter="wellness" data-news-topics="wellness,heart-disease">
+          <div class="side-card-tag wellness">WELLNESS</div>
+          <div class="side-card-title">Sleep quality linked to cardiovascular risk in new 10-year study</div>
+          <div class="side-card-meta">Harvard Health &middot; 5 min read</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION: LATEST NEWS -->
+    <div class="section-header">
+      <h2 class="section-title" id="latest-news-title">Latest news</h2>
+      <div class="section-actions">
+        <div class="latest-filter-tabs" id="latest-filter-tabs" role="tablist" aria-label="News categories"></div>
+      </div>
+    </div>
+
+    <div class="article-grid" data-news-feed-slot="latest">
+      <article class="article-card" data-news-feed-slot="latest" data-news-filter="medicine" data-news-topics="medicine,antibiotics">
+        <div class="article-image image-art art-medicine" aria-hidden="true">
+          <span class="tag-overlay" style="background:#2563eb;">Medicine</span>
+        </div>
+        <div class="article-body">
+          <h3 class="article-title">New antibiotic class shows promise against resistant superbugs</h3>
+          <p class="article-excerpt">A novel compound targeting the bacterial ribosome demonstrates activity against MRSA and carbapenem-resistant Enterobacteriaceae in preclinical models.</p>
+          <div class="article-footer">
+            <div class="article-source"><div class="source-avatar">TL</div><span class="source-name">The Lancet</span></div>
+            <span class="article-time">6 min read</span>
+            <div class="article-actions">
+              <button class="action-btn like-btn" aria-label="Like">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+              </button>
+              <button class="action-btn save-btn" aria-label="Save">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="article-card" data-news-feed-slot="latest" data-news-filter="wellness" data-news-topics="wellness,nutrition,heart-disease">
+        <div class="article-image image-art art-wellness" aria-hidden="true">
+          <span class="tag-overlay" style="background:#16a34a;">Wellness</span>
+        </div>
+        <div class="article-body">
+          <h3 class="article-title">Mediterranean diet scores another win for cognitive decline prevention</h3>
+          <p class="article-excerpt">A new meta-analysis of 45,000 participants confirms adherence to the Mediterranean diet is associated with a 23% lower risk of dementia.</p>
+          <div class="article-footer">
+            <div class="article-source"><div class="source-avatar">MC</div><span class="source-name">Mayo Clinic</span></div>
+            <span class="article-time">5 min read</span>
+            <div class="article-actions">
+              <button class="action-btn like-btn" aria-label="Like">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+              </button>
+              <button class="action-btn save-btn" aria-label="Save">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="article-card" data-news-feed-slot="latest" data-news-filter="research" data-news-topics="research,ai-in-medicine,medicine">
+        <div class="article-image image-art art-research" aria-hidden="true">
+          <span class="tag-overlay" style="background:#9333ea;">Research</span>
+        </div>
+        <div class="article-body">
+          <h3 class="article-title">AI model predicts drug interactions with 94% accuracy in clinical validation</h3>
+          <p class="article-excerpt">Researchers at Stanford trained a transformer model on 2.3 million drug pair records, outperforming existing pharmacovigilance tools.</p>
+          <div class="article-footer">
+            <div class="article-source"><div class="source-avatar">ST</div><span class="source-name">Stanford Medicine</span></div>
+            <span class="article-time">7 min read</span>
+            <div class="article-actions">
+              <button class="action-btn like-btn" aria-label="Like">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+              </button>
+              <button class="action-btn save-btn" aria-label="Save">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="article-card" data-news-feed-slot="latest" data-news-filter="trending" data-news-topics="medicine,trending,drug-shortage" data-news-alert="true">
+        <div class="article-image image-art art-alert" aria-hidden="true">
+          <span class="tag-overlay" style="background:#dc2626;">Trending</span>
+        </div>
+        <div class="article-body">
+          <h3 class="article-title">Pharmacists warn of shortages in common blood pressure medications</h3>
+          <p class="article-excerpt">Supply chain disruptions are affecting lisinopril and amlodipine availability across 30% of U.S. pharmacies, with restock timelines uncertain.</p>
+          <div class="article-footer">
+            <div class="article-source"><div class="source-avatar">AJ</div><span class="source-name">AJHP</span></div>
+            <span class="article-time">3 min read</span>
+            <div class="article-actions">
+              <button class="action-btn like-btn" aria-label="Like">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+              </button>
+              <button class="action-btn save-btn" aria-label="Save">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- SECTION: MORE NEWS (LIST VIEW) -->
+    <div class="section-header">
+      <h2 class="section-title">More from medicine</h2>
+      <button type="button" class="widget-link" id="medicine-view-toggle" aria-controls="medicine-list" aria-expanded="false">View all &rarr;</button>
+    </div>
+
+    <div class="article-list" id="medicine-list" data-news-feed-slot="medicine">
+      <div class="list-item" data-news-feed-slot="medicine" data-news-filter="medicine" data-news-topics="vaccines,medicine,diabetes">
+        <div class="list-thumb image-art art-medicine" aria-hidden="true"></div>
+        <div class="list-body">
+          <div class="list-tag" style="color:#2563eb;">MEDICINE</div>
+          <div class="list-title">Pfizer announces Phase II results for next-gen pneumococcal vaccine</div>
+          <div class="list-meta">Reuters &middot; 5 min read &middot; 6 hours ago</div>
+        </div>
+        <div class="list-actions">
+          <button class="action-btn like-btn" aria-label="Like">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+          </button>
+          <button class="action-btn save-btn" aria-label="Save">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="list-item" data-news-feed-slot="medicine" data-news-filter="wellness" data-news-topics="wellness,heart-disease,nutrition">
+        <div class="list-thumb image-art art-wellness" aria-hidden="true"></div>
+        <div class="list-body">
+          <div class="list-tag" style="color:#16a34a;">WELLNESS</div>
+          <div class="list-title">High-intensity interval training reduces all-cause mortality by 15%</div>
+          <div class="list-meta">BMJ &middot; 4 min read &middot; 8 hours ago</div>
+        </div>
+        <div class="list-actions">
+          <button class="action-btn like-btn" aria-label="Like">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+          </button>
+          <button class="action-btn save-btn" aria-label="Save">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="list-item" data-news-feed-slot="medicine" data-news-filter="research" data-news-topics="research,cancer,ai-in-medicine">
+        <div class="list-thumb image-art art-research" aria-hidden="true"></div>
+        <div class="list-body">
+          <div class="list-tag" style="color:#9333ea;">RESEARCH</div>
+          <div class="list-title">Gene therapy restores hearing in children with congenital deafness</div>
+          <div class="list-meta">NEJM &middot; 9 min read &middot; 12 hours ago</div>
+        </div>
+        <div class="list-actions">
+          <button class="action-btn like-btn" aria-label="Like">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+          </button>
+          <button class="action-btn save-btn" aria-label="Save">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="list-item is-extra" data-news-feed-slot="medicine" data-news-filter="medicine" data-news-topics="medicine,covid-19">
+        <div class="list-thumb image-art art-alert" aria-hidden="true"></div>
+        <div class="list-body">
+          <div class="list-tag" style="color:#ea580c;">MEDICINE</div>
+          <div class="list-title">Updated RSV vaccine guidance expands protection for older adults</div>
+          <div class="list-meta">CDC &middot; 4 min read &middot; 14 hours ago</div>
+        </div>
+        <div class="list-actions">
+          <button class="action-btn like-btn" aria-label="Like">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+          </button>
+          <button class="action-btn save-btn" aria-label="Save">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="list-item is-extra" data-news-feed-slot="medicine" data-news-filter="medicine" data-news-topics="mental-health,medicine">
+        <div class="list-thumb image-art art-medicine" aria-hidden="true"></div>
+        <div class="list-body">
+          <div class="list-tag" style="color:#65a30d;">MEDICINE</div>
+          <div class="list-title">Digital CBT program shows sustained benefit for adolescent anxiety</div>
+          <div class="list-meta">JAMA &middot; 6 min read &middot; 18 hours ago</div>
+        </div>
+        <div class="list-actions">
+          <button class="action-btn like-btn" aria-label="Like">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+          </button>
+          <button class="action-btn save-btn" aria-label="Save">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="list-item is-extra" data-news-feed-slot="medicine" data-news-filter="medicine" data-news-topics="cancer,research,medicine">
+        <div class="list-thumb image-art art-research" aria-hidden="true"></div>
+        <div class="list-body">
+          <div class="list-tag" style="color:#db2777;">RESEARCH</div>
+          <div class="list-title">Liquid biopsy flags colorectal cancer recurrence earlier than scans</div>
+          <div class="list-meta">NEJM &middot; 7 min read &middot; 1 day ago</div>
+        </div>
+        <div class="list-actions">
+          <button class="action-btn like-btn" aria-label="Like">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+          </button>
+          <button class="action-btn save-btn" aria-label="Save">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- RIGHT SIDEBAR -->
+  <aside class="sidebar-right">
+    <div class="widget" data-news-feed-slot="trending-now">
+      <div class="widget-header">
+        <span class="widget-title" id="trending-column-title">Trending now</span>
+        <a href="#" class="widget-link" id="trending-view-all">View all</a>
+      </div>
+      <div class="trending-item" data-news-feed-slot="trending-now" data-news-filter="trending" data-news-topics="diabetes,medicine">
+        <div class="trending-rank top">1</div>
+        <div class="trending-content">
+          <div class="trending-title">FDA approves novel oral GLP-1 drug for diabetes</div>
+          <div class="trending-meta">124K reads &middot; 2h ago</div>
+        </div>
+      </div>
+      <div class="trending-item" data-news-feed-slot="trending-now" data-news-filter="trending" data-news-topics="covid-19,trending,public-health">
+        <div class="trending-rank top">2</div>
+        <div class="trending-content">
+          <div class="trending-title">WHO updates pandemic preparedness guidelines</div>
+          <div class="trending-meta">89K reads &middot; 4h ago</div>
+        </div>
+      </div>
+      <div class="trending-item" data-news-feed-slot="trending-now" data-news-filter="trending" data-news-topics="antibiotics,medicine">
+        <div class="trending-rank">3</div>
+        <div class="trending-content">
+          <div class="trending-title">New antibiotic class vs resistant superbugs</div>
+          <div class="trending-meta">67K reads &middot; 6h ago</div>
+        </div>
+      </div>
+      <div class="trending-item" data-news-feed-slot="trending-now" data-news-filter="trending" data-news-topics="research,cancer">
+        <div class="trending-rank">4</div>
+        <div class="trending-content">
+          <div class="trending-title">CRISPR therapy in sickle cell trial</div>
+          <div class="trending-meta">54K reads &middot; 8h ago</div>
+        </div>
+      </div>
+      <div class="trending-item" data-news-feed-slot="trending-now" data-news-filter="trending" data-news-topics="wellness,heart-disease">
+        <div class="trending-rank">5</div>
+        <div class="trending-content">
+          <div class="trending-title">Sleep quality and cardiovascular risk</div>
+          <div class="trending-meta">41K reads &middot; 10h ago</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="widget">
+      <div class="widget-header">
+        <span class="widget-title">Popular topics</span>
+      </div>
+      <div class="topic-cloud">
+        <span class="topic-tag" data-news-filter="topic:diabetes" role="button" tabindex="0">Diabetes</span>
+        <span class="topic-tag" data-news-filter="topic:mental-health" role="button" tabindex="0">Mental Health</span>
+        <span class="topic-tag" data-news-filter="topic:covid-19" role="button" tabindex="0">COVID-19</span>
+        <span class="topic-tag" data-news-filter="topic:nutrition" role="button" tabindex="0">Nutrition</span>
+        <span class="topic-tag" data-news-filter="topic:cancer" role="button" tabindex="0">Cancer</span>
+        <span class="topic-tag" data-news-filter="topic:vaccines" role="button" tabindex="0">Vaccines</span>
+        <span class="topic-tag" data-news-filter="topic:heart-disease" role="button" tabindex="0">Heart Disease</span>
+        <span class="topic-tag" data-news-filter="topic:ai-in-medicine" role="button" tabindex="0">AI in Medicine</span>
+      </div>
+    </div>
+
+    <div class="widget newsletter-widget">
+      <div class="widget-title" style="margin-bottom:8px;">Daily Health Brief</div>
+      <p class="newsletter-desc">Get the top health stories delivered to your inbox every morning.</p>
+      <input type="email" class="newsletter-input" placeholder="your@email.com">
+      <button class="newsletter-btn">Subscribe</button>
+    </div>
+  </aside>
+
+</div>
+
+<!-- FOOTER -->
+<footer class="app-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">Ajix News</div>
+    <div class="footer-links">
+      <a href="#" data-footer-topic="about">About</a>
+      <a href="#" data-footer-topic="privacy">Privacy</a>
+      <a href="#" data-footer-topic="terms">Terms</a>
+      <a href="#" data-footer-topic="contact">Contact</a>
+    </div>
+    <div class="footer-copy">2026 Ajix News. All rights reserved.</div>
+  </div>
+</footer>
+<div id="footer-sheet-backdrop" class="footer-sheet-backdrop" aria-hidden="true"></div>
+<section id="footer-sheet" class="footer-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="footer-sheet-title">
+  <div class="footer-sheet-handle" aria-hidden="true"></div>
+  <div class="footer-sheet-header">
+    <div>
+      <div class="footer-sheet-kicker">Ajix News</div>
+      <h2 id="footer-sheet-title" class="footer-sheet-title">About</h2>
+    </div>
+    <button id="footer-sheet-close" class="footer-sheet-close" type="button" aria-label="Close footer details">&times;</button>
+  </div>
+  <div id="footer-sheet-body" class="footer-sheet-body"></div>
+</section>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'ajix-news-saved-state-v1';
+  const READ_KEY = 'ajix-news-read-counts-v1';
+  const THEME_KEY = 'ajix-news-theme-v1';
+  const backBtn = document.querySelector('.nav-back-btn');
+  const searchToggleBtn = document.querySelector('.nav-search-toggle');
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  const footerSheetBackdrop = document.getElementById('footer-sheet-backdrop');
+  const footerSheet = document.getElementById('footer-sheet');
+  const footerSheetCloseBtn = document.getElementById('footer-sheet-close');
+  const footerSheetTitle = document.getElementById('footer-sheet-title');
+  const footerSheetBody = document.getElementById('footer-sheet-body');
+  const footerSheetLinks = Array.from(document.querySelectorAll('[data-footer-topic]'));
+  const desktopSearchInput = document.querySelector('.nav-search input');
+  const mobileSearchPanel = document.getElementById('mobile-search-panel');
+  const mobileSearchInput = document.getElementById('mobile-search-input');
+  const mobileSearchCloseBtn = document.getElementById('mobile-search-close');
+  const dashboardToggleBtn = document.getElementById('mobile-dashboard-toggle');
+  const mobileDashboardPanel = document.getElementById('mobile-dashboard-panel');
+  const mobileDashboardBackdrop = document.getElementById('mobile-dashboard-backdrop');
+  const mobileDashboardCloseBtn = document.getElementById('mobile-dashboard-close');
+  const dashboardItems = Array.from(document.querySelectorAll('[data-dashboard-item]'));
+  const filterControls = Array.from(document.querySelectorAll('.sidebar-item[data-news-filter], .nav-icon-btn[data-news-filter], .topic-tag[data-news-filter]'));
+  let latestFilterControls = Array.from(document.querySelectorAll('.filter-chip[data-latest-filter]'));
+  const topicControls = Array.from(document.querySelectorAll('.topic-tag[data-news-filter]'));
+  const countTargets = Array.from(document.querySelectorAll('[data-news-count]'));
+  const medicineViewToggle = document.getElementById('medicine-view-toggle');
+  const medicineList = document.getElementById('medicine-list');
+  const mainContent = document.querySelector('.main-content');
+  const sidebarRight = document.querySelector('.sidebar-right');
+  const popularStoryPanel = document.querySelector('.hero-side[data-news-feed-slot="popular-stories"]');
+  const popularStorySlots = Array.from(document.querySelectorAll('.hero-side .side-card'));
+  const latestGrid = document.querySelector('.article-grid[data-news-feed-slot="latest"]');
+  const trendingWidget = document.querySelector('.widget[data-news-feed-slot="trending-now"]');
+  const trendingViewAll = document.getElementById('trending-view-all');
+  const contentSelectors = '.hero-slide, .side-card, .article-card, .list-item, .trending-item';
+  const contentItems = Array.from(document.querySelectorAll(contentSelectors));
+  const articleActionsTemplate = document.querySelector('.article-card .article-actions')?.outerHTML || '';
+  const listActionsTemplate = document.querySelector('.list-item .list-actions')?.outerHTML || '';
+  const POPULAR_STORY_LIMIT = 3;
+  const LATEST_STORY_LIMIT = 10;
+  const MEDICINE_PAGE_SIZE = 10;
+  const TRENDING_PREVIEW_LIMIT = 5;
+  let medicineFeedItems = [];
+  let medicineRenderedCount = 0;
+  let defaultHeroFeedItems = [];
+  let defaultLatestFeedItems = [];
+  let trendingFeedItems = [];
+  const heroCarousel = document.querySelector('.hero-main');
+  const heroSlides = Array.from(document.querySelectorAll('.hero-slide'));
+  const heroPrevBtn = document.getElementById('hero-carousel-prev');
+  const heroNextBtn = document.getElementById('hero-carousel-next');
+  let heroSlideIndex = 0;
+  let heroTimer = null;
+  let currentFilter = 'all';
+  let currentLatestFilter = 'all';
+  const NEWS_FEED_SLOTS = Object.freeze({
+    popularStories: 'popular-stories',
+    latest: 'latest',
+    medicine: 'medicine',
+    trendingNow: 'trending-now',
+  });
+  let currentQuery = '';
+  let savedState = loadSavedState();
+  let readCounts = loadReadCounts();
+  let newsLockStateEl = null;
+
+
+  function getRecordsByClass(className) {
+    return itemRecords.filter((item) => item?.element && item.element.classList.contains(className));
+  }
+
+  function resolveRecordElement(record) {
+    if (!record) return null;
+    if (record.element && typeof record.element === 'object') return record.element;
+    return typeof record === 'object' ? record : null;
+  }
+
+  function hideUnusedRecords(records = []) {
+    records.forEach((record) => {
+      const element = resolveRecordElement(record);
+      if (!element) return;
+      element.hidden = true;
+      element.classList.add('news-filter-hidden');
+    });
+  }
+
+  function revealRecord(record) {
+    const element = resolveRecordElement(record);
+    if (!element) return;
+    element.hidden = false;
+    element.classList.remove('news-filter-hidden');
+  }
+
+  let newsEmptyStateEl = null;
+
+  function hideNewsEmptyState() {
+    if (!newsEmptyStateEl) return;
+    newsEmptyStateEl.hidden = true;
+    newsEmptyStateEl.textContent = '';
+  }
+
+  function showNewsEmptyState(message = 'No published stories are available yet.') {
+    const content = document.querySelector('.main-content');
+    if (!content) return;
+    if (!newsEmptyStateEl) {
+      newsEmptyStateEl = document.createElement('section');
+      newsEmptyStateEl.className = 'news-empty-state';
+      newsEmptyStateEl.style.margin = '24px 0 32px';
+      newsEmptyStateEl.style.padding = '24px';
+      newsEmptyStateEl.style.border = '1px solid var(--border)';
+      newsEmptyStateEl.style.borderRadius = '24px';
+      newsEmptyStateEl.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,250,252,0.96))';
+      newsEmptyStateEl.style.boxShadow = '0 10px 30px rgba(15,23,42,0.06)';
+      newsEmptyStateEl.style.color = 'var(--text-primary)';
+      newsEmptyStateEl.style.display = 'grid';
+      newsEmptyStateEl.style.gap = '8px';
+      content.appendChild(newsEmptyStateEl);
+    }
+    newsEmptyStateEl.hidden = false;
+    newsEmptyStateEl.innerHTML = '<h3 style="margin:0;font-size:20px;line-height:1.2;">No published stories yet</h3><p style="margin:0;color:var(--text-secondary);max-width:48rem;">' + message + '</p>';
+  }
+
+  async function hydratePublishedNewsFeed() {
+    const cachedFeed = loadCachedPublishedNewsFeed();
+    if (cachedFeed) applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
+    try {
+      const apiBase = await ensureNewsApiBase();
+      const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Failed to load published news (' + response.status + ')');
+      const feed = normalizePublishedNewsFeed(await response.json());
+      saveCachedPublishedNewsFeed(feed);
+      applyPublishedNewsFeed(feed);
+      setNewsShellReady();
+    } catch (error) {
+      console.warn('Could not load live news feed:', error);
+      if (!cachedFeed) {
+        hideUnusedRecords(contentItems);
+        showNewsEmptyState('The published feed could not be loaded right now.');
+      } else {
+        setNewsShellReady();
+      }
+      setNewsShellReady();
+    }
+  }
+
+  hideUnusedRecords(contentItems);
+
+  const popularitySeeds = {
+    'FDA approves novel oral GLP-1 drug for type 2 diabetes in landmark decision': { reads: 9600, likes: 640 },
+    'WHO updates pandemic preparedness guidance as new variants spread': { reads: 9100, likes: 610 },
+    'AI model predicts drug interactions with 94% accuracy in clinical validation': { reads: 8700, likes: 590 },
+    'New antibiotic class shows promise against resistant superbugs': { reads: 7400, likes: 470 },
+    'Mediterranean diet scores another win for cognitive decline prevention': { reads: 7100, likes: 450 },
+    'Pharmacists warn of shortages in common blood pressure medications': { reads: 6800, likes: 430 },
+    'Pfizer announces Phase II results for next-gen pneumococcal vaccine': { reads: 5900, likes: 380 },
+    'High-intensity interval training reduces all-cause mortality by 15%': { reads: 5600, likes: 340 },
+    'Gene therapy restores hearing in children with congenital deafness': { reads: 5300, likes: 320 },
+    'Updated RSV vaccine guidance expands protection for older adults': { reads: 5100, likes: 300 },
+    'Digital CBT program shows sustained benefit for adolescent anxiety': { reads: 4700, likes: 280 },
+    'Liquid biopsy flags colorectal cancer recurrence earlier than scans': { reads: 4500, likes: 260 },
+    'WHO updates pandemic preparedness guidelines for 2026': { reads: 9400, likes: 620 },
+    'CRISPR therapy achieves sustained remission in sickle cell trial': { reads: 9000, likes: 600 },
+    'Sleep quality linked to cardiovascular risk in new 10-year study': { reads: 8500, likes: 560 },
+  };
+
+  const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+  const NEWS_THEME_BY_CATEGORY = {
+    medicine: {
+      label: 'Medicine',
+      heroClass: 'hero-slide--medicine',
+      cardClass: 'art-medicine',
+      accent: '#2563eb',
+      badge: 'BREAKING',
+    },
+    wellness: {
+      label: 'Wellness',
+      heroClass: 'hero-slide--medicine',
+      cardClass: 'art-wellness',
+      accent: '#16a34a',
+      badge: 'HEALTH',
+    },
+    research: {
+      label: 'Research',
+      heroClass: 'hero-slide--research',
+      cardClass: 'art-research',
+      accent: '#9333ea',
+      badge: 'INSIGHT',
+    },
+    trending: {
+      label: 'Trending',
+      heroClass: 'hero-slide--alert',
+      cardClass: 'art-alert',
+      accent: '#dc2626',
+      badge: 'ALERT',
+    },
+    'clinical-news': {
+      label: 'Clinical news',
+      heroClass: 'hero-slide--medicine',
+      cardClass: 'art-medicine',
+      accent: '#2563eb',
+      badge: 'BREAKING',
+    },
+  };
+  const NEWS_FALLBACK_ACCENTS = ['#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c', '#0891b2', '#4f46e5'];
+
+  function normalizeApiBase(value = '') {
+    return String(value || '').trim().replace(/\/+$/, '');
+  }
+
+  function getApiBaseCandidates() {
+    const storedApiBase = normalizeApiBase(window.localStorage.getItem('quizApiBase'));
+    const currentHost = String(window.location.hostname || '').trim().toLowerCase();
+    const currentOrigin = String(window.location.origin || '').trim();
+    const sameOriginApiBase = currentOrigin && currentOrigin.startsWith('http')
+      ? normalizeApiBase(`${currentOrigin}/api`)
+      : '';
+    const inferredApiBase = LOOPBACK_HOSTS.has(currentHost)
+      ? 'http://127.0.0.1:4000/api'
+      : 'https://api.ajixpharmacy.online/api';
+    const hostApiBase = currentHost && String(window.location.protocol || '').startsWith('http')
+      ? `http://${currentHost}:4000/api`
+      : '';
+
+    return Array.from(
+      new Set(
+        [storedApiBase, sameOriginApiBase, inferredApiBase, hostApiBase, 'http://127.0.0.1:4000/api', 'http://localhost:4000/api']
+          .map(normalizeApiBase)
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  async function ensureNewsApiBase() {
+    const candidates = getApiBaseCandidates();
+    for (const candidate of candidates) {
+      try {
+        const response = await fetch(`${candidate}/health`, { cache: 'no-store' });
+        if (response && response.ok) {
+          try {
+            window.localStorage.setItem('quizApiBase', candidate);
+          } catch (error) {
+            void error;
+          }
+          return candidate;
+        }
+      } catch (error) {
+        void error;
+      }
+    }
+    return candidates[0] || '';
+  }
+
+  function getNewsTheme(category = '', importance = '') {
+    const rawCategory = String(category || '').trim();
+    const normalized = rawCategory.toLowerCase();
+    if (normalized === 'high' || String(importance || '').trim().toLowerCase() === 'high') {
+      return NEWS_THEME_BY_CATEGORY.trending;
+    }
+    if (NEWS_THEME_BY_CATEGORY[normalized]) {
+      return NEWS_THEME_BY_CATEGORY[normalized];
+    }
+    return {
+      label: getNewsCategoryDisplayLabel(rawCategory),
+      heroClass: 'hero-slide--medicine',
+      cardClass: 'art-medicine',
+      accent: getNewsFallbackAccent(rawCategory),
+      badge: 'NEWS',
+    };
+  }
+
+  function getNewsCategoryLabel(category = '') {
+    return getNewsTheme(category).label;
+  }
+
+  function getNewsCategoryAccent(category = '', importance = '') {
+    return getNewsTheme(category, importance).accent;
+  }
+
+  function getNewsCategoryDisplayLabel(category = '') {
+    const text = String(category || '').trim();
+    if (!text) return 'News';
+    return text.replace(/[-_]+/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
+  }
+
+  function getNewsFallbackAccent(category = '') {
+    const seed = String(category || '').trim().toLowerCase();
+    if (!seed) return NEWS_FALLBACK_ACCENTS[0];
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+      hash |= 0;
+    }
+    return NEWS_FALLBACK_ACCENTS[Math.abs(hash) % NEWS_FALLBACK_ACCENTS.length];
+  }
+
+  function decodeNewsPreviewText(value = '') {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const normalized = raw
+      .replace(/\\(?=[<>/])/g, '')
+      .replace(/&nbsp;/gi, ' ');
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${normalized}</div>`, 'text/html');
+    const text = doc.body?.textContent || '';
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  function getNewsCardExcerpt(item = {}) {
+    const summaryText = decodeNewsPreviewText(item.summary || item.excerpt || '');
+    if (summaryText) return summaryText;
+    const bodyText = decodeNewsPreviewText(item.content || item.body || '');
+    if (!bodyText) return 'Preview unavailable.';
+    return bodyText.length > 220 ? `${bodyText.slice(0, 217).trimEnd()}...` : bodyText;
+  }
+
+  const PUBLIC_NEWS_FEED_CACHE_KEY = 'ajix-news-public-feed-v1';
+
+  function loadCachedPublishedNewsFeed() {
+    try {
+      const raw = window.localStorage.getItem(PUBLIC_NEWS_FEED_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function normalizePublishedNewsFeed(feed = {}) {
+    const sourceSections = feed?.sections && typeof feed.sections === 'object' ? feed.sections : {};
+    const seen = new Set();
+    const items = [];
+    const isPublishedItem = (item) => String(item?.status || '').trim().toLowerCase() === 'published';
+    const pushItem = (item) => {
+      if (!item || typeof item !== 'object') return;
+      if (!isPublishedItem(item)) return;
+      const identity = String(item.id || item.storyKey || item.slug || item.title || '').trim().toLowerCase();
+      const fingerprint = identity || String(item.title || item.publishedAt || item.updatedAt || '').trim().toLowerCase();
+      if (!fingerprint || seen.has(fingerprint)) return;
+      seen.add(fingerprint);
+      items.push({ ...item });
+    };
+
+    const rawItems = Array.isArray(feed?.items) ? feed.items : [];
+    rawItems.forEach(pushItem);
+    if (!items.length) {
+      ['hero', 'latest', 'medicine', 'trendingNow'].forEach((sectionName) => {
+        const sectionItems = Array.isArray(sourceSections[sectionName]) ? sourceSections[sectionName] : [];
+        sectionItems.forEach(pushItem);
+      });
+    }
+
+    const normalizedItems = items;
+    const normalizeSectionItems = (sectionName, fallback = []) => {
+      const sectionItems = Array.isArray(sourceSections[sectionName])
+        ? sourceSections[sectionName].filter(isPublishedItem).map((item) => ({ ...item }))
+        : [];
+      return sectionItems.length ? sectionItems : fallback;
+    };
+
+    const normalizedSections = {
+      hero: normalizeSectionItems('hero', normalizedItems.slice(0, 3)),
+      latest: normalizeSectionItems('latest', normalizedItems.slice(0, 4)),
+      medicine: normalizeSectionItems('medicine', normalizedItems),
+      trendingNow: normalizeSectionItems('trendingNow', normalizedItems),
+    };
+
+    return {
+      ...feed,
+      ok: feed?.ok !== false,
+      total: normalizedItems.length,
+      items: normalizedItems,
+      sections: normalizedSections,
+    };
+  }
+
+  function saveCachedPublishedNewsFeed(feed = {}) {
+    try {
+      const normalizedFeed = normalizePublishedNewsFeed(feed);
+      const items = Array.isArray(normalizedFeed.items) ? normalizedFeed.items : [];
+      const publishedItems = items.filter((item) => String(item?.status || '').trim().toLowerCase() === 'published');
+      if (!publishedItems.length) return;
+      window.localStorage.setItem(PUBLIC_NEWS_FEED_CACHE_KEY, JSON.stringify({
+        ok: true,
+        total: publishedItems.length,
+        items: publishedItems,
+        sections: normalizedFeed.sections && typeof normalizedFeed.sections === 'object' ? normalizedFeed.sections : {},
+        cachedAt: new Date().toISOString(),
+      }));
+    } catch (error) {
+      void error;
+    }
+  }
+
+  function escapeHtml(value = '') {
+    return String(value || '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+  }
+
+  function setNewsShellReady() {
+    document.documentElement.setAttribute('data-news-shell', 'ready');
+  }
+
+  function hideNewsContentForLock() {
+    Array.from(mainContent?.children || []).forEach((child) => {
+      if (child === newsLockStateEl) return;
+      child.hidden = true;
+    });
+    if (sidebarRight) {
+      sidebarRight.hidden = true;
+    }
+  }
+
+  function getNewsLockMessage(access = null) {
+    const lockedReason = String(access?.lockedReason || '').trim();
+    if (lockedReason) return lockedReason;
+    if (!window.localStorage.getItem('quizAuthToken')) {
+      return 'Sign in and subscribe to unlock the admin-published news feed.';
+    }
+    return 'Your subscription is not active right now. Renew access to continue reading published stories.';
+  }
+
+  function renderNewsLockState(access = null) {
+    if (!mainContent) {
+      setNewsShellReady();
+      return;
+    }
+
+    hideNewsContentForLock();
+
+    if (!newsLockStateEl) {
+      newsLockStateEl = document.createElement('section');
+      newsLockStateEl.className = 'news-lock-state';
+      newsLockStateEl.style.margin = '24px 0 32px';
+      newsLockStateEl.style.padding = '28px';
+      newsLockStateEl.style.border = '1px solid var(--border)';
+      newsLockStateEl.style.borderRadius = '24px';
+      newsLockStateEl.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.97), rgba(244,247,252,0.98))';
+      newsLockStateEl.style.boxShadow = '0 16px 40px rgba(15, 23, 42, 0.08)';
+      newsLockStateEl.style.maxWidth = '780px';
+      newsLockStateEl.style.display = 'grid';
+      newsLockStateEl.style.gap = '14px';
+      newsLockStateEl.style.color = 'var(--text-primary)';
+      mainContent.prepend(newsLockStateEl);
+    }
+
+    newsLockStateEl.hidden = false;
+    newsLockStateEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:rgba(37,99,235,0.12);color:var(--accent-blue);font-size:12px;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;">News locked</span>
+        <span style="font-size:12px;color:var(--text-tertiary);">Admin-published feed only</span>
+      </div>
+      <h3 style="margin:0;font-size:24px;line-height:1.15;letter-spacing:-0.02em;">Subscribe to unlock news</h3>
+      <p style="margin:0;color:var(--text-secondary);max-width:58ch;">${escapeHtml(getNewsLockMessage(access))}</p>
+      <p style="margin:0;color:var(--text-secondary);max-width:58ch;">There is no fallback demo feed on this page. Once your subscription is active, the published admin stories will appear here automatically.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+        <button type="button" id="news-lock-back-btn" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:12px;background:var(--text-primary);color:#fff;font-weight:700;box-shadow:0 8px 18px rgba(15,23,42,0.14);">Go back</button>
+      </div>
+    `;
+
+    const backButton = newsLockStateEl.querySelector('#news-lock-back-btn');
+    backButton?.addEventListener('click', () => {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+      window.location.href = '/';
+    });
+
+    setNewsShellReady();
+  }
+
+  async function loadNewsSubscriptionAccess() {
+    const token = String(window.localStorage.getItem('quizAuthToken') || '').trim();
+    if (!token) {
+      return {
+        isActive: false,
+        isLocked: true,
+        lockedReason: 'Sign in and subscribe to unlock the admin-published news feed.',
+      };
+    }
+
+    try {
+      const apiBase = await ensureNewsApiBase();
+      const response = await fetch(`${apiBase}/subscriptions/me`, {
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+      const access = data?.subscription && typeof data.subscription === 'object'
+        ? data.subscription
+        : data?.user?.subscriptionAccess && typeof data.user.subscriptionAccess === 'object'
+          ? data.user.subscriptionAccess
+          : null;
+      if (!response.ok || !access) {
+        return {
+          isActive: false,
+          isLocked: true,
+          lockedReason: data?.error || 'Your subscription could not be verified. Please sign in again or renew access.',
+        };
+      }
+      return access;
+    } catch (error) {
+      return {
+        isActive: false,
+        isLocked: true,
+        lockedReason: error?.message || 'Your subscription could not be verified right now.',
+      };
+    }
+  }
+  function applyPublishedNewsFeed(feed = {}) {
+    const normalizedFeed = normalizePublishedNewsFeed(feed);
+    const sections = normalizedFeed.sections || {};
+    const allItems = sortNewsByDate(Array.isArray(normalizedFeed?.items) ? normalizedFeed.items : []);
+    renderLatestFilterTabs(allItems);
+    const heroRecords = getRecordsByClass('hero-slide');
+    const heroItems = Array.isArray(sections.hero) && sections.hero.length ? sections.hero : allItems.slice(0, heroRecords.length);
+    const latestItems = sortNewsByDate(Array.isArray(sections.latest) && sections.latest.length ? sections.latest : allItems).slice(0, LATEST_STORY_LIMIT);
+    const medicineItems = sortNewsByDate(Array.isArray(sections.medicine) && sections.medicine.length ? sections.medicine : allItems);
+    const popularItems = sortNewsByPopularity(Array.isArray(sections.popular) && sections.popular.length ? sections.popular : allItems).slice(0, POPULAR_STORY_LIMIT);
+    const importantItems = allItems.filter(isImportantNewsItem);
+    const requestedTrendingItems = Array.isArray(sections.trendingNow) ? sections.trendingNow : [];
+    const trendingSource = requestedTrendingItems.length
+      ? requestedTrendingItems.filter(isImportantNewsItem).length
+        ? requestedTrendingItems.filter(isImportantNewsItem)
+        : requestedTrendingItems
+      : (importantItems.length ? importantItems : allItems);
+    const trendingItems = sortNewsByPopularity(trendingSource);
+    defaultHeroFeedItems = heroItems.slice();
+    defaultLatestFeedItems = latestItems.slice();
+    trendingFeedItems = trendingItems.slice();
+    heroRecords.forEach((record, index) => {
+      const item = heroItems[index];
+      if (!item) { hideUnusedRecords([record]); return; }
+      revealRecord(record);
+      Object.assign(record, updateItemRecordFromFeed(record, item, index));
+    });
+    replaceGeneratedSection('side-card', popularStoryPanel, popularItems, makeSideCardElement);
+    replaceGeneratedSection('article-card', latestGrid, latestItems, makeArticleCardElement);
+    replaceGeneratedSection('trending-item', trendingWidget, trendingItems.slice(0, TRENDING_PREVIEW_LIMIT), makeTrendingItemElement);
+    medicineFeedItems = medicineItems;
+    renderNextMedicineChunk(true);
+    renderNewsFilterView(currentFilter);
+    applyFilters();
+    if (allItems.length) {
+      hideNewsEmptyState();
+      document.documentElement.setAttribute('data-news-shell', 'ready');
+    } else {
+      showNewsEmptyState('The admin-published feed is empty right now.');
+    }
+    return allItems.length;
+  }
+
+  function formatRelativeTime(value = '') {
+    const timestamp = new Date(String(value || '')).getTime();
+    if (!Number.isFinite(timestamp) || timestamp <= 0) {
+      return '';
+    }
+    const delta = Date.now() - timestamp;
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    if (delta < minute) return 'Just now';
+    if (delta < hour) return `${Math.max(1, Math.round(delta / minute))} min ago`;
+    if (delta < day) return `${Math.max(1, Math.round(delta / hour))} hr ago`;
+    if (delta < 7 * day) return `${Math.max(1, Math.round(delta / day))} day ago`;
+    return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  function estimateReadTime(item = {}) {
+    const text = String([item.summary, item.content, item.title].filter(Boolean).join(' ')).trim();
+    const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 180;
+    return `${Math.max(1, Math.round(wordCount / 220))} min read`;
+  }
+
+  function getStoryLabel(item = {}) {
+    return item.sourceName || item.publishedByName || item.source || 'Ajix News';
+  }
+
+  function getStoryTitleCase(value = '') {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/(^|[\s-])([a-z])/g, (_, prefix, letter) => `${prefix}${letter.toUpperCase()}`);
+  }
+
+  function getStoryBadge(item = {}) {
+    if (item.featured) return 'FEATURED';
+    if (normalizeFilterValue(item.category) === 'trending' || normalizeNewsPriority(item.importance) === 'high') {
+      return 'ALERT';
+    }
+    return getNewsTheme(item.category, item.importance).badge;
+  }
+
+  function normalizeNewsPriority(value = '') {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function getItemViews(item = {}) {
+    return Math.max(
+      0,
+      Math.round(Number(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views) || 0),
+    );
+  }
+
+  function getItemLikes(item = {}) {
+    return Math.max(
+      0,
+      Math.round(Number(item.likes ?? item.likesCount ?? item.likeCount ?? item.metrics?.likes) || 0),
+    );
+  }
+
+  function getNewsItemPopularityScore(item = {}) {
+    const views = getItemViews(item);
+    const likes = getItemLikes(item);
+    if (views > 0 || likes > 0) {
+      return views * 10 + likes * 120 + (item.featured ? 2500 : 0) + (normalizeNewsPriority(item.importance) === 'high' ? 1200 : 0);
+    }
+    const seed = getPopularitySeed(item.title, item.filter);
+    return seed.reads + seed.likes * 8 + (item.featured ? 2500 : 0);
+  }
+
+  function getNewsFeedText(item = {}) {
+    return String([
+      item.title,
+      decodeNewsPreviewText(item.summary || item.excerpt || ''),
+      decodeNewsPreviewText(item.content || item.body || ''),
+      item.category,
+      item.sourceName,
+      item.tags?.join(' '),
+    ].filter(Boolean).join(' '))
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  function getNewsCardSourceAvatar(name = '') {
+    const parts = String(name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const initials = parts.slice(0, 2).map((part) => part[0]).join('');
+    return (initials || 'AJ').toUpperCase().slice(0, 2);
+  }
+
+  const NEWS_MASCOT_AVATAR_URL = '/images/app-logo.png?v=20260617-admin-avatar';
+
+  function isAjixpharmacyDesk(name = '') {
+    return String(name || '').trim().toLowerCase() === 'ajixpharmacy desk';
+  }
+
+  function setAvatarBackground(node, name = '', fallback = 'AJ') {
+    if (!node) return;
+    const initials = getNewsCardSourceAvatar(name || fallback);
+    const useMascot = isAjixpharmacyDesk(name);
+    node.classList.toggle('avatar-image', useMascot);
+    node.style.backgroundImage = useMascot ? `url("${NEWS_MASCOT_AVATAR_URL}")` : '';
+    node.style.backgroundSize = useMascot ? 'contain' : '';
+    node.style.backgroundPosition = useMascot ? 'center' : '';
+    node.style.backgroundRepeat = useMascot ? 'no-repeat' : '';
+    node.style.backgroundColor = useMascot ? '#fff' : '';
+    node.textContent = useMascot ? '' : initials;
+  }
+
+  function setHeroSlideTheme(element, item = {}) {
+    const theme = getNewsTheme(item.category, item.importance);
+    element.classList.remove('hero-slide--medicine', 'hero-slide--alert', 'hero-slide--research');
+    element.classList.add(theme.heroClass);
+    const heroImageUrl = getNewsImageUrl(item) || String(item.heroBackgroundImage || '').trim();
+    if (heroImageUrl) {
+      element.style.setProperty('--hero-image', `url("${heroImageUrl.replace(/"/g, '%22')}")`);
+    } else {
+      element.style.setProperty('--hero-image', 'none');
+    }
+  }
+
+  function getNewsImageUrl(item = {}) {
+    const candidate = item.imageUrl || item.image_url || item.thumbnailUrl || item.thumbnail_url || item.thumbnail || item.image || item.enclosure?.url || '';
+    return typeof candidate === 'object' ? String(candidate.url || candidate.href || '').trim() : String(candidate || '').trim();
+  }
+
+  function setCardImageBackground(node, imageUrl = '') {
+    if (!node) return;
+    const normalizedUrl = String(imageUrl || '').trim();
+    node.hidden = false;
+    node.style.display = '';
+    node.style.backgroundColor = 'var(--card-backdrop, var(--bg))';
+    let imageElement = node.querySelector('.card-source-image');
+    if (!imageElement) {
+      imageElement = document.createElement('img');
+      imageElement.className = 'card-source-image';
+      imageElement.alt = '';
+      imageElement.setAttribute('aria-hidden', 'true');
+      node.appendChild(imageElement);
+    }
+    if (normalizedUrl) {
+      imageElement.hidden = false;
+      imageElement.src = normalizedUrl;
+      imageElement.onerror = () => {
+        imageElement.hidden = true;
+        node.classList.remove('has-real-image');
+        node.classList.add('image-art');
+      };
+      node.style.backgroundImage = '';
+      node.classList.remove('image-art');
+      node.classList.add('has-real-image');
+    } else {
+      imageElement.hidden = true;
+      imageElement.removeAttribute('src');
+      node.style.backgroundImage = '';
+      node.classList.remove('has-real-image');
+      node.classList.add('image-art');
+    }
+  }
+
+  function updateHeroElement(itemRecord, item) {
+    const element = itemRecord.element;
+    const rawCategory = String(item.category || item.filter || itemRecord.filter || '').trim();
+    const category = normalizeFilterValue(rawCategory || 'all');
+    const theme = getNewsTheme(rawCategory || category, item.importance);
+    const heroBadge = element.querySelector('.hero-badge');
+    const heroCategory = element.querySelector('.hero-category');
+    const heroTitle = element.querySelector('.hero-title');
+    const heroExcerpt = element.querySelector('.hero-excerpt');
+    const heroMeta = element.querySelector('.hero-meta');
+
+    setHeroSlideTheme(element, item);
+    element.dataset.newsFilter = category;
+    element.dataset.newsTopics = Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : category;
+    element.dataset.newsAlert = String(item.featured || normalizeNewsPriority(item.importance) === 'high' || category === 'trending');
+    element.dataset.newsId = item.id;
+    element.dataset.newsStoryKey = item.storyKey || slugify(item.title || item.id);
+
+    if (heroBadge) heroBadge.textContent = getStoryBadge(item);
+    if (heroCategory) heroCategory.textContent = theme.label.toUpperCase();
+    if (heroTitle) heroTitle.textContent = item.title || 'Untitled update';
+    if (heroExcerpt) heroExcerpt.textContent = getNewsCardExcerpt(item);
+    if (heroMeta) {
+      const readTime = estimateReadTime(item);
+      const relativeTime = formatRelativeTime(item.publishedAt || item.updatedAt || item.createdAt);
+      const sourceLabel = getStoryLabel(item);
+      heroMeta.innerHTML = `
+        <span>${readTime}</span>
+        <span>${relativeTime || ''}</span>
+        <span>${sourceLabel}</span>
+      `;
+    }
+  }
+
+  function updateArticleElement(itemRecord, item) {
+    const element = itemRecord.element;
+    const rawCategory = String(item.category || item.filter || itemRecord.filter || '').trim();
+    const category = normalizeFilterValue(rawCategory || 'all');
+    const theme = getNewsTheme(rawCategory || category, item.importance);
+    const imageNode = element.querySelector('.article-image');
+    const tagOverlay = element.querySelector('.tag-overlay');
+    const titleNode = element.querySelector('.article-title');
+    const excerptNode = element.querySelector('.article-excerpt');
+    const sourceNameNode = element.querySelector('.source-name');
+    const sourceAvatarNode = element.querySelector('.source-avatar');
+    const timeNode = element.querySelector('.article-time');
+
+    element.dataset.newsFilter = category;
+    element.dataset.newsTopics = Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : category;
+    element.dataset.newsAlert = String(item.featured || normalizeNewsPriority(item.importance) === 'high' || category === 'trending');
+    element.dataset.newsId = item.id;
+    element.dataset.newsStoryKey = item.storyKey || slugify(item.title || item.id);
+    element.classList.remove('art-medicine', 'art-wellness', 'art-research', 'art-alert');
+    element.classList.add(theme.cardClass);
+    if (imageNode) {
+      imageNode.classList.remove('art-medicine', 'art-wellness', 'art-research', 'art-alert');
+      imageNode.classList.add(theme.cardClass);
+      setCardImageBackground(imageNode, getNewsImageUrl(item) || item.heroBackgroundImage || '');
+    }
+    if (tagOverlay) {
+      tagOverlay.textContent = theme.label;
+      tagOverlay.style.background = theme.accent;
+    }
+    if (titleNode) titleNode.textContent = item.title || 'Untitled update';
+    if (excerptNode) excerptNode.textContent = getNewsCardExcerpt(item);
+    if (sourceNameNode) sourceNameNode.textContent = getStoryLabel(item);
+    setAvatarBackground(sourceAvatarNode, getStoryLabel(item));
+    if (timeNode) timeNode.textContent = estimateReadTime(item);
+  }
+
+  function updateListElement(itemRecord, item) {
+    const element = itemRecord.element;
+    const rawCategory = String(item.category || item.filter || itemRecord.filter || '').trim();
+    const category = normalizeFilterValue(rawCategory || 'all');
+    const theme = getNewsTheme(rawCategory || category, item.importance);
+    const imageNode = element.querySelector('.list-thumb');
+    const tagNode = element.querySelector('.list-tag');
+    const titleNode = element.querySelector('.list-title');
+    const metaNode = element.querySelector('.list-meta');
+
+    element.dataset.newsFilter = category;
+    element.dataset.newsTopics = Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : category;
+    element.dataset.newsAlert = String(item.featured || normalizeNewsPriority(item.importance) === 'high' || category === 'trending');
+    element.dataset.newsId = item.id;
+    element.dataset.newsStoryKey = item.storyKey || slugify(item.title || item.id);
+    element.classList.remove('art-medicine', 'art-wellness', 'art-research', 'art-alert');
+    element.classList.add(theme.cardClass);
+    if (imageNode) {
+      imageNode.classList.remove('art-medicine', 'art-wellness', 'art-research', 'art-alert');
+      imageNode.classList.add(theme.cardClass);
+      setCardImageBackground(imageNode, getNewsImageUrl(item) || item.heroBackgroundImage || '');
+    }
+    if (tagNode) {
+      tagNode.textContent = theme.label.toUpperCase();
+      tagNode.style.color = theme.accent;
+    }
+    if (titleNode) titleNode.textContent = item.title || 'Untitled update';
+    if (metaNode) {
+      const readTime = estimateReadTime(item);
+      const relativeTime = formatRelativeTime(item.publishedAt || item.updatedAt || item.createdAt);
+      metaNode.textContent = [getStoryLabel(item), readTime, relativeTime].filter(Boolean).join(' · ');
+    }
+  }
+
+  function updateSideCardElement(itemRecord, item) {
+    const element = itemRecord.element;
+    const rawCategory = String(item.category || item.filter || itemRecord.filter || '');
+    const category = normalizeFilterValue(rawCategory || 'all');
+    const theme = getNewsTheme(rawCategory || category, item.importance);
+    const tagNode = element.querySelector('.side-card-tag');
+    const titleNode = element.querySelector('.side-card-title');
+    const metaNode = element.querySelector('.side-card-meta');
+    element.dataset.newsFilter = category;
+    element.dataset.newsTopics = Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : category;
+    element.dataset.newsAlert = String(item.featured || normalizeNewsPriority(item.importance) === 'high' || category === 'trending');
+    element.dataset.newsId = item.id;
+    element.dataset.newsStoryKey = item.storyKey || slugify(item.title || item.id);
+    if (tagNode) {
+      tagNode.textContent = 'MOST VIEWED';
+      tagNode.className = 'side-card-tag trending';
+    }
+    if (titleNode) titleNode.textContent = item.title || 'Untitled update';
+    if (metaNode) metaNode.textContent = getStoryLabel(item) + ' · ' + estimateReadTime(item);
+    element.style.setProperty('--side-accent', theme.accent);
+  }
+  function updateTrendingElement(itemRecord, item, rank) {
+    const element = itemRecord.element;
+    const rawCategory = String(item.category || item.filter || itemRecord.filter || '').trim();
+    const category = normalizeFilterValue(rawCategory || 'trending');
+    const theme = getNewsTheme(rawCategory || category, item.importance);
+    const rankNode = element.querySelector('.trending-rank');
+    const titleNode = element.querySelector('.trending-title');
+    const metaNode = element.querySelector('.trending-meta');
+
+    element.dataset.newsFilter = category;
+    element.dataset.newsTopics = Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : category;
+    element.dataset.newsAlert = String(item.featured || normalizeNewsPriority(item.importance) === 'high' || category === 'trending');
+    element.dataset.newsId = item.id;
+    element.dataset.newsStoryKey = item.storyKey || slugify(item.title || item.id);
+    if (rankNode) {
+      rankNode.textContent = String(rank);
+      rankNode.classList.toggle('top', rank <= 2);
+    }
+    if (titleNode) titleNode.textContent = item.title || 'Untitled update';
+    if (metaNode) {
+      const views = getItemViews(item);
+      const relativeTime = formatRelativeTime(item.publishedAt || item.updatedAt || item.createdAt);
+      metaNode.textContent = `${Math.max(1, Math.round(views / 1000))}K views · ${relativeTime || estimateReadTime(item)}`;
+    }
+    element.style.setProperty('--trending-accent', theme.accent);
+  }
+
+  function updateItemRecordFromFeed(itemRecord, item, index = 0) {
+    const rawCategory = String(item.category || item.filter || itemRecord.filter || '').trim();
+    const category = normalizeFilterValue(rawCategory || 'all');
+    const theme = getNewsTheme(rawCategory || category, item.importance);
+    const nextItem = {
+      ...itemRecord,
+      ...item,
+    };
+    nextItem.filter = category;
+    nextItem.categoryLabel = theme.label;
+    nextItem.source = getStoryLabel(item);
+    nextItem.readTime = estimateReadTime(item);
+    nextItem.metaLabel = `${nextItem.source} · ${nextItem.readTime}`;
+    nextItem.searchableText = getNewsFeedText(item);
+    nextItem.isAlert = isImportantNewsItem(item);
+    nextItem.topics = parseTopics(
+      Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : nextItem.filter,
+      [nextItem.filter].filter(Boolean),
+    );
+    nextItem.title = item.title || itemRecord.title;
+    nextItem.storyKey = item.storyKey || slugify(item.title || item.id || itemRecord.id);
+    nextItem.views = getItemViews(item);
+    nextItem.viewCount = nextItem.views;
+    nextItem.readCount = nextItem.views;
+    nextItem.likes = getItemLikes(item);
+    nextItem.likesCount = nextItem.likes;
+    nextItem.likeCount = nextItem.likes;
+    nextItem.metrics = {
+      views: nextItem.views,
+      likes: nextItem.likes,
+    };
+    nextItem.publishedAt = item.publishedAt || item.updatedAt || item.createdAt || nextItem.publishedAt;
+    nextItem.updatedAt = item.updatedAt || item.createdAt || nextItem.updatedAt;
+    nextItem.createdAt = item.createdAt || nextItem.createdAt;
+    nextItem.sourceName = item.sourceName || item.publishedByName || item.sourceName || nextItem.source;
+    nextItem.author = item.author || item.publishedByName || item.sourceName || nextItem.author || nextItem.source;
+    nextItem.imageUrl = getNewsImageUrl(item) || item.heroBackgroundImage || '';
+
+    if (itemRecord.element.classList.contains('hero-slide')) {
+      updateHeroElement(nextItem, item);
+    } else if (itemRecord.element.classList.contains('article-card')) {
+      updateArticleElement(nextItem, item);
+    } else if (itemRecord.element.classList.contains('list-item')) {
+      updateListElement(nextItem, item);
+    } else if (itemRecord.element.classList.contains('side-card')) {
+      updateSideCardElement(nextItem, item);
+    } else if (itemRecord.element.classList.contains('trending-item')) {
+      updateTrendingElement(nextItem, item, index + 1);
+    }
+
+    return nextItem;
+  }
+
+  function loadThemePreference() {
+    try {
+      const stored = window.localStorage.getItem(THEME_KEY);
+      if (stored === 'dark' || stored === 'light') {
+        return stored;
+      }
+    } catch (error) {
+      void error;
+    }
+    return 'light';
+  }
+
+  function syncThemeToggle(theme) {
+    if (!themeToggleBtn) return;
+    const isDark = theme === 'dark';
+    themeToggleBtn.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggleBtn.setAttribute('title', isDark ? 'Light mode' : 'Dark mode');
+  }
+
+  function applyTheme(theme) {
+    const nextTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    syncThemeToggle(nextTheme);
+    try {
+      window.localStorage.setItem(THEME_KEY, nextTheme);
+    } catch (error) {
+      void error;
+    }
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || loadThemePreference();
+    applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  }
+
+  function normalizeFilterValue(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized || normalized === 'for-you' || normalized === 'for_you' || normalized === 'all') {
+      return 'all';
+    }
+    if (normalized === 'saved' || normalized === 'bookmark' || normalized === 'bookmarks') {
+      return 'bookmarks';
+    }
+    if (normalized === 'like' || normalized === 'likes') {
+      return 'read-later';
+    }
+    if (normalized === 'readlater' || normalized === 'read later' || normalized === 'read-later') {
+      return 'read-later';
+    }
+    if (normalized === 'news-alert' || normalized === 'alerts') {
+      return 'alert';
+    }
+    return normalized;
+  }
+
+  function slugify(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 120);
+  }
+
+  function parseTopics(value, fallbackTopics) {
+    const topics = String(value || '')
+      .split(',')
+      .map((entry) => slugify(entry))
+      .filter(Boolean);
+    if (topics.length) {
+      return topics;
+    }
+    return Array.isArray(fallbackTopics) ? fallbackTopics.filter(Boolean) : [];
+  }
+
+  function loadSavedState() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function loadReadCounts() {
+    try {
+      const raw = window.localStorage.getItem(READ_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function persistReadCounts() {
+    try {
+      window.localStorage.setItem(READ_KEY, JSON.stringify(readCounts));
+    } catch (error) {
+      // Ignore storage failures in restricted environments.
+    }
+  }
+
+  function persistSavedState() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
+    } catch (error) {
+      // Ignore storage failures in restricted environments.
+    }
+  }
+
+  function getItemTitle(element) {
+    const titleNode = element.querySelector('.hero-title, .side-card-title, .article-title, .list-title, .trending-title');
+    return titleNode ? titleNode.textContent.trim() : element.textContent.trim();
+  }
+
+  function getItemSource(element) {
+    const heroSource = element.querySelector('.hero-meta span:last-child');
+    const articleSource = element.querySelector('.source-name');
+    const listMeta = element.querySelector('.list-meta');
+    const sideMeta = element.querySelector('.side-card-meta');
+    if (articleSource?.textContent.trim()) return articleSource.textContent.trim();
+    if (heroSource?.textContent.trim()) return heroSource.textContent.trim();
+    if (listMeta?.textContent.trim()) {
+      return listMeta.textContent.split('·')[0].trim();
+    }
+    if (sideMeta?.textContent.trim()) {
+      return sideMeta.textContent.split('·')[0].trim();
+    }
+    return 'Ajix';
+  }
+
+  function getItemReadTime(element) {
+    const articleTime = element.querySelector('.article-time');
+    const heroRead = element.querySelector('.hero-meta span:first-child');
+    const listMeta = element.querySelector('.list-meta');
+    const sideMeta = element.querySelector('.side-card-meta');
+    const trendingMeta = element.querySelector('.trending-meta');
+    if (articleTime?.textContent.trim()) return articleTime.textContent.trim();
+    if (heroRead?.textContent.trim()) return heroRead.textContent.trim();
+    if (listMeta?.textContent.trim()) {
+      const parts = listMeta.textContent.split('·').map((part) => part.trim()).filter(Boolean);
+      if (parts[1]) return parts[1];
+    }
+    if (sideMeta?.textContent.trim()) {
+      const parts = sideMeta.textContent.split('·').map((part) => part.trim()).filter(Boolean);
+      if (parts[1]) return parts[1];
+    }
+    if (trendingMeta?.textContent.trim()) {
+      const parts = trendingMeta.textContent.split('·').map((part) => part.trim()).filter(Boolean);
+      if (parts[1]) return parts[1];
+    }
+    return '3 min read';
+  }
+
+  function getItemMetaLabel(element, source, readTime) {
+    const trendingMeta = element.querySelector('.trending-meta');
+    if (trendingMeta?.textContent.trim()) {
+      return trendingMeta.textContent.trim();
+    }
+    return `${source} · ${readTime}`;
+  }
+
+  function getItemSource(element) {
+    const heroSource = element.querySelector('.hero-meta span:last-child');
+    const articleSource = element.querySelector('.source-name');
+    const listMeta = element.querySelector('.list-meta');
+    const sideMeta = element.querySelector('.side-card-meta');
+    if (articleSource?.textContent.trim()) return articleSource.textContent.trim();
+    if (heroSource?.textContent.trim()) return heroSource.textContent.trim();
+    if (listMeta?.textContent.trim()) {
+      return listMeta.textContent.split('\u00B7')[0].trim();
+    }
+    if (sideMeta?.textContent.trim()) {
+      return sideMeta.textContent.split('\u00B7')[0].trim();
+    }
+    return 'Ajix';
+  }
+
+  function getItemReadTime(element) {
+    const articleTime = element.querySelector('.article-time');
+    const heroRead = element.querySelector('.hero-meta span:first-child');
+    const listMeta = element.querySelector('.list-meta');
+    const sideMeta = element.querySelector('.side-card-meta');
+    const trendingMeta = element.querySelector('.trending-meta');
+    if (articleTime?.textContent.trim()) return articleTime.textContent.trim();
+    if (heroRead?.textContent.trim()) return heroRead.textContent.trim();
+    if (listMeta?.textContent.trim()) {
+      const parts = listMeta.textContent.split('\u00B7').map((part) => part.trim()).filter(Boolean);
+      if (parts[1]) return parts[1];
+    }
+    if (sideMeta?.textContent.trim()) {
+      const parts = sideMeta.textContent.split('\u00B7').map((part) => part.trim()).filter(Boolean);
+      if (parts[1]) return parts[1];
+    }
+    if (trendingMeta?.textContent.trim()) {
+      const parts = trendingMeta.textContent.split('\u00B7').map((part) => part.trim()).filter(Boolean);
+      if (parts[1]) return parts[1];
+    }
+    return '3 min read';
+  }
+
+  function getItemMetaLabel(element, source, readTime) {
+    const trendingMeta = element.querySelector('.trending-meta');
+    if (trendingMeta?.textContent.trim()) {
+      return trendingMeta.textContent.trim();
+    }
+    return `${source} \u00B7 ${readTime}`;
+  }
+
+  function getPopularitySeed(title, filter) {
+    return popularitySeeds[title] || popularitySeeds[filter] || { reads: 1200, likes: 80 };
+  }
+
+  function getReadCount(itemId) {
+    return Number(readCounts[itemId] || 0);
+  }
+
+  function incrementReadCount(item) {
+    if (!item?.id) return;
+    readCounts[item.id] = getReadCount(item.id) + 1;
+    persistReadCounts();
+    refreshPopularStoryCards();
+  }
+
+  function getPopularityScore(item) {
+    const state = getItemState(item.id);
+    const localReads = getReadCount(item.id);
+    const likesBoost = (state.bookmarked ? 1 : 0) + (state.readLater ? 1 : 0);
+    const liveViews = getItemViews(item);
+    const liveLikes = getItemLikes(item);
+    if (liveViews > 0 || liveLikes > 0) {
+      return liveViews * 10 + liveLikes * 120 + localReads * 120 + likesBoost * 500 + (item.featured ? 2500 : 0);
+    }
+    const seed = getPopularitySeed(item.title, item.filter);
+    return seed.reads + seed.likes * 8 + localReads * 120 + likesBoost * 500;
+  }
+
+  function getItemText(element) {
+    return element.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function inferItemFilter(element) {
+    const explicitFilter = normalizeFilterValue(element.dataset.newsFilter);
+    if (explicitFilter && explicitFilter !== 'all') {
+      return explicitFilter;
+    }
+    const tagNode = element.querySelector('.tag-overlay, .side-card-tag, .list-tag');
+    const titleNode = element.querySelector('.hero-category');
+    const rawText = [tagNode?.textContent, titleNode?.textContent]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    if (element.classList.contains('trending-item')) {
+      return 'trending';
+    }
+    if (rawText.includes('wellness')) {
+      return 'wellness';
+    }
+    if (rawText.includes('research')) {
+      return 'research';
+    }
+    if (rawText.includes('trending')) {
+      return 'trending';
+    }
+    if (rawText.includes('medicine') || rawText.includes('medical')) {
+      return 'medicine';
+    }
+    return 'all';
+  }
+
+  function getNewsFeedSlot(element) {
+    const explicitSlot = String(element.dataset.newsFeedSlot || '').trim();
+    if (explicitSlot) {
+      return explicitSlot;
+    }
+    if (element.classList.contains('article-card')) {
+      return NEWS_FEED_SLOTS.latest;
+    }
+    if (element.classList.contains('list-item')) {
+      return NEWS_FEED_SLOTS.medicine;
+    }
+    if (element.classList.contains('trending-item')) {
+      return NEWS_FEED_SLOTS.trendingNow;
+    }
+    if (element.classList.contains('side-card')) {
+      return NEWS_FEED_SLOTS.popularStories;
+    }
+    return 'other';
+  }
+  const itemRecords = contentItems.map((element, index) => createNewsItemRecord(element, index));
+
+
+
+  function isImportantNewsItem(item = {}) {
+    const category = normalizeFilterValue(item.category || item.filter || '');
+    const importance = normalizeNewsPriority(item.importance || item.priority || '');
+    const color = String(item.categoryColor || item.accentColor || item.color || '').toLowerCase();
+    return Boolean(item.featured || item.alert || importance === 'high' || category === 'trending' || category === 'alert' || color.includes('red') || color.includes('#dc2626') || color.includes('#ef4444'));
+  }
+
+  function sortNewsByDate(items = []) {
+    return items.slice().sort((a, b) => {
+      const bTime = new Date(b.publishedAt || b.updatedAt || b.createdAt || 0).getTime() || 0;
+      const aTime = new Date(a.publishedAt || a.updatedAt || a.createdAt || 0).getTime() || 0;
+      return bTime - aTime;
+    });
+  }
+
+  function sortNewsByPopularity(items = []) {
+    return items.slice().sort((a, b) => getPopularityScore(b) - getPopularityScore(a));
+  }
+
+  function createNewsItemRecord(element, index) {
+    const title = getItemTitle(element);
+    const id = element.dataset.newsId || (element.className.split(' ')[0] + '-' + (slugify(title) || index || 0));
+    const storyKey = element.dataset.newsStoryKey || slugify(title) || id;
+    element.dataset.newsId = id;
+    element.dataset.newsStoryKey = storyKey;
+    const saveBtn = element.querySelector('.save-btn');
+    const readLaterBtn = element.querySelector('.like-btn');
+    const fallbackTopics = [];
+    const explicitFilter = inferItemFilter(element);
+    if (explicitFilter && explicitFilter !== 'all' && !String(explicitFilter).startsWith('topic:')) fallbackTopics.push(explicitFilter);
+    return { id, storyKey, element, title, filter: explicitFilter, feedSlot: getNewsFeedSlot(element), section: element.classList.contains('article-card') ? 'latest' : 'other', topics: parseTopics(element.dataset.newsTopics, fallbackTopics), searchableText: getItemText(element), isAlert: String(element.dataset.newsAlert).toLowerCase() === 'true', source: getItemSource(element), readTime: getItemReadTime(element), metaLabel: getItemMetaLabel(element, getItemSource(element), getItemReadTime(element)), saveBtn, readLaterBtn };
+  }
+
+  function bindNewsItemRecord(item) {
+    if (!item || item.isBound) return item;
+    item.saveBtn?.addEventListener('click', (event) => { event.stopPropagation(); toggleBookmark(item); });
+    item.readLaterBtn?.addEventListener('click', (event) => { event.stopPropagation(); toggleReadLater(item); });
+    item.element.addEventListener('click', (event) => { if (event.target.closest('button, a, input, textarea, select')) return; incrementReadCount(item); openNewsStory(item); });
+    item.isBound = true;
+    return item;
+  }
+
+  function removeRecordsByClass(className) {
+    getRecordsByClass(className).forEach((record) => record.element.remove());
+    for (let index = itemRecords.length - 1; index >= 0; index -= 1) {
+      if (itemRecords[index]?.element?.classList.contains(className)) itemRecords.splice(index, 1);
+    }
+  }
+
+  function makeSideCardElement() {
+    const element = document.createElement('div');
+    element.className = 'side-card';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.popularStories;
+    element.innerHTML = '<div class="side-card-tag trending">MOST VIEWED</div><div class="side-card-title"></div><div class="side-card-meta"></div>';
+    return element;
+  }
+
+  function makeArticleCardElement() {
+    const element = document.createElement('article');
+    element.className = 'article-card';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.latest;
+    const actions = articleActionsTemplate || '<div class="article-actions"></div>';
+    element.innerHTML = '<div class="article-image image-art art-medicine" aria-hidden="true"><span class="tag-overlay">Medicine</span></div><div class="article-content"><div class="article-meta"><div class="source-avatar" aria-hidden="true"></div><span class="source-name"></span><span class="article-time"></span></div><h3 class="article-title"></h3><p class="article-excerpt"></p>' + actions + '</div>';
+    return element;
+  }
+
+  function makeListItemElement() {
+    const element = document.createElement('div');
+    element.className = 'list-item';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.medicine;
+    const actions = listActionsTemplate || '<div class="list-actions"></div>';
+    element.innerHTML = '<div class="list-thumb image-art art-medicine" aria-hidden="true"></div><div class="list-body"><div class="list-tag">MEDICINE</div><div class="list-title"></div><div class="list-meta"></div></div>' + actions;
+    return element;
+  }
+
+  function makeTrendingItemElement() {
+    const element = document.createElement('div');
+    element.className = 'trending-item';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.trendingNow;
+    element.innerHTML = '<div class="trending-rank top"></div><div class="trending-content"><div class="trending-title"></div><div class="trending-meta"></div></div>';
+    return element;
+  }
+
+  function addGeneratedNewsRecord(container, item, createElement, index) {
+    if (!container) return null;
+    const element = createElement();
+    container.appendChild(element);
+    const record = createNewsItemRecord(element, itemRecords.length + index);
+    Object.assign(record, updateItemRecordFromFeed(record, item, index));
+    bindNewsItemRecord(record);
+    itemRecords.push(record);
+    return record;
+  }
+
+  function replaceGeneratedSection(className, container, items, createElement) {
+    if (!container) return;
+    removeRecordsByClass(className);
+    items.forEach((item, index) => addGeneratedNewsRecord(container, item, createElement, index));
+  }
+
+  function updateMedicineViewButton() {
+    if (!medicineViewToggle) return;
+    const remaining = Math.max(0, medicineFeedItems.length - medicineRenderedCount);
+    const hasMedicineStories = medicineFeedItems.length > 0;
+    medicineViewToggle.hidden = !hasMedicineStories;
+    medicineViewToggle.disabled = remaining <= 0;
+    medicineViewToggle.setAttribute('aria-expanded', String(remaining <= 0));
+    medicineViewToggle.textContent = remaining > 0 ? 'View more (' + Math.min(MEDICINE_PAGE_SIZE, remaining) + ' more) ->' : 'All stories loaded';
+  }
+
+  function renderNextMedicineChunk(reset) {
+    if (!medicineList) return;
+    if (reset) {
+      medicineList.innerHTML = '';
+      removeRecordsByClass('list-item');
+      medicineRenderedCount = 0;
+    }
+    const nextItems = medicineFeedItems.slice(medicineRenderedCount, medicineRenderedCount + MEDICINE_PAGE_SIZE);
+    nextItems.forEach((item, index) => addGeneratedNewsRecord(medicineList, item, makeListItemElement, medicineRenderedCount + index));
+    medicineRenderedCount += nextItems.length;
+    updateMedicineViewButton();
+  }
+
+  function getItemState(itemId) {
+    const state = savedState[itemId];
+    if (!state || typeof state !== 'object') {
+      return { bookmarked: false, readLater: false };
+    }
+    return {
+      bookmarked: Boolean(state.bookmarked),
+      readLater: Boolean(state.readLater),
+    };
+  }
+
+  function ensureItemState(itemId) {
+    if (!savedState[itemId] || typeof savedState[itemId] !== 'object') {
+      savedState[itemId] = { bookmarked: false, readLater: false };
+    }
+    return savedState[itemId];
+  }
+
+  function setBodyScrollLock(locked) {
+    document.body.style.overflow = locked ? 'hidden' : '';
+  }
+
+  function openMobileSearch() {
+    if (!mobileSearchPanel) return;
+    closeMobileDashboard();
+    mobileSearchPanel.classList.add('is-open');
+    mobileSearchPanel.setAttribute('aria-hidden', 'false');
+    setBodyScrollLock(true);
+    window.setTimeout(() => mobileSearchInput?.focus(), 0);
+  }
+
+  function closeMobileSearch() {
+    if (!mobileSearchPanel) return;
+    mobileSearchPanel.classList.remove('is-open');
+    mobileSearchPanel.setAttribute('aria-hidden', 'true');
+    if (!mobileDashboardPanel?.classList.contains('is-open')) {
+      setBodyScrollLock(false);
+    }
+  }
+
+  function openMobileDashboard() {
+    if (!mobileDashboardPanel) return;
+    closeMobileSearch();
+    mobileDashboardPanel.classList.add('is-open');
+    mobileDashboardPanel.setAttribute('aria-hidden', 'false');
+    mobileDashboardBackdrop?.classList.add('is-open');
+    mobileDashboardBackdrop?.removeAttribute('hidden');
+    setBodyScrollLock(true);
+  }
+
+  function closeMobileDashboard() {
+    if (!mobileDashboardPanel) return;
+    mobileDashboardPanel.classList.remove('is-open');
+    mobileDashboardPanel.setAttribute('aria-hidden', 'true');
+    mobileDashboardBackdrop?.classList.remove('is-open');
+    if (mobileDashboardBackdrop) mobileDashboardBackdrop.setAttribute('hidden', '');
+    if (!mobileSearchPanel?.classList.contains('is-open')) {
+      setBodyScrollLock(false);
+    }
+  }
+  function syncMedicineViewToggle() {
+    updateMedicineViewButton();
+  }
+
+  function toggleMedicineList() {
+    renderNextMedicineChunk(false);
+    applyFilters();
+  }
+
+  function openNewsStory(item) {
+    if (!item) return;
+    const imageNode = item.element.querySelector('.article-image, .list-thumb, .hero-slide, .side-card');
+    const imageStyles = imageNode ? window.getComputedStyle(imageNode) : null;
+    const imageClass = imageNode ? Array.from(imageNode.classList || []).find((className) => className.startsWith('art-')) || '' : '';
+        const storyPayload = {
+      id: item.id,
+      storyKey: item.storyKey,
+      title: item.title,
+      summary: item.summary || item.excerpt || '',
+      content: item.content || item.body || '',
+      body: item.body || item.content || '',
+      category: item.category,
+      publishedAt: item.publishedAt || item.updatedAt || item.createdAt || '',
+      updatedAt: item.updatedAt || item.createdAt || '',
+      createdAt: item.createdAt || '',
+      filter: item.filter,
+      feedSlot: item.feedSlot,
+      source: item.source,
+      sourceName: item.sourceName || item.publishedByName || item.source,
+      author: item.author || item.publishedByName || item.sourceName || item.source,
+      readTime: item.readTime,
+      metaLabel: item.metaLabel,
+      topics: item.topics,
+      tags: item.tags,
+      alert: item.isAlert,
+      reviewNote: item.reviewNote,
+      likes: getItemLikes(item),
+      likesCount: getItemLikes(item),
+      likeCount: getItemLikes(item),
+      heroBackgroundImage: imageStyles?.backgroundImage || '',
+      heroBackgroundColor: imageStyles?.backgroundColor || '',
+      heroBackgroundSize: imageStyles?.backgroundSize || '',
+      heroBackgroundPosition: imageStyles?.backgroundPosition || '',
+      heroBackgroundRepeat: imageStyles?.backgroundRepeat || '',
+      heroImageClass: imageClass,
+      heroLabel: item.element.querySelector('.tag-overlay, .side-card-tag, .hero-category')?.textContent?.trim() || '',
+      imageUrl: getNewsImageUrl(item) || item.heroBackgroundImage || '',
+      imageAlt: item.imageAlt || item.title || '',
+    };
+
+    try {
+      window.sessionStorage.setItem('ajix-news-story-v1', JSON.stringify(storyPayload));
+    } catch (error) {
+      void error;
+    }
+
+    const newsId = String(item.id || '').trim();
+    const storyKey = String(item.storyKey || item.id || '').trim();
+    window.location.href = newsId
+      ? './news-story.html?newsId=' + encodeURIComponent(newsId) + '&story=' + encodeURIComponent(storyKey)
+      : './news-story.html?story=' + encodeURIComponent(storyKey);
+  }
+
+  backBtn?.addEventListener('click', () => {
+    window.location.href = './index.html?screen=extra-screen';
+  });
+
+  searchToggleBtn?.addEventListener('click', () => {
+    if (mobileSearchPanel?.classList.contains('is-open')) {
+      closeMobileSearch();
+    } else {
+      openMobileSearch();
+    }
+  });
+
+  mobileSearchCloseBtn?.addEventListener('click', closeMobileSearch);
+
+  mobileSearchPanel?.addEventListener('click', (event) => {
+    if (event.target === mobileSearchPanel) {
+      closeMobileSearch();
+    }
+  });
+
+  dashboardToggleBtn?.addEventListener('click', () => {
+    if (mobileDashboardPanel?.classList.contains('is-open')) {
+      closeMobileDashboard();
+    } else {
+      openMobileDashboard();
+    }
+  });
+
+  mobileDashboardBackdrop?.addEventListener('click', closeMobileDashboard);
+  mobileDashboardCloseBtn?.addEventListener('click', closeMobileDashboard);
+  document.getElementById('latest-filter-tabs')?.addEventListener('click', (event) => {
+    const control = event.target.closest('.filter-chip[data-latest-filter]');
+    if (control) setLatestFilter(control.dataset.latestFilter);
+  });
+
+  trendingViewAll?.addEventListener('click', (event) => {
+    event.preventDefault();
+    setFilter(currentFilter === 'trending' ? 'all' : 'trending');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  medicineViewToggle?.addEventListener('click', () => {
+    toggleMedicineList();
+  });
+
+  function setSearchQuery(nextQuery) {
+    currentQuery = String(nextQuery || '');
+    if (desktopSearchInput && desktopSearchInput.value !== currentQuery) {
+      desktopSearchInput.value = currentQuery;
+    }
+    if (mobileSearchInput && mobileSearchInput.value !== currentQuery) {
+      mobileSearchInput.value = currentQuery;
+    }
+    applyFilters();
+  }
+
+  const NEWS_CATEGORY_LABELS = {
+    'clinical-news': 'Clinical News',
+    'clinical-updates': 'Clinical Updates',
+    'guidelines-clinical-updates': 'Guidelines & Clinical Updates',
+    'drug-safety-alerts': 'Drug Safety Alerts',
+    'new-drugs-approvals': 'New Drug Approvals',
+    'public-health': 'Public Health',
+    'medicine': 'Medicine',
+    'wellness': 'Wellness',
+    'research': 'Research',
+  };
+
+  function formatNewsCategoryLabel(value) {
+    const key = normalizeFilterValue(value);
+    if (NEWS_CATEGORY_LABELS[key]) return NEWS_CATEGORY_LABELS[key];
+    return key.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function renderLatestFilterTabs(items = []) {
+    const tabBar = document.getElementById('latest-filter-tabs');
+    if (!tabBar) return;
+    const categories = Array.from(new Set(items
+      .map((item) => normalizeFilterValue(item?.category || item?.filter || ''))
+      .filter((category) => category && category !== 'all' && category !== 'trending')))
+      .sort((a, b) => formatNewsCategoryLabel(a).localeCompare(formatNewsCategoryLabel(b)));
+    tabBar.innerHTML = "";
+    const createTab = (category) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'filter-chip' + (currentLatestFilter === category ? ' active' : '');
+      button.dataset.latestFilter = category;
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-selected', String(currentLatestFilter === category));
+      button.textContent = category === 'all' ? 'All' : formatNewsCategoryLabel(category);
+      return button;
+    };
+    tabBar.appendChild(createTab('all'));
+    categories.forEach((category) => tabBar.appendChild(createTab(category)));
+    latestFilterControls = Array.from(tabBar.querySelectorAll('.filter-chip[data-latest-filter]'));
+    if (currentLatestFilter !== 'all' && !categories.includes(currentLatestFilter)) {
+      currentLatestFilter = 'all';
+      latestFilterControls.forEach((control) => {
+        const active = control.dataset.latestFilter === 'all';
+        control.classList.toggle('active', active);
+        control.setAttribute('aria-selected', String(active));
+      });
+    }
+  }
+  function renderNewsFilterView(filter) {
+    const isTrendingView = normalizeFilterValue(filter) === 'trending';
+    const latestNewsTitle = document.getElementById('latest-news-title');
+    if (latestNewsTitle) latestNewsTitle.textContent = isTrendingView ? 'Trending news' : 'Latest news';
+    const trendingColumnTitle = document.getElementById('trending-column-title');
+    const trendingColumnLink = document.getElementById('trending-view-all');
+    if (trendingColumnTitle) trendingColumnTitle.textContent = isTrendingView ? 'For you' : 'Trending now';
+    if (trendingColumnLink) trendingColumnLink.textContent = isTrendingView ? 'For you' : 'View all';
+    const heroItems = isTrendingView ? trendingFeedItems : defaultHeroFeedItems;
+    const latestItems = isTrendingView ? trendingFeedItems : defaultLatestFeedItems;
+    const forYouItems = [...defaultLatestFeedItems, ...medicineFeedItems]
+      .filter((item, index, items) => item && items.findIndex((candidate) => candidate?.id === item.id) === index)
+      .slice(0, TRENDING_PREVIEW_LIMIT);
+    const columnItems = isTrendingView ? forYouItems : trendingFeedItems.slice(0, TRENDING_PREVIEW_LIMIT);
+    const heroRecords = getRecordsByClass('hero-slide');
+    heroRecords.forEach((record, index) => {
+      const item = heroItems[index];
+      if (!item) { hideUnusedRecords([record]); return; }
+      revealRecord(record);
+      Object.assign(record, updateItemRecordFromFeed(record, item, index));
+    });
+    replaceGeneratedSection('article-card', latestGrid, latestItems, makeArticleCardElement);
+    replaceGeneratedSection('trending-item', trendingWidget, columnItems, makeTrendingItemElement);
+  }
+  function setFilter(nextFilter) {
+    currentFilter = normalizeFilterValue(nextFilter);
+    if (currentFilter === 'trending') currentLatestFilter = 'all';
+    renderNewsFilterView(currentFilter);
+    syncControlStates();
+    applyFilters();
+  }
+
+  function setLatestFilter(nextFilter) {
+    currentLatestFilter = normalizeFilterValue(nextFilter);
+    syncControlStates();
+    applyFilters();
+  }
+
+  function toggleBookmark(item) {
+    const state = getItemState(item.id);
+    const nextState = ensureItemState(item.id);
+    nextState.bookmarked = !state.bookmarked;
+    if (!nextState.bookmarked && !nextState.readLater) {
+      delete savedState[item.id];
+    }
+    persistSavedState();
+    applyFilters();
+  }
+
+  function toggleReadLater(item) {
+    const state = getItemState(item.id);
+    const nextState = ensureItemState(item.id);
+    nextState.readLater = !state.readLater;
+    if (!nextState.bookmarked && !nextState.readLater) {
+      delete savedState[item.id];
+    }
+    persistSavedState();
+    applyFilters();
+  }
+
+  function getSideCardTagClass(item) {
+    if (item.filter === 'medicine') return 'medicine';
+    if (item.filter === 'wellness') return 'wellness';
+    if (item.filter === 'research') return 'research';
+    if (item.filter === 'alert' || item.isAlert) return 'alert';
+    if (item.filter === 'trending') return 'trending';
+    return 'medicine';
+  }
+
+  function getSideCardTagLabel(item) {
+    const tagNode = item.element.querySelector('.tag-overlay, .side-card-tag, .list-tag, .hero-category');
+    if (tagNode?.textContent.trim()) {
+      return tagNode.textContent.trim();
+    }
+    return item.filter === 'all' ? 'Top story' : item.filter.toUpperCase();
+  }
+  function refreshPopularStoryCards() {
+    // Most-viewed cards are generated from admin-published records, keeping title and newsId together.
+  }
+  function getVisibleHeroSlides() {
+    return heroSlides.filter((slide) => !slide.classList.contains('news-filter-hidden') && !slide.hidden);
+  }
+
+  function setHeroSlide(nextIndex) {
+    if (!heroSlides.length) return;
+    const availableSlides = getVisibleHeroSlides();
+    const slidesToUse = availableSlides.length ? availableSlides : heroSlides;
+    const total = slidesToUse.length;
+    heroSlideIndex = ((nextIndex % total) + total) % total;
+    heroSlides.forEach((slide) => slide.classList.remove('active'));
+    slidesToUse[heroSlideIndex]?.classList.add('active');
+  }
+
+  function syncHeroCarouselToVisibleSlides() {
+    if (!heroSlides.length) return;
+    const visibleSlides = getVisibleHeroSlides();
+    if (!visibleSlides.length) return;
+    const activeSlide = heroSlides.find((slide) => slide.classList.contains('active'));
+    const activeVisibleIndex = visibleSlides.indexOf(activeSlide);
+    setHeroSlide(activeVisibleIndex >= 0 ? activeVisibleIndex : 0);
+  }
+
+  function stopHeroRotation() {
+    if (heroTimer) {
+      window.clearInterval(heroTimer);
+      heroTimer = null;
+    }
+  }
+
+  function startHeroRotation() {
+    if (!heroSlides.length) return;
+    stopHeroRotation();
+    heroTimer = window.setInterval(() => setHeroSlide(heroSlideIndex + 1), 7000);
+  }
+
+  function bumpHeroSlide(delta) {
+    setHeroSlide(heroSlideIndex + delta);
+    startHeroRotation();
+  }
+
+  const footerSheetContent = {
+    about: { title: 'About', body: '<p><strong>Ajix News</strong> gathers health, pharmacy, and clinical updates in a quick-reading format.</p><p>It is built for fast scanning, easy reading on mobile, and a calmer way to keep up with important updates.</p>' },
+    privacy: { title: 'Privacy', body: '<p>This news page may remember lightweight preferences such as theme and reading state on your device.</p><p>If you open an external link, that destination controls its own privacy and cookies policy.</p>' },
+    terms: { title: 'Terms', body: '<p>Use Ajix News for learning, browsing, and general information. It is not a substitute for formal clinical advice.</p><ul><li>Always verify important medical details with trusted sources.</li><li>Stories may link out to third-party sources with their own rules.</li><li>Content is provided for informational use only.</li></ul>' },
+    contact: { title: 'Contact', body: '<p>Reach the Ajix team through the same support channels used on the home page.</p><div class="footer-sheet-contact-list"><a class="footer-sheet-contact-btn" href="mailto:ajixpharmacy@gmail.com"><span>Email</span><span>ajixpharmacy@gmail.com</span></a><a class="footer-sheet-contact-btn" href="https://wa.me/233595597218" target="_blank" rel="noopener noreferrer"><span>WhatsApp</span><span>+233 595 597 218</span></a></div>' },
+  };
+
+  function renderFooterSheet(topic = 'about') {
+    const entry = footerSheetContent[topic] || footerSheetContent.about;
+    if (footerSheetTitle) footerSheetTitle.textContent = entry.title;
+    if (footerSheetBody) footerSheetBody.innerHTML = entry.body;
+  }
+
+  function openFooterSheet(topic = 'about') {
+    renderFooterSheet(topic);
+    footerSheet?.classList.add('is-open');
+    footerSheetBackdrop?.classList.add('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'false');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('is-footer-sheet-open');
+  }
+
+  function closeFooterSheet() {
+    footerSheet?.classList.remove('is-open');
+    footerSheetBackdrop?.classList.remove('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'true');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('is-footer-sheet-open');
+  }
+
+  function syncControlStates() {
+    filterControls.forEach((control) => {
+      const filterValue = normalizeFilterValue(control.dataset.newsFilter);
+      control.classList.toggle('active', filterValue === currentFilter);
+      if (control.id === 'news-alert-btn') control.setAttribute('aria-pressed', String(filterValue === currentFilter));
+    });
+    latestFilterControls.forEach((control) => {
+      const filterValue = normalizeFilterValue(control.dataset.latestFilter);
+      control.classList.toggle('active', filterValue === currentLatestFilter);
+      control.setAttribute('aria-pressed', String(filterValue === currentLatestFilter));
+    });
+    dashboardItems.forEach((control) => {
+      const filterValue = normalizeFilterValue(control.dataset.dashboardItem);
+      control.classList.toggle('active', filterValue === currentFilter);
+    });
+  }
+
+  function updateSavedButtonStates() {
+    itemRecords.forEach((item) => {
+      const state = getItemState(item.id);
+      item.saveBtn?.classList.toggle('saved', state.bookmarked);
+      item.saveBtn?.setAttribute('aria-pressed', String(state.bookmarked));
+      item.readLaterBtn?.classList.toggle('liked', state.readLater);
+      item.readLaterBtn?.setAttribute('aria-pressed', String(state.readLater));
+    });
+  }
+
+  function updateSavedCounts() {
+    let bookmarks = 0;
+    let readLater = 0;
+    Object.values(savedState).forEach((state) => {
+      if (state?.bookmarked) bookmarks += 1;
+      if (state?.readLater) readLater += 1;
+    });
+    countTargets.forEach((target) => {
+      const key = target.getAttribute('data-news-count');
+      if (key === 'bookmarks') target.textContent = String(bookmarks);
+      if (key === 'read-later') target.textContent = String(readLater);
+    });
+  }
+
+  function itemMatchesFilter(item) {
+    if (currentFilter === 'trending') {
+      if (item.element.classList.contains('side-card')) return true;
+      return item.element.classList.contains('hero-slide')
+        || item.element.classList.contains('article-card')
+        || item.element.classList.contains('trending-item')
+        || item.feedSlot === NEWS_FEED_SLOTS.medicine;
+    }
+    if (item.element.classList.contains('side-card')) return true;
+    const matchesGlobalFilter = (() => {
+      if (currentFilter.startsWith('topic:')) return item.topics.includes(currentFilter.slice(6));
+      switch (currentFilter) {
+        case 'all': return true;
+        case 'alert': return item.isAlert;
+        case 'bookmarks': return getItemState(item.id).bookmarked;
+        case 'read-later': return getItemState(item.id).readLater;
+        default: return item.filter === currentFilter;
+      }
+    })();
+    const matchesLatestFilter = item.feedSlot !== NEWS_FEED_SLOTS.latest || currentLatestFilter === 'all' || item.filter === currentLatestFilter;
+    return matchesGlobalFilter && matchesLatestFilter;
+  }
+
+  function itemMatchesQuery(item) {
+    if (item.element.classList.contains('side-card')) return true;
+    if (!currentQuery.trim()) return true;
+    return item.searchableText.includes(currentQuery.trim().toLowerCase());
+  }
+
+  function applyFilters() {
+    itemRecords.forEach((item) => {
+      const visible = itemMatchesFilter(item) && itemMatchesQuery(item);
+      item.element.classList.toggle('news-filter-hidden', !visible);
+    });
+    updateSavedButtonStates();
+    updateSavedCounts();
+    refreshPopularStoryCards();
+    syncHeroCarouselToVisibleSlides();
+  }
+
+  itemRecords.forEach(bindNewsItemRecord);
+
+  filterControls.forEach((control) => {
+    control.addEventListener('click', () => setFilter(control.dataset.newsFilter));
+  });
+
+  dashboardItems.forEach((control) => {
+    control.addEventListener('click', () => setFilter(control.dataset.dashboardItem));
+  });
+
+  desktopSearchInput?.addEventListener('input', (event) => {
+    setSearchQuery(event.target.value);
+  });
+
+  mobileSearchInput?.addEventListener('input', (event) => {
+    setSearchQuery(event.target.value);
+  });
+
+  mobileSearchInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeMobileSearch();
+      searchToggleBtn?.focus();
+      return;
+    }
+    if (event.key === 'Enter') {
+      setSearchQuery(mobileSearchInput.value);
+    }
+  });
+
+  desktopSearchInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setSearchQuery('');
+      desktopSearchInput.blur();
+    }
+    if (event.key === 'Enter') {
+      setSearchQuery(desktopSearchInput.value);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeMobileSearch();
+      closeMobileDashboard();
+    }
+  });
+
+  if (savedState && typeof savedState !== 'object') {
+    savedState = {};
+  }
+
+  applyTheme(loadThemePreference());
+  syncControlStates();
+  latestFilterControls.forEach((control) => {
+    const filterValue = normalizeFilterValue(control.dataset.latestFilter);
+    control.classList.toggle('active', filterValue === currentLatestFilter);
+    control.setAttribute('aria-pressed', String(filterValue === currentLatestFilter));
+  });
+  syncMedicineViewToggle();
+  setHeroSlide(0);
+  startHeroRotation();
+  applyFilters();
+  hydratePublishedNewsFeed();
+  window.addEventListener('storage', (event) => {
+    if (event.key !== PUBLIC_NEWS_FEED_CACHE_KEY) return;
+    const nextFeed = loadCachedPublishedNewsFeed();
+    applyPublishedNewsFeed(normalizePublishedNewsFeed(nextFeed || {}));
+  });
+
+  themeToggleBtn?.addEventListener('click', toggleTheme);
+  footerSheetLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      openFooterSheet(link.dataset.footerTopic || 'about');
+    });
+  });
+  footerSheetCloseBtn?.addEventListener('click', closeFooterSheet);
+  footerSheetBackdrop?.addEventListener('click', closeFooterSheet);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeFooterSheet();
+    }
+  });
+})();
+</script>
+
+<style>
+@media (max-width: 900px) {
+  .top-nav-inner {
+    padding-inline: 10px;
+    gap: 8px;
+  }
+
+  .nav-right,
+  .nav-actions {
+    gap: 6px;
+  }
+
+  .nav-logo {
+    font-size: 16px;
+    letter-spacing: -0.25px;
+  }
+
+  .nav-icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+}
+</style>
+</body>
+</html>
+
+
+

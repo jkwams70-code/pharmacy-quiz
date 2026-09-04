@@ -48,6 +48,57 @@ function buildExplainPrompt({
   return fields;
 }
 
+function buildNewsDraftPrompt({
+  source = {},
+  candidate = {},
+  categories = [],
+}) {
+  const categoryLines = Array.isArray(categories)
+    ? categories
+        .map((entry) => {
+          const slug = normalizeText(entry?.slug || entry?.id || "", 80);
+          const name = normalizeText(entry?.name || "", 120);
+          const description = normalizeText(entry?.description || "", 220);
+          if (!slug || !name) return "";
+          return `- ${slug}: ${name}${description ? ` (${description})` : ""}`;
+        })
+        .filter(Boolean)
+        .join("\n")
+    : "";
+
+  return [
+    "You are a health-news editor writing for a pharmacy audience.",
+    "Use only the supplied source details. Do not invent facts, statistics, quotes, or claims.",
+    "Return JSON only. No markdown fences, no commentary, no extra text.",
+    "The JSON must contain: headline, category, categoryLabel, summary, content, keyPoints.",
+    "summary must be a short abstract of 2 to 4 sentences.",
+    "content must be rich and detailed, with 5 to 8 paragraphs separated by blank lines.",
+    "The content should read like a polished newsroom article and stay grounded in the source material.",
+    "Choose exactly one category slug from the allowed list. If unsure, use clinical-news.",
+    "",
+    "Allowed categories:",
+    categoryLines || "- clinical-news: Clinical News (general clinical updates)",
+    "",
+    `Source name: ${normalizeText(source?.name || "", 160) || "News source"}`,
+    `Source URL: ${normalizeText(source?.url || "", 240) || "N/A"}`,
+    `Source category: ${normalizeText(source?.category || "", 80) || "clinical-news"}`,
+    `Priority: ${normalizeText(source?.priority ?? "", 20) || "50"}`,
+    `Article title: ${normalizeText(candidate?.title || "", 240) || "Untitled update"}`,
+    `Candidate summary: ${normalizeText(candidate?.summary || "", 1200) || "No summary provided"}`,
+    `Published label: ${normalizeText(candidate?.sourcePublishedAt || "", 120) || "Unknown"}`,
+    "",
+    "Write the article with this structure:",
+    "1. Headline",
+    "2. Short abstract summary",
+    "3. Rich body with several detailed paragraphs",
+    "4. Three to five key points that a reviewer can scan quickly",
+    "",
+    "Keep the tone factual, readable, and medically cautious.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function extractOpenAiText(data) {
   if (typeof data?.output_text === "string" && data.output_text.trim()) {
     return data.output_text.trim();
@@ -106,6 +157,19 @@ function extractOpenRouterText(data) {
     return first.text.trim();
   }
   return "";
+}
+
+function extractJsonText(text = "") {
+  const raw = String(text || "").trim();
+  if (!raw) return "";
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch) return String(fencedMatch[1] || "").trim();
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return raw.slice(firstBrace, lastBrace + 1).trim();
+  }
+  return raw;
 }
 
 async function fetchWithTimeout(url, options, timeoutMs = 25000) {
@@ -229,14 +293,13 @@ async function callOpenRouter({
   prompt,
   maxOutputTokens,
   timeoutMs,
+  systemMessage = "You are a strict pharmacy tutor. Be accurate, concise, and practical.",
 }) {
   const endpoint = "https://openrouter.ai/api/v1/chat/completions";
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${apiKey}`,
   };
-  const systemMessage =
-    "You are a strict pharmacy tutor. Be accurate, concise, and practical.";
 
   async function callModel(targetModel) {
     const response = await fetchWithTimeout(
@@ -306,6 +369,46 @@ async function callOpenRouter({
   );
 }
 
+async function generateTextViaProvider({
+  provider,
+  apiKey,
+  model,
+  prompt,
+  maxOutputTokens,
+  timeoutMs,
+  systemMessage = "You are a strict pharmacy editor. Be accurate, concise, and practical.",
+}) {
+  if (provider === "gemini") {
+    return callGemini({
+      apiKey,
+      model,
+      prompt,
+      maxOutputTokens,
+      timeoutMs,
+    });
+  }
+  if (provider === "openai") {
+    return callOpenAi({
+      apiKey,
+      model,
+      prompt,
+      maxOutputTokens,
+      timeoutMs,
+    });
+  }
+  if (provider === "openrouter") {
+    return callOpenRouter({
+      apiKey,
+      model,
+      prompt,
+      maxOutputTokens,
+      timeoutMs,
+      systemMessage,
+    });
+  }
+  throw new Error(`Unsupported AI provider: ${provider}`);
+}
+
 export async function generateAiExplanation({
   provider,
   apiKey,
@@ -319,36 +422,55 @@ export async function generateAiExplanation({
   }
 
   const prompt = buildExplainPrompt(payload);
+  return generateTextViaProvider({
+    provider,
+    apiKey,
+    model,
+    prompt,
+    maxOutputTokens,
+    timeoutMs,
+  });
+}
 
-  if (provider === "gemini") {
-    return callGemini({
-      apiKey,
-      model,
-      prompt,
-      maxOutputTokens,
-      timeoutMs,
-    });
+export async function generateNewsDraft({
+  provider,
+  apiKey,
+  model,
+  maxOutputTokens,
+  timeoutMs,
+  source,
+  candidate,
+  categories,
+}) {
+  if (!apiKey) {
+    throw new Error(`${provider} API key is missing`);
   }
 
-  if (provider === "openai") {
-    return callOpenAi({
-      apiKey,
-      model,
-      prompt,
-      maxOutputTokens,
-      timeoutMs,
-    });
+  const prompt = buildNewsDraftPrompt({ source, candidate, categories });
+  const result = await generateTextViaProvider({
+    provider,
+    apiKey,
+    model,
+    prompt,
+    maxOutputTokens,
+    timeoutMs,
+    systemMessage: "You are a strict health-news editor. Return JSON only.",
+  });
+
+  const text = extractJsonText(result.answer);
+  let draft = null;
+  try {
+    draft = JSON.parse(text);
+  } catch (error) {
+    const parseError = new Error(`Could not parse AI news draft JSON: ${String(error?.message || error)}`);
+    parseError.raw = result.answer;
+    throw parseError;
   }
 
-  if (provider === "openrouter") {
-    return callOpenRouter({
-      apiKey,
-      model,
-      prompt,
-      maxOutputTokens,
-      timeoutMs,
-    });
-  }
-
-  throw new Error(`Unsupported AI provider: ${provider}`);
+  return {
+    provider: result.provider,
+    model: result.model,
+    draft,
+    raw: result.answer,
+  };
 }

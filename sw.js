@@ -1,35 +1,88 @@
-const CUTOVER_VERSION = "ajix-quiz-cutover-v38";
+﻿const CACHE_VERSION = "ajix-app-shell-v114-chat-mascot";
+const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
+const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
+
+const SHELL_ASSETS = [
+  "/",
+  "/index.html",
+  "/engine.js?v=20260829-news-cleanup1",
+  "/backendClient.js?v=20260619-cross-device-sync-fix3",
+  "/auth-lock.js",
+  "/standalone-back.js",
+  "/medlens-interactions-database.js",
+  "/medlens-disease-database.js",
+  "/styles.css",
+  "/data.js?v=20260613-manufacturing-set2",
+  "/rotationTaxonomy.js",
+  "/pwa-launch.html",
+  "/manifest.webmanifest",
+  "/admin/index.html",
+  "/admin/manifest.webmanifest",
+  "/app-update.json",
+  "/icons/favicon-16.png",
+  "/icons/favicon-32.png",
+  "/icons/favicon-48.png",
+  "/icons/favicon-180.png",
+  "/icons/icon-192-f1.png",
+  "/icons/icon-512-f1.png",
+  "/images/app-logo.png",
+  "/images/ajix-logo.png",
+];
+
+function isSameOriginRequest(request) {
+  return new URL(request.url).origin === self.location.origin;
+}
+
+async function cacheShellAssets() {
+  const cache = await caches.open(APP_SHELL_CACHE);
+  await Promise.all(
+    SHELL_ASSETS.map(async (asset) => {
+      try {
+        await cache.add(new Request(asset, { cache: "reload" }));
+      } catch {
+        // Best-effort only. Missing optional assets should not block install.
+      }
+    }),
+  );
+}
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  const cached = await cache.match(request);
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return cached || response;
+  } catch {
+    return cached || Response.error();
+  }
+}
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    (async () => {
+      await cacheShellAssets();
+      await self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
-      await self.clients.claim();
-      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       await Promise.all(
-        clients.map((client) => {
-          if ("navigate" in client) {
-            return client.navigate(client.url);
-          }
-          return Promise.resolve();
-        }),
+        keys
+          .filter((key) => key.startsWith("ajix-app-shell-v") && key !== APP_SHELL_CACHE && key !== RUNTIME_CACHE)
+          .map((key) => caches.delete(key)),
       );
-      await self.registration.unregister();
+      await self.clients.claim();
     })(),
   );
 });
 
-self.addEventListener("fetch", () => {
-  // Deliberately empty. The redesign now runs without an offline app shell.
-});
 
-self.addEventListener("message", (event) => {
-  if (event.data === "QUIZ_APP_CUTOVER_VERSION") {
-    event.source?.postMessage?.({ type: "QUIZ_APP_CUTOVER_VERSION", version: CUTOVER_VERSION });
-  }
-});
+
+

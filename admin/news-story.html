@@ -1,0 +1,2820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="admin-auth-lock.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
+<link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+<link rel="apple-touch-icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+<title>FDA approves novel oral GLP-1 drug — AjixPharmacy</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f7; --surface: #ffffff; --surface-hover: #f9f9fb; --border: #e5e5e7;
+    --text-primary: #1a1a1a; --text-secondary: #555; --text-tertiary: #888; --text-muted: #aaa;
+    --accent-blue: #2563eb; --accent-green: #16a34a; --accent-purple: #9333ea; --accent-red: #dc2626;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04); --shadow-md: 0 2px 8px rgba(0,0,0,0.06); --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--text-primary); background: var(--bg); -webkit-font-smoothing: antialiased; line-height: 1.6; }
+  button { font: inherit; cursor: pointer; border: none; background: none; padding: 0; }
+  a { text-decoration: none; color: inherit; }
+
+  .reading-progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent-blue); z-index: 200; transition: width 0.1s linear; width: 0%; }
+
+  /* NAVIGATION — identical to news feed */
+  .top-nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid var(--border); }
+  .top-nav-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 64px; }
+  .nav-left { display: flex; align-items: center; gap: 32px; }
+  .nav-back-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); color: var(--text-secondary); font-size: 13px; font-weight: 600; transition: all 0.15s ease; }
+  .nav-back-btn:hover { background: var(--bg); color: var(--text-primary); }
+  .nav-back-btn svg { flex-shrink: 0; }
+  .nav-logo { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+  .nav-logo span { color: var(--accent-blue); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .nav-search { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 8px 14px; width: 280px; font-size: 14px; color: var(--text-tertiary); transition: border-color 0.15s ease; }
+  .nav-search:focus-within { border-color: var(--text-muted); }
+  .nav-search input { border: none; background: none; outline: none; font: inherit; color: var(--text-primary); width: 100%; }
+  .nav-search input::placeholder { color: var(--text-tertiary); }
+  .nav-icon-btn { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); position: relative; transition: all 0.15s ease; }
+  .nav-icon-btn:hover { background: var(--bg); color: var(--text-primary); }
+  .nav-theme-toggle { position: relative; }
+  .theme-icon-sun { display: none; }
+  .nav-search-toggle { display: none; }
+  .mobile-search-panel { display: none; position: sticky; top: 64px; z-index: 95; background: rgba(255,255,255,0.92); backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid var(--border); }
+  .mobile-search-panel-inner { max-width: 1280px; margin: 0 auto; padding: 12px 24px 16px; display: flex; align-items: center; gap: 10px; }
+  .mobile-search-shell { flex: 1; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
+  .mobile-search-shell svg { color: var(--text-tertiary); flex-shrink: 0; }
+  .mobile-search-shell input { border: none; background: none; outline: none; font: inherit; color: var(--text-primary); width: 100%; min-width: 0; }
+  .mobile-search-shell input::placeholder { color: var(--text-tertiary); }
+  .mobile-search-close { width: 36px; height: 36px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-secondary); border: 1px solid var(--border); background: var(--surface); }
+  .mobile-search-close:hover { color: var(--text-primary); background: var(--bg); }
+  .mobile-search-panel.is-open { display: block; }
+  .mobile-panel-rail {
+    display: none;
+    position: fixed;
+    top: 78px;
+    right: 12px;
+    z-index: 98;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .mobile-panel-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.94);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(14px) saturate(1.1);
+  }
+  .mobile-panel-btn:hover { background: var(--bg); }
+  .mobile-panel-btn svg { flex-shrink: 0; }
+  .mobile-panel-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(10, 18, 24, 0.22);
+    backdrop-filter: blur(14px) saturate(1.05);
+    -webkit-backdrop-filter: blur(14px) saturate(1.05);
+    padding: 88px 14px 18px;
+  }
+  .mobile-panel-overlay.is-open { display: block; }
+  body.mobile-panel-open { overflow: hidden; }
+  .mobile-panel-sheet {
+    width: min(100%, 640px);
+    max-height: calc(100vh - 106px);
+    margin-left: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-panel-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35));
+  }
+  .mobile-panel-sheet-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+  .mobile-panel-sheet-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .mobile-panel-sheet-close:hover { color: var(--text-primary); }
+  .mobile-panel-body {
+    padding: 14px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+  .mobile-panel-body::-webkit-scrollbar { display: none; }
+  /* LAYOUT */
+  .app-layout { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.95fr); gap: 24px; padding: 24px; align-items: start; }
+  .main-content { min-width: 0; }
+  .sidebar-right { position: sticky; top: 88px; height: fit-content; }
+
+  /* ARTICLE HEADER */
+  .article-hero-image { width: 100%; height: 420px; background: linear-gradient(135deg, #0b3d2e 0%, #145a45 60%, #1a7a5e 100%); border-radius: var(--radius-lg); margin-bottom: 32px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.35); font-size: 14px; font-weight: 600; position: relative; overflow: hidden; box-shadow: var(--shadow-lg); }
+  .article-hero-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%); }
+  .article-hero-image.image-art {
+    background-color: var(--card-backdrop, #0b3d2e);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .article-hero-image.image-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--card-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .article-hero-image.image-art.art-medicine { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23dbeafe'/><stop offset='100%' stop-color='%2393c5fd'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='500' cy='90' r='96' fill='%23ffffff' fill-opacity='.36'/><rect x='118' y='110' width='176' height='214' rx='28' fill='%23ffffff' fill-opacity='.82'/><rect x='118' y='110' width='176' height='54' rx='28' fill='%232563eb' fill-opacity='.16'/><rect x='178' y='170' width='56' height='112' rx='28' fill='%231d4ed8'/><rect x='200' y='150' width='12' height='148' rx='6' fill='%23ffffff' fill-opacity='.55'/><circle cx='428' cy='268' r='34' fill='%23fff7ed'/><circle cx='478' cy='250' r='18' fill='%23fee2e2'/><circle cx='444' cy='314' r='18' fill='%23e0f2fe'/><path d='M362 134h144v10H362zM362 162h102v10H362zM362 190h118v10H362z' fill='%232563eb' fill-opacity='.18'/></svg>"); --card-backdrop: #dbeafe; }
+  .article-hero-image.image-art.art-wellness { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23dcfce7'/><stop offset='100%' stop-color='%23bbf7d0'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='506' cy='92' r='94' fill='%23ffffff' fill-opacity='.32'/><path d='M170 270c0-77 62-139 139-139 31 0 59 10 82 28 23-18 51-28 82-28 77 0 139 62 139 139 0 80-68 144-180 193-8 3-17 3-25 0-112-49-197-113-197-193z' fill='%23ffffff' fill-opacity='.88'/><path d='M342 150c-44 10-79 47-88 95 30 5 58 22 77 48 28-15 49-40 59-71 7-22 8-46 3-67-17-5-35-6-51-5z' fill='%2316a34a' fill-opacity='.86'/><path d='M314 259c31-14 62-15 92-4' fill='none' stroke='%2310b981' stroke-width='10' stroke-linecap='round'/></svg>"); --card-backdrop: #dcfce7; }
+  .article-hero-image.image-art.art-research { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23f3e8ff'/><stop offset='100%' stop-color='%23e9d5ff'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='510' cy='96' r='96' fill='%23ffffff' fill-opacity='.28'/><path d='M206 316l58-138h34l58 138h-35l-11-30h-59l-11 30h-34zm48-56h39l-19-52-20 52z' fill='%239333ea' fill-opacity='.84'/><path d='M392 132c30 0 54 24 54 54s-24 54-54 54h-20c-7 0-13 6-13 13 0 14 11 25 25 25h14' fill='none' stroke='%236b21a8' stroke-width='12' stroke-linecap='round' stroke-linejoin='round'/><circle cx='392' cy='186' r='18' fill='%23ffffff' fill-opacity='.74'/><circle cx='454' cy='238' r='12' fill='%236b21a8' fill-opacity='.72'/><circle cx='486' cy='270' r='12' fill='%236b21a8' fill-opacity='.72'/></svg>"); --card-backdrop: #f3e8ff; }
+  .article-hero-image.image-art.art-alert { --card-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23fee2e2'/><stop offset='100%' stop-color='%23fecaca'/></linearGradient></defs><rect width='640' height='420' fill='url(%23g)'/><circle cx='500' cy='92' r='96' fill='%23ffffff' fill-opacity='.28'/><path d='M328 92l130 226H198L328 92z' fill='%23ffffff' fill-opacity='.92'/><path d='M328 162v86' stroke='%23dc2626' stroke-width='24' stroke-linecap='round'/><circle cx='328' cy='278' r='14' fill='%23dc2626'/><path d='M136 282c38-3 71-14 101-32 32-19 65-29 101-29 49 0 91 17 134 40 31 16 63 27 96 33' fill='none' stroke='%23dc2626' stroke-width='10' stroke-linecap='round'/></svg>"); --card-backdrop: #fee2e2; }
+  .article-header { margin-bottom: 32px; }
+  .article-category { display: inline-block; padding: 4px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; background: var(--accent-red); color: #fff; margin-bottom: 16px; }
+  .article-title { font-size: 38px; font-weight: 800; line-height: 1.15; letter-spacing: -0.6px; margin-bottom: 16px; }
+  .article-subtitle { font-size: 18px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 24px; }
+  .article-meta-bar { display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 1px solid var(--border); margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
+  .article-author { display: flex; align-items: center; gap: 12px; }
+  .author-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; font-weight: 700; }
+  .author-info { display: flex; flex-direction: column; gap: 2px; }
+  .author-name { font-size: 14px; font-weight: 600; }
+  .author-role { font-size: 12px; color: var(--text-tertiary); }
+  .article-meta-details { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--text-tertiary); }
+  .article-meta-details span { display: flex; align-items: center; gap: 6px; }
+  .article-actions-bar { display: flex; gap: 8px; }
+  .article-action-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
+  .article-action-btn:hover { background: var(--bg); border-color: var(--text-muted); }
+  .article-action-btn.liked { color: var(--accent-red); border-color: var(--accent-red); background: rgba(220,38,38,0.06); }
+  .article-action-btn.saved { color: var(--accent-blue); border-color: var(--accent-blue); background: rgba(37,99,235,0.06); }
+
+  /* ARTICLE BODY */
+  .article-body { font-size: 16px; line-height: 1.75; color: var(--text-primary); max-width: 720px; }
+  .article-body p { margin-bottom: 20px; }
+  .article-body h2 { font-size: 24px; font-weight: 700; margin-top: 40px; margin-bottom: 16px; letter-spacing: -0.3px; }
+  .article-body h3 { font-size: 18px; font-weight: 700; margin-top: 32px; margin-bottom: 12px; }
+  .article-body ul { margin-bottom: 20px; padding-left: 24px; }
+  .article-body li { margin-bottom: 8px; }
+  .article-body strong { font-weight: 600; }
+  .article-blockquote { border-left: 3px solid var(--accent-blue); padding-left: 20px; margin: 28px 0; font-style: italic; color: var(--text-secondary); font-size: 17px; line-height: 1.6; }
+  .article-blockquote cite { display: block; margin-top: 10px; font-style: normal; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .article-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .article-tag { padding: 6px 14px; border-radius: var(--radius-lg); font-size: 13px; font-weight: 500; background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); cursor: pointer; transition: all 0.15s ease; }
+  .article-tag:hover { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+  .review-panel { margin-top: 48px; padding: 20px; border: 1px solid rgba(37,99,235,0.16); border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(37,99,235,0.08), rgba(147,51,234,0.08)); display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; box-shadow: var(--shadow-sm); }
+  .review-panel-copy { min-width: 0; max-width: 640px; }
+  .review-panel-kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent-blue); margin-bottom: 6px; }
+  .review-panel-title { font-size: 18px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+  .review-panel-note { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .review-panel-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 10px; line-height: 1.5; }
+  .review-panel-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .review-action-btn { min-width: 108px; padding: 10px 16px; border-radius: var(--radius-md); border: 1px solid transparent; font-size: 13px; font-weight: 700; transition: all 0.15s ease; }
+  .review-action-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .review-action-btn.review-reject { background: rgba(220,38,38,0.08); color: var(--accent-red); border-color: rgba(220,38,38,0.18); }
+  .review-action-btn.review-reject:hover { background: rgba(220,38,38,0.12); }
+  .review-action-btn.review-publish { background: var(--accent-blue); color: #fff; }
+  .review-action-btn.review-publish:hover { filter: brightness(0.96); }
+  .review-confirm-modal { position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(15,23,42,0.48); }
+  .review-confirm-modal.is-open { display: flex; }
+  .review-confirm-dialog { width: min(440px, 100%); padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: 0 24px 70px rgba(15,23,42,0.22); }
+  .review-confirm-title { margin: 0 0 10px; font-size: 18px; }
+  .review-confirm-message { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+  .review-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+  /* AUTHOR BIO */
+  .author-bio-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-top: 40px; display: flex; gap: 16px; align-items: flex-start; }
+  .author-bio-avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+  .author-bio-content h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .author-bio-content p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+  /* RELATED ARTICLES */
+  .related-articles { margin-top: 48px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 20px; font-weight: 700; }
+  .related-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px; }
+  .related-card {
+    width: 100%;
+    display: block;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .related-card:hover { box-shadow: var(--shadow-md); border-color: var(--text-muted); transform: translateY(-1px); }
+  .related-tag { font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+  .related-title { font-size: 14px; font-weight: 600; line-height: 1.4; margin-bottom: 8px; color: var(--text-primary); }
+  .related-meta { font-size: 12px; color: var(--text-tertiary); }
+
+  /* RIGHT SIDEBAR WIDGETS */
+  .widget { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+  .widget-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .widget-title { font-size: 14px; font-weight: 700; }
+  .widget-link { font-size: 12px; color: var(--accent-blue); font-weight: 500; }
+  .widget-link:hover { text-decoration: underline; }
+  .keyword-widget-header { align-items: center; }
+  .keyword-search {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .keyword-search svg { color: var(--text-tertiary); flex-shrink: 0; }
+  .keyword-search input {
+    border: none;
+    outline: none;
+    background: none;
+    width: 100%;
+    min-width: 0;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+  .keyword-search input::placeholder { color: var(--text-tertiary); }
+  .keyword-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .keyword-chip {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .keyword-chip:hover { color: var(--text-primary); border-color: var(--text-muted); }
+  .keyword-chip.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+  .keyword-empty {
+    padding: 12px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .keyword-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-hover) 100%);
+    padding: 16px;
+  }
+  .keyword-panel-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+  }
+  .keyword-panel-word { font-size: 18px; font-weight: 800; letter-spacing: -0.2px; margin-bottom: 4px; }
+  .keyword-panel-pronunciation { font-size: 13px; font-weight: 600; color: var(--accent-blue); margin-bottom: 10px; }
+  .keyword-panel-meaning { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+  .toc-list { display: flex; flex-direction: column; gap: 2px; }
+  .toc-item { padding: 8px 12px; border-radius: var(--radius-md); font-size: 13px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.15s ease; border-left: 2px solid transparent; }
+  .toc-item:hover { background: var(--bg); color: var(--text-primary); }
+  .toc-item.active { background: var(--bg); color: var(--text-primary); border-left-color: var(--text-primary); }
+  .key-takeaways { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
+  .key-takeaways h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .key-takeaways ul { list-style: none; padding: 0; margin: 0; }
+  .key-takeaways li { font-size: 13px; color: var(--text-secondary); padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
+  .key-takeaways li:last-child { border-bottom: none; padding-bottom: 0; }
+  .key-takeaways li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-blue); margin-top: 6px; flex-shrink: 0; }
+  .newsletter-widget { background: linear-gradient(135deg, #0b3d2e 0%, #145a45 100%); color: #fff; text-align: center; }
+  .newsletter-widget .widget-title { color: #fff; }
+  .newsletter-desc { font-size: 13px; opacity: 0.85; margin-bottom: 14px; line-height: 1.5; }
+  .newsletter-input { width: 100%; padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 13px; margin-bottom: 10px; outline: none; }
+  .newsletter-input::placeholder { color: rgba(255,255,255,0.5); }
+  .newsletter-btn { width: 100%; padding: 10px; border-radius: var(--radius-md); background: #fff; color: var(--text-primary); font-size: 13px; font-weight: 600; transition: opacity 0.15s ease; }
+  .newsletter-btn:hover { opacity: 0.9; }
+
+  /* FOOTER */
+  .app-footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 32px 24px; background: var(--surface); }
+  .footer-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+  .footer-brand { font-size: 16px; font-weight: 700; }
+  .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 24px; }
+  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; white-space: nowrap; }
+  .footer-links a:hover { color: var(--text-primary); }
+  .footer-copy { font-size: 12px; color: var(--text-muted); }
+  .footer-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 220;
+  }
+  .footer-sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
+  .footer-sheet {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 100%);
+    width: min(92vw, 760px);
+    max-height: min(80vh, 640px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 48px rgba(15, 23, 42, 0.18);
+    z-index: 230;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.28s ease;
+  }
+  .footer-sheet.is-open { transform: translate(-50%, 0); }
+  .footer-sheet-handle { width: 54px; height: 5px; border-radius: 999px; background: rgba(148, 163, 184, 0.6); margin: 10px auto 0; }
+  .footer-sheet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 20px 12px; border-bottom: 1px solid var(--border); }
+  .footer-sheet-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px; }
+  .footer-sheet-title { margin: 0; font-size: 22px; line-height: 1.15; letter-spacing: -0.02em; }
+  .footer-sheet-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 22px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .footer-sheet-body { padding: 18px 20px 22px; overflow: auto; color: var(--text-secondary); line-height: 1.65; max-height: calc(min(80vh, 640px) - 112px); }
+  .footer-sheet-body p { margin: 0 0 14px; }
+  .footer-sheet-body h3 { margin: 18px 0 10px; color: var(--text-primary); font-size: 16px; }
+  .footer-sheet-body ul { margin: 0 0 16px 18px; padding: 0; }
+  .footer-sheet-contact-list { display: grid; gap: 12px; margin-top: 12px; }
+  .footer-sheet-contact-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .footer-sheet-contact-btn:hover { border-color: var(--accent-blue); }
+  body.is-footer-sheet-open { overflow: hidden; }
+  html[data-theme="dark"] .footer-sheet { background: #111; }
+  html[data-theme="dark"] .footer-sheet-backdrop { background: rgba(0, 0, 0, 0.48); }
+  html[data-theme="dark"] .footer-sheet-close { background: #111; border-color: #2a2a2a; }
+  /* RESPONSIVE */
+  html[data-theme="dark"] {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --surface-hover: #1a1a1a;
+    --border: #2a2a2a;
+    --text-primary: #e5e5e5;
+    --text-secondary: #aaa;
+    --text-tertiary: #666;
+    --text-muted: #444;
+  }
+  html[data-theme="dark"] .top-nav { background: rgba(17,17,17,0.85); }
+  html[data-theme="dark"] .nav-search { background: #1a1a1a; border-color: #2a2a2a; }
+  html[data-theme="dark"] .mobile-search-panel { background: rgba(17,17,17,0.96); }
+  html[data-theme="dark"] .mobile-search-shell,
+  html[data-theme="dark"] .mobile-search-close { background: #111; border-color: #2a2a2a; }
+  html[data-theme="dark"] .mobile-panel-btn { background: rgba(28,28,28,0.96); border-color: #2a2a2a; }
+  html[data-theme="dark"] .mobile-panel-overlay { background: rgba(0,0,0,0.45); }
+  html[data-theme="dark"] .footer-sheet { background: #111; }
+  html[data-theme="dark"] .footer-sheet-backdrop { background: rgba(0,0,0,0.48); }
+  html[data-theme="dark"] .footer-sheet-close { background: #111; border-color: #2a2a2a; }
+  html[data-theme="dark"] .mobile-panel-sheet { background: #111; }
+  html[data-theme="dark"] .mobile-panel-sheet-header { background: rgba(17,17,17,0.85); }
+  html[data-theme="dark"] .mobile-panel-sheet-close { background: #111; border-color: #2a2a2a; }
+  html[data-theme="dark"] .related-card { background: linear-gradient(180deg, #151515 0%, #101010 100%); border-color: #2a2a2a; box-shadow: none; }
+  html[data-theme="dark"] .related-card:hover { border-color: #3a3a3a; box-shadow: 0 10px 24px rgba(0,0,0,0.28); }
+  html[data-theme="dark"] .related-tag { color: #93c5fd !important; }
+  html[data-theme="dark"] .related-title { color: #f5f5f5; }
+  html[data-theme="dark"] .related-meta { color: #a1a1aa; }
+  html[data-theme="dark"] .widget-link { color: #93c5fd; }
+  html[data-theme="dark"] .theme-icon-moon { display: none; }
+  html[data-theme="dark"] .theme-icon-sun { display: block; }
+  html[data-theme="dark"] .theme-icon-moon path,
+  html[data-theme="dark"] .theme-icon-sun path { fill: currentColor; }
+  .theme-icon-moon path,
+  .theme-icon-sun path { fill: currentColor; }
+  @media (max-width: 1100px) { .app-layout { grid-template-columns: 1fr; } .sidebar-right { display: none; } }
+  @media (max-width: 900px) {
+    .app-layout { grid-template-columns: 1fr; padding: 16px; }
+    .related-grid { grid-template-columns: 1fr; }
+    .article-title { font-size: 26px; }
+    .article-hero-image { height: 240px; }
+    .article-meta-bar { flex-direction: column; align-items: flex-start; }
+    .review-panel { flex-direction: column; }
+    .review-panel-actions { width: 100%; }
+    .review-action-btn { flex: 1 1 0; min-width: 0; }
+    .nav-search { display: none; }
+    .nav-search-toggle { display: flex; }
+    .nav-left { gap: 12px; }
+    .nav-back-btn { padding: 8px 10px; }
+    .top-nav-inner { padding: 0 12px; gap: 8px; min-height: 58px; }
+    .nav-left { gap: 8px; }
+    .nav-right { gap: 6px; }
+    .nav-logo { font-size: 18px; letter-spacing: -0.2px; }
+    .nav-icon-btn { width: 36px; height: 36px; }
+    .mobile-search-panel-inner { padding: 10px 14px 14px; }
+    .mobile-panel-rail { display: flex; }
+  }
+</style>
+<base target="_blank">
+</head>
+<body>
+
+<div class="reading-progress" id="read-progress"></div>
+
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <div class="nav-left">
+      <button type="button" class="nav-back-btn" id="news-back-btn" aria-label="Back to news feed">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Back</span>
+      </button>
+      <div class="nav-logo">Ajix<span>Pharmacy</span></div>
+    </div>
+    <div class="nav-right">
+      <div class="nav-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+        <input type="text" placeholder="Search health topics, drugs, symptoms...">
+      </div>
+      <button class="nav-icon-btn nav-search-toggle" id="story-search-toggle" aria-label="Search" title="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+      </button>
+      <button class="nav-icon-btn nav-theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 13.2A8.6 8.6 0 0 1 10.8 3a9.2 9.2 0 1 0 10.2 10.2Z" fill="currentColor"/></svg>
+        <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.2a6.8 6.8 0 1 0 6.8 6.8A6.81 6.81 0 0 0 12 5.2Zm0 11.2A4.4 4.4 0 1 1 16.4 12 4.41 4.41 0 0 1 12 16.4ZM12 2.4a1.1 1.1 0 0 1 1.1 1.1v1a1.1 1.1 0 0 1-2.2 0v-1A1.1 1.1 0 0 1 12 2.4Zm0 17a1.1 1.1 0 0 1 1.1 1.1v1a1.1 1.1 0 0 1-2.2 0v-1A1.1 1.1 0 0 1 12 19.4ZM4.2 11a1.1 1.1 0 0 1 1.1-1.1h1a1.1 1.1 0 0 1 0 2.2h-1A1.1 1.1 0 0 1 4.2 11Zm13.5 0a1.1 1.1 0 0 1 1.1-1.1h1a1.1 1.1 0 0 1 0 2.2h-1A1.1 1.1 0 0 1 17.7 11ZM6.5 5.9a1.1 1.1 0 0 1 1.55 0l.71.71a1.1 1.1 0 1 1-1.56 1.56l-.7-.71a1.1 1.1 0 0 1 0-1.56Zm9.95 9.95a1.1 1.1 0 0 1 1.56 0l.7.71a1.1 1.1 0 0 1-1.55 1.56l-.71-.71a1.1 1.1 0 0 1 0-1.56ZM17.5 5.9a1.1 1.1 0 0 1 0 1.56l-.71.71a1.1 1.1 0 0 1-1.56-1.56l.71-.71a1.1 1.1 0 0 1 1.56 0ZM7.26 16.14a1.1 1.1 0 0 1 0 1.56l-.71.71A1.1 1.1 0 0 1 4.99 16.85l.71-.71a1.1 1.1 0 0 1 1.56 0Z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+<div class="mobile-search-panel" id="mobile-search-panel" aria-hidden="true">
+  <div class="mobile-search-panel-inner">
+    <div class="mobile-search-shell">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+      <input id="mobile-search-input" type="text" placeholder="Search health topics, drugs, symptoms..." />
+    </div>
+    <button class="mobile-search-close" id="mobile-search-close" aria-label="Close search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="mobile-panel-rail" id="mobile-panel-rail" aria-label="Story panels">
+  <button type="button" class="mobile-panel-btn" data-mobile-panel-target="toc" aria-label="Open article outline" title="Outline">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6.5h14M5 12h14M5 17.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+  <button type="button" class="mobile-panel-btn" data-mobile-panel-target="keywords" aria-label="Open keywords" title="Keywords">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5h11A2.5 2.5 0 0 1 20 9v6a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 15V9a2.5 2.5 0 0 1 2.5-2.5Zm2 3.2h7M8.5 13h4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  </button>
+  <button type="button" class="mobile-panel-btn" data-mobile-panel-target="takeaways" aria-label="Open key takeaways" title="Key takeaways">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 4.8h11A2.7 2.7 0 0 1 20.2 7.5v9A2.7 2.7 0 0 1 17.5 19.2h-11A2.7 2.7 0 0 1 3.8 16.5v-9A2.7 2.7 0 0 1 6.5 4.8Z" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 8.2h9M7.5 11.8h6M7.5 15.4h7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<div class="mobile-panel-overlay" id="mobile-panel-overlay" aria-hidden="true">
+  <div class="mobile-panel-sheet" role="dialog" aria-modal="true" aria-label="Story panel">
+    <div class="mobile-panel-sheet-header">
+      <div class="mobile-panel-sheet-title" id="mobile-panel-title">Panel</div>
+      <button type="button" class="mobile-panel-sheet-close" id="mobile-panel-close" aria-label="Close panel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="mobile-panel-body" id="mobile-panel-body"></div>
+  </div>
+</div>
+
+<div class="app-layout">
+
+  <main class="main-content">
+    <div class="article-hero-image">HERO IMAGE — GLP-1 Clinical Trial</div>
+
+    <div class="article-header">
+      <span class="article-category">Breaking</span>
+      <h1 class="article-title">FDA approves novel oral GLP-1 drug for type 2 diabetes in landmark decision</h1>
+      <p class="article-subtitle">The once-daily pill offers a needle-free alternative to injectable semaglutide, with Phase III data showing comparable HbA1c reduction and weight loss outcomes.</p>
+
+      <div class="article-meta-bar">
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+          <div class="article-author">
+            <div class="author-avatar">SC</div>
+            <div class="author-info">
+              <span class="author-name">Dr. Sarah Chen</span>
+              <span class="author-role">Endocrinology Editor</span>
+            </div>
+          </div>
+          <div class="article-meta-details">
+            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>Aug 21, 2026</span>
+            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="currentColor"/></svg>8 min read</span>
+            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8C10.34 9 9 10.34 9 12s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/></svg>1.2M views</span>
+          </div>
+        </div>
+        <div class="article-actions-bar">
+          <button class="article-action-btn like-btn" id="main-like">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.8008 2.20386C11.8418 2.20504 11.8761 2.20679 11.9004 2.20679C12.9196 2.20697 14.0714 2.95768 14.6924 4.17847C15.3083 5.25838 15.3183 6.6302 15.0029 8.06226H18.0244C20.3536 8.06238 22.3556 10.0885 21.6377 12.4167L19.7588 18.5105C19.286 20.0439 17.7636 21.0064 16.1455 21.0066H8.86621C7.29432 21.0066 6.01953 19.7318 6.01953 18.1599V9.61792C6.01953 8.75706 6.59143 8.12094 7.18652 7.81421C7.74138 7.52813 8.27631 7.03526 8.55762 6.28882C8.7423 5.79875 8.81718 5.36749 8.89551 4.91284C8.90613 4.85121 8.91669 4.78901 8.92773 4.72632C9.01218 4.24725 9.13189 3.60409 9.57715 3.073C9.98574 2.58579 10.4533 2.34616 10.9248 2.25269C11.2492 2.18839 11.6072 2.19827 11.8008 2.20386ZM3.90039 8.70679C4.39721 8.707 4.79972 9.10935 4.7998 9.6062V19.6062C4.7998 20.1031 4.39727 20.5064 3.90039 20.5066C3.40333 20.5066 3 20.1033 3 19.6062V9.6062C3.00009 9.10922 3.40339 8.70679 3.90039 8.70679Z" fill="currentColor"/></svg>
+            <span>0</span>
+          </button>
+          <button class="article-action-btn save-btn" id="main-save">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.1504 16.9189C11.6853 16.6515 12.3147 16.6515 12.8496 16.9189L17.9551 19.4717C18.0216 19.5049 18.0996 19.4562 18.0996 19.3818V5C18.0996 4.94477 18.0552 4.90039 18 4.90039H6C5.94477 4.90039 5.90039 4.94477 5.90039 5V19.3818C5.90039 19.4562 5.97843 19.5049 6.04492 19.4717L11.1504 16.9189ZM19.9004 19.3818C19.9004 20.7943 18.4137 21.7127 17.1504 21.0811L12.0449 18.5283C12.0168 18.5142 11.9832 18.5142 11.9551 18.5283L6.84961 21.0811C5.5863 21.7127 4.09961 20.7943 4.09961 19.3818V5C4.09961 3.95066 4.95066 3.09961 6 3.09961H18C19.0493 3.09961 19.9004 3.95066 19.9004 5V19.3818Z" fill="currentColor"/></svg>
+            <span>Save</span>
+          </button>
+          <button class="article-action-btn" id="share-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" fill="currentColor"/></svg>
+            <span>Share</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="article-body">
+      <p>The U.S. Food and Drug Administration has approved orforglipron, a first-in-class oral small-molecule GLP-1 receptor agonist, for the treatment of type 2 diabetes in adults. The decision, announced Thursday, marks a significant milestone in metabolic medicine — offering patients a highly effective, needle-free alternative to the injectable GLP-1 drugs that have dominated the market since 2017.</p>
+
+      <p>Manufactured by Eli Lilly, orforglipron is the first non-peptide GLP-1 agonist to receive FDA approval. Unlike semaglutide (Ozempic, Wegovy) and tirzepatide (Mounjaro, Zepbound), which require weekly subcutaneous injections, orforglipron is formulated as a once-daily oral tablet. This distinction addresses one of the most persistent barriers to GLP-1 therapy adoption: injection aversion.</p>
+
+      <h2 id="toc-1">Phase III results at a glance</h2>
+      <p>The approval was supported by data from the ACHIEVE-1, ACHIEVE-2, and ACHIEVE-3 Phase III clinical trials, which collectively enrolled more than 6,200 participants across 18 countries. In ACHIEVE-2 — a 40-week study in patients with type 2 diabetes on metformin therapy — orforglipron demonstrated:</p>
+      <ul>
+        <li><strong>Mean HbA1c reduction of 1.5%</strong> at the 36 mg dose, compared to 0.4% with placebo</li>
+        <li><strong>Mean body weight reduction of 9.6 kg</strong> (21.2 lbs) at 40 weeks</li>
+        <li><strong>67% of patients</strong> achieving an HbA1c below 7.0%</li>
+        <li>Cardiovascular safety profile consistent with existing GLP-1 therapies</li>
+      </ul>
+      <p>Notably, the glycemic and weight-loss efficacy remained consistent regardless of whether patients had prior exposure to other GLP-1 receptor agonists, suggesting the drug may serve both as a first-line and switch therapy.</p>
+
+      <h2 id="toc-2">How it works differently</h2>
+      <p>Traditional GLP-1 drugs are peptide-based molecules that must be injected because digestive enzymes would destroy them in the stomach. Orforglipron, by contrast, is a small molecule that survives gastric passage and crosses the blood-brain barrier to activate GLP-1 receptors in the pancreas, hypothalamus, and gastrointestinal tract.</p>
+      <p>"The small-molecule approach opens the door to easier manufacturing, room-temperature stability, and potentially much lower production costs," said Dr. Sarah Chen, endocrinologist and clinical researcher at Stanford Medicine. "This could be the inflection point that makes GLP-1 therapy truly accessible globally."</p>
+
+      <div class="article-blockquote">
+        "This approval fundamentally changes the calculus for both patients and payers. A pill you can pick up at any pharmacy, store in your medicine cabinet, and take with your morning coffee removes nearly every logistical barrier we've faced with injectable therapies."
+        <cite>— Dr. Sarah Chen, Stanford Medicine</cite>
+      </div>
+
+      <h2 id="toc-3">Safety profile and side effects</h2>
+      <p>The most common adverse events reported in clinical trials were gastrointestinal and consistent with the known GLP-1 class effect: nausea (28%), diarrhea (19%), vomiting (12%), and constipation (11%). These events were predominantly mild-to-moderate, occurred during dose escalation, and led to discontinuation in less than 6% of participants.</p>
+      <p>Importantly, orforglipron did not show an increased risk of pancreatitis, medullary thyroid carcinoma, or suicidal ideation compared to placebo. However, as with all GLP-1 receptor agonists, it carries a boxed warning for risk of thyroid C-cell tumors and is contraindicated in patients with a personal or family history of medullary thyroid carcinoma or MEN2.</p>
+
+      <h2 id="toc-4">Pricing and availability</h2>
+      <p>Eli Lilly has announced a list price of <strong>$498 per month</strong> for orforglipron, positioning it roughly 18% below the current list price of Ozempic and 25% below Mounjaro. The company has also committed to a patient assistance program capping out-of-pocket costs at $50 per month for commercially insured patients and $25 for uninsured patients meeting income eligibility criteria.</p>
+      <p>The drug is expected to reach U.S. pharmacies within two weeks, with European Medicines Agency (EMA) review scheduled for Q4 2026. Lilly has indicated that manufacturing capacity has been scaled to meet projected first-year demand of approximately 4 million prescriptions.</p>
+
+      <h2 id="toc-5">What this means for patients</h2>
+      <p>For the estimated 38 million Americans living with type 2 diabetes — many of whom have delayed or declined injectable therapy due to needle phobia, cost, or injection-site reactions — orforglipron represents a genuine paradigm shift. Endocrinologists anticipate that oral availability will expand GLP-1 utilization from roughly 12% of eligible patients to potentially 30–40% within the first three years of availability.</p>
+      <p>However, experts caution that orforglipron is not a replacement for lifestyle intervention. "This is a powerful tool, but it's not a magic bullet," said Dr. Chen. "Diet, exercise, sleep, and stress management remain the foundation of diabetes care. The pill makes adherence easier — it doesn't replace the work."</p>
+
+      <div class="article-tags">
+        <span class="article-tag">Diabetes</span>
+        <span class="article-tag">GLP-1</span>
+        <span class="article-tag">FDA Approval</span>
+        <span class="article-tag">Eli Lilly</span>
+        <span class="article-tag">Oral Medication</span>
+        <span class="article-tag">Clinical Trials</span>
+        <span class="article-tag">Endocrinology</span>
+      </div>
+    </div>
+
+    <div class="review-panel" id="news-review-panel" hidden>
+      <div class="review-panel-copy">
+        <div class="review-panel-kicker">Admin preview</div>
+        <div class="review-panel-title" id="news-review-title">Review this article</div>
+        <div class="review-panel-note" id="news-review-note">Loading the review preview...</div>
+        <div class="review-panel-meta" id="news-review-meta">Fetching article details from the review queue...</div>
+      </div>
+      <div class="review-panel-actions">
+        <button type="button" class="review-action-btn review-reject" id="news-review-reject">Reject</button>
+        <button type="button" class="review-action-btn review-publish" id="news-review-publish">Publish</button>
+        <button type="button" class="review-action-btn review-reject" id="news-review-unpublish" hidden>Unpublish</button>
+      </div>
+    </div>
+    <div class="review-confirm-modal" id="news-review-confirm-modal" aria-hidden="true">
+      <div class="review-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="news-review-confirm-title">
+        <h2 class="review-confirm-title" id="news-review-confirm-title">Confirm action</h2>
+        <p class="review-confirm-message" id="news-review-confirm-message"></p>
+        <div class="review-confirm-actions">
+          <button type="button" class="review-action-btn" id="news-review-confirm-cancel">Cancel</button>
+          <button type="button" class="review-action-btn review-publish" id="news-review-confirm-submit">Confirm</button>
+        </div>
+      </div>
+    </div>
+    <div class="author-bio-card">
+      <div class="author-bio-avatar">SC</div>
+      <div class="author-bio-content">
+        <h4>Dr. Sarah Chen</h4>
+        <p>Board-certified endocrinologist and AjixPharmacy's Medicine Editor. She completed her fellowship at Johns Hopkins and has published over 40 peer-reviewed papers on metabolic therapy. Dr. Chen specializes in translating clinical trial data into patient-centered guidance.</p>
+      </div>
+    </div>
+
+    <div class="related-articles">
+      <div class="section-header">
+        <h2 class="section-title">Related articles</h2>
+        <button type="button" class="widget-link" id="related-toggle-btn" aria-expanded="false">View all →</button>
+      </div>
+      <div class="related-grid">
+        <div class="related-card">
+          <div class="related-tag" style="color:var(--accent-blue)">MEDICINE</div>
+          <div class="related-title">New antibiotic class shows promise against resistant superbugs</div>
+          <div class="related-meta">The Lancet · 6 min read</div>
+        </div>
+        <div class="related-card">
+          <div class="related-tag" style="color:var(--accent-green)">WELLNESS</div>
+          <div class="related-title">Mediterranean diet scores another win for cognitive decline prevention</div>
+          <div class="related-meta">Mayo Clinic · 5 min read</div>
+        </div>
+        <div class="related-card">
+          <div class="related-tag" style="color:var(--accent-purple)">RESEARCH</div>
+          <div class="related-title">AI model predicts drug interactions with 94% accuracy</div>
+          <div class="related-meta">Stanford Medicine · 7 min read</div>
+        </div>
+        <div class="related-card">
+          <div class="related-tag" style="color:var(--accent-red)">TRENDING</div>
+          <div class="related-title">Pharmacists warn of shortages in common blood pressure medications</div>
+          <div class="related-meta">AJHP · 3 min read</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <aside class="sidebar-right">
+    <div class="widget">
+      <div class="widget-header">
+        <span class="widget-title">In this article</span>
+      </div>
+      <div class="toc-list">
+        <div class="toc-item active" data-target="toc-1">Phase III results at a glance</div>
+        <div class="toc-item" data-target="toc-2">How it works differently</div>
+        <div class="toc-item" data-target="toc-3">Safety profile and side effects</div>
+        <div class="toc-item" data-target="toc-4">Pricing and availability</div>
+        <div class="toc-item" data-target="toc-5">What this means for patients</div>
+      </div>
+    </div>
+
+    <div class="key-takeaways">
+      <h4>Key takeaways</h4>
+      <ul>
+        <li>FDA approves first oral non-peptide GLP-1 drug for type 2 diabetes</li>
+        <li>Phase III trials show 1.5% HbA1c reduction and 9.6 kg weight loss</li>
+        <li>List price set at $498/month with patient assistance programs</li>
+        <li>Expected to reach pharmacies within two weeks</li>
+      </ul>
+    </div>
+
+    <div class="widget keyword-widget">
+      <div class="widget-header keyword-widget-header">
+        <span class="widget-title">Keywords</span>
+        <label class="keyword-search" for="keyword-search-input" aria-label="Search keywords">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg>
+          <input id="keyword-search-input" type="text" placeholder="Search any word" />
+        </label>
+      </div>
+      <div class="keyword-list" id="keyword-list"></div>
+      <div class="keyword-panel" id="keyword-definition" aria-live="polite">
+        <div class="keyword-panel-label">Definition</div>
+        <div class="keyword-panel-word">Tap a keyword</div>
+        <div class="keyword-panel-pronunciation">Pronunciation appears here</div>
+        <div class="keyword-panel-meaning">Pick a word above or type in the search field to filter the list.</div>
+      </div>
+    </div>
+
+    <div class="key-takeaways sidebar-key-takeaways">
+      <h4>Key takeaways</h4>
+      <ul id="sidebar-key-takeaways-list"></ul>
+    </div>
+  </aside>
+</div>
+
+<footer class="app-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">AjixPharmacy</div>
+    <div class="footer-links">
+      <a href="#" data-footer-topic="about">About</a>
+      <a href="#" data-footer-topic="privacy">Privacy</a>
+      <a href="#" data-footer-topic="terms">Terms</a>
+      <a href="#" data-footer-topic="contact">Contact</a>
+    </div>
+    <div class="footer-copy">2026 AjixPharmacy. All rights reserved.</div>
+  </div>
+</footer>
+<div id="footer-sheet-backdrop" class="footer-sheet-backdrop" aria-hidden="true"></div>
+<section id="footer-sheet" class="footer-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="footer-sheet-title">
+  <div class="footer-sheet-handle" aria-hidden="true"></div>
+  <div class="footer-sheet-header">
+    <div>
+      <div class="footer-sheet-kicker">AjixPharmacy</div>
+      <h2 id="footer-sheet-title" class="footer-sheet-title">About</h2>
+    </div>
+    <button id="footer-sheet-close" class="footer-sheet-close" type="button" aria-label="Close footer details">&times;</button>
+  </div>
+  <div id="footer-sheet-body" class="footer-sheet-body"></div>
+</section>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'ajix-news-story-v1';
+  const THEME_KEY = 'ajix-news-theme-v1';
+  const progressBar = document.getElementById('read-progress');
+  const backBtn = document.getElementById('news-back-btn');
+  const searchToggleBtn = document.getElementById('story-search-toggle');
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  const relatedToggleBtn = document.getElementById('related-toggle-btn');
+  const desktopSearchInput = document.querySelector('.nav-search input');
+  const mobileSearchPanel = document.getElementById('mobile-search-panel');
+  const mobileSearchInput = document.getElementById('mobile-search-input');
+  const mobileSearchCloseBtn = document.getElementById('mobile-search-close');
+  const mobilePanelRail = document.getElementById('mobile-panel-rail');
+  const mobilePanelOverlay = document.getElementById('mobile-panel-overlay');
+  const mobilePanelTitle = document.getElementById('mobile-panel-title');
+  const mobilePanelBody = document.getElementById('mobile-panel-body');
+  const mobilePanelCloseBtn = document.getElementById('mobile-panel-close');
+  const mobilePanelButtons = document.querySelectorAll('[data-mobile-panel-target]');
+  const likeBtn = document.getElementById('main-like');
+  const saveBtn = document.getElementById('main-save');
+  const shareBtn = document.getElementById('share-btn');
+  const articleHero = document.querySelector('.article-hero-image');
+  const storyOutlineWidget = document.querySelector('.sidebar-right .widget');
+  const storyKeywordsWidget = document.querySelector('.sidebar-right .keyword-widget');
+  const storyTakeawaysWidget = document.querySelector('.sidebar-right .sidebar-key-takeaways');
+  const articleCategory = document.querySelector('.article-category');
+  const articleTitle = document.querySelector('.article-title');
+  const articleSubtitle = document.querySelector('.article-subtitle');
+  const authorAvatar = document.querySelector('.author-avatar');
+  const authorName = document.querySelector('.author-name');
+  const authorRole = document.querySelector('.author-role');
+  const metaDetails = document.querySelector('.article-meta-details');
+  const articleBody = document.querySelector('.article-body');
+  const authorBioCard = document.querySelector('.author-bio-card');
+  const relatedGrid = document.querySelector('.related-grid');
+  const tocList = document.querySelector('.toc-list');
+  const articleTags = document.querySelector('.article-tags');
+  const reviewPanel = document.getElementById('news-review-panel');
+  const reviewTitle = document.getElementById('news-review-title');
+  const reviewNote = document.getElementById('news-review-note');
+  const reviewMeta = document.getElementById('news-review-meta');
+  const reviewPublishBtn = document.getElementById('news-review-publish');
+  const reviewRejectBtn = document.getElementById('news-review-reject');
+  const reviewUnpublishBtn = document.getElementById('news-review-unpublish');
+  const reviewConfirmModal = document.getElementById('news-review-confirm-modal');
+  const reviewConfirmTitle = document.getElementById('news-review-confirm-title');
+  const reviewConfirmMessage = document.getElementById('news-review-confirm-message');
+  const reviewConfirmCancel = document.getElementById('news-review-confirm-cancel');
+  const reviewConfirmSubmit = document.getElementById('news-review-confirm-submit');
+  let pendingReviewAction = '';
+  const tocItems = () => document.querySelectorAll('.toc-item');
+
+  const footerSheetBackdrop = document.getElementById('footer-sheet-backdrop');
+  const footerSheet = document.getElementById('footer-sheet');
+  const footerSheetCloseBtn = document.getElementById('footer-sheet-close');
+  const footerSheetTitle = document.getElementById('footer-sheet-title');
+  const footerSheetBody = document.getElementById('footer-sheet-body');
+  const footerSheetLinks = Array.from(document.querySelectorAll('[data-footer-topic]'));
+  const footerSheetContent = {
+    about: {
+      title: 'About AjixPharmacy',
+      body: '<p>AjixPharmacy uses the same polished story layout on the admin preview page so the preview feels consistent with the public reader view.</p><p>The footer sheet keeps the same lightweight pattern on desktop and mobile.</p>',
+    },
+    privacy: {
+      title: 'Privacy',
+      body: '<p>We keep this experience lightweight. Basic preferences such as theme and reading state may be stored locally on your device so the interface feels consistent when you return.</p><p>We do not use the footer sheets to collect personal information; they simply open the information you request.</p>',
+    },
+    terms: {
+      title: 'Terms',
+      body: '<p>Use the admin preview as a reading and review experience. Content is provided for editorial review and internal publishing workflow only.</p><h3>Quick notes</h3><ul><li>Share links responsibly.</li><li>Do not repost content without permission.</li><li>Check critical clinical information against official sources.</li></ul>',
+    },
+    contact: {
+      title: 'Contact',
+      body: '<p>If you need to reach the team, use the same contact details shown on the home page.</p><div class="footer-sheet-contact-list"><a class="footer-sheet-contact-btn" href="mailto:ajixpharmacy@gmail.com"><span>Email</span><span>ajixpharmacy@gmail.com</span></a><a class="footer-sheet-contact-btn" href="https://wa.me/233595597218" target="_blank" rel="noopener noreferrer"><span>WhatsApp</span><span>+233 595 597 218</span></a></div>',
+    },
+  };
+
+  function renderFooterSheet(topic = 'about') {
+    const entry = footerSheetContent[topic] || footerSheetContent.about;
+    if (footerSheetTitle) footerSheetTitle.textContent = entry.title;
+    if (footerSheetBody) footerSheetBody.innerHTML = entry.body;
+  }
+
+  function openFooterSheet(topic = 'about') {
+    renderFooterSheet(topic);
+    footerSheet?.classList.add('is-open');
+    footerSheetBackdrop?.classList.add('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'false');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('is-footer-sheet-open');
+  }
+
+  function closeFooterSheet() {
+    footerSheet?.classList.remove('is-open');
+    footerSheetBackdrop?.classList.remove('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'true');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('is-footer-sheet-open');
+  }
+
+
+  function slugify(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+  }
+
+  function loadThemePreference() {
+    try {
+      const stored = window.localStorage.getItem(THEME_KEY);
+      if (stored === 'dark' || stored === 'light') {
+        return stored;
+      }
+    } catch (error) {
+      void error;
+    }
+    return 'light';
+  }
+
+  function syncThemeToggle(theme) {
+    if (!themeToggleBtn) return;
+    const isDark = theme === 'dark';
+    themeToggleBtn.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggleBtn.setAttribute('title', isDark ? 'Light mode' : 'Dark mode');
+  }
+
+  function applyTheme(theme) {
+    const nextTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    syncThemeToggle(nextTheme);
+    try {
+      window.localStorage.setItem(THEME_KEY, nextTheme);
+    } catch (error) {
+      void error;
+    }
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || loadThemePreference();
+    applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  }
+
+  const NEWS_MASCOT_AVATAR_URL = '/images/app-logo.png?v=20260617-admin-avatar';
+
+  function getAvatarInitials(name = '', fallback = 'AJ') {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    return (parts.slice(0, 2).map((part) => part.charAt(0)).join('') || fallback).toUpperCase().slice(0, 2);
+  }
+
+  function isAjixpharmacyDesk(name = '') {
+    return String(name || '').trim().toLowerCase() === 'ajixpharmacy desk';
+  }
+
+  function setAvatarBackground(node, name = '', fallback = 'AJ') {
+    if (!node) return;
+    const useMascot = isAjixpharmacyDesk(name);
+    const initials = getAvatarInitials(name, fallback);
+    node.classList.toggle('avatar-image', useMascot);
+    node.style.backgroundImage = useMascot ? `url("${NEWS_MASCOT_AVATAR_URL}")` : '';
+    node.style.backgroundSize = useMascot ? 'contain' : '';
+    node.style.backgroundPosition = useMascot ? 'center' : '';
+    node.style.backgroundRepeat = useMascot ? 'no-repeat' : '';
+    node.style.backgroundColor = useMascot ? '#fff' : '';
+    node.textContent = useMascot ? '' : initials;
+  }
+
+  function getStoryLikeCount(story = {}) {
+    const meta = story?.meta || {};
+    return Math.max(
+      0,
+      Math.round(Number(story.likes ?? story.likesCount ?? story.likeCount ?? meta.likes ?? meta.likesCount ?? meta.likeCount ?? 0) || 0),
+    );
+  }
+
+  function formatLikeCount(value = 0) {
+    const likes = Math.max(0, Math.round(Number(value) || 0));
+    if (likes >= 1000000) {
+      const scaled = likes / 1000000;
+      return `${Number.isInteger(scaled) ? scaled.toFixed(0) : scaled.toFixed(1)}M`;
+    }
+    if (likes >= 1000) {
+      const scaled = likes / 1000;
+      return `${Number.isInteger(scaled) ? scaled.toFixed(0) : scaled.toFixed(1)}K`;
+    }
+    return String(likes);
+  }
+
+  function openMobileSearch() {
+    if (!mobileSearchPanel) return;
+    closeMobilePanel();
+    mobileSearchPanel.classList.add('is-open');
+    mobileSearchPanel.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => mobileSearchInput?.focus());
+  }
+
+  function closeMobileSearch() {
+    if (!mobileSearchPanel) return;
+    mobileSearchPanel.classList.remove('is-open');
+    mobileSearchPanel.setAttribute('aria-hidden', 'true');
+  }
+
+  function loadSavedState() {
+    try {
+      const raw = window.localStorage.getItem('ajix-news-saved-state-v1');
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function persistSavedState() {
+    try {
+      window.localStorage.setItem('ajix-news-saved-state-v1', JSON.stringify(storySavedState));
+    } catch (error) {
+      void error;
+    }
+  }
+
+  function getStoryStateKey() {
+    return activeStoryKey || slugify(story?.storyKey || story?.title || story?.id || '');
+  }
+
+  function ensureStoryState() {
+    const key = getStoryStateKey();
+    if (!key) return null;
+    if (!storySavedState[key] || typeof storySavedState[key] !== 'object') {
+      storySavedState[key] = { bookmarked: false, readLater: false };
+    }
+    return storySavedState[key];
+  }
+
+  function syncStoryActionButtons() {
+    const state = ensureStoryState() || { bookmarked: false, readLater: false };
+    likeBtn?.classList.toggle('liked', Boolean(state.readLater));
+    likeBtn?.setAttribute('aria-pressed', String(Boolean(state.readLater)));
+    saveBtn?.classList.toggle('saved', Boolean(state.bookmarked));
+    saveBtn?.setAttribute('aria-pressed', String(Boolean(state.bookmarked)));
+    const saveLabel = saveBtn?.querySelector('span');
+    if (saveLabel) {
+      saveLabel.textContent = state.bookmarked ? 'Saved' : 'Save';
+    }
+  }
+
+  function toggleStoryBookmark() {
+    const state = ensureStoryState();
+    if (!state) return;
+    state.bookmarked = !state.bookmarked;
+    if (!state.bookmarked && !state.readLater) {
+      delete storySavedState[getStoryStateKey()];
+    }
+    persistSavedState();
+    syncStoryActionButtons();
+  }
+
+  function toggleStoryReadLater() {
+    const state = ensureStoryState();
+    if (!state) return;
+    state.readLater = !state.readLater;
+    if (!state.bookmarked && !state.readLater) {
+      delete storySavedState[getStoryStateKey()];
+    }
+    persistSavedState();
+    syncStoryActionButtons();
+  }
+
+  function getRequestedNewsId() {
+    const params = new URLSearchParams(window.location.search);
+    return String(params.get('newsId') || '').trim();
+  }
+
+  function getRequestedReviewMode() {
+    const params = new URLSearchParams(window.location.search);
+    return Boolean(params.get('review') || params.get('newsId'));
+  }
+
+  function formatStoryDateTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return new Intl.DateTimeFormat('en', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(date);
+  }
+
+  function estimateReadTime(text = '') {
+    const words = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+    return `${Math.max(3, Math.ceil(words / 220))} min read`;
+  }
+
+  function getStoryAccent(category = '') {
+    const text = String(category || '').toLowerCase();
+    if (text.includes('medicine') || text.includes('clinical')) return { badge: 'var(--accent-red)', hero: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #60a5fa 100%)' };
+    if (text.includes('wellness')) return { badge: 'var(--accent-green)', hero: 'linear-gradient(135deg, #14532d 0%, #16a34a 48%, #86efac 100%)' };
+    if (text.includes('research')) return { badge: 'var(--accent-purple)', hero: 'linear-gradient(135deg, #5b21b6 0%, #9333ea 50%, #d8b4fe 100%)' };
+    if (text.includes('alert') || text.includes('concern')) return { badge: 'var(--accent-red)', hero: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 48%, #fecaca 100%)' };
+    return { badge: 'var(--accent-blue)', hero: 'linear-gradient(135deg, #0b3d2e 0%, #145a45 60%, #1a7a5e 100%)' };
+  }
+
+  function buildStoryBodyHtml(content = '') {
+    const text = String(content || '').trim();
+    if (!text) {
+      return '<p>This article has not been filled out yet.</p>';
+    }
+    if (/<[a-z][\s\S]*>/i.test(text)) {
+      return text;
+    }
+    return text
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  }
+
+  function buildStoryToc(content = '') {
+    const text = String(content || '').trim();
+    if (!text) {
+      return [{ id: 'toc-1', label: 'Overview' }];
+    }
+    const parts = text.split(/\n{2,}/).filter(Boolean);
+    return parts.slice(0, 4).map((_, index) => ({
+      id: `toc-${index + 1}`,
+      label: index === 0 ? 'Overview' : `Section ${index + 1}`,
+    }));
+  }
+
+  function buildStoryTakeaways(item = {}) {
+    const takeaways = [];
+    if (item.summary) takeaways.push(item.summary);
+    if (item.sourceName) takeaways.push(`Source: ${item.sourceName}`);
+    if (item.reviewNote) takeaways.push(item.reviewNote);
+    return takeaways.slice(0, 4);
+  }
+
+  function buildStoryFromNewsItem(item = {}) {
+    const title = String(item.title || item.headline || 'Story preview').trim();
+    const summary = String(item.summary || item.reviewNote || 'Preview the article exactly as it will appear to readers.').trim();
+    const content = String(item.content || item.body || '').trim();
+    const accent = getStoryAccent(item.category || '');
+    const sourceName = String(item.sourceName || item.publishedByName || '').trim();
+    const authorName = String(item.author || 'Ajixpharmacy Desk').trim();
+    const authorInitials = getAvatarInitials(authorName, 'AJ');
+    const likes = getStoryLikeCount(item);
+    const publishedLabel = formatStoryDateTime(item.publishedAt || item.sourcePublishedAt || item.updatedAt || item.createdAt || '');
+    return makeStory({
+      title,
+      category: formatNewsCategoryLabel(item.category || 'News'),
+      badge: formatNewsCategoryLabel(item.category || 'News'),
+      badgeColor: accent.badge,
+      subtitle: summary,
+      author: {
+        initials: authorInitials,
+        name: authorName,
+        role: sourceName || 'Admin review',
+      },
+      meta: {
+        date: publishedLabel || 'Review preview',
+        readTime: estimateReadTime(content || summary),
+        views: 'Preview mode',
+        source: sourceName,
+        likes,
+      },
+      likes,
+      sourceName,
+      heroLabel: item.imageAlt || `HERO IMAGE — ${title}`,
+      imageUrl: String(item.imageUrl || item.heroBackgroundImage || '').trim(),
+      imageAlt: String(item.imageAlt || title || '').trim(),
+      heroGradient: accent.hero,
+      tags: Array.isArray(item.tags) && item.tags.length ? item.tags.slice(0, 6) : [formatNewsCategoryLabel(item.category || 'News'), 'Review'],
+      toc: buildStoryToc(content || summary),
+      bodyHtml: buildStoryBodyHtml(content || summary),
+      takeaways: buildStoryTakeaways(item),
+      bio: String(item.reviewNote || 'This preview is pulled directly from the admin review queue.').trim(),
+      related: [],
+      storyKey: String(item.id || slugify(title)),
+    });
+  }
+
+  function syncReviewPanel() {
+    if (!reviewPanel) return;
+    if (!reviewMode) {
+      reviewPanel.hidden = true;
+      return;
+    }
+
+    reviewPanel.hidden = false;
+    const status = normalizeNewsStatusValue(reviewNewsItem?.status || 'pending_review');
+    const statusLabel = getNewsStatusLabel(status);
+    const reviewTitleText = reviewNewsItem?.title || story?.title || 'Review this article';
+    if (reviewTitle) reviewTitle.textContent = reviewTitleText;
+    if (reviewNote) {
+      reviewNote.textContent = reviewNewsItem
+        ? 'This preview uses the public story layout. Publish sends the article to the live feed, and reject keeps it out of circulation.'
+        : 'Loading the review preview...';
+    }
+    if (reviewMeta) {
+    reviewMeta.textContent = reviewNewsItem
+        ? `Status: ${statusLabel}${reviewNewsItem.sourceName ? ` · Source: ${reviewNewsItem.sourceName}` : ''} · Updated: ${formatStoryDateTime(reviewNewsItem.updatedAt || reviewNewsItem.createdAt || '') || 'Not set'}`
+        : 'Fetching article details from the review queue...';
+    }
+    const isPublished = status === 'published';
+    const locked = status === 'rejected' || !reviewNewsItem;
+    if (reviewPublishBtn) {
+      reviewPublishBtn.hidden = isPublished;
+      reviewPublishBtn.disabled = locked;
+    }
+    if (reviewRejectBtn) {
+      reviewRejectBtn.hidden = isPublished;
+      reviewRejectBtn.disabled = locked;
+    }
+    if (reviewUnpublishBtn) {
+      reviewUnpublishBtn.hidden = !isPublished;
+      reviewUnpublishBtn.disabled = !isPublished || !reviewNewsItem;
+    }
+  }
+
+  async function ensureReviewApiBase() {
+    const storedApiBase = window.localStorage.getItem('quizApiBase')?.trim();
+    const currentHost = String(window.location.hostname || '').trim();
+    const currentOrigin = String(window.location.origin || '').trim();
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(currentHost);
+    const inferredApiBase = isLocalHost ? 'http://localhost:4000/api' : 'https://api.ajixpharmacy.online/api';
+    const candidates = [
+      storedApiBase,
+      `${currentOrigin}/api`,
+      inferredApiBase,
+      !isLocalHost && currentHost ? `http://${currentHost}:4000/api` : '',
+      'http://localhost:4000/api',
+    ]
+      .map((value) => String(value || '').trim().replace(/\/+$/, ''))
+      .filter(Boolean);
+
+    for (const candidate of candidates) {
+      try {
+        const res = await fetch(`${candidate}/health`, { cache: 'no-store' });
+        if (res && res.ok) return candidate;
+      } catch (error) {
+        void error;
+      }
+    }
+    return candidates[0] || inferredApiBase;
+  }
+
+  const PUBLIC_NEWS_FEED_CACHE_KEY = 'ajix-news-public-feed-v1';
+
+  function loadCachedPublishedFeed() {
+    try {
+      const raw = window.localStorage.getItem(PUBLIC_NEWS_FEED_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function findCachedPublishedNewsItem(newsId = '') {
+    const safeId = String(newsId || '').trim();
+    if (!safeId) return null;
+    const requestedKey = slugify(safeId);
+    const feed = loadCachedPublishedFeed();
+    const items = Array.isArray(feed?.items) ? feed.items : [];
+    return items.find((item) => {
+      const itemId = String(item?.id || '').trim();
+      const itemKey = slugify(item?.storyKey || item?.title || item?.id || '');
+      return itemId === safeId || itemKey === requestedKey;
+    }) || null;
+  }
+
+  function getReviewHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'x-admin-key': window.localStorage.getItem('adminKey') || '',
+    };
+  }
+
+  async function loadReviewNewsItem(newsId = '') {
+    const safeId = String(newsId || '').trim();
+    if (!safeId) return null;
+    const apiBase = await ensureReviewApiBase();
+    const res = await fetch(`${apiBase}/admin/news/${encodeURIComponent(safeId)}`, {
+      headers: getReviewHeaders(),
+      cache: 'no-store',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to load the article for review');
+    }
+    return data.item || null;
+  }
+
+  async function loadPublishedNewsItem(newsId = '') {
+    const safeId = String(newsId || '').trim();
+    if (!safeId) return null;
+    try {
+      const apiBase = await ensureReviewApiBase();
+      const res = await fetch(`${apiBase}/news/${encodeURIComponent(safeId)}`, {
+        cache: 'no-store',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load the published article');
+      }
+      return data.item || null;
+    } catch (error) {
+      const cachedItem = findCachedPublishedNewsItem(safeId);
+      if (cachedItem) return cachedItem;
+      throw error;
+    }
+  }
+
+  async function applyReviewAction(action) {
+    if (!reviewNewsItem?.id) return;
+    const apiBase = await ensureReviewApiBase();
+    const endpointMap = {
+      publish: 'publish',
+      reject: 'reject',
+      unpublish: 'reject',
+    };
+    const endpoint = endpointMap[action];
+    if (!endpoint) return;
+
+    try {
+      if (reviewPublishBtn) reviewPublishBtn.disabled = true;
+      if (reviewRejectBtn) reviewRejectBtn.disabled = true;
+      if (reviewUnpublishBtn) reviewUnpublishBtn.disabled = true;
+      const res = await fetch(`${apiBase}/admin/news/${encodeURIComponent(reviewNewsItem.id)}/${endpoint}`, {
+        method: 'POST',
+        headers: getReviewHeaders(),
+        cache: 'no-store',
+        body: JSON.stringify({ reviewNote: reviewNewsItem.reviewNote || '' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to ${action} the article`);
+      }
+      window.location.href = './news-studio.html';
+    } catch (error) {
+      if (reviewNote) {
+        reviewNote.textContent = `Could not ${action} the article: ${error.message}`;
+      }
+      syncReviewPanel();
+    }
+  }
+
+  function stripHtmlText(html) {
+    return String(html || '').replace(/<[^>]*>/g, ' ');
+  }
+
+  const ARTICLE_KEYWORD_STOP_WORDS = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'has', 'have', 'how', 'in', 'into', 'is', 'it', 'its',
+    'may', 'more', 'new', 'of', 'on', 'or', 'our', 'that', 'the', 'their', 'this', 'to', 'was', 'we', 'were', 'what', 'when',
+    'where', 'who', 'with', 'within', 'will', 'you', 'your', 'after', 'before', 'than', 'then', 'over', 'under', 'about',
+    'can', 'could', 'should', 'would', 'while', 'through', 'between', 'also', 'there', 'them', 'they', 'those', 'these',
+  ]);
+
+  function collectStoryKeywordText(story) {
+    return [
+      story?.title,
+      story?.subtitle,
+      stripHtmlText(story?.body),
+      ...(Array.isArray(story?.takeaways) ? story.takeaways : []),
+      ...(Array.isArray(story?.tags) ? story.tags : []),
+      story?.category,
+      story?.source,
+    ].filter(Boolean).join(' ');
+  }
+
+  function buildArticleKeywordItems(story) {
+    const text = collectStoryKeywordText(story);
+    const words = text.match(/[A-Za-z0-9][A-Za-z0-9'-]*/g) || [];
+    const counts = new Map();
+    const displayTerms = new Map();
+    const items = [];
+    const seen = new Set();
+    const addItem = (term) => {
+      const cleaned = String(term || '').trim();
+      if (!cleaned) return;
+      const normalized = cleaned.toLowerCase();
+      if (seen.has(normalized)) return;
+      seen.add(normalized);
+      items.push({ term: cleaned });
+    };
+
+    (Array.isArray(story?.tags) ? story.tags : [])
+      .map((tag) => String(tag || '').trim())
+      .filter(Boolean)
+      .forEach(addItem);
+
+    words.forEach((raw) => {
+      const cleaned = String(raw || '').trim().replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
+      if (!cleaned) return;
+      const normalized = cleaned.toLowerCase();
+      if (ARTICLE_KEYWORD_STOP_WORDS.has(normalized)) return;
+      if (normalized.length < 3 && !/\d/.test(normalized)) return;
+      counts.set(normalized, (counts.get(normalized) || 0) + 1);
+      if (!displayTerms.has(normalized)) displayTerms.set(normalized, cleaned);
+    });
+    Array.from(counts.entries())
+      .sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1];
+        return a[0].localeCompare(b[0]);
+      })
+      .slice(0, 12)
+      .map(([key]) => displayTerms.get(key) || key)
+      .forEach(addItem);
+    return items.slice(0, 12);
+  }
+
+  const mobilePanelRegistry = {
+    toc: { title: 'In this article', element: storyOutlineWidget },
+    keywords: { title: 'Keywords', element: storyKeywordsWidget },
+    takeaways: { title: 'Key takeaways', element: storyTakeawaysWidget },
+  };
+  const mobilePanelHomes = new Map();
+  let activeMobilePanelKey = '';
+  let relatedExpanded = false;
+
+  function storePanelHome(node) {
+    if (!node || mobilePanelHomes.has(node)) return;
+    mobilePanelHomes.set(node, {
+      parent: node.parentNode,
+      nextSibling: node.nextSibling,
+    });
+  }
+
+  function restorePanelNode(node) {
+    const home = mobilePanelHomes.get(node);
+    if (!home || !home.parent) return;
+    if (home.nextSibling && home.nextSibling.parentNode === home.parent) {
+      home.parent.insertBefore(node, home.nextSibling);
+      return;
+    }
+    home.parent.appendChild(node);
+  }
+
+  function openMobilePanel(key) {
+    const panel = mobilePanelRegistry[key];
+    if (!panel || !panel.element || !mobilePanelOverlay || !mobilePanelBody) return;
+    if (activeMobilePanelKey === key && mobilePanelOverlay.classList.contains('is-open')) return;
+    closeMobileSearch();
+    if (activeMobilePanelKey) closeMobilePanel();
+    storePanelHome(panel.element);
+    mobilePanelBody.replaceChildren(panel.element);
+    mobilePanelTitle.textContent = panel.title;
+    mobilePanelOverlay.classList.add('is-open');
+    mobilePanelOverlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('mobile-panel-open');
+    activeMobilePanelKey = key;
+  }
+
+  function closeMobilePanel() {
+    if (!mobilePanelOverlay) return;
+    const panel = activeMobilePanelKey ? mobilePanelRegistry[activeMobilePanelKey] : null;
+    if (panel?.element) restorePanelNode(panel.element);
+    activeMobilePanelKey = '';
+    mobilePanelOverlay.classList.remove('is-open');
+    mobilePanelOverlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('mobile-panel-open');
+  }
+
+  const keywordSearchInput = document.getElementById('keyword-search-input');
+  const keywordList = document.getElementById('keyword-list');
+  const keywordDefinition = document.getElementById('keyword-definition');
+  const KEYWORD_LIBRARY = [
+    { term: 'GLP-1', pronunciation: 'gee-el-pee one', meaning: 'A hormone-based pathway used in diabetes medicines to help lower blood sugar and reduce appetite.', aliases: ['glp-1', 'glp1'], categories: ['medicine'] },
+    { term: 'Type 2 diabetes', pronunciation: 'type two dye-uh-bee-teez', meaning: 'A chronic condition where the body does not use insulin effectively and blood sugar rises.', aliases: ['type 2 diabetes', 'diabetes'], categories: ['medicine'] },
+    { term: 'HbA1c', pronunciation: 'aitch-bee-ay one see', meaning: 'A blood test that shows average blood sugar control over about three months.', aliases: ['hba1c', 'a1c'], categories: ['medicine'] },
+    { term: 'Metformin', pronunciation: 'met-for-min', meaning: 'A long-used diabetes medicine that helps lower glucose and improve insulin sensitivity.', aliases: ['metformin'], categories: ['medicine'] },
+    { term: 'Semaglutide', pronunciation: 'seh-mah-gloo-tide', meaning: 'A GLP-1 medicine often used for blood sugar control and weight management.', aliases: ['semaglutide'], categories: ['medicine'] },
+    { term: 'Orforglipron', pronunciation: 'or-for-glip-ron', meaning: 'An oral GLP-1 medicine designed as a tablet option for type 2 diabetes.', aliases: ['orforglipron'], categories: ['medicine'] },
+    { term: 'Endocrinology', pronunciation: 'en-doh-krih-nol-uh-jee', meaning: 'The branch of medicine that studies hormones and hormone-producing glands.', aliases: ['endocrinology'], categories: ['medicine'] },
+    { term: 'Clinical trial', pronunciation: 'klin-i-kul try-uhl', meaning: 'A research study that tests whether a treatment works and how safe it is.', aliases: ['clinical trial', 'clinical trials', 'trial', 'trials'], categories: ['medicine', 'research'] },
+    { term: 'Placebo', pronunciation: 'pluh-see-boh', meaning: 'An inactive comparison treatment used in studies to measure the real effect of a drug.', aliases: ['placebo'], categories: ['medicine', 'research'] },
+    { term: 'Remission', pronunciation: 'rih-mish-uhn', meaning: 'A period when disease signs or symptoms become much better or disappear.', aliases: ['remission'], categories: ['medicine', 'research'] },
+    { term: 'Variants', pronunciation: 'vair-ee-ants', meaning: 'Different forms of a virus or organism that may spread or behave differently.', aliases: ['variants', 'variant'], categories: ['public health'] },
+    { term: 'Preparedness', pronunciation: 'pri-paird-ness', meaning: 'The planning and systems needed to respond quickly to a health emergency.', aliases: ['preparedness'], categories: ['public health'] },
+    { term: 'Guidance', pronunciation: 'guy-dens', meaning: 'Official advice or recommendations used to shape practice.', aliases: ['guidance'], categories: ['public health', 'medicine'] },
+    { term: 'Biomarker', pronunciation: 'bye-oh-mar-ker', meaning: 'A measurable sign in the body that helps show disease activity or response to treatment.', aliases: ['biomarker', 'biomarkers'], categories: ['research', 'medicine'] },
+    { term: 'CRISPR', pronunciation: 'kris-per', meaning: 'A gene-editing tool used to target DNA with precision.', aliases: ['crispr'], categories: ['research'] },
+    { term: 'Gene editing', pronunciation: 'jeen ed-it-ing', meaning: 'A method that changes DNA at specific points to alter how genes work.', aliases: ['gene editing'], categories: ['research'] },
+    { term: 'Cardiovascular', pronunciation: 'kar-dee-oh-vas-kyuh-ler', meaning: 'Related to the heart and blood vessels.', aliases: ['cardiovascular', 'heart'], categories: ['wellness', 'medicine'] },
+    { term: 'Nutrition', pronunciation: 'new-trih-shun', meaning: 'The food and nutrients that support health and body function.', aliases: ['nutrition', 'diet'], categories: ['wellness'] },
+    { term: 'Adherence', pronunciation: 'ad-heer-ence', meaning: 'How consistently a person follows a treatment plan or routine.', aliases: ['adherence'], categories: ['medicine', 'wellness'] },
+    { term: 'Pharmacy', pronunciation: 'far-muh-see', meaning: 'The place where medicines are prepared, dispensed, and explained to patients.', aliases: ['pharmacy'], categories: ['medicine'] },
+  ];
+  let keywordItems = [];
+  let activeKeywordTerm = '';
+  let keywordQuery = '';
+  let activeStoryKey = '';
+  let story = null;
+  const storyReviewEnabled = true;
+  let reviewMode = false;
+  let reviewNewsItem = null;
+  let storySavedState = loadSavedState();
+
+  function normalizeKeywordQuery(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function keywordMatchesStory(entry, story) {
+    const storyText = [
+      story?.title,
+      story?.subtitle,
+      story?.category,
+      story?.badge,
+      ...(Array.isArray(story?.tags) ? story.tags : []),
+    ].join(' ').toLowerCase();
+    return entry.aliases.some((alias) => storyText.includes(alias)) || entry.categories.includes(String(story?.category || '').toLowerCase());
+  }
+
+  function buildFallbackPronunciation(term) {
+    const cleaned = String(term || '').trim();
+    if (!cleaned) return '';
+    return cleaned
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/([A-Za-z])([0-9])/g, '$1 $2')
+      .replace(/([0-9])([A-Za-z])/g, '$1 $2')
+      .split(/[\s-]+/)
+      .filter(Boolean)
+      .map((segment) => {
+        const letters = segment.replace(/[^A-Za-z0-9']/g, '');
+        if (!letters) return '';
+        if (/^[0-9]+$/.test(letters)) return letters.split('').join('-');
+        const syllables = letters.match(/[^aeiouy]*[aeiouy]+(?:[^aeiouy]*(?=[aeiouy]|$))?/gi) || [letters];
+        return syllables.map((syllable) => syllable.toLowerCase()).join('-');
+      })
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  function buildFallbackMeaning(term) {
+    const cleanTerm = String(term || '').trim();
+    const lower = cleanTerm.toLowerCase();
+    if (!cleanTerm) return '';
+    if (/itis$/.test(lower)) return 'Usually refers to inflammation of the tissue named by the root word.';
+    if (/ology$/.test(lower)) return 'Usually means the study of the subject named by the root word.';
+    if (/emia$/.test(lower)) return 'Usually refers to a condition involving the blood.';
+    if (/osis$/.test(lower)) return 'Usually refers to a condition, process, or state, often an abnormal one.';
+    if (/phobia$/.test(lower)) return 'Usually means an abnormal fear of the named subject.';
+    if (/ectomy$/.test(lower)) return 'Usually means surgical removal of the named body part or tissue.';
+    if (/graph(?:y)?$/.test(lower)) return 'Usually refers to writing, recording, or describing something.';
+    if (/meter$/.test(lower)) return 'Usually refers to a device or method for measuring something.';
+    return 'A quick fallback explanation for the typed term until the dictionary result loads.';
+  }
+
+  const DICTIONARY_API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+  const dictionaryLookupCache = new Map();
+  let dictionaryLookupToken = 0;
+  let dictionaryLookupTimer = null;
+
+  function getSavedKeywordEntry(term) {
+    void term;
+    return null;
+  }
+
+  function resolveKeywordEntry(term) {
+    const needle = String(term || '').trim().toLowerCase();
+    if (!needle) return null;
+    return keywordItems.find((entry) => entry.term.toLowerCase() === needle) || null;
+  }
+
+  function buildDictionaryEntryFromApi(entry, requestedTerm) {
+    const phonetic = entry?.phonetic || (Array.isArray(entry?.phonetics) ? entry.phonetics.find((item) => item?.text)?.text : '') || '';
+    const meaningRecord = Array.isArray(entry?.meanings) ? entry.meanings[0] : null;
+    const definition = Array.isArray(meaningRecord?.definitions) ? meaningRecord.definitions[0]?.definition : '';
+    const meaning = definition
+      ? `${meaningRecord?.partOfSpeech ? `${meaningRecord.partOfSpeech}: ` : ''}${definition}`
+      : 'Definition available from the dictionary.';
+    return {
+      term: entry?.word || requestedTerm,
+      pronunciation: phonetic || buildFallbackPronunciation(entry?.word || requestedTerm) || String(requestedTerm || '').toLowerCase(),
+      meaning,
+      aliases: [String(requestedTerm || '').toLowerCase()],
+      categories: ['search'],
+      source: 'dictionary',
+    };
+  }
+
+  async function lookupDictionaryEntry(term) {
+    const needle = normalizeKeywordQuery(term);
+    if (!needle) return null;
+    if (dictionaryLookupCache.has(needle)) return dictionaryLookupCache.get(needle);
+    try {
+      const response = await fetch(`${DICTIONARY_API_BASE}${encodeURIComponent(needle)}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      const firstEntry = Array.isArray(data) ? data[0] : null;
+      if (!firstEntry) return null;
+      const result = buildDictionaryEntryFromApi(firstEntry, term);
+      dictionaryLookupCache.set(needle, result);
+      return result;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function showKeywordDefinition(term) {
+    const cleanTerm = normalizeKeywordQuery(term);
+    if (!keywordDefinition) return;
+    if (!cleanTerm) {
+      renderKeywordDefinition(resolveKeywordEntry(activeKeywordTerm) || null);
+      return;
+    }
+
+    const currentToken = ++dictionaryLookupToken;
+    renderKeywordDefinition({
+      term: cleanTerm,
+      pronunciation: 'Searching dictionary...',
+      meaning: 'Looking up a real dictionary definition.',
+    });
+
+    const apiResult = await lookupDictionaryEntry(cleanTerm);
+    if (currentToken !== dictionaryLookupToken) return;
+
+    renderKeywordDefinition(apiResult || {
+      term: cleanTerm,
+      pronunciation: buildFallbackPronunciation(cleanTerm) || cleanTerm,
+      meaning: 'No dictionary entry found for this word.',
+    });
+  }
+
+  function queueKeywordLookup(term) {
+    window.clearTimeout(dictionaryLookupTimer);
+    dictionaryLookupTimer = window.setTimeout(() => {
+      showKeywordDefinition(term);
+    }, 220);
+  }
+
+  function buildKeywordItems(story) {
+    return buildArticleKeywordItems(story);
+  }
+
+  function getKeywordEntry(term) {
+    const needle = String(term || '').trim().toLowerCase();
+    if (!needle) return null;
+    return keywordItems.find((entry) => entry.term.toLowerCase() === needle) || null;
+  }
+
+  function renderKeywordDefinition(entry) {
+    if (!keywordDefinition) return;
+    if (!entry) {
+      keywordDefinition.innerHTML = `
+        <div class="keyword-panel-label">Definition</div>
+        <div class="keyword-panel-word">No keyword selected</div>
+        <div class="keyword-panel-pronunciation">Tap a word to view it here</div>
+        <div class="keyword-panel-meaning">Use the search bar to narrow the list, then tap a keyword for its short glossary note.</div>
+      `;
+      return;
+    }
+
+    keywordDefinition.innerHTML = `
+      <div class="keyword-panel-label">Definition</div>
+      <div class="keyword-panel-word">${escapeHtml(entry.term)}</div>
+      <div class="keyword-panel-pronunciation">${escapeHtml(entry.pronunciation)}</div>
+      <div class="keyword-panel-meaning">${escapeHtml(entry.meaning)}</div>
+    `;
+  }
+
+  function renderKeywordList() {
+    if (!keywordList) return;
+    const query = normalizeKeywordQuery(keywordQuery);
+    const entries = query
+      ? keywordItems.filter((entry) => entry.term.toLowerCase().includes(query))
+      : keywordItems.slice();
+
+    if (!entries.length) {
+      keywordList.innerHTML = '<div class="keyword-empty">No article keywords match this story.</div>';
+      return;
+    }
+
+    if (!entries.some((entry) => entry.term.toLowerCase() === activeKeywordTerm.toLowerCase())) {
+      activeKeywordTerm = entries[0].term;
+    }
+
+    keywordList.innerHTML = entries
+      .map((entry) => `
+        <button type="button" class="keyword-chip${entry.term.toLowerCase() === activeKeywordTerm.toLowerCase() ? ' active' : ''}" data-keyword-term="${escapeHtml(entry.term)}">
+          ${escapeHtml(entry.term)}
+        </button>
+      `)
+      .join('');
+  }
+
+  function setKeywordSelection(term) {
+    const value = String(term || '').trim();
+    if (!value) return;
+    activeKeywordTerm = value;
+    renderKeywordList();
+    showKeywordDefinition(value);
+  }
+
+  function updateKeywordWidget(story) {
+    keywordItems = buildKeywordItems(story);
+    keywordQuery = '';
+    activeKeywordTerm = keywordItems[0]?.term || '';
+    if (keywordSearchInput) keywordSearchInput.value = '';
+    renderKeywordList();
+    if (activeKeywordTerm) {
+      showKeywordDefinition(activeKeywordTerm);
+    } else {
+      renderKeywordDefinition(null);
+    }
+  }
+
+  function storyKey(title) {
+    return slugify(title);
+  }
+
+  function makeStory(data) {
+    return data;
+  }
+
+  const STORY_LIBRARY = {
+    [storyKey('FDA approves novel oral GLP-1 drug for type 2 diabetes in landmark decision')]: makeStory({
+      title: 'FDA approves novel oral GLP-1 drug for type 2 diabetes in landmark decision',
+      category: 'Medicine',
+      badge: 'Breaking',
+      badgeColor: '#dc2626',
+      subtitle: 'The first oral non-peptide GLP-1 approval could widen access for patients who want the benefits of the class without injections.',
+      author: { initials: 'SC', name: 'Dr. Sarah Chen', role: 'Endocrinology Editor' },
+      meta: { date: 'Aug 21, 2026', readTime: '8 min read', views: '1.2M views', source: 'Reuters' },
+      heroLabel: 'HERO IMAGE - GLP-1 Clinical Trial',
+      heroGradient: 'linear-gradient(135deg, #0b3d2e 0%, #145a45 60%, #1a7a5e 100%)',
+      tags: ['Diabetes', 'GLP-1', 'FDA Approval', 'Oral Medication'],
+      toc: [
+        { id: 'toc-1', label: 'What regulators reviewed' },
+        { id: 'toc-2', label: 'Why the oral form matters' },
+        { id: 'toc-3', label: 'What patients can expect next' },
+      ],
+      bodyHtml: `
+        <p>The U.S. Food and Drug Administration has approved an oral GLP-1 treatment for adults with type 2 diabetes, marking a major step forward for people who have delayed injectable therapy because of needle aversion or treatment complexity.</p>
+        <p>The approval matters because it gives clinicians another way to approach the same metabolic pathway that has transformed diabetes care over the past several years, but in a format many patients may find easier to start and sustain.</p>
+        <h2 id="toc-1">What regulators reviewed</h2>
+        <p>The decision was supported by late-stage trial data showing meaningful glucose lowering and weight loss, with safety signals that remained in line with the GLP-1 class. Regulators focused on efficacy, tolerability, and whether an oral delivery method could maintain consistent exposure across a broad patient population.</p>
+        <p>The final label also reflects the usual class warnings and the need for careful selection in patients with specific thyroid histories or prior intolerances.</p>
+        <h2 id="toc-2">Why the oral form matters</h2>
+        <p>For many adults living with diabetes, the barrier has never been the science. It has been the routine: injections, storage, timing, and the psychological weight of starting a therapy that feels more severe than a tablet.</p>
+        <blockquote class="article-blockquote">An oral option can change how early people accept treatment, how quickly they stay on it, and how comfortably clinicians can move from lifestyle care to pharmacologic support.<cite>Dr. Sarah Chen, Stanford Medicine</cite></blockquote>
+        <h2 id="toc-3">What patients can expect next</h2>
+        <p>Pharmacies are expected to receive the first shipments soon, while prescribers begin sorting which patients should start with the new tablet versus remain on established injectables. The biggest near-term impact may be access, not novelty, because simpler dosing often leads to faster adoption.</p>
+      `,
+      takeaways: [
+        'First oral non-peptide GLP-1 approval for type 2 diabetes',
+        'May improve treatment acceptance for injection-averse patients',
+        'Safety profile remains in the known GLP-1 class range',
+        'Could shift early prescribing habits in primary care and endocrinology',
+      ],
+      bio: 'Board-certified endocrinologist and AjixPharmacy medicine editor. She translates clinical trial data into practical care guidance for pharmacists and patients.',
+      related: [
+        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
+        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
+      ],
+    }),
+    [storyKey('WHO updates pandemic preparedness guidance as new variants spread')]: makeStory({
+      title: 'WHO updates pandemic preparedness guidance as new variants spread',
+      category: 'Trending',
+      badge: 'Alert',
+      badgeColor: '#7c3aed',
+      subtitle: 'The revised playbook tightens response timelines, hospital coordination, and reporting standards for regional health systems.',
+      author: { initials: 'WH', name: 'Maya Patel', role: 'Public Health Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '820K views', source: 'BBC Health' },
+      heroLabel: 'HERO IMAGE - Pandemic Response',
+      heroGradient: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #2563eb 100%)',
+      tags: ['Pandemic', 'Public Health', 'WHO', 'Preparedness'],
+      toc: [
+        { id: 'toc-1', label: 'What changed in the guidance' },
+        { id: 'toc-2', label: 'How hospitals are expected to respond' },
+        { id: 'toc-3', label: 'Why timing matters' },
+      ],
+      bodyHtml: `
+        <p>The World Health Organization has refreshed its pandemic preparedness guidance as new variants continue to circulate, with a sharper emphasis on speed, communication, and local coordination.</p>
+        <p>The update is designed to help health systems avoid the delays that made early response so difficult during previous waves. It also gives ministries and hospitals a clearer escalation path when case numbers begin to climb.</p>
+        <h2 id="toc-1">What changed in the guidance</h2>
+        <p>The revision places greater weight on early warning signals, faster data sharing, and public messaging that can be activated before hospitals become overwhelmed. It also encourages regional drills rather than one-off emergency planning.</p>
+        <h2 id="toc-2">How hospitals are expected to respond</h2>
+        <p>Facilities are being asked to review staffing patterns, oxygen reserves, triage protocols, and isolation capacity. The message is simple: preparedness is less about panic and more about a repeatable operating rhythm.</p>
+        <blockquote class="article-blockquote">Prepared systems reduce confusion, and confusion is often the first thing that hurts patients during a fast-moving outbreak.<cite>World Health Desk analysis</cite></blockquote>
+        <h2 id="toc-3">Why timing matters</h2>
+        <p>Variants do not wait for committees. The earlier a response plan is activated, the less likely routine care gets overwhelmed. That is why the update stresses immediate alignment between laboratories, public health teams, and front-line clinicians.</p>
+      `,
+      takeaways: [
+        'WHO guidance now emphasizes faster escalation and clearer reporting',
+        'Hospitals are being pushed toward repeatable preparedness drills',
+        'Early warning and communication now sit at the center of response planning',
+        'The changes aim to reduce confusion before case surges peak',
+      ],
+      bio: 'Public health reporter covering cross-border disease preparedness, hospital operations, and outbreak policy.',
+      related: [
+        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
+        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
+        { key: storyKey('WHO updates pandemic preparedness guidelines for 2026'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidelines for 2026', meta: 'BBC Health · 4 min read' },
+        { key: storyKey('CRISPR therapy achieves sustained remission in sickle cell trial'), tag: 'Research', title: 'CRISPR therapy achieves sustained remission in sickle cell trial', meta: 'Nature Medicine · 8 min read' },
+      ],
+    }),
+    [storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation')]: makeStory({
+      title: 'AI model predicts drug interactions with 94% accuracy in clinical validation',
+      category: 'Research',
+      badge: 'Insight',
+      badgeColor: '#111827',
+      subtitle: 'Researchers say the system could help pharmacists and prescribers flag risky combinations earlier in the prescribing workflow.',
+      author: { initials: 'ML', name: 'Marcus Lee', role: 'Clinical AI Correspondent' },
+      meta: { date: 'Aug 21, 2026', readTime: '7 min read', views: '640K views', source: 'Stanford Medicine' },
+      heroLabel: 'HERO IMAGE - Drug Interaction Model',
+      heroGradient: 'linear-gradient(135deg, #111827 0%, #312e81 55%, #4f46e5 100%)',
+      tags: ['AI in Medicine', 'Drug Safety', 'Clinical Validation', 'Research'],
+      toc: [
+        { id: 'toc-1', label: 'What the model was trained on' },
+        { id: 'toc-2', label: 'Where it may help clinicians' },
+        { id: 'toc-3', label: 'What still needs validation' },
+      ],
+      bodyHtml: `
+        <p>A transformer-based model trained on millions of drug-pair records is showing promise as a safety layer for prescribers who need to assess interactions quickly during a busy clinic day.</p>
+        <p>The result is not about replacing pharmacists. It is about giving them a smarter first pass that can flag combinations worth a second look before a prescription is finalized.</p>
+        <h2 id="toc-1">What the model was trained on</h2>
+        <p>The system learned from large clinical and pharmacovigilance datasets that reflect how medications are actually used together, not just how they look in isolated trials. That context appears to be what gives the model its edge.</p>
+        <h2 id="toc-2">Where it may help clinicians</h2>
+        <p>Researchers envision the tool sitting inside electronic health records, pharmacy platforms, and discharge workflows, where it can alert teams to interactions in seconds rather than after the fact.</p>
+        <h2 id="toc-3">What still needs validation</h2>
+        <p>Before clinical rollout, the model needs broader testing across different health systems and patient populations. The team is also studying how often the alerts are useful versus noisy in real-world practice.</p>
+      `,
+      takeaways: [
+        'Model showed strong validation performance on drug-pair records',
+        'Could act as a safety net in EHR and pharmacy workflows',
+        'Needs broader testing across multiple systems before rollout',
+        'Best used as decision support, not as a replacement for clinical judgment',
+      ],
+      bio: 'Clinical AI correspondent covering applied machine learning, digital medicine, and workflow automation.',
+      related: [
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+        { key: storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans'), tag: 'Research', title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans', meta: 'NEJM · 7 min read' },
+        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
+        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
+      ],
+    }),
+    [storyKey('New antibiotic class shows promise against resistant superbugs')]: makeStory({
+      title: 'New antibiotic class shows promise against resistant superbugs',
+      category: 'Medicine',
+      badge: 'Medicine',
+      badgeColor: '#2563eb',
+      subtitle: 'Early preclinical data suggest a novel compound may help curb bacteria that have become difficult to treat with existing options.',
+      author: { initials: 'PN', name: 'Priya Nair', role: 'Infectious Disease Editor' },
+      meta: { date: 'Aug 21, 2026', readTime: '6 min read', views: '730K views', source: 'The Lancet' },
+      heroLabel: 'HERO IMAGE - Antibiotic Research',
+      heroGradient: 'linear-gradient(135deg, #0f766e 0%, #0f766e 50%, #115e59 100%)',
+      tags: ['Antibiotics', 'Superbugs', 'Research', 'Medicine'],
+      toc: [
+        { id: 'toc-1', label: 'Why the class is different' },
+        { id: 'toc-2', label: 'Where resistance has been strongest' },
+        { id: 'toc-3', label: 'What comes before human use' },
+      ],
+      bodyHtml: `
+        <p>Scientists are reporting encouraging activity from a new antibiotic class aimed at bacterial targets that have become difficult for older drugs to reach.</p>
+        <p>The goal is not simply to create another antibiotic. It is to outmaneuver organisms that have learned to evade the medicines clinicians already rely on.</p>
+        <h2 id="toc-1">Why the class is different</h2>
+        <p>The molecule appears to act on the ribosome in a way that makes bacterial escape harder, which may help preserve activity against strains that have already shrugged off several common therapies.</p>
+        <h2 id="toc-2">Where resistance has been strongest</h2>
+        <p>Researchers are focusing on MRSA and carbapenem-resistant pathogens, two categories where treatment choices can shrink quickly once standard regimens fail.</p>
+        <h2 id="toc-3">What comes before human use</h2>
+        <p>The next milestone is toxicology, manufacturing stability, and human safety studies. Until then, the story is promising but still early.</p>
+      `,
+      takeaways: [
+        'A new mechanism may help address hard-to-treat resistant bacteria',
+        'Preclinical results are encouraging but still early',
+        'Human safety studies are the next major milestone',
+        'Resistance remains the central challenge in antibiotic development',
+      ],
+      bio: 'Infectious disease editor covering antimicrobial resistance, hospital stewardship, and vaccine research.',
+      related: [
+        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
+        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
+        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
+        { key: storyKey('WHO updates pandemic preparedness guidelines for 2026'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidelines for 2026', meta: 'BBC Health · 4 min read' },
+      ],
+    }),
+    [storyKey('Mediterranean diet scores another win for cognitive decline prevention')]: makeStory({
+      title: 'Mediterranean diet scores another win for cognitive decline prevention',
+      category: 'Wellness',
+      badge: 'Wellness',
+      badgeColor: '#16a34a',
+      subtitle: 'A large meta-analysis adds more weight to the idea that eating patterns can meaningfully affect long-term brain health.',
+      author: { initials: 'NB', name: 'Naomi Brooks', role: 'Nutrition Editor' },
+      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '510K views', source: 'Mayo Clinic' },
+      heroLabel: 'HERO IMAGE - Nutrition and Brain Health',
+      heroGradient: 'linear-gradient(135deg, #134e4a 0%, #059669 60%, #22c55e 100%)',
+      tags: ['Nutrition', 'Brain Health', 'Wellness', 'Prevention'],
+      toc: [
+        { id: 'toc-1', label: 'What the analysis found' },
+        { id: 'toc-2', label: 'Why diet matters for cognition' },
+        { id: 'toc-3', label: 'How to make it practical' },
+      ],
+      bodyHtml: `
+        <p>Another large review is strengthening the connection between Mediterranean-style eating and lower risk of cognitive decline over time.</p>
+        <p>The message is familiar, but the evidence keeps getting harder to ignore: consistent dietary patterns appear to matter more than single superfoods.</p>
+        <h2 id="toc-1">What the analysis found</h2>
+        <p>Participants who stuck closest to the pattern had better cognitive outcomes in the long run, especially when the diet was paired with routine physical activity and adequate sleep.</p>
+        <h2 id="toc-2">Why diet matters for cognition</h2>
+        <p>Researchers think the benefit comes from lower inflammation, improved cardiometabolic health, and steadier blood sugar control, all of which may help protect the brain.</p>
+        <h2 id="toc-3">How to make it practical</h2>
+        <p>Swaps like olive oil for butter, beans for processed sides, and fish for red meat are small enough to keep, but meaningful enough to move the needle over time.</p>
+      `,
+      takeaways: [
+        'Mediterranean-style eating continues to show cognitive benefits',
+        'The pattern likely helps through cardiovascular and inflammatory pathways',
+        'Small food swaps are easier to sustain than extreme diet changes',
+        'Sleep and activity still matter alongside nutrition',
+      ],
+      bio: 'Nutrition editor focused on lifestyle medicine, prevention, and practical habit change.',
+      related: [
+        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
+        { key: storyKey('Sleep quality linked to cardiovascular risk in new 10-year study'), tag: 'Wellness', title: 'Sleep quality linked to cardiovascular risk in new 10-year study', meta: 'Harvard Health · 5 min read' },
+        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
+        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
+      ],
+    }),
+    [storyKey('Pharmacists warn of shortages in common blood pressure medications')]: makeStory({
+      title: 'Pharmacists warn of shortages in common blood pressure medications',
+      category: 'Trending',
+      badge: 'Alert',
+      badgeColor: '#dc2626',
+      subtitle: 'Supply issues are affecting lisinopril and amlodipine availability in a growing share of pharmacies.',
+      author: { initials: 'AJ', name: 'Ajixpharmacy Desk', role: 'Pharmacy News Editor' },
+      meta: { date: 'Aug 21, 2026', readTime: '3 min read', views: '860K views', source: 'AJHP' },
+      heroLabel: 'HERO IMAGE - Pharmacy Supply Chain',
+      heroGradient: 'linear-gradient(135deg, #7c2d12 0%, #dc2626 55%, #f97316 100%)',
+      tags: ['Shortage', 'Blood Pressure', 'Pharmacy', 'Alert'],
+      toc: [
+        { id: 'toc-1', label: 'Which medicines are affected' },
+        { id: 'toc-2', label: 'How pharmacists are responding' },
+        { id: 'toc-3', label: 'Why patients should call ahead' },
+      ],
+      bodyHtml: `
+        <p>Pharmacies are reporting tighter supply on several common blood pressure medications, especially lisinopril and amlodipine, which remain among the most frequently dispensed agents in outpatient care.</p>
+        <p>Shortages do not always mean a drug has disappeared. But they do mean more phone calls, more substitutions, and more delays for patients who depend on a steady refill rhythm.</p>
+        <h2 id="toc-1">Which medicines are affected</h2>
+        <p>The latest reports point to disruption in the most routine formulations rather than niche products, which is why the impact is being felt so broadly across community pharmacies.</p>
+        <h2 id="toc-2">How pharmacists are responding</h2>
+        <p>Teams are comparing inventory across strengths, switching manufacturers where possible, and asking prescribers to approve therapeutic alternatives when the exact tablet is not available.</p>
+        <h2 id="toc-3">Why patients should call ahead</h2>
+        <p>Refill timing matters during shortages. A call before the last tablet is gone can buy enough time for a substitution or a transfer to another location with stock.</p>
+      `,
+      takeaways: [
+        'Common blood pressure tablets are showing supply pressure',
+        'Pharmacists may need to substitute strengths or manufacturers',
+        'Patients should call ahead before running out',
+        'Routine medicines can be affected even when headlines focus elsewhere',
+      ],
+      bio: 'Pharmacy editor covering medication access, supply chain issues, and dispensing policy.',
+      related: [
+        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
+        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
+      ],
+    }),
+    [storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine')]: makeStory({
+      title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine',
+      category: 'Medicine',
+      badge: 'Medicine',
+      badgeColor: '#2563eb',
+      subtitle: 'The next-generation pneumococcal shot is designed to widen coverage and simplify the adult vaccine schedule.',
+      author: { initials: 'KM', name: 'Kofi Mensah', role: 'Vaccine Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '430K views', source: 'Reuters' },
+      heroLabel: 'HERO IMAGE - Vaccine Development',
+      heroGradient: 'linear-gradient(135deg, #0f172a 0%, #0f766e 55%, #2563eb 100%)',
+      tags: ['Vaccines', 'Pneumococcal', 'Adults', 'Medicine'],
+      toc: [
+        { id: 'toc-1', label: 'What the trial showed' },
+        { id: 'toc-2', label: 'Why broader coverage matters' },
+        { id: 'toc-3', label: 'Where the schedule could change' },
+      ],
+      bodyHtml: `
+        <p>Pfizer says its Phase II readout supports continued development of a pneumococcal vaccine intended to broaden protection for adults who remain vulnerable to invasive disease.</p>
+        <p>The strategy is to combine broader serotype coverage with a schedule that is easier for clinicians to place alongside other adult immunizations.</p>
+        <h2 id="toc-1">What the trial showed</h2>
+        <p>Early immunogenicity data were encouraging, with antibody responses strong enough to justify moving to the next stage of development.</p>
+        <h2 id="toc-2">Why broader coverage matters</h2>
+        <p>Pneumococcal disease still causes serious illness in older adults and patients with chronic conditions. Better coverage could reduce both hospitalizations and the need for catch-up dosing later in life.</p>
+        <h2 id="toc-3">Where the schedule could change</h2>
+        <p>If later trials hold up, clinicians may have one more streamlined option to pair with flu, RSV, and COVID boosters during routine visits.</p>
+      `,
+      takeaways: [
+        'Phase II results support continued vaccine development',
+        'Broader serotype coverage is the main target',
+        'Future schedules could become easier to co-administer',
+        'Adults with chronic disease remain a key protection group',
+      ],
+      bio: 'Vaccine reporter covering immunization programs, trial readouts, and public health uptake.',
+      related: [
+        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
+        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
+      ],
+    }),
+    [storyKey('High-intensity interval training reduces all-cause mortality by 15%')]: makeStory({
+      title: 'High-intensity interval training reduces all-cause mortality by 15%',
+      category: 'Wellness',
+      badge: 'Wellness',
+      badgeColor: '#16a34a',
+      subtitle: 'The finding adds to the case that short, intense workouts can deliver outsized health returns when done consistently.',
+      author: { initials: 'EC', name: 'Emma Cole', role: 'Lifestyle Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '4 min read', views: '390K views', source: 'BMJ' },
+      heroLabel: 'HERO IMAGE - Exercise and Longevity',
+      heroGradient: 'linear-gradient(135deg, #14532d 0%, #16a34a 55%, #84cc16 100%)',
+      tags: ['Fitness', 'Longevity', 'Exercise', 'Wellness'],
+      toc: [
+        { id: 'toc-1', label: 'How the data was pooled' },
+        { id: 'toc-2', label: 'Why intensity can be efficient' },
+        { id: 'toc-3', label: 'How to start safely' },
+      ],
+      bodyHtml: `
+        <p>High-intensity interval training is once again getting attention after a large review linked regular participation with lower all-cause mortality.</p>
+        <p>The appeal is obvious: short sessions can fit into busy schedules, which makes long-term adherence more realistic for many people.</p>
+        <h2 id="toc-1">How the data was pooled</h2>
+        <p>Researchers combined multiple observational cohorts to compare participants who trained at higher intensity with those who stayed largely sedentary or lightly active.</p>
+        <h2 id="toc-2">Why intensity can be efficient</h2>
+        <p>Brief bursts of hard effort can improve cardiovascular fitness, insulin sensitivity, and muscular endurance without requiring an hour at the gym.</p>
+        <h2 id="toc-3">How to start safely</h2>
+        <p>People new to exercise should scale up gradually and check with a clinician if they have cardiac disease, arthritis, or other limitations.</p>
+      `,
+      takeaways: [
+        'HIIT remains a time-efficient exercise option',
+        'The study links intensity with better longevity outcomes',
+        'Safe progression matters more than maximal effort',
+        'Consistency still beats occasional overtraining',
+      ],
+      bio: 'Lifestyle reporter focused on exercise, sleep, and sustainable behavior change.',
+      related: [
+        { key: storyKey('Sleep quality linked to cardiovascular risk in new 10-year study'), tag: 'Wellness', title: 'Sleep quality linked to cardiovascular risk in new 10-year study', meta: 'Harvard Health · 5 min read' },
+        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
+        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
+        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
+      ],
+    }),
+    [storyKey('Gene therapy restores hearing in children with congenital deafness')]: makeStory({
+      title: 'Gene therapy restores hearing in children with congenital deafness',
+      category: 'Research',
+      badge: 'Research',
+      badgeColor: '#9333ea',
+      subtitle: 'Early follow-up suggests the therapy can meaningfully improve auditory function when delivered at the right developmental window.',
+      author: { initials: 'DO', name: 'Daniel Okoye', role: 'Genetics Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '9 min read', views: '280K views', source: 'NEJM' },
+      heroLabel: 'HERO IMAGE - Gene Therapy',
+      heroGradient: 'linear-gradient(135deg, #312e81 0%, #7c3aed 60%, #a855f7 100%)',
+      tags: ['Gene Therapy', 'Hearing', 'Genetics', 'Research'],
+      toc: [
+        { id: 'toc-1', label: 'What the treatment targets' },
+        { id: 'toc-2', label: 'Why timing matters' },
+        { id: 'toc-3', label: 'What families are watching' },
+      ],
+      bodyHtml: `
+        <p>A gene therapy study is reporting restored hearing in children born with congenital deafness, offering one of the clearest signs yet that precision medicine can change function, not just lab values.</p>
+        <p>The result is early, but it matters because hearing development is tied closely to language acquisition and long-term social outcomes.</p>
+        <h2 id="toc-1">What the treatment targets</h2>
+        <p>The therapy delivers a corrected genetic signal to the cells that help transmit sound, restoring a missing step in the hearing pathway.</p>
+        <h2 id="toc-2">Why timing matters</h2>
+        <p>Researchers say the best responses are seen when treatment is given before the auditory system has fully adapted to silence.</p>
+        <h2 id="toc-3">What families are watching</h2>
+        <p>Parents and clinicians are now following durability, safety, and whether the gains continue to expand as children grow and learn.</p>
+      `,
+      takeaways: [
+        'Gene therapy may restore hearing in selected congenital cases',
+        'Early treatment appears especially important',
+        'Durability and safety are still being studied',
+        'The result could reshape pediatric genetics care',
+      ],
+      bio: 'Genetics reporter covering rare disease, molecular therapies, and translational research.',
+      related: [
+        { key: storyKey('CRISPR therapy achieves sustained remission in sickle cell trial'), tag: 'Research', title: 'CRISPR therapy achieves sustained remission in sickle cell trial', meta: 'Nature Medicine · 8 min read' },
+        { key: storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans'), tag: 'Research', title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans', meta: 'NEJM · 7 min read' },
+        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
+        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
+      ],
+    }),
+    [storyKey('Updated RSV vaccine guidance expands protection for older adults')]: makeStory({
+      title: 'Updated RSV vaccine guidance expands protection for older adults',
+      category: 'Medicine',
+      badge: 'Medicine',
+      badgeColor: '#2563eb',
+      subtitle: 'The updated advice broadens protection for people most likely to land in hospital when RSV surges.',
+      author: { initials: 'SC', name: 'Dr. Sarah Chen', role: 'Immunization Editor' },
+      meta: { date: 'Aug 21, 2026', readTime: '4 min read', views: '460K views', source: 'CDC' },
+      heroLabel: 'HERO IMAGE - RSV Guidance',
+      heroGradient: 'linear-gradient(135deg, #0f172a 0%, #0f766e 60%, #14b8a6 100%)',
+      tags: ['RSV', 'Older Adults', 'Vaccines', 'Guidance'],
+      toc: [
+        { id: 'toc-1', label: 'Who the guidance covers' },
+        { id: 'toc-2', label: 'Why risk is being expanded' },
+        { id: 'toc-3', label: 'What patients should ask' },
+      ],
+      bodyHtml: `
+        <p>Health agencies have broadened RSV vaccine guidance for older adults, reflecting a clearer picture of who is most likely to face severe disease.</p>
+        <p>The move is meant to make prevention more routine in the same way flu and COVID vaccination became part of seasonal planning.</p>
+        <h2 id="toc-1">Who the guidance covers</h2>
+        <p>The update gives clinicians more flexibility to recommend vaccination for older adults with chronic lung, heart, or immune conditions.</p>
+        <h2 id="toc-2">Why risk is being expanded</h2>
+        <p>As RSV has become more visible in adult medicine, agencies have refined who benefits most from prevention rather than waiting for infection to occur.</p>
+        <h2 id="toc-3">What patients should ask</h2>
+        <p>Patients should ask whether the vaccine is appropriate alongside other seasonal immunizations and whether timing should be adjusted around other care.</p>
+      `,
+      takeaways: [
+        'RSV guidance now covers more older adults at risk',
+        'Clinicians can align it with seasonal vaccine planning',
+        'Chronic disease remains a key reason to consider protection',
+        'Prevention is being framed more like routine adult care',
+      ],
+      bio: 'Immunization editor focused on adult vaccines, preventive care, and guideline updates.',
+      related: [
+        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
+        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
+        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+      ],
+    }),
+    [storyKey('Digital CBT program shows sustained benefit for adolescent anxiety')]: makeStory({
+      title: 'Digital CBT program shows sustained benefit for adolescent anxiety',
+      category: 'Wellness',
+      badge: 'Wellness',
+      badgeColor: '#16a34a',
+      subtitle: 'A structured online program appears to keep helping teens long after the first intervention window closes.',
+      author: { initials: 'EC', name: 'Emma Cole', role: 'Behavioral Health Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '6 min read', views: '360K views', source: 'JAMA' },
+      heroLabel: 'HERO IMAGE - Digital Mental Health',
+      heroGradient: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 55%, #22c55e 100%)',
+      tags: ['Mental Health', 'CBT', 'Teens', 'Wellness'],
+      toc: [
+        { id: 'toc-1', label: 'What the program includes' },
+        { id: 'toc-2', label: 'Why the benefit lasts' },
+        { id: 'toc-3', label: 'Where digital care fits' },
+      ],
+      bodyHtml: `
+        <p>Digital cognitive behavioral therapy is showing sustained benefit for adolescents with anxiety, strengthening the argument that structured online care can complement in-person support.</p>
+        <p>The key word is structured. The programs that work best are the ones with pacing, guidance, and accountability instead of open-ended self-help content.</p>
+        <h2 id="toc-1">What the program includes</h2>
+        <p>The intervention combines guided exercises, symptom tracking, and skills practice that teens can complete between school and home routines.</p>
+        <h2 id="toc-2">Why the benefit lasts</h2>
+        <p>Researchers think the consistency of the practice helps reinforce coping behavior after the initial program ends.</p>
+        <h2 id="toc-3">Where digital care fits</h2>
+        <p>Clinicians see it as a good option for access gaps, not as a replacement for all therapy. The best results still come from matching care intensity to the patient’s need.</p>
+      `,
+      takeaways: [
+        'Structured digital CBT can deliver lasting benefit for teens',
+        'Consistency and accountability appear to matter most',
+        'The format may help close access gaps',
+        'Digital therapy works best when paired with clinical oversight',
+      ],
+      bio: 'Behavioral health reporter covering anxiety, therapy access, and adolescent mental health.',
+      related: [
+        { key: storyKey('Sleep quality linked to cardiovascular risk in new 10-year study'), tag: 'Wellness', title: 'Sleep quality linked to cardiovascular risk in new 10-year study', meta: 'Harvard Health · 5 min read' },
+        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
+        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
+        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
+      ],
+    }),
+    [storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans')]: makeStory({
+      title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans',
+      category: 'Research',
+      badge: 'Research',
+      badgeColor: '#9333ea',
+      subtitle: 'The test may help clinicians detect relapse earlier by looking for tumor DNA in the blood instead of waiting on imaging.',
+      author: { initials: 'DO', name: 'Daniel Okoye', role: 'Oncology Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '7 min read', views: '420K views', source: 'NEJM' },
+      heroLabel: 'HERO IMAGE - Liquid Biopsy',
+      heroGradient: 'linear-gradient(135deg, #111827 0%, #7c3aed 55%, #ec4899 100%)',
+      tags: ['Cancer', 'Liquid Biopsy', 'Oncology', 'Research'],
+      toc: [
+        { id: 'toc-1', label: 'How the blood test works' },
+        { id: 'toc-2', label: 'Why earlier detection matters' },
+        { id: 'toc-3', label: 'What it could change in follow-up care' },
+      ],
+      bodyHtml: `
+        <p>A liquid biopsy may be able to flag colorectal cancer recurrence before standard scans do, giving oncologists an earlier signal that a patient needs closer follow-up.</p>
+        <p>The appeal is obvious: a simple blood draw is easier to repeat than imaging, and it can reveal molecular changes that are not yet visible on a scan.</p>
+        <h2 id="toc-1">How the blood test works</h2>
+        <p>The test looks for fragments of tumor DNA that circulate in the blood after treatment, offering a molecular snapshot of disease activity.</p>
+        <h2 id="toc-2">Why earlier detection matters</h2>
+        <p>Finding recurrence sooner may give clinicians a better window to adjust therapy before disease burden becomes harder to manage.</p>
+        <h2 id="toc-3">What it could change in follow-up care</h2>
+        <p>If validated widely, the approach could make surveillance more personalized, with scan timing guided by molecular risk rather than a fixed schedule alone.</p>
+      `,
+      takeaways: [
+        'Liquid biopsy may detect colorectal cancer recurrence earlier',
+        'Blood-based surveillance could complement imaging',
+        'Earlier signals may support faster treatment adjustments',
+        'The test still needs broad validation in routine practice',
+      ],
+      bio: 'Oncology reporter covering cancer diagnostics, molecular testing, and follow-up care.',
+      related: [
+        { key: storyKey('Gene therapy restores hearing in children with congenital deafness'), tag: 'Research', title: 'Gene therapy restores hearing in children with congenital deafness', meta: 'NEJM · 9 min read' },
+        { key: storyKey('CRISPR therapy achieves sustained remission in sickle cell trial'), tag: 'Research', title: 'CRISPR therapy achieves sustained remission in sickle cell trial', meta: 'Nature Medicine · 8 min read' },
+        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+      ],
+    }),
+    [storyKey('WHO updates pandemic preparedness guidelines for 2026')]: makeStory({
+      title: 'WHO updates pandemic preparedness guidelines for 2026',
+      category: 'Trending',
+      badge: 'Trending',
+      badgeColor: '#dc2626',
+      subtitle: 'The update gives health systems a cleaner playbook for response, coordination, and communication if a new wave accelerates.',
+      author: { initials: 'WH', name: 'Maya Patel', role: 'Global Health Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '4 min read', views: '690K views', source: 'BBC Health' },
+      heroLabel: 'HERO IMAGE - Pandemic Preparedness',
+      heroGradient: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #2563eb 100%)',
+      tags: ['WHO', 'Preparedness', 'Variants', 'Public Health'],
+      toc: [
+        { id: 'toc-1', label: 'What the 2026 update emphasizes' },
+        { id: 'toc-2', label: 'How systems are expected to align' },
+        { id: 'toc-3', label: 'Why the change is timely' },
+      ],
+      bodyHtml: `
+        <p>The World Health Organization has updated its 2026 preparedness guidelines to reflect the realities of a world where outbreaks can spread before local systems fully organize a response.</p>
+        <p>The guidance focuses on clearer lines of responsibility, faster escalation, and more consistent communication between public health teams and hospitals.</p>
+        <h2 id="toc-1">What the 2026 update emphasizes</h2>
+        <p>The new playbook prioritizes early detection, command structure, and real-time data sharing so response teams can move before case counts climb sharply.</p>
+        <h2 id="toc-2">How systems are expected to align</h2>
+        <p>Hospitals, labs, and ministries are being encouraged to rehearse the same playbook together rather than improvising separately during a surge.</p>
+        <h2 id="toc-3">Why the change is timely</h2>
+        <p>When variants are moving fast, preparedness is not just a policy goal. It is a capacity issue that affects every clinic, ward, and pharmacy in the chain.</p>
+      `,
+      takeaways: [
+        'WHO wants faster escalation and clearer coordination',
+        'Preparedness now centers on data sharing and command structure',
+        'Hospitals are being pushed toward joint drills and rehearsals',
+        'The update reflects how quickly variants can move',
+      ],
+      bio: 'Global health reporter covering outbreak policy, hospital response, and international guidance.',
+      related: [
+        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
+        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
+        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+      ],
+    }),
+    [storyKey('CRISPR therapy achieves sustained remission in sickle cell trial')]: makeStory({
+      title: 'CRISPR therapy achieves sustained remission in sickle cell trial',
+      category: 'Research',
+      badge: 'Research',
+      badgeColor: '#9333ea',
+      subtitle: 'The gene-editing result keeps the focus on whether a one-time treatment can hold up over the long term.',
+      author: { initials: 'DO', name: 'Daniel Okoye', role: 'Genomics Reporter' },
+      meta: { date: 'Aug 21, 2026', readTime: '8 min read', views: '580K views', source: 'Nature Medicine' },
+      heroLabel: 'HERO IMAGE - CRISPR Trial',
+      heroGradient: 'linear-gradient(135deg, #111827 0%, #312e81 55%, #8b5cf6 100%)',
+      tags: ['CRISPR', 'Sickle Cell', 'Gene Editing', 'Research'],
+      toc: [
+        { id: 'toc-1', label: 'What the trial achieved' },
+        { id: 'toc-2', label: 'Why durability matters' },
+        { id: 'toc-3', label: 'What still needs follow-up' },
+      ],
+      bodyHtml: `
+        <p>A CRISPR-based therapy is showing sustained remission in a sickle cell trial, bringing the field closer to treatments that modify disease rather than simply suppress symptoms.</p>
+        <p>The story now is less about whether the edit can work at all and more about how long the benefit can last in real patients.</p>
+        <h2 id="toc-1">What the trial achieved</h2>
+        <p>Participants experienced remission after therapy, a result that suggests the edited cells were able to restore healthier hemoglobin production.</p>
+        <h2 id="toc-2">Why durability matters</h2>
+        <p>For a one-time treatment to matter, the corrected cells need to persist and keep doing the job over time, not just for a brief follow-up window.</p>
+        <h2 id="toc-3">What still needs follow-up</h2>
+        <p>Researchers still need to watch for safety, durability, and access barriers before this becomes anything close to routine care.</p>
+      `,
+      takeaways: [
+        'Sustained remission is a major milestone for gene editing',
+        'Durability and access remain the biggest questions',
+        'Follow-up will determine how close the therapy is to routine use',
+        'The result strengthens interest in one-time curative treatments',
+      ],
+      bio: 'Genomics reporter covering gene editing, inherited blood disorders, and translational trials.',
+      related: [
+        { key: storyKey('Gene therapy restores hearing in children with congenital deafness'), tag: 'Research', title: 'Gene therapy restores hearing in children with congenital deafness', meta: 'NEJM · 9 min read' },
+        { key: storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans'), tag: 'Research', title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans', meta: 'NEJM · 7 min read' },
+        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
+        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
+      ],
+    }),
+    [storyKey('Sleep quality linked to cardiovascular risk in new 10-year study')]: makeStory({
+      title: 'Sleep quality linked to cardiovascular risk in new 10-year study',
+      category: 'Wellness',
+      badge: 'Wellness',
+      badgeColor: '#16a34a',
+      subtitle: 'The study adds to evidence that sleep quality may be as important as sleep length when it comes to heart health.',
+      author: { initials: 'NB', name: 'Naomi Brooks', role: 'Sleep and Wellness Editor' },
+      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '540K views', source: 'Harvard Health' },
+      heroLabel: 'HERO IMAGE - Sleep and Heart Health',
+      heroGradient: 'linear-gradient(135deg, #1e3a8a 0%, #0891b2 60%, #38bdf8 100%)',
+      tags: ['Sleep', 'Cardiovascular Health', 'Wellness', 'Prevention'],
+      toc: [
+        { id: 'toc-1', label: 'What the 10-year study tracked' },
+        { id: 'toc-2', label: 'Why sleep quality matters' },
+        { id: 'toc-3', label: 'What you can change tonight' },
+      ],
+      bodyHtml: `
+        <p>A decade-long study is linking poor sleep quality with a higher cardiovascular risk, strengthening the case that rest deserves as much attention as diet and exercise.</p>
+        <p>The message is not that sleep alone determines heart health. It is that poor sleep may be one of the more visible signs that the body is under strain.</p>
+        <h2 id="toc-1">What the 10-year study tracked</h2>
+        <p>Researchers followed sleep patterns over time and compared them with later cardiovascular outcomes, looking for patterns that persisted after adjusting for other risk factors.</p>
+        <h2 id="toc-2">Why sleep quality matters</h2>
+        <p>Fragmented rest can affect blood pressure, glucose control, and recovery, all of which may accumulate into higher risk over years.</p>
+        <h2 id="toc-3">What you can change tonight</h2>
+        <p>Consistent sleep timing, less late caffeine, and a quieter wind-down routine are small shifts, but they can make a real difference if they stick.</p>
+      `,
+      takeaways: [
+        'Sleep quality is closely tied to cardiovascular risk',
+        'Long-term patterns matter more than one bad night',
+        'Routine changes can improve sleep consistency',
+        'Heart health benefits may build over years, not days',
+      ],
+      bio: 'Sleep and wellness editor focused on prevention, behavior, and long-term cardiovascular health.',
+      related: [
+        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
+        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
+        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
+        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
+      ],
+    }),
+  };
+
+  function buildEmptyPublishedStory(payload) {
+    const title = String(payload?.title || payload?.storyKey || payload?.id || 'Published article').trim() || 'Published article';
+    const sourceName = String(payload?.sourceName || payload?.source || '').trim();
+    const authorName = String(payload?.author || sourceName || 'Ajixpharmacy Desk').trim();
+    const likes = getStoryLikeCount(payload);
+    return makeStory({
+      title,
+      category: 'Published article',
+      badge: 'Published article',
+      badgeColor: '#2563eb',
+      subtitle: 'This page only renders articles that were published by admin.',
+      author: { initials: getAvatarInitials(authorName, 'AJ'), name: authorName, role: sourceName || 'Not set' },
+      meta: { date: 'Not available', readTime: '0 min read', views: '0 views', source: sourceName, likes },
+      likes,
+      sourceName,
+      heroLabel: `HERO IMAGE - ${title}`,
+      heroGradient: 'linear-gradient(135deg, #1f2937 0%, #374151 55%, #6b7280 100%)',
+      tags: ['Published feed only'],
+      toc: [{ id: 'toc-1', label: 'Published content' }],
+      bodyHtml: '<p>No published article is available for this story yet.</p>',
+      takeaways: [],
+      bio: 'Public story placeholder for unpublished items.',
+      related: [],
+    });
+  }
+
+  function buildEmptyReviewStory(payload) {
+    const title = String(payload?.title || payload?.storyKey || payload?.id || 'Review preview').trim() || 'Review preview';
+    const sourceName = String(payload?.sourceName || payload?.source || '').trim();
+    const authorName = String(payload?.author || sourceName || 'Ajixpharmacy Desk').trim();
+    const likes = getStoryLikeCount(payload);
+    return makeStory({
+      title,
+      category: 'Admin preview',
+      badge: 'Admin preview',
+      badgeColor: '#2563eb',
+      subtitle: 'Preview this article exactly as it appears in the review queue.',
+      author: { initials: getAvatarInitials(authorName, 'AJ'), name: authorName, role: sourceName || 'Admin review' },
+      meta: { date: 'Review preview', readTime: '0 min read', views: 'Preview mode', source: sourceName, likes },
+      likes,
+      sourceName,
+      heroLabel: `PREVIEW - ${title}`,
+      heroGradient: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #60a5fa 100%)',
+      tags: ['Admin preview'],
+      toc: [{ id: 'toc-1', label: 'Preview content' }],
+      bodyHtml: '<p>This article is available to admins in preview mode.</p>',
+      takeaways: [],
+      bio: 'Admin preview placeholder for unpublished or unavailable items.',
+      related: [],
+    });
+  }
+
+  function readStoredStory() {
+    try {
+      const raw = window.sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getRequestedStoryKey() {
+    const params = new URLSearchParams(window.location.search);
+    return slugify(params.get('story') || '');
+  }
+
+  function formatNewsCategoryLabel(category = '') {
+    const text = String(category || '').trim();
+    if (!text) return 'News';
+    return text.replace(/[-_]+/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
+  }
+
+  function normalizeNewsStatusValue(value = "") {
+  const next = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!next) return "pending_review";
+  if (next === "draft" || next === "queued" || next === "pending" || next === "in_review" || next === "inreview" || next === "review" || next === "under_review") return "pending_review";
+  if (next === "approved" || next === "reviewed") return "approved";
+  if (next === "published" || next === "live" || next.startsWith("publish") || next.startsWith("live_")) return "published";
+  if (next === "rejected" || next === "rejected_by_admin") return "rejected";
+  if (next === "archived" || next === "hidden") return "archived";
+  return next === "pending_review" ? next : "pending_review";
+}
+
+function isPublishedNewsItem(value = "") {
+  return normalizeNewsStatusValue(value) === "published";
+}
+
+function getNewsStatusLabel(status = '') {
+    const next = normalizeNewsStatusValue(status);
+    if (next === 'pending_review') return 'In review';
+    if (next === 'approved') return 'Approved';
+    if (next === 'published') return 'Published';
+    if (next === 'rejected') return 'Rejected';
+    return next ? next.replace(/[-_]+/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase()) : 'Unknown';
+  }
+
+  function getStoryByKey(key) {
+    return STORY_LIBRARY[key] || null;
+  }
+
+  function renderMetaDetails(story) {
+    if (!metaDetails) return;
+    metaDetails.innerHTML = `
+      <span>${escapeHtml(story.meta.date)}</span>
+      <span>${escapeHtml(story.meta.readTime)}</span>
+      <span>${escapeHtml(story.meta.views)}</span>
+    `;
+    const likeCountNode = likeBtn?.querySelector('span');
+    if (likeCountNode) {
+      likeCountNode.textContent = formatLikeCount(getStoryLikeCount(story));
+    }
+  }
+
+  function renderToc(story) {
+    if (!tocList) return;
+    tocList.innerHTML = story.toc
+      .map((entry, index) => `<div class="toc-item${index === 0 ? ' active' : ''}" data-target="${escapeHtml(entry.id)}">${escapeHtml(entry.label)}</div>`)
+      .join('');
+  }
+
+  function renderTakeaways(story) {
+    const lists = document.querySelectorAll('.key-takeaways ul');
+    if (!lists.length) return;
+    const markup = story.takeaways.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    lists.forEach((list) => {
+      list.innerHTML = markup;
+    });
+  }
+
+  function renderTags(story) {
+    if (!articleTags) return;
+    articleTags.innerHTML = story.tags.map((tag) => `<span class="article-tag">${escapeHtml(tag)}</span>`).join('');
+  }
+
+  function storyIdentity(storyLike) {
+    return slugify(storyLike?.storyKey || storyLike?.key || storyLike?.title || storyLike?.id || '');
+  }
+
+  function buildRelatedMeta(entry) {
+    if (!entry) return '';
+    if (typeof entry.meta === 'string') return entry.meta;
+    if (entry.meta && typeof entry.meta === 'object') {
+      return [entry.meta.source, entry.meta.readTime].filter(Boolean).join(' · ');
+    }
+    return '';
+  }
+
+  function scoreRelatedStory(currentStory, candidateStory) {
+    const currentCategory = String(currentStory?.category || '').trim().toLowerCase();
+    const candidateCategory = String(candidateStory?.category || '').trim().toLowerCase();
+    const currentBadge = String(currentStory?.badge || '').trim().toLowerCase();
+    const candidateBadge = String(candidateStory?.badge || '').trim().toLowerCase();
+    const currentTags = new Set((Array.isArray(currentStory?.tags) ? currentStory.tags : []).map((tag) => String(tag || '').trim().toLowerCase()).filter(Boolean));
+    const candidateTags = Array.isArray(candidateStory?.tags) ? candidateStory.tags : [];
+    let score = 0;
+
+    if (currentCategory && currentCategory === candidateCategory) score += 4;
+    if (currentBadge && currentBadge === candidateBadge) score += 1;
+    candidateTags.forEach((tag) => {
+      if (currentTags.has(String(tag || '').trim().toLowerCase())) score += 2;
+    });
+    if (String(currentStory?.meta?.source || '').trim().toLowerCase() === String(candidateStory?.meta?.source || '').trim().toLowerCase()) {
+      score += 1;
+    }
+    return score;
+  }
+
+  function buildExpandedRelatedEntries(story) {
+    const currentKey = storyIdentity(story);
+    const seen = new Set();
+    const result = [];
+
+    const pushEntry = (entry) => {
+      const key = storyIdentity(entry);
+      if (!key || key === currentKey || seen.has(key)) return;
+      seen.add(key);
+      result.push({
+        key,
+        tag: entry.tag || entry.category || 'News',
+        title: entry.title || '',
+        meta: buildRelatedMeta(entry),
+        __score: typeof entry.__score === 'number' ? entry.__score : 0,
+      });
+    };
+
+    (Array.isArray(story?.related) ? story.related : []).forEach((entry) => {
+      pushEntry({
+        key: entry?.key,
+        tag: entry?.tag,
+        title: entry?.title,
+        meta: entry?.meta,
+        __score: 1000,
+      });
+    });
+
+    return result;
+  }
+
+  function renderRelated(story) {
+    if (!relatedGrid) return;
+    const entries = buildExpandedRelatedEntries(story);
+    if (relatedToggleBtn) {
+      const hasMore = entries.length > 4;
+      relatedToggleBtn.hidden = !hasMore;
+      relatedToggleBtn.setAttribute('aria-expanded', String(Boolean(relatedExpanded)));
+      relatedToggleBtn.textContent = relatedExpanded ? 'View less <-' : 'View all ->';
+    }
+    if (!entries.length) {
+      relatedGrid.innerHTML = '<div class="related-card">More related stories will appear here soon.</div>';
+      return;
+    }
+    const visibleEntries = relatedExpanded ? entries : entries.slice(0, 4);
+    relatedGrid.innerHTML = visibleEntries
+      .map((entry) => `
+        <button type="button" class="related-card" data-story-key="${escapeHtml(entry.key || '')}">
+          <div class="related-tag" style="color:var(--accent-blue)">${escapeHtml(entry.tag || 'News')}</div>
+          <div class="related-title">${escapeHtml(entry.title || '')}</div>
+          <div class="related-meta">${escapeHtml(entry.meta || '')}</div>
+        </button>
+      `)
+      .join('');
+  }
+
+  function renderBody(story) {
+    if (!articleBody) return;
+    articleBody.innerHTML = story.bodyHtml;
+  }
+
+  function renderAuthorBio(story) {
+    if (!authorBioCard) return;
+    authorBioCard.innerHTML = `
+      <div class="author-bio-avatar"></div>
+      <div class="author-bio-content">
+        <h4>${escapeHtml(story.author.name)}</h4>
+        <p>${escapeHtml(story.bio)}</p>
+      </div>
+    `;
+    setAvatarBackground(authorBioCard.querySelector('.author-bio-avatar'), story.author.name, story.author.initials);
+  }
+
+  function renderStory(story) {
+    if (document.title !== `${story.title} — AjixPharmacy`) {
+      document.title = `${story.title} — AjixPharmacy`;
+    }
+
+    relatedExpanded = false;
+
+    if (articleHero) {
+      const heroImageUrl = String(story.imageUrl || storedStory.imageUrl || storedStory.heroBackgroundImage || '').trim();
+      articleHero.hidden = !heroImageUrl;
+      articleHero.setAttribute('aria-hidden', String(!heroImageUrl));
+      articleHero.className = 'article-hero-image';
+      if (heroImageUrl) {
+        articleHero.removeAttribute('hidden');
+        articleHero.setAttribute('role', 'img');
+        articleHero.setAttribute('aria-label', story.imageAlt || story.title || 'Article image');
+        articleHero.textContent = '';
+        articleHero.style.background = story.heroGradient;
+        articleHero.style.backgroundImage = `url("${heroImageUrl.replace(/"/g, '\\"')}")`;
+        articleHero.style.backgroundSize = 'cover';
+        articleHero.style.backgroundPosition = 'center';
+        articleHero.style.backgroundRepeat = 'no-repeat';
+      } else {
+        articleHero.removeAttribute('role');
+        articleHero.removeAttribute('aria-label');
+        articleHero.textContent = '';
+        articleHero.removeAttribute('style');
+      }
+    }
+    if (articleCategory) {
+      articleCategory.textContent = story.badge;
+      articleCategory.style.background = story.badgeColor;
+    }
+    if (articleTitle) articleTitle.textContent = story.title;
+    if (articleSubtitle) articleSubtitle.textContent = story.subtitle;
+    setAvatarBackground(authorAvatar, story.author.name, story.author.initials);
+    if (authorName) authorName.textContent = story.author.name;
+    if (authorRole) authorRole.textContent = story.author.role;
+    renderMetaDetails(story);
+    renderBody(story);
+    renderAuthorBio(story);
+    renderTakeaways(story);
+    renderRelated(story);
+    renderTags(story);
+    renderToc(story);
+    updateKeywordWidget(story);
+    syncStoryActionButtons();
+  }
+
+  const storedStory = readStoredStory() || {};
+  const requestedNewsId = getRequestedNewsId();
+  const requestedKey = getRequestedStoryKey();
+  reviewMode = storyReviewEnabled && getRequestedReviewMode();
+  const resolvedKey = requestedKey || slugify(storedStory.storyKey || storedStory.title || storedStory.id || '');
+  const initialStory = reviewMode ? buildEmptyReviewStory(storedStory) : buildEmptyPublishedStory(storedStory);
+  storySavedState = loadSavedState();
+  applyTheme(loadThemePreference());
+
+  const renderResolvedStory = (nextStory) => {
+    story = nextStory;
+    activeStoryKey = slugify(story.storyKey || story.title || story.id || resolvedKey || '');
+    story.storyKey = story.storyKey || activeStoryKey;
+    renderStory(story);
+    syncReviewPanel();
+  };
+
+  if (requestedNewsId) {
+    void (async () => {
+      try {
+        const item = reviewMode ? await loadReviewNewsItem(requestedNewsId) : await loadPublishedNewsItem(requestedNewsId);
+        if (!item) {
+          if (reviewMode) {
+            reviewNewsItem = null;
+          }
+          renderResolvedStory(initialStory);
+          return;
+        }
+        if (reviewMode) {
+          reviewNewsItem = item;
+        }
+        renderResolvedStory(buildStoryFromNewsItem(item));
+      } catch (error) {
+        if (reviewMode) {
+          reviewNewsItem = null;
+          if (reviewNote) {
+            reviewNote.textContent = `Could not load the article for review: ${error.message}`;
+          }
+        }
+        renderResolvedStory(initialStory);
+      }
+    })();
+  } else {
+    renderResolvedStory(initialStory);
+  }
+
+  likeBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    toggleStoryReadLater();
+  });
+
+  saveBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    toggleStoryBookmark();
+  });
+
+  shareBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    alert('Link copied to clipboard!');
+  });
+
+  searchToggleBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    openMobileSearch();
+  });
+
+  keywordSearchInput?.addEventListener('input', function () {
+    keywordQuery = normalizeKeywordQuery(keywordSearchInput.value);
+    renderKeywordList();
+    if (keywordQuery) {
+      queueKeywordLookup(keywordSearchInput.value);
+    } else if (activeKeywordTerm) {
+      showKeywordDefinition(activeKeywordTerm);
+    } else {
+      renderKeywordDefinition(null);
+    }
+  });
+
+  keywordSearchInput?.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    keywordQuery = normalizeKeywordQuery(keywordSearchInput.value);
+    renderKeywordList();
+    showKeywordDefinition(keywordSearchInput.value);
+  });
+
+  keywordList?.addEventListener('click', function (event) {
+    const button = event.target.closest('[data-keyword-term]');
+    if (!button) return;
+    setKeywordSelection(button.dataset.keywordTerm);
+  });
+
+  window.addEventListener('storage', function (event) {
+    if (event.key !== 'ajix-news-saved-state-v1') return;
+    storySavedState = loadSavedState();
+    syncStoryActionButtons();
+  });
+
+  mobileSearchCloseBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    closeMobileSearch();
+  });
+
+  mobilePanelButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      openMobilePanel(button.dataset.mobilePanelTarget);
+    });
+  });
+
+  mobilePanelCloseBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    closeMobilePanel();
+  });
+
+  mobilePanelOverlay?.addEventListener('click', function (e) {
+    if (e.target === mobilePanelOverlay) {
+      closeMobilePanel();
+    }
+  });
+
+  mobileSearchPanel?.addEventListener('click', function (e) {
+    if (e.target === mobileSearchPanel) {
+      closeMobileSearch();
+    }
+  });
+
+  themeToggleBtn?.addEventListener('click', toggleTheme);
+
+  backBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    window.location.href = './news-studio.html';
+  });
+
+  tocList?.addEventListener('click', function (event) {
+    const item = event.target.closest('.toc-item');
+    if (!item) return;
+    tocItems().forEach(function (node) {
+      node.classList.remove('active');
+    });
+    item.classList.add('active');
+    const target = document.getElementById(item.dataset.target);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  relatedGrid?.addEventListener('click', function (event) {
+    const card = event.target.closest('[data-story-key]');
+    if (!card) return;
+    const nextKey = String(card.dataset.storyKey || '').trim();
+    if (!nextKey) return;
+    window.location.href = './news-story.html?story=' + encodeURIComponent(nextKey);
+  });
+
+  relatedToggleBtn?.addEventListener('click', function () {
+    relatedExpanded = !relatedExpanded;
+    renderRelated(story);
+  });
+
+  function closeReviewConfirm() {
+    pendingReviewAction = '';
+    reviewConfirmModal?.classList.remove('is-open');
+    reviewConfirmModal?.setAttribute('aria-hidden', 'true');
+  }
+
+  function openReviewConfirm(action) {
+    if (!reviewNewsItem?.id) return;
+    pendingReviewAction = action;
+    const unpublish = action === 'unpublish';
+    if (reviewConfirmTitle) reviewConfirmTitle.textContent = unpublish ? 'Unpublish article?' : action === 'reject' ? 'Reject article?' : 'Publish article?';
+    if (reviewConfirmMessage) reviewConfirmMessage.textContent = unpublish
+      ? 'This will remove the published article from the public feed and move it to the Rejected table.'
+      : action === 'reject'
+        ? 'This will reject the article and keep it out of the public feed.'
+        : 'This will publish the article and make it visible in the public feed.';
+    if (reviewConfirmSubmit) {
+      reviewConfirmSubmit.textContent = unpublish ? 'Unpublish article' : action === 'reject' ? 'Reject article' : 'Publish article';
+      reviewConfirmSubmit.classList.toggle('review-reject', action !== 'publish');
+      reviewConfirmSubmit.classList.toggle('review-publish', action === 'publish');
+    }
+    reviewConfirmModal?.classList.add('is-open');
+    reviewConfirmModal?.setAttribute('aria-hidden', 'false');
+    reviewConfirmSubmit?.focus();
+  }
+
+  reviewConfirmCancel?.addEventListener('click', closeReviewConfirm);
+  reviewConfirmModal?.addEventListener('click', function (event) {
+    if (event.target === reviewConfirmModal) closeReviewConfirm();
+  });
+  reviewConfirmSubmit?.addEventListener('click', function () {
+    const action = pendingReviewAction;
+    closeReviewConfirm();
+    if (action) void applyReviewAction(action);
+  });
+  reviewPublishBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    openReviewConfirm('publish');
+  });
+
+  reviewRejectBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    openReviewConfirm('reject');
+  });
+
+  reviewUnpublishBtn?.addEventListener('click', function (e) {
+    e.stopPropagation();
+    openReviewConfirm('unpublish');
+  });
+
+  window.addEventListener('scroll', function () {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    if (progressBar) {
+      progressBar.style.width = scrollPercent + '%';
+    }
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      closeMobileSearch();
+      closeMobilePanel();
+    }
+  });
+
+  window.addEventListener('resize', function () {
+    if (!window.matchMedia('(max-width: 900px)').matches) {
+      closeMobileSearch();
+      closeMobilePanel();
+    }
+  });
+  footerSheetLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      openFooterSheet(link.dataset.footerTopic || 'about');
+    });
+  });
+  footerSheetCloseBtn?.addEventListener('click', closeFooterSheet);
+  footerSheetBackdrop?.addEventListener('click', closeFooterSheet);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeFooterSheet();
+  });
+})();
+</script>
+
+</body>
+</html>
+

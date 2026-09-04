@@ -1,6 +1,7 @@
-import { baseQuestions } from "./data.js?v=20260613-manufacturing-set2";
-import { backendClient } from "./backendClient.js?v=20260611-community29";
+import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
+import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
+const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
 
 const MAJOR_CATEGORIES = [
   "Cardiovascular Disorders",
@@ -103,7 +104,11 @@ const NEGATIVE_ANSWER_FEEDBACK = [
 
 const QUESTION_BANK_SCHEMA_STORAGE_KEY = "quizQuestionBankSchemaVersion";
 const QUESTION_BANK_SCHEMA_VERSION = "20260613-manufacturing-set2";
-const LAW_DRILL_STORAGE_KEY = "lawDrillSession";
+const QUESTION_BANK_REMOTE_META_STORAGE_KEY = "quizQuestionBankRemoteMeta";
+let questionBankReady = false;
+let questionBankBootstrapPromise = null;
+const LAW_DRILL_STORAGE_KEY = "lawDrillSessionV2";
+const LEGACY_LAW_DRILL_STORAGE_KEY = "lawDrillSession";
 const LAW_DRILL_TOTAL_LEVELS = 100;
 const LAW_DRILL_QUESTIONS_PER_LEVEL = 5;
 const QUESTION_CATEGORY_OVERRIDES = {
@@ -124,11 +129,115 @@ const QUESTION_CATEGORY_OVERRIDES = {
   720: "Cardiovascular Disorders",
 };
 
+const MOJIBAKE_REPLACEMENTS = [
+  ['Ã—', '×'],
+  ['Ã·', '÷'],
+  ['âˆ’', '−'],
+  ['âˆš', '√'],
+  ['â†’', '→'],
+  ['â†', '←'],
+  ['â€¦', '…'],
+  ['â€”', '—'],
+  ['â€“', '–'],
+  ['âœ“', '✓'],
+  ['âœ•', '×'],
+  ['Â', ''],
+];
+
+const MOJIBAKE_SUSPECT_RE = /[ÃÂâðŸ�]/;
+
+function repairMojibakePass(value = "") {
+  const text = String(value ?? "");
+  let repaired = text;
+  try {
+    repaired = decodeURIComponent(escape(repaired));
+  } catch {
+    repaired = text;
+  }
+  if (typeof TextDecoder !== "undefined") {
+    try {
+      const bytes = Uint8Array.from(repaired, (char) => char.charCodeAt(0) & 0xff);
+      const decoded = new TextDecoder("utf-8").decode(bytes);
+      if (decoded) repaired = decoded;
+    } catch {
+      // Leave the best result we already have.
+    }
+  }
+  return repaired;
+}
+
+function scoreMojibakeCandidate(value = "") {
+  const text = String(value ?? "");
+  const suspicious = (text.match(/[\uFFFDÃƒÆ’Ã†â€™ÃƒÆ’Ã¢â‚¬Å¡ÃƒÆ’Ã‚¢ÃƒÆ’Ã‚°Ãƒ…Ã‚¸]/g) || []).length;
+  const control = (text.match(/[\u0000-\u001F\u007F]/g) || []).length;
+  return suspicious * 100 + control * 25 + text.length;
+}
+
+function normalizeMojibake(value = "") {
+  let text = String(value ?? "");
+  for (let i = 0; i < 4; i += 1) {
+    let decoded = text;
+    try {
+      const next = decodeURIComponent(escape(decoded));
+      if (next && next !== decoded) decoded = next;
+    } catch {
+      // Ignore strings that are already valid Unicode or not UTF-8 mojibake.
+    }
+    for (const [bad, good] of MOJIBAKE_REPLACEMENTS) {
+      decoded = decoded.split(bad).join(good);
+    }
+    if (decoded === text) break;
+    text = decoded;
+  }
+  return text;
+}function sanitizeMojibakeNode(node) {
+  if (!(node instanceof Text)) return;
+  const next = normalizeMojibake(node.nodeValue || "");
+  if (next !== node.nodeValue) node.nodeValue = next;
+}
+
+function sanitizeMojibakeElement(element) {
+  if (!(element instanceof Element)) return;
+  for (const attribute of ["aria-label", "title", "placeholder", "alt"]) {
+    if (!element.hasAttribute(attribute)) continue;
+    const current = element.getAttribute(attribute) || "";
+    const next = normalizeMojibake(current);
+    if (next !== current) element.setAttribute(attribute, next);
+  }
+}
+
+function sanitizeMojibakeTree(root = document.body) {
+  if (!(root instanceof Element)) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let current = walker.nextNode(); current; current = walker.nextNode()) {
+    sanitizeMojibakeNode(current);
+  }
+  root.querySelectorAll("[aria-label],[title],[placeholder],[alt]").forEach(sanitizeMojibakeElement);
+}
+
+function installMojibakeSanitizer() {
+  if (typeof document === "undefined" || typeof MutationObserver === "undefined") return;
+  const runSanitizer = () => {
+    if (document.body) sanitizeMojibakeTree(document.body);
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runSanitizer, { once: true });
+  } else {
+    runSanitizer();
+  }
+  const observer = new MutationObserver((mutations) => {
+    if (!mutations.some((mutation) => mutation.addedNodes && mutation.addedNodes.length > 0)) return;
+    runSanitizer();
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+installMojibakeSanitizer();
+
 function clearQuestionIdDependentLocalCache() {
   const keysToClear = [
     "studySession",
     "practiceSession",
-    LAW_DRILL_STORAGE_KEY,
     "quizExamSession",
     "examAbandoned",
     "weakTracker",
@@ -365,6 +474,19 @@ function isStudyLikeMode() {
   return mode === "study" || mode === "topic";
 }
 
+function shouldLockAnswerSelection() {
+  return isStudyLikeMode() || (mode === "exam" && (examVariant === "clinical" || examVariant === "sudden"));
+}
+
+function isSubmitAtEndMode() {
+  if (mode === "daily" || mode === "smart") return true;
+  if (mode === "exam") {
+    const variant = String(examVariant || "normal").trim().toLowerCase();
+    return variant === "normal" || variant === "rapid" || variant === "law";
+  }
+  return false;
+}
+
 function isPreSubmitReviewMode() {
   return inReview && !inDetailedReview && (mode === "exam" || mode === "smart" || mode === "daily");
 }
@@ -390,7 +512,7 @@ function getCurrentStudyType() {
 }
 
 function isLawStudyMode() {
-  return mode === "study" && Boolean(lawDrillState);
+  return Boolean(lawDrillState) && (mode === "study" || (mode === "exam" && examVariant === "law"));
 }
 
 function getQuestionDrillTags(question = {}) {
@@ -647,10 +769,38 @@ function normalizeLawDrillState(rawState = null) {
   const levels = cloneLawDrillLevels(rawState.levels);
   if (levels.length === 0) return null;
 
-  const currentLevelIndex = Math.max(
+  const deriveCurrentLevelIndexFromLevels = () => {
+    let inferredCurrentLevelIndex = -1;
+    let inferredCompletedNextIndex = 0;
+    levels.forEach((level, index) => {
+      const status = String(level?.status || "").trim().toLowerCase();
+      if (status === "current" || status === "review") {
+        inferredCurrentLevelIndex = Math.max(inferredCurrentLevelIndex, index);
+      }
+      if (status === "completed") {
+        inferredCompletedNextIndex = Math.max(inferredCompletedNextIndex, index + 1);
+      }
+    });
+
+    return {
+      inferredCurrentLevelIndex,
+      inferredCompletedNextIndex,
+      derivedCurrentLevelIndex: Math.max(
+        inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
+        inferredCompletedNextIndex > 0 ? Math.min(levels.length - 1, inferredCompletedNextIndex) : 0,
+      ),
+    };
+  };
+
+  const { inferredCurrentLevelIndex, inferredCompletedNextIndex, derivedCurrentLevelIndex } =
+    deriveCurrentLevelIndexFromLevels();
+
+  const rawCurrentLevelIndex = Math.max(
     0,
     Math.min(levels.length - 1, Math.round(Number(rawState.currentLevelIndex) || 0)),
   );
+  const hasProgressMarkers = inferredCurrentLevelIndex >= 0 || inferredCompletedNextIndex > 0;
+  const currentLevelIndex = hasProgressMarkers ? derivedCurrentLevelIndex : rawCurrentLevelIndex;
   const hasReviewLevel =
     rawState.reviewLevelIndex !== null &&
     rawState.reviewLevelIndex !== undefined &&
@@ -692,6 +842,41 @@ function normalizeLawDrillState(rawState = null) {
     view,
     levels,
   };
+}
+
+function repairLawDrillCurrentLevelIndex() {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels) || lawDrillState.levels.length === 0) {
+    return 0;
+  }
+
+  let inferredCurrentLevelIndex = -1;
+  let inferredCompletedNextIndex = 0;
+  lawDrillState.levels.forEach((level, index) => {
+    const status = String(level?.status || "").trim().toLowerCase();
+    if (status === "current" || status === "review") {
+      inferredCurrentLevelIndex = Math.max(inferredCurrentLevelIndex, index);
+    }
+    if (status === "completed") {
+      inferredCompletedNextIndex = Math.max(inferredCompletedNextIndex, index + 1);
+    }
+  });
+
+  const hasProgressMarkers = inferredCurrentLevelIndex >= 0 || inferredCompletedNextIndex > 0;
+  const derivedCurrentLevelIndex = hasProgressMarkers
+    ? Math.max(
+        inferredCurrentLevelIndex >= 0 ? inferredCurrentLevelIndex : 0,
+        inferredCompletedNextIndex > 0
+          ? Math.min(lawDrillState.levels.length - 1, inferredCompletedNextIndex)
+          : 0,
+      )
+    : Math.max(0, Math.min(lawDrillState.levels.length - 1, lawDrillState.currentLevelIndex ?? 0));
+
+  const safeIndex = Math.max(0, Math.min(lawDrillState.levels.length - 1, derivedCurrentLevelIndex));
+  if (lawDrillState.currentLevelIndex !== safeIndex) {
+    lawDrillState.currentLevelIndex = safeIndex;
+  }
+
+  return safeIndex;
 }
 
 function createLawDrillState(sourceQuestions = questionBank) {
@@ -752,6 +937,18 @@ function getLawDrillTotalCorrect() {
   }, 0);
 }
 
+function getLawDrillStateTotalCorrect(state = null) {
+  const levels = Array.isArray(state?.levels) ? state.levels : [];
+  if (!levels.length) return 0;
+  return levels.reduce((total, level) => {
+    const historyCorrect = Array.isArray(level?.history)
+      ? level.history.filter((entry) => entry?.isCorrect).length
+      : 0;
+    const score = Math.max(0, Math.round(Number(level?.score) || 0));
+    return total + Math.max(historyCorrect, score);
+  }, 0);
+}
+
 function getLawDrillCurrentLevelScore() {
   return getLawDrillLevelScore(lawDrillState?.currentLevelIndex ?? 0);
 }
@@ -764,8 +961,45 @@ function getLawDrillLevelScore(levelIndex = 0) {
 
 function getLawDrillCumulativeScore() {
   const setupScore = Number(readCurrentSetupPoints()?.law) || 0;
-  const historyScore = getLawDrillTotalCorrect();
-  return Math.max(0, Math.round(Math.max(setupScore, historyScore)));
+  const liveHistoryScore = getLawDrillTotalCorrect();
+  const savedSession = readCurrentLawDrillSession();
+  const savedHistoryScore = getLawDrillStateTotalCorrect(savedSession?.lawDrillState || null);
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return Math.max(0, Math.round(Math.max(setupScore, savedHistoryScore)));
+  }
+  return Math.max(0, Math.round(Math.max(setupScore, liveHistoryScore, savedHistoryScore)));
+}
+
+function getCurrentDrillCumulativeScore() {
+  if (isLawStudyMode()) {
+    return getLawDrillCumulativeScore();
+  }
+
+  const bucket = getCurrentSetupPointsBucket();
+  if (!bucket) {
+    return Math.max(0, Math.round(Number(currentUser?.points) || 0));
+  }
+
+  return Math.max(0, Math.round(Number(readCurrentSetupPoints()?.[bucket]) || 0));
+}
+
+function buildPointsIconMarkup() {
+  return `
+    <svg class="header-inline-points-icon-svg" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path d="M12 2.5 14.9 8h5.9l-4.8 3.5 1.8 5.9L12 13.9 6.2 17.4 8 11.5 3.2 8h5.9L12 2.5Z" fill="currentColor"/>
+    </svg>
+  `.trim();
+}
+
+function buildDrillCumulativePointsBadgeMarkup(points = 0, label = "Total") {
+  const safePoints = Math.max(0, Math.round(Number(points) || 0));
+  return `
+    <span class="header-inline-points is-cumulative" title="Cumulative drill points">
+      <span class="header-inline-points-icon" aria-hidden="true">${buildPointsIconMarkup()}</span>
+      <span class="header-inline-points-label">${escapeHtml(label)}</span>
+      <span class="header-inline-points-value">${safePoints}</span>
+    </span>
+  `.trim();
 }
 
 function buildLawDrillResultReviewMarkup(levelIndex = 0) {
@@ -875,61 +1109,179 @@ function serializeLawDrillState() {
   };
 }
 
-function normalizeLawDrillSessionPayload(raw = null) {
-  if (!raw || typeof raw !== "object") return null;
-  const lawState = normalizeLawDrillState(raw.lawDrillState || raw);
-  if (!lawState) return null;
+function getLawDrillSessionOwnerKey() {
+  return currentUser?.id ? `user:${currentUser.id}` : "guest";
+}
+
+function normalizeStoredLawDrillSession(rawSession = null) {
+  if (!rawSession || typeof rawSession !== "object") return null;
+
+  const lawDrillState = normalizeLawDrillState(rawSession.lawDrillState || rawSession.state || rawSession);
+  if (!lawDrillState) return null;
+
   return {
-    mode: String(raw.mode || "study"),
-    studyType: String(raw.studyType || "law"),
-    current: Math.max(0, Math.round(Number(raw.current) || 0)),
-    currentStreak: Math.max(0, Math.round(Number(raw.currentStreak) || 0)),
-    userAnswers: raw.userAnswers && typeof raw.userAnswers === "object" ? { ...raw.userAnswers } : {},
-    active: Array.isArray(raw.active) ? [...raw.active] : [],
-    lawDrillState: lawState,
-    timestamp: String(raw.timestamp || ""),
+    mode: String(rawSession.mode || "study").trim().toLowerCase() || "study",
+    studyType: String(rawSession.studyType || "law").trim().toLowerCase() || "law",
+    current: Math.max(0, Math.round(Number(rawSession.current) || 0)),
+    currentStreak: Math.max(0, Math.round(Number(rawSession.currentStreak) || 0)),
+    userAnswers:
+      rawSession.userAnswers && typeof rawSession.userAnswers === "object" && !Array.isArray(rawSession.userAnswers)
+        ? { ...rawSession.userAnswers }
+        : {},
+    active: Array.isArray(rawSession.active)
+      ? rawSession.active.map((item) => (item && typeof item === "object" ? { ...item } : item)).filter(Boolean)
+      : [],
+    answeredCurrent: Boolean(rawSession.answeredCurrent),
+    inReview: Boolean(rawSession.inReview),
+    inDetailedReview: Boolean(rawSession.inDetailedReview),
+    activeCase: String(rawSession.activeCase || "").trim(),
+    backendAttemptId: String(rawSession.backendAttemptId || "").trim(),
+    timestamp: Math.max(0, Math.round(Number(rawSession.timestamp) || 0)),
+    lawDrillState,
   };
+}
+
+function getLawDrillSessionProgress(session = null) {
+  const normalized = normalizeStoredLawDrillSession(session);
+  if (!normalized) return -1;
+
+  const state = normalized.lawDrillState || {};
+  const levels = Array.isArray(state.levels) ? state.levels : [];
+  const completedLevels = levels.filter(
+    (level) => String(level?.status || "").trim().toLowerCase() === "completed",
+  ).length;
+  const totalHistory = levels.reduce(
+    (total, level) => total + (Array.isArray(level?.history) ? level.history.length : 0),
+    0,
+  );
+
+  return (
+    Math.max(0, Math.round(Number(state.currentLevelIndex) || 0)) * 100000 +
+    completedLevels * 1000 +
+    totalHistory * 10 +
+    Math.max(0, Math.round(Number(normalized.current) || 0))
+  );
+}
+
+function mergeLawDrillSessions(left = null, right = null) {
+  const current = normalizeStoredLawDrillSession(left);
+  const incoming = normalizeStoredLawDrillSession(right);
+  if (!current) return incoming;
+  if (!incoming) return current;
+  return getLawDrillSessionProgress(incoming) >= getLawDrillSessionProgress(current) ? incoming : current;
 }
 
 function readLawDrillSessionState() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(LAW_DRILL_STORAGE_KEY) || "{}");
+    const raw = localStorage.getItem(LAW_DRILL_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
     if (parsed && typeof parsed === "object" && parsed.owners && typeof parsed.owners === "object") {
-      const owners = Object.fromEntries(
-        Object.entries(parsed.owners)
-          .map(([ownerKey, value]) => {
-            const session = normalizeLawDrillSessionPayload(value);
-            return session ? [ownerKey, session] : null;
-          })
-          .filter(Boolean),
-      );
-      return { owners };
+      return {
+        owners: Object.fromEntries(
+          Object.entries(parsed.owners).map(([ownerKey, value]) => [ownerKey, normalizeStoredLawDrillSession(value)]),
+        ),
+      };
     }
 
-    const legacy = normalizeLawDrillSessionPayload(parsed);
-    return legacy
-      ? {
-          owners: {
-            legacy: legacy,
-          },
-        }
-      : { owners: {} };
+    const legacyRaw = localStorage.getItem(LEGACY_LAW_DRILL_STORAGE_KEY);
+    const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : parsed;
+    return {
+      owners: {
+        guest: normalizeStoredLawDrillSession(legacyParsed),
+      },
+    };
   } catch {
-    return { owners: {} };
+    return {
+      owners: {
+        guest: null,
+      },
+    };
   }
 }
 
 function writeLawDrillSessionState(state = {}) {
   const safeOwners = Object.fromEntries(
-    Object.entries(state?.owners || {})
-      .map(([ownerKey, value]) => {
-        const session = normalizeLawDrillSessionPayload(value);
-        return session ? [ownerKey, session] : null;
-      })
-      .filter(Boolean),
+    Object.entries(state?.owners || {}).map(([ownerKey, value]) => [ownerKey, normalizeStoredLawDrillSession(value)]),
   );
   localStorage.setItem(LAW_DRILL_STORAGE_KEY, JSON.stringify({ owners: safeOwners }));
   return { owners: safeOwners };
+}
+
+function readCurrentLawDrillSession() {
+  const state = readLawDrillSessionState();
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const local = state.owners?.[ownerKey] || null;
+  const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
+  if (currentUser?.id && backendClient.isAuthenticated()) {
+    return remote;
+  }
+  return mergeLawDrillSessions(local, remote);
+}
+
+function writeCurrentLawDrillSession(nextValue = {}, { scheduleSync = true } = {}) {
+  const state = readLawDrillSessionState();
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const normalized = normalizeStoredLawDrillSession(nextValue);
+  state.owners[ownerKey] = normalized;
+  writeLawDrillSessionState(state);
+  if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
+    scheduleLawDrillSessionSync();
+  }
+  return normalized;
+}
+
+let lawDrillSessionSyncHandle = null;
+let lawDrillSessionSyncInFlight = false;
+
+async function flushLawDrillSessionSync() {
+  if (lawDrillSessionSyncInFlight) return;
+  if (!currentUser || !backendClient.isAuthenticated()) return;
+
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const state = readLawDrillSessionState();
+  const local = normalizeStoredLawDrillSession(state.owners?.[ownerKey] || null);
+  const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
+  const merged = mergeLawDrillSessions(local, remote);
+
+  if (!merged) {
+    state.owners[ownerKey] = local || remote || null;
+    writeLawDrillSessionState(state);
+    return;
+  }
+
+  const changed = JSON.stringify(merged) !== JSON.stringify(remote);
+  if (!changed) {
+    state.owners[ownerKey] = merged;
+    writeLawDrillSessionState(state);
+    currentUser = { ...(currentUser || {}), lawDrillSession: merged };
+    return;
+  }
+
+  lawDrillSessionSyncInFlight = true;
+  try {
+    const response = await backendClient.updateLawDrillSession({ lawDrillSession: merged });
+    const synced = normalizeStoredLawDrillSession(
+      response?.lawDrillSession || response?.user?.lawDrillSession || merged,
+    );
+    state.owners[ownerKey] = synced;
+    writeLawDrillSessionState(state);
+    currentUser = response?.user || { ...(currentUser || {}), lawDrillSession: synced };
+  } catch {
+    state.owners[ownerKey] = merged;
+    writeLawDrillSessionState(state);
+  } finally {
+    lawDrillSessionSyncInFlight = false;
+  }
+}
+
+function scheduleLawDrillSessionSync(delayMs = 450) {
+  if (lawDrillSessionSyncHandle) {
+    clearTimeout(lawDrillSessionSyncHandle);
+  }
+  lawDrillSessionSyncHandle = setTimeout(() => {
+    lawDrillSessionSyncHandle = null;
+    void flushLawDrillSessionSync();
+  }, delayMs);
 }
 
 function persistLawDrillSession() {
@@ -944,51 +1296,41 @@ function persistLawDrillSession() {
     lawDrillState: serializeLawDrillState(),
     timestamp: Date.now(),
   };
-  const ownerKey = getSetupPointsOwnerKey();
-  const state = readLawDrillSessionState();
-  state.owners[ownerKey] = payload;
-  delete state.owners.legacy;
-  writeLawDrillSessionState(state);
-  if (backendClient.isAuthenticated()) {
-    backendClient.syncSession(payload);
-  }
+  writeCurrentLawDrillSession(payload);
 }
 
 function clearLawDrillSession() {
-  const ownerKey = getSetupPointsOwnerKey();
   const state = readLawDrillSessionState();
-  if (state.owners && Object.prototype.hasOwnProperty.call(state.owners, ownerKey)) {
-    delete state.owners[ownerKey];
-    writeLawDrillSessionState(state);
-    return;
-  }
-  localStorage.removeItem(LAW_DRILL_STORAGE_KEY);
-}
-
-function resetLawDrillRuntimeState() {
-  lawDrillState = null;
-  active = [];
-  current = 0;
-  userAnswers = {};
-  currentStreak = 0;
-  answeredCurrent = false;
-  inDetailedReview = false;
+  const ownerKey = getLawDrillSessionOwnerKey();
+  delete state.owners[ownerKey];
+  delete state.owners.guest;
+  writeLawDrillSessionState(state);
 }
 
 function updateLawDrillCurrentLevelScore() {
   const currentLevel = getLawDrillCurrentLevel();
   if (!currentLevel) return;
   currentLevel.score = getLawDrillCurrentLevelScore();
-  syncLawDrillCumulativeScore();
   renderSetupPoints();
 }
 
-function syncLawDrillCumulativeScore() {
-  if (!lawDrillState) return;
-  const nextScore = getLawDrillCumulativeScore();
-  const points = readCurrentSetupPoints();
-  points.law = Math.max(0, Math.round(Number(nextScore) || 0));
-  writeCurrentSetupPoints(points);
+function syncLawDrillLevelStatuses(activeLevelIndex = 0) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return;
+  const safeIndex = Math.max(
+    0,
+    Math.min(lawDrillState.levels.length - 1, Math.round(Number(activeLevelIndex) || 0)),
+  );
+
+  lawDrillState.levels.forEach((level, index) => {
+    if (index < safeIndex) {
+      level.status = "completed";
+    } else if (index === safeIndex) {
+      level.status = "current";
+    } else if (!["completed", "review"].includes(String(level.status || "").trim().toLowerCase())) {
+      level.status = "locked";
+    }
+  });
+  lawDrillState.currentLevelIndex = safeIndex;
 }
 
 function renderLawDrillStack(levelIndex = null, targetEl = lawDrillStackEl, eyebrowLabel = null) {
@@ -1009,11 +1351,25 @@ function renderLawDrillStack(levelIndex = null, targetEl = lawDrillStackEl, eyeb
   }
 }
 
+function clearLawDrillResultReview() {
+  [document.getElementById("study-result-screen"), lawDrillResultScreenEl].forEach((resultScreen) => {
+    if (resultScreen) {
+      resultScreen.classList.remove("law-drill-result-active");
+    }
+  });
+
+  if (lawDrillResultStackEl) {
+    lawDrillResultStackEl.classList.add("hidden");
+    lawDrillResultStackEl.innerHTML = "";
+  }
+}
+
 function renderLawDrillRail() {
   if (!lawDrillRailEl || !lawDrillState) return;
   const levels = Array.isArray(lawDrillState.levels) ? lawDrillState.levels : [];
   const rowSize = window.matchMedia("(max-width: 720px)").matches ? 5 : 10;
   lawDrillRailEl.innerHTML = "";
+  let currentNode = null;
 
   for (let rowStart = 0; rowStart < levels.length; rowStart += rowSize) {
     const rowIndex = Math.floor(rowStart / rowSize);
@@ -1056,6 +1412,7 @@ function renderLawDrillRail() {
         button.onclick = () => openLawDrillLevelReview(index);
       } else if (isCurrent) {
         button.onclick = () => openLawDrillLevel(index, { resetProgress: false });
+        currentNode = button;
       }
       track.appendChild(button);
     });
@@ -1069,6 +1426,16 @@ function renderLawDrillRail() {
 
     lawDrillRailEl.appendChild(row);
   }
+
+  if (currentNode instanceof HTMLElement) {
+    window.requestAnimationFrame(() => {
+      try {
+        currentNode.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      } catch {
+        // Ignore scroll failures in constrained browsers.
+      }
+    });
+  }
 }
 
 function syncLawDrillRailForViewport() {
@@ -1079,11 +1446,13 @@ function syncLawDrillRailForViewport() {
 
 function showLawDrillLadderView() {
   if (!lawDrillState) return;
+  syncLawDrillLevelStatuses(repairLawDrillCurrentLevelIndex());
   setLawDrillView("ladder", { persist: false });
   lawDrillState.reviewLevelIndex = null;
   lawDrillState.resultLevelIndex = null;
   inDetailedReview = false;
   active = [];
+  clearLawDrillResultReview();
   if (backReviewBtn) {
     backReviewBtn.classList.add("hidden");
   }
@@ -1148,6 +1517,21 @@ function openLawDrillLevel(levelIndex = 0, { resetProgress = false } = {}) {
   renderLawDrillRail();
   showScreen("quiz-area");
   syncLawDrillLayout();
+  if (backendReady && !backendAttemptId) {
+    backendClient
+      .startAttempt({
+        mode: "exam",
+        variant: "law",
+        category: "law-drill",
+        questionIds: active.map((q) => Number(q.id)),
+      })
+      .then((result) => {
+        backendAttemptId = result.attemptId;
+      })
+      .catch((error) => {
+        console.warn("Failed to start law drill backend attempt:", error);
+      });
+  }
   persistLawDrillSession();
   showQuestion();
 }
@@ -1166,7 +1550,7 @@ function updateLawDrillHeaderMeta() {
     : LAW_DRILL_QUESTIONS_PER_LEVEL;
   const levelScore = getLawDrillLevelScore(currentLevel);
   if (progressEl) {
-    progressEl.innerText = `${reviewLabel} ${levelNumber}/${lawDrillState.totalLevels} • Q ${current + 1}/${active.length}`;
+    progressEl.innerText = `${reviewLabel} ${levelNumber} of ${lawDrillState.totalLevels} and question ${current + 1} of ${active.length}`;
   }
 }
 
@@ -1213,7 +1597,7 @@ function renderLawDrillReviewLevelViewLegacy(levelIndex = 0) {
   }
 
   if (progressEl) {
-    progressEl.innerText = `Level ${levelIndex + 1} Review • ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.innerText = `Level ${levelIndex + 1} Review and ${correct} of ${Math.max(1, answered)} correct`;
     progressEl.style.color = "";
   }
   if (liveScore) liveScore.innerText = "";
@@ -1330,7 +1714,7 @@ function renderLawDrillReviewLevelView(levelIndex = 0) {
   }
 
   if (progressEl) {
-    progressEl.innerText = `Level ${levelIndex + 1} Review • ${correct}/${Math.max(1, answered)} Correct`;
+    progressEl.innerText = `Level ${levelIndex + 1} Review and ${correct} of ${Math.max(1, answered)} correct`;
     progressEl.style.color = "";
   }
   if (liveScore) liveScore.innerText = "";
@@ -1348,10 +1732,20 @@ function openLawDrillLevelReview(levelIndex = 0) {
   lawDrillState.reviewLevelIndex = levelIndex;
   lawDrillState.resultLevelIndex = null;
   setLawDrillView("review", { persist: false });
+  inReview = false;
   inDetailedReview = true;
   renderLawDrillRail();
   showScreen("quiz-area");
   showQuestion();
+}
+
+function isLawDrillResultState() {
+  if (!isLawStudyMode() || !lawDrillState) return false;
+  return (
+    lawDrillState.view === "result" ||
+    Number.isInteger(lawDrillState.reviewLevelIndex) ||
+    Number.isInteger(lawDrillState.resultLevelIndex)
+  );
 }
 
 function exitLawDrillLevelReview() {
@@ -1366,6 +1760,7 @@ function returnToLawLadder() {
   lawDrillState.reviewLevelIndex = null;
   lawDrillState.resultLevelIndex = null;
   inDetailedReview = false;
+  clearLawDrillResultReview();
   showLawDrillLadderView();
 }
 
@@ -1384,79 +1779,118 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
   lawDrillState.resultLevelIndex = levelIndex;
   lawDrillState.reviewLevelIndex = null;
   setLawDrillView("result", { persist: false });
+  inReview = false;
   if (questionCardEl) questionCardEl.classList.add("hidden");
   if (lawDrillPanelEl) lawDrillPanelEl.classList.add("hidden");
   if (lawDrillStackEl) {
     lawDrillStackEl.classList.add("hidden");
     lawDrillStackEl.innerHTML = "";
   }
+  clearLawDrillResultReview();
 
-  const resultTitle = document.getElementById("result-title");
-  const percentEl = document.getElementById("result-percentage");
-  const scoreEl = document.getElementById("result-score");
-  const feedbackEl = document.getElementById("result-feedback");
-  const reviewSection = document.getElementById("result-review-section");
-  const reviewContent = document.getElementById("result-review-content");
-  const reviewSectionTitle = reviewSection?.querySelector(".review-section-title");
-  const reviewBtn = document.getElementById("result-review-btn");
-  const shareBtn = document.getElementById("result-share-btn");
-  const menuBtn = document.getElementById("result-menu-btn");
-
-  if (resultTitle) {
-    resultTitle.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
-    resultTitle.classList.toggle("hidden", !final);
+  if (lawDrillResultTitleEl) {
+    lawDrillResultTitleEl.innerText = final ? "Law Drill Complete" : `Level ${levelIndex + 1} Completed`;
+    lawDrillResultTitleEl.classList.remove("hidden");
   }
-  if (resultBadgeEl) {
-    resultBadgeEl.textContent = final ? "Drill Complete" : `Level ${levelIndex + 1} Completed`;
-    resultBadgeEl.classList.remove("hidden");
+  if (lawDrillResultBadgeEl) {
+    lawDrillResultBadgeEl.textContent = final ? "Drill Complete" : `Level ${levelIndex + 1} Completed`;
+    lawDrillResultBadgeEl.classList.remove("hidden");
   }
-  if (percentEl) {
-    percentEl.innerText = `${accuracy}%`;
-    percentEl.style.color = accuracy >= 80 ? "#15803d" : accuracy >= 60 ? "#f9a825" : "#dc2626";
+  if (lawDrillResultPercentEl) {
+    lawDrillResultPercentEl.innerText = `${accuracy}%`;
+    lawDrillResultPercentEl.style.color = accuracy >= 80 ? "#15803d" : accuracy >= 60 ? "#f9a825" : "#dc2626";
   }
-  if (scoreEl) {
-    scoreEl.innerText = `${correct} / ${Math.max(1, answered)} Correct`;
+  if (lawDrillResultScoreEl) {
+    lawDrillResultScoreEl.innerText = `${correct} / ${Math.max(1, answered)} Correct`;
   }
-  if (feedbackEl) {
-    feedbackEl.innerText = final
-      ? "You have cleared all 100 levels. You can review the ladder or head back to the menu."
+  if (lawDrillResultFeedbackEl) {
+    lawDrillResultFeedbackEl.innerText = final
+      ? "You have cleared all 100 levels. Return to the ladder or head back to the menu."
       : hasNext
-        ? `Nice work. Level ${nextLevelIndex + 1} is ready when you are.`
+        ? `Nice work. Level ${nextLevelIndex + 1} is unlocked and ready.`
         : "That level is complete. Return to the ladder when ready.";
   }
-  if (reviewSection) {
-    reviewSection.classList.remove("hidden");
-  }
-  if (reviewSectionTitle) {
-    reviewSectionTitle.textContent = "Review";
-  }
-  if (reviewContent) {
-    reviewContent.classList.remove("review-palette-grid");
-    reviewContent.classList.add("analysis-list");
-    reviewContent.innerHTML = buildLawDrillStackMarkup(levelIndex, "Past Level Review");
-  }
-
-  if (reviewBtn) {
-    reviewBtn.classList.toggle("hidden", !hasNext);
-    reviewBtn.textContent = hasNext ? `Level ${nextLevelIndex + 1}` : "Close";
-    reviewBtn.onclick = hasNext
-      ? () => openLawDrillLevel(nextLevelIndex, { resetProgress: true })
-      : returnToLawLadder;
-  }
-  if (shareBtn) {
-    shareBtn.classList.toggle("hidden", false);
-    shareBtn.textContent = "Close";
-    shareBtn.onclick = returnToLawLadder;
-  }
-  if (menuBtn) {
-    menuBtn.textContent = "Back to Menu";
-    menuBtn.onclick = goToMenu;
+  if (lawDrillResultStackEl) {
+    lawDrillResultStackEl.innerHTML = `
+      <div class="law-drill-stack-head">
+        <div>
+          <div class="law-drill-stack-eyebrow">Law Drill Review</div>
+          <div class="law-drill-stack-title">${final ? "Final Level Review" : `Level ${levelIndex + 1} Review`}</div>
+        </div>
+        <div class="law-drill-stack-meta">${answered} answered and ${correct} correct</div>
+      </div>
+      <div class="law-drill-stack-list">
+        ${buildLawDrillResultReviewMarkup(levelIndex)}
+      </div>
+    `;
+    lawDrillResultStackEl.classList.remove("hidden");
   }
 
-  showScreen("study-result-screen");
+  if (lawDrillNextLevelBtn) {
+    if (hasNext) {
+      lawDrillNextLevelBtn.classList.remove("hidden");
+      lawDrillNextLevelBtn.textContent = `Level ${nextLevelIndex + 1}`;
+      lawDrillNextLevelBtn.title = `Open Level ${nextLevelIndex + 1}`;
+      lawDrillNextLevelBtn.onclick = () => openLawDrillLevel(nextLevelIndex, { resetProgress: true });
+    } else {
+      lawDrillNextLevelBtn.classList.add("hidden");
+      lawDrillNextLevelBtn.onclick = null;
+    }
+  }
+  if (lawDrillCloseBtn) {
+    lawDrillCloseBtn.textContent = "Close";
+    lawDrillCloseBtn.title = "Return to the law drill ladder";
+    lawDrillCloseBtn.onclick = returnToLawLadder;
+  }
+  if (lawDrillMenuBtn) {
+    lawDrillMenuBtn.textContent = "Menu";
+    lawDrillMenuBtn.onclick = goToMenu;
+  }
+
+  showScreen("law-drill-result-screen");
   renderPoints();
   renderSessionPointsDisplay();
   persistLawDrillSession();
+}
+
+function getLawDrillSessionLabel(levelIndex = 0) {
+  return `Law Drill Level ${levelIndex + 1}`;
+}
+
+function saveLawDrillLevelSession(levelIndex = 0, { finishBackendAttempt = true } = {}) {
+  if (!lawDrillState || !Array.isArray(lawDrillState.levels)) return false;
+  const level = lawDrillState.levels[levelIndex] || null;
+  if (!level) return false;
+  if (level.sessionSaved) return false;
+
+  const history = Array.isArray(level.history) ? level.history : [];
+  const answers = {};
+  history.forEach((entry) => {
+    if (!entry?.questionId) return;
+    answers[String(entry.questionId)] = String(entry.selectedAnswer || "").trim();
+    updatePerformance(
+      entry.questionId,
+      Boolean(entry.isCorrect),
+      String(entry.selectedAnswer || "").trim() || "Skipped",
+    );
+  });
+
+  const answered = history.length;
+  const correct = history.filter((entry) => entry?.isCorrect).length;
+  level.sessionSaved = true;
+
+  if (finishBackendAttempt && backendReady && backendAttemptId) {
+    backendClient.finishAttempt(backendAttemptId, answers);
+    backendAttemptId = null;
+  }
+
+  saveSession(getLawDrillSessionLabel(levelIndex), correct, answered);
+  commitFinishedSessionPoints({
+    score: correct,
+    setupPointsBucket: "law",
+  });
+  persistLawDrillSession();
+  return true;
 }
 
 function ensureLawDrillActiveLevel() {
@@ -1475,15 +1909,17 @@ function markLawDrillCurrentLevelComplete() {
 
   const nextLevelIndex = currentLevel.index + 1;
   if (nextLevelIndex >= (lawDrillState?.levels?.length || 0)) {
+    lawDrillState.currentLevelIndex = currentLevel.index;
+    lawDrillState.reviewLevelIndex = null;
     lawDrillState.resultLevelIndex = currentLevel.index;
     lawDrillState.view = "result";
+    saveLawDrillLevelSession(currentLevel.index, { finishBackendAttempt: true });
     active = [];
     userAnswers = {};
     current = 0;
     answeredCurrent = false;
     inDetailedReview = false;
     renderLawDrillRail();
-    persistLawDrillSession();
     showDrillEventBanner(`Level ${currentLevel.index + 1} complete`, "good");
     showLawDrillLevelResult(currentLevel.index, { final: true });
     return;
@@ -1498,15 +1934,17 @@ function markLawDrillCurrentLevelComplete() {
   lawDrillState.reviewLevelIndex = null;
   lawDrillState.resultLevelIndex = currentLevel.index;
   lawDrillState.view = "result";
+  syncLawDrillLevelStatuses(nextLevelIndex);
+  saveLawDrillLevelSession(currentLevel.index, { finishBackendAttempt: true });
   active = [];
   userAnswers = {};
   current = 0;
   answeredCurrent = false;
   inDetailedReview = false;
   renderLawDrillRail();
-  persistLawDrillSession();
   showDrillEventBanner(`Level ${currentLevel.index + 1} complete`, "good");
   showLawDrillLevelResult(currentLevel.index);
+  persistLawDrillSession();
 }
 
 function recordLawDrillAnswer(question, selectedAnswer, isCorrect) {
@@ -1548,7 +1986,7 @@ function recordLawDrillAnswer(question, selectedAnswer, isCorrect) {
 async function startLawDrillSession({ resumeState = null } = {}) {
   studySessionEnded = false;
   clearAiExplainStateSession();
-  examVariant = "normal";
+  examVariant = "law";
   examTimeBudget = 0;
   clearInterval(examTimer);
   clearInterval(reviewTimer);
@@ -1571,7 +2009,7 @@ async function startLawDrillSession({ resumeState = null } = {}) {
     return;
   }
 
-  mode = "study";
+  mode = "exam";
   lawDrillState.reviewLevelIndex =
     Number.isInteger(lawDrillState.reviewLevelIndex) && lawDrillState.reviewLevelIndex >= 0
       ? lawDrillState.reviewLevelIndex
@@ -1589,6 +2027,7 @@ async function startLawDrillSession({ resumeState = null } = {}) {
     }
   }
 
+  repairLawDrillCurrentLevelIndex();
   ensureLawDrillActiveLevel();
   updateModeIndicator();
   renderLawDrillRail();
@@ -1616,7 +2055,7 @@ async function startLawDrillSession({ resumeState = null } = {}) {
   if (backendReady) {
     backendClient
       .startAttempt({
-        mode: "study",
+        mode: "exam",
         category: "law-drill",
         questionIds: active.map((q) => Number(q.id)),
       })
@@ -1632,409 +2071,52 @@ async function startLawDrillSession({ resumeState = null } = {}) {
   persistLawDrillSession();
 }
 
-async function getSavedLawDrillSession() {
+function getSavedLawDrillSession() {
   try {
-    const ownerKey = getSetupPointsOwnerKey();
+    const session = readCurrentLawDrillSession();
+    if (!session) return null;
     const state = readLawDrillSessionState();
-    const ownerSession = normalizeLawDrillSessionPayload(state.owners?.[ownerKey]);
-    const legacySession = normalizeLawDrillSessionPayload(state.owners?.legacy);
-    let remoteSession = null;
-
-    if (currentUser && backendClient.isAuthenticated()) {
-      const response = await backendClient.fetchSyncedHistory("study", SETUP_POINTS_HISTORY_SYNC_LIMIT);
-      const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-      const remoteCandidate = remoteSessions.find((session) => {
-        const mode = String(session?.mode || "").trim().toLowerCase();
-        const studyType = String(session?.studyType || "").trim().toLowerCase();
-        return mode === "study" && (studyType === "law" || Boolean(session?.lawDrillState));
-      });
-      remoteSession = normalizeLawDrillSessionPayload(remoteCandidate);
+    const ownerKey = getLawDrillSessionOwnerKey();
+    if (JSON.stringify(state.owners?.[ownerKey] || null) !== JSON.stringify(session)) {
+      state.owners[ownerKey] = session;
+      writeLawDrillSessionState(state);
     }
-
-    const candidates = [ownerSession, remoteSession, legacySession].filter(Boolean);
-    const bestSession =
-      candidates.reduce((best, candidate) => preferLawDrillSession(best, candidate)) || null;
-    if (!bestSession) return null;
-
-    if (currentUser?.id) {
-      const nextState = readLawDrillSessionState();
-      nextState.owners[ownerKey] = bestSession;
-      delete nextState.owners.legacy;
-      writeLawDrillSessionState(nextState);
-    }
-
-    return bestSession;
+    return session;
   } catch {
     return null;
   }
-}
-
-async function openSavedLawDrillSession() {
-  const savedSession = await getSavedLawDrillSession();
-  await startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
-}
-
-function getLawDrillRestoreRank(session = null) {
-  const normalized = normalizeLawDrillSessionPayload(session?.lawDrillState || session);
-  if (!normalized?.lawDrillState) {
-    return { progress: -1, timestamp: 0 };
-  }
-  const progress = Math.max(0, Math.round(Number(normalized.lawDrillState.currentLevelIndex) || 0));
-  const timestamp = new Date(session?.timestamp || session?.createdAt || normalized.timestamp || 0).getTime();
-  return {
-    progress,
-    timestamp: Number.isFinite(timestamp) ? timestamp : 0,
-  };
-}
-
-function preferLawDrillSession(candidateA = null, candidateB = null) {
-  const a = normalizeLawDrillSessionPayload(candidateA?.lawDrillState || candidateA);
-  const b = normalizeLawDrillSessionPayload(candidateB?.lawDrillState || candidateB);
-  if (!a && !b) return null;
-  if (a && !b) return candidateA;
-  if (!a && b) return candidateB;
-
-  const rankA = getLawDrillRestoreRank(candidateA);
-  const rankB = getLawDrillRestoreRank(candidateB);
-  if (rankA.progress !== rankB.progress) {
-    return rankA.progress > rankB.progress ? candidateA : candidateB;
-  }
-  if (rankA.timestamp !== rankB.timestamp) {
-    return rankA.timestamp > rankB.timestamp ? candidateA : candidateB;
-  }
-  return candidateA;
 }
 // ==============================
 // WEAK PRACTICE TRACKER (Persistent)
 // ==============================
 
 let weakTracker = JSON.parse(localStorage.getItem("weakTracker")) || {};
-const PERFORMANCE_STATE_SYNC_LIMIT = 5000;
-let weakTrackerSyncHandle = null;
-let weakTrackerSyncInFlight = null;
-let performanceStateHydrationInFlight = null;
 
-function saveWeakTracker({ sync = true } = {}) {
+function saveWeakTracker() {
   localStorage.setItem("weakTracker", JSON.stringify(weakTracker));
-  if (sync) {
-    scheduleWeakTrackerSync();
-  }
 }
 
 let bestStreak = parseInt(localStorage.getItem("quizBestStreak")) || 0;
 
 let sessionHistory =
   JSON.parse(localStorage.getItem("quizSessionHistory")) || [];
-
-const DASHBOARD_TREND_LIMIT = 12;
-const SESSION_HISTORY_SYNC_LIMIT = 5000;
-const DASHBOARD_TREND_SCOPE_COPY = {
-  session: "Recent sessions",
-  daily: "Past 12 days",
-  weekly: "Past 12 weeks",
-  monthly: "Past 12 months",
-  yearly: "Past 12 years",
-};
-let dashboardTrendState = {
-  scope: "session",
-};
-let sessionHistorySyncInFlight = null;
-
-function getTrendDateValue(rawValue = "") {
-  const parsed = parseMenuSessionDate(rawValue);
-  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
-}
-
-function getTrendDateKey(date = new Date()) {
-  const safe = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(safe.getTime())) return "";
-  const year = safe.getFullYear();
-  const month = String(safe.getMonth() + 1).padStart(2, "0");
-  const day = String(safe.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getTrendWeekStart(date = new Date()) {
-  const safe = new Date(date);
-  safe.setHours(0, 0, 0, 0);
-  safe.setDate(safe.getDate() - safe.getDay());
-  return safe;
-}
-
-function getTrendMonthStart(date = new Date()) {
-  const safe = new Date(date);
-  safe.setHours(0, 0, 0, 0);
-  safe.setDate(1);
-  return safe;
-}
-
-function getTrendYearStart(date = new Date()) {
-  const safe = new Date(date);
-  safe.setHours(0, 0, 0, 0);
-  safe.setMonth(0, 1);
-  return safe;
-}
-
-function normalizeSessionHistoryEntry(entry = {}) {
-  const score = Math.max(0, Math.round(Number(entry?.score) || 0));
-  const total = Math.max(0, Math.round(Number(entry?.total) || 0));
-  const percentValue = Number(entry?.percent);
-  const percent = Number.isFinite(percentValue)
-    ? Math.max(0, Math.min(100, Math.round(percentValue)))
-    : total > 0
-      ? Math.max(0, Math.min(100, Math.round((score / total) * 100)))
-      : 0;
-  const mode = String(entry?.mode || "Session").trim() || "Session";
-  const timestamp = String(entry?.timestamp || entry?.createdAt || entry?.date || "").trim();
-  const date = String(entry?.date || entry?.timestamp || entry?.createdAt || "").trim();
-  return {
-    id: String(entry?.id || "").trim(),
-    mode,
-    score,
-    total,
-    percent,
-    timestamp,
-    date,
-    duration: entry?.duration === null || entry?.duration === undefined ? null : String(entry.duration),
-  };
-}
-
-function getSessionHistoryEntryKey(entry = {}) {
-  const id = String(entry?.id || "").trim();
-  if (id) return `id:${id}`;
-
-  const normalized = normalizeSessionHistoryEntry(entry);
-  return [
-    "legacy",
-    normalized.mode.toLowerCase(),
-    normalized.score,
-    normalized.total,
-    normalized.percent,
-    normalized.date,
-    normalized.duration || "",
-  ].join("|");
-}
-
-function sortSessionHistoryEntries(entries = []) {
-  return [...entries].sort((a, b) => {
-    const timeA = getTrendDateValue(a?.timestamp || a?.createdAt || a?.date)?.getTime() || 0;
-    const timeB = getTrendDateValue(b?.timestamp || b?.createdAt || b?.date)?.getTime() || 0;
-    if (timeB !== timeA) return timeB - timeA;
-    const scoreDiff = (Number(b?.score) || 0) - (Number(a?.score) || 0);
-    if (scoreDiff !== 0) return scoreDiff;
-    return String(b?.id || "").localeCompare(String(a?.id || ""));
-  });
-}
-
-function mergeSessionHistoryEntries(...groups) {
-  const merged = new Map();
-  groups.flat().forEach((entry) => {
-    const normalized = normalizeSessionHistoryEntry(entry);
-    const key = getSessionHistoryEntryKey(normalized);
-    if (!key) return;
-    if (!merged.has(key)) {
-      merged.set(key, normalized);
-    }
-  });
-  return sortSessionHistoryEntries([...merged.values()]);
-}
-
-function getTrendScopeCopy(scope = "session") {
-  return DASHBOARD_TREND_SCOPE_COPY[String(scope || "session").trim().toLowerCase()] ||
-    DASHBOARD_TREND_SCOPE_COPY.session;
-}
-
-function buildTrendBuckets(scope = "session", limit = DASHBOARD_TREND_LIMIT) {
-  const safeLimit = Math.max(1, Math.round(Number(limit) || DASHBOARD_TREND_LIMIT));
-  const safeScope = String(scope || "session").trim().toLowerCase();
-
-  if (safeScope === "daily") {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - (safeLimit - 1));
-    return Array.from({ length: safeLimit }, (_, index) => {
-      const date = new Date(start);
-      date.setDate(start.getDate() + index);
-      return {
-        key: getTrendDateKey(date),
-        label: new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric" }).format(date),
-        score: 0,
-        total: 0,
-        count: 0,
-      };
-    });
-  }
-
-  if (safeScope === "weekly") {
-    const start = getTrendWeekStart();
-    start.setDate(start.getDate() - (safeLimit - 1) * 7);
-    return Array.from({ length: safeLimit }, (_, index) => {
-      const date = new Date(start);
-      date.setDate(start.getDate() + index * 7);
-      return {
-        key: getTrendDateKey(date),
-        label: new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric" }).format(date),
-        score: 0,
-        total: 0,
-        count: 0,
-      };
-    });
-  }
-
-  if (safeScope === "monthly") {
-    const start = getTrendMonthStart();
-    start.setMonth(start.getMonth() - (safeLimit - 1));
-    return Array.from({ length: safeLimit }, (_, index) => {
-      const date = new Date(start);
-      date.setMonth(start.getMonth() + index, 1);
-      return {
-        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-        label: new Intl.DateTimeFormat("en-US", { month: "short" }).format(date),
-        title: new Intl.DateTimeFormat("en-US", { month: "short" }).format(date),
-        score: 0,
-        total: 0,
-        count: 0,
-      };
-    });
-  }
-
-  if (safeScope === "yearly") {
-    const start = getTrendYearStart();
-    start.setFullYear(start.getFullYear() - (safeLimit - 1));
-    return Array.from({ length: safeLimit }, (_, index) => {
-      const date = new Date(start);
-      date.setFullYear(start.getFullYear() + index, 0, 1);
-      return {
-        key: String(date.getFullYear()),
-        label: String(date.getFullYear()),
-        score: 0,
-        total: 0,
-        count: 0,
-      };
-    });
-  }
-
-  return Array.from({ length: safeLimit }, (_, index) => ({
-    key: String(index + 1),
-    label: String(index + 1),
-    score: 0,
-    total: 0,
-    count: 0,
-  }));
-}
-
-function buildTrendSeries(scope = "session", entries = [], limit = DASHBOARD_TREND_LIMIT) {
-  const safeScope = String(scope || "session").trim().toLowerCase();
-  const safeLimit = Math.max(1, Math.round(Number(limit) || DASHBOARD_TREND_LIMIT));
-  const normalizedEntries = sortSessionHistoryEntries(Array.isArray(entries) ? entries : []);
-
-  if (safeScope === "session") {
-    const visible = normalizedEntries.slice(0, safeLimit).reverse();
-    const padCount = Math.max(0, safeLimit - visible.length);
-    const padded = Array.from({ length: padCount }, (_, index) => ({
-      key: `pad-${index}`,
-      label: String(index + 1),
-      score: 0,
-      total: 0,
-      count: 0,
-      percent: 0,
-    }));
-    const series = visible.map((entry, index) => {
-      const score = Math.max(0, Math.round(Number(entry?.score) || 0));
-      const total = Math.max(0, Math.round(Number(entry?.total) || 0));
-      const percent = Math.max(0, Math.min(100, Math.round(Number(entry?.percent) || (total > 0 ? (score / total) * 100 : 0))));
-      return {
-        key: getSessionHistoryEntryKey(entry) || `session-${index}`,
-        label: String(padCount + index + 1),
-        score,
-        total,
-        count: 1,
-        percent,
-      };
-    });
-    return [...padded, ...series].slice(-safeLimit);
-  }
-
-  const buckets = buildTrendBuckets(safeScope, safeLimit);
-  const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
-
-  normalizedEntries.forEach((entry) => {
-    const date = getTrendDateValue(entry.timestamp || entry.createdAt || entry.date);
-    if (!date) return;
-
-    let key = "";
-    if (safeScope === "daily") {
-      key = getTrendDateKey(date);
-    } else if (safeScope === "weekly") {
-      key = getTrendDateKey(getTrendWeekStart(date));
-    } else if (safeScope === "monthly") {
-      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    } else if (safeScope === "yearly") {
-      key = String(date.getFullYear());
-    }
-
-    const bucket = bucketMap.get(key);
-    if (!bucket) return;
-
-    bucket.score += Math.max(0, Math.round(Number(entry.score) || 0));
-    bucket.total += Math.max(0, Math.round(Number(entry.total) || 0));
-    bucket.count += 1;
-  });
-
-  return buckets.map((bucket, index) => {
-    const percent =
-      bucket.total > 0
-        ? Math.max(0, Math.min(100, Math.round((bucket.score / bucket.total) * 100)))
-        : 0;
-    return {
-      key: bucket.key,
-      label: bucket.label || String(index + 1),
-      score: bucket.score,
-      total: bucket.total,
-      count: bucket.count,
-      percent,
-    };
-  });
-}
-
-async function syncSessionHistoryFromBackend({ force = false } = {}) {
-  if (sessionHistorySyncInFlight) return sessionHistorySyncInFlight;
-
-  const task = (async () => {
-    let remoteEntries = [];
-    try {
-      const response = await backendClient.fetchSyncedHistory("", SESSION_HISTORY_SYNC_LIMIT);
-      remoteEntries = Array.isArray(response?.sessions)
-        ? response.sessions.map((entry) => normalizeSessionHistoryEntry({
-            ...entry,
-            timestamp: entry?.timestamp || entry?.createdAt || entry?.date || "",
-          }))
-        : [];
-    } catch {
-      remoteEntries = [];
-    }
-
-    const merged = force
-      ? mergeSessionHistoryEntries([], sessionHistory, remoteEntries)
-      : mergeSessionHistoryEntries(sessionHistory, remoteEntries);
-
-    sessionHistory = merged;
-    localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
-
-    if (document.getElementById("dashboard")?.classList.contains("screen-active")) {
-      renderDashboardValues(getLocalDashboardSnapshot());
-    }
-
-    return sessionHistory;
-  })();
-
-  sessionHistorySyncInFlight = task;
-  try {
-    return await task;
-  } finally {
-    sessionHistorySyncInFlight = null;
-  }
-}
+const MAX_SESSION_HISTORY_ENTRIES = 120;
+const DASHBOARD_TREND_MAX_POINTS = 12;
+const DASHBOARD_RECENT_RESULTS_MAX = 10;
+const DASHBOARD_TREND_REMOTE_HISTORY_LIMIT = Math.min(1000, MAX_SESSION_HISTORY_ENTRIES * 4);
+const DASHBOARD_TREND_SCOPE_STORAGE_KEY = "dashboardTrendScopeV1";
+const RECENT_RESULTS_STORAGE_KEY = "quizRecentSessionResultsV1";
+let latestSavedSession = Array.isArray(sessionHistory) && sessionHistory.length > 0 ? sessionHistory[0] : null;
+let recentSessionResults =
+  JSON.parse(localStorage.getItem(RECENT_RESULTS_STORAGE_KEY)) || [];
+let dashboardTrendScope =
+  String(localStorage.getItem(DASHBOARD_TREND_SCOPE_STORAGE_KEY) || "session")
+    .trim()
+    .toLowerCase() || "session";
+let dashboardTrendSessionsCache = [];
+let dashboardTrendSessionsLoadedFromSync = false;
+let lastSavedSessionFingerprint = "";
+let lastSavedSessionAt = 0;
 
 function byQuestionIdAscending(a, b) {
   return Number(a?.id || 0) - Number(b?.id || 0);
@@ -2246,6 +2328,10 @@ function parseImportedCaseQuestionLabel(questionText = "") {
   };
 }
 
+function normalizeQuestionIdKey(value = "") {
+  return String(value ?? "").trim();
+}
+
 function escapeRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -2260,22 +2346,213 @@ function stripCaseStemFromQuestion(questionText, caseText) {
   return output;
 }
 
-const normalizedLocalQuestions = enrichImportedCaseQuestions(
-  (Array.isArray(baseQuestions) ? baseQuestions : [])
-    .filter((question) => !isRetiredLawCategoryQuestion(question))
-    .map(withMajorCategory),
-);
+let normalizedLocalQuestions = [];
+let localQuestionFallbackById = new Map();
+let localTopicQuestionBank = [];
+let questionBank = [];
+const caseMap = {};
+let backendReady = false;
+let backendAttemptId = null;
+let currentUser = null;
+let authMode = "login";
+let authForgotRequestLocked = false;
+let authPostSuccessScreenId = "quiz-menu";
+let topicCatalog = { topics: [], categories: [] };
+let topicCatalogLoaded = false;
+let subscriptionPlansCache = [];
+let subscriptionStatusSnapshot = null;
+let subscriptionScreenState = {
+  intent: "general",
+  returnScreen: "quiz-menu",
+  paymentModalOpen: false,
+  paymentProofOpen: false,
+};
+let topicLibraryReturnScreen = "quiz-menu";
+let topicViewerReturnScreen = "topic-library";
+let topicViewerCurrentSlug = "";
+let dailyQuizState = null;
+let dailyQuizSessionMeta = null;
+let dailyQuizPopupShownDate = "";
+let dailyCelebrationShownDate = "";
+let dailyPendingCelebration = null;
+let dailyGemsAnimationHandle = null;
+let dailyGemsAnimationActive = false;
+let dailyCelebrationHideTimer = null;
+let dailyCelebrationResetTimer = null;
+let dailyMidnightRefreshTimer = null;
+let dailyLeaderboardSnapshot = null;
+let questionInsightCache = Object.create(null);
+let questionInsightInFlightKey = "";
+let performanceStateSyncHandle = null;
+let performanceStateSyncInFlight = false;
+let performanceStateSyncQueued = false;
+let backendBootstrapStarted = false;
+let newsFeedState = {
+  loaded: false,
+  loading: false,
+  items: [],
+  categories: {},
+  sources: [],
+  selectedNewsId: "",
+  selectedCategory: "all",
+  selectedSourceId: "",
+  searchQuery: "",
+  lastUpdatedAt: "",
+  error: "",
+  errorTone: "info",
+};
+const NEWS_FEED_CACHE_KEY = "news-feed-cache-v1";
+const communityStatusVideoMetaCache = new Map();
+const communityStatusVideoFrameCache = new Map();
+const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
+const COMMUNITY_OFFLINE_QUEUE_TYPES = {
+  SEND_MESSAGE: "community-send-message",
+  TOGGLE_STATUS_LIKE: "community-toggle-status-like",
+  SEND_FRIEND_REQUEST: "community-send-friend-request",
+  RESPOND_FRIEND_REQUEST: "community-respond-friend-request",
+  UNFRIEND: "community-unfriend",
+  BLOCK_USER: "community-block-user",
+  UNBLOCK_USER: "community-unblock-user",
+};
+let communityOfflineQueueFlushHandle = null;
+let communityOfflineQueueFlushInFlight = false;
 
-const localQuestionFallbackById = new Map(
-  normalizedLocalQuestions
-    .map((q) => [Number(q?.id), q])
-    .filter(([id]) => Number.isFinite(id)),
-);
+function scheduleCommunityOfflineQueueFlush(delayMs = 800) {
+  if (communityOfflineQueueFlushHandle) {
+    clearTimeout(communityOfflineQueueFlushHandle);
+  }
+  communityOfflineQueueFlushHandle = setTimeout(() => {
+    communityOfflineQueueFlushHandle = null;
+    void flushCommunityOfflineQueue();
+  }, Math.max(200, Math.round(Number(delayMs) || 800)));
+}
+
+async function flushCommunityOfflineQueue() {
+  if (communityOfflineQueueFlushInFlight || !backendClient.isAuthenticated()) return;
+  communityOfflineQueueFlushInFlight = true;
+  try {
+    const outcomes = await flushOfflineQueue(async (entry) => {
+      const payload = entry?.payload && typeof entry.payload === "object" ? entry.payload : {};
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_MESSAGE) {
+        const response = await backendClient.sendConversationMessage(
+          String(payload.conversationId || "").trim(),
+          String(payload.text || ""),
+          payload.attachment || null,
+          payload.replyTo || null,
+        );
+        if (payload.optimisticIds) {
+          removeCommunityPendingOutgoingMessageIds(payload.optimisticIds);
+        }
+        const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
+        if (savedMessage) {
+          communityState.messages = Array.isArray(communityState.messages)
+            ? communityState.messages.filter((message) => !Array.isArray(payload.optimisticIds) || !payload.optimisticIds.includes(String(message?.id || "")))
+            : [];
+          if (!communityState.messages.some((message) => String(message?.id || "") === String(savedMessage.id || ""))) {
+            communityState.messages.push(savedMessage);
+          }
+          renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
+        }
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.TOGGLE_STATUS_LIKE) {
+        await backendClient.toggleStatusLike(String(payload.statusId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_FRIEND_REQUEST) {
+        await backendClient.sendFriendRequest(String(payload.userId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST) {
+        await backendClient.respondToFriendRequest(String(payload.requestId || ""), String(payload.decision || "accept"));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.UNFRIEND) {
+        await backendClient.unfriendUser(String(payload.userId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.BLOCK_USER) {
+        await backendClient.blockUser(String(payload.userId || ""));
+        return;
+      }
+      if (entry.type === COMMUNITY_OFFLINE_QUEUE_TYPES.UNBLOCK_USER) {
+        await backendClient.unblockUser(String(payload.userId || ""));
+      }
+    });
+    if (Array.isArray(outcomes) && outcomes.some((outcome) => Boolean(outcome?.ok))) {
+      void loadCommunityOverview({ silent: true, preferCache: true });
+      if (communityState.activeConversation?.id) {
+        void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+      }
+    }
+  } catch {
+    // Best effort only.
+  } finally {
+    communityOfflineQueueFlushInFlight = false;
+  }
+}
+
+async function loadBundledQuestionSource() {
+  const imported = await import(QUESTION_BANK_MODULE_URL);
+  return Array.isArray(imported.baseQuestions) ? imported.baseQuestions : [];
+}
+
+async function ensureQuestionBankLoaded() {
+  if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+    return questionBank;
+  }
+
+  if (questionBankBootstrapPromise) {
+    return questionBankBootstrapPromise;
+  }
+
+  questionBankBootstrapPromise = (async () => {
+    await loadQuestionsFromBackend();
+    if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+      return questionBank;
+    }
+
+    const sourceQuestions = await loadBundledQuestionSource();
+    if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+      return questionBank;
+    }
+    normalizedLocalQuestions = enrichImportedCaseQuestions(
+      (Array.isArray(sourceQuestions) ? sourceQuestions : [])
+        .filter((question) => !isRetiredLawCategoryQuestion(question))
+        .map(withMajorCategory),
+    );
+
+    localQuestionFallbackById = new Map(
+      normalizedLocalQuestions
+        .map((q) => [Number(q?.id), q])
+        .filter(([id]) => Number.isFinite(id)),
+    );
+    localTopicQuestionBank = [...normalizedLocalQuestions];
+    questionBank = [...localTopicQuestionBank];
+    questionBankReady = true;
+    rebuildCaseMap();
+    reconcileLocalQuestionStats();
+    refreshQuestionDependentUi();
+    return questionBank;
+  })().catch((error) => {
+    console.warn("Failed to load bundled question bank:", error);
+    questionBankBootstrapPromise = null;
+    return [];
+  });
+
+  return questionBankBootstrapPromise;
+}
 
 function mapBackendQuestionToLocal(q = {}) {
   const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
   return {
     id: q.id,
+    bank: String(q.bank || fallback.bank || "main").trim().toLowerCase() || "main",
+    comboVariant: String(q.comboVariant || fallback.comboVariant || "").trim().toLowerCase() || "",
+    year: Number.isFinite(Number(q.year)) ? Number(q.year) : Number(fallback.year) || undefined,
+    displayNumber: Number.isFinite(Number(q.displayNumber))
+      ? Number(q.displayNumber)
+      : Number(fallback.displayNumber) || undefined,
     text: q.text || q.question || fallback.text || fallback.question || "",
     question: q.question || q.text || fallback.question || fallback.text || "",
     category: normalizeQuestionCategory({
@@ -2296,6 +2573,7 @@ function mapBackendQuestionToLocal(q = {}) {
     caseId: q.caseId || fallback.caseId || "",
     caseBlock: q.caseBlock || fallback.caseBlock || "",
     correct: q.correct || fallback.correct,
+    answer: Number.isFinite(Number(q.answer)) ? Number(q.answer) : Number(fallback.answer) || undefined,
     explanation: q.explanation || fallback.explanation || "",
     explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
     wrongOptionExplanations:
@@ -2319,65 +2597,147 @@ function mapBackendQuestionToLocal(q = {}) {
   };
 }
 
-const localTopicQuestionBank = [...normalizedLocalQuestions];
-let questionBank = [...localTopicQuestionBank];
-const caseMap = {};
-let backendReady = false;
-let backendAttemptId = null;
-let currentUser = null;
-let authMode = "login";
-let topicCatalog = { topics: [], categories: [] };
-let topicCatalogLoaded = false;
-let topicLibraryReturnScreen = "quiz-menu";
-let topicViewerReturnScreen = "topic-library";
-let topicViewerCurrentSlug = "";
-let dailyQuizState = null;
-let dailyQuizSessionMeta = null;
-let dailyQuizPopupShownDate = "";
-let dailyCelebrationShownDate = "";
-let dailyPendingCelebration = null;
-let dailyGemsAnimationHandle = null;
-let dailyGemsAnimationActive = false;
-let dailyCelebrationHideTimer = null;
-let dailyCelebrationResetTimer = null;
-let dailyMidnightRefreshTimer = null;
-let dailyLeaderboardSnapshot = null;
-let questionInsightCache = Object.create(null);
-let questionInsightInFlightKey = "";
-const communityStatusVideoMetaCache = new Map();
-const communityStatusVideoFrameCache = new Map();
-const COMMUNITY_CHAT_MAX_ATTACHMENTS = 5;
+const COMBO_THREE_STATEMENT_CHOICES = [
+  { letter: "A", text: "A: 1, 2 and 3" },
+  { letter: "B", text: "B: 1 and 2 only" },
+  { letter: "C", text: "C: 2 and 3 only" },
+  { letter: "D", text: "D: 1 only" },
+  { letter: "E", text: "E: 3 only" },
+];
+
+const COMBO_PAIR_RELATION_CHOICES = [
+  {
+    letter: "A",
+    text: "A: first statement is true, second statement is true and the two are related",
+  },
+  {
+    letter: "B",
+    text: "B: first statement is true, second statement is true but the two are not related",
+  },
+  {
+    letter: "C",
+    text: "C: first statement is false, second statement is true",
+  },
+  {
+    letter: "D",
+    text: "D: both statements are false",
+  },
+];
+
+const COMBO_TABLE_CHOICES = [
+  { letter: "A", text: "A: I, II and III" },
+  { letter: "B", text: "B: II and III only" },
+  { letter: "C", text: "C: I only" },
+  { letter: "D", text: "D: III only" },
+];
+
+const COMBO_ASSERTION_CHOICES = [
+  { letter: "A", text: "A: First statement is TRUE, Second statement is TRUE and they are RELATED" },
+  { letter: "B", text: "B: First statement is TRUE, Second statement is TRUE but they are NOT related" },
+  { letter: "C", text: "C: First statement is TRUE but Second statement is FALSE" },
+  { letter: "D", text: "D: First statement is FALSE but Second statement is TRUE" },
+  { letter: "E", text: "E: Both statements are FALSE" },
+];
+
+function getComboChoiceRows(question = {}) {
+  const explicitOptions = Array.isArray(question?.options)
+    ? question.options.map((option) => String(option || "").trim()).filter(Boolean)
+    : [];
+
+  if (explicitOptions.length > 0) {
+    return explicitOptions.map((text, index) => {
+      const letter = String.fromCharCode(65 + index);
+      const renderedText = /^[A-E][\s:.)-]/i.test(text) ? text : `${letter}: ${text}`;
+      return { letter, text: renderedText };
+    });
+  }
+
+  const comboVariant = String(question?.comboVariant || "").trim().toLowerCase();
+  const statementCount = Array.isArray(question?.statements) ? question.statements.length : 0;
+  if (comboVariant === "assertion-5") {
+    return COMBO_ASSERTION_CHOICES;
+  }
+
+  if (comboVariant === "table-4") {
+    return COMBO_TABLE_CHOICES;
+  }
+
+  if (comboVariant === "pair-relationship" || statementCount === 2) {
+    return COMBO_PAIR_RELATION_CHOICES;
+  }
+
+  if (statementCount === 3) {
+    return COMBO_THREE_STATEMENT_CHOICES;
+  }
+
+  return [];
+}
 
 // Load questions from backend if available
 async function loadQuestionsFromBackend() {
   try {
-    const questions = await backendClient.fetchQuestions({ limit: 1000 });
+    const questions = await backendClient.fetchQuestions();
     if (Array.isArray(questions) && questions.length > 0) {
-      // Merge backend questions over the local dataset so local-only topic work
-      // remains usable until it is also published to the backend store.
-      const localQuestions = [...normalizedLocalQuestions];
-      const filteredBackendQuestions = questions.filter((question) => !isRetiredLawCategoryQuestion(question));
-      const backendById = new Map(
-        filteredBackendQuestions.map(mapBackendQuestionToLocal).map((question) => [Number(question?.id), question]),
-      );
-      const mergedQuestions = localQuestions.map((question) => {
-        const questionId = Number(question?.id);
-        return backendById.get(questionId) || question;
-      });
-      const localIds = new Set(localQuestions.map((question) => Number(question?.id)));
-      const backendOnlyQuestions = [...backendById.values()]
-        .filter((question) => !localIds.has(Number(question?.id)))
+      const backendQuestions = questions
+        .filter((question) => !isRetiredLawCategoryQuestion(question))
+        .map(mapBackendQuestionToLocal)
         .sort(byQuestionIdAscending);
-      questionBank = enrichImportedCaseQuestions([...mergedQuestions, ...backendOnlyQuestions]);
+      questionBank = enrichImportedCaseQuestions(backendQuestions);
+      localTopicQuestionBank = [...questionBank];
+      normalizedLocalQuestions = [...questionBank];
+      localQuestionFallbackById = new Map(
+        normalizedLocalQuestions
+          .map((q) => [Number(q?.id), q])
+          .filter(([id]) => Number.isFinite(id)),
+      );
+      questionBankReady = true;
       backendReady = true;
       reconcileLocalQuestionStats();
+      rebuildCaseMap();
+      refreshQuestionDependentUi();
       console.info(`Loaded ${questionBank.length} questions from backend`);
     }
   } catch (error) {
-    console.warn("Backend unavailable, using local questions:", error);
-    // Keep using local questions from data.js
+    console.warn("Backend unavailable, falling back to bundled questions:", error);
   }
 }
+
+function startBackendBootstrap() {
+  if (backendBootstrapStarted) return;
+  backendBootstrapStarted = true;
+  const runBootstrap = () => {
+    void loadQuestionsFromBackend();
+    backendClient
+      .warmup()
+      .then(() => {
+        backendReady = true;
+      })
+      .catch(() => {
+        // Keep local-first behavior if backend is offline.
+      });
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runBootstrap, 250);
+  }
+}
+
+function startQuestionBankBootstrap() {
+  const runBootstrap = () => {
+    void ensureQuestionBankLoaded();
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runBootstrap, 250);
+  }
+}
+
+window.addEventListener("online", () => {
+  scheduleCommunityOfflineQueueFlush(100);
+});
 
 function rebuildCaseMap() {
   Object.keys(caseMap).forEach((key) => delete caseMap[key]);
@@ -2421,67 +2781,113 @@ rebuildCaseMap();
                   ================================= */
 
 let performanceData = JSON.parse(localStorage.getItem("quizPerformance")) || {};
+let syncedPerformanceStateCache = null;
+let syncedPerformanceStateLoadedFromSync = false;
+
+function resetSyncedDashboardCaches() {
+  syncedPerformanceStateCache = null;
+  syncedPerformanceStateLoadedFromSync = false;
+  dashboardTrendSessionsCache = [];
+  dashboardTrendSessionsLoadedFromSync = false;
+}
 
 function savePerformance() {
   localStorage.setItem("quizPerformance", JSON.stringify(performanceData));
 }
 
-function normalizeQuestionIdKey(value) {
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? String(id) : "";
+function normalizePerformanceStatsMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => {
+        const attempts = Math.max(0, Math.round(Number(value?.attempts) || 0));
+        const correct = Math.max(0, Math.min(attempts, Math.round(Number(value?.correct) || 0)));
+        return [String(key || "").trim(), { attempts, correct }];
+      })
+      .filter(([key]) => Boolean(key)),
+  );
+}
+
+function mergePerformanceStatsMap(left = {}, right = {}) {
+  const safeLeft = normalizePerformanceStatsMap(left);
+  const safeRight = normalizePerformanceStatsMap(right);
+  const merged = new Map();
+
+  Object.entries(safeLeft).forEach(([key, value]) => {
+    merged.set(key, { attempts: value.attempts, correct: value.correct });
+  });
+
+  Object.entries(safeRight).forEach(([key, value]) => {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { attempts: value.attempts, correct: value.correct });
+      return;
+    }
+    const attempts = Math.max(existing.attempts, value.attempts);
+    const correct = Math.max(existing.correct, value.correct);
+    merged.set(key, { attempts, correct: Math.min(attempts, correct) });
+  });
+
+  return Object.fromEntries(merged.entries());
 }
 
 function reconcileLocalQuestionStats() {
-  const validIds = new Set(
+  const questionIdSet = new Set(
     (Array.isArray(questionBank) ? questionBank : [])
-      .map((q) => normalizeQuestionIdKey(q?.id))
+      .map((question) => normalizeQuestionIdKey(question?.id))
       .filter(Boolean),
   );
 
-  let weakChanged = false;
-  const nextWeak = {};
-  Object.entries(weakTracker || {}).forEach(([rawId, row]) => {
-    const key = normalizeQuestionIdKey(rawId);
-    if (!key || !validIds.has(key)) {
-      weakChanged = true;
+  const nextPerformanceData = {};
+  Object.entries(normalizePerformanceStatsMap(performanceData || {})).forEach(([questionId, row]) => {
+    if (!questionIdSet.has(String(questionId))) return;
+    const attempts = Math.max(0, Math.round(Number(row?.attempts) || 0));
+    const correct = Math.max(0, Math.min(attempts, Math.round(Number(row?.correct) || 0)));
+    nextPerformanceData[questionId] = { attempts, correct };
+  });
+
+  performanceData = nextPerformanceData;
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
+  savePerformance();
+  renderPoints();
+}
+
+function normalizeWeakTrackerMap(raw = {}) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw)
+      .map(([key, value]) => {
+        const normalizedKey = String(key || "").trim();
+        if (!normalizedKey) return null;
+        const roundsPassed = Math.max(0, Math.round(Number(value?.roundsPassed) || 0));
+        return [normalizedKey, { roundsPassed }];
+      })
+      .filter(Boolean),
+  );
+}
+
+function mergeWeakTrackerMap(left = {}, right = {}) {
+  const safeLeft = normalizeWeakTrackerMap(left);
+  const safeRight = normalizeWeakTrackerMap(right);
+  const merged = new Map();
+
+  Object.entries(safeLeft).forEach(([key, value]) => {
+    merged.set(key, { roundsPassed: value.roundsPassed });
+  });
+
+  Object.entries(safeRight).forEach(([key, value]) => {
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, { roundsPassed: value.roundsPassed });
       return;
     }
-    nextWeak[key] = row;
+    merged.set(key, {
+      roundsPassed: Math.max(existing.roundsPassed, value.roundsPassed),
+    });
   });
-  if (weakChanged) {
-    weakTracker = nextWeak;
-    saveWeakTracker();
-  }
 
-  // Keep historical performance data intact even when question bank changes.
-  // Dashboard should remain cumulative and never shrink from ID filtering.
-}
-
-reconcileLocalQuestionStats();
-
-function normalizePerformanceRowMap(rawRows = {}, { allowEmptyKeys = false } = {}) {
-  const rows = {};
-  Object.entries(rawRows || {}).forEach(([rawKey, value]) => {
-    const key = allowEmptyKeys ? String(rawKey || "").trim() : normalizeQuestionIdKey(rawKey);
-    if (!key) return;
-    const attempts = Math.max(0, Math.round(Number(value?.attempts) || 0));
-    const correct = Math.max(0, Math.min(attempts, Math.round(Number(value?.correct) || 0)));
-    if (attempts <= 0 && correct <= 0) return;
-    rows[key] = { attempts, correct };
-  });
-  return rows;
-}
-
-function normalizeWeakTrackerMap(rawRows = {}) {
-  const rows = {};
-  Object.entries(rawRows || {}).forEach(([rawKey, value]) => {
-    const key = normalizeQuestionIdKey(rawKey);
-    if (!key) return;
-    rows[key] = {
-      roundsPassed: Math.max(0, Math.round(Number(value?.roundsPassed) || 0)),
-    };
-  });
-  return rows;
+  return Object.fromEntries(merged.entries());
 }
 
 function buildPerformanceStateFromEvents(events = []) {
@@ -2494,7 +2900,7 @@ function buildPerformanceStateFromEvents(events = []) {
     if (!questionId) return;
 
     const isCorrect = Boolean(event?.isCorrect);
-    const category = String(event?.category || "General").trim() || "General";
+    const category = normalizeMajorCategory(event?.category || "", "");
     const rotation = String(event?.rotation || "").trim();
 
     if (!nextPerformanceData[questionId]) {
@@ -2542,114 +2948,56 @@ function buildPerformanceStateFromEvents(events = []) {
   };
 }
 
-function mergePerformanceRows(localRows = {}, remoteRows = {}, { allowEmptyKeys = false } = {}) {
-  const merged = {};
-  const local = normalizePerformanceRowMap(localRows, { allowEmptyKeys });
-  const remote = normalizePerformanceRowMap(remoteRows, { allowEmptyKeys });
-  const keys = new Set([...Object.keys(local), ...Object.keys(remote)]);
-
-  keys.forEach((key) => {
-    const localRow = local[key] || { attempts: 0, correct: 0 };
-    const remoteRow = remote[key] || { attempts: 0, correct: 0 };
-    const attempts = Math.max(localRow.attempts, remoteRow.attempts);
-    const correct = Math.max(localRow.correct, remoteRow.correct);
-    if (attempts <= 0 && correct <= 0) return;
-    merged[key] = {
-      attempts,
-      correct: Math.min(attempts, correct),
-    };
-  });
-
-  return merged;
+function captureCurrentPerformanceState() {
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
+  return {
+    performanceData: JSON.parse(JSON.stringify(performanceData || {})),
+    categoryPerformance: JSON.parse(JSON.stringify(categoryPerformance || {})),
+    rotationPerformance: JSON.parse(JSON.stringify(rotationPerformance || {})),
+  };
 }
 
-function scheduleWeakTrackerSync(delayMs = 600) {
-  if (weakTrackerSyncHandle) {
-    clearTimeout(weakTrackerSyncHandle);
-  }
-  weakTrackerSyncHandle = setTimeout(() => {
-    weakTrackerSyncHandle = null;
-    void flushWeakTrackerSync();
-  }, delayMs);
-}
-
-async function flushWeakTrackerSync() {
-  if (weakTrackerSyncInFlight) return weakTrackerSyncInFlight;
-
-  const task = (async () => {
-    try {
-      await backendClient.syncWeakTracker(weakTracker);
-    } catch {
-      // Keep local weak tracker even when sync is unavailable.
-    }
-  })();
-
-  weakTrackerSyncInFlight = task;
-  try {
-    return await task;
-  } finally {
-    weakTrackerSyncInFlight = null;
+function schedulePerformanceStateSync(delayMs = 800) {
+  if (performanceStateSyncHandle) {
+    clearTimeout(performanceStateSyncHandle);
+    performanceStateSyncHandle = null;
   }
 }
 
-async function hydratePerformanceStateFromBackend({ force = false } = {}) {
-  if (performanceStateHydrationInFlight) return performanceStateHydrationInFlight;
-
-  const task = (async () => {
-    let remote = null;
-    try {
-      remote = await backendClient.fetchSyncedPerformanceState(PERFORMANCE_STATE_SYNC_LIMIT);
-    } catch {
-      remote = null;
-    }
-
-    if (!remote) return null;
-
-    const built = buildPerformanceStateFromEvents(Array.isArray(remote.events) ? remote.events : []);
-    const nextPerformanceData = mergePerformanceRows(performanceData, built.performanceData);
-    const nextCategoryPerformance = mergePerformanceRows(categoryPerformance, built.categoryPerformance, {
-      allowEmptyKeys: true,
-    });
-    const nextRotationPerformance = mergePerformanceRows(rotationPerformance, built.rotationPerformance, {
-      allowEmptyKeys: true,
-    });
-    const remoteWeakTracker = normalizeWeakTrackerMap(remote.weakTracker || {});
-    const derivedWeakTracker = normalizeWeakTrackerMap(built.weakTracker || {});
-    const nextWeakTracker =
-      Object.keys(remoteWeakTracker).length > 0
-        ? remoteWeakTracker
-        : Object.keys(derivedWeakTracker).length > 0
-          ? derivedWeakTracker
-          : normalizeWeakTrackerMap(weakTracker);
-
-    performanceData = nextPerformanceData;
-    categoryPerformance = nextCategoryPerformance;
-    rotationPerformance = nextRotationPerformance;
-    weakTracker = nextWeakTracker;
-
-    localStorage.setItem("quizPerformance", JSON.stringify(performanceData));
-    localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
-    localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
-    saveWeakTracker({ sync: false });
-
-    if (document.getElementById("dashboard")?.classList.contains("screen-active")) {
-      renderDashboardValues(getLocalDashboardSnapshot());
-    }
-
-    return {
-      performanceData,
-      categoryPerformance,
-      rotationPerformance,
-      weakTracker,
-    };
-  })();
-
-  performanceStateHydrationInFlight = task;
-  try {
-    return await task;
-  } finally {
-    performanceStateHydrationInFlight = null;
+async function flushPendingPerformanceStateSync() {
+  if (performanceStateSyncHandle) {
+    clearTimeout(performanceStateSyncHandle);
+    performanceStateSyncHandle = null;
   }
+  performanceStateSyncInFlight = false;
+  performanceStateSyncQueued = false;
+  return true;
+}
+
+async function loadSyncedPerformanceState({ force = false } = {}) {
+  const localState = captureCurrentPerformanceState();
+  syncedPerformanceStateCache = localState;
+  syncedPerformanceStateLoadedFromSync = true;
+  applySyncedPerformanceState(localState);
+  return localState;
+}
+
+function applySyncedPerformanceState(state = {}) {
+  const nextPerformanceData = normalizePerformanceStatsMap(state?.performanceData || {});
+  const nextCategoryPerformance = normalizePerformanceStatsMap(state?.categoryPerformance || {});
+  const nextRotationPerformance = normalizePerformanceStatsMap(state?.rotationPerformance || {});
+  const nextWeakTracker = normalizeWeakTrackerMap(state?.weakTracker || {});
+
+  performanceData = nextPerformanceData;
+  categoryPerformance = nextCategoryPerformance;
+  rotationPerformance = nextRotationPerformance;
+  weakTracker = nextWeakTracker;
+
+  savePerformance();
+  localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
+  localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
+  renderPoints();
 }
 
 function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
@@ -2672,17 +3020,11 @@ function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (question && question.category) {
     updateCategoryPerformance(question.category, isCorrect);
   }
-  if (question && (question.rotation || Array.isArray(question.rotations))) {
-    updateRotationPerformance(question.rotation || question.rotations?.[0] || "", isCorrect);
+  if (question) {
+    getQuestionRotationValues(question).forEach((rotation) => {
+      updateRotationPerformance(rotation, isCorrect);
+    });
   }
-
-  backendClient.syncPerformance({
-    questionId,
-    isCorrect,
-    category: question?.category || "General",
-    rotation: question?.rotation || question?.rotations?.[0] || "",
-    selectedAnswer: String(selectedAnswer || "").trim(),
-  });
 
   savePerformance();
 }
@@ -2725,11 +3067,34 @@ function updateCategoryPerformance(category, isCorrect) {
   );
 }
 
+function rebuildCategoryPerformanceFromQuestionStats() {
+  const rebuilt = {};
+
+  Object.entries(performanceData || {}).forEach(([questionId, row]) => {
+    const question = findQuestionById(questionId);
+    const category = normalizeMajorCategory(
+      question?.category || "",
+      `${String(question?.question || "")} ${String(question?.explanation || "")}`,
+    );
+    if (!category || category === "all") return;
+
+    const attempts = Math.max(0, Number(row?.attempts) || 0);
+    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
+    const existing = rebuilt[category] || { attempts: 0, correct: 0 };
+    existing.attempts += attempts;
+    existing.correct += correct;
+    rebuilt[category] = existing;
+  });
+
+  categoryPerformance = rebuilt;
+  localStorage.setItem("quizCategoryPerformance", JSON.stringify(categoryPerformance));
+}
+
 function getCategoryAccuracy(category) {
   const data = categoryPerformance[category];
   if (!data || data.attempts === 0) return 100;
 
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakCategories(threshold = 80) {
@@ -2746,18 +3111,19 @@ function rebuildRotationPerformanceFromQuestionStats() {
 
   Object.entries(performanceData || {}).forEach(([questionId, row]) => {
     const question = findQuestionById(questionId);
-    const rotation = normalizeRotationValue(
-      question?.rotation || question?.rotations?.[0] || "",
-    );
-    if (!rotation || rotation === "all") return;
+    const rotations = getQuestionRotationValues(question);
+    if (!rotations.length) return;
 
     const attempts = Math.max(0, Number(row?.attempts) || 0);
     const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
-    if (!rebuilt[rotation]) {
-      rebuilt[rotation] = { attempts: 0, correct: 0 };
-    }
-    rebuilt[rotation].attempts += attempts;
-    rebuilt[rotation].correct += correct;
+    rotations.forEach((rotation) => {
+      if (!rotation || rotation === "all") return;
+      if (!rebuilt[rotation]) {
+        rebuilt[rotation] = { attempts: 0, correct: 0 };
+      }
+      rebuilt[rotation].attempts += attempts;
+      rebuilt[rotation].correct += correct;
+    });
   });
 
   rotationPerformance = rebuilt;
@@ -2790,7 +3156,7 @@ function getRotationAccuracy(rotation) {
   const key = normalizeRotationValue(rotation);
   const data = rotationPerformance[key];
   if (!key || !data || data.attempts === 0) return 100;
-  return Math.round((data.correct / data.attempts) * 100);
+  return Math.round(((data.correct / data.attempts) * 100) * 10) / 10;
 }
 
 function getWeakRotations(threshold = 80) {
@@ -2800,19 +3166,43 @@ function getWeakRotations(threshold = 80) {
 }
 
 rebuildRotationPerformanceFromQuestionStats();
+rebuildCategoryPerformanceFromQuestionStats();
 
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");
-const dashboardBtns = Array.from(document.querySelectorAll('[data-open-dashboard="true"], .dashboard-mode'));
 const dailyQuizBtn = document.getElementById("daily-quiz-btn");
 const dailyQuizMetaEl = document.getElementById("daily-quiz-meta");
 const topicLibraryBtns = Array.from(document.querySelectorAll('[data-open-topic-library="true"]'));
 const menuCommunityBtn = document.getElementById("menu-community-btn");
+const communityBackBtn = document.getElementById("community-back-btn");
+const menuDrillsTab = document.getElementById("menu-drills-tab");
+const menuLawTab = document.getElementById("menu-law-tab");
+const menuGppqeTab = document.getElementById("menu-gppqe-tab");
+const menuExtraTab = document.getElementById("menu-extra-tab");
+const drillsScreen = document.getElementById("drills-screen");
+const drillsBackBtn = document.getElementById("drills-back-btn");
+const drillsMenuBtn = document.getElementById("drills-menu-btn");
+const drillsLobbyTabs = Array.from(document.querySelectorAll("#drills-screen .drill-lobby-tab"));
+const drillsLobbyPanels = Array.from(document.querySelectorAll("#drills-screen .drill-lobby-panel"));
+const drillsPlayBtns = Array.from(document.querySelectorAll("#drills-screen [data-drill-play-btn]"));
+const gppqeScreen = document.getElementById("gppqe-screen");
+const gppqeBackBtn = document.getElementById("gppqe-back-btn");
+const gppqeMenuBtn = document.getElementById("gppqe-menu-btn");
+const extraScreen = document.getElementById("extra-screen");
+const extraBackBtn = document.getElementById("extra-back-btn");
+const extraViewToggleBtn = null;
+const extraMenuBtn = document.getElementById("extra-menu-btn");
+const menuExtraGrid = document.getElementById("menu-extra-grid");
+const menuNewsBtn = document.getElementById("menu-news-btn");
+const menuGuidelinesBtn = document.getElementById("menu-guidelines-btn");
+const comingSoonModal = document.getElementById("coming-soon-modal");
+const comingSoonOkBtn = document.getElementById("coming-soon-ok-btn");
 const rapidDrillBtn = document.getElementById("rapid-drill-btn");
 const suddenDrillBtn = document.getElementById("sudden-drill-btn");
 const clinicalDrillBtn = document.getElementById("clinical-drill-btn");
 const lawDrillBtn = document.getElementById("law-drill-btn");
 const menuHomeBtn = document.getElementById("menu-home-btn");
+const startStudyBtn = document.getElementById("start-study-btn");
 const studyTypeSelect = document.getElementById("study-type-select");
 const studyTypePickerBtn = document.getElementById("study-type-picker-btn");
 const studyRotationSelect = document.getElementById("study-rotation-select");
@@ -2825,6 +3215,1635 @@ if (historyBtn) {
     // whatever it was supposed to do
   };
 }
+
+const MENU_DRILL_HISTORY_STORAGE_KEY = "menuDrillHistoryV1";
+const EXTRA_VIEW_STORAGE_KEY = "menuExtraViewV1";
+let extraViewMode = "cards";
+
+function readMenuDrillHistory() {
+  try {
+    const raw = localStorage.getItem(MENU_DRILL_HISTORY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeMenuDrillHistory(entries = []) {
+  try {
+    localStorage.setItem(MENU_DRILL_HISTORY_STORAGE_KEY, JSON.stringify(Array.isArray(entries) ? entries : []));
+  } catch {}
+}
+
+function recordMenuDrillHistory(variant = "") {
+  const safeVariant = String(variant || "").trim().toLowerCase();
+  if (!safeVariant) return;
+  const history = readMenuDrillHistory();
+  history.unshift({
+    variant: safeVariant,
+    timestamp: Date.now(),
+  });
+  writeMenuDrillHistory(history.slice(0, 5));
+}
+
+function renderMenuDrillHistory() {
+  if (!drillsLobbyPanels.length) return;
+  const history = readMenuDrillHistory();
+  const grouped = history.reduce((acc, entry) => {
+    const key = String(entry?.variant || "").trim().toLowerCase();
+    if (!key) return acc;
+    acc[key] = acc[key] || [];
+    acc[key].push(entry);
+    return acc;
+  }, {});
+
+  drillsLobbyPanels.forEach((panel) => {
+    const variant = String(panel.dataset.drillPanel || "").trim().toLowerCase();
+    const list = panel.querySelector("[data-drill-history-list]");
+    if (!list) return;
+    const rows = Array.isArray(grouped[variant]) ? grouped[variant].slice(0, 5) : [];
+    if (!rows.length) {
+      list.innerHTML = '<div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>';
+      return;
+    }
+    list.innerHTML = rows
+      .map((entry, index) => {
+        const when = Number(entry?.timestamp) ? new Date(Number(entry.timestamp)) : null;
+        const label = when && !Number.isNaN(when.getTime())
+          ? when.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+          : "Just now";
+        return `<div class="drill-history-item"><span>${index + 1}. ${escapeHtml(variant)}</span><span>${escapeHtml(label)}</span></div>`;
+      })
+      .join("");
+  });
+}
+
+function setMenuHubActiveTab(section = "drills") {
+  const safeSection = String(section || "").trim().toLowerCase();
+  const tabs = [
+    [menuDrillsTab, "drills"],
+    [menuLawTab, "law"],
+    [menuGppqeTab, "gppqe"],
+    [menuExtraTab, "extra"],
+  ];
+
+  tabs.forEach(([tab, value]) => {
+    if (!tab) return;
+    const isActive = value === safeSection;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+}
+
+function setDrillLobbyVariant(variant = "rapid") {
+  const safeVariant = ["rapid", "sudden", "clinical"].includes(String(variant || "").toLowerCase())
+    ? String(variant || "").toLowerCase()
+    : "rapid";
+  drillsLobbyTabs.forEach((tab) => {
+    const isActive = String(tab.dataset.drillVariant || "").toLowerCase() === safeVariant;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  drillsLobbyPanels.forEach((panel) => {
+    const isActive = String(panel.dataset.drillPanel || "").toLowerCase() === safeVariant;
+    panel.classList.toggle("is-active", isActive);
+  });
+  renderMenuDrillHistory();
+}
+
+function openDrillsScreen(variant = "rapid") {
+  showScreen("drills-screen");
+  setDrillLobbyVariant(variant);
+}
+
+async function openGppqeScreen() {
+  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
+  await loadSubscriptionScreenData({ force: true }).catch(() => false);
+  if (!requireSubscriptionAccess("gppqe")) {
+    return;
+  }
+  showScreen("gppqe-screen");
+  gppqeState.view = "hub";
+  gppqeState.historyModalOpen = false;
+  renderGppqeScreen();
+  gppqePromptResumeForStudyStart(() => {
+    gppqeState.view = "hub";
+    gppqeState.notice = "";
+    gppqeState.historyModalOpen = false;
+    renderGppqeScreen();
+  });
+}
+
+const GPPQE_SESSION_SAMPLE_SIZE = 20;
+const GPPQE_PROGRESS_STORAGE_KEY = "ajix_gppqe_progress_v1";
+const GPPQE_STORAGE_KEY = "ajix_gppqe_state_v1";
+function gppqeCreateEmptyAnswers() {
+  return Object.create(null);
+}
+
+function gppqeGetModeLabel(mode = "study") {
+  return String(mode || "").trim().toLowerCase() === "exam" ? "GPPQE Exam" : "GPPQE Study";
+}
+
+function gppqeIsValidAnswer(answer, question) {
+  return (
+    Number.isInteger(answer) &&
+    answer >= 0 &&
+    question &&
+    Array.isArray(question.options) &&
+    answer < question.options.length
+  );
+}
+
+function gppqeResetRuntimeState() {
+  gppqeStopTimer();
+  gppqeState.questions = [];
+  gppqeState.currentIndex = 0;
+  gppqeState.answers = gppqeCreateEmptyAnswers();
+  gppqeState.studyScore = 0;
+  gppqeState.examTimeLeft = 0;
+  gppqeState.examTotalTime = 0;
+  gppqeState.examStartedAt = null;
+  gppqeState.sessionSampled = false;
+  gppqeState.notice = "";
+  gppqeState.historyModalOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  gppqeState.reviewQuestionOpen = false;
+  committedSessionPointsId = "";
+  gppqeSessionCommitKey = "";
+  document.body.style.overflow = "";
+}
+
+const gppqeState = {
+  view: "hub",
+  selectedYear: [],
+  selectedCategories: [],
+  selectedMode: "study",
+  questions: [],
+  currentIndex: 0,
+  answers: {},
+  studyScore: 0,
+  examTimeLeft: 0,
+  examTotalTime: 0,
+  examStartedAt: null,
+  examTimerId: null,
+  sessionSampled: false,
+  notice: "",
+  historyModalOpen: false,
+  reviewQuestionIndex: 0,
+  reviewQuestionOpen: false,
+  pickerField: "",
+};
+
+let gppqeBindingsReady = false;
+let gppqeSessionCommitKey = "";
+
+function gppqeGetSelectedYears(value = gppqeState.selectedYear) {
+  const values = Array.isArray(value) ? value : value === "" || value == null ? [] : [value];
+  return [...new Set(values.map((item) => String(item).trim()).filter(Boolean).map((item) => item === "all" ? "all" : Number(item)).filter((item) => item === "all" || Number.isFinite(item)))];
+}
+
+function gppqeGetSelectedCategoryLabel() {
+  return gppqeState.selectedCategories.length ? gppqeState.selectedCategories.length + " selected" : "All categories";
+}
+function gppqeEnhancePickerFields(root) {
+  const selects = root.querySelectorAll('select[data-gppqe-field]');
+  selects.forEach((select) => {
+    const field = String(select.dataset.gppqeField || '').trim();
+    if (field !== 'year' && field !== 'category') return;
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = select.className + ' gppqe-setup-picker-trigger';
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (select.disabled) {
+      trigger.disabled = true;
+      trigger.setAttribute('aria-disabled', 'true');
+    }
+    const label = document.createElement('span');
+    label.textContent = field === 'year' ? gppqeGetYearLabel(gppqeState.selectedYear) : select.disabled ? '-----' : gppqeGetSelectedCategoryLabel();
+    const chevron = document.createElement('span');
+    chevron.className = 'gppqe-picker-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    trigger.append(label, chevron);
+    const modal = document.createElement('div');
+    modal.className = 'gppqe-picker-modal hidden';
+    modal.setAttribute('aria-hidden', 'true');
+    const card = document.createElement('div');
+    card.className = 'gppqe-picker-card';
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    const head = document.createElement('div');
+    head.className = 'gppqe-picker-head';
+    const title = document.createElement('h3');
+    title.className = 'gppqe-picker-title';
+    title.textContent = field === 'year' ? 'Select year' : 'Select category';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'gppqe-picker-close';
+    close.textContent = 'Close';
+    head.append(title, close);
+    const list = document.createElement('div');
+    list.className = 'gppqe-picker-list';
+    list.setAttribute('role', 'listbox');
+    Array.from(select.options).forEach((option) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'gppqe-picker-option';
+      item.dataset.value = option.value;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', option.selected ? 'true' : 'false');
+      item.textContent = option.textContent;
+      if (option.selected) item.classList.add('is-selected');
+      list.appendChild(item);
+    });
+    card.append(head, list);
+    modal.appendChild(card);
+    const openModal = (focusSelected = true) => {
+      gppqeState.pickerField = field;
+      modal.classList.remove('hidden');
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+      trigger.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+      if (focusSelected) list.querySelector('.is-selected')?.focus();
+    };
+    const closeModal = () => {
+      gppqeState.pickerField = '';
+      modal.classList.add('hidden');
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+      trigger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    };
+    trigger.addEventListener('click', (event) => {
+      event.preventDefault();
+      openModal();
+    });
+    close.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) { closeModal(); return; }
+      const item = event.target.closest('.gppqe-picker-option');
+      if (!item) return;
+      gppqeState.pickerField = field;
+      if (field === 'year') gppqeSelectYear(item.dataset.value || '');
+      else gppqeSelectCategory(item.dataset.value || '');
+    });
+    select.replaceWith(trigger);
+    root.appendChild(modal);
+    if (gppqeState.pickerField === field) openModal(false);
+  });
+}
+function gppqeGetRoot() {
+  return gppqeScreen ? gppqeScreen.querySelector(".study-scroll-content") : null;
+}
+
+function gppqeFormatTime(seconds = 0) {
+  const total = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${minutes}:${String(secs).padStart(2, "0")}`;
+}
+
+function gppqeShuffle(items = []) {
+  const list = [...items];
+  for (let index = list.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [list[index], list[swapIndex]] = [list[swapIndex], list[index]];
+  }
+  return list;
+}
+
+function gppqeGetPausedSessionKey() {
+  return GPPQE_PROGRESS_STORAGE_KEY;
+}
+
+function gppqeBuildProgressPayload() {
+  return {
+    selectedMode: gppqeState.selectedMode,
+    selectedYear: gppqeState.selectedYear,
+    selectedCategories: [...gppqeState.selectedCategories],
+    questions: gppqeState.questions.map((question) => ({ ...question })),
+    currentIndex: gppqeState.currentIndex,
+    answers: { ...gppqeState.answers },
+    studyScore: gppqeState.studyScore,
+    examTimeLeft: gppqeState.examTimeLeft,
+    examTotalTime: gppqeState.examTotalTime,
+    examStartedAt: gppqeState.examStartedAt,
+    sessionSampled: gppqeState.sessionSampled,
+    timestamp: Date.now(),
+  };
+}
+
+function gppqeSaveProgress() {
+  if (gppqeState.view !== "session" || !gppqeState.questions.length) return;
+  try {
+    localStorage.setItem(gppqeGetPausedSessionKey(), JSON.stringify(gppqeBuildProgressPayload()));
+  } catch {}
+}
+
+function gppqeClearProgress() {
+  try {
+    localStorage.removeItem(gppqeGetPausedSessionKey());
+  } catch {}
+}
+
+function gppqeReadProgress() {
+  try {
+    const raw = localStorage.getItem(gppqeGetPausedSessionKey());
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    if (!Array.isArray(saved.questions) || saved.questions.length === 0) return null;
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
+function gppqeRestoreProgress(saved) {
+  if (!saved || typeof saved !== "object") return false;
+  gppqeResetRuntimeState();
+  gppqeSessionCommitKey =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  gppqeState.selectedMode = String(saved.selectedMode || "study").toLowerCase() === "exam" ? "exam" : "study";
+  gppqeState.selectedYear = gppqeGetSelectedYears(saved.selectedYear);
+  gppqeState.selectedCategories = Array.isArray(saved.selectedCategories)
+    ? saved.selectedCategories.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  gppqeState.questions = Array.isArray(saved.questions) ? saved.questions.map((question) => ({ ...question })) : [];
+  gppqeState.currentIndex = Math.max(0, Math.min(Number(saved.currentIndex) || 0, Math.max(0, gppqeState.questions.length - 1)));
+  gppqeState.answers = saved.answers && typeof saved.answers === "object" ? { ...saved.answers } : gppqeCreateEmptyAnswers();
+  gppqeState.studyScore = Math.max(0, Number(saved.studyScore) || 0);
+  gppqeState.examTimeLeft = Math.max(0, Number(saved.examTimeLeft) || 0);
+  gppqeState.examTotalTime = Math.max(0, Number(saved.examTotalTime) || 0);
+  gppqeState.examStartedAt = Number(saved.examStartedAt) || null;
+  gppqeState.sessionSampled = Boolean(saved.sessionSampled);
+  gppqeState.notice = "";
+  gppqeState.view = "session";
+  gppqeState.historyModalOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  gppqeState.reviewQuestionOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+  if (gppqeState.selectedMode === "exam") {
+    gppqeStartTimer();
+  }
+  return true;
+}
+
+function gppqeGetPausedSessionSummary(saved = null) {
+  const mode = String(saved?.selectedMode || "study").toLowerCase() === "exam" ? "Exam" : "Study";
+  const yearLabel = gppqeGetYearLabel(saved?.selectedYear || "");
+  const answered = Object.keys(saved?.answers || {}).length;
+  const total = Array.isArray(saved?.questions) ? saved.questions.length : 0;
+  return {
+    title: `Resume ${mode} Session?`,
+    text: `You have a paused ${mode.toLowerCase()} session for ${yearLabel}. ${answered}/${Math.max(1, total)} questions were answered. Resume where you stopped or start new.`,
+    cancelLabel: `Continue ${mode}`,
+    confirmLabel: `Resume ${mode}`,
+    startNewLabel: `Start New ${mode}`,
+  };
+}
+
+function gppqePromptResumeForStudyStart(onStartNew = null) {
+  const saved = gppqeReadProgress();
+  if (!saved || typeof saved !== "object") return false;
+  if (!Array.isArray(saved.questions) || !saved.questions.length) return false;
+  const summary = gppqeGetPausedSessionSummary(saved);
+  openSessionResumeModal({
+    title: summary.title,
+    text: summary.text,
+    onResume: () => {
+      void gppqeRestoreProgress(saved);
+    },
+    onStartNew: () => {
+      gppqeClearProgress();
+      if (typeof onStartNew === "function") {
+        onStartNew();
+      }
+    },
+  });
+  return true;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    gppqeSaveProgress();
+  }
+});
+
+window.addEventListener("beforeunload", () => {
+  gppqeSaveProgress();
+});
+
+function gppqeGetRecentResults(limit = 20) {
+  const entries = getDashboardSessionEntries()
+    .filter((entry) => String(entry?.mode || "").toLowerCase().includes("gppqe"))
+    .sort((a, b) => {
+      const aTime = new Date(a?.timestamp || a?.createdAt || a?.date || 0).getTime();
+      const bTime = new Date(b?.timestamp || b?.createdAt || b?.date || 0).getTime();
+      return bTime - aTime;
+    });
+  return entries.slice(0, Math.max(1, Number(limit) || 20));
+}
+
+function gppqeFormatResultEntry(entry = {}) {
+  const mode = String(entry?.mode || "GPPQE").trim() || "GPPQE";
+  const score = Math.max(0, Number(entry?.score) || 0);
+  const total = Math.max(0, Number(entry?.total) || 0);
+  const percent = Math.max(0, Math.round(Number(entry?.percent) || 0));
+  const createdAt = new Date(entry?.timestamp || entry?.createdAt || entry?.date || Date.now());
+  const dateLabel = Number.isNaN(createdAt.getTime())
+    ? ""
+    : createdAt.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+  return `
+    <article class="gppqe-history-item">
+      <div class="gppqe-history-item-main">
+        <div class="gppqe-history-item-mode">${escapeHtml(mode)}</div>
+        <div class="gppqe-history-item-meta">${escapeHtml(dateLabel)}</div>
+      </div>
+      <div class="gppqe-history-item-score">${score}/${total}</div>
+      <div class="gppqe-history-item-percent">${percent}%</div>
+    </article>
+  `;
+}
+
+function gppqeOpenHistoryModal() {
+  gppqeState.historyModalOpen = true;
+  document.body.style.overflow = "hidden";
+  renderGppqeScreen();
+}
+
+function gppqeCloseHistoryModal() {
+  gppqeState.historyModalOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeGetYearLabel(year = []) {
+  const years = gppqeGetSelectedYears(year);
+  if (!years.length) return "Select year";
+  if (years.includes("all")) return "All years";
+  if (years.length === 1) return String(years[0]);
+  return years.length + " years selected";
+}
+
+function gppqeGetBankQuestions() {
+  const source = Array.isArray(questionBank) ? questionBank : [];
+  return source.filter((question) => {
+    if (String(question?.bank || "main").trim().toLowerCase() !== "gppqe") return false;
+    if (String(question?.type || "").trim().toLowerCase() === "note") return false;
+    return Array.isArray(question?.options) && question.options.length >= 2;
+  });
+}
+
+function gppqeGetYears() {
+  return [...new Set(gppqeGetBankQuestions().map((question) => Number(question.year)).filter((year) => Number.isFinite(year)))].sort((a, b) => b - a);
+}
+
+function gppqeGetCategoriesForYear(year = []) {
+  const pool = gppqeGetBankQuestions();
+  const years = gppqeGetSelectedYears(year);
+  const filtered = !years.length || years.includes("all")
+    ? pool
+    : pool.filter((question) => years.includes(Number(question.year)));
+  return [...new Set(filtered.map((question) => String(question.category || "").trim()).filter(Boolean))].sort();
+}
+
+function gppqeFormatQuestionMarkup(question = {}) {
+  const raw = stripBankQuestionLabel(question.question || question.text || "");
+  if (!raw) return "";
+
+  let prompt = raw;
+  let caseText = "";
+  const caseMarker = /\s+Use the above to answer questions?\s+\d+\s*-\s*\d+\.?\s*/i;
+  const caseMatch = prompt.match(caseMarker);
+  if (caseMatch && Number.isFinite(caseMatch.index)) {
+    caseText = prompt.slice(0, caseMatch.index).trim();
+    prompt = prompt.slice(caseMatch.index + caseMatch[0].length).trim();
+  }
+
+  if (!caseText) {
+    const derivedCase = deriveCaseNarrativeFromStem(prompt);
+    if (derivedCase.caseBlock && !/(?:\s|^)(?:I|1)[.:)]?$/i.test(derivedCase.caseBlock)) {
+      caseText = derivedCase.caseBlock;
+      prompt = derivedCase.prompt;
+    }
+  }
+
+  const storedStatements = Array.isArray(question.statements)
+    ? question.statements.map((statement) => String(statement || "").trim()).filter(Boolean)
+    : [];
+  const statementMatch = prompt.match(/\s+(?=(?:1|I)[.)]\s)/i);
+  const parsedStatements = statementMatch
+    ? prompt.slice(statementMatch.index + 1).split(/\s+(?=(?:[2-5]|II|III|IV|V)[.)]\s)/i).map((part) => part.trim()).filter(Boolean)
+    : [];
+  const statementParts = storedStatements.length >= 2 ? storedStatements : parsedStatements;
+  const questionPrompt = storedStatements.length >= 2
+    ? prompt
+    : statementParts.length >= 2
+      ? prompt.slice(0, statementMatch.index).trim()
+      : prompt;
+
+  const caseMarkup = caseText ? "<div class=\"gppqe-case-context\"><strong>Case</strong><span>" + escapeHtml(caseText) + "</span></div>" : "";
+  const promptMarkup = "<div class=\"gppqe-prompt\">" + escapeHtml(questionPrompt) + "</div>";
+  const statementsMarkup = statementParts.length >= 2
+    ? "<div class=\"gppqe-statements\"><strong>Statements</strong>" + statementParts.map((statement) => "<div>" + escapeHtml(statement) + "</div>").join("") + "</div>"
+    : "";
+  return caseMarkup + promptMarkup + statementsMarkup;
+}
+function gppqeGetDisplayNumber(question, fallbackIndex = 0) {
+  return Number(fallbackIndex) + 1;
+}
+
+function gppqeGetPool() {
+  let pool = gppqeGetBankQuestions();
+  const years = gppqeGetSelectedYears();
+  if (years.length > 0 && !years.includes("all")) {
+    pool = pool.filter((question) => years.includes(Number(question.year)));
+  }
+  if (gppqeState.selectedCategories.length > 0) {
+    pool = pool.filter((question) => gppqeState.selectedCategories.includes(question.category));
+  }
+  return pool;
+}
+
+function gppqeGetSamplePool(limit = GPPQE_SESSION_SAMPLE_SIZE) {
+  const pool = gppqeGetPool();
+  const count = Math.max(1, Number(limit) || GPPQE_SESSION_SAMPLE_SIZE);
+  if (pool.length <= count) return gppqeShuffle(pool);
+  return gppqeShuffle(pool).slice(0, count);
+}
+
+function gppqeStopTimer() {
+  if (gppqeState.examTimerId) {
+    clearInterval(gppqeState.examTimerId);
+    gppqeState.examTimerId = null;
+  }
+}
+
+function gppqeStartTimer() {
+  gppqeStopTimer();
+  if (gppqeState.selectedMode !== "exam" || gppqeState.examTimeLeft <= 0) return;
+  gppqeState.examTimerId = setInterval(() => {
+    gppqeState.examTimeLeft = Math.max(0, gppqeState.examTimeLeft - 1);
+    const timerEl = document.getElementById("gppqe-timer");
+    if (timerEl) {
+      timerEl.textContent = gppqeFormatTime(gppqeState.examTimeLeft);
+      timerEl.classList.toggle("is-danger", gppqeState.examTimeLeft < 60);
+      timerEl.classList.toggle("is-warning", gppqeState.examTimeLeft >= 60 && gppqeState.examTimeLeft < 180);
+    }
+    if (gppqeState.examTimeLeft <= 0) {
+      gppqeSubmitSession();
+    }
+  }, 1000);
+}
+
+function gppqeSaveQuestionResult(question, selectedIndex) {
+  if (gppqeState.answers[question.id] !== undefined) return;
+  gppqeState.answers[question.id] = selectedIndex;
+  if (gppqeState.selectedMode === "study" && selectedIndex === question.answer) {
+    gppqeState.studyScore += 1;
+  }
+}
+
+function gppqeSelectYear(year) {
+  const value = String(year || "").trim();
+  const currentYears = gppqeGetSelectedYears();
+  if (gppqeState.selectedMode === "exam") {
+    gppqeState.selectedYear = value ? [value === "all" ? "all" : Number(value)] : [];
+  } else if (!value) {
+    gppqeState.selectedYear = [];
+  } else if (value === "all") {
+    gppqeState.selectedYear = ["all"];
+  } else {
+    const numericYear = Number(value);
+    gppqeState.selectedYear = currentYears.includes(numericYear)
+      ? currentYears.filter((item) => item !== numericYear)
+      : [...currentYears.filter((item) => item !== "all"), numericYear];
+  }
+  const availableCategories = new Set(gppqeGetCategoriesForYear(gppqeState.selectedYear));
+  gppqeState.selectedCategories = gppqeState.selectedCategories.filter((category) => availableCategories.has(category));
+  gppqeState.notice = "";
+  gppqeState.view = "hub";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeSelectCategory(category) {
+  if (gppqeState.selectedMode === "exam") return;
+  const value = String(category || "").trim();
+  if (!value) {
+    gppqeState.selectedCategories = [];
+  } else if (gppqeState.selectedCategories.includes(value)) {
+    gppqeState.selectedCategories = gppqeState.selectedCategories.filter((item) => item !== value);
+  } else {
+    gppqeState.selectedCategories = [...gppqeState.selectedCategories, value];
+  }
+  gppqeState.notice = "";
+  gppqeState.view = "hub";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeHandleChange(event) {
+  const target = event.target instanceof HTMLElement ? event.target.closest("[data-gppqe-field]") : null;
+  if (!target) return;
+  const field = String(target.dataset.gppqeField || "").trim();
+  if (field === "year") {
+    gppqeSelectYear(target.value || "");
+    return;
+  }
+  if (field === "category") {
+    gppqeSelectCategory(target.value || "");
+  }
+}
+
+function gppqeSetMode(mode = "study") {
+  gppqeState.selectedMode = String(mode || "").toLowerCase() === "exam" ? "exam" : "study";
+  if (gppqeState.selectedMode === "exam") {
+    gppqeState.selectedCategories = [];
+  }
+  gppqeState.notice = "";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeToggleCategory(category) {
+  const value = String(category || "").trim();
+  if (!value) return;
+  if (gppqeState.selectedCategories.includes(value)) {
+    gppqeState.selectedCategories = gppqeState.selectedCategories.filter((item) => item !== value);
+  } else {
+    gppqeState.selectedCategories = [...gppqeState.selectedCategories, value];
+  }
+  gppqeState.notice = "";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeStartSession(mode = "study", { sample = false } = {}) {
+  const normalizedMode = String(mode || "").toLowerCase() === "exam" ? "exam" : "study";
+  const selectedYears = gppqeGetSelectedYears();
+  if (!selectedYears.length) {
+    gppqeState.notice = "Select a year to begin.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+  if (normalizedMode === "exam" && (selectedYears.length !== 1 || selectedYears.includes("all"))) {
+    gppqeState.notice = "Exam mode requires one full year. Select one year only.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+  const pool = sample ? gppqeGetSamplePool() : gppqeGetPool();
+  if (!pool.length) {
+    gppqeState.notice = "No questions match the current year or category filters. Try a different combination.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+
+  gppqeResetRuntimeState();
+  lastSavedSessionFingerprint = "";
+  lastSavedSessionAt = 0;
+  gppqeSessionCommitKey =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  gppqeState.selectedMode = normalizedMode;
+  gppqeState.questions = gppqeShuffle(pool.map((question) => ({ ...question })));
+  gppqeState.currentIndex = 0;
+  gppqeState.notice = "";
+  gppqeState.examStartedAt = Date.now();
+  gppqeState.examTotalTime = normalizedMode === "exam" ? Math.max(gppqeState.questions.length * 40, 40) : 0;
+  gppqeState.examTimeLeft = gppqeState.examTotalTime;
+  gppqeState.sessionSampled = Boolean(sample);
+  gppqeState.view = "session";
+  gppqeClearProgress();
+  renderGppqeScreen();
+  gppqeSaveProgress();
+  if (normalizedMode === "exam") {
+    gppqeStartTimer();
+  }
+}
+
+function gppqeFinishSession({ persistResult = true } = {}) {
+  gppqeStopTimer();
+  if (persistResult && gppqeState.questions.length) {
+    const correct = gppqeGetCorrectCount();
+    const total = gppqeState.questions.length;
+    const setupPointsBucket = gppqeState.selectedMode === "exam" ? "gppqeExam" : "gppqeStudy";
+    saveSession(gppqeGetModeLabel(gppqeState.selectedMode), correct, total);
+    if (setupPointsBucket) {
+      const currentSetupPoints = readCurrentSetupPoints({ scope: "gppqe" });
+      const nextBucketValue = Math.max(
+        0,
+        Math.round(Number(currentSetupPoints[setupPointsBucket]) || 0) + Math.max(0, Math.round(Number(correct) || 0)),
+      );
+      currentSetupPoints[setupPointsBucket] = nextBucketValue;
+      writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true, scope: "gppqe" });
+      if (currentUser) {
+        currentUser = {
+          ...(currentUser || {}),
+          setupPoints: mergeSetupPoints(currentUser?.setupPoints || {}, currentSetupPoints),
+        };
+      }
+      scheduleSetupPointsSync(0);
+    }
+
+    if (gppqeState.selectedMode === "exam") {
+      const nextStoredPoints = writeStoredPoints(readStoredPoints() + Math.max(0, Math.round(Number(correct) || 0)));
+      writePendingPoints(readPendingPoints() + Math.max(0, Math.round(Number(correct) || 0)));
+      if (currentUser) {
+        currentUser = { ...(currentUser || {}), points: nextStoredPoints };
+      }
+      if (currentUser && backendClient.isAuthenticated()) {
+        schedulePendingPointsSync(0);
+      }
+    }
+
+    renderPoints();
+    if (gppqeScreen) {
+      renderGppqeScreen();
+    }
+  }
+  gppqeClearProgress();
+  gppqeState.view = "review";
+  gppqeState.reviewQuestionIndex = 0;
+  gppqeState.reviewQuestionOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeRequestExit() {
+  const isExam = gppqeState.selectedMode === "exam";
+  const total = Math.max(1, gppqeState.questions.length || 0);
+  openQuizExitModal({
+    title: isExam ? "End GPPQE Exam?" : "End GPPQE Study?",
+    text: isExam
+      ? `Ending now will submit this paper, score the answered questions against the full ${total}-question set, and show your result.`
+      : `Ending now will calculate your study score from the questions answered so far and close this session.`,
+    cancelLabel: isExam ? "Continue Exam" : "Continue Study",
+    confirmLabel: isExam ? "End Exam" : "End Study",
+    onConfirm: () => gppqeFinishSession({ persistResult: true }),
+  });
+}
+
+function gppqeSubmitSession() {
+  if (gppqeState.view !== "session") return;
+  gppqeFinishSession();
+}
+
+function gppqeAnswerQuestion(questionId, optionIndex) {
+  const question = gppqeState.questions.find((item) => item.id === questionId);
+  if (!question) return;
+  if (gppqeState.selectedMode === "study" && gppqeState.answers[questionId] !== undefined) return;
+  const previousAnswer = gppqeState.answers[questionId];
+  gppqeState.answers[questionId] = optionIndex;
+  if (gppqeState.selectedMode === "study") {
+    if (previousAnswer === undefined && optionIndex === question.answer) {
+      gppqeState.studyScore += 1;
+    }
+  }
+  renderGppqeScreen();
+  gppqeSaveProgress();
+}
+
+function gppqeGoToQuestion(direction = 1) {
+  const nextIndex = gppqeState.currentIndex + direction;
+  if (nextIndex < 0 || nextIndex >= gppqeState.questions.length) return;
+  gppqeState.currentIndex = nextIndex;
+  renderGppqeScreen();
+  gppqeSaveProgress();
+}
+
+function gppqeJumpToQuestion(index = 0) {
+  const nextIndex = Number(index) || 0;
+  if (nextIndex < 0 || nextIndex >= gppqeState.questions.length) return;
+  gppqeState.currentIndex = nextIndex;
+  renderGppqeScreen();
+  gppqeSaveProgress();
+}
+
+function gppqeRestartSession() {
+  if (!gppqeState.questions.length) {
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+  const currentMode = gppqeState.selectedMode;
+  const currentYear = [...gppqeGetSelectedYears()];
+  const currentCategories = [...gppqeState.selectedCategories];
+  gppqeState.selectedYear = currentYear;
+  gppqeState.selectedCategories = currentCategories;
+  gppqeStartSession(currentMode, { sample: gppqeState.sessionSampled });
+}
+
+function gppqeGetCurrentQuestion() {
+  return gppqeState.questions[gppqeState.currentIndex] || null;
+}
+
+function gppqeGetCorrectCount() {
+  return gppqeState.questions.reduce((count, question) => {
+    const hasAnswer = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+    const answer = hasAnswer ? gppqeState.answers[question.id] : undefined;
+    return count + (gppqeIsValidAnswer(answer, question) && answer === question.answer ? 1 : 0);
+  }, 0);
+}
+
+function gppqeGetQuestionViewText(question) {
+  const hasAnswer = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+  if (!hasAnswer) return "Not answered";
+  const answer = gppqeState.answers[question.id];
+  return gppqeIsValidAnswer(answer, question) ? question.options[answer] || "Not answered" : "Not answered";
+}
+
+function gppqeGetReviewQuestionState(question) {
+  const hasAnswer = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+  const answer = hasAnswer ? gppqeState.answers[question.id] : undefined;
+  const isAnswered = gppqeIsValidAnswer(answer, question);
+  const isCorrect = Boolean(isAnswered && answer === question.answer);
+  return {
+    hasAnswer,
+    answer,
+    isAnswered,
+    isCorrect,
+    statusLabel: isCorrect ? "Correct" : hasAnswer ? "Wrong" : "Not answered",
+  };
+}
+
+function gppqeOpenReviewQuestion(index = 0) {
+  if (!gppqeState.questions.length) return;
+  const nextIndex = Math.max(0, Math.min(Number(index) || 0, gppqeState.questions.length - 1));
+  gppqeState.reviewQuestionIndex = nextIndex;
+  gppqeState.reviewQuestionOpen = true;
+  document.body.style.overflow = "hidden";
+  renderGppqeScreen();
+}
+
+function gppqeCloseReviewQuestion() {
+  if (!gppqeState.reviewQuestionOpen) return;
+  gppqeState.reviewQuestionOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeMoveReviewQuestion(direction = 1) {
+  if (!gppqeState.questions.length) return;
+  const nextIndex = gppqeState.reviewQuestionIndex + (direction < 0 ? -1 : 1);
+  if (nextIndex < 0 || nextIndex >= gppqeState.questions.length) return;
+  gppqeState.reviewQuestionIndex = nextIndex;
+  gppqeState.reviewQuestionOpen = true;
+  renderGppqeScreen();
+}
+
+function gppqeHandleBack() {
+  gppqeStopTimer();
+  if (gppqeState.view === "session" || gppqeState.view === "review") {
+    if (gppqeState.view === "session") {
+      if (gppqeState.selectedMode === "exam") {
+        gppqeRequestExit();
+        return;
+      }
+      gppqeSaveProgress();
+      gppqeState.view = "hub";
+      gppqeState.notice = "";
+      gppqeState.historyModalOpen = false;
+      renderGppqeScreen();
+      return;
+    }
+    if (gppqeState.reviewQuestionOpen) {
+      gppqeCloseReviewQuestion();
+      return;
+    }
+    gppqeState.view = "hub";
+    gppqeState.historyModalOpen = false;
+    renderGppqeScreen();
+    return;
+  }
+  showScreen("quiz-menu");
+}
+
+function gppqeHandleAction(event) {
+  const target = event.target instanceof HTMLElement ? event.target.closest("[data-gppqe-action]") : null;
+  if (!target) return;
+  const action = String(target.dataset.gppqeAction || "").trim();
+  if (!action) return;
+  event.preventDefault();
+
+  if (action === "back") {
+    gppqeHandleBack();
+    return;
+  }
+
+  if (action === "cancel") {
+    gppqeRequestExit();
+    return;
+  }
+
+  if (action === "hub") {
+    if (gppqeState.view === "session") {
+      gppqeSaveProgress();
+    }
+    gppqeState.view = "hub";
+    gppqeState.notice = "";
+    gppqeState.historyModalOpen = false;
+    gppqeState.reviewQuestionOpen = false;
+    gppqeState.reviewQuestionIndex = 0;
+    document.body.style.overflow = "";
+    renderGppqeScreen();
+    return;
+  }
+
+  if (action === "open-history") {
+    gppqeOpenHistoryModal();
+    return;
+  }
+
+  if (action === "close-history") {
+    gppqeCloseHistoryModal();
+    return;
+  }
+
+  if (action === "select-year") {
+    gppqeSelectYear(target.dataset.gppqeYear || "all");
+    return;
+  }
+
+  if (action === "select-category") {
+    gppqeSelectCategory(target.dataset.gppqeCategory || "");
+    return;
+  }
+
+  if (action === "set-mode") {
+    gppqeSetMode(target.dataset.gppqeMode || "study");
+    return;
+  }
+
+  if (action === "toggle-category") {
+    gppqeToggleCategory(target.dataset.gppqeCategory || "");
+    return;
+  }
+
+  if (action === "quick-study") {
+    const startNewQuickStudy = () => {
+      gppqeState.selectedYear = ["all"];
+      gppqeState.selectedCategories = [];
+      gppqeStartSession("study", { sample: true });
+    };
+    if (gppqePromptResumeForStudyStart(startNewQuickStudy)) return;
+    startNewQuickStudy();
+    return;
+  }
+
+  if (action === "quick-exam") {
+    gppqeState.selectedYear = [];
+    gppqeState.selectedCategories = [];
+    gppqeState.selectedMode = "exam";
+    gppqeState.notice = "Select one full year before starting Exam mode.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+
+  if (action === "start-study" || action === "start-exam") {
+    if (action === "start-study" && gppqePromptResumeForStudyStart(() => gppqeStartSession("study"))) {
+      return;
+    }
+    gppqeStartSession(action === "start-exam" ? "exam" : "study");
+    return;
+  }
+
+  if (action === "start-session") {
+    if (gppqeState.selectedMode === "study" && gppqePromptResumeForStudyStart(() => gppqeStartSession("study"))) {
+      return;
+    }
+    gppqeStartSession(gppqeState.selectedMode || "study");
+    return;
+  }
+
+  if (action === "answer") {
+    const questionId = Number(target.dataset.gppqeQuestionId || 0);
+    const optionIndex = Number(target.dataset.gppqeOptionIndex || 0);
+    gppqeAnswerQuestion(questionId, optionIndex);
+    return;
+  }
+
+  if (action === "prev") {
+    gppqeGoToQuestion(-1);
+    return;
+  }
+
+  if (action === "next") {
+    if (gppqeState.currentIndex >= gppqeState.questions.length - 1) {
+      gppqeFinishSession();
+      return;
+    }
+    if (gppqeState.selectedMode === "study") {
+      const currentQuestion = gppqeGetCurrentQuestion();
+      if (currentQuestion && gppqeState.answers[currentQuestion.id] === undefined) {
+        return;
+      }
+    }
+    gppqeGoToQuestion(1);
+    return;
+  }
+
+  if (action === "submit") {
+    gppqeSubmitSession();
+    return;
+  }
+
+  if (action === "retake") {
+    gppqeRestartSession();
+    return;
+  }
+
+  if (action === "review-year") {
+    gppqeState.view = "year";
+    gppqeState.reviewQuestionOpen = false;
+    gppqeState.reviewQuestionIndex = 0;
+    document.body.style.overflow = "";
+    renderGppqeScreen();
+    return;
+  }
+
+  if (action === "review-question") {
+    gppqeOpenReviewQuestion(Number(target.dataset.gppqeQuestionIndex || 0));
+    return;
+  }
+
+  if (action === "review-prev") {
+    gppqeMoveReviewQuestion(-1);
+    return;
+  }
+
+  if (action === "review-next") {
+    gppqeMoveReviewQuestion(1);
+    return;
+  }
+
+  if (action === "review-close") {
+    gppqeCloseReviewQuestion();
+    return;
+  }
+}
+
+function gppqeBuildHubMarkup() {
+  const selectedYears = gppqeGetSelectedYears();
+  const totalCategories = gppqeGetCategoriesForYear(selectedYears).length;
+  const canStart = gppqeState.selectedMode === "exam"
+    ? selectedYears.length === 1 && !selectedYears.includes("all")
+    : selectedYears.length > 0;
+  const selectedCategory = gppqeState.selectedCategories[0] || "";
+  const selectedCategoryCount = gppqeState.selectedCategories.length;
+  const startLabel = canStart ? "Start Quiz" : "Select year to begin";
+  const availableQuestions = gppqeGetPool().length;
+  const availabilityLabel =
+    availableQuestions === 1
+      ? "1 question ready"
+      : `${availableQuestions} questions ready`;
+  const setupPoints = readCurrentSetupPoints({ scope: "gppqe" });
+  const studyPoints = Math.max(0, Math.round(Number(setupPoints.gppqeStudy) || 0));
+  const examPoints = Math.max(0, Math.round(Number(setupPoints.gppqeExam) || 0));
+  const recentResults = gppqeGetRecentResults(20);
+
+  return `
+    <div class="gppqe-shell gppqe-setup-shell">
+      <div class="gppqe-setup-main">
+        <section class="gppqe-panel gppqe-setup-card">
+          <div class="gppqe-setup-head"></div>
+
+          <div class="gppqe-setup-grid">
+            <label class="gppqe-setup-field">
+              <span class="gppqe-setup-label-row">
+                <span class="gppqe-setup-label">Year</span>
+                ${gppqeState.selectedMode === "exam" ? '<span class="gppqe-exam-year-note">Exam uses the full year</span>' : ""}
+              </span>
+              <select multiple class="gppqe-setup-select" data-gppqe-field="year" aria-label="Years">
+                  <option value="" ${selectedYears.length ? "" : "selected"}>Select year</option>
+                  <option value="all" ${selectedYears.includes("all") ? "selected" : ""}>All years</option>
+                  ${gppqeGetYears().map((year) => `<option value="${year}" ${selectedYears.includes(year) ? "selected" : ""}>${year}</option>`).join("")}
+              </select>
+            </label>
+
+            <label class="gppqe-setup-field">
+              <span class="gppqe-setup-label">Category</span>
+              <select multiple class="gppqe-setup-select" data-gppqe-field="category" aria-label="Categories" ${gppqeState.selectedMode === "exam" ? "disabled" : ""}>
+                  <option value="" selected>${gppqeState.selectedMode === "exam" ? "-----" : `All (${totalCategories})`}</option>
+                  ${gppqeGetCategoriesForYear(selectedYears).map((category) => `<option value="${escapeHtml(category)}" ${gppqeState.selectedCategories.includes(category) ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+
+          <div class="gppqe-setup-mode-row">
+            <div class="gppqe-setup-mode-title">Practice mode</div>
+            <div
+              class="gppqe-setup-count-pill"
+              aria-live="polite"
+              title="Filtered questions available for this year and category selection"
+            >
+              ${escapeHtml(availabilityLabel)}
+            </div>
+          </div>
+          <div class="gppqe-mode-grid gppqe-setup-mode-grid">
+            <button
+              type="button"
+              class="gppqe-mode-card ${gppqeState.selectedMode === "study" ? "is-active is-study" : "is-study"}"
+              data-gppqe-action="set-mode"
+              data-gppqe-mode="study"
+              aria-pressed="${gppqeState.selectedMode === "study" ? "true" : "false"}"
+            >
+              <span class="gppqe-mode-topline">
+                <span class="gppqe-mode-icon">Study Mode</span>
+                <span class="gppqe-mode-points">${studyPoints} pts</span>
+              </span>
+              <span class="gppqe-mode-title">Instant feedback</span>
+              <span class="gppqe-mode-text">Review answers as you go and learn from every question.</span>
+            </button>
+            <button
+              type="button"
+              class="gppqe-mode-card ${gppqeState.selectedMode === "exam" ? "is-active is-exam" : "is-exam"}"
+              data-gppqe-action="set-mode"
+              data-gppqe-mode="exam"
+              aria-pressed="${gppqeState.selectedMode === "exam" ? "true" : "false"}"
+            >
+              <span class="gppqe-mode-topline">
+                <span class="gppqe-mode-icon">Exam Mode</span>
+                <span class="gppqe-mode-points">${examPoints} pts</span>
+              </span>
+              <span class="gppqe-mode-title">Timed scoring</span>
+              <span class="gppqe-mode-text">Work under pressure and see your score at the end.</span>
+            </button>
+          </div>
+
+          <p class="gppqe-study-points-notice" role="note">
+            <span class="gppqe-study-points-notice-icon" aria-hidden="true">i</span>
+            Study quiz points are for practice only and do not count toward leaderboard points.
+          </p>
+
+          <div class="gppqe-setup-actions">
+            <button
+              type="button"
+              class="gppqe-start-btn"
+              data-gppqe-action="start-session"
+              ${canStart ? "" : "disabled"}
+            >
+              ${escapeHtml(startLabel)}
+            </button>
+            <button type="button" class="gppqe-history-btn" data-gppqe-action="open-history">
+              History
+            </button>
+          </div>
+
+          ${gppqeState.notice ? `<div class="gppqe-alert gppqe-setup-alert">${escapeHtml(gppqeState.notice)}</div>` : ""}
+        </section>
+      </div>
+
+      <footer class="gppqe-setup-footer" aria-label="GPPQE footer">
+        <div class="gppqe-setup-footer-left">
+          &copy; 2026 <strong>AjixPharmacy \u00B7 GPPQE Exam Preparation</strong>
+        </div>
+        <div class="gppqe-setup-footer-right">
+          For educational use only.
+        </div>
+      </footer>
+      <div
+        class="gppqe-history-modal ${gppqeState.historyModalOpen ? "is-open" : "hidden"}"
+        data-gppqe-action="close-history"
+        aria-hidden="${gppqeState.historyModalOpen ? "false" : "true"}"
+      >
+        <div class="gppqe-history-modal-card" role="dialog" aria-modal="true" aria-label="GPPQE recent results">
+          <div class="gppqe-history-modal-head">
+            <div>
+              <div class="gppqe-panel-kicker">History</div>
+              <h3 class="gppqe-panel-title">Last 20 results</h3>
+            </div>
+            <button type="button" class="gppqe-history-close-btn" data-gppqe-action="close-history">Close</button>
+          </div>
+          <div class="gppqe-history-modal-list">
+            ${
+              recentResults.length
+                ? recentResults.map((entry) => gppqeFormatResultEntry(entry)).join("")
+                : `<div class="gppqe-empty-state"><div class="gppqe-empty-title">No results yet</div><div class="gppqe-empty-text">Your past study and exam results will show up here after you complete a session.</div></div>`
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function gppqeBuildYearMarkup() {
+  const year = gppqeState.selectedYear;
+  const yearLabel = gppqeGetYearLabel(year);
+  const pool = gppqeGetPool();
+  const availableYears = gppqeGetYears();
+  const activeYearYears = year === "all" ? `${availableYears.length} written years` : `Written paper ${year}`;
+  const categories = gppqeGetCategoriesForYear(year);
+
+  return `
+    <div class="gppqe-shell">
+      <section class="gppqe-hero is-compact">
+        <div class="gppqe-hero-copy">
+          <div class="gppqe-kicker">Selected year</div>
+          <h2 class="gppqe-title">${escapeHtml(yearLabel)}</h2>
+          <p class="gppqe-subtitle">
+            ${pool.length} questions are available in this lane. Filter by subject, then start study or exam mode.
+          </p>
+          <div class="gppqe-hero-actions">
+            <button type="button" class="gppqe-action-btn primary" data-gppqe-action="start-study">Study this set</button>
+            <button type="button" class="gppqe-action-btn secondary" data-gppqe-action="start-exam">Exam this set</button>
+          </div>
+        </div>
+        <div class="gppqe-hero-metrics">
+          <article class="gppqe-metric-card">
+            <div class="gppqe-metric-value">${pool.length}</div>
+            <div class="gppqe-metric-label">Questions</div>
+          </article>
+          <article class="gppqe-metric-card">
+            <div class="gppqe-metric-value">${categories.length}</div>
+            <div class="gppqe-metric-label">Categories</div>
+          </article>
+          <article class="gppqe-metric-card">
+            <div class="gppqe-metric-value">${year === "all" ? availableYears.length : 1}</div>
+            <div class="gppqe-metric-label">Written year${year === "all" ? "s" : ""}</div>
+          </article>
+        </div>
+      </section>
+
+      ${gppqeState.notice ? `<section class="gppqe-alert">${escapeHtml(gppqeState.notice)}</section>` : ""}
+
+      <section class="gppqe-panel">
+        <div class="gppqe-panel-head">
+          <div>
+            <div class="gppqe-panel-kicker">Filter</div>
+            <h3 class="gppqe-panel-title">Narrow by category</h3>
+          </div>
+          <button type="button" class="gppqe-link-btn" data-gppqe-action="hub">Switch year</button>
+        </div>
+        <div class="gppqe-chip-row">
+          ${categories
+            .map((category) => {
+              const active = gppqeState.selectedCategories.includes(category);
+              return `
+                <button
+                  type="button"
+                  class="gppqe-chip-btn ${active ? "is-active" : ""}"
+                  data-gppqe-action="toggle-category"
+                  data-gppqe-category="${escapeHtml(category)}"
+                >
+                  ${escapeHtml(category)}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+        <div class="gppqe-panel-foot">Leave all categories unselected to keep the full set for ${escapeHtml(yearLabel.toLowerCase())}.</div>
+      </section>
+
+      <section class="gppqe-panel">
+        <div class="gppqe-panel-head">
+          <div>
+            <div class="gppqe-panel-kicker">Quick start</div>
+            <h3 class="gppqe-panel-title">Choose a mode</h3>
+          </div>
+          <div class="gppqe-panel-note">${escapeHtml(activeYearYears)}</div>
+        </div>
+        <div class="gppqe-mode-grid">
+          <button type="button" class="gppqe-mode-card" data-gppqe-action="start-study">
+            <span class="gppqe-mode-icon">Study</span>
+            <span class="gppqe-mode-title">Learn with feedback</span>
+            <span class="gppqe-mode-text">Answer each item, see the explanation, and move at your own pace.</span>
+          </button>
+          <button type="button" class="gppqe-mode-card" data-gppqe-action="start-exam">
+            <span class="gppqe-mode-icon">Exam</span>
+            <span class="gppqe-mode-title">Timed assessment</span>
+            <span class="gppqe-mode-text">Sit the paper under time pressure, then review your score and misses.</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function gppqeBuildSessionMarkup() {
+  const question = gppqeGetCurrentQuestion();
+  if (!question) {
+    return `
+      <div class="gppqe-shell">
+        <section class="gppqe-panel">
+          <div class="gppqe-empty-state">
+            <div class="gppqe-empty-title">No question loaded</div>
+            <div class="gppqe-empty-text">Go back and pick a year or start a new session.</div>
+            <button type="button" class="gppqe-action-btn primary" data-gppqe-action="back">Back</button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  const total = gppqeState.questions.length;
+  const current = gppqeState.currentIndex + 1;
+  const progress = total ? Math.min(100, (gppqeState.currentIndex / total) * 100) : 0;
+  const hasAnswered = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+  const answered = hasAnswered ? gppqeState.answers[question.id] : undefined;
+  const isStudy = gppqeState.selectedMode === "study";
+  const isAnswered = gppqeIsValidAnswer(answered, question);
+  const canMoveNext = !isStudy || isAnswered;
+  const revealAnswer = isStudy ? isAnswered || gppqeState.view === "review" : gppqeState.view === "review";
+  const scoreChip = isStudy
+    ? `<span class="gppqe-session-pill gppqe-session-score">Score ${gppqeState.studyScore}</span>`
+    : "";
+  const explanation = isStudy && isAnswered
+    ? `
+      <div class="gppqe-explanation ${answered === question.answer ? "is-correct" : "is-wrong"}">
+        <strong>${answered === question.answer ? "Correct" : "Incorrect"}</strong>
+        <span>${escapeHtml(question.explanation)}</span>
+      </div>
+    `
+    : "";
+
+  return `
+    <div class="gppqe-shell">
+      <section class="gppqe-session-top">
+        <div class="gppqe-session-meta">
+          <span class="gppqe-session-pill">${escapeHtml(gppqeGetYearLabel(gppqeState.selectedYear))}</span>
+          <span class="gppqe-session-pill">${escapeHtml(gppqeState.selectedMode === "exam" ? "Timed exam" : "Study")}</span>
+          <span class="gppqe-session-pill">${current} / ${total}</span>
+          ${scoreChip}
+        </div>
+        <div class="gppqe-session-time ${gppqeState.selectedMode === "exam" && gppqeState.examTimeLeft < 180 ? "is-warning" : ""} ${gppqeState.selectedMode === "exam" && gppqeState.examTimeLeft < 60 ? "is-danger" : ""}" id="gppqe-timer">
+          ${gppqeState.selectedMode === "exam" ? gppqeFormatTime(gppqeState.examTimeLeft) : "Untimed"}
+        </div>
+      </section>
+
+      <div class="gppqe-progress">
+        <span style="width:${progress}%"></span>
+      </div>
+
+      <section class="gppqe-question-card">
+        <div class="gppqe-question-head">
+          <span class="gppqe-question-year">${escapeHtml(String(question.year))}</span>
+          <span class="gppqe-question-category">${escapeHtml(question.category)}</span>
+          ${revealAnswer ? `<span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + question.answer)}</span>` : ""}
+        </div>
+        <div class="gppqe-question-text">${gppqeFormatQuestionMarkup(question)}</div>
+        <div class="gppqe-options">
+          ${question.options
+            .map((option, index) => {
+              const selected = answered === index;
+              const correct = revealAnswer && index === question.answer;
+              const wrong = isStudy && isAnswered && selected && !correct;
+              const canPick = !(isStudy && isAnswered);
+              return `
+                <button
+                  type="button"
+                  class="gppqe-option ${correct ? "is-correct" : ""} ${wrong ? "is-wrong" : ""} ${selected ? "is-selected" : ""}"
+                  data-gppqe-action="answer"
+                  data-gppqe-question-id="${question.id}"
+                  data-gppqe-option-index="${index}"
+                  ${canPick ? "" : "disabled"}
+                >
+                  <span class="gppqe-option-letter">${String.fromCharCode(65 + index)}</span>
+                  <span class="gppqe-option-text">${escapeHtml(option)}</span>
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+        ${explanation}
+      </section>
+
+      <section class="gppqe-session-nav">
+        <button type="button" class="gppqe-nav-btn" data-gppqe-action="prev" ${gppqeState.currentIndex === 0 ? "disabled" : ""}>
+          Previous
+        </button>
+        <button type="button" class="gppqe-nav-btn is-cancel" data-gppqe-action="cancel">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="gppqe-nav-btn primary"
+          data-gppqe-action="${gppqeState.currentIndex === total - 1 ? "submit" : "next"}"
+          ${isStudy && !isAnswered ? "disabled" : ""}
+        >
+          ${gppqeState.currentIndex === total - 1 ? (isStudy ? "Finish session" : "Submit exam") : "Next"}
+        </button>
+      </section>
+    </div>
+  `;
+}
+
+function gppqeBuildReviewMarkup() {
+  const total = gppqeState.questions.length;
+  const correct = gppqeGetCorrectCount();
+  const accuracy = total ? Math.round((correct / total) * 100) : 0;
+  const timeUsed = gppqeState.selectedMode === "exam" ? Math.max(0, gppqeState.examTotalTime - gppqeState.examTimeLeft) : 0;
+  const grade = accuracy >= 80 ? "Excellent" : accuracy >= 60 ? "Good work" : accuracy >= 40 ? "Keep pushing" : "Needs more study";
+  const colorClass = accuracy >= 60 ? "is-good" : "is-bad";
+  const selectedCategoryLabel = gppqeState.selectedCategories.length
+    ? gppqeState.selectedCategories.join(", ")
+    : "All categories";
+  const activeReviewQuestion = gppqeState.questions[gppqeState.reviewQuestionIndex] || null;
+  const activeReviewState = activeReviewQuestion ? gppqeGetReviewQuestionState(activeReviewQuestion) : null;
+
+  return `
+    <div class="gppqe-shell gppqe-review-shell">
+      <section class="gppqe-review-card">
+        <div class="gppqe-review-summary">
+          <div class="gppqe-review-score ${colorClass}">
+            <div class="gppqe-review-score-value">${accuracy}%</div>
+            <div class="gppqe-review-score-label">${grade}</div>
+          </div>
+          <div class="gppqe-review-overview">
+            <div class="gppqe-kicker">Session complete</div>
+            <div class="gppqe-review-category">${escapeHtml(selectedCategoryLabel)}</div>
+            <h2 class="gppqe-title">${escapeHtml(gppqeGetYearLabel(gppqeState.selectedYear))}</h2>
+            <div class="gppqe-review-mark" aria-label="${correct} out of ${total} correct">
+              <span>Mark</span>
+              <strong>${correct}/${total}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="gppqe-review-section">
+          <div class="gppqe-panel-kicker">Review</div>
+          <h3 class="gppqe-panel-title">Question by question</h3>
+          <div class="gppqe-review-palette" role="list" aria-label="GPPQE question review palette">
+            ${gppqeState.questions.map((question, index) => {
+                const questionState = gppqeGetReviewQuestionState(question);
+                const displayNumber = gppqeGetDisplayNumber(question, index);
+                return `
+                  <button
+                    type="button"
+                    class="gppqe-review-tile ${questionState.isCorrect ? "is-correct" : "is-wrong"}"
+                    data-gppqe-action="review-question"
+                    data-gppqe-question-index="${index}"
+                    role="listitem"
+                    aria-label="Question ${displayNumber}: ${questionState.statusLabel}"
+                  >
+                    ${displayNumber}
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+
+        <div class="gppqe-hero-actions gppqe-review-actions">
+          <button type="button" class="gppqe-action-btn primary" data-gppqe-action="retake">Retake set</button>
+          <button type="button" class="gppqe-action-btn secondary" data-gppqe-action="review-year">Back to year</button>
+        </div>
+      </section>      ${
+        gppqeState.reviewQuestionOpen && activeReviewQuestion
+          ? `
+            <div class="gppqe-review-modal" aria-hidden="false">
+              <div class="gppqe-review-modal-card" role="dialog" aria-modal="true" aria-label="Detailed question review">
+                <div class="gppqe-review-modal-head">
+                  <div>
+                    <div class="gppqe-panel-kicker">Detailed review</div>
+                    <h3 class="gppqe-panel-title">Question ${gppqeGetDisplayNumber(activeReviewQuestion, gppqeState.reviewQuestionIndex)} of ${total}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    class="gppqe-review-modal-close"
+                    data-gppqe-action="review-close"
+                    aria-label="Close detailed review"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.3-6.3z" />
+                    </svg>
+                  </button>
+                </div>
+                <section class="gppqe-question-card gppqe-review-detail-card ${activeReviewState?.isCorrect ? "is-correct" : "is-wrong"}">
+                  <div class="gppqe-question-head">
+                    <span class="gppqe-question-year">${escapeHtml(String(activeReviewQuestion.year))}</span>
+                    <span class="gppqe-question-category">${escapeHtml(activeReviewQuestion.category)}</span>
+                    <span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + activeReviewQuestion.answer)}</span>
+                  </div>
+                  <div class="gppqe-question-text">${gppqeFormatQuestionMarkup(activeReviewQuestion)}</div>
+                  <div class="gppqe-review-answer">
+                    <span>Your answer:</span>
+                    <strong class="gppqe-review-answer-value ${activeReviewState?.isCorrect ? "is-correct" : "is-wrong"}">${escapeHtml(gppqeGetQuestionViewText(activeReviewQuestion))}</strong>
+                  </div>
+                  <div class="gppqe-review-answer">
+                    <span>Correct answer:</span>
+                    <strong class="gppqe-review-answer-value is-correct">${escapeHtml(activeReviewQuestion.options[activeReviewQuestion.answer])}</strong>
+                  </div>
+                  <div class="gppqe-review-explanation">${escapeHtml(activeReviewQuestion.explanation)}</div>
+                </section>
+                <section class="gppqe-session-nav gppqe-review-modal-nav">
+                  <button
+                    type="button"
+                    class="gppqe-nav-btn"
+                    data-gppqe-action="review-prev"
+                    ${gppqeState.reviewQuestionIndex === 0 ? "disabled" : ""}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    class="gppqe-nav-btn primary"
+                    data-gppqe-action="review-next"
+                    ${gppqeState.reviewQuestionIndex >= total - 1 ? "disabled" : ""}
+                  >
+                    Next
+                  </button>
+                </section>
+              </div>
+            </div>
+          `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function gppqeRenderMarkup() {
+  if (gppqeState.view === "session") return gppqeBuildSessionMarkup();
+  if (gppqeState.view === "review") return gppqeBuildReviewMarkup();
+  return gppqeBuildHubMarkup();
+}
+
+function renderGppqeScreen() {
+  if (!gppqeScreen) return;
+  if (!gppqeBindingsReady) {
+    gppqeScreen.addEventListener("click", gppqeHandleAction);
+    gppqeScreen.addEventListener("change", gppqeHandleChange);
+    gppqeBindingsReady = true;
+  }
+  const root = gppqeGetRoot();
+  if (!root) return;
+  root.innerHTML = gppqeRenderMarkup();
+  if (gppqeState.view === 'hub') gppqeEnhancePickerFields(root);
+  if (gppqeState.view === "session" && gppqeState.selectedMode === "exam" && !gppqeState.examTimerId) {
+    gppqeStartTimer();
+  }
+  window.requestAnimationFrame(() => {
+    gppqeScreen?.scrollTo?.({ top: 0, behavior: "auto" });
+    root.scrollTop = 0;
+  });
+}
+
+function setExtraViewMode(mode = "cards", { persist = true } = {}) {
+  extraViewMode = "cards";
+  if (menuExtraGrid) {
+    menuExtraGrid.classList.add("is-cards");
+    menuExtraGrid.classList.remove("is-list");
+  }
+  if (persist) {
+    try {
+      localStorage.setItem(EXTRA_VIEW_STORAGE_KEY, "cards");
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+}
+function openExtraScreen() {
+  setMenuHubActiveTab("extra");
+  showScreen("extra-screen");
+  setExtraViewMode(extraViewMode, { persist: false });
+}
+
+function openComingSoonModal() {
+  if (!comingSoonModal) return;
+  comingSoonModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeComingSoonModal() {
+  if (!comingSoonModal) return;
+  comingSoonModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+try {
+  extraViewMode = "cards";
+} catch {
+  extraViewMode = "cards";
+}
+setExtraViewMode(extraViewMode, { persist: false });
+renderMenuDrillHistory();
+setDrillLobbyVariant("rapid");
+
 const questionEl = document.getElementById("question");
 const answersEl = document.getElementById("answers");
 const nextBtn = document.getElementById("next-btn");
@@ -2857,9 +4876,39 @@ const lawDrillPanelEl = document.getElementById("law-drill-panel");
 const lawDrillRailEl = document.getElementById("law-drill-rail");
 const lawDrillStackEl = document.getElementById("law-drill-stack");
 const lawDrillResultStackEl = document.getElementById("law-drill-result-stack");
+const lawDrillResultScreenEl = document.getElementById("law-drill-result-screen");
+const lawDrillResultTitleEl = document.getElementById("law-drill-result-title");
+const lawDrillResultBadgeEl = document.getElementById("law-drill-result-badge");
+const lawDrillResultPercentEl = document.getElementById("law-drill-result-percentage");
+const lawDrillResultScoreEl = document.getElementById("law-drill-result-score");
+const lawDrillResultFeedbackEl = document.getElementById("law-drill-result-feedback");
+const lawDrillNextLevelBtn = document.getElementById("law-drill-next-level-btn");
+const lawDrillCloseBtn = document.getElementById("law-drill-close-btn");
+const lawDrillMenuBtn = document.getElementById("law-drill-menu-btn");
 const resultBadgeEl = document.getElementById("result-badge");
 const backReviewBtn = document.getElementById("back-review-btn");
 const quizMenu = document.getElementById("quiz-menu");
+const newsScreen = document.getElementById("news-screen");
+const newsShellEl = document.getElementById("news-shell");
+const newsHeaderTitleEl = document.getElementById("news-header-title");
+const newsBackBtn = document.getElementById("news-back-btn");
+const newsSearchShell = document.getElementById("news-search-shell");
+const newsSearchBtn = document.getElementById("news-search-btn");
+const newsSearchInput = document.getElementById("news-search-input");
+const newsRefreshBtn = document.getElementById("news-refresh-btn");
+const newsAlertsBtn = document.getElementById("news-alerts-btn");
+const newsFilterStrip = document.getElementById("news-filter-strip");
+const newsMobileMenuBtn = document.getElementById("news-mobile-menu-btn");
+const newsMobileMenu = document.getElementById("news-mobile-menu");
+const newsFeedList = document.getElementById("news-feed-list");
+const newsTrendingList = document.getElementById("news-trending-list");
+const newsCategoryGrid = document.getElementById("news-category-grid");
+const newsDetailPanel = document.getElementById("news-detail-panel");
+const newsDetailEmpty = document.getElementById("news-detail-empty");
+const newsDetailCard = document.getElementById("news-detail-card");
+const newsFeedMetaCount = document.getElementById("news-feed-meta-count");
+const newsFeedMetaSourceCount = document.getElementById("news-feed-meta-source-count");
+const newsAlert = document.getElementById("news-alert");
 const homeScreen = document.getElementById("home-screen");
 const welcomeScreen = document.getElementById("welcome-screen");
 const backHomeBtn = document.getElementById("back-home-btn");
@@ -2900,7 +4949,13 @@ const authLastNameInput = document.getElementById("auth-last-name");
 const authUsernameWrap = document.getElementById("auth-username-wrap");
 const authUsernameInput = document.getElementById("auth-username");
 const authContactWrap = document.getElementById("auth-contact-wrap");
-const authContactInput = document.getElementById("auth-contact");
+const authContactFormatInput = document.getElementById("auth-contact-format");
+const authContactEmailWrap = document.getElementById("auth-contact-email-wrap");
+const authContactEmailInput = document.getElementById("auth-contact-email");
+const authContactPhoneWrap = document.getElementById("auth-contact-phone-wrap");
+const authContactCountryCodeInput = document.getElementById("auth-contact-country-code");
+const authContactPrefixInput = document.getElementById("auth-contact-prefix");
+const authContactPhoneInput = document.getElementById("auth-contact-phone");
 const authResetCodeWrap = document.getElementById("auth-reset-code-wrap");
 const authResetCodeInput = document.getElementById("auth-reset-code");
 const authPasswordWrap = document.getElementById("auth-password-wrap");
@@ -2921,11 +4976,13 @@ const welcomeRegisterCtaBtns = Array.from(
   document.querySelectorAll('[data-open-welcome-register="true"]'),
 );
 const WELCOME_INTRO_SEEN_KEY = "quizWelcomeIntroSeenV1";
+const MENU_SNAPSHOT_STORAGE_KEY = "quizMenuSnapshotV1";
 const profileBtnIcon = profileBtn?.querySelector(".menu-profile-icon");
 const profileBtnAvatarEl = profileBtn?.querySelector(".menu-modern-profile-avatar");
 const menuProfileNameEl = document.getElementById("menu-profile-name");
 const menuProfileSubtitleEl = document.getElementById("menu-profile-subtitle");
 const menuPointsBtn = document.getElementById("menu-points-btn");
+const newsMenuBtn = document.getElementById("news-feed-btn");
 const menuPointsValueEl = document.getElementById("menu-points-value");
 const menuStreakCardBtn = document.getElementById("menu-streak-card");
 const menuPointsCardBtn = document.getElementById("menu-points-card");
@@ -2978,7 +5035,14 @@ const profileTitleInput = document.getElementById("profile-title");
 const profileFirstNameInput = document.getElementById("profile-first-name");
 const profileLastNameInput = document.getElementById("profile-last-name");
 const profileUsernameInput = document.getElementById("profile-username");
-const profileContactInput = document.getElementById("profile-contact");
+const profileContactWrap = document.getElementById("profile-contact-wrap");
+const profileContactFormatInput = document.getElementById("profile-contact-format");
+const profileContactEmailWrap = document.getElementById("profile-contact-email-wrap");
+const profileContactEmailInput = document.getElementById("profile-contact-email");
+const profileContactPhoneWrap = document.getElementById("profile-contact-phone-wrap");
+const profileContactCountryCodeInput = document.getElementById("profile-contact-country-code");
+const profileContactPrefixInput = document.getElementById("profile-contact-prefix");
+const profileContactPhoneInput = document.getElementById("profile-contact-phone");
 const profileProfessionalTypeInput = document.getElementById("profile-professional-type");
 const profileCountryInput = document.getElementById("profile-country");
 const profileInstitutionInput = document.getElementById("profile-institution");
@@ -3023,6 +5087,7 @@ const menuQuickNavBtn = document.getElementById("menu-quick-nav-btn");
 const menuUserHubPanel = document.getElementById("menu-user-hub-panel");
 const menuUserHubCloseBtn = document.getElementById("menu-user-hub-close-btn");
 const menuTourBtn = document.getElementById("menu-tour-btn");
+const menuSubscriptionBtn = document.getElementById("menu-subscription-btn");
 const menuSettingsBtn = document.getElementById("menu-settings-btn");
 const tourBackBtn = document.getElementById("tour-back-btn");
 const tourMenuBtn = document.getElementById("tour-menu-btn");
@@ -3034,13 +5099,13 @@ const tourStepDots = Array.from(document.querySelectorAll(".tour-step-dot"));
 const tourSlides = Array.from(document.querySelectorAll(".tour-slide"));
 const settingsBackBtn = document.getElementById("settings-back-btn");
 const settingsMenuBtn = document.getElementById("settings-menu-btn");
+const settingsDownloadAppBtn = document.getElementById("settings-download-app-btn");
 const appThemeSelect = document.getElementById("app-theme-select");
 const appTextSizeSelect = document.getElementById("app-text-size-select");
 const appFontSelect = document.getElementById("app-font-select");
 const appReduceMotionCheckbox = document.getElementById("app-reduce-motion");
 const appClearLocalBtn = document.getElementById("app-clear-local-btn");
 const settingsFeedbackEl = document.getElementById("settings-feedback");
-const dashboardMenuBtn = document.getElementById("dashboard-menu-btn");
 const dailyBackBtn = document.getElementById("daily-back-btn");
 const startDailyBtn = document.getElementById("start-daily-btn");
 const refreshDailyBtn = document.getElementById("refresh-daily-btn");
@@ -3058,6 +5123,29 @@ const dailyCompletedValueEl = document.getElementById("daily-completed-value");
 const dailyCelebrationEl = document.getElementById("daily-celebration");
 const dailyCompleteCheckEl = document.getElementById("daily-complete-check");
 const dailyGemsRibbonEl = document.getElementById("daily-gems-ribbon");
+const subscriptionBackBtn = document.getElementById("subscription-back-btn");
+const subscriptionPaymentModalEl = document.getElementById("subscription-payment-modal");
+const subscriptionPaymentModalCardEl = subscriptionPaymentModalEl?.querySelector(".subscription-payment-modal-card");
+const subscriptionPaymentModalCloseBtn = document.getElementById("subscription-payment-modal-close-btn");
+const subscriptionPaymentModalCancelBtn = document.getElementById("subscription-payment-cancel-btn");
+const subscriptionPaymentModalCopyEl = document.getElementById("subscription-payment-modal-copy");
+const subscriptionPaymentModalTitleEl = document.getElementById("subscription-payment-modal-title");
+const subscriptionPaymentAmountEl = document.getElementById("subscription-payment-amount");
+const subscriptionPaymentAccountNumberEl = document.getElementById("subscription-payment-account-number");
+const subscriptionPaymentAccountNameEl = document.getElementById("subscription-payment-account-name");
+const subscriptionPaymentDetailsEl = document.getElementById("subscription-payment-details");
+const subscriptionProofPlanTitleEl = document.getElementById("subscription-proof-plan-title");
+const subscriptionProofPlanReferenceEl = document.getElementById("subscription-proof-plan-reference");
+const subscriptionProofJumpBtn = document.getElementById("subscription-proof-jump-btn");
+const subscriptionProofPanelEl = document.getElementById("subscription-proof-panel");
+const subscriptionForm = document.getElementById("subscription-form");
+const subscriptionPlanInput = document.getElementById("subscription-plan-input");
+const subscriptionTransactionInput = document.getElementById("subscription-transaction-input");
+const subscriptionProofInput = document.getElementById("subscription-proof-input");
+const subscriptionProofPreview = document.getElementById("subscription-proof-preview");
+const subscriptionProofPreviewContent = document.getElementById("subscription-proof-preview-content");
+const subscriptionSubmitBtn = document.getElementById("subscription-submit-btn");
+const subscriptionFormFeedback = document.getElementById("subscription-form-feedback");
 const reviewTitleEl = document.querySelector("#review-screen .review-title");
 const reviewTimerStatusEl = document.getElementById("review-timer");
 const submitExamBtn = document.getElementById("submit-exam");
@@ -3418,6 +5506,7 @@ const communityAdminBroadcastInput = document.getElementById("community-admin-br
 const communityAdminBroadcastAttachBtn = document.getElementById("community-admin-broadcast-attach-btn");
 const communityAdminBroadcastFileInput = document.getElementById("community-admin-broadcast-file-input");
 const communityAdminBroadcastAttachmentNameEl = document.getElementById("community-admin-broadcast-attachment-name");
+const communityAdminBroadcastPreviewBtn = document.getElementById("community-admin-broadcast-preview-btn");
 const communityAdminBroadcastClearBtn = document.getElementById("community-admin-broadcast-clear-btn");
 const communityAdminBroadcastSendBtn = document.getElementById("community-admin-broadcast-send-btn");
 const communityMessageToolbarEl = document.getElementById("community-message-toolbar");
@@ -3433,7 +5522,8 @@ const communityMessageDeleteMenuEl = document.getElementById("community-message-
 const communityMessageDeleteMenuSelfBtn = document.getElementById("community-message-delete-menu-self-btn");
 const communityMessageDeleteMenuAllBtn = document.getElementById("community-message-delete-menu-all-btn");
 const COMMUNITY_ADMIN_NOTICE_SENDER_ID = "__admin_notice__";
-const COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE = "/icons/icon-512-s3.png?v=20260324-applogo1";
+const COMMUNITY_ADMIN_PROFILE_NAME = "AJIXPHARMACY Admin";
+const COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE = "/images/app-logo.png?v=20260617-admin-avatar";
 const resultShareBtn = document.getElementById("result-share-btn");
 const UI_PREFS_STORAGE_KEY = "quizUiPrefsV1";
 const COMMUNITY_SETTINGS_STORAGE_KEY = "quizCommunitySettingsV1";
@@ -3444,10 +5534,15 @@ const COMMUNITY_ADMIN_KEY_STORAGE_KEY = "quizAdminKey";
 const HEADER_COLLAPSE_STORAGE_KEY = "quizHeaderCollapseV1";
 const DAILY_QUIZ_POPUP_STORAGE_KEY = "dailyQuizPopupShownDate";
 const DAILY_CELEBRATION_SHOWN_STORAGE_KEY = "dailyQuizCelebrationShownDate";
+const DAILY_QUIZ_STATE_CACHE_KEY = "dailyQuizStateCacheV1";
+const DAILY_LEADERBOARD_CACHE_KEY = "dailyQuizLeaderboardCacheV1";
+const DASHBOARD_SYNC_STATE_CACHE_KEY = "dashboardSyncedPerformanceStateCacheV1";
+const DASHBOARD_SNAPSHOT_CACHE_KEY = "dashboardSyncedSnapshotCacheV1";
+const DASHBOARD_TREND_HISTORY_CACHE_KEY = "dashboardSyncedTrendHistoryCacheV1";
+const DASHBOARD_HISTORY_CACHE_PREFIX = "dashboardSyncedHistoryCacheV1:";
 const POINTS_STORAGE_KEY = "quizPointsV1";
 const POINTS_PENDING_STORAGE_KEY = "quizPointsPendingV1";
 const SETUP_POINTS_STORAGE_KEY = "quizSetupPointsV1";
-const SETUP_POINTS_HISTORY_SYNC_LIMIT = 5000;
 const APP_UPDATE_FEED_URL = "https://ajixpharmacy.online/app-update.json";
 const APP_UPDATE_DISMISSED_VERSION_STORAGE_KEY = "quizAppUpdateDismissedVersionV1";
 const APP_UPDATE_CHECK_COOLDOWN_MS = 2 * 60 * 1000;
@@ -3463,13 +5558,127 @@ const COMMUNITY_BIOMETRIC_REGISTRATION_TIMEOUT_MS = 90000;
 const COMMUNITY_BIOMETRIC_UNLOCK_TIMEOUT_MS = 60000;
 const COMMUNITY_EMOJI_RECENT_LIMIT = 40;
 const COMMUNITY_EMOJI_SKIN_TONES = ["", "🏻", "🏼", "🏽", "🏾", "🏿"];
+function isQuotaExceededStorageError(error) {
+  return Boolean(
+    error &&
+      (error.name === "QuotaExceededError" ||
+        error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        error.code === 22 ||
+        error.code === 1014),
+  );
+}
+
+function sanitizeCommunityChatDraftStore(store = {}) {
+  const safeStore = {};
+  let changed = false;
+  Object.entries(store && typeof store === "object" ? store : {}).forEach(([conversationId, draft]) => {
+    const safeConversationId = getCommunityChatDraftConversationId(conversationId);
+    if (!safeConversationId || !draft || typeof draft !== "object") {
+      changed = true;
+      return;
+    }
+
+    const text = String(draft.text || "");
+    const replyDraft = normalizeCommunityChatDraftReply(draft.replyDraft);
+    const updatedAt = Math.max(0, Math.round(Number(draft.updatedAt) || 0));
+
+    if (!text.trim() && !replyDraft) {
+      changed = true;
+      return;
+    }
+
+    const safeDraft = {
+      conversationId: safeConversationId,
+      text,
+      replyDraft,
+      updatedAt,
+    };
+
+    if (Array.isArray(draft.attachments) && draft.attachments.length > 0) {
+      changed = true;
+    }
+
+    safeStore[safeConversationId] = safeDraft;
+  });
+  return {
+    store: safeStore,
+    changed,
+  };
+}
+
+function applyStoragePressureCleanup() {
+  try {
+    const draftStore = loadCommunityChatDraftStore();
+    const sanitizedDraftStore = sanitizeCommunityChatDraftStore(draftStore).store;
+    communityState.chatDrafts = sanitizedDraftStore;
+    if (JSON.stringify(draftStore) !== JSON.stringify(sanitizedDraftStore)) {
+      localStorage.setItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY, JSON.stringify(sanitizedDraftStore));
+    }
+  } catch {
+    // Ignore cleanup failures.
+  }
+  try {
+    if (Array.isArray(sessionHistory) && sessionHistory.length > MAX_SESSION_HISTORY_ENTRIES) {
+      sessionHistory.length = MAX_SESSION_HISTORY_ENTRIES;
+      localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
+    }
+  } catch {
+    // Ignore cleanup failures.
+  }
+  try {
+    if (Array.isArray(recentSessionResults) && recentSessionResults.length > DASHBOARD_RECENT_RESULTS_MAX) {
+      recentSessionResults.length = DASHBOARD_RECENT_RESULTS_MAX;
+      localStorage.setItem(RECENT_RESULTS_STORAGE_KEY, JSON.stringify(recentSessionResults));
+    }
+  } catch {
+    // Ignore cleanup failures.
+  }
+  try {
+    localStorage.removeItem(COMMUNITY_DOWNLOAD_HISTORY_STORAGE_KEY);
+  } catch {
+    // Ignore cleanup failures.
+  }
+}
+
+if (
+  typeof Storage !== "undefined" &&
+  Storage.prototype &&
+  typeof Storage.prototype.setItem === "function" &&
+  !Storage.prototype.setItem.__ajixQuotaSafe
+) {
+  const originalStorageSetItem = Storage.prototype.setItem;
+  const quotaSafeSetItem = function quotaSafeSetItem(key, value) {
+    try {
+      return originalStorageSetItem.call(this, key, value);
+    } catch (error) {
+      if (!isQuotaExceededStorageError(error)) {
+        throw error;
+      }
+      applyStoragePressureCleanup();
+      try {
+        return originalStorageSetItem.call(this, key, value);
+      } catch (retryError) {
+        if (!isQuotaExceededStorageError(retryError)) {
+          throw retryError;
+        }
+        return undefined;
+      }
+    }
+  };
+  Object.defineProperty(quotaSafeSetItem, "__ajixQuotaSafe", {
+    value: true,
+    enumerable: false,
+  });
+  Storage.prototype.setItem = quotaSafeSetItem;
+}
+
 const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
   {
     id: "smileys",
     icon: "😀",
     title: "Smileys",
     emojis: [
-      "😀","😃","😄","😁","😆","😅","😂","🤣","🥹","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓","😎","🥳","😤","😔","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😠","😡","😱","😴","🤒","🤕","🤯",
+      "😀","😃","😄","😁","😆","😅","😂","🤣","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","😋","😛","😜","🤪","🤗","🤭","🤔","🤨","😐","😑","😶","😏","😣","😥","😮","😯","😪","😫","😴","😌","😔","😕","🙁","☹️","😬","😎","🤯","🥳","😡","😱",
     ],
   },
   {
@@ -3477,23 +5686,23 @@ const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
     icon: "🧑",
     title: "People",
     emojis: [
-      "👶","🧒","👦","👧","🧑","👨","👩","🧔","👱","👴","👵","🙍","🙎","🙅","🙆","💁","🙋","🧏","🤷","🤦","🙇","🧘","💆","💇","🚶","🧍","🧎","🏃","💃","🕺","🫃","🤰","🤱","👨‍👩‍👧","👨‍👩‍👧‍👦","👩‍👩‍👧","👨‍👨‍👦","🫂","👥","👤","🫶","❤️","💔",
+      "🧑","👶","🧒","👦","👧","👨","👩","🧔","👵","👴","👱","👲","👳","👮","👷","💂","🕵️","👩‍⚕️","👨‍⚕️","🧑‍⚕️","👩‍🎓","👨‍🎓","🧑‍🎓","👩‍🏫","👨‍🏫","🧑‍🏫","👩‍⚖️","👨‍⚖️","🧑‍⚖️","👩‍🌾","👨‍🌾","🧑‍🌾","👩‍🍳","👨‍🍳","🧑‍🍳","👩‍🔧","👨‍🔧","🧑‍🔧","👩‍🏭","👨‍🏭","🧑‍🏭","👩‍💼","👨‍💼","🧑‍💼","👩‍🔬","👨‍🔬","🧑‍🔬","👩‍💻","👨‍💻","🧑‍💻",
     ],
   },
   {
     id: "professions",
-    icon: "🧑‍⚕️",
+    icon: "💼",
     title: "Professions",
     emojis: [
-      "🧑‍⚕️","👨‍⚕️","👩‍⚕️","🧑‍🎓","👨‍🎓","👩‍🎓","🧑‍🏫","👨‍🏫","👩‍🏫","🧑‍⚖️","👨‍⚖️","👩‍⚖️","🧑‍🌾","👨‍🌾","👩‍🌾","🧑‍🍳","👨‍🍳","👩‍🍳","🧑‍🔧","👨‍🔧","👩‍🔧","🧑‍🏭","👨‍🏭","👩‍🏭","🧑‍💼","👨‍💼","👩‍💼","🧑‍🔬","👨‍🔬","👩‍🔬","🧑‍💻","👨‍💻","👩‍💻","🧑‍🎤","👨‍🎤","👩‍🎤","🧑‍🎨","👨‍🎨","👩‍🎨","🧑‍✈️","👨‍✈️","👩‍✈️","🧑‍🚀","👨‍🚀","👩‍🚀","🧑‍🚒","👨‍🚒","👩‍🚒","👮","🕵️",
+      "🧑‍⚕️","👩‍⚕️","👨‍⚕️","🧑‍🎓","👩‍🎓","👨‍🎓","🧑‍🏫","👩‍🏫","👨‍🏫","🧑‍⚖️","👩‍⚖️","👨‍⚖️","🧑‍🌾","👩‍🌾","👨‍🌾","🧑‍🍳","👩‍🍳","👨‍🍳","🧑‍🔧","👩‍🔧","👨‍🔧","🧑‍🏭","👩‍🏭","👨‍🏭","🧑‍💼","👩‍💼","👨‍💼","🧑‍🔬","👩‍🔬","👨‍🔬","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","👩‍🎤","👨‍🎤","🧑‍🎨","👩‍🎨","👨‍🎨","🧑‍✈️","👩‍✈️","👨‍✈️","🧑‍🚀","👩‍🚀","👨‍🚀","🧑‍🚒","👩‍🚒","👨‍🚒",
     ],
   },
   {
     id: "gestures",
-    icon: "👍",
+    icon: "🤝",
     title: "Gestures",
     emojis: [
-      "👍","👎","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","✋","🤚","🖐️","🖖","👋","🤝","👏","🙌","👐","🤲","🙏","✍️","💪","🦾","🦿","🦵","🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴",
+      "👋","🤚","🖐️","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🙏","💪","🫶","🫰","✍️","💅","🤳","💁","🙅","🙆","🙋","🧏",
     ],
   },
   {
@@ -3501,7 +5710,7 @@ const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
     icon: "🐶",
     title: "Animals",
     emojis: [
-      "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪲","🐞","🦋","🐌","🐢","🐍","🦎","🦂","🦀","🐙","🦑","🐬","🐳","🦈",
+      "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🦆","🦉","🦄","🐝","🐛","🦋","🐌","🐢","🐍","🦎","🐙","🦑","🦞","🦀","🐠","🐟","🐬","🦈","🐘","🦒","🦓","🦍",
     ],
   },
   {
@@ -3509,15 +5718,15 @@ const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
     icon: "🍔",
     title: "Food",
     emojis: [
-      "🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🌶️","🌽","🥕","🫒","🍞","🥐","🥖","🧀","🥚","🍗","🍖","🌭","🍔","🍟","🍕","🌮","🌯","🥗","🍜","🍣","🍤","🍩","🍪","🎂","🍫","🍿","☕","🧃",
+      "🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍒","🍑","🥭","🍍","🥥","🥑","🍅","🥦","🥕","🌽","🥔","🍞","🥐","🧀","🍗","🍖","🥩","🍔","🍟","🍕","🌭","🌮","🥗","🍜","🍝","🍲","🍱","🍣","🍤","🍰","🍪","🍩","☕","🍵","🧃","🥛","🍺","🍷",
     ],
   },
   {
     id: "travel",
-    icon: "🚗",
+    icon: "✈️",
     title: "Travel",
     emojis: [
-      "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🛻","🚚","🚜","🏍️","🛵","🚲","✈️","🛫","🛬","🚁","🚀","🛸","⛵","🚤","🛳️","🚢","⛽","🗺️","🧭","🏖️","🏝️","🏔️","⛰️","🌋","🏕️","🏠","🏥","🏫","🏢","🏦","🗽","🗼","🌉",
+      "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚚","🚲","🛴","🛵","🏍️","✈️","🚀","🛸","🚁","🚢","⛵","🚂","🚆","🚇","🚉","🚊","🚥","🚦","🗺️","🧭","🏝️","🏖️","🗽","🗼","🏰","⛰️","🌋","🏔️","🏕️","🏟️","🏛️",
     ],
   },
   {
@@ -3525,7 +5734,7 @@ const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
     icon: "💡",
     title: "Objects",
     emojis: [
-      "📱","💻","⌨️","🖥️","🖨️","🖱️","💽","📷","📹","🎥","🎬","📞","☎️","📺","📻","🎧","🎤","🎵","🎶","🔋","🔌","💡","🔦","🕯️","🪔","🧯","🛒","🎁","🎈","🎀","🏆","🥇","🥈","🥉","🏅","⚽","🏀","🏈","🎾","🎯","🎲","🧩","🧸","📚","📖","📝","📌","📎","✂️","🔐",
+      "⌚","📱","💻","⌨️","🖱️","🖨️","🕹️","📷","📸","🎥","📞","📟","💡","🔦","🕯️","🔋","💸","💳","🔑","🧰","🧲","🛠️","⚙️","🔧","🧪","🧫","💊","💉","🩺","🩹","🔨","🪓","🪚","🔫","🎧","🎤","🎼","📚","📝","📌","📎","✂️",
     ],
   },
   {
@@ -3533,11 +5742,10 @@ const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
     icon: "❤️",
     title: "Symbols",
     emojis: [
-      "❤️","🩷","🧡","💛","💚","🩵","💙","💜","🖤","🩶","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","✅","☑️","✔️","❌","❎","⚠️","🚫","❗","❓","‼️","⁉️","💯","✨","⭐","🌟","🔥","💥","🎉","🎊","🙏","📍","⏰","📅","🔔","🔕","♻️","©️","®️",
+      "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","✨","⭐","🌟","💯","🔥","💥","💫","💢","💬","💭","❗","❓","⁉️","✅","☑️","✔️","❌","⛔","⚠️","🚫","♻️","©️","®️","™️","🔞","🔒","🔓","🔔","🔕","⏰","⌛","⏳","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓",
     ],
   },
-];
-const COMMUNITY_SCREEN_IDS = ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen"];
+];const COMMUNITY_SCREEN_IDS = ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen"];
 const COMMUNITY_DESKTOP_SPLIT_BREAKPOINT = 1040;
 const COMMUNITY_DESKTOP_SPLIT_MIN_LEFT = 300;
 const COMMUNITY_DESKTOP_SPLIT_MAX_LEFT = 620;
@@ -3756,6 +5964,7 @@ function syncCommunityChatComposerState() {
     communityChatScreenEl.classList.toggle("is-recording-voice", isRecording);
     communityChatScreenEl.classList.toggle("is-emoji-open", Boolean(communityState.emojiPickerOpen));
     communityChatScreenEl.classList.toggle("is-compose-text", hasText);
+    communityChatScreenEl.classList.toggle("is-notice-thread", isNoticeThread);
     communityChatScreenEl.classList.toggle("is-chat-readonly", isReadOnly && !isNoticeThread);
   }
   if (communityChatComposerEl) {
@@ -4400,15 +6609,45 @@ let communityEmojiToneSuppressClickUntil = 0;
 let communityEmojiTonePressState = null;
 
 const COMMUNITY_EMOJI_TONE_COMPATIBLE = new Set([
-  "👍","👎","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","✋","🤚","🖐️","🖖","👋","👏","🙌","👐","🤲","🙏","✍️","💪",
-]);
-
-function loadCommunityEmojiRecent() {
+  "👍",
+  "👎",
+  "👋",
+  "🤚",
+  "🖐",
+  "✋",
+  "👌",
+  "🤌",
+  "🤏",
+  "✌️",
+  "🤞",
+  "🤟",
+  "🤘",
+  "🤙",
+  "👈",
+  "👉",
+  "👆",
+  "👇",
+  "☝️",
+  "✊",
+  "👊",
+  "🤛",
+  "🤜",
+  "👏",
+  "🙌",
+  "👐",
+  "🙏",
+  "💪",
+  "🫶",
+  "🫰",
+  "🤝",
+  "🖖",
+]);function loadCommunityEmojiRecent() {
   try {
     const parsed = JSON.parse(localStorage.getItem(COMMUNITY_EMOJI_RECENT_STORAGE_KEY) || "[]");
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((value) => String(value || "").trim())
+      .map((emoji) => normalizeMojibake(emoji))
+      .map((emoji) => normalizeCommunityEmojiValue(emoji))
       .filter(Boolean)
       .slice(0, COMMUNITY_EMOJI_RECENT_LIMIT);
   } catch {
@@ -4417,14 +6656,19 @@ function loadCommunityEmojiRecent() {
 }
 
 function saveCommunityEmojiRecent() {
-  localStorage.setItem(
-    COMMUNITY_EMOJI_RECENT_STORAGE_KEY,
-    JSON.stringify(Array.isArray(communityEmojiRecent) ? communityEmojiRecent.slice(0, COMMUNITY_EMOJI_RECENT_LIMIT) : []),
-  );
+  const cleaned = Array.isArray(communityEmojiRecent)
+    ? communityEmojiRecent
+        .map((emoji) => normalizeMojibake(emoji))
+        .map((emoji) => normalizeCommunityEmojiValue(emoji))
+        .filter(Boolean)
+        .slice(0, COMMUNITY_EMOJI_RECENT_LIMIT)
+    : [];
+  localStorage.setItem(COMMUNITY_EMOJI_RECENT_STORAGE_KEY, JSON.stringify(cleaned));
+  communityEmojiRecent = cleaned;
 }
 
 function trackCommunityRecentEmoji(emoji = "") {
-  const safeEmoji = String(emoji || "").trim();
+  const safeEmoji = normalizeCommunityEmojiValue(emoji);
   if (!safeEmoji) return;
   communityEmojiRecent = [safeEmoji, ...communityEmojiRecent.filter((entry) => entry !== safeEmoji)]
     .slice(0, COMMUNITY_EMOJI_RECENT_LIMIT);
@@ -4444,6 +6688,34 @@ function getCommunityEmojiCategoriesForPanel() {
   ];
 }
 
+let communityEmojiAllowedSet = null;
+
+function getCommunityEmojiAllowedSet() {
+  if (communityEmojiAllowedSet) return communityEmojiAllowedSet;
+  const allowed = new Set();
+  (Array.isArray(COMMUNITY_CHAT_EMOJI_CATEGORIES) ? COMMUNITY_CHAT_EMOJI_CATEGORIES : []).forEach((category) => {
+    (Array.isArray(category.emojis) ? category.emojis : []).forEach((emoji) => {
+      const baseEmoji = String(normalizeMojibake(emoji) || "").trim();
+      if (!baseEmoji) return;
+      allowed.add(baseEmoji);
+      if (COMMUNITY_EMOJI_TONE_COMPATIBLE.has(baseEmoji)) {
+        COMMUNITY_EMOJI_SKIN_TONES.forEach((tone) => {
+          const tonedEmoji = getCommunityEmojiToneCompatibleValue(baseEmoji, tone);
+          if (tonedEmoji) allowed.add(tonedEmoji);
+        });
+      }
+    });
+  });
+  communityEmojiAllowedSet = allowed;
+  return allowed;
+}
+
+function normalizeCommunityEmojiValue(emoji = "") {
+  const safeEmoji = String(normalizeMojibake(emoji) || "").trim();
+  if (!safeEmoji) return "";
+  return getCommunityEmojiAllowedSet().has(safeEmoji) ? safeEmoji : "";
+}
+
 function getCommunityEmojiCategoryById(categoryId = "") {
   const safeId = String(categoryId || "").trim();
   const categories = getCommunityEmojiCategoriesForPanel();
@@ -4457,7 +6729,6 @@ function getCommunityEmojiToneCompatibleValue(emoji = "", tone = "") {
   if (!COMMUNITY_EMOJI_TONE_COMPATIBLE.has(safeEmoji)) return safeEmoji;
   return `${safeEmoji}${safeTone}`;
 }
-
 function getCommunityEmojiSearchMatches(searchQuery = "", categories = []) {
   const query = String(searchQuery || "").trim().toLowerCase();
   if (!query) return [];
@@ -4698,6 +6969,7 @@ function populateCommunityEmojiSheet(panelEl = null, datasetKey = "communityEmoj
 
 function populateCommunityEmojiSheets() {
   communityEmojiRecent = loadCommunityEmojiRecent();
+  saveCommunityEmojiRecent();
   populateCommunityEmojiSheet(communityChatEmojiPanelEl, "communityEmoji");
   populateCommunityEmojiSheet(communityStatusEmojiPanelEl, "communityStatusEmoji");
 }
@@ -4783,11 +7055,8 @@ async function sendCommunityVoiceNoteFile(file) {
     await backendClient.sendConversationMessageFile(conversationId, file, "", replyTo);
     clearCommunityReplyDraft();
     syncCommunityChatComposerState();
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunitySummary();
-    renderCommunityStatusStrip();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Voice note could not send right now."), true);
   } finally {
@@ -5032,6 +7301,12 @@ let communityFriendActionTouchStart = null;
 let communityFriendActionLastPointerType = "";
 let communityFriendActionLastTapAt = 0;
 let communityFriendActionLastTapUserId = "";
+let communityGroupMemberActionHoldHandle = null;
+let communityGroupMemberActionHoldTriggered = false;
+let communityGroupMemberActionTouchStart = null;
+let communityGroupMemberActionLastPointerType = "";
+let communityGroupMemberActionLastTapAt = 0;
+let communityGroupMemberActionLastTapUserId = "";
 let communityChatJumpLatestVisible = false;
 let communityChatJumpLatestAnimating = false;
 let communityChatJumpLatestRaf = 0;
@@ -5080,11 +7355,16 @@ let communityRealtimePresenceOnlineIds = new Set();
 let communityRealtimeConversationId = "";
 let communityRealtimeConversationRefreshHandle = null;
 let communityRealtimeOverviewRefreshHandle = null;
+let communityOverviewRefreshPromise = null;
+let communityOverviewPollHandle = null;
+let communityOverviewPollInFlight = false;
+let communityOverviewBackgroundPollingEnabled = false;
 let communityTypingBroadcastHandle = null;
 let communityTypingInactiveHandle = null;
 let communityAdminBroadcastAttachment = null;
 let communityAdminBroadcastSending = false;
 const communityRealtimeTypingByConversation = new Map();
+const COMMUNITY_OVERVIEW_POLL_INTERVAL_MS = 5000;
 let pushConfig = null;
 let pushConfigPromise = null;
 let oneSignalSdkPromise = null;
@@ -5125,14 +7405,14 @@ let tourStepIndex = 0;
 let dailyHistoryOpen = false;
 let pointsSyncHandle = null;
 let pointsSyncInFlight = false;
-let setupPointsRestoreInFlight = null;
-let setupPointsRestoreCompletedForOwnerKey = "";
 let appUpdateResumeListenersRegistered = false;
 const leaderboardState = {
   open: false,
   scope: "daily",
   cache: Object.create(null),
+  cacheAt: Object.create(null),
 };
+let instantLocalCacheBootstrapPromise = null;
 const communityState = {
   tab: "chats",
   friendsView: "friends",
@@ -5359,30 +7639,125 @@ function setSettingsFeedback(message = "", isError = false) {
   }
 }
 
-function readStoredPoints() {
-  const raw = Number(localStorage.getItem(POINTS_STORAGE_KEY));
-  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+function getPointsOwnerKey(user = currentUser) {
+  const userId = String(user?.id || "").trim();
+  return userId ? `user:${userId}` : "guest";
 }
 
-function writeStoredPoints(value = 0) {
+function readPointsState() {
+  try {
+    const raw = localStorage.getItem(POINTS_STORAGE_KEY);
+    if (!raw) {
+      return { owners: { guest: 0 } };
+    }
+
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.owners && typeof parsed.owners === "object") {
+      return {
+        owners: Object.fromEntries(
+          Object.entries(parsed.owners).map(([ownerKey, value]) => [
+            String(ownerKey || "").trim() || "guest",
+            Math.max(0, Math.round(Number(value) || 0)),
+          ]),
+        ),
+      };
+    }
+
+    return {
+      owners: {
+        guest: Math.max(0, Math.round(Number(parsed) || 0)),
+      },
+    };
+  } catch {
+    return { owners: { guest: 0 } };
+  }
+}
+
+function writePointsState(state = {}) {
+  const safeOwners = Object.fromEntries(
+    Object.entries(state?.owners || {}).map(([ownerKey, value]) => [
+      String(ownerKey || "").trim() || "guest",
+      Math.max(0, Math.round(Number(value) || 0)),
+    ]),
+  );
+  localStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify({ owners: safeOwners }));
+  return { owners: safeOwners };
+}
+
+function readStoredPoints(ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
+  const state = readPointsState();
+  return Math.max(0, Math.round(Number(state.owners?.[safeOwnerKey]) || 0));
+}
+
+function writeStoredPoints(value = 0, ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
   const safe = Math.max(0, Math.round(Number(value) || 0));
-  localStorage.setItem(POINTS_STORAGE_KEY, String(safe));
+  const state = readPointsState();
+  state.owners[safeOwnerKey] = safe;
+  writePointsState(state);
   return safe;
 }
 
-function readPendingPoints() {
-  const raw = Number(localStorage.getItem(POINTS_PENDING_STORAGE_KEY));
-  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+function readPendingPointsState() {
+  try {
+    const raw = localStorage.getItem(POINTS_PENDING_STORAGE_KEY);
+    if (!raw) {
+      return { owners: { guest: 0 } };
+    }
+
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.owners && typeof parsed.owners === "object") {
+      return {
+        owners: Object.fromEntries(
+          Object.entries(parsed.owners).map(([ownerKey, value]) => [
+            String(ownerKey || "").trim() || "guest",
+            Math.max(0, Math.round(Number(value) || 0)),
+          ]),
+        ),
+      };
+    }
+
+    return {
+      owners: {
+        guest: Math.max(0, Math.round(Number(parsed) || 0)),
+      },
+    };
+  } catch {
+    return { owners: { guest: 0 } };
+  }
 }
 
-function writePendingPoints(value = 0) {
+function readPendingPoints(ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
+  const state = readPendingPointsState();
+  return Math.max(0, Math.round(Number(state.owners?.[safeOwnerKey]) || 0));
+}
+
+function writePendingPoints(value = 0, ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
   const safe = Math.max(0, Math.round(Number(value) || 0));
+  const state = readPendingPointsState();
   if (safe <= 0) {
-    localStorage.removeItem(POINTS_PENDING_STORAGE_KEY);
+    delete state.owners[safeOwnerKey];
+    if (!Object.keys(state.owners).length) {
+      localStorage.removeItem(POINTS_PENDING_STORAGE_KEY);
+      return 0;
+    }
+    localStorage.setItem(POINTS_PENDING_STORAGE_KEY, JSON.stringify({ owners: state.owners }));
     return 0;
   }
-  localStorage.setItem(POINTS_PENDING_STORAGE_KEY, String(safe));
+
+  state.owners[safeOwnerKey] = safe;
+  localStorage.setItem(POINTS_PENDING_STORAGE_KEY, JSON.stringify({ owners: state.owners }));
   return safe;
+}
+
+function getCumulativePoints() {
+  const ownerKey = getPointsOwnerKey();
+  const localPoints = Math.max(0, Math.round(Number(readStoredPoints(ownerKey)) || 0));
+  const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
+  return Math.max(localPoints, remotePoints);
 }
 
 function createEmptySetupPoints() {
@@ -5394,13 +7769,32 @@ function createEmptySetupPoints() {
     sudden: 0,
     clinical: 0,
     law: 0,
+    gppqeStudy: 0,
+    gppqeExam: 0,
   };
+}
+
+const NORMAL_SETUP_POINT_KEYS = ["study", "exam", "daily", "rapid", "sudden", "clinical", "law"];
+const GPPQE_SETUP_POINT_KEYS = ["gppqeStudy", "gppqeExam"];
+
+function getSetupPointKeys(scope = "normal") {
+  return String(scope || "normal").trim().toLowerCase() === "gppqe" ? GPPQE_SETUP_POINT_KEYS : NORMAL_SETUP_POINT_KEYS;
 }
 
 function sanitizeSetupPoints(raw = {}) {
   const next = createEmptySetupPoints();
   Object.keys(next).forEach((key) => {
     next[key] = Math.max(0, Math.round(Number(raw?.[key]) || 0));
+  });
+  return next;
+}
+
+function mergeSetupPoints(left = {}, right = {}) {
+  const safeLeft = sanitizeSetupPoints(left);
+  const safeRight = sanitizeSetupPoints(right);
+  const next = createEmptySetupPoints();
+  Object.keys(next).forEach((key) => {
+    next[key] = Math.max(safeLeft[key], safeRight[key]);
   });
   return next;
 }
@@ -5441,16 +7835,64 @@ function writeSetupPointsState(state = {}) {
   return { owners: safeOwners };
 }
 
-function readCurrentSetupPoints() {
-  const state = readSetupPointsState();
-  return sanitizeSetupPoints(state.owners?.[getSetupPointsOwnerKey()] || createEmptySetupPoints());
+function hasAnySetupPoints(points = {}) {
+  return Object.values(sanitizeSetupPoints(points)).some((value) => Number(value) > 0);
 }
 
-function writeCurrentSetupPoints(nextValue = {}) {
+function getSetupPointsBucketFromDashboardSessionMode(mode = "") {
+  const normalized = normalizeDashboardSessionMode(mode).trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized.startsWith("daily")) return "daily";
+  if (normalized.startsWith("study")) return "study";
+  if (normalized.includes("gppqe") && normalized.includes("study")) return "gppqeStudy";
+  if (normalized.startsWith("smart")) return "exam";
+  if (normalized.startsWith("exam")) return "exam";
+  if (normalized.includes("gppqe") && normalized.includes("exam")) return "gppqeExam";
+  if (normalized.includes("rapid fire")) return "rapid";
+  if (normalized.includes("sudden death")) return "sudden";
+  if (normalized.includes("clinical judgement")) return "clinical";
+  if (normalized.includes("law drill") || normalized.includes("pharmacy law quiz")) return "law";
+  return "";
+}
+
+function deriveSetupPointsFromDashboardSessions(entries = []) {
+  const totals = createEmptySetupPoints();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const bucket = getSetupPointsBucketFromDashboardSessionMode(entry?.mode || "");
+    const score = Math.max(0, Math.round(Number(entry?.score) || 0));
+    if (!bucket || score <= 0) continue;
+    totals[bucket] += score;
+  }
+  return totals;
+}
+
+function readCurrentSetupPoints({ scope = "normal" } = {}) {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
-  state.owners[ownerKey] = sanitizeSetupPoints(nextValue);
+  const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
+  const merged = mergeSetupPoints(local, remote);
+  const filtered = createEmptySetupPoints();
+  const keys = getSetupPointKeys(scope);
+  keys.forEach((key) => {
+    filtered[key] = Math.max(0, Math.round(Number(merged[key]) || 0));
+  });
+  return filtered;
+}
+
+function writeCurrentSetupPoints(nextValue = {}, { scheduleSync = true, scope = "normal" } = {}) {
+  const state = readSetupPointsState();
+  const ownerKey = getSetupPointsOwnerKey();
+  const current = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const next = sanitizeSetupPoints(nextValue);
+  getSetupPointKeys(scope).forEach((key) => {
+    current[key] = Math.max(0, Math.round(Number(next[key]) || 0));
+  });
+  state.owners[ownerKey] = current;
   writeSetupPointsState(state);
+  if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
+    scheduleSetupPointsSync();
+  }
   return state.owners[ownerKey];
 }
 
@@ -5477,77 +7919,53 @@ function addPointsToCurrentSetupBucket(delta = 1) {
   writeCurrentSetupPoints(current);
 }
 
-function getSetupPointsBucketFromSessionMode(mode = "") {
-  const safeMode = String(mode || "").trim().toLowerCase();
-  if (!safeMode) return "";
-  if (safeMode.startsWith("law drill") || safeMode.includes("law quiz")) return "law";
-  if (safeMode.startsWith("daily")) return "daily";
-  if (safeMode.startsWith("rapid")) return "rapid";
-  if (safeMode.startsWith("sudden")) return "sudden";
-  if (safeMode.startsWith("clinical")) return "clinical";
-  if (safeMode.startsWith("smart") || safeMode.startsWith("exam")) return "exam";
-  if (safeMode.startsWith("study") || safeMode.includes("topic quiz")) return "study";
-  return "";
-}
+let setupPointsSyncHandle = null;
+let setupPointsSyncInFlight = false;
 
-function summarizeSetupPointsFromSessions(sessions = []) {
-  const totals = createEmptySetupPoints();
-  (Array.isArray(sessions) ? sessions : []).forEach((session) => {
-    const bucket = getSetupPointsBucketFromSessionMode(session?.mode || "");
-    if (!bucket) return;
-    const score = Math.max(0, Math.round(Number(session?.score) || 0));
-    totals[bucket] += score;
-  });
-  return sanitizeSetupPoints(totals);
-}
-
-async function restoreSetupPointsFromSyncedHistory({ force = false } = {}) {
-  if (!currentUser || !backendClient.isAuthenticated()) return null;
-  if (setupPointsRestoreInFlight) return setupPointsRestoreInFlight;
+async function flushSetupPointsSync() {
+  if (setupPointsSyncInFlight) return;
+  if (!currentUser || !backendClient.isAuthenticated()) return;
 
   const ownerKey = getSetupPointsOwnerKey();
-  if (!force && setupPointsRestoreCompletedForOwnerKey === ownerKey) {
-    return sanitizeSetupPoints(readSetupPointsState().owners?.[ownerKey] || createEmptySetupPoints());
+  const state = readSetupPointsState();
+  const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
+  const merged = mergeSetupPoints(local, remote);
+  const changed = JSON.stringify(merged) !== JSON.stringify(remote);
+
+  if (!changed) {
+    state.owners[ownerKey] = merged;
+    writeSetupPointsState(state);
+    currentUser = { ...(currentUser || {}), setupPoints: merged };
+    renderPoints();
+    return;
   }
-  const task = (async () => {
-    const state = readSetupPointsState();
-    const current = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
-    const next = { ...current };
 
-    let remoteDerived = null;
-    try {
-      const response = await backendClient.fetchSyncedHistory("", SETUP_POINTS_HISTORY_SYNC_LIMIT);
-      remoteDerived = summarizeSetupPointsFromSessions(response?.sessions || []);
-    } catch {
-      remoteDerived = null;
-    }
-
-    if (remoteDerived) {
-      Object.keys(next).forEach((key) => {
-        next[key] = Math.max(next[key], remoteDerived[key] || 0);
-      });
-    } else {
-      const localDerived = summarizeSetupPointsFromSessions(sessionHistory);
-      Object.keys(next).forEach((key) => {
-        next[key] = Math.max(next[key], localDerived[key] || 0);
-      });
-    }
-
-    const changed = force || Object.keys(next).some((key) => next[key] !== current[key]);
-    if (changed) {
-      writeCurrentSetupPoints(next);
-      renderPoints();
-    }
-    setupPointsRestoreCompletedForOwnerKey = ownerKey;
-    return next;
-  })();
-
-  setupPointsRestoreInFlight = task;
+  setupPointsSyncInFlight = true;
   try {
-    return await task;
+    const response = await backendClient.updateSetupPoints({ setupPoints: merged });
+    const synced = sanitizeSetupPoints(response?.setupPoints || response?.user?.setupPoints || merged);
+    state.owners[ownerKey] = synced;
+    writeSetupPointsState(state);
+    currentUser = response?.user || { ...(currentUser || {}), setupPoints: synced };
+    renderPoints();
+  } catch {
+    state.owners[ownerKey] = merged;
+    writeSetupPointsState(state);
+    renderPoints();
   } finally {
-    setupPointsRestoreInFlight = null;
+    setupPointsSyncInFlight = false;
   }
+}
+
+function scheduleSetupPointsSync(delayMs = 450) {
+  if (setupPointsSyncHandle) {
+    clearTimeout(setupPointsSyncHandle);
+  }
+  setupPointsSyncHandle = setTimeout(() => {
+    setupPointsSyncHandle = null;
+    void flushSetupPointsSync();
+  }, delayMs);
 }
 
 function shouldCountCorrectAnswerTowardLeaderboard() {
@@ -5575,11 +7993,12 @@ function getMenuLevelSnapshot(points = 0) {
 }
 
 function getMenuLeaderboardRankLabel() {
+  const snapshotUser = getMenuSnapshotUser();
   const cachedAllTime = leaderboardState?.cache?.alltime?.yourEntry;
   const rankValue = Number(
     cachedAllTime?.rank ??
-    currentUser?.leaderboardStats?.rank ??
-    currentUser?.leaderboardRank ??
+    snapshotUser?.leaderboardStats?.rank ??
+    snapshotUser?.leaderboardRank ??
     0,
   );
   if (Number.isFinite(rankValue) && rankValue > 0) {
@@ -5622,6 +8041,22 @@ function parseMenuSessionDate(value = "") {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
+  const appShortYearMatch = raw.match(
+    /^(\d{2})\/(\d{2})\/(\d{2})(?:\s+(\d{1,2}):(\d{2})(?:\s*([AP]M))?)?$/i,
+  );
+  if (appShortYearMatch) {
+    const day = Number(appShortYearMatch[1]);
+    const month = Number(appShortYearMatch[2]) - 1;
+    const year = 2000 + Number(appShortYearMatch[3]);
+    let hour = Number(appShortYearMatch[4] || 12);
+    const minute = Number(appShortYearMatch[5] || 0);
+    const meridiem = String(appShortYearMatch[6] || "").trim().toUpperCase();
+    if (meridiem === "PM" && hour < 12) hour += 12;
+    if (meridiem === "AM" && hour === 12) hour = 0;
+    const parsed = new Date(year, month, day, hour, minute, 0, 0);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   const fallback = new Date(raw);
   return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
@@ -5652,25 +8087,16 @@ function getMenuWeeklyPercent() {
   return Math.max(0, Math.min(100, Math.round((totalScore / totalQuestions) * 100)));
 }
 
-function getMenuAllTimePoints() {
-  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
-  const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
-  const cachedAllTimePoints = Math.max(
-    0,
-    Math.round(Number(leaderboardState?.cache?.alltime?.yourEntry?.points) || 0),
-  );
-  return Math.max(localPoints, remotePoints, cachedAllTimePoints);
-}
-
 function renderMenuDashboardStats() {
-  const points = getMenuAllTimePoints();
+  const snapshotUser = getMenuSnapshotUser();
+  const points = getMenuPointsValue();
   const dailyStreak = Math.max(
     0,
     Math.round(
       Number(
         dailyQuizState?.stats?.streak ??
-          currentUser?.dailyQuiz?.streak ??
-          currentUser?.dailyQuiz?.dailyStreak ??
+          snapshotUser?.dailyQuiz?.streak ??
+          snapshotUser?.dailyQuiz?.dailyStreak ??
           0,
       ) || 0,
     ),
@@ -5717,7 +8143,10 @@ function renderSetupPoints() {
 
 function renderPoints() {
   if (!menuPointsValueEl) return;
-  menuPointsValueEl.textContent = String(getMenuAllTimePoints());
+  if (currentUser) {
+    syncMenuSnapshotCacheFromUser(currentUser);
+  }
+  menuPointsValueEl.textContent = String(getMenuPointsValue());
   renderMenuDashboardStats();
   renderSetupPoints();
 }
@@ -5726,39 +8155,6 @@ function getCurrentSessionPoints() {
   if (!Array.isArray(active) || active.length === 0) return 0;
   if (!mode) return 0;
   return Math.max(0, calculateScore());
-}
-
-function getCurrentQuizTilePoints() {
-  const points = readCurrentSetupPoints();
-  if (isLawStudyMode() || (mode === "exam" && String(examVariant || "").trim().toLowerCase() === "law")) {
-    return getLawDrillCumulativeScore();
-  }
-  if (mode === "daily") return Math.max(0, Math.round(Number(points.daily) || 0));
-  if (mode === "smart") return Math.max(0, Math.round(Number(points.exam) || 0));
-  if (mode === "exam") {
-    const variant = String(examVariant || "normal").trim().toLowerCase();
-    if (variant === "rapid") return Math.max(0, Math.round(Number(points.rapid) || 0));
-    if (variant === "sudden") return Math.max(0, Math.round(Number(points.sudden) || 0));
-    if (variant === "clinical") return Math.max(0, Math.round(Number(points.clinical) || 0));
-    return Math.max(0, Math.round(Number(points.exam) || 0));
-  }
-  if (mode === "study" || mode === "topic") {
-    return Math.max(0, Math.round(Number(points.study) || 0));
-  }
-  return 0;
-}
-
-function getHeaderPointsBadgeMarkup(points = 0) {
-  const safePoints = Math.max(0, Math.round(Number(points) || 0));
-  return `
-    <span class="header-inline-points-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-        <path d="M4 8.25 7.5 12l3-5.5 1.5 2.5 1.5-2.5 3 5.5L20 8.25V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.25Z"></path>
-        <path d="M7 17.5h10"></path>
-      </svg>
-    </span>
-    <span class="header-inline-points-value">${safePoints}</span>
-  `;
 }
 
 function renderSessionPointsDisplay() {
@@ -5781,20 +8177,19 @@ function renderSessionPointsDisplay() {
 }
 
 function resetPointsState() {
-  writeStoredPoints(0);
-  writePendingPoints(0);
-  setupPointsRestoreCompletedForOwnerKey = "";
+  clearMenuSnapshotCache();
   renderPoints();
 }
 
 function syncPointsFromCurrentUser() {
-  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
-  const pending = readPendingPoints();
-  writeStoredPoints(Math.max(localPoints, remotePoints + pending));
-  leaderboardState.cache = Object.create(null);
+  const previousPoints = Math.max(0, Math.round(Number(readStoredPoints(getPointsOwnerKey())) || 0));
+  const nextPoints = Math.max(previousPoints, remotePoints);
+  writeStoredPoints(nextPoints, getPointsOwnerKey());
+  if (currentUser) {
+    currentUser = { ...(currentUser || {}), points: nextPoints };
+  }
   renderPoints();
-  void restoreSetupPointsFromSyncedHistory();
 }
 
 async function flushPendingPoints() {
@@ -5819,7 +8214,6 @@ async function flushPendingPoints() {
     currentUser = response?.user || { ...(currentUser || {}), points: nextPoints };
     writePendingPoints(0);
     writeStoredPoints(nextPoints);
-    leaderboardState.cache = Object.create(null);
     renderPoints();
   } catch {
     renderPoints();
@@ -5838,23 +8232,66 @@ function schedulePendingPointsSync(delayMs = 420) {
   }, delayMs);
 }
 
+let committedSessionPointsId = "";
+
+function commitFinishedSessionPoints({
+  score = 0,
+  setupPointsBucket = "",
+  awardTotal = true,
+  sessionKey = "",
+} = {}) {
+  const safeScore = Math.max(0, Math.round(Number(score) || 0));
+  const sessionId = String(sessionKey || latestSavedSession?.sessionId || "").trim();
+  const scope = String(setupPointsBucket || "").startsWith("gppqe") ? "gppqe" : "normal";
+
+  if (!sessionId || safeScore <= 0) {
+    if (setupPointsBucket) {
+      writeCurrentSetupPoints(readCurrentSetupPoints({ scope }), { scheduleSync: true, scope });
+    }
+    renderPoints();
+    return false;
+  }
+
+  if (sessionId === committedSessionPointsId) {
+    return false;
+  }
+
+  committedSessionPointsId = sessionId;
+
+  if (setupPointsBucket) {
+    const currentSetupPoints = readCurrentSetupPoints({ scope });
+    currentSetupPoints[setupPointsBucket] = Math.max(
+      0,
+      Math.round(Number(currentSetupPoints[setupPointsBucket]) || 0) + safeScore,
+    );
+    writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true, scope });
+  }
+
+  if (awardTotal) {
+    const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
+    writePendingPoints(readPendingPoints() + safeScore);
+
+    if (currentUser) {
+      currentUser = { ...(currentUser || {}), points: nextStoredPoints };
+    }
+
+    if (currentUser && backendClient.isAuthenticated()) {
+      schedulePendingPointsSync(0);
+    }
+  }
+
+  renderPoints();
+  if (scope === "gppqe" && gppqeScreen) {
+    renderGppqeScreen();
+  }
+  return true;
+}
+
 function awardCorrectAnswerPoint(delta = 1) {
   const safeDelta = Math.max(0, Math.round(Number(delta) || 0));
   if (safeDelta <= 0) return;
-
-  if (shouldCountCorrectAnswerTowardLeaderboard()) {
-    writeStoredPoints(readStoredPoints() + safeDelta);
-    writePendingPoints(readPendingPoints() + safeDelta);
-  }
-  if (!isLawStudyMode()) {
-    addPointsToCurrentSetupBucket(safeDelta);
-  }
-  leaderboardState.cache = Object.create(null);
-  renderPoints();
-
-  if (currentUser && backendClient.isAuthenticated() && shouldCountCorrectAnswerTowardLeaderboard()) {
-    schedulePendingPointsSync();
-  }
+  renderSessionPointsDisplay();
+  renderCompactHeaderMeta();
 }
 
 function setLeaderboardLoading(isLoading = false) {
@@ -5955,7 +8392,6 @@ function renderLeaderboardPodium(entries = []) {
       const points = Math.max(0, Math.round(Number(entry.points) || 0));
       return `
         <div class="leaderboard-podium-card ${podiumClass}">
-          ${rank === 1 ? '<div class="leaderboard-podium-crown" aria-hidden="true">👑</div>' : ""}
           <div class="leaderboard-podium-avatar-shell">
             ${getLeaderboardAvatarHtml(entry, "is-podium")}
             <div class="leaderboard-podium-medal">${rank}</div>
@@ -5964,7 +8400,7 @@ function renderLeaderboardPodium(entries = []) {
           <button type="button" class="community-name-link leaderboard-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(entry.userId || "")}">${escapeHtml(displayName)}</button>
           <div class="leaderboard-podium-username">@${escapeHtml(entry.username || "user")}</div>
           <div class="leaderboard-podium-rank">${rankLabel}</div>
-          <div class="leaderboard-podium-points"><span class="leaderboard-points-icon" aria-hidden="true">👑</span>${points}</div>
+          <div class="leaderboard-podium-points">${points}</div>
         </div>
       `;
     })
@@ -5975,7 +8411,6 @@ function renderLeaderboardYourRank(entry = null, totalPlayers = 0) {
   if (!leaderboardYourRankEl) return;
   leaderboardYourRankEl.classList.add("hidden");
   leaderboardYourRankEl.innerHTML = "";
-  return;
   if (!entry) {
     leaderboardYourRankEl.classList.add("hidden");
     leaderboardYourRankEl.innerHTML = "";
@@ -5992,7 +8427,7 @@ function renderLeaderboardYourRank(entry = null, totalPlayers = 0) {
       <div class="leaderboard-your-rank-subtitle">${escapeHtml(getCommunityLeaderboardName(entry))}</div>
       <div class="leaderboard-your-rank-handle">@${escapeHtml(entry.username || "user")}</div>
     </div>
-    <div class="leaderboard-rank-points"><span class="leaderboard-points-icon" aria-hidden="true">👑</span>${points}</div>
+    <div class="leaderboard-rank-points">${points}</div>
   `;
 }
 
@@ -6017,7 +8452,7 @@ function renderLeaderboardList(entries = []) {
             <button type="button" class="community-name-link leaderboard-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(entry.userId || "")}">${escapeHtml(displayName)}</button>
             <div class="leaderboard-list-username">@${escapeHtml(entry.username || "user")}</div>
           </div>
-          <div class="leaderboard-list-points"><span class="leaderboard-points-icon" aria-hidden="true">👑</span>${Math.max(0, Math.round(Number(entry.points) || 0))}</div>
+          <div class="leaderboard-list-points">${Math.max(0, Math.round(Number(entry.points) || 0))}</div>
         </div>
       `;
     })
@@ -6027,6 +8462,7 @@ function renderLeaderboardList(entries = []) {
 function renderLeaderboardSnapshot(snapshot = {}, scope = "daily") {
   const safeScope = String(scope || "daily");
   leaderboardState.scope = safeScope;
+  const isLocalDevHost = /^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname || ""));
   leaderboardTabEls.forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.leaderboardScope === safeScope);
   });
@@ -6054,37 +8490,111 @@ function renderLeaderboardSnapshot(snapshot = {}, scope = "daily") {
   renderLeaderboardPodium(topThree);
   renderLeaderboardYourRank(yourEntry, totalPlayers);
   renderLeaderboardList(leaderboard.slice(podiumCount));
-  setLeaderboardEmptyState(leaderboard.length === 0, "No leaderboard points yet for this period.");
+  const hasVisibleContent = leaderboard.length > 0 || Boolean(yourEntry) || totalPlayers > 0;
+  setLeaderboardEmptyState(
+    !hasVisibleContent && isLocalDevHost,
+    "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
+  );
   renderMenuDashboardStats();
 }
 
 async function loadLeaderboard(scope = "daily", { force = false } = {}) {
   const safeScope = String(scope || "daily").trim().toLowerCase();
-  if (!force && leaderboardState.cache[safeScope]) {
-    renderLeaderboardSnapshot(leaderboardState.cache[safeScope], safeScope);
+  const cacheKey = `leaderboard:${safeScope}`;
+  const cachedSnapshot = leaderboardState.cache[safeScope];
+  const cachedAt = Number(leaderboardState.cacheAt[safeScope]) || 0;
+  const isFresh = cachedAt > 0 && Date.now() - cachedAt < 60_000;
+  const hasCachedView = Boolean(cachedSnapshot);
+  const isLocalDevHost = /^(localhost|127\.0\.0\.1)$/i.test(String(location.hostname || ""));
+  if (!force && cachedSnapshot) {
+    renderLeaderboardSnapshot(cachedSnapshot, safeScope);
+    if (isFresh) {
+      return;
+    }
+    force = false;
+    if (leaderboardState.open) {
+      window.setTimeout(() => {
+        void loadLeaderboard(safeScope, { force: true });
+      }, 0);
+    }
     return;
   }
+  if (!force) {
+    const offlineSnapshot = await getOfflineEntry(cacheKey);
+    if (offlineSnapshot?.value) {
+      const snapshot = offlineSnapshot.value;
+      leaderboardState.cache[safeScope] = snapshot || {};
+      leaderboardState.cacheAt[safeScope] = Number(offlineSnapshot.updatedAt) || Date.now();
+      renderLeaderboardSnapshot(snapshot || {}, safeScope);
+      if (isFresh) {
+        return;
+      }
+      if (leaderboardState.open) {
+        window.setTimeout(() => {
+          void loadLeaderboard(safeScope, { force: true });
+        }, 0);
+      }
+      return;
+    }
+  }
 
-  setLeaderboardLoading(true);
-  setLeaderboardEmptyState(false);
-
+  const shouldShowLoading = !hasCachedView;
+  if (shouldShowLoading) {
+    setLeaderboardLoading(true);
+    setLeaderboardEmptyState(false);
+  }
   try {
-    if (currentUser && backendClient.isAuthenticated()) {
-      await flushPendingPoints();
+    if (currentUser && backendClient.isAuthenticated() && readPendingPoints() > 0) {
+      void flushPendingPoints();
     }
     const snapshot = await backendClient.fetchPointsLeaderboard(safeScope);
+    const fetchedLeaderboard = Array.isArray(snapshot?.leaderboard) ? snapshot.leaderboard : [];
+    const fetchedHasContent =
+      fetchedLeaderboard.length > 0 ||
+      Boolean(snapshot?.yourEntry) ||
+      Number(snapshot?.totalPlayers) > 0;
+    if (!fetchedHasContent && hasCachedView) {
+      return;
+    }
+    if (!fetchedHasContent && !hasCachedView) {
+      if (isLocalDevHost) {
+        renderLeaderboardPodium([]);
+        renderLeaderboardYourRank(null);
+        renderLeaderboardList([]);
+        setLeaderboardEmptyState(
+          true,
+          "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
+        );
+      } else {
+        renderLeaderboardPodium([]);
+        renderLeaderboardYourRank(null);
+        renderLeaderboardList([]);
+        setLeaderboardEmptyState(false);
+      }
+      return;
+    }
     leaderboardState.cache[safeScope] = snapshot || {};
+    leaderboardState.cacheAt[safeScope] = Date.now();
+    void setOfflineEntry(cacheKey, snapshot || {});
     renderLeaderboardSnapshot(snapshot || {}, safeScope);
   } catch {
-    renderLeaderboardPodium([]);
-    renderLeaderboardYourRank(null);
-    renderLeaderboardList([]);
-    setLeaderboardEmptyState(
-      true,
-      "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
-    );
+    if (!hasCachedView) {
+      if (isLocalDevHost) {
+        renderLeaderboardPodium([]);
+        renderLeaderboardYourRank(null);
+        renderLeaderboardList([]);
+        setLeaderboardEmptyState(
+          true,
+          "Leaderboard data is not ready yet. If this stays empty on localhost, restart the local backend once.",
+        );
+      } else {
+        setLeaderboardEmptyState(false);
+      }
+    }
   } finally {
-    setLeaderboardLoading(false);
+    if (shouldShowLoading) {
+      setLeaderboardLoading(false);
+    }
   }
 }
 
@@ -6094,6 +8604,7 @@ function openLeaderboardModal(scope = leaderboardState.scope || "daily", { recor
   leaderboardState.returnScreen = activeScreenId;
   leaderboardModalEl.classList.remove("hidden");
   leaderboardState.open = true;
+  void primeInstantLocalCaches();
   if (recordHistory) {
     history.pushState(
       {
@@ -6116,6 +8627,57 @@ function closeLeaderboardModal({ useHistory = false } = {}) {
   }
   leaderboardModalEl.classList.add("hidden");
   leaderboardState.open = false;
+}
+
+async function primeInstantLocalCaches() {
+  if (instantLocalCacheBootstrapPromise) return instantLocalCacheBootstrapPromise;
+  instantLocalCacheBootstrapPromise = (async () => {
+    const [communityOverview, communityBlocked, leaderboardDaily, leaderboardWeekly, leaderboardAllTime] =
+      await Promise.all([
+        getOfflineEntry("community-overview"),
+        getOfflineEntry("community-blocked"),
+        getOfflineEntry("leaderboard:daily"),
+        getOfflineEntry("leaderboard:weekly"),
+        getOfflineEntry("leaderboard:alltime"),
+      ]);
+
+    if (communityOverview?.value && !communityState.overview) {
+      communityState.overview = communityOverview.value;
+      communityState.statuses = Array.isArray(communityState.overview?.statuses)
+        ? communityState.overview.statuses
+        : [];
+    }
+
+    if (communityBlocked?.value && (!Array.isArray(communityState.blocked) || communityState.blocked.length === 0)) {
+      communityState.blocked = Array.isArray(communityBlocked.value?.blocked)
+        ? communityBlocked.value.blocked
+        : [];
+    }
+
+    const hydrateLeaderboardSnapshot = (scope, row) => {
+      if (!row?.value) return;
+      if (!leaderboardState.cache[scope]) {
+        leaderboardState.cache[scope] = row.value || {};
+        leaderboardState.cacheAt[scope] = Number(row.updatedAt) || Date.now();
+      }
+    };
+
+    hydrateLeaderboardSnapshot("daily", leaderboardDaily);
+    hydrateLeaderboardSnapshot("weekly", leaderboardWeekly);
+    hydrateLeaderboardSnapshot("alltime", leaderboardAllTime);
+
+    if (isCommunityScreenId(getActiveScreenId())) {
+      renderCommunityView();
+    }
+    if (leaderboardState.open) {
+      renderLeaderboardSnapshot(leaderboardState.cache[leaderboardState.scope] || {}, leaderboardState.scope);
+    }
+  })()
+    .catch(() => {})
+    .finally(() => {
+      instantLocalCacheBootstrapPromise = null;
+    });
+  return instantLocalCacheBootstrapPromise;
 }
 
 let communityFeedbackTimer = null;
@@ -6251,6 +8813,9 @@ function maybeShowCommunityEntryNotificationBanner() {
 }
 
 function getCommunityDisplayName(user = {}) {
+  if (isCommunityAppAdminUser(user)) {
+    return COMMUNITY_ADMIN_PROFILE_NAME;
+  }
   return String(
     user?.name ||
       [user?.title, user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
@@ -6260,8 +8825,11 @@ function getCommunityDisplayName(user = {}) {
 }
 
 function getCommunityUiDisplayName(user = {}, { preserveRealName = false } = {}) {
+  if (isCommunityAppAdminUser(user)) {
+    return COMMUNITY_ADMIN_PROFILE_NAME;
+  }
   if (user?.isNotice) {
-    return String(user?.noticeTitle || user?.name || user?.displayName || "Admin Notice").trim() || "Admin Notice";
+    return String(user?.noticeTitle || user?.name || user?.displayName || COMMUNITY_ADMIN_PROFILE_NAME).trim() || COMMUNITY_ADMIN_PROFILE_NAME;
   }
   if (!preserveRealName && String(user?.id || "") === String(currentUser?.id || "")) {
     return "You";
@@ -6280,6 +8848,13 @@ function getCommunityUiDisplayName(user = {}, { preserveRealName = false } = {})
 
 function isCommunityAppAdminUser(user = {}) {
   return String(user?.role || "").trim().toLowerCase() === "admin" || Boolean(user?.isAppAdmin);
+}
+
+function getCommunityResolvedAvatarImage(user = {}) {
+  if (isCommunityAppAdminUser(user) || Boolean(user?.isNotice)) {
+    return COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE;
+  }
+  return String(user?.profileImage || "").trim();
 }
 
 function getCommunityLeaderboardName(entry = {}) {
@@ -6398,7 +8973,7 @@ function getCommunityAvatarFallbackIconMarkup(kind = "user", extraClass = "") {
 }
 
 function getCommunityAvatarMarkup(user = {}, extraClass = "") {
-  const image = String(user?.profileImage || "").trim();
+  const image = getCommunityResolvedAvatarImage(user);
   const name = getCommunityUiDisplayName(user);
   const isGroup = isCommunityGroupEntity(user);
   const isNotice = Boolean(user?.isNotice);
@@ -6419,7 +8994,7 @@ function getCommunityAvatarMarkup(user = {}, extraClass = "") {
 }
 
 function getCommunityPlainAvatarMarkup(user = {}, extraClass = "") {
-  const image = String(user?.profileImage || "").trim();
+  const image = getCommunityResolvedAvatarImage(user);
   const isGroup = isCommunityGroupEntity(user);
   const isNotice = Boolean(user?.isNotice);
   const classes = ["community-avatar", extraClass].filter(Boolean).join(" ");
@@ -6430,7 +9005,7 @@ function getCommunityPlainAvatarMarkup(user = {}, extraClass = "") {
 }
 
 function getCommunityExpandableAvatarMarkup(user = {}, extraClass = "") {
-  const image = String(user?.profileImage || "").trim();
+  const image = getCommunityResolvedAvatarImage(user);
   const name = getCommunityUiDisplayName(user);
   const isGroup = isCommunityGroupEntity(user) || String(extraClass || "").includes("group");
   const classes = ["community-avatar", extraClass, "is-clickable"].filter(Boolean).join(" ");
@@ -6531,7 +9106,7 @@ function formatAppDate(value = "", { includeYear = true } = {}) {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   if (!includeYear) return `${day}/${month}`;
-  return `${day}/${month}/${date.getFullYear()}`;
+  return `${day}/${month}/${String(date.getFullYear()).slice(-2)}`;
 }
 
 function formatAppDateTime(value = "") {
@@ -6931,7 +9506,7 @@ function getCommunityMessageReceiptState(message = {}) {
 function renderCommunityMessageReceipt(message = {}) {
   const state = getCommunityMessageReceiptState(message);
   const label = state === "read" ? "Read" : state === "received" ? "Received" : "Sent";
-  const mark = state === "sent" ? "✓" : "✓✓";
+  const mark = state === "sent" ? "?" : "??";
   return `<span class="community-message-receipt is-${escapeHtml(state)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${escapeHtml(mark)}</span>`;
 }
 
@@ -7542,6 +10117,39 @@ function scheduleCommunityRealtimeOverviewRefresh() {
   }, 140);
 }
 
+function refreshCommunityOverviewIfNeeded() {
+  if (communityOverviewPollInFlight) return;
+  if (!backendClient.isAuthenticated()) return;
+  const activeScreenId = getActiveScreenId();
+  if (!communityOverviewBackgroundPollingEnabled && !isCommunityScreenId(activeScreenId)) return;
+  communityOverviewPollInFlight = true;
+  Promise.resolve(loadCommunityOverview({ silent: true }))
+    .catch(() => {})
+    .finally(() => {
+      communityOverviewPollInFlight = false;
+    });
+}
+
+function startCommunityOverviewPolling({ background = false } = {}) {
+  if (background) {
+    communityOverviewBackgroundPollingEnabled = true;
+  }
+  if (communityOverviewPollHandle || !backendClient.isAuthenticated()) return;
+  refreshCommunityOverviewIfNeeded();
+  communityOverviewPollHandle = setInterval(() => {
+    refreshCommunityOverviewIfNeeded();
+  }, COMMUNITY_OVERVIEW_POLL_INTERVAL_MS);
+}
+
+function stopCommunityOverviewPolling({ force = false } = {}) {
+  if (communityOverviewBackgroundPollingEnabled && !force) return;
+  if (communityOverviewPollHandle) {
+    clearInterval(communityOverviewPollHandle);
+    communityOverviewPollHandle = null;
+  }
+  communityOverviewPollInFlight = false;
+}
+
 function scheduleCommunityRealtimeConversationRefresh() {
   if (communityRealtimeConversationRefreshHandle) {
     clearTimeout(communityRealtimeConversationRefreshHandle);
@@ -7590,6 +10198,8 @@ function teardownCommunityRealtime() {
     clearTimeout(communityRealtimeOverviewRefreshHandle);
     communityRealtimeOverviewRefreshHandle = null;
   }
+  stopCommunityOverviewPolling({ force: true });
+  communityOverviewBackgroundPollingEnabled = false;
   stopCommunityConversationRealtimeSubscription();
   stopCommunityPresenceRealtimeSubscription();
   if (communityRealtimeGlobalChannel && communityRealtimeClient?.removeChannel) {
@@ -7807,7 +10417,7 @@ async function syncCommunityRealtimePresenceTracking() {
 }
 
 async function pingCommunityPresence() {
-  if (!currentUser?.id || document.visibilityState === "hidden") return;
+  if (!currentUser?.id || !backendClient.isAuthenticated() || document.visibilityState === "hidden") return;
   try {
     await backendClient.pingCommunityPresence();
   } catch {
@@ -8065,13 +10675,17 @@ function syncCommunityCallIdentity() {
   const peer = getCommunityCallPeerUser();
   const displayName = getCommunityDisplayName(peer) || "Contact";
   const username = String(peer?.username || "").trim();
-  const profileImage = String(peer?.profileImage || "").trim();
+  const profileImage = getCommunityResolvedAvatarImage(peer);
   const isGroup = isCommunityGroupEntity(peer);
   if (communityCallTitleEl) {
     communityCallTitleEl.textContent = displayName;
   }
   if (communityCallUsernameEl) {
-    communityCallUsernameEl.textContent = username ? `@${username}` : "@user";
+    communityCallUsernameEl.textContent = isCommunityAppAdminUser(peer)
+      ? displayName
+      : username
+        ? `@${username}`
+        : "@user";
   }
   if (communityCallAvatarEl && communityCallAvatarFallbackEl) {
     if (profileImage) {
@@ -8950,7 +11564,21 @@ function dataUrlToBlob(dataUrl = "") {
 function loadCommunityChatDraftStore() {
   try {
     const parsed = JSON.parse(localStorage.getItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY) || "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const rawStore = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const { store: sanitizedStore, changed } = sanitizeCommunityChatDraftStore(rawStore);
+    if (changed) {
+      try {
+        localStorage.removeItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY);
+      } catch {
+        // Ignore storage pressure here.
+      }
+      try {
+        localStorage.setItem(COMMUNITY_CHAT_DRAFT_STORAGE_KEY, JSON.stringify(sanitizedStore));
+      } catch {
+        // Ignore storage pressure here; the sanitized copy is still returned.
+      }
+    }
+    return sanitizedStore;
   } catch {
     return {};
   }
@@ -8958,9 +11586,10 @@ function loadCommunityChatDraftStore() {
 
 function saveCommunityChatDraftStore(store = {}) {
   try {
+    const { store: sanitizedStore } = sanitizeCommunityChatDraftStore(store);
     localStorage.setItem(
       COMMUNITY_CHAT_DRAFT_STORAGE_KEY,
-      JSON.stringify(store && typeof store === "object" ? store : {}),
+      JSON.stringify(sanitizedStore),
     );
   } catch {
     return false;
@@ -8995,7 +11624,7 @@ function normalizeCommunityChatDraftReply(raw = null) {
     sourceId,
     senderName: String(raw?.senderName || "Message").trim() || "Message",
     text: String(raw?.text || "").trim(),
-    imageDataUrl: String(raw?.imageDataUrl || "").trim(),
+    imageDataUrl: "",
   };
 }
 
@@ -9005,17 +11634,11 @@ function getCommunityChatDraftSnapshot() {
   const text = String(communityChatInput?.value || "");
   const textHasContent = Boolean(text.trim());
   const replyDraft = normalizeCommunityChatDraftReply(communityState.replyDraft);
-  const attachments = Array.isArray(communityState.pendingAttachments)
-    ? communityState.pendingAttachments
-        .map((attachment) => normalizeCommunityChatDraftAttachment(attachment))
-        .filter(Boolean)
-    : [];
-  if (!textHasContent && !replyDraft && !attachments.length) return null;
+  if (!textHasContent && !replyDraft) return null;
   return {
     conversationId,
     text,
     replyDraft,
-    attachments,
     updatedAt: Date.now(),
   };
 }
@@ -9063,19 +11686,13 @@ function getCommunityChatDraftForConversation(conversationId = "") {
     : loadCommunityChatDraftStore();
   const draft = store[safeConversationId];
   if (!draft || typeof draft !== "object") return null;
-  const attachments = Array.isArray(draft.attachments)
-    ? draft.attachments
-        .map((attachment) => normalizeCommunityChatDraftAttachment(attachment))
-        .filter(Boolean)
-    : [];
   const replyDraft = normalizeCommunityChatDraftReply(draft.replyDraft);
   const text = String(draft.text || "");
-  if (!text.trim() && !attachments.length && !replyDraft) return null;
+  if (!text.trim() && !replyDraft) return null;
   return {
     conversationId: safeConversationId,
     text,
     replyDraft,
-    attachments,
     updatedAt: Math.max(0, Math.round(Number(draft.updatedAt) || 0)),
   };
 }
@@ -11265,7 +13882,7 @@ function getCommunityStorageSectionMeta(createdAt = "") {
   if (diffDays < 31) return { key: "last-month", label: "Last month", order: 2, time: date.getTime() };
   return {
     key: `month-${date.getFullYear()}-${date.getMonth()}`,
-    label: new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(date),
+    label: new Intl.DateTimeFormat(undefined, { month: "long", year: "2-digit" }).format(date),
     order: 3,
     time: date.getFullYear() * 12 + date.getMonth(),
   };
@@ -13043,7 +15660,8 @@ function getCommunityFriendsHubCounts() {
 }
 
 function formatCommunityTabLabel(label = "", count = 0) {
-  return `${label} [${Math.max(0, Math.round(Number(count) || 0))}]`;
+  const value = Math.max(0, Math.round(Number(count) || 0));
+  return value > 0 ? `${label} [${value}]` : String(label || "");
 }
 
 function markCommunityNotificationsSeen(tab = "") {
@@ -13068,8 +15686,8 @@ function markCommunityNotificationsSeen(tab = "") {
 function getCommunityPendingNotificationCounts() {
   const counts = getCommunityNotificationCounts();
   return {
-    chats: Math.max(0, counts.chats),
-    groups: Math.max(0, counts.groups),
+    chats: Math.max(0, counts.chats - Number(communityState.acknowledged?.chats || 0)),
+    groups: Math.max(0, counts.groups - Number(communityState.acknowledged?.groups || 0)),
     requests: Math.max(0, counts.requests - Number(communityState.acknowledged?.requests || 0)),
     discover: 0,
   };
@@ -13094,19 +15712,20 @@ function setButtonBadge(button, count = 0, { dotOnly = false } = {}) {
 }
 
 function renderCommunityNotificationBadges() {
-  const pending = getCommunityPendingNotificationCounts();
+  const counts = getCommunityNotificationCounts();
   const isCommunityActive = ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen"].includes(getActiveScreenId());
   const dockBadges = {
-    chats: pending.chats,
-    groups: pending.groups,
-    friends: pending.requests,
-    discover: pending.discover,
+    chats: counts.chats,
+    groups: counts.groups,
+    friends: counts.requests,
+    discover: 0,
   };
   communityTabEls.forEach((tabEl) => {
     const tabName = String(tabEl.dataset.communityTab || "").trim().toLowerCase();
-    setButtonBadge(tabEl, dockBadges[tabName] || 0);
+    const badgeCount = dockBadges[tabName] || 0;
+    setButtonBadge(tabEl, badgeCount, { dotOnly: tabName === "friends" });
   });
-  setButtonBadge(menuCommunityBtn, isCommunityActive ? 0 : (pending.chats + pending.groups + pending.requests), { dotOnly: true });
+  setButtonBadge(menuCommunityBtn, isCommunityActive ? 0 : (counts.chats + counts.groups + counts.requests), { dotOnly: true });
 }
 
 function openCommunityAvatarModal(image = "", name = "") {
@@ -13614,7 +16233,17 @@ function closeCommunityConfirmModal() {
 function canCurrentViewerEditCommunityGroup(payload = null) {
   const relationship = payload?.relationship || {};
   const permissions = payload?.group?.permissions || {};
-  return Boolean(relationship.isAdmin || permissions.membersCanEditSettings);
+  const currentUserId = String(currentUser?.id || "").trim();
+  const group = payload?.group || {};
+  const ownerUserId = String(group.ownerUserId || "").trim();
+  const adminIds = Array.isArray(group.adminIds)
+    ? group.adminIds.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  return Boolean(
+    relationship.isAdmin ||
+    permissions.membersCanEditSettings ||
+    (currentUserId && (ownerUserId === currentUserId || adminIds.includes(currentUserId)))
+  );
 }
 
 function canCurrentViewerDeleteCommunityGroup(group = null) {
@@ -13771,6 +16400,7 @@ async function saveCommunityGroupEditModal() {
     await backendClient.updateCommunityGroup(groupId, payload);
     const freshProfile = await backendClient.fetchCommunityGroup(groupId);
     communityState.profile = freshProfile;
+    void setOfflineEntry(`community-group-profile:${groupId}`, freshProfile);
     closeCommunityGroupEditModal({ force: true });
     renderCommunityProfileView();
     showScreen("community-profile-screen");
@@ -13863,14 +16493,62 @@ function getCommunityMessageUploadState(message = {}) {
   return "";
 }
 
+function areCommunityNoticeMessagesDuplicate(left = {}, right = {}) {
+  const leftTime = Date.parse(String(left?.createdAt || left?.updatedAt || left?.deliveredAt || ""));
+  const rightTime = Date.parse(String(right?.createdAt || right?.updatedAt || right?.deliveredAt || ""));
+  const leftBucket = Number.isFinite(leftTime) ? Math.floor(leftTime / 5000) : 0;
+  const rightBucket = Number.isFinite(rightTime) ? Math.floor(rightTime / 5000) : 0;
+  const leftAttachment = getCommunityMessageAttachmentUpload(left) || {};
+  const rightAttachment = getCommunityMessageAttachmentUpload(right) || {};
+  return [
+    String(left?.senderUserId || "").trim(),
+    String(left?.type || "").trim().toLowerCase(),
+    String(left?.text || "").trim(),
+    String(left?.replyTo?.sourceId || "").trim(),
+    String(leftAttachment?.dataUrl || leftAttachment?.remoteUrl || "").trim(),
+    String(leftAttachment?.fileName || "").trim(),
+    String(leftAttachment?.mimeType || "").trim().toLowerCase(),
+    String(left?.noticeThreadKey || "").trim().toLowerCase(),
+    String(left?.noticeBatchId || "").trim(),
+    leftBucket,
+  ].join("::") === [
+    String(right?.senderUserId || "").trim(),
+    String(right?.type || "").trim().toLowerCase(),
+    String(right?.text || "").trim(),
+    String(right?.replyTo?.sourceId || "").trim(),
+    String(rightAttachment?.dataUrl || rightAttachment?.remoteUrl || "").trim(),
+    String(rightAttachment?.fileName || "").trim(),
+    String(rightAttachment?.mimeType || "").trim().toLowerCase(),
+    String(right?.noticeThreadKey || "").trim().toLowerCase(),
+    String(right?.noticeBatchId || "").trim(),
+    rightBucket,
+  ].join("::");
+}
+
 function getCommunityVisibleMessages(messages = []) {
   const baseMessages = Array.isArray(messages) ? [...messages] : [];
+  const dedupedBaseMessages = [];
+  const seenIds = new Set();
+  for (const message of baseMessages) {
+    const id = String(message?.id || "").trim();
+    if (id && seenIds.has(id)) continue;
+    if (id) seenIds.add(id);
+    const isNoticeConversation =
+      Boolean(communityState.activeConversationPartner?.isNotice) ||
+      String(message?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+      String(message?.senderUserId || "").trim() === COMMUNITY_ADMIN_NOTICE_SENDER_ID;
+    const previous = dedupedBaseMessages[dedupedBaseMessages.length - 1] || null;
+    if (isNoticeConversation && previous && areCommunityNoticeMessagesDuplicate(previous, message)) {
+      continue;
+    }
+    dedupedBaseMessages.push(message);
+  }
   const pendingMessages = Array.isArray(communityState.pendingOutgoingMessages)
     ? communityState.pendingOutgoingMessages
     : [];
-  if (!pendingMessages.length) return baseMessages;
+  if (!pendingMessages.length) return dedupedBaseMessages;
   const activeConversationId = String(communityState.activeConversation?.id || "").trim();
-  const merged = [...baseMessages];
+  const merged = [...dedupedBaseMessages];
   pendingMessages.forEach((entry) => {
     if (!entry || typeof entry !== "object") return;
     const entryConversationId = String(entry.conversationId || "").trim();
@@ -14419,6 +17097,7 @@ function closeAppUpdateModal() {
 }
 
 function openAppUpdateModal(payload = null, currentVersion = "") {
+  if (!isNativeAndroidAppRuntime()) return;
   if (!appUpdateModalEl || !payload) return;
   const latestVersion = normalizeAppVersionValue(payload.latestVersion);
   const forceUpdate = Boolean(payload.forceUpdate);
@@ -14465,7 +17144,23 @@ async function openAppUpdateDownloadUrl(url = "") {
   }
 }
 
+async function openSettingsAndroidDownload() {
+  try {
+    const response = await fetch(`${APP_UPDATE_FEED_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Download feed unavailable");
+    const payload = await response.json();
+    const apkUrl = String(payload?.apkUrl || "").trim();
+    if (!apkUrl) throw new Error("Download URL missing");
+    setSettingsFeedback("Opening the Android download...", false);
+    void openAppUpdateDownloadUrl(apkUrl);
+  } catch (error) {
+    console.warn("Android download failed:", error);
+    setSettingsFeedback("Android download is not available right now.", true);
+  }
+}
+
 async function checkForNativeAppUpdate({ force = false } = {}) {
+  if (!isNativeAndroidAppRuntime()) return null;
   const now = Date.now();
   if (!force && now - appUpdateLastCheckedAt < APP_UPDATE_CHECK_COOLDOWN_MS) return null;
   if (appUpdateCheckInFlight) return null;
@@ -15639,9 +18334,13 @@ function isCommunityForwardMode() {
 }
 
 function getCommunityForwardTargetId(entry = {}) {
+  const conversationType = String(entry?.conversationType || "").trim().toLowerCase();
   const conversationId = String(entry?.conversationId || "").trim();
   const userId = String(entry?.userId || "").trim();
-  return conversationId || userId;
+  if (conversationType === "group" || conversationType === "groupchat" || conversationType === "community-group") {
+    return conversationId || userId;
+  }
+  return userId || conversationId;
 }
 
 function syncCommunityForwardBar() {
@@ -15671,9 +18370,14 @@ function toggleCommunityForwardTarget(target = {}) {
     userId: String(target?.userId || "").trim(),
     conversationId: String(target?.conversationId || "").trim(),
     label: String(target?.label || "").trim(),
+    conversationType: String(target?.conversationType || "").trim().toLowerCase(),
   };
   const targetId = getCommunityForwardTargetId(normalized);
-  if (!targetId || !normalized.userId) return false;
+  if (!targetId) return false;
+  if (!normalized.userId && !normalized.conversationId) return false;
+  if (normalized.conversationType === "group" || normalized.conversationType === "notice" || normalized.conversationType === "admin") {
+    return false;
+  }
   const existingIndex = communityState.forwardTargets.findIndex((entry) => getCommunityForwardTargetId(entry) === targetId);
   if (existingIndex >= 0) {
     communityState.forwardTargets.splice(existingIndex, 1);
@@ -15814,6 +18518,19 @@ function getCommunityUserCardMarkup(user = {}, options = {}) {
   `;
 }
 
+function getCommunityForwardFriendsRows(chats = [], friends = []) {
+  const directChatPartnerIds = new Set(
+    (Array.isArray(chats) ? chats : [])
+      .filter((row) => !Boolean(row?.partner?.isGroup) && !Boolean(row?.partner?.isNotice))
+      .map((row) => String(row?.partner?.id || row?.userId || "").trim())
+      .filter(Boolean),
+  );
+  return (Array.isArray(friends) ? friends : []).filter((friend) => {
+    const friendId = String(friend?.id || "").trim();
+    return friendId && !directChatPartnerIds.has(friendId);
+  });
+}
+
 function getCommunityConversationCardMarkup(row = {}) {
   const partner = row.partner || {};
   const isGroup = Boolean(partner?.isGroup);
@@ -15829,11 +18546,11 @@ function getCommunityConversationCardMarkup(row = {}) {
   const unreadCount = Math.max(0, Math.round(Number(row?.unreadCount) || 0));
   const unreadClass = unreadCount > 0 ? " is-unread" : "";
   const typingClass = typingPreview ? " is-typing" : "";
-  const forwardSelectedClass = !isNotice && isCommunityForwardTargetSelected(getCommunityForwardTargetId({ conversationId: row.id, userId: partner.id })) ? " is-selected" : "";
+  const forwardSelectedClass = !isNotice && !isGroup && isCommunityForwardTargetSelected(getCommunityForwardTargetId({ conversationId: row.id, userId: partner.id })) ? " is-selected" : "";
   const draftClass = draft ? " has-draft" : "";
   const draftBadge = draft ? '<span class="community-chat-draft-badge">Draft</span>' : "";
   const actionSelectedClass = getCommunityConversationActionSelectedIds().includes(String(row.id || "").trim()) ? " is-selected" : "";
-  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">★</span>' : "";
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">?</span>' : "";
   const avatarMarkup = isNotice
     ? `<button type="button" class="community-avatar-action-btn" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}" aria-label="Open ${escapeHtml(getCommunityUiDisplayName(partner))}">${getCommunityPlainAvatarMarkup(partner, "is-inline")}</button>`
     : isGroup
@@ -15898,6 +18615,45 @@ function renderCommunitySectionMarkup(title = "", bodyMarkup = "") {
       <div class="community-group-title">${escapeHtml(title)}</div>
       ${bodyMarkup}
     </section>
+  `;
+}
+
+function getCommunityGroupConversationCardMarkup(row = {}) {
+  const conversation = row?.conversation || row || {};
+  const group = row?.group || conversation?.partner || row?.partner || {};
+  const groupId = String(group?.id || conversation?.id || row?.id || "").trim();
+  const groupName = getCommunityUiDisplayName(group);
+  const members = Array.isArray(row?.members) ? row.members : Array.isArray(group?.memberIds) ? group.memberIds : [];
+  const memberCount = `${Math.max(0, Math.round(Number(members.length) || 0))} ${Math.max(0, Math.round(Number(members.length) || 0)) === 1 ? "member" : "members"}`;
+  const bio = String(group?.bio || "").trim();
+  const previewText = bio || getCommunityConversationPreviewText(conversation) || "Open group";
+  const updatedLabel = formatCommunityTimestamp(conversation?.updatedAt || group?.updatedAt || row?.updatedAt || "");
+  const unreadCount = Math.max(0, Math.round(Number(conversation?.unreadCount ?? row?.unreadCount) || 0));
+  const favoriteBadge = row.isFavorite ? '<span class="community-chat-row-favorite-badge" aria-label="Favorite" title="Favorite">?</span>' : "";
+  const ariaLabel = `Open ${groupName} chat`;
+  const forwardSelectedClass = isCommunityForwardTargetSelected(
+    getCommunityForwardTargetId({
+      conversationId: String(conversation?.id || row?.id || ""),
+      conversationType: "group",
+    }),
+  ) ? " is-selected" : "";
+  return `
+    <article class="community-chat-row community-group-row${forwardSelectedClass}${row.isFavorite ? " is-favorite" : ""}" data-community-action="open-conversation" role="button" tabindex="0" data-conversation-id="${escapeHtml(String(conversation?.id || row?.id || ""))}" data-group-id="${escapeHtml(groupId)}">
+      <button type="button" class="community-avatar-action-btn" data-community-action="open-group-profile" data-group-id="${escapeHtml(groupId)}" aria-label="Open ${escapeHtml(groupName)} info">${getCommunityPlainAvatarMarkup(group, "is-inline")}</button>
+      <div class="community-chat-row-copy">
+        <div class="community-chat-row-head">
+          <button type="button" class="community-name-link community-chat-name-link" data-community-action="open-group-profile" data-group-id="${escapeHtml(groupId)}">${escapeHtml(truncateWithEllipsis(groupName, 26))}</button>
+          ${favoriteBadge}
+        </div>
+        <div class="community-chat-row-message">
+          <span class="community-chat-row-message-text">${escapeHtml(truncateWithEllipsis(previewText, 72))}</span>
+        </div>
+      </div>
+      <div class="community-chat-row-side">
+        <span class="community-chat-row-time">${escapeHtml(updatedLabel || memberCount)}</span>
+        ${unreadCount > 0 ? `<span class="community-chat-row-badge">${escapeHtml(String(Math.min(99, unreadCount)))}</span>` : `<span class="community-chat-row-badge is-empty" aria-hidden="true"></span>`}
+      </div>
+    </article>
   `;
 }
 
@@ -16003,7 +18759,14 @@ function renderCommunityFriends() {
 }
 
 function renderCommunityChats() {
-  const renderChatList = (rows = []) => rows.map((row) => getCommunityConversationCardMarkup(row)).join("");
+  const renderChatList = (rows = []) =>
+    rows
+      .map((row) =>
+        communityState.chatMode === "groups"
+          ? getCommunityGroupConversationCardMarkup(row)
+          : getCommunityConversationCardMarkup(row),
+      )
+      .join("");
   const allChats = Array.isArray(communityState.overview?.chats)
     ? [...communityState.overview.chats].sort((a, b) => {
         const aDraft = getCommunityChatDraftForConversation(a?.id || "");
@@ -16020,21 +18783,39 @@ function renderCommunityChats() {
         return bTime - aTime;
       })
     : [];
-  const chats = allChats.filter((row) =>
-    communityState.chatMode === "groups"
-      ? Boolean(row?.partner?.isGroup)
-      : !Boolean(row?.partner?.isGroup),
-  );
+  const groups = Array.isArray(communityState.overview?.groups)
+    ? [...communityState.overview.groups].sort((a, b) => {
+        const aTime = new Date(a?.group?.updatedAt || a?.conversation?.updatedAt || a?.lastMessage?.createdAt || 0).getTime() || 0;
+        const bTime = new Date(b?.group?.updatedAt || b?.conversation?.updatedAt || b?.lastMessage?.createdAt || 0).getTime() || 0;
+        return bTime - aTime;
+      })
+    : allChats.filter((row) => Boolean(row?.partner?.isGroup));
+  const chats = communityState.chatMode === "groups"
+    ? groups
+    : allChats.filter((row) => !Boolean(row?.partner?.isGroup));
   const friends = Array.isArray(communityState.overview?.friends) ? communityState.overview.friends : [];
   const isForwardMode = isCommunityForwardMode();
-  const favoriteChats = chats.filter((row) => Boolean(row?.isFavorite));
-  const regularChats = chats.filter((row) => !Boolean(row?.isFavorite));
-  const chatListMarkup = renderChatList(chats);
+  const visibleChats = isForwardMode
+    ? chats.filter((row) => !Boolean(row?.partner?.isGroup) && !Boolean(row?.partner?.isNotice))
+    : chats;
+  const favoriteChats = visibleChats.filter((row) => Boolean(row?.isFavorite));
+  const regularChats = visibleChats.filter((row) => !Boolean(row?.isFavorite));
+  const totalUnread = chats.reduce((sum, row) => sum + Math.max(0, Math.round(Number(row?.unreadCount) || 0)), 0);
+  const favoriteUnread = favoriteChats.reduce((sum, row) => sum + Math.max(0, Math.round(Number(row?.unreadCount) || 0)), 0);
+  const regularUnread = regularChats.reduce((sum, row) => sum + Math.max(0, Math.round(Number(row?.unreadCount) || 0)), 0);
+  const chatListMarkup = renderChatList(visibleChats);
   const sections = [];
-  const heading = communityState.chatMode === "groups" ? "Study Groups" : "Recent Chats";
-  const regularHeading = communityState.chatMode === "groups" ? "All Groups" : "Recent Chats";
-  const favoriteHeading = communityState.chatMode === "groups" ? "Favorite Groups" : "Favorite Chats";
-  if (!chats.length && friends.length) {
+  const heading = formatCommunityTabLabel(communityState.chatMode === "groups" ? "Study Groups" : "Recent Chats", totalUnread);
+  const regularHeading = formatCommunityTabLabel(communityState.chatMode === "groups" ? "All Groups" : "Recent Chats", regularUnread);
+  const favoriteHeading = formatCommunityTabLabel(communityState.chatMode === "groups" ? "Favorite Groups" : "Favorite Chats", favoriteUnread);
+  if (!visibleChats.length && friends.length) {
+    if (communityState.chatMode === "groups") {
+      communityState.chatListRenderSignature = "";
+      renderCommunityResultsMarkup(
+        `<div class="community-empty-state">No study groups yet. Create one from the menu when you're ready.</div>`,
+      );
+      return;
+    }
     renderCommunityResultsMarkup(
       renderCommunitySectionMarkup(
         isForwardMode ? "Forward To" : heading,
@@ -16050,10 +18831,10 @@ function renderCommunityChats() {
     );
     return;
   }
-  if (!chats.length) {
+  if (!visibleChats.length) {
     communityState.chatListRenderSignature = "";
     renderCommunityResultsMarkup(
-      `<div class="community-empty-state">${isForwardMode ? "No recent chats yet. Open Friends and choose someone to forward to." : communityState.chatMode === "groups" ? "No study groups yet. Create one from the menu when you're ready." : "No chats yet. Start by searching for someone or opening a friend's profile."}</div>`,
+      `<div class="community-empty-state">${isForwardMode ? "No forwardable chats yet. Open Friends and choose someone to forward to." : communityState.chatMode === "groups" ? "No study groups yet. Create one from the menu when you're ready." : "No chats yet. Start by searching for someone or opening a friend's profile."}</div>`,
     );
     return;
   }
@@ -16083,12 +18864,16 @@ function renderCommunityChats() {
     }
     communityState.chatListRenderSignature = "";
   }
-  if (isForwardMode && friends.length) {
+  if (isForwardMode && communityState.chatMode !== "groups" && friends.length) {
+    const forwardFriends = getCommunityForwardFriendsRows(visibleChats, friends);
+    if (!forwardFriends.length) {
+      return renderCommunityResultsMarkup(sections.join(""));
+    }
     sections.push(`
       <section class="community-group">
         <div class="community-group-title">Friends</div>
         <div class="community-card-list">
-          ${friends.map((user) => getCommunityUserCardMarkup(user, {
+          ${forwardFriends.map((user) => getCommunityUserCardMarkup(user, {
             relationship: "friend",
             showMessage: true,
             showBlock: false,
@@ -16210,10 +18995,6 @@ async function refreshCommunityBlockedUsers({ silent = false } = {}) {
 function setCommunityFriendsView(nextView = "friends", { animate = true } = {}) {
   const normalized = normalizeCommunityFriendsView(nextView);
   communityState.friendsView = normalized;
-  if (normalized === "incoming") {
-    markCommunityNotificationsSeen("friends");
-    renderCommunityNotificationBadges();
-  }
   if (communityState.tab === "friends") {
     if (!syncCommunityFriendsHubView({ animate })) {
       renderCommunityFriendsHub();
@@ -16253,6 +19034,12 @@ function syncCommunityFriendActionRowStyles() {
     if (!(cardEl instanceof HTMLElement)) return;
     cardEl.classList.toggle("is-selected", Boolean(selectedId) && String(cardEl.dataset.userId || "").trim() === selectedId);
   });
+  if (communityProfileCardEl instanceof HTMLElement) {
+    communityProfileCardEl.querySelectorAll(".community-group-member-row[data-user-id]").forEach((cardEl) => {
+      if (!(cardEl instanceof HTMLElement)) return;
+      cardEl.classList.toggle("is-selected", Boolean(selectedId) && String(cardEl.dataset.userId || "").trim() === selectedId);
+    });
+  }
 }
 
 function clearCommunityFriendActionTimers({ keepTapState = false } = {}) {
@@ -16273,6 +19060,7 @@ function clearCommunityFriendActionTimers({ keepTapState = false } = {}) {
 
 function closeCommunityFriendActions({ keepSelection = false } = {}) {
   clearCommunityFriendActionTimers();
+  clearCommunityGroupMemberActionTimers();
   const state = getCommunityFriendActionState();
   state.open = false;
   state.relationship = "";
@@ -16301,33 +19089,12 @@ function renderCommunityFriendActionSelection() {
   const subtitle = String(user.institution || user.country || "Learner").trim() || "Learner";
   const isAppAdmin = isCommunityAppAdminUser(user);
   if (communityFriendActionsTitleEl) {
-    communityFriendActionsTitleEl.textContent =
-      relationship === "incoming"
-        ? "Incoming request"
-        : relationship === "sent"
-          ? "Sent request"
-          : relationship === "friend"
-            ? "Friend actions"
-            : relationship === "blocked"
-              ? "Blocked learner"
-              : "Connection actions";
-  }
-  if (communityFriendActionsSummaryEl) {
-    communityFriendActionsSummaryEl.textContent = relationship === "friend"
-      ? "Choose what you want to do with this friend."
-      : relationship === "incoming"
-        ? "Choose how to respond to this request."
-        : relationship === "sent"
-          ? "Review or cancel the request you sent."
-          : relationship === "blocked"
-            ? "Manage access for this blocked learner."
-            : "Choose how to connect with this learner.";
+    communityFriendActionsTitleEl.innerHTML = `<span class="community-actions-title-pill">${escapeHtml(displayName)}</span>`;
   }
   if (communityFriendActionsSelectedEl) {
     communityFriendActionsSelectedEl.innerHTML = `
       <span class="community-thread-actions-selected-pill is-empty" style="display:inline-flex;gap:6px;align-items:center;">
-        <strong>${escapeHtml(displayName)}</strong>
-        <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} • ${escapeHtml(subtitle)}</span>
+        <span class="community-thread-actions-selected-meta">@${escapeHtml(handle)} and ${escapeHtml(subtitle)}</span>
       </span>
     `;
   }
@@ -16399,7 +19166,7 @@ async function runCommunityFriendAction(action = "") {
       syncCommunityChatComposerState();
     }
     communityState.profile = null;
-    await loadCommunityOverview({ silent: true });
+    await loadCommunityOverview({ silent: true, preferCache: true });
     closeCommunityFriendActions();
     if (getActiveScreenId() === "community-profile-screen" && payload.userId) {
       await openCommunityProfile(payload.userId);
@@ -16449,7 +19216,27 @@ async function runCommunityFriendAction(action = "") {
 }
 
 function getCommunityConversationActionRows() {
-  return Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
+  const chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
+  const groups = Array.isArray(communityState.overview?.groups) ? communityState.overview.groups : [];
+  if (!groups.length) {
+    return chats;
+  }
+  const rowsById = new Map();
+  chats.forEach((row) => {
+    const id = String(row?.id || "").trim();
+    if (!id || rowsById.has(id)) return;
+    rowsById.set(id, row);
+  });
+  groups.forEach((row) => {
+    const id = String(row?.id || row?.conversation?.id || row?.group?.id || "").trim();
+    if (!id || rowsById.has(id)) return;
+    rowsById.set(id, {
+      ...row,
+      id,
+      partner: row?.partner || row?.group || row?.conversation?.partner || {},
+    });
+  });
+  return [...rowsById.values()];
 }
 
 function getCommunityConversationActionState() {
@@ -16502,6 +19289,15 @@ function getCommunityConversationRowFromEventTarget(target = null) {
   return row;
 }
 
+function getCommunityConversationNestedActionFromEventTarget(target = null) {
+  if (!(target instanceof HTMLElement)) return null;
+  const action = target.closest("[data-community-action]");
+  if (!(action instanceof HTMLElement)) return null;
+  const row = action.closest(".community-chat-row[data-conversation-id]");
+  if (!(row instanceof HTMLElement) || !communityResultsEl?.contains(row) || action === row) return null;
+  return action;
+}
+
 function getCommunityFriendCardFromEventTarget(target = null) {
   if (!(target instanceof HTMLElement)) return null;
   const card = target.closest(".community-user-card[data-user-id]");
@@ -16512,6 +19308,83 @@ function getCommunityFriendCardFromEventTarget(target = null) {
   return card;
 }
 
+function getCommunityGroupMemberCardFromEventTarget(target = null) {
+  if (!(target instanceof HTMLElement)) return null;
+  const card = target.closest(".community-group-member-row[data-user-id]");
+  if (!(card instanceof HTMLElement) || !communityProfileCardEl?.contains(card)) return null;
+  const actionTarget = target.closest("[data-community-action]");
+  if (actionTarget instanceof HTMLElement && actionTarget !== card) return null;
+  return card;
+}
+
+function getCommunityGroupMemberActionUser(userId = "") {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) return null;
+  const overview = communityState.overview || {};
+  const profileMembers = Array.isArray(communityState.profile?.members) ? communityState.profile.members : [];
+  const member = profileMembers.find((entry) => String(entry?.id || "").trim() === safeUserId) || null;
+  const friend = Array.isArray(overview.friends)
+    ? overview.friends.find((entry) => String(entry?.id || "").trim() === safeUserId) || null
+    : null;
+  const incoming = Array.isArray(overview.incoming)
+    ? overview.incoming.find((entry) => String(entry?.user?.id || "").trim() === safeUserId) || null
+    : null;
+  const sent = Array.isArray(overview.sent)
+    ? overview.sent.find((entry) => String(entry?.user?.id || "").trim() === safeUserId) || null
+    : null;
+  const blocked = Array.isArray(communityState.blocked)
+    ? communityState.blocked.find((entry) => String(entry?.id || "").trim() === safeUserId) || null
+    : null;
+  const suggested = Array.isArray(overview.suggested)
+    ? overview.suggested.find((entry) => String(entry?.id || "").trim() === safeUserId) || null
+    : null;
+  return {
+    ...(suggested || {}),
+    ...(member || {}),
+    ...(friend || {}),
+    ...(incoming?.user || {}),
+    ...(sent?.user || {}),
+    ...(blocked || {}),
+    id: safeUserId,
+    relationship: blocked
+      ? "blocked"
+      : friend
+        ? "friend"
+        : incoming
+          ? "incoming"
+          : sent
+            ? "sent"
+            : member?.relationship || "none",
+    requestId: String(incoming?.id || sent?.id || member?.requestId || "").trim(),
+  };
+}
+
+function clearCommunityGroupMemberActionTimers({ keepTapState = false } = {}) {
+  if (communityGroupMemberActionHoldHandle) {
+    clearTimeout(communityGroupMemberActionHoldHandle);
+    communityGroupMemberActionHoldHandle = null;
+  }
+  communityGroupMemberActionHoldTriggered = false;
+  communityGroupMemberActionTouchStart = null;
+  communityGroupMemberActionLastPointerType = "";
+  if (!keepTapState) {
+    communityGroupMemberActionLastTapAt = 0;
+    communityGroupMemberActionLastTapUserId = "";
+  }
+}
+
+function openCommunityGroupMemberActionsForUser(user = {}, { pointerType = "" } = {}) {
+  const safeUserId = String(user?.id || "").trim();
+  if (!safeUserId) return false;
+  clearCommunityGroupMemberActionTimers();
+  const actionUser = getCommunityGroupMemberActionUser(safeUserId) || { ...user, id: safeUserId };
+  return openCommunityFriendActionsForUser(actionUser, {
+    relationship: String(actionUser.relationship || user.relationship || "none").trim().toLowerCase(),
+    requestId: String(actionUser.requestId || user.requestId || "").trim(),
+    pointerType: String(pointerType || "").trim(),
+  });
+}
+
 function renderCommunityConversationActionSelection() {
   const rows = getCommunityConversationActionSelectedRows();
   const mode = rows.some((row) => Boolean(row?.partner?.isGroup)) ? "group" : "direct";
@@ -16520,32 +19393,24 @@ function renderCommunityConversationActionSelection() {
   state.mode = mode;
   state.selectedIds = selectedIds;
   if (communityThreadActionsTitleEl) {
-    communityThreadActionsTitleEl.textContent = rows.length > 1
-      ? `${rows.length} selected`
-      : mode === "group"
-        ? "Group actions"
-        : "Chat actions";
-  }
-  if (communityThreadActionsSummaryEl) {
-    const favoriteCount = rows.filter((row) => row?.isFavorite).length;
-    const summaryParts = [
-      `${rows.length} selected`,
-      mode === "group" ? "Group thread actions" : "Direct chat actions",
-    ];
-    if (favoriteCount > 0) {
-      summaryParts.push(`${favoriteCount} already favorite${favoriteCount === 1 ? "" : "s"}`);
-    }
-    communityThreadActionsSummaryEl.textContent = summaryParts.join(" • ");
+    const firstRow = rows[0] || {};
+    const firstLabel = truncateWithEllipsis(getCommunityUiDisplayName(firstRow?.partner || {}), 22);
+    const titleText = rows.length === 1 ? firstLabel : `${rows.length} selected`;
+    communityThreadActionsTitleEl.innerHTML = `<span class="community-actions-title-pill">${escapeHtml(titleText)}</span>`;
   }
   if (communityThreadActionsSelectedEl) {
-    const badges = rows.map((row) => {
-      const partner = row?.partner || {};
-      const label = truncateWithEllipsis(getCommunityUiDisplayName(partner), 22);
-      const meta = partner?.isGroup ? "Group" : partner?.isNotice ? "Notice" : "Chat";
-      const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">★</span>' : "";
-      return `<span class="community-thread-actions-selected-pill">${flag}${escapeHtml(label)}<span class="community-thread-actions-selected-meta">${escapeHtml(meta)}</span></span>`;
-    }).join("");
-    communityThreadActionsSelectedEl.innerHTML = badges || `<span class="community-thread-actions-selected-pill is-empty">No thread selected</span>`;
+    if (rows.length <= 1) {
+      communityThreadActionsSelectedEl.innerHTML = "";
+    } else {
+      const badges = rows.map((row) => {
+        const partner = row?.partner || {};
+        const label = truncateWithEllipsis(getCommunityUiDisplayName(partner), 22);
+        const meta = partner?.isGroup ? "Group" : partner?.isNotice ? "Notice" : "Chat";
+        const flag = row?.isFavorite ? '<span class="community-thread-actions-selected-star" aria-hidden="true">?</span>' : "";
+        return `<span class="community-thread-actions-selected-pill">${flag}${escapeHtml(label)}<span class="community-thread-actions-selected-meta">${escapeHtml(meta)}</span></span>`;
+      }).join("");
+      communityThreadActionsSelectedEl.innerHTML = badges || `<span class="community-thread-actions-selected-pill is-empty">No thread selected</span>`;
+    }
   }
   const singleSelection = rows.length === 1;
   const allFavorites = rows.length > 0 && rows.every((row) => Boolean(row?.isFavorite));
@@ -16578,7 +19443,7 @@ function renderCommunityConversationActionSelection() {
     communityThreadActionsDeleteBtn.classList.toggle("hidden", !showDelete);
     communityThreadActionsDeleteBtn.textContent = hasGroup && !hasDirect ? "Delete Group" : "Delete";
     communityThreadActionsDeleteBtn.title = hasGroup && !hasDirect
-      ? "Delete this group for everyone"
+      ? "Remove this group from your list"
       : "Remove this chat from your list";
   }
   if (communityThreadActionsBlockBtn) {
@@ -16697,7 +19562,7 @@ async function runCommunityConversationAction(action = "") {
             : backendClient.unfavoriteCommunityConversation(row.id),
         ),
       );
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16706,7 +19571,7 @@ async function runCommunityConversationAction(action = "") {
     if (action === "clear") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(selectedIds.map((conversationId) => backendClient.clearCommunityConversation(conversationId)));
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16732,7 +19597,7 @@ async function runCommunityConversationAction(action = "") {
         syncCommunityChatComposerState();
       }
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16752,7 +19617,7 @@ async function runCommunityConversationAction(action = "") {
         ...directConversationIds.map((conversationId) => backendClient.deleteCommunityConversation(conversationId)),
         ...groupConversationIds.map((conversationId) => backendClient.deleteCommunityGroup(conversationId)),
       ]);
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16767,7 +19632,7 @@ async function runCommunityConversationAction(action = "") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(userIds.map((userId) => backendClient.blockUser(userId)));
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16778,7 +19643,7 @@ async function runCommunityConversationAction(action = "") {
       closeCommunityConversationActions({ keepSelection: true });
       await Promise.all(groupIds.map((conversationId) => backendClient.leaveCommunityGroup(conversationId)));
       communityState.profile = null;
-      await loadCommunityOverview({ silent: true });
+      await loadCommunityOverview({ silent: true, preferCache: true });
       closeCommunityConversationActions();
       renderCommunitySummary();
       renderCommunityView();
@@ -16843,27 +19708,98 @@ function renderCommunityView() {
   renderCommunityDiscover();
 }
 
-async function loadCommunityOverview({ silent = false } = {}) {
+async function loadCommunityOverview({ silent = false, preferCache = false } = {}) {
   if (!silent) {
     setCommunityFeedback("Loading community...");
   }
   try {
     void ensureCommunityGlobalRealtimeSubscription();
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    try {
-      const blockedResponse = await backendClient.fetchBlockedUsers();
-      communityState.blocked = Array.isArray(blockedResponse?.blocked) ? blockedResponse.blocked : [];
-    } catch {
-      communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+    if (preferCache) {
+      const cachedOverview = await getOfflineEntry("community-overview");
+      if (cachedOverview?.value) {
+        communityState.overview = cachedOverview.value;
+        communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+        try {
+          const cachedBlocked = await getOfflineEntry("community-blocked");
+          communityState.blocked = Array.isArray(cachedBlocked?.value?.blocked) ? cachedBlocked.value.blocked : [];
+        } catch {
+          communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+        }
+        communityState.searchResults = null;
+        setCommunityFeedback("");
+        startCommunityOverviewPolling({ background: true });
+        renderCommunityNotificationBadges();
+        maybeShowCommunityEntryNotificationBanner();
+        syncAppNotificationBannerVisibility();
+        renderCommunityView();
+      }
     }
-    communityState.searchResults = null;
-    markCommunityNotificationsSeen(communityState.tab);
-    setCommunityFeedback("");
-    renderCommunityNotificationBadges();
-    maybeShowCommunityEntryNotificationBanner();
-    syncAppNotificationBannerVisibility();
-    renderCommunityView();
+    const refreshCommunityOverview = async ({ refreshBlocked = false } = {}) => {
+      if (communityOverviewRefreshPromise) return communityOverviewRefreshPromise;
+      communityOverviewRefreshPromise = (async () => {
+        try {
+          const freshOverview = await backendClient.fetchCommunityOverview();
+          communityState.overview = freshOverview;
+          communityState.statuses = Array.isArray(freshOverview?.statuses) ? freshOverview.statuses : [];
+          if (refreshBlocked) {
+            try {
+              const blockedResponse = await backendClient.fetchBlockedUsers();
+              communityState.blocked = Array.isArray(blockedResponse?.blocked) ? blockedResponse.blocked : [];
+              void setOfflineEntry("community-blocked", { blocked: communityState.blocked });
+            } catch {
+              communityState.blocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+            }
+          }
+          communityState.searchResults = null;
+          setCommunityFeedback("");
+          startCommunityOverviewPolling({ background: true });
+          renderCommunityNotificationBadges();
+          maybeShowCommunityEntryNotificationBanner();
+          syncAppNotificationBannerVisibility();
+          renderCommunityView();
+          void setOfflineEntry("community-overview", freshOverview);
+        } finally {
+          communityOverviewRefreshPromise = null;
+        }
+      })().catch((error) => {
+        if (Number(error?.status) === 401) {
+          communityState.overview = null;
+          communityState.statuses = [];
+          communityState.searchResults = null;
+          return null;
+        }
+        throw error;
+      });
+      return communityOverviewRefreshPromise;
+    };
+    if (preferCache && communityState.overview) {
+      communityState.statuses = Array.isArray(communityState.overview?.statuses)
+        ? communityState.overview.statuses
+        : [];
+      communityState.searchResults = null;
+      if (!Array.isArray(communityState.blocked)) {
+        communityState.blocked = [];
+      }
+      setCommunityFeedback("");
+      startCommunityOverviewPolling({ background: true });
+      renderCommunityNotificationBadges();
+      maybeShowCommunityEntryNotificationBanner();
+      syncAppNotificationBannerVisibility();
+      renderCommunityView();
+      void refreshCommunityOverview({
+        refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+      });
+      return;
+    }
+    if (preferCache) {
+      void refreshCommunityOverview({
+        refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+      });
+      return;
+    }
+    await refreshCommunityOverview({
+      refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
+    });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Community could not load right now."), true);
     renderCommunityNotificationBadges();
@@ -16884,7 +19820,44 @@ async function runCommunitySearch() {
   }
   setCommunityFeedback("Searching community...");
   try {
-    const response = await backendClient.searchCommunityUsers(query, 24);
+    const safeQuery = query.toLowerCase().slice(0, 120);
+    const cacheKey = `community-search:${safeQuery}:24`;
+    const offlineResults = await getOfflineEntry(cacheKey);
+    const showCachedResults = Boolean(offlineResults?.value);
+    if (offlineResults?.value) {
+      communityState.searchResults = Array.isArray(offlineResults.value?.users) ? offlineResults.value.users : [];
+      communityState.tab = "friends";
+      communityState.friendsView = "suggestions";
+      updateCommunityTabState();
+      setCommunityFeedback(
+        communityState.searchResults.length
+          ? `Found ${communityState.searchResults.length} learner${communityState.searchResults.length === 1 ? "" : "s"}.`
+          : "No learners matched that search.",
+      );
+      renderCommunityView();
+    }
+    if (showCachedResults) {
+      void (async () => {
+        try {
+          const response = await backendClient.searchCommunityUsers(query, 24, { preferCache: true });
+          communityState.searchResults = Array.isArray(response?.users) ? response.users : [];
+          communityState.tab = "friends";
+          communityState.friendsView = "suggestions";
+          updateCommunityTabState();
+          setCommunityFeedback(
+            communityState.searchResults.length
+              ? `Found ${communityState.searchResults.length} learner${communityState.searchResults.length === 1 ? "" : "s"}.`
+              : "No learners matched that search.",
+          );
+          renderCommunityView();
+          void setOfflineEntry(cacheKey, { users: communityState.searchResults });
+        } catch {
+          // Keep cached results visible.
+        }
+      })();
+      return;
+    }
+    const response = await backendClient.searchCommunityUsers(query, 24, { preferCache: true });
     communityState.searchResults = Array.isArray(response?.users) ? response.users : [];
     communityState.tab = "friends";
     communityState.friendsView = "suggestions";
@@ -16895,6 +19868,7 @@ async function runCommunitySearch() {
         : "No learners matched that search.",
     );
     renderCommunityView();
+    void setOfflineEntry(cacheKey, { users: communityState.searchResults });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Search is unavailable right now."), true);
   }
@@ -17025,13 +19999,26 @@ async function setCommunityTab(nextTab = "friends") {
   if (communityState.tab === "friends" && communityState.friendsView === "blocked") {
     void refreshCommunityBlockedUsers({ silent: true });
   }
-  markCommunityNotificationsSeen(communityState.tab);
   renderCommunityNotificationBadges();
   renderCommunityView();
 }
 
 function renderCommunityProfileView() {
   if (!communityProfileCardEl) return;
+  if (!communityState.profile || (!communityState.profile.profile && !communityState.profile.group)) {
+    communityProfileScreenEl?.classList.remove("is-group-profile-view");
+    communityProfileScreenEl?.classList.add("is-contact-profile-view");
+    communityProfileScreenEl?.classList.remove("is-group-header-collapsed");
+    communityProfileTopbarCopyEl?.classList.remove("hidden");
+    if (communityProfileHeaderSlotEl) {
+      communityProfileHeaderSlotEl.innerHTML = "";
+      communityProfileHeaderSlotEl.setAttribute("aria-hidden", "true");
+    }
+    if (communityProfileScreenTitleEl) communityProfileScreenTitleEl.textContent = "Learner Profile";
+    if (communityProfileScreenSubtitleEl) communityProfileScreenSubtitleEl.textContent = "";
+    communityProfileCardEl.innerHTML = `<div class="community-empty-state is-chat">Loading profile...</div>`;
+    return;
+  }
   if (communityState.groupEdit?.open && !communityState.profile?.group) {
     closeCommunityGroupEditModal();
   }
@@ -17098,7 +20085,7 @@ function renderCommunityProfileView() {
         ["Contact", getProfileFieldValue(profile.contact)],
       ];
   const pointsLine = canShowLeaderboard
-    ? `${leaderboardRank ? `#${escapeHtml(leaderboardRank)}` : "Rank hidden"} • ${escapeHtml(String(leaderboardPoints))} pts`
+    ? `${leaderboardRank ? `Rank ${escapeHtml(leaderboardRank)}` : "Rank hidden"} and ${escapeHtml(String(leaderboardPoints))} points`
     : "";
   const quickActions = [];
   if (isSelf) {
@@ -17204,7 +20191,16 @@ async function ensureCommunityProfileLeaderboardStats(profilePayload = null, use
   const isSelf = Boolean(payload.relationship?.isSelf);
   if (!isSelf && visibility === "nobody") return payload;
   try {
-    const snapshot = await backendClient.fetchPointsLeaderboard("alltime", 100);
+    const cachedSnapshot = leaderboardState?.cache?.alltime;
+    const cachedEntry =
+      (Array.isArray(cachedSnapshot?.topThree) ? cachedSnapshot.topThree : []).find((row) => String(row.userId || "") === targetId) ||
+      (Array.isArray(cachedSnapshot?.leaderboard) ? cachedSnapshot.leaderboard : []).find((row) => String(row.userId || "") === targetId) ||
+      (cachedSnapshot?.yourEntry && String(cachedSnapshot.yourEntry.userId || "") === targetId ? cachedSnapshot.yourEntry : null);
+    if (cachedEntry) {
+      payload.profile.leaderboardStats = cachedEntry;
+      return payload;
+    }
+    const snapshot = await backendClient.fetchPointsLeaderboard("alltime", 100, { preferCache: true });
     const entry =
       (Array.isArray(snapshot?.topThree) ? snapshot.topThree : []).find((row) => String(row.userId || "") === targetId) ||
       (Array.isArray(snapshot?.leaderboard) ? snapshot.leaderboard : []).find((row) => String(row.userId || "") === targetId) ||
@@ -17230,13 +20226,14 @@ async function openCommunityProfile(userId = "") {
   if (!ok || !userId) return;
   setCommunityFeedback("");
   try {
+    void primeInstantLocalCaches();
     if (leaderboardState.open) {
       closeLeaderboardModal({ useHistory: false });
     }
-    communityState.profile = await backendClient.fetchCommunityProfile(userId);
-    communityState.profile = await ensureCommunityProfileLeaderboardStats(communityState.profile, userId);
-    renderCommunityProfileView();
+    const safeUserId = String(userId || "").trim();
     showScreen("community-profile-screen");
+    communityState.profile = null;
+    renderCommunityProfileView();
     requestAnimationFrame(() => {
       const communityProfileScrollEl = getCommunityProfileScrollEl();
       if (communityProfileScrollEl instanceof HTMLElement) {
@@ -17244,6 +20241,36 @@ async function openCommunityProfile(userId = "") {
       }
       syncCommunityGroupProfileHeaderOffset();
     });
+    const cachedProfile = await getOfflineEntry(`community-profile:${safeUserId}`);
+    if (cachedProfile?.value) {
+      communityState.profile = cachedProfile.value;
+      renderCommunityProfileView();
+      requestAnimationFrame(() => {
+        const communityProfileScrollEl = getCommunityProfileScrollEl();
+        if (communityProfileScrollEl instanceof HTMLElement) {
+          communityProfileScrollEl.scrollTop = 0;
+        }
+        syncCommunityGroupProfileHeaderOffset();
+      });
+    }
+    void (async () => {
+      try {
+        const freshProfile = await backendClient.fetchCommunityProfile(userId, { preferCache: true });
+        const nextProfile = await ensureCommunityProfileLeaderboardStats(freshProfile, userId);
+        communityState.profile = nextProfile;
+        void setOfflineEntry(`community-profile:${safeUserId}`, nextProfile);
+        renderCommunityProfileView();
+        requestAnimationFrame(() => {
+          const communityProfileScrollEl = getCommunityProfileScrollEl();
+          if (communityProfileScrollEl instanceof HTMLElement) {
+            communityProfileScrollEl.scrollTop = 0;
+          }
+          syncCommunityGroupProfileHeaderOffset();
+        });
+      } catch {
+        // Keep cached or loading state visible.
+      }
+    })();
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Profile could not load right now."), true);
   }
@@ -17281,7 +20308,7 @@ function renderCommunityGroupProfileHeader(group = {}, bio = "", members = [], q
         ${getCommunityExpandableAvatarMarkup(group, "is-group-profile")}
         <div class="community-group-header-copy">
           <div class="community-group-profile-name">${escapeHtml(group.name || "Study Group")}</div>
-          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` • ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
+          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` and ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
         </div>
       </div>
       <div class="community-profile-quick-actions community-group-header-actions">${quickActions.join("")}</div>
@@ -17350,11 +20377,15 @@ function renderCommunityGroupProfileView() {
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Description</div>
         <div class="community-group-flat-copy">${escapeHtml(bio || "No group description yet.")}</div>
-        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} • ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
+        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} on ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
       </section>
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Group options</div>
         <div class="community-profile-info-list">
+          ${canEditGroupProfile ? `
+          <button type="button" class="community-profile-info-row is-button" data-community-action="edit-group-profile" data-group-id="${escapeHtml(group.id || "")}">
+            <div class="community-profile-meta-label">Edit group info</div>
+          </button>` : ""}
           <button type="button" class="community-profile-info-row is-button" data-community-action="open-group-storage" data-group-id="${escapeHtml(group.id || "")}">
             <div class="community-profile-meta-label">Media, links &amp; docs</div>
           </button>
@@ -17394,7 +20425,7 @@ function renderCommunityGroupProfileView() {
         <div class="community-group-members-list">
           ${members
             .map((member) => `
-              <article class="community-group-member-row">
+              <article class="community-group-member-row" data-user-id="${escapeHtml(member.id || "")}">
                 ${getCommunityAvatarMarkup(member)}
                 <div class="community-group-member-copy">
                   <button type="button" class="community-name-link community-user-card-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(member.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(member), 28))}</button>
@@ -17432,6 +20463,10 @@ function renderCommunityGroupProfileView() {
             )
             .join("")}
         </div>
+        <textarea id="community-group-bio-input" class="community-group-bio-input" rows="3" maxlength="180" placeholder="Write a short group description">${escapeHtml(bio)}</textarea>
+        <div class="community-group-admin-actions">
+          <button type="button" class="community-group-inline-action" data-community-action="save-group-profile" data-group-id="${escapeHtml(group.id || "")}">Save group info</button>
+        </div>
       </section>` : ""}
       </div>
     </section>
@@ -17447,7 +20482,7 @@ function renderCommunityGroupProfileView() {
         ${getCommunityPlainAvatarMarkup(group, "is-group-profile")}
         <div class="community-group-profile-copy community-group-info-copy">
           <div class="community-group-profile-name">${escapeHtml(group.name || "Study Group")}</div>
-          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` • ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
+          <div class="community-group-profile-meta">${escapeHtml(String(members.length))} members${bio ? ` and ${escapeHtml(truncateWithEllipsis(bio, 48))}` : ""}</div>
         </div>
       </div>
       <div class="community-profile-quick-actions">${quickActions.join("")}</div>
@@ -17456,7 +20491,7 @@ function renderCommunityGroupProfileView() {
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Description</div>
         <div class="community-group-flat-copy">${escapeHtml(bio || "No group description yet.")}</div>
-        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} • ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
+        <div class="community-group-flat-meta">Created by ${escapeHtml(getCommunityUiDisplayName(createdBy || {}, { preserveRealName: false }))} on ${escapeHtml(formatCommunityTimestamp(group.createdAt || ""))}</div>
       </section>
       <section class="community-group-flat-section">
         <div class="community-group-flat-title">Group options</div>
@@ -17487,7 +20522,7 @@ function renderCommunityGroupProfileView() {
         <div class="community-group-members-list">
           ${members
             .map((member) => `
-              <article class="community-group-member-row">
+              <article class="community-group-member-row" data-user-id="${escapeHtml(member.id || "")}">
                 ${getCommunityAvatarMarkup(member)}
                 <div class="community-group-member-copy">
                   <button type="button" class="community-name-link community-user-card-name-link" data-community-action="open-profile" data-user-id="${escapeHtml(member.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(member), 28))}</button>
@@ -17538,15 +20573,38 @@ async function openCommunityGroupProfile(groupId = "") {
   if (!ok || !groupId) return;
   setCommunityFeedback("");
   try {
+    void primeInstantLocalCaches();
     if (leaderboardState.open) {
       closeLeaderboardModal({ useHistory: false });
     }
-    communityState.profile = await backendClient.fetchCommunityGroup(groupId);
-    renderCommunityProfileView();
     showScreen("community-profile-screen");
+    const safeGroupId = String(groupId || "").trim();
+    communityState.profile = null;
+    renderCommunityProfileView();
     requestAnimationFrame(() => {
       syncCommunityGroupProfileHeaderCollapse();
     });
+    const cachedProfile = await getOfflineEntry(`community-group-profile:${safeGroupId}`);
+    if (cachedProfile?.value) {
+      communityState.profile = cachedProfile.value;
+      renderCommunityProfileView();
+      requestAnimationFrame(() => {
+        syncCommunityGroupProfileHeaderCollapse();
+      });
+    }
+    void (async () => {
+      try {
+        const freshProfile = await backendClient.fetchCommunityGroup(groupId);
+        communityState.profile = freshProfile;
+        void setOfflineEntry(`community-group-profile:${safeGroupId}`, freshProfile);
+        renderCommunityProfileView();
+        requestAnimationFrame(() => {
+          syncCommunityGroupProfileHeaderCollapse();
+        });
+      } catch {
+        // Keep cached or loading state visible.
+      }
+    })();
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Group info could not load right now."), true);
   }
@@ -17696,7 +20754,7 @@ async function openCommunityGroupStorageScreen(groupId = "", initialTab = "media
       String(communityState.profile?.group?.id || "") === String(groupId)
         ? String(communityState.profile?.group?.name || "").trim()
         : "";
-    const response = await backendClient.fetchConversationMessages(groupId);
+    const response = await backendClient.fetchConversationMessages(groupId, { preferCache: true });
     communityState.groupStorage = {
       groupId: String(groupId || "").trim(),
       groupName: groupName || "Shared Media",
@@ -17972,6 +21030,9 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
   communityState.messageMetaSignature = getCommunityMessageMetaSignature(visibleMessages);
   const noticePartner = communityState.activeConversationPartner || {};
   const isNoticeThread = Boolean(noticePartner?.isNotice);
+  const isWarningNotice =
+    isNoticeThread && String(noticePartner?.noticeOriginType || "").trim().toLowerCase() === "report";
+  const noticeTitle = String(noticePartner?.noticeTitle || noticePartner?.name || "Admin Notice").trim() || "Admin Notice";
   communityChatMessagesEl.innerHTML = visibleMessages
     .map((message, index) => {
       const previousMessage = visibleMessages[index - 1] || null;
@@ -18001,7 +21062,12 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
       const imageOnly = attachmentKind === "image" && !String(messageText || "").trim();
       const audioOnly = hasAudioAttachment && !String(messageText || "").trim();
       const senderMarkup = showSender
-        ? `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || noticePartner?.noticeSenderName || noticePartner?.name || "Member"), 18))}</div>`
+        ? isNoticeThread
+          ? `
+              ${isWarningNotice ? '<div class="community-message-notice-label">Warning</div>' : ""}
+              <div class="community-message-sender is-notice-title">${escapeHtml(truncateWithEllipsis(noticeTitle, 26))}</div>
+            `
+          : `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || "Member"), 18))}</div>`
         : "";
       return `
         ${startsDay ? renderCommunityDateDivider(formatCommunityChatDateLabel(message.createdAt || "")) : ""}
@@ -18066,12 +21132,66 @@ function renderCommunityMessageReplySnippet(replyTo = null) {
   `;
 }
 
-async function loadCommunityMessages({ silent = false, scrollToBottom = false } = {}) {
+async function loadCommunityMessages({ silent = false, scrollToBottom = false, preferCache = false } = {}) {
   if (!communityState.activeConversation?.id) return;
   try {
     const shouldStickToBottom = scrollToBottom || isCommunityChatNearBottom();
+    const conversationCacheKey = `community-messages:${String(communityState.activeConversation.id || "").trim()}`;
+    if (preferCache) {
+      const cachedMessages = await getOfflineEntry(conversationCacheKey);
+      if (cachedMessages?.value) {
+        const cachedResponse = cachedMessages.value;
+        const cachedList = Array.isArray(cachedResponse?.messages) ? cachedResponse.messages : [];
+        if (cachedResponse?.partner) {
+          updateCommunityChatHeader(cachedResponse.partner);
+        }
+        renderCommunityMessages(cachedList, { scrollToBottom: shouldStickToBottom });
+        if (preferCache) {
+          void (async () => {
+            try {
+              const response = await backendClient.fetchConversationMessages(communityState.activeConversation.id, {
+                markRead: true,
+                preferCache: false,
+              });
+              const messages = Array.isArray(response?.messages) ? response.messages : [];
+              const nextContentSignature = getCommunityMessageContentSignature(messages);
+              const nextMetaSignature = getCommunityMessageMetaSignature(messages);
+              if (response?.partner) {
+                updateCommunityChatHeader(response.partner);
+              } else if (communityState.activeConversationPartner) {
+                updateCommunityChatHeader(communityState.activeConversationPartner);
+              }
+              if (nextContentSignature !== String(communityState.messageRenderSignature || "")) {
+                renderCommunityMessages(messages, { scrollToBottom: shouldStickToBottom });
+              } else if (nextMetaSignature !== String(communityState.messageMetaSignature || "")) {
+                syncCommunityMessageMeta(messages);
+                if (shouldStickToBottom) {
+                  scrollCommunityChatToLatest({ settle: true, attempts: 1 });
+                }
+              } else {
+                communityState.messages = Array.isArray(messages) ? [...messages] : [];
+                if (shouldStickToBottom) {
+                  scrollCommunityChatToLatest({ settle: true, attempts: 1 });
+                }
+              }
+              restoreCommunityChatDraftIfNeeded(communityState.activeConversation?.id || "");
+              void refreshCommunityConversationActiveCall({ silent: true });
+              void setOfflineEntry(conversationCacheKey, {
+                messages,
+                partner: response?.partner || communityState.activeConversationPartner || null,
+              });
+            } catch {
+              // Keep cached messages visible.
+            }
+          })();
+          if (!silent) setCommunityFeedback("");
+          return;
+        }
+      }
+    }
     const response = await backendClient.fetchConversationMessages(communityState.activeConversation.id, {
-      markRead: Boolean(communitySettingsPrefs.chatReadReceipts),
+      markRead: true,
+      preferCache,
     });
     const messages = Array.isArray(response?.messages) ? response.messages : [];
     const nextContentSignature = getCommunityMessageContentSignature(messages);
@@ -18096,6 +21216,10 @@ async function loadCommunityMessages({ silent = false, scrollToBottom = false } 
     }
     restoreCommunityChatDraftIfNeeded(communityState.activeConversation?.id || "");
     void refreshCommunityConversationActiveCall({ silent: true });
+    void setOfflineEntry(conversationCacheKey, {
+      messages,
+      partner: response?.partner || communityState.activeConversationPartner || null,
+    });
     if (!silent) setCommunityFeedback("");
   } catch (error) {
     if (!silent) setCommunityFeedback(generalApiErrorMessage(error, "Messages could not load right now."), true);
@@ -18106,6 +21230,7 @@ async function openCommunityConversation(userId = "", existingConversationId = "
   const ok = await ensureAuthenticated();
   if (!ok || (!userId && !existingConversationId)) return;
   try {
+    void primeInstantLocalCaches();
     const previousConversationId = getCommunityChatDraftConversationId(communityState.activeConversation?.id || "");
     if (previousConversationId) {
       persistCommunityChatDraftForConversation(previousConversationId);
@@ -18118,17 +21243,38 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     } else {
       communityState.activeConversation = { id: conversationId };
     }
-    const partner =
+    let partner =
       communityState.overview?.chats?.find((row) =>
         conversationId
           ? String(row.id || "") === String(conversationId)
           : String(row.partner?.id || "") === String(userId),
       )?.partner ||
-      communityState.overview?.friends?.find((row) => String(row.id) === String(userId)) ||
-      communityState.overview?.suggested?.find((row) => String(row.id) === String(userId)) ||
-      communityState.searchResults?.find((row) => String(row.id) === String(userId)) ||
-      communityState.profile?.profile ||
+      communityState.overview?.groups?.find((row) =>
+        conversationId
+          ? String(row?.group?.id || row?.conversation?.id || row?.id || "") === String(conversationId)
+          : String(row?.group?.id || "") === String(userId),
+      )?.group ||
+      communityState.overview?.groups?.find((row) =>
+        conversationId
+          ? String(row?.conversation?.id || row?.id || "") === String(conversationId)
+          : String(row?.group?.id || "") === String(userId),
+      )?.conversation?.partner ||
       null;
+    if (!partner && conversationId) {
+      partner = {
+        id: conversationId,
+        name: "Loading chat...",
+        username: "",
+      };
+    }
+    if (!partner) {
+      partner =
+        communityState.overview?.friends?.find((row) => String(row.id) === String(userId)) ||
+        communityState.overview?.suggested?.find((row) => String(row.id) === String(userId)) ||
+        communityState.searchResults?.find((row) => String(row.id) === String(userId)) ||
+        communityState.profile?.profile ||
+        null;
+    }
 
     clearCommunityTypingTimers();
     clearCommunityTypingState(conversationId);
@@ -18138,12 +21284,8 @@ async function openCommunityConversation(userId = "", existingConversationId = "
     resetCommunityVoiceRecordingState();
     updateCommunityChatHeader(partner || {});
     showScreen("community-chat-screen");
-    await loadCommunityMessages({ scrollToBottom: true });
-    try {
-      communityState.overview = await backendClient.fetchCommunityOverview();
-      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-      renderCommunityNotificationBadges();
-    } catch {}
+    void loadCommunityMessages({ scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
     restoreCommunityChatDraftIfNeeded(conversationId);
     void refreshCommunityConversationActiveCall({ silent: true, force: true });
     syncCommunityChatPolling();
@@ -18271,26 +21413,46 @@ async function sendCommunityMessage() {
     resetCommunityPendingAttachment();
     removeCommunityChatDraftForConversation(conversationId);
     syncCommunityChatComposerState();
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunitySummary();
-    renderCommunityStatusStrip();
-    } catch (error) {
-      const errorMessage = attachments.length
-        ? generalApiErrorMessage(error, "Attachments could not send right now.")
-        : generalApiErrorMessage(error, "Message could not send right now.");
-      if (pendingDrafts.length) {
-      updateCommunityPendingOutgoingMessages(
-        pendingDrafts.map((entry) => entry.id),
-        (entry) => ({
-          ...entry,
-          uploadState: "failed",
-          uploadError: errorMessage,
-        }),
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
+  } catch (error) {
+    const errorMessage = attachments.length
+      ? generalApiErrorMessage(error, "Attachments could not send right now.")
+      : generalApiErrorMessage(error, "Message could not send right now.");
+    if (pendingDrafts.length) {
+      if (!attachments.length) {
+        const optimisticIds = pendingDrafts.map((entry) => entry.id);
+        updateCommunityPendingOutgoingMessages(
+          optimisticIds,
+          (entry) => ({
+            ...entry,
+            uploadState: "queued",
+            uploadError: "Waiting for connection...",
+          }),
+        );
+        void enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_MESSAGE,
+          payload: {
+            conversationId,
+            text,
+            replyTo,
+            optimisticIds,
+          },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
+      } else {
+        updateCommunityPendingOutgoingMessages(
+          pendingDrafts.map((entry) => entry.id),
+          (entry) => ({
+            ...entry,
+            uploadState: "failed",
+            uploadError: errorMessage,
+          }),
         );
         renderCommunityMessages(getCommunityVisibleMessages(communityState.messages), { scrollToBottom: true });
       }
+    }
     if (communityChatInput) {
       autosizeCommunityChatInput();
     }
@@ -18505,10 +21667,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           );
           if (!isBackgroundUpload) closeCommunityStatusCompose();
           setCommunityFeedback("Status uploaded successfully.");
-          communityState.overview = await backendClient.fetchCommunityOverview();
-          communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-          renderCommunityStatusStrip();
-          renderCommunityView();
+          void loadCommunityOverview({ silent: true, preferCache: true });
           return;
         } else {
           payload.dataUrl = String(payload.originalDataUrl || payload.dataUrl || "");
@@ -18603,10 +21762,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
     communityState.statusUploadError = "";
     if (!isBackgroundUpload) closeCommunityStatusCompose();
     setCommunityFeedback("Status uploaded successfully.");
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityStatusStrip();
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     const message = rawApiErrorMessage(error, "Status upload failed.");
     communityState.statusUploadError = message;
@@ -18629,9 +21785,7 @@ async function createCommunityStudyGroup() {
   try {
     const response = await backendClient.createStudyGroup(name, memberIds);
     closeCommunityGroupModal();
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     setCommunityFeedback("Study group created.");
     const conversationId = String(response?.conversation?.id || "").trim();
     if (conversationId) {
@@ -18658,7 +21812,7 @@ async function createCommunityStudyGroup() {
         institution: `${memberIds.length + 1} members`,
       });
       showScreen("community-chat-screen");
-      await loadCommunityMessages({ scrollToBottom: true });
+      void loadCommunityMessages({ scrollToBottom: true, preferCache: true });
       restoreCommunityChatDraftIfNeeded(conversationId);
       syncCommunityChatPolling();
     }
@@ -18688,8 +21842,7 @@ async function addCommunityGroupMembers() {
     await backendClient.addCommunityGroupMembers(groupId, memberIds);
     closeCommunityGroupModal();
     communityState.profile = await backendClient.fetchCommunityGroup(groupId);
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
+    void loadCommunityOverview({ silent: true, preferCache: true });
     renderCommunityProfileView();
     renderCommunityView();
     setCommunityFeedback("Participants added to the group.");
@@ -18721,7 +21874,7 @@ function buildCommunityGroupInviteHref(groupId = "", inviteToken = "") {
 function getCommunityGroupInviteShortLabel(inviteToken = "", inviteUrl = "") {
   const token = String(inviteToken || "").trim();
   if (token.length >= 10) {
-    return `${token.slice(0, 4)}…${token.slice(-4)}`;
+    return `${token.slice(0, 4)}...${token.slice(-4)}`;
   }
   const url = String(inviteUrl || "").trim();
   if (url) {
@@ -18729,12 +21882,12 @@ function getCommunityGroupInviteShortLabel(inviteToken = "", inviteUrl = "") {
       const parsed = new URL(url, window.location.origin);
       const path = `${parsed.pathname || ""}${parsed.search || ""}`.replace(/^\/+/, "");
       if (path.length > 18) {
-        return `${path.slice(0, 8)}…${path.slice(-6)}`;
+        return `${path.slice(0, 8)}...${path.slice(-6)}`;
       }
       return path;
     } catch {
       if (url.length > 18) {
-        return `${url.slice(0, 8)}…${url.slice(-6)}`;
+        return `${url.slice(0, 8)}...${url.slice(-6)}`;
       }
       return url;
     }
@@ -18842,6 +21995,8 @@ function renderCommunityGroupInviteModal() {
     }
   }
   if (communityGroupInviteCopyBtn) {
+    const showCopyLink = isShareMode && Boolean(inviteUrl);
+    communityGroupInviteCopyBtn.style.display = showCopyLink ? "" : "none";
     communityGroupInviteCopyBtn.disabled = isLoading || !inviteUrl;
     communityGroupInviteCopyBtn.textContent = "Copy link";
   }
@@ -18958,19 +22113,32 @@ function closeCommunityReportModal() {
 function syncCommunityAdminBroadcastModal() {
   if (!communityAdminBroadcastModalEl) return;
   const state = communityState.adminBroadcastModal || {};
+  const attachment = state.attachment || null;
+  const attachmentKind = inferCommunityPreviewMediaKind(attachment);
   if (communityAdminBroadcastInput && communityAdminBroadcastInput.value !== String(state.message || "")) {
     communityAdminBroadcastInput.value = String(state.message || "");
   }
   if (communityAdminBroadcastAttachmentNameEl) {
     communityAdminBroadcastAttachmentNameEl.textContent = String(state.attachmentName || "No attachment selected.");
   }
+  if (communityAdminBroadcastPreviewBtn) {
+    const hasAttachment = Boolean(attachment?.dataUrl || attachment?.remoteUrl);
+    communityAdminBroadcastPreviewBtn.classList.toggle("hidden", !hasAttachment);
+    communityAdminBroadcastPreviewBtn.disabled = !hasAttachment;
+    communityAdminBroadcastPreviewBtn.textContent =
+      attachmentKind === "image"
+        ? "Preview image"
+        : attachmentKind === "video"
+          ? "Preview video"
+          : "Preview file";
+  }
   if (communityAdminBroadcastClearBtn) {
-    communityAdminBroadcastClearBtn.classList.toggle("hidden", !state.attachment);
-    communityAdminBroadcastClearBtn.disabled = !state.attachment;
+    communityAdminBroadcastClearBtn.classList.toggle("hidden", !attachment);
+    communityAdminBroadcastClearBtn.disabled = !attachment;
   }
   if (communityAdminBroadcastSendBtn) {
     const hasMessage = Boolean(String(state.message || "").trim());
-    communityAdminBroadcastSendBtn.disabled = state.sending || (!hasMessage && !state.attachment);
+    communityAdminBroadcastSendBtn.disabled = state.sending || (!hasMessage && !attachment);
     communityAdminBroadcastSendBtn.textContent = state.sending ? "Sending..." : "Send to all";
   }
 }
@@ -19047,10 +22215,7 @@ async function submitCommunityAdminBroadcast() {
     const response = await backendClient.broadcastAdminMessage(message, attachment);
     closeCommunityAdminBroadcastModal();
     setCommunityFeedback(`Broadcast sent to ${Math.max(0, Math.round(Number(response?.deliveredTo) || 0))} users.`);
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.chats = Array.isArray(communityState.overview?.chats) ? communityState.overview.chats : [];
-    renderCommunityView();
-    renderCommunitySummary();
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     communityState.adminBroadcastModal = {
       ...(communityState.adminBroadcastModal || {}),
@@ -19220,9 +22385,10 @@ async function joinCommunityGroupFromInvite() {
     const response = await backendClient.joinCommunityGroupInvite(groupId, inviteToken);
     clearPendingCommunityGroupInvite();
     communityState.profile = response;
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-    renderCommunityView();
+    if (response?.group) {
+      void setOfflineEntry(`community-group-profile:${groupId}`, response);
+    }
+    void loadCommunityOverview({ silent: true, preferCache: true });
     communityState.groupInviteModal = {
       ...communityState.groupInviteModal,
       loading: false,
@@ -19268,6 +22434,9 @@ async function loadCommunityGroupInvitePreview(groupId = "", inviteToken = "", {
   });
   try {
     const response = await backendClient.fetchCommunityGroupInvitePreview(safeGroupId, safeInviteToken);
+    if (response?.group) {
+      void setOfflineEntry(`community-group-profile:${safeGroupId}`, response);
+    }
     openCommunityGroupInviteModal({
       groupId: safeGroupId,
       inviteToken: String(response?.invite?.inviteToken || safeInviteToken || "").trim(),
@@ -19297,40 +22466,38 @@ async function loadCommunityGroupInvitePreview(groupId = "", inviteToken = "", {
 async function shareCommunityGroupInviteLink(groupId = "") {
   const safeGroupId = String(groupId || "").trim();
   if (!safeGroupId) return;
-  const payload = communityState.profile?.group ? communityState.profile : null;
-  const canShareInvite = Boolean(payload?.relationship?.isAdmin || payload?.group?.permissions?.membersCanInviteByLink);
+  const currentProfile =
+    communityState.profile?.group && String(communityState.profile.group.id || "") === safeGroupId
+      ? communityState.profile
+      : await backendClient.fetchCommunityGroup(safeGroupId).catch(() => null);
+  const group = currentProfile?.group || {};
+  const canShareInvite = Boolean(currentProfile?.relationship?.isAdmin || group?.permissions?.membersCanInviteByLink);
   if (!canShareInvite) {
     setCommunityFeedback("Invite links are disabled for this group.", true);
     return;
   }
   try {
-    const payload = await backendClient.createCommunityGroupInviteLink(safeGroupId);
-    const inviteToken = String(payload?.inviteToken || "").trim();
-    if (!inviteToken) {
-      throw new Error("invite link could not be generated");
+    const inviteToken = String(group.inviteToken || currentProfile?.inviteToken || "").trim();
+    const inviteUrl = normalizeCommunityInviteUrl(buildCommunityGroupInviteHref(safeGroupId, inviteToken));
+    if (!inviteUrl || !inviteToken) {
+      throw new Error("invite link could not be prepared");
     }
-    if (communityState.profile?.group) {
-      communityState.profile.group.inviteToken = inviteToken;
-    }
-    const inviteHref = buildCommunityGroupInviteHref(safeGroupId, inviteToken);
-    if (!inviteHref) {
-      throw new Error("invite link could not be built");
-    }
-    const inviteUrl = normalizeCommunityInviteUrl(payload?.inviteUrl || inviteHref);
     openCommunityGroupInviteModal({
       groupId: safeGroupId,
       inviteToken,
       inviteUrl,
-      inviteExpiresAt: String(payload?.inviteExpiresAt || "").trim(),
+      inviteExpiresAt: String(currentProfile?.inviteExpiresAt || group.inviteExpiresAt || "").trim(),
       inviteExpired: false,
-      group: communityState.profile?.group || null,
-      members: Array.isArray(communityState.profile?.members) ? communityState.profile.members : [],
-      memberCount: Array.isArray(communityState.profile?.members) ? communityState.profile.members.length : Number(communityState.profile?.group?.memberIds?.length || 0),
+      group,
+      members: Array.isArray(currentProfile?.members) ? currentProfile.members : [],
+      memberCount: Array.isArray(currentProfile?.members)
+        ? currentProfile.members.length
+        : Number(group.memberIds?.length || 0),
       relationship: {
-        isMember: false,
-        isOwner: Boolean(communityState.profile?.relationship?.isOwner),
-        isAdmin: Boolean(communityState.profile?.relationship?.isAdmin),
-        isMuted: Boolean(communityState.profile?.relationship?.isMuted),
+        isMember: Boolean(currentProfile?.relationship?.isMember),
+        isOwner: Boolean(currentProfile?.relationship?.isOwner),
+        isAdmin: Boolean(currentProfile?.relationship?.isAdmin),
+        isMuted: Boolean(currentProfile?.relationship?.isMuted),
       },
       source: "share",
     });
@@ -19357,9 +22524,7 @@ async function leaveCommunityGroup(groupId = "") {
         communityState.activeConversationPartner = null;
         syncCommunityChatPolling();
       }
-      communityState.overview = await backendClient.fetchCommunityOverview();
-      communityState.statuses = Array.isArray(communityState.overview?.statuses) ? communityState.overview.statuses : [];
-      renderCommunityView();
+      void loadCommunityOverview({ silent: true, preferCache: true });
       setCommunityFeedback(response?.removed ? "Group removed." : "You left the group.");
     },
   });
@@ -19723,14 +22888,18 @@ async function sendForwardedCommunityMessage() {
   const targets = Array.isArray(communityState.forwardTargets) ? [...communityState.forwardTargets] : [];
   if (!payloadItems.length || !targets.length) return false;
   try {
-    const sendTargets = targets.slice(0, 5);
-    for (const target of sendTargets) {
-      const targetUserId = String(target.userId || "").trim();
-      let conversationId = String(target.conversationId || "").trim();
-      if (!conversationId) {
-        const response = await backendClient.openDirectConversation(targetUserId);
-        conversationId = String(response?.conversation?.id || "").trim();
+      const sendTargets = targets.slice(0, 5);
+      for (const target of sendTargets) {
+        const targetUserId = String(target.userId || "").trim();
+        const targetConversationType = String(target.conversationType || "").trim().toLowerCase();
+        if (targetConversationType === "group" || targetConversationType === "notice" || targetConversationType === "admin") {
+          throw new Error("Selected target cannot receive forwarded items.");
+        }
+        let conversationId = String(target.conversationId || "").trim();
         if (!conversationId) {
+          const response = await backendClient.openDirectConversation(targetUserId);
+          conversationId = String(response?.conversation?.id || "").trim();
+          if (!conversationId) {
           throw new Error("conversation not found");
         }
       }
@@ -19748,11 +22917,9 @@ async function sendForwardedCommunityMessage() {
     setCommunityFeedback(
       itemCount > 1
         ? `Forwarded ${itemCount} items to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`
-        : `Forwarded to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`,
+      : `Forwarded to ${sentCount} ${sentCount === 1 ? "person" : "people"}.`,
     );
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    renderCommunitySummary();
-    renderCommunityView();
+    void loadCommunityOverview({ silent: true, preferCache: true });
     return true;
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Item could not forward right now."), true);
@@ -19779,9 +22946,8 @@ async function editCommunityMessageText() {
   }
   try {
     await backendClient.editConversationMessage(message.id, cleaned);
-    await loadCommunityMessages({ silent: true, scrollToBottom: true });
-    communityState.overview = await backendClient.fetchCommunityOverview();
-    renderCommunitySummary();
+    void loadCommunityMessages({ silent: true, scrollToBottom: true, preferCache: true });
+    void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Message could not update right now."), true);
   }
@@ -19826,11 +22992,10 @@ function confirmCommunityMessageDelete(scope = "self") {
           .filter((message) => Boolean(message?.id))
           .map((message) => backendClient.deleteConversationMessage(message.id, deleteScope)),
       );
-      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom });
-      communityState.overview = await backendClient.fetchCommunityOverview();
-      renderCommunitySummary();
+      void loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom, preferCache: true });
+      void loadCommunityOverview({ silent: true, preferCache: true });
     } catch (error) {
-      await loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom }).catch(() => {});
+      void loadCommunityMessages({ silent: true, scrollToBottom: shouldStickToBottom, preferCache: true }).catch(() => {});
       setCommunityFeedback(generalApiErrorMessage(error, "Message could not delete right now."), true);
     }
   })();
@@ -19847,24 +23012,78 @@ async function executeCommunityAction(action = "", payload = {}) {
       (action === "open-chat" || action === "open-conversation") &&
       (userId || conversationId)
     ) {
+      const matchingConversation = conversationId
+        ? (Array.isArray(communityState.overview?.chats)
+          ? communityState.overview.chats.find((row) => String(row?.id || "").trim() === conversationId)
+          : null)
+        : null;
+      if (matchingConversation?.partner?.isGroup || matchingConversation?.partner?.isNotice) {
+        setCommunityFeedback("Groups and admin notices can't receive forwarded items.", true);
+        return;
+      }
       toggleCommunityForwardTarget({
         userId,
         conversationId,
         label: payload.label || "",
+        conversationType: matchingConversation?.partner?.isGroup
+          ? "group"
+          : matchingConversation?.partner?.isNotice
+            ? "notice"
+            : "direct",
       });
       renderCommunityView();
       return;
     }
     if (action === "send-request" && userId) {
-      await backendClient.sendFriendRequest(userId);
+      try {
+        await backendClient.sendFriendRequest(userId);
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.SEND_FRIEND_REQUEST,
+          payload: { userId },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "accept-request" && requestId) {
-      await backendClient.respondToFriendRequest(requestId, "accept");
+      try {
+        await backendClient.respondToFriendRequest(requestId, "accept");
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST,
+          payload: { requestId, decision: "accept" },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "reject-request" && requestId) {
-      await backendClient.respondToFriendRequest(requestId, "reject");
+      try {
+        await backendClient.respondToFriendRequest(requestId, "reject");
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST,
+          payload: { requestId, decision: "reject" },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "cancel-request" && requestId) {
-      await backendClient.cancelFriendRequest(requestId);
+      try {
+        await backendClient.cancelFriendRequest(requestId);
+      } catch (error) {
+        await enqueueOfflineAction({
+          type: COMMUNITY_OFFLINE_QUEUE_TYPES.RESPOND_FRIEND_REQUEST,
+          payload: { requestId, decision: "cancel" },
+        });
+        scheduleCommunityOfflineQueueFlush();
+        setCommunityFeedback("Saved locally. It will sync when connection returns.");
+        return;
+      }
     } else if (action === "block-user" && userId) {
-      const targetUserResponse = await backendClient.fetchCommunityProfile(userId).catch(() => null);
+      const targetUserResponse = await backendClient.fetchCommunityProfile(userId, { preferCache: true }).catch(() => null);
       const targetUser = targetUserResponse?.profile || targetUserResponse?.user || targetUserResponse;
       if (isCommunityAppAdminUser(targetUser)) {
         setCommunityFeedback("App admins cannot be blocked.", true);
@@ -19877,9 +23096,26 @@ async function executeCommunityAction(action = "", payload = {}) {
         intent: "danger",
         onConfirm: async () => {
           closeCommunityConfirmModal();
-          await backendClient.blockUser(userId);
+          try {
+            await backendClient.blockUser(userId);
+          } catch (error) {
+            await enqueueOfflineAction({
+              type: COMMUNITY_OFFLINE_QUEUE_TYPES.BLOCK_USER,
+              payload: { userId },
+            });
+            scheduleCommunityOfflineQueueFlush();
+            setCommunityFeedback("Saved locally. It will sync when connection returns.");
+            return;
+          }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true });
+          if (targetUser) {
+            const existingBlocked = Array.isArray(communityState.blocked) ? communityState.blocked : [];
+            const nextBlocked = existingBlocked.filter((entry) => String(entry?.id || "") !== userId);
+            nextBlocked.push(targetUser);
+            communityState.blocked = nextBlocked;
+            void setOfflineEntry("community-blocked", { blocked: nextBlocked });
+          }
+          void loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }
@@ -19894,9 +23130,24 @@ async function executeCommunityAction(action = "", payload = {}) {
         intent: "default",
         onConfirm: async () => {
           closeCommunityConfirmModal();
-          await backendClient.unblockUser(userId);
+          try {
+            await backendClient.unblockUser(userId);
+          } catch (error) {
+            await enqueueOfflineAction({
+              type: COMMUNITY_OFFLINE_QUEUE_TYPES.UNBLOCK_USER,
+              payload: { userId },
+            });
+            scheduleCommunityOfflineQueueFlush();
+            setCommunityFeedback("Saved locally. It will sync when connection returns.");
+            return;
+          }
           communityState.profile = null;
-          await loadCommunityOverview({ silent: true });
+          if (Array.isArray(communityState.blocked)) {
+            const nextBlocked = communityState.blocked.filter((entry) => String(entry?.id || "") !== userId);
+            communityState.blocked = nextBlocked;
+            void setOfflineEntry("community-blocked", { blocked: nextBlocked });
+          }
+          void loadCommunityOverview({ silent: true, preferCache: true });
           if (getActiveScreenId() === "community-profile-screen" && userId) {
             await openCommunityProfile(userId);
           }
@@ -19935,6 +23186,16 @@ async function executeCommunityAction(action = "", payload = {}) {
       return;
     } else if (action === "share-group-link" && groupId) {
       await shareCommunityGroupInviteLink(groupId);
+      return;
+    } else if (action === "save-group-profile" && groupId) {
+      const bioInput = document.getElementById("community-group-bio-input");
+      const nextBio = String(bioInput instanceof HTMLTextAreaElement ? bioInput.value : communityState.profile?.group?.bio || "").trim();
+      await backendClient.updateCommunityGroup(groupId, { bio: nextBio });
+      const freshProfile = await backendClient.fetchCommunityGroup(groupId);
+      communityState.profile = freshProfile;
+      renderCommunityProfileView();
+      renderCommunityView();
+      setCommunityFeedback("Group info updated.");
       return;
     } else if (action === "report-user" && userId) {
       await reportCommunityUser(userId);
@@ -19994,7 +23255,7 @@ async function executeCommunityAction(action = "", payload = {}) {
     }
 
     communityState.profile = null;
-    await loadCommunityOverview({ silent: true });
+    await loadCommunityOverview({ silent: true, preferCache: true });
     if (getActiveScreenId() === "community-profile-screen" && userId) {
       await openCommunityProfile(userId);
     }
@@ -20004,8 +23265,12 @@ async function executeCommunityAction(action = "", payload = {}) {
 }
 
 async function openCommunityScreen() {
-  const ok = await ensureAuthenticated();
+  const ok = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!ok) return;
+  await refreshSubscriptionAccessForAction();
+  if (!requireSubscriptionAccess("community")) {
+    return;
+  }
   const unlocked = await ensureCommunityLockAccess({
     fallbackScreen: getActiveScreenId() || "quiz-menu",
     redirectOnCancel: false,
@@ -20023,10 +23288,14 @@ async function openCommunityScreen() {
   renderCommunityHeaderProfile();
   setCommunitySearchOpen(false);
   updateCommunityTabState();
-  showScreen("community-screen");
+  showScreen("community-screen", { skipSubscriptionGate: true });
+  if (getActiveScreenId() !== "community-screen") {
+    return;
+  }
   renderCommunitySummary();
-  renderCommunityResultsMarkup(`<div class="community-empty-state">Loading community...</div>`);
-  await loadCommunityOverview();
+  renderCommunityView();
+  void primeInstantLocalCaches();
+  void loadCommunityOverview({ silent: true, preferCache: true });
 }
 
 function renderXp() {
@@ -20118,18 +23387,13 @@ function showAnswerChoiceMotivation(choiceValue, isCorrect) {
 }
 
 function shouldShowAnswerChoiceMotivation() {
-  if (mode === "daily" || mode === "smart") return false;
-  if (mode === "exam") {
-    const variant = String(examVariant || "normal").toLowerCase();
-    return variant === "rapid" || variant === "sudden" || variant === "clinical";
-  }
-  return isStudyLikeMode();
+  return shouldLockAnswerSelection();
 }
 
 function isDirectSubmitDrillMode() {
   if (mode !== "exam") return false;
   const variant = String(examVariant || "normal").toLowerCase();
-  return variant === "rapid" || variant === "sudden" || variant === "clinical" || variant === "law";
+  return variant === "sudden" || variant === "clinical";
 }
 
 function showDrillEventBanner(message = "", tone = "good") {
@@ -20193,7 +23457,7 @@ function buildClinicalLivesMarkup(lives = 3, maxLives = 3) {
   let html = '<span class="clinical-hearts" aria-label="Lives">';
   for (let i = 0; i < total; i++) {
     const isAlive = i < currentLives;
-    html += `<span class="clinical-heart ${isAlive ? "is-on" : "is-off"}">❤</span>`;
+    html += `<span class="clinical-heart ${isAlive ? "is-on" : "is-off"}">\u2764\uFE0F</span>`;
   }
   html += "</span>";
   return html;
@@ -20910,6 +24174,18 @@ async function handleGlobalQuickNavDestination(destination) {
     return;
   }
 
+  if (destination === "news") {
+    if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
+      return;
+    }
+    openNewsScreen();
+    return;
+  }
+  if (destination === "extra") {
+    showScreen("home-screen");
+    return;
+  }
+
   if (destination === "menu") {
     showScreen("quiz-menu");
     return;
@@ -20925,10 +24201,7 @@ function getActiveScreenId() {
 }
 
 function updateMenuBottomNavState(screenId = "") {
-  const targetKey =
-    screenId === "dashboard"
-      ? "performance"
-      : screenId === "community-screen" || screenId === "community-profile-screen" || screenId === "community-chat-screen"
+  const targetKey =screenId === "community-screen" || screenId === "community-profile-screen" || screenId === "community-chat-screen"
         ? "community"
         : screenId === "topic-library" || screenId === "topic-viewer"
           ? "library"
@@ -20981,9 +24254,11 @@ function getScreenBackFallback(screenId = "") {
   if (currentId === "community-group-storage-screen") return "community-profile-screen";
   if (currentId === "community-profile-screen" || currentId === "community-chat-screen") return "community-screen";
   if (currentId === "community-screen") return "quiz-menu";
+  if (currentId === "subscription-screen") return subscriptionScreenState.returnScreen || "quiz-menu";
   if (currentId === "topic-viewer") return topicViewerReturnScreen || "topic-library";
   if (currentId === "topic-library") return topicLibraryReturnScreen || "quiz-menu";
   if (currentId === "settings-screen" || currentId === "profile-screen" || currentId === "tour-screen") return "quiz-menu";
+  if (currentId === "news-screen") return "quiz-menu";
   if (currentId === "study-setup" || currentId === "exam-setup" || currentId === "daily-setup") return "quiz-menu";
   if (currentId === "quiz-menu") return "home-screen";
   return "quiz-menu";
@@ -20997,6 +24272,531 @@ function goBackByHistory(currentScreenId = "", fallbackId = "") {
 function returnToParentScreen(screenId) {
   if (!screenId) return;
   showScreen(screenId, { recordHistory: false });
+}
+
+function resetNewsScrollPosition() {
+  if (newsScreen instanceof HTMLElement) {
+    newsScreen.scrollTop = 0;
+    newsScreen.scrollLeft = 0;
+  }
+  if (newsShellEl instanceof HTMLElement) {
+    newsShellEl.scrollTop = 0;
+    newsShellEl.scrollLeft = 0;
+  }
+  if (newsFeedList instanceof HTMLElement) {
+    newsFeedList.scrollTop = 0;
+    newsFeedList.scrollLeft = 0;
+  }
+  if (newsDetailCard instanceof HTMLElement) {
+    newsDetailCard.scrollTop = 0;
+    newsDetailCard.scrollLeft = 0;
+  }
+}
+
+function getNewsCategoryLabel(category = "") {
+  const value = String(category || "").trim().toLowerCase();
+  if (value === "guideline-update") return "Guideline updates";
+  if (value === "health-concern") return "Health concerns";
+  if (value === "pharmacy-update") return "Pharmacy updates";
+  if (value === "clinical-news") return "Clinical news";
+  return "All news";
+}
+
+function getNewsCategoryIcon(category = "") {
+  const value = String(category || "").trim().toLowerCase();
+  if (value === "guideline-update") return "GUIDE";
+  if (value === "health-concern") return "SAFE";
+  if (value === "pharmacy-update") return "RX";
+  if (value === "clinical-news") return "CLIN";
+  return "ALL";
+}
+
+function getNewsVisibleItems() {
+  const category = String(newsFeedState.selectedCategory || "all").trim().toLowerCase();
+  const sourceId = String(newsFeedState.selectedSourceId || "").trim();
+  const query = String(newsFeedState.searchQuery || "").trim().toLowerCase();
+  return Array.isArray(newsFeedState.items)
+    ? newsFeedState.items.filter((item) => {
+        const itemCategory = String(item?.category || "").trim().toLowerCase();
+        const itemSourceId = String(item?.sourceId || "").trim();
+        const searchable = `${item?.title || ""} ${item?.summary || ""} ${item?.content || ""} ${item?.sourceName || ""} ${item?.category || ""}`.toLowerCase();
+        if (category && category !== "all" && itemCategory !== category) return false;
+        if (sourceId && itemSourceId !== sourceId) return false;
+        if (query && !searchable.includes(query)) return false;
+        return true;
+      })
+    : [];
+}
+
+function getSelectedNewsItem() {
+  const selectedId = String(newsFeedState.selectedNewsId || "").trim();
+  if (!selectedId) return null;
+  return getNewsVisibleItems().find((item) => String(item?.id || "") === selectedId) || null;
+}
+
+function getNewsCategoryCounts(items = []) {
+  return Array.isArray(items)
+    ? items.reduce(
+        (accumulator, item) => {
+          const category = String(item?.category || "clinical-news").trim().toLowerCase();
+          accumulator.all += 1;
+          accumulator[category] = (accumulator[category] || 0) + 1;
+          return accumulator;
+        },
+        { all: 0, "clinical-news": 0, "guideline-update": 0, "health-concern": 0, "pharmacy-update": 0 },
+      )
+    : { all: 0, "clinical-news": 0, "guideline-update": 0, "health-concern": 0, "pharmacy-update": 0 };
+}
+
+function getNewsTrendingItems(limit = 3) {
+  const items = Array.isArray(newsFeedState.items) ? [...newsFeedState.items] : [];
+  const rank = (item = {}) => {
+    const importance = String(item?.importance || "").trim().toLowerCase();
+    if (importance === "high") return 3;
+    if (importance === "medium") return 2;
+    if (importance === "low") return 1;
+    return 2;
+  };
+  items.sort((left, right) => {
+    const importanceDiff = rank(right) - rank(left);
+    if (importanceDiff) return importanceDiff;
+    const rightDate = new Date(right?.publishedAt || right?.collectedAt || right?.updatedAt || 0).getTime();
+    const leftDate = new Date(left?.publishedAt || left?.collectedAt || left?.updatedAt || 0).getTime();
+    return rightDate - leftDate;
+  });
+  return items.slice(0, Math.max(1, Number(limit) || 3));
+}
+
+function formatNewsDate(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "Recently";
+  try {
+    return formatAppDateTime(text);
+  } catch {
+    return text;
+  }
+}
+
+function buildNewsTrendingItemMarkup(item = {}, index = 0) {
+  const title = escapeHtml(item?.title || "Untitled update");
+  const category = escapeHtml(getNewsCategoryLabel(item?.category || ""));
+  const active = String(item?.id || "") === String(newsFeedState.selectedNewsId || "") ? " is-active" : "";
+  return `
+    <button type="button" class="news-trending-item${active}" data-news-id="${escapeHtml(item?.id || "")}">
+      <span class="news-trending-rank">${index + 1}</span>
+      <span class="news-trending-copy">
+        <span class="news-trending-title">${title}</span>
+        <span class="news-trending-category">${category}</span>
+      </span>
+      <span class="news-trending-chevron" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="m9 6 6 6-6 6"></path>
+        </svg>
+      </span>
+    </button>
+  `;
+}
+
+function buildNewsBadgeMarkup(item = {}) {
+  const category = String(item?.category || "").trim().toLowerCase();
+  const label = getNewsCategoryLabel(category);
+  const tone = category === "health-concern" ? "is-danger" : category === "guideline-update" ? "is-accent" : category === "pharmacy-update" ? "is-soft" : "is-neutral";
+  return `<span class="news-badge ${tone}">${escapeHtml(label)}</span>`;
+}
+
+function buildNewsCardMarkup(item = {}, isActive = false) {
+  const title = escapeHtml(item?.title || "Untitled update");
+  const summary = escapeHtml(item?.summary || item?.content || "No summary available.");
+  const sourceName = escapeHtml(item?.sourceName || "Curated source");
+  const publishedAt = escapeHtml(formatNewsDate(item?.publishedAt || item?.collectedAt || item?.updatedAt || ""));
+  const category = escapeHtml(getNewsCategoryLabel(item?.category || ""));
+  const activeClass = isActive ? " is-active" : "";
+  return `
+    <button type="button" class="news-card${activeClass}" data-news-id="${escapeHtml(item?.id || "")}">
+      <div class="news-card-head">
+        <div class="news-card-category">${category}</div>
+        <div class="news-card-time">${publishedAt}</div>
+      </div>
+      <div class="news-card-title">${title}</div>
+      <div class="news-card-summary">${summary}</div>
+      <div class="news-card-foot">
+        <span class="news-card-source">${sourceName}</span>
+        <span class="news-card-separator" aria-hidden="true">|</span>
+        <span class="news-card-time">${publishedAt}</span>
+      </div>
+    </button>
+  `;
+}
+
+function buildNewsDetailMarkup(item = null) {
+  if (!item) return "";
+  const title = escapeHtml(item.title || "News item");
+  const summary = escapeHtml(item.summary || "");
+  const content = escapeHtml(item.content || item.summary || "");
+  const sourceName = escapeHtml(item.sourceName || "Curated source");
+  const sourceUrl = String(item.sourceUrl || item.canonicalUrl || "").trim();
+  const publishedAt = escapeHtml(formatNewsDate(item.publishedAt || item.collectedAt || item.updatedAt || ""));
+  const category = escapeHtml(getNewsCategoryLabel(item.category || ""));
+  const reviewNote = item.reviewNote ? `<div class="news-detail-note"><strong>Editor note:</strong> ${escapeHtml(item.reviewNote)}</div>` : "";
+  const linkMarkup = sourceUrl
+    ? `<a class="news-detail-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">Open source update</a>`
+    : "";
+  return `
+    <article class="news-detail-card-inner">
+      <div class="news-detail-topline">
+        ${buildNewsBadgeMarkup(item)}
+        <span class="news-detail-source">${sourceName}</span>
+      </div>
+      <h3 class="news-detail-title">${title}</h3>
+      <div class="news-detail-meta">
+        <span>${publishedAt}</span>
+        <span>${category}</span>
+      </div>
+      <div class="news-detail-summary">${summary}</div>
+      <div class="news-detail-body">${content}</div>
+      ${reviewNote}
+      <div class="news-detail-actions">
+        ${linkMarkup}
+      </div>
+    </article>
+  `;
+}
+
+function renderNewsFilters() {
+  const items = Array.isArray(newsFeedState.items) ? newsFeedState.items : [];
+  const categories = ["all", "clinical-news", "guideline-update", "health-concern", "pharmacy-update"];
+  const activeCategory = String(newsFeedState.selectedCategory || "all").trim().toLowerCase() || "all";
+  if (newsFilterStrip) {
+    newsFilterStrip.innerHTML = categories
+      .map((category) => {
+        const active = activeCategory === category;
+        return `
+          <button type="button" class="news-filter-chip${active ? " is-active" : ""}" data-news-filter="${escapeHtml(category)}">
+            <span class="news-filter-chip-label">${escapeHtml(category === "all" ? "All news" : getNewsCategoryLabel(category))}</span>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
+  if (newsMobileMenu) {
+    newsMobileMenu.innerHTML = categories
+      .map((category) => {
+        const active = activeCategory === category;
+        const label = category === "all" ? "All news" : getNewsCategoryLabel(category);
+        return `
+          <button type="button" class="news-mobile-menu-item${active ? " is-active" : ""}" data-news-filter-mobile-item="${escapeHtml(category)}">
+            ${escapeHtml(label)}
+          </button>
+        `;
+      })
+      .join("");
+  }
+}
+
+function renderNewsList() {
+  if (!newsFeedList) return;
+  const items = getNewsVisibleItems();
+  if (!items.length) {
+    const hasFilters =
+      String(newsFeedState.searchQuery || "").trim() ||
+      String(newsFeedState.selectedCategory || "all").trim().toLowerCase() !== "all" ||
+      String(newsFeedState.selectedSourceId || "").trim();
+    const message = newsFeedState.loading ? "Loading curated updates..." : hasFilters ? "No matching updates" : "No updates yet";
+    const subMessage = newsFeedState.loading
+      ? "Please wait while we collect the latest curated items."
+      : hasFilters
+        ? "Try another search term or switch back to All news."
+        : "Check back soon for the latest news and updates.";
+    newsFeedList.innerHTML = `
+      <div class="news-empty-state">
+        <div class="news-empty-art" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 4h9l3 3v13H6z"></path>
+            <path d="M15 4v4h4"></path>
+            <path d="M8 11h8"></path>
+            <path d="M8 15h8"></path>
+          </svg>
+        </div>
+        <div class="news-empty-copy">
+          <div class="news-empty-title">${escapeHtml(message)}</div>
+          <div class="news-empty-subtitle">${escapeHtml(subMessage)}</div>
+        </div>
+        <button type="button" class="news-empty-action" data-news-refresh-inline="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12a8 8 0 0 1 13.66-5.66L20 9"></path>
+            <path d="M20 4v5h-5"></path>
+            <path d="M20 12a8 8 0 0 1-13.66 5.66L4 15"></path>
+            <path d="M4 20v-5h5"></path>
+          </svg>
+          Check again later
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  if (!items.some((item) => String(item?.id || "") === String(newsFeedState.selectedNewsId || ""))) {
+    newsFeedState.selectedNewsId = "";
+  }
+
+  newsFeedList.innerHTML = items
+    .map((item) => buildNewsCardMarkup(item, String(item?.id || "") === String(newsFeedState.selectedNewsId || "")))
+    .join("");
+}
+
+function renderNewsDetail() {
+  if (!newsDetailPanel || !newsDetailEmpty || !newsDetailCard) return;
+  const item = getSelectedNewsItem();
+  if (!item) {
+    newsDetailPanel.classList.add("hidden");
+    newsDetailEmpty.classList.remove("hidden");
+    newsDetailCard.classList.add("hidden");
+    newsDetailCard.innerHTML = "";
+    return;
+  }
+
+  newsDetailPanel.classList.remove("hidden");
+  newsDetailEmpty.classList.add("hidden");
+  newsDetailCard.classList.remove("hidden");
+  newsDetailCard.innerHTML = buildNewsDetailMarkup(item);
+}
+
+function renderNewsMeta() {
+  if (newsFeedMetaCount) {
+    newsFeedMetaCount.textContent = String(getNewsVisibleItems().length);
+  }
+  if (newsFeedMetaSourceCount) {
+    newsFeedMetaSourceCount.textContent = String(Array.isArray(newsFeedState.sources) ? newsFeedState.sources.length : 0);
+  }
+}
+
+function updateNewsHeaderTitle() {
+  if (!(newsHeaderTitleEl instanceof HTMLElement)) return;
+  const item = getSelectedNewsItem();
+  const nextTitle = String(item?.authorName || item?.sourceName || item?.publisher || "News").trim() || "News";
+  newsHeaderTitleEl.textContent = nextTitle;
+}
+
+function renderNewsSearchInput() {
+  if (newsSearchInput instanceof HTMLInputElement) {
+    const nextValue = String(newsFeedState.searchQuery || "");
+    if (newsSearchInput.value !== nextValue) {
+      newsSearchInput.value = nextValue;
+    }
+  }
+}
+
+function openNewsSearch() {
+  if (!newsScreen || !(newsSearchInput instanceof HTMLInputElement)) return;
+  newsScreen.classList.add("news-search-open");
+  newsSearchBtn?.setAttribute("aria-expanded", "true");
+  window.requestAnimationFrame(() => {
+    newsSearchInput.focus({ preventScroll: true });
+    const cursor = newsSearchInput.value.length;
+    try {
+      newsSearchInput.setSelectionRange(cursor, cursor);
+    } catch {
+      // Some browsers block selection on type=search.
+    }
+  });
+}
+
+function closeNewsSearch() {
+  if (!newsScreen) return;
+  newsScreen.classList.remove("news-search-open");
+  newsSearchBtn?.setAttribute("aria-expanded", "false");
+}
+
+function toggleNewsSearch() {
+  if (!newsScreen) return;
+  if (newsScreen.classList.contains("news-search-open")) {
+    closeNewsSearch();
+    return;
+  }
+  openNewsSearch();
+}
+
+function openNewsMobileMenu() {
+  if (!newsScreen || !newsMobileMenuBtn || !newsMobileMenu) return;
+  newsScreen.classList.add("news-mobile-menu-open");
+  newsMobileMenuBtn.setAttribute("aria-expanded", "true");
+  newsMobileMenu.classList.remove("hidden");
+  newsMobileMenu.setAttribute("aria-hidden", "false");
+}
+
+function closeNewsMobileMenu() {
+  if (!newsScreen || !newsMobileMenuBtn || !newsMobileMenu) return;
+  newsScreen.classList.remove("news-mobile-menu-open");
+  newsMobileMenuBtn.setAttribute("aria-expanded", "false");
+  newsMobileMenu.classList.add("hidden");
+  newsMobileMenu.setAttribute("aria-hidden", "true");
+}
+
+function toggleNewsMobileMenu() {
+  if (!newsScreen) return;
+  if (newsScreen.classList.contains("news-mobile-menu-open")) {
+    closeNewsMobileMenu();
+    return;
+  }
+  openNewsMobileMenu();
+}
+
+function renderNewsAlert(message = "", tone = "info") {
+  if (!newsAlert) return;
+  const text = String(message || "").trim();
+  if (!text) {
+    newsAlert.className = "news-alert hidden";
+    newsAlert.textContent = "";
+    return;
+  }
+
+  const normalizedTone = tone === "success" ? "good" : tone === "error" ? "bad" : "info";
+  newsAlert.className = `news-alert tone-${normalizedTone}`;
+  newsAlert.textContent = text;
+}
+
+function renderNewsSidebar() {
+  if (newsTrendingList) {
+    const trendingItems = getNewsTrendingItems(3);
+    newsTrendingList.innerHTML = trendingItems.length
+      ? trendingItems
+          .map((item, index) => buildNewsTrendingItemMarkup(item, index))
+          .join("")
+      : `
+        <div class="news-sidebar-empty">
+          No trending items yet.
+        </div>
+      `;
+  }
+}
+
+function renderNewsScreen() {
+  updateNewsHeaderTitle();
+  renderNewsSearchInput();
+  renderNewsAlert(newsFeedState.error, newsFeedState.errorTone || "info");
+  renderNewsFilters();
+  renderNewsList();
+  renderNewsDetail();
+  renderNewsMeta();
+  renderNewsSidebar();
+}
+
+async function hydrateNewsFeedFromCache() {
+  try {
+    const cached = await getOfflineEntry(NEWS_FEED_CACHE_KEY);
+    const payload = cached?.value && typeof cached.value === "object" ? cached.value : null;
+    if (!payload) return false;
+    newsFeedState.items = Array.isArray(payload.items) ? payload.items : [];
+    newsFeedState.categories = payload.categories && typeof payload.categories === "object" ? payload.categories : {};
+    newsFeedState.sources = Array.isArray(payload.sources) ? payload.sources : [];
+    newsFeedState.selectedNewsId = String(payload.selectedNewsId || newsFeedState.selectedNewsId || "").trim();
+    newsFeedState.selectedCategory = String(payload.selectedCategory || newsFeedState.selectedCategory || "all").trim() || "all";
+    newsFeedState.selectedSourceId = String(payload.selectedSourceId || newsFeedState.selectedSourceId || "").trim();
+    newsFeedState.searchQuery = String(payload.searchQuery || newsFeedState.searchQuery || "").trim();
+    newsFeedState.lastUpdatedAt = String(payload.lastUpdatedAt || cached.updatedAt || "").trim();
+    newsFeedState.loaded = true;
+    renderNewsScreen();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function persistNewsFeedCache() {
+  try {
+    await setOfflineEntry(NEWS_FEED_CACHE_KEY, {
+      items: Array.isArray(newsFeedState.items) ? newsFeedState.items : [],
+      categories: newsFeedState.categories || {},
+      sources: Array.isArray(newsFeedState.sources) ? newsFeedState.sources : [],
+      selectedNewsId: String(newsFeedState.selectedNewsId || "").trim(),
+      selectedCategory: String(newsFeedState.selectedCategory || "all").trim() || "all",
+      selectedSourceId: String(newsFeedState.selectedSourceId || "").trim(),
+      searchQuery: String(newsFeedState.searchQuery || "").trim(),
+      lastUpdatedAt: String(newsFeedState.lastUpdatedAt || new Date().toISOString()).trim(),
+    });
+  } catch {
+    // Cache is a convenience layer only.
+  }
+}
+
+async function ensureNewsFeedLoaded({ force = false, silent = false } = {}) {
+  if (newsFeedState.loading) return false;
+  if (newsFeedState.loaded && !force && Array.isArray(newsFeedState.items) && newsFeedState.items.length > 0) {
+    if (!silent) renderNewsScreen();
+    return true;
+  }
+
+  newsFeedState.loading = true;
+  newsFeedState.error = "";
+  newsFeedState.errorTone = "info";
+  if (!silent) renderNewsScreen();
+
+  try {
+    const payload = await backendClient.fetchNewsFeed({ limit: 50 });
+    newsFeedState.items = Array.isArray(payload?.items) ? payload.items : [];
+    newsFeedState.categories = payload?.categories && typeof payload.categories === "object" ? payload.categories : {};
+    newsFeedState.sources = Array.isArray(payload?.sources) ? payload.sources : [];
+    const selectedCandidate = String(newsFeedState.selectedNewsId || "").trim();
+    newsFeedState.selectedNewsId = newsFeedState.items.some((item) => String(item?.id || "") === selectedCandidate)
+      ? selectedCandidate
+      : "";
+    newsFeedState.loaded = true;
+    newsFeedState.lastUpdatedAt = new Date().toISOString();
+    await persistNewsFeedCache();
+    renderNewsScreen();
+    return true;
+  } catch (error) {
+    const message = String(error?.message || error || "Failed to load news feed");
+    const cached = await hydrateNewsFeedFromCache();
+    newsFeedState.errorTone = cached ? "info" : "error";
+    newsFeedState.error = cached ? `${message} Showing the last saved feed.` : message;
+    if (!cached) {
+      renderNewsScreen();
+    }
+    if (!silent) renderNewsScreen();
+    return cached;
+  } finally {
+    newsFeedState.loading = false;
+    renderNewsScreen();
+  }
+}
+
+function selectNewsCategory(category = "all") {
+  newsFeedState.selectedCategory = String(category || "all").trim().toLowerCase() || "all";
+  const visibleItems = getNewsVisibleItems();
+  if (!visibleItems.some((item) => String(item?.id || "") === String(newsFeedState.selectedNewsId || ""))) {
+    newsFeedState.selectedNewsId = "";
+  }
+  renderNewsScreen();
+}
+
+function selectNewsItem(newsId = "") {
+  const selectedId = String(newsId || "").trim();
+  if (!selectedId) return;
+  newsFeedState.selectedNewsId = selectedId;
+  renderNewsScreen();
+}
+
+function selectNewsSearchQuery(query = "") {
+  newsFeedState.searchQuery = String(query || "").trim();
+  const visibleItems = getNewsVisibleItems();
+  if (!visibleItems.some((item) => String(item?.id || "") === String(newsFeedState.selectedNewsId || ""))) {
+    newsFeedState.selectedNewsId = "";
+  }
+  renderNewsScreen();
+}
+
+async function openNewsScreen({ refresh = false } = {}) {
+  if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
+    return;
+  }
+  window.location.href = "./news.html";
+  closeMenuUserHub();
+  closeGlobalQuickNav();
+  closeNewsSearch();
+  closeNewsMobileMenu();
+  resetNewsScrollPosition();
 }
 
 function clearDeviceLocalCache() {
@@ -21032,8 +24832,21 @@ function formatDateKey(dateKey = "") {
   }
   const dd = String(day).padStart(2, "0");
   const mm = String(month).padStart(2, "0");
-  const yyyy = String(year).padStart(4, "0");
-  return `${dd}/${mm}/${yyyy}`;
+  const yy = String(year).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+function getLocalDateKey(date = new Date()) {
+  const safeDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  const year = String(safeDate.getFullYear()).padStart(4, "0");
+  const month = String(safeDate.getMonth() + 1).padStart(2, "0");
+  const day = String(safeDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isDailyQuizStateForToday() {
+  const todayDate = String(dailyQuizState?.today?.date || "").trim();
+  return Boolean(todayDate) && todayDate === getLocalDateKey();
 }
 
 function normalizeDailyQuizPayload(raw = {}) {
@@ -21146,7 +24959,7 @@ function renderDailyHistoryPanel() {
 
     const score = document.createElement("div");
     score.className = "daily-history-score";
-    score.textContent = `${row.score}/${row.total} • ${row.percent}%`;
+    score.textContent = `Score ${row.score} of ${row.total} and ${row.percent} percent`;
 
     left.appendChild(date);
     left.appendChild(score);
@@ -21368,6 +25181,11 @@ function clearDailyResultEnhancements() {
     resultShareBtn.classList.add("hidden");
     resultShareBtn.onclick = null;
   }
+  const scoreBlock = document.querySelector("#study-result-screen .result-score-block");
+  if (scoreBlock) {
+    scoreBlock.classList.remove("hidden");
+  }
+  clearLawDrillResultReview();
 }
 
 function renderDailySocialCard(snapshot) {
@@ -21463,10 +25281,11 @@ function configureDailyShareButton(context = {}) {
 }
 
 function renderDailyQuizUi() {
-  const userSummary = currentUser?.dailyQuiz || {};
+  const menuUser = getMenuSnapshotUser();
+  const userSummary = currentUser?.dailyQuiz || menuUser?.dailyQuiz || {};
   const state = dailyQuizState;
 
-  if (!currentUser) {
+  if (!menuUser) {
     if (dailyQuizMetaEl) {
       dailyQuizMetaEl.textContent = "Sign in to unlock today's challenge.";
     }
@@ -21518,8 +25337,13 @@ function renderDailyQuizUi() {
 
   const streak = Number(state?.stats?.streak ?? userSummary.streak) || 0;
   const gems = Number(state?.stats?.gems ?? userSummary.gems) || 0;
-  const completedDays =
-    Number(state?.stats?.completedDays ?? userSummary.completedDays) || 0;
+  const completedSessions =
+    Number(
+      state?.stats?.totalCompleted ??
+        userSummary.totalCompleted ??
+        state?.stats?.completedDays ??
+        userSummary.completedDays,
+    ) || 0;
   const season = state?.season || {};
   const today = state?.today || {};
   const rules = state?.rewardRules || {};
@@ -21545,7 +25369,7 @@ function renderDailyQuizUi() {
         : todayCompleted
           ? "Completed today"
           : "Ready today";
-    dailyQuizMetaEl.textContent = `${totalQuestions} questions • ${status}`;
+    dailyQuizMetaEl.textContent = `${totalQuestions} questions and ${status}`;
   }
 
   if (menuDailyProgressFillEl) {
@@ -21560,7 +25384,7 @@ function renderDailyQuizUi() {
 
   if (dailyWindowLineEl) {
     if (todayDate) {
-      dailyWindowLineEl.textContent = `${formatDateKey(todayDate)} • Renews 12:00 AM`;
+      dailyWindowLineEl.textContent = `${formatDateKey(todayDate)} and renews at midnight`;
     } else {
       dailyWindowLineEl.textContent = "Loading today...";
     }
@@ -21581,11 +25405,11 @@ function renderDailyQuizUi() {
 
   if (dailyStreakValueEl) dailyStreakValueEl.textContent = String(streak);
   if (!dailyGemsAnimationActive) setDailyGemsValue(gems);
-  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedDays);
+  if (dailyCompletedValueEl) dailyCompletedValueEl.textContent = String(completedSessions);
 
   if (dailyRewardLineEl) {
     dailyRewardLineEl.textContent =
-      `+${rules.completion || 0} finish • +${rules.perCorrect || 0}/correct • +${rules.perfect || 0} perfect`;
+      `Finish gives ${rules.completion || 0} points and each correct answer gives ${rules.perCorrect || 0} points and a perfect score gives ${rules.perfect || 0} points`;
   }
 
   if (dailyResultLineEl) {
@@ -21668,10 +25492,47 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
     return dailyQuizState;
   }
 
+  if (!force) {
+    const cachedState = await getOfflineEntry(DAILY_QUIZ_STATE_CACHE_KEY);
+    if (cachedState?.value) {
+      dailyQuizState = normalizeDailyQuizPayload(cachedState.value);
+      renderDailyQuizUi();
+      void (async () => {
+        try {
+          const fetchToday =
+            backendClient.fetchDailyQuizToday ||
+            backendClient.fetchDailyQuiz ||
+            backendClient.fetchQuizToday ||
+            backendClient.fetchquiztoday ||
+            backendClient.fecthQuizToday ||
+            backendClient.fecthquiztoday;
+
+          if (typeof fetchToday !== "function") {
+            return;
+          }
+
+          const payload = await fetchToday.call(backendClient);
+          dailyQuizState = normalizeDailyQuizPayload(payload);
+          if (payload?.user) {
+            currentUser = payload.user;
+          }
+          if (dailyQuizState.today?.completed) {
+            markDailyPopupSeen(dailyQuizState.today.date);
+          }
+          renderDailyQuizUi();
+          void setOfflineEntry(DAILY_QUIZ_STATE_CACHE_KEY, dailyQuizState);
+        } catch {
+          // Keep cached daily quiz state when refresh fails.
+        }
+      })();
+      return dailyQuizState;
+    }
+  }
+
+  const previousState = dailyQuizState;
   if (!silent && dailyStatusLineEl) {
     dailyStatusLineEl.textContent = "Checking today's challenge...";
   }
-
   try {
     const fetchToday =
       backendClient.fetchDailyQuizToday ||
@@ -21687,13 +25548,21 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
 
     const payload = await fetchToday.call(backendClient);
     dailyQuizState = normalizeDailyQuizPayload(payload);
+    if (payload?.user) {
+      currentUser = payload.user;
+    }
     if (dailyQuizState.today?.completed) {
       markDailyPopupSeen(dailyQuizState.today.date);
     }
+    void setOfflineEntry(DAILY_QUIZ_STATE_CACHE_KEY, dailyQuizState);
     renderDailyQuizUi();
     return dailyQuizState;
   } catch (error) {
-    dailyQuizState = null;
+    if (!previousState) {
+      dailyQuizState = null;
+    } else {
+      dailyQuizState = previousState;
+    }
     const message = String(error?.message || "Daily challenge unavailable.");
     const safeMessage = message.replace(/\s+\(\d+\)\s*$/, "");
     if (dailyQuizMetaEl) {
@@ -21725,7 +25594,11 @@ async function openDailySetup() {
   }
   showScreen("daily-setup");
   scheduleDailyMidnightRefresh();
-  await refreshDailyQuizState({ force: true });
+  if (!dailyQuizState || !isDailyQuizStateForToday()) {
+    await refreshDailyQuizState({ force: true });
+  } else {
+    renderDailyQuizUi();
+  }
   if (dailyQuizState?.today?.date) {
     markDailyPopupSeen(dailyQuizState.today.date);
   }
@@ -21737,7 +25610,9 @@ async function startDailyQuizSession() {
   examVariant = "normal";
   examTimeBudget = 0;
 
-  const state = await refreshDailyQuizState({ force: true });
+  const state = dailyQuizState && isDailyQuizStateForToday()
+    ? dailyQuizState
+    : await refreshDailyQuizState({ force: true });
   if (!state) return;
 
   const today = state.today || {};
@@ -21883,9 +25758,10 @@ if (topicLibrarySearchInput) {
 
 if (topicLibraryBtns.length) {
   topicLibraryBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
+      await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
       closeMenuUserHub();
-      openTopicLibrary("quiz-menu");
+      void openTopicLibrary("quiz-menu");
     });
   });
 }
@@ -22025,9 +25901,9 @@ if (menuSettingsBtn) {
 }
 
 if (menuCommunityBtn) {
-  menuCommunityBtn.addEventListener("click", () => {
+  menuCommunityBtn.addEventListener("click", async () => {
     closeMenuUserHub();
-    void openCommunityScreen();
+    await openCommunityScreen();
   });
 }
 
@@ -22671,6 +26547,12 @@ document.querySelectorAll("[data-community-group-storage-tab]").forEach((button)
     setCommunityGroupStorageTab(String(button.dataset.communityGroupStorageTab || "media"));
   });
 });
+
+if (communityBackBtn) {
+  communityBackBtn.addEventListener("click", () => {
+    goBackByHistory("community-screen", "quiz-menu");
+  });
+}
 
 if (communityChatBackBtn) {
   communityChatBackBtn.addEventListener("click", () => {
@@ -23581,11 +27463,26 @@ if (communityChatMessagesEl) {
 }
 
 if (communityResultsEl) {
+  communityResultsEl.addEventListener("contextmenu", (event) => {
+    if (isCommunityForwardMode()) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const selectableRow =
+      getCommunityConversationRowFromEventTarget(target) ||
+      getCommunityFriendCardFromEventTarget(target) ||
+      target.closest(".community-group-member-row[data-user-id]");
+    if (!(selectableRow instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+
   communityResultsEl.addEventListener("pointerdown", (event) => {
     if (isCommunityForwardMode()) return;
     const target = event.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
     if (!(row instanceof HTMLElement)) return;
+    const nestedAction = getCommunityConversationNestedActionFromEventTarget(target);
+    if (nestedAction) return;
     communityConversationActionLastPointerType = String(event.pointerType || "").trim();
     if (isCommunityConversationActionOpen()) return;
     if (event.pointerType !== "touch") return;
@@ -23639,6 +27536,16 @@ if (communityResultsEl) {
     const gesture = communityConversationActionTouchStart;
     const target = event?.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
+    const nestedAction = getCommunityConversationNestedActionFromEventTarget(target);
+    if (nestedAction) {
+      if (communityConversationActionHoldHandle) {
+        clearTimeout(communityConversationActionHoldHandle);
+        communityConversationActionHoldHandle = null;
+      }
+      communityConversationActionTouchStart = null;
+      communityConversationActionHoldTriggered = false;
+      return;
+    }
     const rowData = row
       ? getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === String(row.dataset.conversationId || ""))
       : null;
@@ -23713,6 +27620,7 @@ if (communityResultsEl) {
     const target = event.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
     if (!(row instanceof HTMLElement)) return;
+    if (getCommunityConversationNestedActionFromEventTarget(target)) return;
     clearCommunityConversationActionTimers();
     const conversationId = String(row.dataset.conversationId || "").trim();
     const rowData = getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === conversationId);
@@ -23727,10 +27635,23 @@ if (communityResultsEl) {
     const target = event.target instanceof HTMLElement ? event.target : null;
     const row = getCommunityConversationRowFromEventTarget(target);
     if (!(row instanceof HTMLElement)) return;
+    const nestedAction = getCommunityConversationNestedActionFromEventTarget(target);
+    if (nestedAction) return;
     const conversationId = String(row.dataset.conversationId || "").trim();
     const rowData = getCommunityConversationActionRows().find((entry) => String(entry?.id || "") === conversationId);
     if (!rowData) return;
     const now = Date.now();
+    if (event.detail >= 2 && communityConversationActionLastPointerType !== "touch") {
+      if (communityConversationActionOpenHandle) {
+        clearTimeout(communityConversationActionOpenHandle);
+        communityConversationActionOpenHandle = null;
+      }
+      clearCommunityConversationActionTimers();
+      event.preventDefault();
+      event.stopPropagation();
+      openCommunityConversationActionsForRow(rowData, { pointerType: "mouse" });
+      return;
+    }
     if (
       communityConversationActionSuppressClickConversationId === conversationId &&
       now <= Number(communityConversationActionSuppressClickUntil || 0)
@@ -23923,6 +27844,124 @@ if (communityResultsEl) {
       null;
     if (!user) return;
     openCommunityFriendActionsForUser({ ...user, id: userId, relationship, requestId }, { relationship, requestId, pointerType: "mouse" });
+  });
+}
+
+if (communityProfileCardEl) {
+  communityProfileCardEl.addEventListener("contextmenu", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = target?.closest(".community-group-member-row[data-user-id]");
+    if (!(card instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+
+  communityProfileCardEl.addEventListener("pointerdown", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) return;
+    if (event.pointerType !== "touch") return;
+    clearCommunityGroupMemberActionTimers({ keepTapState: true });
+    communityGroupMemberActionLastPointerType = String(event.pointerType || "").trim();
+    communityGroupMemberActionTouchStart = {
+      x: Number(event.clientX || 0),
+      y: Number(event.clientY || 0),
+      userId: String(card.dataset.userId || "").trim(),
+      moved: false,
+    };
+    const user = getCommunityGroupMemberActionUser(card.dataset.userId || "");
+    if (!user) return;
+    communityGroupMemberActionHoldHandle = window.setTimeout(() => {
+      communityGroupMemberActionHoldHandle = null;
+      communityGroupMemberActionHoldTriggered = true;
+      openCommunityGroupMemberActionsForUser(user, { pointerType: "touch" });
+    }, 520);
+  }, { passive: false });
+
+  communityProfileCardEl.addEventListener("pointermove", (event) => {
+    if (event.pointerType !== "touch") return;
+    const gesture = communityGroupMemberActionTouchStart;
+    if (!gesture) return;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) {
+      clearCommunityGroupMemberActionTimers();
+      return;
+    }
+    if (String(card.dataset.userId || "").trim() !== gesture.userId) {
+      clearCommunityGroupMemberActionTimers();
+      return;
+    }
+    const deltaX = Number(event.clientX || 0) - Number(gesture.x || 0);
+    const deltaY = Number(event.clientY || 0) - Number(gesture.y || 0);
+    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+      gesture.moved = true;
+      clearCommunityGroupMemberActionTimers();
+    }
+  }, { passive: true });
+
+  communityProfileCardEl.addEventListener("pointerup", (event) => {
+    if (communityGroupMemberActionHoldHandle) {
+      clearTimeout(communityGroupMemberActionHoldHandle);
+      communityGroupMemberActionHoldHandle = null;
+    }
+    const gesture = communityGroupMemberActionTouchStart;
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!gesture || !(card instanceof HTMLElement)) {
+      communityGroupMemberActionTouchStart = null;
+      return;
+    }
+    if (String(card.dataset.userId || "").trim() !== gesture.userId) {
+      communityGroupMemberActionTouchStart = null;
+      return;
+    }
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (communityGroupMemberActionHoldTriggered) {
+      window.setTimeout(() => {
+        communityGroupMemberActionHoldTriggered = false;
+      }, 260);
+      communityGroupMemberActionLastTapAt = 0;
+      communityGroupMemberActionLastTapUserId = "";
+      communityGroupMemberActionTouchStart = null;
+      return;
+    }
+    if (!gesture.moved) {
+      const now = Date.now();
+      const isDoubleTap =
+        communityGroupMemberActionLastTapUserId === gesture.userId &&
+        now - communityGroupMemberActionLastTapAt <= 320;
+      if (isDoubleTap) {
+        const user = getCommunityGroupMemberActionUser(gesture.userId);
+        if (user) {
+          openCommunityGroupMemberActionsForUser(user, { pointerType: "touch" });
+        }
+        communityGroupMemberActionLastTapAt = 0;
+        communityGroupMemberActionLastTapUserId = "";
+      } else {
+        communityGroupMemberActionLastTapAt = now;
+        communityGroupMemberActionLastTapUserId = gesture.userId;
+      }
+    }
+    communityGroupMemberActionTouchStart = null;
+  }, { passive: false });
+
+  communityProfileCardEl.addEventListener("pointercancel", () => {
+    clearCommunityGroupMemberActionTimers();
+  }, { passive: true });
+
+  communityProfileCardEl.addEventListener("dblclick", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const card = getCommunityGroupMemberCardFromEventTarget(target);
+    if (!(card instanceof HTMLElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const user = getCommunityGroupMemberActionUser(String(card.dataset.userId || ""));
+    if (!user) return;
+    openCommunityGroupMemberActionsForUser(user, { pointerType: "mouse" });
   });
 }
 
@@ -24200,8 +28239,10 @@ function findCommunityActionPayload(target) {
   const avatarTrigger = target.closest("[data-community-avatar-view='true']");
   const actionValue = String(actionButton.dataset.communityAction || "").trim();
   const chatRow = target.closest(".community-chat-row[data-conversation-id]");
-  if (chatRow instanceof HTMLElement) {
-    return null;
+  if (chatRow instanceof HTMLElement && chatRow !== actionButton) {
+    if (actionValue !== "open-conversation" && actionValue !== "open-chat" && actionValue !== "open-group-profile") {
+      return null;
+    }
   }
   if (avatarTrigger instanceof HTMLElement && (actionValue === "open-conversation" || actionValue === "open-chat")) {
     return null;
@@ -24222,7 +28263,14 @@ function handleCommunityForwardSelection(target) {
   if (conversationCard instanceof HTMLElement && communityResultsEl?.contains(conversationCard)) {
     const userId = String(conversationCard.dataset.userId || "").trim();
     const conversationId = String(conversationCard.dataset.conversationId || "").trim();
-    if (toggleCommunityForwardTarget({ userId, conversationId })) {
+    const isNotice = conversationCard.classList.contains("is-notice");
+    const isGroup = conversationCard.classList.contains("community-group-row");
+    const conversationType = isGroup ? "group" : isNotice ? "notice" : "direct";
+    if (conversationType === "group" || conversationType === "notice") {
+      setCommunityFeedback("Groups and admin notices can't receive forwarded items.", true);
+      return true;
+    }
+    if (toggleCommunityForwardTarget({ userId, conversationId, conversationType })) {
       renderCommunityView();
     }
     return true;
@@ -24245,7 +28293,7 @@ document.addEventListener("click", (event) => {
   }
   const target = event.target instanceof Element ? event.target : null;
   if (target && (isCommunityConversationActionOpen() || isCommunityFriendActionOpen())) {
-    const behindModalRow = target.closest(".community-chat-row[data-conversation-id], .community-user-card[data-user-id]");
+    const behindModalRow = target.closest(".community-chat-row[data-conversation-id], .community-user-card[data-user-id], .community-group-member-row[data-user-id]");
     if (behindModalRow instanceof HTMLElement) {
       event.preventDefault();
       event.stopPropagation();
@@ -25148,7 +29196,7 @@ document.addEventListener("keydown", (event) => {
     handleCommunityAvatarActivation(avatarTrigger);
     return;
   }
-  const actionTarget = target.closest("[data-community-action='open-profile'], [data-community-action='open-group-profile']");
+  const actionTarget = target.closest("[data-community-action='open-profile'], [data-community-action='open-group-profile'], [data-community-action='open-conversation'], [data-community-action='open-chat']");
   if (actionTarget instanceof HTMLElement) {
     event.preventDefault();
     const action = String(actionTarget.dataset.communityAction || "").trim();
@@ -25624,12 +29672,23 @@ if (communityStatusLikeBtn) {
     const ownerId = String(communityState.statusViewerOwnerId || "").trim();
     const statusId = String(current?.id || "").trim();
     if (!ownerId || !statusId) return;
+    const nextLiked = !Boolean(current?.likedByViewer);
+    const currentLikes = Math.max(0, Math.round(Number(current?.likesCount) || 0));
+    const nextLikesCount = Math.max(0, currentLikes + (nextLiked ? 1 : -1));
+    updateCommunityStatusLikeLocal(ownerId, statusId, nextLiked, nextLikesCount);
+    renderCommunityStatusViewerEntry(getCommunityStatusViewerEntry() || {});
+    renderCommunityStatusStrip();
     try {
       const response = await backendClient.toggleStatusLike(statusId);
       updateCommunityStatusLikeLocal(ownerId, statusId, Boolean(response?.liked), response?.likesCount);
       renderCommunityStatusViewerEntry(getCommunityStatusViewerEntry() || {});
       renderCommunityStatusStrip();
     } catch (error) {
+      await enqueueOfflineAction({
+        type: COMMUNITY_OFFLINE_QUEUE_TYPES.TOGGLE_STATUS_LIKE,
+        payload: { statusId, ownerId },
+      });
+      scheduleCommunityOfflineQueueFlush();
       setCommunityFeedback(String(error?.message || "Like could not be updated."), true);
     }
   });
@@ -25878,7 +29937,7 @@ if (communityThreadActionsDeleteBtn) {
     openCommunityConfirmModal({
       title: mode === "group" ? "Delete group?" : "Delete chat?",
       text: mode === "group"
-        ? "This removes the selected group for everyone. Use Exit Group if you only want to leave."
+        ? "This removes the selected group from your list. Use Exit Group if you want to leave the group."
         : "This removes the selected chat from your list.",
       confirmLabel: mode === "group" ? "Delete Group" : "Delete",
       intent: "danger",
@@ -26082,6 +30141,18 @@ if (communityAdminBroadcastClearBtn) {
   });
 }
 
+if (communityAdminBroadcastPreviewBtn) {
+  communityAdminBroadcastPreviewBtn.addEventListener("click", () => {
+    const attachment = communityState.adminBroadcastModal?.attachment || null;
+    if (!attachment) return;
+    openCommunityFilePreview(
+      String(attachment.dataUrl || attachment.remoteUrl || ""),
+      String(attachment.fileName || "attachment"),
+      String(attachment.mimeType || ""),
+    );
+  });
+}
+
 if (communityAdminBroadcastInput) {
   communityAdminBroadcastInput.addEventListener("input", () => {
     communityState.adminBroadcastModal = {
@@ -26215,7 +30286,7 @@ if (appUpdateModalEl) {
 if (menuPointsBtn) {
   menuPointsBtn.addEventListener("click", () => {
     closeMenuUserHub();
-    openLeaderboardModal("alltime");
+    openLeaderboardModal("daily");
   });
 }
 
@@ -26240,15 +30311,6 @@ leaderboardTabEls.forEach((tab) => {
   });
 });
 
-Array.from(document.querySelectorAll("[data-trend-scope]")).forEach((button) => {
-  button.addEventListener("click", () => {
-    const scope = String(button.dataset.trendScope || "session").trim().toLowerCase();
-    setDashboardTrendScope(scope);
-    renderDashboardTrend();
-    void syncSessionHistoryFromBackend({ force: true });
-  });
-});
-
 if (settingsBackBtn) {
   settingsBackBtn.addEventListener("click", () => {
     goBackByHistory("settings-screen", "quiz-menu");
@@ -26259,6 +30321,12 @@ if (settingsMenuBtn) {
   settingsMenuBtn.addEventListener("click", (event) => {
     event.stopPropagation();
     openGlobalQuickNav(settingsMenuBtn);
+  });
+}
+
+if (settingsDownloadAppBtn) {
+  settingsDownloadAppBtn.addEventListener("click", () => {
+    void openSettingsAndroidDownload();
   });
 }
 
@@ -26291,7 +30359,9 @@ if (globalQuickNavPanel) {
 }
 
 globalQuickNavLinks.forEach((link) => {
-  link.addEventListener("click", async () => {
+  link.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     const destination = String(link.dataset.quickNavDestination || "").trim();
     if (!destination) return;
     await handleGlobalQuickNavDestination(destination);
@@ -26769,9 +30839,13 @@ async function ensureTopicCatalogLoaded() {
   }
 }
 
-function openTopicLibrary(returnScreen = "quiz-menu") {
+async function openTopicLibrary(returnScreen = "quiz-menu") {
+  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   topicLibraryReturnScreen = returnScreen;
   showScreen("topic-library");
+  if (getActiveScreenId() !== "topic-library") {
+    return;
+  }
   ensureTopicCatalogLoaded();
   renderTopicLibrary();
 }
@@ -27449,12 +31523,20 @@ function enhanceTopicViewerSectionNavigation() {
   }
 }
 
-function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
+function startTopicQuizSession(topicSlug = "", topicTitle = "Topic", options = {}) {
   try {
     const slug = normalizeTopicPathToken(topicSlug);
     if (!slug) {
       alert("Topic quiz could not start because no topic slug was found.");
       return;
+    }
+    const normalizedTitle = String(topicTitle || "Topic").trim() || "Topic";
+    if (!options?.forceNew) {
+      const modalState = buildResumeTopicQuizSessionModalState(slug, normalizedTitle);
+      if (modalState) {
+        openSessionResumeModal(modalState);
+        return;
+      }
     }
 
     const sourceBank = Array.isArray(questionBank) && questionBank.length
@@ -27466,7 +31548,7 @@ function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
     const normalizedTopicQuestions = enrichImportedCaseQuestions(topicQuestions);
 
     if (normalizedTopicQuestions.length === 0) {
-      alert(`No topic quiz questions are available for ${topicTitle} yet.`);
+      alert(`No topic quiz questions are available for ${normalizedTitle} yet.`);
       return;
     }
 
@@ -27484,7 +31566,7 @@ function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
     mode = "topic";
     topicQuizSessionMeta = {
       slug,
-      title: String(topicTitle || "Topic").trim() || "Topic",
+      title: normalizedTitle,
       returnScreen: "topic-viewer",
     };
     current = 0;
@@ -27538,6 +31620,55 @@ function hasPendingTopicQuizLaunch() {
     const params = new URLSearchParams(window.location.search || "");
     return String(params.get("topicQuiz") || "").trim().length > 0;
   } catch {
+    return false;
+  }
+}
+
+function consumePendingScreenLaunch() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const screenId = String(params.get("screen") || "").trim();
+    if (!screenId) return false;
+    if (["news-screen", "news-feed", "news-story", "news"].includes(screenId)) {
+      void openNewsScreen();
+      return true;
+    }
+    if (screenId === "extra-screen") {
+      openExtraScreen();
+      params.delete("screen");
+      const nextQuery = params.toString();
+      const nextUrl =
+        window.location.pathname +
+        (nextQuery ? `?${nextQuery}` : "") +
+        (window.location.hash || "");
+      window.history.replaceState(window.history.state, "", nextUrl);
+      return true;
+    }
+    showScreen(screenId, { recordHistory: false });
+    setMenuHubActiveTab(
+      screenId === "drills-screen"
+        ? "drills"
+        : screenId === "gppqe-screen"
+          ? "gppqe"
+          : screenId === "extra-screen"
+            ? "extra"
+            : "drills",
+    );
+    if (screenId === "drills-screen") {
+      setDrillLobbyVariant("rapid");
+    } else if (screenId === "extra-screen") {
+      setExtraViewMode(extraViewMode, { persist: false });
+    }
+    params.delete("screen");
+    const nextQuery = params.toString();
+    const nextUrl =
+      window.location.pathname +
+      (nextQuery ? `?${nextQuery}` : "") +
+      (window.location.hash || "");
+    window.history.replaceState(window.history.state, "", nextUrl);
+    return true;
+  } catch (error) {
+    console.debug("Pending screen launch skipped:", error);
     return false;
   }
 }
@@ -27735,6 +31866,257 @@ function getContactRule(country) {
   return CONTACT_RULES_BY_COUNTRY[String(country || "").trim()] || null;
 }
 
+const CONTACT_RULES_BY_CODE = (() => {
+  const byCode = new Map();
+  Object.values(CONTACT_RULES_BY_COUNTRY).forEach((rule) => {
+    const code = String(rule?.code || "").trim();
+    if (code && !byCode.has(code)) byCode.set(code, rule);
+  });
+  return byCode;
+})();
+
+function getContactRuleByCode(code) {
+  return CONTACT_RULES_BY_CODE.get(String(code || "").trim()) || null;
+}
+
+const CONTACT_FORMAT_EMAIL = "email";
+const CONTACT_FORMAT_PHONE = "phone";
+const CONTACT_COUNTRY_VISUALS = {
+  "United States": { shortCode: "USA", flag: "🇺🇸" },
+  Canada: { shortCode: "CAN", flag: "🇨🇦" },
+  "United Kingdom": { shortCode: "GBR", flag: "🇬🇧" },
+  Nigeria: { shortCode: "NGA", flag: "🇳🇬" },
+  Ghana: { shortCode: "GHA", flag: "🇬🇭" },
+  Kenya: { shortCode: "KEN", flag: "🇰🇪" },
+  India: { shortCode: "IND", flag: "🇮🇳" },
+  Pakistan: { shortCode: "PAK", flag: "🇵🇰" },
+  Philippines: { shortCode: "PHL", flag: "🇵🇭" },
+  Australia: { shortCode: "AUS", flag: "🇦🇺" },
+  "South Africa": { shortCode: "ZAF", flag: "🇿🇦" },
+  Other: { shortCode: "INTL", flag: "🌍" }
+};
+const CONTACT_COUNTRY_OPTIONS = (() => {
+  const byCode = new Map();
+
+  Object.entries(CONTACT_RULES_BY_COUNTRY).forEach(([country, rule]) => {
+    const code = String(rule?.code || "").trim();
+    if (!code) return;
+
+    const entry = byCode.get(code) || { code, countries: [] };
+    entry.countries.push(country);
+    byCode.set(code, entry);
+  });
+
+  return Array.from(byCode.values()).map((entry) => {
+    const primaryCountry = entry.countries[0] || "";
+    const visual = CONTACT_COUNTRY_VISUALS[primaryCountry] || CONTACT_COUNTRY_VISUALS.Other;
+    return {
+      code: entry.code,
+      label: `${visual.shortCode}`,
+      title: `${primaryCountry || "International"} ${entry.code}`,
+    };
+  });
+})();
+const CONTACT_CODE_PRIORITY = Array.from(
+  new Set(CONTACT_COUNTRY_OPTIONS.map((option) => option.code)),
+).sort((left, right) => right.length - left.length);
+const DEFAULT_CONTACT_CODE =
+  CONTACT_COUNTRY_OPTIONS.find((option) => option.code === "+233")?.code ||
+  CONTACT_COUNTRY_OPTIONS[0]?.code ||
+  "+233";
+
+function populateContactCountrySelect(selectEl) {
+  if (!selectEl || selectEl.dataset.populated === "1") return;
+
+  const currentValue = String(selectEl.value || "").trim() || DEFAULT_CONTACT_CODE;
+  selectEl.replaceChildren();
+
+  CONTACT_COUNTRY_OPTIONS.forEach((option) => {
+    const opt = document.createElement("option");
+    opt.value = option.code;
+    opt.textContent = option.label;
+    opt.title = option.title || option.label;
+    selectEl.appendChild(opt);
+  });
+
+  selectEl.value = CONTACT_CODE_PRIORITY.includes(currentValue)
+    ? currentValue
+    : DEFAULT_CONTACT_CODE;
+  selectEl.dataset.populated = "1";
+}
+
+function getContactFormatValue(selectEl) {
+  const value = String(selectEl?.value || "").trim().toLowerCase();
+  return value === CONTACT_FORMAT_EMAIL ? CONTACT_FORMAT_EMAIL : CONTACT_FORMAT_PHONE;
+}
+
+function setContactFormatValue(selectEl, value) {
+  if (!selectEl) return;
+  selectEl.value = String(value || "").trim().toLowerCase() === CONTACT_FORMAT_EMAIL
+    ? CONTACT_FORMAT_EMAIL
+    : CONTACT_FORMAT_PHONE;
+}
+
+function updateContactPhonePrefix(prefixEl, countryCodeInput) {
+  if (!prefixEl) return "";
+  const code = String(countryCodeInput?.value || DEFAULT_CONTACT_CODE).trim() || DEFAULT_CONTACT_CODE;
+  prefixEl.textContent = code;
+  prefixEl.title = `Country code ${code}`;
+  return code;
+}
+
+function normalizeContactPhoneField(phoneInput, countryCodeInput) {
+  if (!phoneInput) return "";
+  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+  const maxDigits = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+  const digits = normalizeDigits(phoneInput.value).slice(0, maxDigits);
+  if (phoneInput.value !== digits) phoneInput.value = digits;
+  return digits;
+}
+
+function getPhoneContactError(phoneValue, countryCodeInput) {
+  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+  const digits = normalizeDigits(phoneValue);
+  if (!digits) return "Contact number is required.";
+  if (digits.length < rule.min || digits.length > rule.max) {
+    const range = rule.min === rule.max ? `${rule.min}-digit` : `${rule.min}-${rule.max}-digit`;
+    const code = String(countryCodeInput?.value || DEFAULT_CONTACT_CODE).trim();
+    return `Enter a ${range} mobile number for ${code}.`;
+  }
+  return "";
+}
+
+function splitStoredContactValue(value) {
+  const contact = String(value || "").trim();
+  if (!contact) {
+    return {
+      format: CONTACT_FORMAT_PHONE,
+      email: "",
+      countryCode: DEFAULT_CONTACT_CODE,
+      phone: "",
+    };
+  }
+
+  if (EMAIL_INPUT_REGEX.test(contact)) {
+    return {
+      format: CONTACT_FORMAT_EMAIL,
+      email: contact.toLowerCase(),
+      countryCode: DEFAULT_CONTACT_CODE,
+      phone: "",
+    };
+  }
+
+  const compact = contact.replace(/\s+/g, "");
+  const countryCode =
+    CONTACT_CODE_PRIORITY.find((code) => compact.startsWith(code)) || DEFAULT_CONTACT_CODE;
+  const phone = compact.startsWith(countryCode)
+    ? compact.slice(countryCode.length)
+    : compact.replace(/\D/g, "");
+
+  return {
+    format: CONTACT_FORMAT_PHONE,
+    email: "",
+    countryCode,
+    phone: normalizeDigits(phone),
+  };
+}
+
+function buildContactValueFromFields({
+  formatSelect,
+  emailInput,
+  countryCodeInput,
+  phoneInput,
+} = {}) {
+  const format = getContactFormatValue(formatSelect);
+  const contactInput = phoneInput || emailInput;
+
+  if (format === CONTACT_FORMAT_EMAIL) {
+    return String(contactInput?.value || "").trim().toLowerCase();
+  }
+
+  const countryCode = String(countryCodeInput?.value || "").trim() || DEFAULT_CONTACT_CODE;
+  const phone = normalizeDigits(contactInput?.value || "");
+  return phone ? `${countryCode}${phone}` : "";
+}
+
+function applyContactValueToFields({
+  formatSelect,
+  emailInput,
+  countryCodeInput,
+  phoneInput,
+  prefixEl,
+  value = "",
+} = {}) {
+  const parsed = splitStoredContactValue(value);
+  const contactInput = phoneInput || emailInput;
+  setContactFormatValue(formatSelect, parsed.format);
+
+  if (contactInput) {
+    contactInput.value = parsed.format === CONTACT_FORMAT_EMAIL ? parsed.email : parsed.phone;
+  }
+
+  if (countryCodeInput) {
+    populateContactCountrySelect(countryCodeInput);
+    countryCodeInput.value = parsed.countryCode || DEFAULT_CONTACT_CODE;
+  }
+
+  updateContactPhonePrefix(prefixEl, countryCodeInput);
+  return parsed.format;
+}
+
+function syncContactFieldMode({
+  wrap,
+  formatSelect,
+  emailWrap,
+  emailInput,
+  phoneWrap,
+  countryCodeInput,
+  phoneInput,
+  prefixEl,
+  locked = false,
+} = {}) {
+  const mode = getContactFormatValue(formatSelect);
+  const contactInput = phoneInput || emailInput;
+
+  if (wrap) {
+    wrap.dataset.contactMode = mode;
+    wrap.classList.toggle("is-contact-email", mode === CONTACT_FORMAT_EMAIL);
+    wrap.classList.toggle("is-contact-phone", mode === CONTACT_FORMAT_PHONE);
+  }
+
+  if (emailWrap) emailWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_EMAIL);
+  if (phoneWrap) phoneWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_PHONE);
+
+  if (formatSelect) {
+    formatSelect.disabled = locked;
+  }
+
+  if (contactInput) {
+    contactInput.disabled = locked;
+    contactInput.type = mode === CONTACT_FORMAT_EMAIL ? "email" : "tel";
+    contactInput.placeholder =
+      mode === CONTACT_FORMAT_EMAIL ? "name@example.com" : "Enter mobile number";
+    contactInput.autocomplete = mode === CONTACT_FORMAT_EMAIL ? "email" : "tel-national";
+    contactInput.inputMode = mode === CONTACT_FORMAT_EMAIL ? "email" : "numeric";
+    if (mode === CONTACT_FORMAT_PHONE) {
+      const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+      contactInput.maxLength = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+      normalizeContactPhoneField(contactInput, countryCodeInput);
+    } else {
+      contactInput.removeAttribute("maxlength");
+    }
+  }
+
+  updateContactPhonePrefix(prefixEl, countryCodeInput);
+
+  if (countryCodeInput) {
+    populateContactCountrySelect(countryCodeInput);
+    countryCodeInput.parentElement?.classList.toggle("hidden", mode !== CONTACT_FORMAT_PHONE);
+    countryCodeInput.disabled = locked || mode !== CONTACT_FORMAT_PHONE;
+  }
+
+  return mode;
+}
 function clearFieldValidation(fieldWrap) {
   if (!fieldWrap) return;
   fieldWrap.classList.remove("field-invalid");
@@ -27777,6 +32159,7 @@ function isValidContactValue(value) {
 
 let pendingProfileImage = "";
 let profileImageMarkedForDeletion = false;
+var menuSnapshotCache = readMenuSnapshotCache();
 
 function getCurrentProfileImage() {
   if (profileImageMarkedForDeletion) return "";
@@ -27784,6 +32167,7 @@ function getCurrentProfileImage() {
   if (typed) return typed;
   const pending = String(pendingProfileImage || "").trim();
   if (pending) return pending;
+  if (isCommunityAppAdminUser(currentUser)) return COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE;
   return String(currentUser?.profileImage || "").trim();
 }
 
@@ -27801,16 +32185,22 @@ function defaultProfileAvatarDataUri() {
 function setProfileAvatarPreview(src = "") {
   if (!profileAvatarPreviewEl) return;
   const cleaned = String(src || "").trim();
-  profileAvatarPreviewEl.src = cleaned || defaultProfileAvatarDataUri();
+  const effectiveSrc = isCommunityAppAdminUser(currentUser)
+    ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+    : cleaned;
+  profileAvatarPreviewEl.src = effectiveSrc || defaultProfileAvatarDataUri();
 }
 
 function updateProfileButtonAvatar(src = "") {
   if (!profileBtn) return;
   const avatarTarget = profileBtnAvatarEl || profileBtn;
   const cleaned = String(src || "").trim();
+  const effectiveSrc = isCommunityAppAdminUser(currentUser)
+    ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+    : cleaned;
 
-  if (cleaned) {
-    avatarTarget.style.setProperty("background-image", `url("${cleaned}")`, "important");
+  if (effectiveSrc) {
+    avatarTarget.style.setProperty("background-image", `url("${effectiveSrc}")`, "important");
     avatarTarget.style.setProperty("background-size", "cover", "important");
     avatarTarget.style.setProperty("background-position", "center", "important");
     avatarTarget.style.setProperty("background-repeat", "no-repeat", "important");
@@ -27833,11 +32223,105 @@ function updateProfileButtonAvatar(src = "") {
 
 function getMenuProfileDisplayName(user = currentUser) {
   if (!user) return "Your Profile";
+  if (isCommunityAppAdminUser(user)) return COMMUNITY_ADMIN_PROFILE_NAME;
   const titledName = [user.title, user.firstName, user.lastName]
     .map((part) => String(part || "").trim())
     .filter(Boolean)
     .join(" ");
   return titledName || String(user.name || user.username || "Your Profile").trim();
+}
+
+function readMenuSnapshotCache() {
+  try {
+    const raw = localStorage.getItem(MENU_SNAPSHOT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeMenuSnapshotCache(snapshot = null) {
+  try {
+    if (!snapshot || typeof snapshot !== "object") {
+      localStorage.removeItem(MENU_SNAPSHOT_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(MENU_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Best effort only.
+  }
+}
+
+function buildMenuSnapshotFromUser(user = null) {
+  if (!user || typeof user !== "object") return null;
+  const dailyQuiz = user.dailyQuiz && typeof user.dailyQuiz === "object" ? user.dailyQuiz : {};
+  const leaderboardStats =
+    user.leaderboardStats && typeof user.leaderboardStats === "object"
+      ? user.leaderboardStats
+      : null;
+  const ownerKey = getPointsOwnerKey(user);
+  const localPoints = Math.max(0, Math.round(Number(readStoredPoints(ownerKey)) || 0));
+  const points = Math.max(localPoints, Math.max(0, Math.round(Number(user.points) || 0)));
+  const dailyStreak = Math.max(
+    0,
+    Math.round(Number(dailyQuiz.streak ?? dailyQuiz.dailyStreak ?? 0) || 0),
+  );
+  const completedDays = Math.max(0, Math.round(Number(dailyQuiz.completedDays) || 0));
+  const gems = Math.max(0, Math.round(Number(dailyQuiz.gems) || 0));
+  const rankValue = Number(
+    leaderboardStats?.rank ?? user.leaderboardRank ?? user.rank ?? 0,
+  );
+
+  return {
+    id: String(user.id || "").trim(),
+    name: getMenuProfileDisplayName(user),
+    username: String(user.username || "").trim(),
+    contact: String(user.contact || "").trim(),
+    professionalType: String(user.professionalType || "").trim(),
+    profileImage: String(user.profileImage || "").trim(),
+    points,
+    dailyQuiz: {
+      streak: dailyStreak,
+      dailyStreak,
+      completedDays,
+      gems,
+    },
+    leaderboardStats: leaderboardStats
+      ? {
+          rank: Number.isFinite(rankValue) && rankValue > 0 ? Math.round(rankValue) : 0,
+          points: Math.max(0, Math.round(Number(leaderboardStats.points ?? user.points) || 0)),
+        }
+      : null,
+    leaderboardRank: Number.isFinite(rankValue) && rankValue > 0 ? Math.round(rankValue) : 0,
+  };
+}
+
+function syncMenuSnapshotCacheFromUser(user = currentUser) {
+  if (!user) return null;
+  const nextSnapshot = buildMenuSnapshotFromUser(user);
+  if (!nextSnapshot) return null;
+  menuSnapshotCache = nextSnapshot;
+  writeMenuSnapshotCache(nextSnapshot);
+  return nextSnapshot;
+}
+
+function clearMenuSnapshotCache() {
+  menuSnapshotCache = null;
+  writeMenuSnapshotCache(null);
+}
+
+function getMenuSnapshotUser() {
+  if (currentUser) return currentUser;
+  if (backendClient.isAuthenticated()) return menuSnapshotCache;
+  return null;
+}
+
+function getMenuPointsValue() {
+  const snapshotUser = getMenuSnapshotUser();
+  const cachedPoints = Math.max(0, Math.round(Number(snapshotUser?.points) || 0));
+  return Math.max(getCumulativePoints(), cachedPoints);
 }
 
 let profileFeedbackTimer = null;
@@ -27885,7 +32369,24 @@ function fillProfileForm() {
   if (profileFirstNameInput) profileFirstNameInput.value = currentUser.firstName || "";
   if (profileLastNameInput) profileLastNameInput.value = currentUser.lastName || "";
   if (profileUsernameInput) profileUsernameInput.value = currentUser.username || "";
-  if (profileContactInput) profileContactInput.value = currentUser.contact || "";
+  applyContactValueToFields({
+    formatSelect: profileContactFormatInput,
+    emailInput: profileContactEmailInput,
+    countryCodeInput: profileContactCountryCodeInput,
+    phoneInput: profileContactPhoneInput,
+    prefixEl: profileContactPrefixInput,
+    value: String(currentUser.contact || currentUser.email || "").trim(),
+  });
+  syncContactFieldMode({
+    wrap: profileContactWrap,
+    formatSelect: profileContactFormatInput,
+    emailWrap: profileContactEmailWrap,
+    emailInput: profileContactEmailInput,
+    phoneWrap: profileContactPhoneWrap,
+    countryCodeInput: profileContactCountryCodeInput,
+    phoneInput: profileContactPhoneInput,
+    prefixEl: profileContactPrefixInput,
+  });
   if (profileProfessionalTypeInput) {
     profileProfessionalTypeInput.value = currentUser.professionalType || "Other";
   }
@@ -27906,9 +32407,11 @@ function fillProfileForm() {
   profileImageMarkedForDeletion = false;
   pendingProfileImage = String(currentUser.profileImage || "").trim();
   if (profilePhotoUrlInput) {
-    profilePhotoUrlInput.value = /^https?:\/\//i.test(pendingProfileImage)
-      ? pendingProfileImage
-      : "";
+    profilePhotoUrlInput.value = isCommunityAppAdminUser(currentUser)
+      ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+      : /^https?:\/\//i.test(pendingProfileImage)
+        ? pendingProfileImage
+        : "";
   }
   setProfileAvatarPreview(pendingProfileImage);
   updateProfileButtonAvatar(pendingProfileImage);
@@ -27988,27 +32491,43 @@ function openTourScreen() {
 function renderAuthState() {
   if (!authUserLabel || !logoutBtn || !profileBtn) return;
 
+  const menuUser = getMenuSnapshotUser();
+  const isAuthHydrating = backendClient.isAuthenticated() && !currentUser;
+
+  profileBtn.classList.toggle("is-loading", isAuthHydrating && !menuUser);
+  if (menuPointsBtn) {
+    menuPointsBtn.classList.toggle("is-loading", isAuthHydrating && !menuUser);
+  }
+  if (menuProfileNameEl) {
+    menuProfileNameEl.classList.toggle("is-skeleton", isAuthHydrating && !menuUser);
+  }
+  if (menuProfileSubtitleEl) {
+    menuProfileSubtitleEl.classList.toggle("is-skeleton", isAuthHydrating && !menuUser);
+  }
+
   if (currentUser) {
     const username = String(currentUser.username || "").trim();
     const fallbackLabel =
       currentUser.name || currentUser.contact || "User";
     const displayName = getMenuProfileDisplayName(currentUser);
-    const displaySubtitle = username
-      ? `@${username}`
-      : currentUser.professionalType || "Signed in";
-    authUserLabel.textContent = username ? `@${username}` : fallbackLabel;
+    const isAdmin = isCommunityAppAdminUser(currentUser);
+    const displaySubtitle = isAdmin
+      ? "Admin"
+      : username
+        ? `@${username}`
+        : currentUser.professionalType || "Signed in";
+    authUserLabel.textContent = isAdmin ? displayName : username ? `@${username}` : fallbackLabel;
     authUserLabel.classList.remove("hidden");
     logoutBtn.classList.remove("hidden");
     profileBtn.classList.remove("hidden");
     if (menuProfileNameEl) menuProfileNameEl.textContent = displayName;
     if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = displaySubtitle;
     updateProfileButtonAvatar(getCurrentProfileImage());
+    syncMenuSnapshotCacheFromUser(currentUser);
     fillProfileForm();
     refreshProfilePhotoDeleteVisibility();
     syncPointsFromCurrentUser();
     renderDailyQuizUi();
-    void syncSessionHistoryFromBackend();
-    void hydratePerformanceStateFromBackend();
     if (readPendingPoints() > 0) {
       schedulePendingPointsSync(120);
     }
@@ -28019,16 +32538,41 @@ function renderAuthState() {
     return;
   }
 
-  authUserLabel.textContent = "";
-  authUserLabel.classList.add("hidden");
+  if (menuUser) {
+    const username = String(menuUser.username || "").trim();
+    const fallbackLabel = menuUser.name || menuUser.contact || "User";
+    const displayName = getMenuProfileDisplayName(menuUser);
+    const isAdmin = isCommunityAppAdminUser(menuUser);
+    const displaySubtitle = isAdmin
+      ? "Admin"
+      : username
+        ? `@${username}`
+        : menuUser.professionalType || "Signed in";
+    authUserLabel.textContent = isAdmin ? displayName : username ? `@${username}` : fallbackLabel;
+    authUserLabel.classList.remove("hidden");
+    logoutBtn.classList.add("hidden");
+    profileBtn.classList.remove("hidden");
+    if (menuProfileNameEl) menuProfileNameEl.textContent = displayName;
+    if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = displaySubtitle;
+    updateProfileButtonAvatar(menuUser.profileImage || "");
+    refreshProfilePhotoDeleteVisibility();
+    renderPoints();
+    renderDailyQuizUi();
+    void syncOneSignalUserSession();
+    return;
+  }
+
+  clearMenuSnapshotCache();
+  authUserLabel.textContent = isAuthHydrating ? "Loading profile..." : "";
+  authUserLabel.classList.toggle("hidden", !isAuthHydrating);
   logoutBtn.classList.add("hidden");
   closeMenuUserHub();
-  if (menuProfileNameEl) menuProfileNameEl.textContent = "Your Profile";
-  if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = "Tap to sign in";
+  if (menuProfileNameEl) menuProfileNameEl.textContent = isAuthHydrating ? "Loading profile" : "Your Profile";
+  if (menuProfileSubtitleEl) {
+    menuProfileSubtitleEl.textContent = isAuthHydrating ? "Syncing your account" : "Tap to sign in";
+  }
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
-  void syncSessionHistoryFromBackend();
-  void hydratePerformanceStateFromBackend();
   renderPoints();
   renderDailyQuizUi();
   void syncOneSignalUserSession();
@@ -28050,11 +32594,11 @@ function setAuthMode(nextMode = "login") {
     authTabRegisterBtn.classList.toggle("active", isRegister);
   }
 
-  if (authIdentifierWrap) authIdentifierWrap.classList.toggle("hidden", isRegister);
+  if (authIdentifierWrap) authIdentifierWrap.classList.toggle("hidden", !isLogin);
   if (authFirstNameWrap) authFirstNameWrap.classList.toggle("hidden", !isRegister);
   if (authLastNameWrap) authLastNameWrap.classList.toggle("hidden", !isRegister);
   if (authUsernameWrap) authUsernameWrap.classList.toggle("hidden", !isRegister);
-  if (authContactWrap) authContactWrap.classList.toggle("hidden", !isRegister);
+  if (authContactWrap) authContactWrap.classList.toggle("hidden", !(isRegister || isForgot || isReset));
   if (authResetCodeWrap) authResetCodeWrap.classList.toggle("hidden", !isReset);
   if (authPasswordWrap) authPasswordWrap.classList.toggle("hidden", isForgot);
   if (authConfirmPasswordWrap) {
@@ -28063,6 +32607,7 @@ function setAuthMode(nextMode = "login") {
   if (authForgotLinkBtn) authForgotLinkBtn.classList.toggle("hidden", !isLogin);
   if (authResetLinkBtn) authResetLinkBtn.classList.toggle("hidden", !isLogin);
   if (authBackLoginLinkBtn) authBackLoginLinkBtn.classList.toggle("hidden", isLogin);
+  if (!isForgot) authForgotRequestLocked = false;
 
   if (authPasswordInput) {
     authPasswordInput.setAttribute(
@@ -28074,7 +32619,7 @@ function setAuthMode(nextMode = "login") {
   if (authSubmitBtn) {
     if (isRegister) authSubmitBtn.textContent = "Create Account";
     if (isLogin) authSubmitBtn.textContent = "Sign In";
-    if (isForgot) authSubmitBtn.textContent = "Send Reset Code";
+    if (isForgot) authSubmitBtn.textContent = "Request Reset Code";
     if (isReset) authSubmitBtn.textContent = "Reset Password";
   }
 
@@ -28083,11 +32628,26 @@ function setAuthMode(nextMode = "login") {
   setAuthError("");
   setAuthInfo("");
 
-  if (isRegister && authContactInput) authContactInput.placeholder = "Email or phone number";
+  syncContactFieldMode({
+    wrap: authContactWrap,
+    formatSelect: authContactFormatInput,
+    emailWrap: authContactEmailWrap,
+    emailInput: authContactEmailInput,
+    phoneWrap: authContactPhoneWrap,
+    countryCodeInput: authContactCountryCodeInput,
+    phoneInput: authContactPhoneInput,
+    prefixEl: authContactPrefixInput,
+    locked: isForgot && authForgotRequestLocked,
+  });
+
+  if (authSubmitBtn && isForgot) {
+    authSubmitBtn.disabled = authForgotRequestLocked;
+  }
 }
 
-function openAuthModal(nextMode = "login") {
+function openAuthModal(nextMode = "login", nextScreenId = "quiz-menu") {
   if (!authModal) return;
+  authPostSuccessScreenId = String(nextScreenId || "quiz-menu").trim() || "quiz-menu";
   setAuthMode(nextMode);
   setAuthError("");
   setAuthInfo("");
@@ -28097,6 +32657,14 @@ function openAuthModal(nextMode = "login") {
   if (authMode === "register" && authFirstNameInput) {
     authFirstNameInput.focus();
     return;
+  }
+  if (authMode === "forgot" || authMode === "reset") {
+    const contactInput = authContactPhoneInput || authContactEmailInput;
+    const contactValue = String(contactInput?.value || "").trim();
+    if (!contactValue) {
+      contactInput?.focus();
+      return;
+    }
   }
   if (authMode === "reset" && authResetCodeInput) {
     authResetCodeInput.focus();
@@ -28471,34 +33039,157 @@ async function handleAiExplainClick() {
   }
 }
 
-async function restoreAuthSession() {
+async function restoreAuthSession({ deferHydration = false } = {}) {
   if (!backendClient.isAuthenticated()) {
+    stopSharedAccountStatePolling();
     currentUser = null;
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     return false;
   }
-
   try {
-    currentUser = await backendClient.fetchMe();
+    currentUser = await backendClient.fetchMe({ preferCache: true });
     renderAuthState();
-    await refreshDailyQuizState({ force: true, silent: true });
+    scheduleSharedAccountHydration({ silent: true, deferHydration });
     return true;
   } catch {
     backendClient.clearToken();
     teardownCommunityRealtime();
+    stopSharedAccountStatePolling();
     currentUser = null;
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     return false;
   }
 }
 
-async function ensureAuthenticated() {
+let sharedAccountStateRefreshInFlight = null;
+let sharedAccountStateRefreshAt = 0;
+let sharedAccountStatePollingHandle = null;
+let sharedAccountHydrationHandle = null;
+let sharedAccountHydrationInFlight = null;
+
+function stopSharedAccountStatePolling() {
+  if (sharedAccountStatePollingHandle) {
+    clearInterval(sharedAccountStatePollingHandle);
+    sharedAccountStatePollingHandle = null;
+  }
+}
+
+function startSharedAccountStatePolling() {
+  stopSharedAccountStatePolling();
+  if (!currentUser || !backendClient.isAuthenticated()) {
+    return;
+  }
+  sharedAccountStatePollingHandle = setInterval(() => {
+    if (document.hidden || !currentUser || !backendClient.isAuthenticated()) {
+      return;
+    }
+    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
+  }, 20_000);
+}
+
+function scheduleSharedAccountHydration({ silent = true, deferHydration = false } = {}) {
+  if (!currentUser || !backendClient.isAuthenticated()) {
+    return;
+  }
+  if (sharedAccountHydrationInFlight || sharedAccountHydrationHandle) {
+    return;
+  }
+
+  const runHydration = () => {
+    sharedAccountHydrationHandle = null;
+    if (sharedAccountHydrationInFlight || !currentUser || !backendClient.isAuthenticated()) {
+      return;
+    }
+    sharedAccountHydrationInFlight = (async () => {
+      await Promise.allSettled([
+        refreshDailyQuizState({ force: true, silent }),
+        loadSyncedPerformanceState({ force: true }),
+      ]);
+      await loadCommunityOverview({ silent: true, preferCache: true });
+      return true;
+    })()
+      .catch(() => false)
+      .finally(() => {
+      sharedAccountHydrationInFlight = null;
+    });
+  };
+
+  if (deferHydration && typeof window.requestIdleCallback === "function") {
+    sharedAccountHydrationHandle = window.requestIdleCallback(runHydration, { timeout: 2000 });
+    return;
+  }
+
+  sharedAccountHydrationHandle = window.setTimeout(runHydration, deferHydration ? 600 : 0);
+}
+
+async function refreshSharedAccountState({
+  force = false,
+  silent = false,
+  deferHydration = false,
+} = {}) {
+  if (!backendClient.isAuthenticated()) {
+    return false;
+  }
+
+  const now = Date.now();
+  if (!force && now - sharedAccountStateRefreshAt < 12_000) {
+    return true;
+  }
+
+  if (sharedAccountStateRefreshInFlight) {
+    return sharedAccountStateRefreshInFlight;
+  }
+
+  sharedAccountStateRefreshAt = now;
+  sharedAccountStateRefreshInFlight = (async () => {
+    const freshUser = await backendClient.fetchMe();
+    currentUser = freshUser;
+    renderAuthState();
+    syncPointsFromCurrentUser();
+    writeCurrentSetupPoints(readCurrentSetupPoints(), {
+      scheduleSync: false,
+    });
+    writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+      scheduleSync: false,
+    });
+    renderPoints();
+    scheduleSharedAccountHydration({ silent, deferHydration });
+    renderMenuDashboardStats();
+    renderSetupPoints();
+    void loadDashboardTrendData({ force: false });
+    renderDailyQuizUi();
+    if (getActiveScreenId() === "subscription-screen") {
+      renderSubscriptionScreen();
+    }
+    startSharedAccountStatePolling();
+    return true;
+  })().finally(() => {
+      sharedAccountStateRefreshInFlight = null;
+    });
+
+  return sharedAccountStateRefreshInFlight;
+}
+
+async function refreshSubscriptionAccessForAction() {
+  if (!backendClient.isAuthenticated() || !currentUser) {
+    return false;
+  }
+  await Promise.allSettled([
+    refreshSharedAccountState({ force: true, silent: true, deferHydration: true }),
+    loadSubscriptionScreenData({ force: true }),
+  ]);
+  return true;
+}
+
+async function ensureAuthenticated({ nextScreen = "quiz-menu" } = {}) {
   if (currentUser) return true;
   const restored = await restoreAuthSession();
   if (restored) return true;
-  openAuthModal("login");
+  openAuthModal("login", nextScreen);
   return false;
 }
 
@@ -28527,9 +33218,18 @@ function openWelcomeRegisterFlow(event) {
 }
 
 async function handlePortalEntry() {
-  const allowed = await ensureAuthenticated();
+  if (currentUser || backendClient.isAuthenticated()) {
+    showScreen("quiz-menu");
+    void restoreAuthSession({ deferHydration: true });
+    startQuestionBankBootstrap();
+    startBackendBootstrap();
+    return;
+  }
+  const allowed = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!allowed) return;
   showScreen("quiz-menu");
+  startQuestionBankBootstrap();
+  startBackendBootstrap();
 }
 
 async function handleAuthSubmit(event) {
@@ -28539,7 +33239,15 @@ async function handleAuthSubmit(event) {
   const firstName = String(authFirstNameInput?.value || "").trim();
   const lastName = String(authLastNameInput?.value || "").trim();
   const username = String(authUsernameInput?.value || "").trim().toLowerCase();
-  const contact = String(authContactInput?.value || "").trim().toLowerCase();
+  const contactMode = getContactFormatValue(authContactFormatInput);
+  const contactInput = authContactPhoneInput || authContactEmailInput;
+  const contactValue = String(contactInput?.value || "").trim();
+  const contact = buildContactValueFromFields({
+    formatSelect: authContactFormatInput,
+    emailInput: authContactEmailInput,
+    countryCodeInput: authContactCountryCodeInput,
+    phoneInput: authContactPhoneInput,
+  });
   const code = String(authResetCodeInput?.value || "").trim();
   const password = String(authPasswordInput?.value || "");
   const confirmPassword = String(authConfirmPasswordInput?.value || "");
@@ -28577,12 +33285,20 @@ async function handleAuthSubmit(event) {
       );
       hasInvalidRequired = true;
     }
-    if (!contact) {
-      setFieldValidation(authContactWrap, "Required");
-      hasInvalidRequired = true;
-    } else if (!isValidContactValue(contact)) {
-      setFieldValidation(authContactWrap, "Enter a valid email or phone (+233...)");
-      hasInvalidRequired = true;
+    if (contactMode === CONTACT_FORMAT_EMAIL) {
+      if (!contactValue) {
+        setFieldValidation(authContactWrap, "Email address is required.");
+        hasInvalidRequired = true;
+      } else if (!EMAIL_INPUT_REGEX.test(contactValue.toLowerCase())) {
+        setFieldValidation(authContactWrap, "Enter a valid email address.");
+        hasInvalidRequired = true;
+      }
+    } else {
+      const phoneError = getPhoneContactError(contactValue, authContactCountryCodeInput);
+      if (phoneError) {
+        setFieldValidation(authContactWrap, phoneError);
+        hasInvalidRequired = true;
+      }
     }
     if (!password || password.length < 6) {
       setFieldValidation(authPasswordWrap, "Minimum 6 characters");
@@ -28602,14 +33318,31 @@ async function handleAuthSubmit(event) {
     }
   }
 
-  if (authMode === "forgot" && !identifier) {
-    setAuthError("Enter your username/contact/email first.");
+  if (authMode === "forgot" && !contact) {
+    setAuthError(
+      contactMode === CONTACT_FORMAT_EMAIL
+        ? "Enter the registered email address used on the account."
+        : "Enter the registered contact number used on the account.",
+    );
+    return;
+  }
+
+  if (authMode === "forgot" && contact && !isValidContactValue(contact)) {
+    setAuthError(
+      contactMode === CONTACT_FORMAT_EMAIL
+        ? "Enter a valid email address."
+        : "Enter a valid mobile number.",
+    );
     return;
   }
 
   if (authMode === "reset") {
-    if (!identifier || !code) {
-      setAuthError("Identifier and reset code are required.");
+    if (!contact || !code) {
+      setAuthError("Registered contact and reset code are required.");
+      return;
+    }
+    if (!isValidContactValue(contact)) {
+      setAuthError("Enter a valid email address or phone number.");
       return;
     }
     if (!password || password.length < 6) {
@@ -28628,10 +33361,24 @@ async function handleAuthSubmit(event) {
     if (authMode === "login") {
       const response = await backendClient.login({ identifier, password });
       currentUser = response?.user || (await backendClient.fetchMe());
-      renderAuthState();
-      await refreshDailyQuizState({ force: true, silent: true });
       closeAuthModal();
-      showScreen("quiz-menu");
+      showScreen(authPostSuccessScreenId || "quiz-menu");
+      authPostSuccessScreenId = "quiz-menu";
+      try {
+        renderAuthState();
+        syncPointsFromCurrentUser();
+        writeCurrentSetupPoints(readCurrentSetupPoints(), {
+          scheduleSync: false,
+        });
+        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+          scheduleSync: false,
+        });
+        renderPoints();
+        scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+        void loadDashboardTrendData({ force: false });
+      } catch (postAuthHydrationError) {
+        console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
+      }
       return;
     }
 
@@ -28644,29 +33391,52 @@ async function handleAuthSubmit(event) {
         password,
       });
       currentUser = response?.user || (await backendClient.fetchMe());
-      renderAuthState();
-      await refreshDailyQuizState({ force: true, silent: true });
       closeAuthModal();
-      showScreen("quiz-menu");
+      showScreen(authPostSuccessScreenId || "quiz-menu");
+      authPostSuccessScreenId = "quiz-menu";
+      try {
+        renderAuthState();
+        syncPointsFromCurrentUser();
+        writeCurrentSetupPoints(readCurrentSetupPoints(), {
+          scheduleSync: false,
+        });
+        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+          scheduleSync: false,
+        });
+        renderPoints();
+        scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+        void loadDashboardTrendData({ force: false });
+      } catch (postAuthHydrationError) {
+        console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
+      }
       return;
     }
 
     if (authMode === "forgot") {
-      const response = await backendClient.forgotPassword({ identifier });
-      const codePreview = String(response?.devResetCode || response?.code || "").trim();
-      setAuthMode("reset");
+      const response = await backendClient.forgotPassword({
+        contact,
+      });
+      authForgotRequestLocked = true;
+      setAuthMode("forgot");
+      if (authSubmitBtn) authSubmitBtn.disabled = true;
+      const deliveryMethod = String(response?.deliveryMethod || "").trim().toLowerCase();
+      const deliveryChannel = deliveryMethod === "email" ? "email" : "WhatsApp";
+      const deliveryTarget = String(response?.deliveryTarget || "").trim();
+      const deliverySummary = deliveryTarget ? `${deliveryChannel} (${deliveryTarget})` : deliveryChannel;
       setAuthInfo(
-        codePreview
-          ? `Reset code: ${codePreview}. Use it now to set a new password.`
-          : String(response?.message || "Reset code sent."),
+        String(
+          response?.message ||
+            `Your reset request has been received. Reset code will be sent to you via ${deliverySummary}. Use that to reset your password.`,
+        ),
       );
-      if (authResetCodeInput && codePreview) authResetCodeInput.value = codePreview;
+      if (authResetCodeInput) authResetCodeInput.value = "";
+      if (authPasswordInput) authPasswordInput.value = "";
       return;
     }
 
     if (authMode === "reset") {
       await backendClient.resetPassword({
-        identifier,
+        contact,
         code,
         newPassword: password,
       });
@@ -28679,10 +33449,21 @@ async function handleAuthSubmit(event) {
     setAuthInfo("");
     setAuthError(authErrorMessage(error));
   } finally {
-    if (authSubmitBtn) authSubmitBtn.disabled = false;
+    if (authSubmitBtn) authSubmitBtn.disabled = authMode === "forgot" && authForgotRequestLocked;
     if (authCancelBtn) authCancelBtn.disabled = false;
     if (authTabLoginBtn) authTabLoginBtn.disabled = false;
     if (authTabRegisterBtn) authTabRegisterBtn.disabled = false;
+    syncContactFieldMode({
+      wrap: authContactWrap,
+      formatSelect: authContactFormatInput,
+      emailWrap: authContactEmailWrap,
+      emailInput: authContactEmailInput,
+      phoneWrap: authContactPhoneWrap,
+      countryCodeInput: authContactCountryCodeInput,
+      phoneInput: authContactPhoneInput,
+    prefixEl: authContactPrefixInput,
+    locked: authMode === "forgot" && authForgotRequestLocked,
+    });
   }
 }
 
@@ -28717,9 +33498,57 @@ if (authBackLoginLinkBtn) {
 bindValidationClear(authFirstNameInput, authFirstNameWrap);
 bindValidationClear(authLastNameInput, authLastNameWrap);
 bindValidationClear(authUsernameInput, authUsernameWrap);
-bindValidationClear(authContactInput, authContactWrap);
+bindValidationClear(authContactFormatInput, authContactWrap, "change");
+bindValidationClear(authContactEmailInput, authContactWrap);
+bindValidationClear(authContactCountryCodeInput, authContactWrap, "change");
+bindValidationClear(authContactPhoneInput, authContactWrap);
 bindValidationClear(authPasswordInput, authPasswordWrap);
 bindValidationClear(authConfirmPasswordInput, authConfirmPasswordWrap);
+
+if (authContactFormatInput) {
+  authContactFormatInput.onchange = () =>
+    syncContactFieldMode({
+      wrap: authContactWrap,
+      formatSelect: authContactFormatInput,
+      emailWrap: authContactEmailWrap,
+      emailInput: authContactEmailInput,
+      phoneWrap: authContactPhoneWrap,
+      countryCodeInput: authContactCountryCodeInput,
+      phoneInput: authContactPhoneInput,
+    prefixEl: authContactPrefixInput,
+    locked: authMode === "forgot" && authForgotRequestLocked,
+    });
+}
+
+if (authContactCountryCodeInput) {
+  authContactCountryCodeInput.onchange = () => {
+    updateContactPhonePrefix(authContactPrefixInput, authContactCountryCodeInput);
+    normalizeContactPhoneField(authContactPhoneInput, authContactCountryCodeInput);
+    clearFieldValidation(authContactWrap);
+  };
+}
+
+if (profileContactFormatInput) {
+  profileContactFormatInput.onchange = () =>
+    syncContactFieldMode({
+      wrap: profileContactWrap,
+      formatSelect: profileContactFormatInput,
+      emailWrap: profileContactEmailWrap,
+      emailInput: profileContactEmailInput,
+      phoneWrap: profileContactPhoneWrap,
+      countryCodeInput: profileContactCountryCodeInput,
+      phoneInput: profileContactPhoneInput,
+    prefixEl: profileContactPrefixInput,
+  });
+}
+
+if (profileContactCountryCodeInput) {
+  profileContactCountryCodeInput.onchange = () => {
+    updateContactPhonePrefix(profileContactPrefixInput, profileContactCountryCodeInput);
+    normalizeContactPhoneField(profileContactPhoneInput, profileContactCountryCodeInput);
+    if (profileContactWrap) clearFieldValidation(profileContactWrap);
+  };
+}
 
 if (authCancelBtn) {
   authCancelBtn.onclick = () => {
@@ -28737,14 +33566,15 @@ if (logoutBtn) {
     closeMenuUserHub();
     backendClient.clearToken();
     teardownCommunityRealtime();
+    stopSharedAccountStatePolling();
     profileImageMarkedForDeletion = false;
     pendingProfileImage = "";
     if (profilePhotoUrlInput) profilePhotoUrlInput.value = "";
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
-    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     closeAuthModal();
     showScreen("home-screen");
@@ -28770,8 +33600,8 @@ if (logoutConfirmBtn) {
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
-    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
+    resetSyncedDashboardCaches();
     renderAuthState();
     closeAuthModal();
     showScreen("home-screen");
@@ -28905,7 +33735,9 @@ async function saveProfile() {
   const typedImageUrl = String(profilePhotoUrlInput?.value || "").trim();
   const resolvedImage = profileImageMarkedForDeletion
     ? ""
-    : typedImageUrl || pendingProfileImage || currentImage;
+    : isCommunityAppAdminUser(currentUser)
+      ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+      : typedImageUrl || pendingProfileImage || currentImage;
   const payload = {
     title: String(profileTitleInput?.value || "").trim() || String(currentUser.title || "").trim() || "Mr",
     firstName:
@@ -28917,9 +33749,6 @@ async function saveProfile() {
     username:
       String(profileUsernameInput?.value || "").trim().toLowerCase() ||
       String(currentUser.username || "").trim().toLowerCase(),
-    contact:
-      String(profileContactInput?.value || "").trim() ||
-      String(currentUser.contact || currentUser.email || "").trim(),
     role:
       readSelectedRadioValue("profile-role", String(currentUser.role || "student").trim().toLowerCase()),
     professionalType:
@@ -28983,6 +33812,16 @@ async function saveProfile() {
     profileImage: resolvedImage,
   };
 
+  const profileContactMode = getContactFormatValue(profileContactFormatInput);
+  const profileContactValue =
+    buildContactValueFromFields({
+      formatSelect: profileContactFormatInput,
+      emailInput: profileContactEmailInput,
+      countryCodeInput: profileContactCountryCodeInput,
+      phoneInput: profileContactPhoneInput,
+    }) || String(currentUser.contact || currentUser.email || "").trim();
+  payload.contact = profileContactValue;
+
   if (
     !payload.firstName ||
     !payload.lastName ||
@@ -28995,23 +33834,29 @@ async function saveProfile() {
     );
     return;
   }
-  if (!isValidContactValue(payload.contact)) {
-    setProfileFeedback(
-      "Contact must be a valid email or phone in international format (e.g., +233XXXXXXXXX).",
-      true,
-    );
-    return;
+  if (profileContactMode === CONTACT_FORMAT_EMAIL) {
+    if (!EMAIL_INPUT_REGEX.test(payload.contact.toLowerCase())) {
+      setProfileFeedback("Contact must be a valid email address.", true);
+      return;
+    }
+  } else {
+    const phoneError = getPhoneContactError(profileContactValue, profileContactCountryCodeInput);
+    if (phoneError) {
+      setProfileFeedback(phoneError, true);
+      return;
+    }
   }
-
   try {
     const response = await backendClient.updateProfile(payload);
     currentUser = response?.user || (await backendClient.fetchMe());
     profileImageMarkedForDeletion = false;
     pendingProfileImage = String(currentUser.profileImage || "").trim();
     if (profilePhotoUrlInput) {
-      profilePhotoUrlInput.value = /^https?:\/\//i.test(pendingProfileImage)
-        ? pendingProfileImage
-        : "";
+      profilePhotoUrlInput.value = isCommunityAppAdminUser(currentUser)
+        ? COMMUNITY_ADMIN_NOTICE_PROFILE_IMAGE
+        : /^https?:\/\//i.test(pendingProfileImage)
+          ? pendingProfileImage
+          : "";
     }
     refreshProfilePhotoDeleteVisibility();
     renderAuthState();
@@ -29049,6 +33894,7 @@ async function deactivateProfileAccount() {
     setProfileFeedback("Deactivate days must be between 1 and 30.", true);
     return;
   }
+
   if (
     !confirm(
       `Deactivate this account for ${days} day(s)? It will be auto-deleted after that window.`,
@@ -29056,7 +33902,6 @@ async function deactivateProfileAccount() {
   ) {
     return;
   }
-
   try {
     await backendClient.deactivateAccount(days);
     backendClient.clearToken();
@@ -29066,7 +33911,6 @@ async function deactivateProfileAccount() {
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
-    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
@@ -29089,7 +33933,6 @@ async function deleteProfileAccount() {
     refreshProfilePhotoDeleteVisibility();
     currentUser = null;
     resetPointsState();
-    resetLawDrillRuntimeState();
     resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
@@ -29100,7 +33943,7 @@ async function deleteProfileAccount() {
 }
 
 async function openProfileScreen() {
-  const ok = await ensureAuthenticated();
+  const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
   if (!ok || !currentUser) return;
   setProfileFeedback("");
   fillProfileForm();
@@ -29123,15 +33966,105 @@ async function openProfileScreen() {
 
 if (profileBtn) {
   profileBtn.onclick = async () => {
-    const ok = await ensureAuthenticated();
+    const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
     if (!ok) return;
     closeMenuUserHub();
     openProfileScreen();
   };
 }
 
+if (newsMenuBtn) {
+  newsMenuBtn.onclick = async () => {
+    closeMenuUserHub();
+    await openNewsScreen();
+  };
+}
+
 if (profileBackBtn) {
   profileBackBtn.onclick = () => goToPreviousScreen("quiz-menu");
+}
+
+if (newsBackBtn) {
+  newsBackBtn.onclick = () => {
+    goToPreviousScreen("quiz-menu");
+  };
+}
+
+if (newsRefreshBtn) {
+  newsRefreshBtn.onclick = () => {
+    void ensureNewsFeedLoaded({ force: true, silent: true });
+  };
+}
+
+if (newsAlertsBtn) {
+  newsAlertsBtn.onclick = () => {
+    closeNewsSearch();
+    closeNewsMobileMenu();
+    selectNewsCategory("health-concern");
+    if (newsShellEl instanceof HTMLElement) {
+      newsShellEl.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+}
+
+if (newsSearchBtn) {
+  newsSearchBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openNewsSearch();
+  });
+}
+
+if (newsSearchInput) {
+  newsSearchInput.addEventListener("focus", () => {
+    newsScreen?.classList.add("news-search-open");
+    newsSearchBtn?.setAttribute("aria-expanded", "true");
+  });
+  newsSearchInput.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      if (!newsSearchInput.matches(":focus")) {
+        closeNewsSearch();
+      }
+    }, 0);
+  });
+  newsSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeNewsSearch();
+      newsSearchBtn?.focus();
+    }
+  });
+  newsSearchInput.addEventListener("input", (event) => {
+    const query = event.target instanceof HTMLInputElement ? event.target.value : "";
+    selectNewsSearchQuery(query);
+  });
+}
+
+if (newsScreen) {
+  newsScreen.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement
+      ? event.target.closest("[data-news-filter], [data-news-filter-mobile-item], [data-news-id], [data-news-refresh-inline], [data-news-mobile-menu-toggle]")
+      : null;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.hasAttribute("data-news-mobile-menu-toggle")) {
+      toggleNewsMobileMenu();
+      return;
+    }
+    if (target.hasAttribute("data-news-refresh-inline")) {
+      void ensureNewsFeedLoaded({ force: true, silent: true });
+      return;
+    }
+    const category = String(target.dataset.newsFilter || target.dataset.newsFilterMobileItem || "").trim().toLowerCase();
+    if (category) {
+      selectNewsCategory(category);
+      closeNewsMobileMenu();
+      return;
+    }
+    const newsId = String(target.dataset.newsId || "").trim();
+    if (newsId) {
+      selectNewsItem(newsId);
+      closeNewsMobileMenu();
+    }
+  });
 }
 
 if (profileSaveBtn) {
@@ -29286,6 +34219,7 @@ function openQuizExitModal({
 }
 
 function openExamExitModal() {
+  if (!examExitModal) return;
   openQuizExitModal({
     title: "End Exam?",
     text: "Ending now will submit your exam with current answers.",
@@ -29328,6 +34262,7 @@ const studyExitTitleEl = studyExitModal?.querySelector(".modal-title") || null;
 const studyExitTextEl = studyExitModal?.querySelector(".modal-text") || null;
 
 function openStudyExitModal() {
+  if (!studyExitModal) return;
   if (studyExitTitleEl) {
     studyExitTitleEl.textContent = isTopicQuizMode() ? "End Topic Quiz?" : "End Study Session?";
   }
@@ -29375,6 +34310,7 @@ function openSessionResumeModal({
   onStartNew = null,
 } = {}) {
   if (!sessionResumeModal) return;
+  closeSetupPickerModal({ restoreFocus: false });
   sessionResumeHandlers = {
     onResume: typeof onResume === "function" ? onResume : null,
     onStartNew: typeof onStartNew === "function" ? onStartNew : null,
@@ -29400,9 +34336,23 @@ function closeSessionResumeModal(resetHandlers = true) {
   }
 }
 
-function getSavedExamSession() {
+function wireSessionResumeModal() {
+  if (!sessionResumeModal) return;
+  sessionResumeModal.addEventListener("pointerdown", (event) => {
+    if (event.target === sessionResumeModal) {
+      closeSessionResumeModal();
+    }
+  });
+  sessionResumeModal.addEventListener("click", (event) => {
+    if (event.target === sessionResumeModal) {
+      closeSessionResumeModal();
+    }
+  });
+}
+
+function getSavedExamSession(storageKey = "quizExamSession") {
   try {
-    const raw = localStorage.getItem("quizExamSession");
+    const raw = localStorage.getItem(String(storageKey || "quizExamSession"));
     if (!raw) return null;
     const saved = JSON.parse(raw);
     if (!saved || typeof saved !== "object") return null;
@@ -29412,17 +34362,296 @@ function getSavedExamSession() {
   }
 }
 
+function getSessionCompletionMarkerKey(kind = "") {
+  const safeKind = String(kind || "").trim().toLowerCase();
+  return safeKind ? `quizSessionCompletedAt:${safeKind}` : "";
+}
+
+function markSessionCompleted(kind = "") {
+  const markerKey = getSessionCompletionMarkerKey(kind);
+  if (!markerKey) return;
+  try {
+    localStorage.setItem(markerKey, String(Date.now()));
+  } catch {}
+}
+
+function getSessionCompletionTimestamp(kind = "") {
+  const markerKey = getSessionCompletionMarkerKey(kind);
+  if (!markerKey) return 0;
+  try {
+    return Math.max(0, Number(localStorage.getItem(markerKey)) || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function isSavedSessionOlderThanCompletion(saved = {}, kind = "") {
+  const completionAt = getSessionCompletionTimestamp(kind);
+  if (!completionAt) return false;
+  const savedAt = Math.max(0, Number(saved?.timestamp) || 0);
+  return savedAt > 0 && savedAt <= completionAt;
+}
+
+function getExamSessionStorageKey(variant = examVariant, modeValue = mode) {
+  const normalizedVariant = String(variant || "").toLowerCase();
+  const normalizedMode = String(modeValue || "").toLowerCase();
+  if (normalizedMode === "exam" && ["sudden", "clinical"].includes(normalizedVariant)) {
+    return `quizExamSession:${normalizedVariant}`;
+  }
+  return "quizExamSession";
+}
+
+function getLatestSavedExamSession() {
+  const candidateKeys = ["quizExamSession:sudden", "quizExamSession:clinical", "quizExamSession"];
+  let latestSession = null;
+
+  for (const key of candidateKeys) {
+    const saved = getSavedExamSession(key);
+    if (!saved || typeof saved !== "object" || !Array.isArray(saved.active) || saved.active.length === 0) {
+      continue;
+    }
+    const timestamp = Number(saved.timestamp) || 0;
+    if (!latestSession || timestamp >= latestSession.timestamp) {
+      latestSession = { key, state: saved, timestamp };
+    }
+  }
+
+  return latestSession ? { key: latestSession.key, state: latestSession.state } : null;
+}
+
+function clearSavedExamSession(variant = examVariant, modeValue = mode) {
+  const normalizedVariant = String(variant || "").toLowerCase();
+  const storageKey = getExamSessionStorageKey(normalizedVariant, modeValue);
+  localStorage.removeItem(storageKey);
+
+  const legacySaved = getSavedExamSession("quizExamSession");
+  if (legacySaved && String(legacySaved.examVariant || "").toLowerCase() === normalizedVariant) {
+    localStorage.removeItem("quizExamSession");
+  }
+}
+
 function getSavedDrillSession(variant = "") {
   const drill = String(variant || "").toLowerCase();
   if (!["sudden", "clinical"].includes(drill)) return null;
-  const saved = getSavedExamSession();
+  const saved = getSavedExamSession(getExamSessionStorageKey(drill, "exam")) || getSavedExamSession("quizExamSession");
   if (!saved) return null;
 
   const savedMode = String(saved.mode || "exam");
   const savedVariant = String(saved.examVariant || "normal").toLowerCase();
   if (savedMode !== "exam" || savedVariant !== drill) return null;
   if (!Array.isArray(saved.active) || saved.active.length === 0) return null;
+  if (saved.completed || saved.sessionEnded || saved.view === "result") return null;
+  if (isSavedSessionOlderThanCompletion(saved, drill)) return null;
   return saved;
+}
+
+function getSavedStudySession() {
+  const candidateKeys = ["studySession", "practiceSession"];
+  let latestSession = null;
+
+  for (const key of candidateKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+    try {
+      const saved = JSON.parse(raw);
+      if (saved && typeof saved === "object" && Array.isArray(saved.active) && saved.active.length > 0) {
+        if (saved.completed || saved.sessionEnded || saved.view === "result") {
+          continue;
+        }
+        if (isSavedSessionOlderThanCompletion(saved, "study")) {
+          continue;
+        }
+        const timestamp = Number(saved.timestamp) || 0;
+        if (!latestSession || timestamp >= latestSession.timestamp) {
+          latestSession = { key, state: saved, timestamp };
+        }
+      }
+    } catch {
+      // Ignore malformed saved sessions and keep looking.
+    }
+  }
+
+  return latestSession ? { key: latestSession.key, state: latestSession.state } : null;
+}
+
+function getTopicQuizSessionStorageKey(topicSlug = "") {
+  const slug = normalizeTopicPathToken(topicSlug);
+  return slug ? `topicQuizSession:${slug}` : "";
+}
+
+function getSavedTopicQuizSession(topicSlug = "") {
+  const key = getTopicQuizSessionStorageKey(topicSlug);
+  if (!key) return null;
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    if (!Array.isArray(saved.active) || saved.active.length === 0) return null;
+    if (saved.completed || saved.sessionEnded || saved.view === "result") return null;
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
+function clearTopicQuizProgress(topicSlug = "") {
+  const key = getTopicQuizSessionStorageKey(topicSlug || topicQuizSessionMeta?.slug || "");
+  if (!key) return;
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
+
+function saveTopicQuizProgress() {
+  if (mode !== "topic" || studySessionEnded) return;
+  const topicSlug = String(topicQuizSessionMeta?.slug || "").trim();
+  if (!topicSlug) return;
+  try {
+    localStorage.setItem(
+      getTopicQuizSessionStorageKey(topicSlug),
+      JSON.stringify({
+        current,
+        userAnswers,
+        active,
+        currentStreak,
+        topicSlug,
+        topicTitle: String(topicQuizSessionMeta?.title || "Topic").trim() || "Topic",
+        timestamp: Date.now(),
+      }),
+    );
+  } catch {}
+}
+
+function restoreTopicQuizSession(saved = null) {
+  if (!saved || typeof saved !== "object") return false;
+
+  studySessionEnded = false;
+  inReview = false;
+  inStudyReview = false;
+  inDetailedReview = false;
+  answeredCurrent = false;
+  clearAiExplainStateSession();
+  examVariant = "normal";
+  examTimeBudget = 0;
+  clearInterval(examTimer);
+  examTimer = null;
+  activeCase = "";
+  mode = "topic";
+  topicQuizSessionMeta = {
+    slug: String(saved.topicSlug || "").trim() || "",
+    title: String(saved.topicTitle || "Topic").trim() || "Topic",
+    returnScreen: "topic-viewer",
+  };
+  current = Math.max(0, Number(saved.current) || 0);
+  score = 0;
+  userAnswers = saved.userAnswers && typeof saved.userAnswers === "object" ? saved.userAnswers : {};
+  currentStreak = Math.max(0, Number(saved.currentStreak) || 0);
+  active = Array.isArray(saved.active) ? JSON.parse(JSON.stringify(saved.active)) : [];
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
+  updateModeIndicator("normal");
+  const topicModeIndicator = document.getElementById("mode-indicator");
+  if (topicModeIndicator) {
+    topicModeIndicator.innerText = `${getTopicQuizSessionTitle()} Quiz`;
+  }
+  showScreen("quiz-area");
+  showQuestion();
+  restoreStreakUI();
+  return true;
+}
+
+function buildResumeTopicQuizSessionModalState(topicSlug = "", topicTitle = "Topic") {
+  const saved = getSavedTopicQuizSession(topicSlug);
+  if (!saved) return null;
+  const title = String(topicTitle || saved.topicTitle || "Topic").trim() || "Topic";
+  return {
+    title: `Resume ${title} Quiz?`,
+    text: `You have a paused quiz for ${title}. Resume where you stopped or start a new one.`,
+    onResume: () => {
+      void restoreTopicQuizSession(saved);
+    },
+    onStartNew: () => {
+      clearTopicQuizProgress(topicSlug || saved.topicSlug || "");
+      void startTopicQuizSession(topicSlug || saved.topicSlug || "", title, { forceNew: true });
+    },
+  };
+}
+
+function buildResumeStudySessionModalState() {
+  const savedStudySession = getSavedStudySession();
+  if (!savedStudySession) return null;
+  const { state } = savedStudySession;
+  return {
+    title: "Resume Study Session?",
+    text: "You have a paused study session. Resume where you stopped or start a new one.",
+    onResume: () => {
+      mode = "study";
+      activeCase = "";
+      active = state.active;
+      current = state.current;
+      userAnswers = state.userAnswers;
+      currentStreak = state.currentStreak || 0;
+
+      updateModeIndicator(state.studyType);
+      nextBtn.onclick = nextQuestion;
+      prevBtn.onclick = previousQuestion;
+
+      showScreen("quiz-area");
+      showQuestion();
+      restoreStreakUI();
+    },
+    onStartNew: () => {
+      localStorage.removeItem("studySession");
+      localStorage.removeItem("practiceSession");
+      startStudy();
+    },
+  };
+}
+
+function buildResumeSuddenSessionModalState() {
+  const pausedSudden = getSavedDrillSession("sudden");
+  if (!pausedSudden) return null;
+  return {
+    title: "Resume Sudden Death?",
+    text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
+    onResume: () => {
+      loadExamSession("sudden");
+    },
+    onStartNew: () => {
+      clearSavedExamSession("sudden", "exam");
+      localStorage.removeItem("examAbandoned");
+      mode = "exam";
+      examVariant = "sudden";
+      active = [];
+      userAnswers = {};
+      current = 0;
+      startExam("all", "sudden");
+    },
+  };
+}
+
+function buildResumeClinicalSessionModalState() {
+  const pausedClinical = getSavedDrillSession("clinical");
+  if (!pausedClinical) return null;
+  return {
+    title: "Resume Clinical Judgement?",
+    text: "You have a paused Clinical Judgement round. Resume it or start a new round.",
+    onResume: () => {
+      loadExamSession("clinical");
+    },
+    onStartNew: () => {
+      clearSavedExamSession("clinical", "exam");
+      localStorage.removeItem("examAbandoned");
+      mode = "exam";
+      examVariant = "clinical";
+      active = [];
+      userAnswers = {};
+      current = 0;
+      startExam(String(clinicalTotalQuestions), "clinical");
+    },
+  };
 }
 
 function isPausableDrillSession() {
@@ -29461,16 +34690,18 @@ if (sessionResumeNewBtn) {
 
 if (backBtnQuiz) {
   backBtnQuiz.onclick = function () {
-    if (mode === "study") {
-      if (isLawStudyMode()) {
-        persistLawDrillSession();
-        if (getLawDrillView() === "ladder") {
-          goToMenu();
-        } else {
-          returnToLawLadder();
-        }
-        return;
+    if (isLawStudyMode()) {
+      persistLawDrillSession();
+      const lawView = getLawDrillView();
+      if (lawView === "review" || lawView === "result" || lawView === "level") {
+        returnToLawLadder();
+      } else {
+        goToMenu();
       }
+      return;
+    }
+
+    if (mode === "study") {
       saveStudyProgress();
       returnToParentScreen("study-setup");
       return;
@@ -29533,6 +34764,217 @@ if (examBackBtn) {
   };
 }
 
+if (menuSubscriptionBtn) {
+  menuSubscriptionBtn.onclick = () => {
+    closeMenuUserHub();
+    openSubscriptionScreen({
+      intent: "general",
+      returnScreen: "quiz-menu",
+    });
+  };
+}
+
+if (subscriptionBackBtn) {
+  subscriptionBackBtn.onclick = () => {
+    goToPreviousScreen(subscriptionScreenState.returnScreen || "quiz-menu");
+  };
+}
+
+if (subscriptionPaymentModalCloseBtn) {
+  subscriptionPaymentModalCloseBtn.onclick = () => {
+    closeSubscriptionPaymentModal({ focusPlanButton: true });
+  };
+}
+
+if (subscriptionPaymentModalCancelBtn) {
+  subscriptionPaymentModalCancelBtn.onclick = () => {
+    closeSubscriptionPaymentModal({ focusPlanButton: true });
+  };
+}
+
+if (subscriptionProofJumpBtn) {
+  subscriptionProofJumpBtn.onclick = () => {
+    if (!subscriptionScreenState.paymentProofOpen) {
+      openSubscriptionPaymentProof();
+      return;
+    }
+    subscriptionForm?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+}
+
+if (subscriptionPaymentModalEl) {
+  subscriptionPaymentModalEl.addEventListener("click", (event) => {
+    if (event.target === subscriptionPaymentModalEl) {
+      closeSubscriptionPaymentModal({ focusPlanButton: true });
+    }
+  });
+}
+
+if (subscriptionProofInput) {
+  subscriptionProofInput.addEventListener("change", async () => {
+    const file = subscriptionProofInput.files?.[0] || null;
+    if (!file) {
+      renderSubscriptionProofPreview();
+      return;
+    }
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Failed to read payment screenshot."));
+        reader.readAsDataURL(file);
+      });
+      renderSubscriptionProofPreview({ dataUrl });
+    } catch {
+      renderSubscriptionProofPreview();
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent = "We couldn't read that screenshot. Please try another image.";
+      }
+    }
+  });
+}
+
+if (subscriptionProofPreview) {
+  subscriptionProofPreview.addEventListener("click", (event) => {
+    const removeBtn = event.target.closest?.('[data-action="clear-subscription-proof"]');
+    if (!removeBtn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    clearSubscriptionProofSelection();
+    return;
+  });
+
+  subscriptionProofPreview.addEventListener("click", (event) => {
+    if (subscriptionProofPreview.classList.contains("has-file")) return;
+    if (event.target.closest?.('[data-action="clear-subscription-proof"]')) return;
+    if (!subscriptionProofInput) return;
+    event.preventDefault();
+    try {
+      if (typeof subscriptionProofInput.showPicker === "function") {
+        subscriptionProofInput.showPicker();
+      } else {
+        subscriptionProofInput.click();
+      }
+    } catch {
+      subscriptionProofInput.click();
+    }
+  });
+}
+
+if (subscriptionForm) {
+  subscriptionForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!currentUser && backendClient.isAuthenticated()) {
+      currentUser = await backendClient.fetchMe({ preferCache: true }).catch(() => null);
+    }
+    if (!currentUser) {
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent = "We couldn't load your profile yet. Please try again.";
+      }
+      return;
+    }
+    const latestRequest =
+      subscriptionStatusSnapshot?.request ||
+      (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
+    const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
+    const currentSubscriptionStatus = String(
+      currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+    )
+      .trim()
+      .toLowerCase();
+    const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+    if (
+      latestRequestStatus === "pending" ||
+      currentSubscriptionStatus === "active" ||
+      currentSubscriptionStatus === "pending"
+    ) {
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent =
+          latestRequestStatus === "pending" || currentSubscriptionStatus === "pending"
+            ? "A subscription request is already under review."
+            : "Your subscription is already active.";
+      }
+      return;
+    }
+    if (subscriptionSubmitBtn) {
+      subscriptionSubmitBtn.disabled = true;
+    }
+
+    if (subscriptionFormFeedback) {
+      subscriptionFormFeedback.dataset.persist = "1";
+      subscriptionFormFeedback.textContent = "Submitting your proof...";
+    }
+
+    try {
+      const file = subscriptionProofInput?.files?.[0] || null;
+      let proofDataUrl = "";
+      let proofFileName = "";
+      let proofMimeType = "";
+
+      if (file) {
+        proofFileName = file.name || "payment-proof";
+        proofMimeType = file.type || "image/*";
+        proofDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(reader.error || new Error("Failed to read proof image."));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const response = await backendClient.submitSubscriptionRequest({
+        plan: subscriptionPlanInput?.value || "weekly",
+        userId: String(currentUser?.id || "").trim(),
+        username: String(currentUser?.username || "").trim(),
+        contact: String(currentUser?.contact || "").trim(),
+        paymentReference: String(subscriptionTransactionInput?.value || "").trim(),
+        proofText: String(subscriptionTransactionInput?.value || "").trim(),
+        proofDataUrl,
+        proofFileName,
+        proofMimeType,
+        paymentMethod: "manual",
+      });
+
+      currentUser = response?.user || currentUser;
+      renderAuthState();
+      subscriptionPlansCache = Array.isArray(response?.plans) ? response.plans : subscriptionPlansCache;
+      subscriptionStatusSnapshot = response || subscriptionStatusSnapshot;
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.textContent =
+          "Payment proof submitted. Admin review can take up to 24 hours.";
+        subscriptionFormFeedback.dataset.persist = "1";
+      }
+      if (subscriptionTransactionInput) subscriptionTransactionInput.value = "";
+      if (subscriptionProofInput) subscriptionProofInput.value = "";
+      renderSubscriptionProofPreview();
+      renderSubscriptionScreen();
+    } catch (error) {
+      const isUnauthorized = Number(error?.status) === 401 || String(error?.message || "").includes("(401)");
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent = isUnauthorized
+          ? "We couldn't submit your proof just now. Please try again."
+          : generalApiErrorMessage(
+              error,
+              "Unable to submit your payment proof. Please try again.",
+            );
+      }
+    } finally {
+      if (subscriptionSubmitBtn) subscriptionSubmitBtn.disabled = false;
+      if (subscriptionFormFeedback) {
+        window.setTimeout(() => {
+          if (subscriptionFormFeedback.dataset.persist !== "1") {
+            subscriptionFormFeedback.textContent = "";
+          }
+        }, 3000);
+      }
+    }
+  });
+}
+
 const enterBtn = document.getElementById("enter-platform-btn");
 if (enterBtn) {
   enterBtn.onclick = handlePortalEntry;
@@ -29559,8 +35001,13 @@ if (startExamBtn) {
   };
 }
 
-function startMenuDrill(variant = "rapid") {
+async function startMenuDrill(variant = "rapid") {
+  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   const drill = String(variant || "").toLowerCase();
+  if (!requireSubscriptionAccess(drill)) {
+    return;
+  }
+  recordMenuDrillHistory(drill);
   if (drill === "rapid") {
     startExam("5", "rapid");
     return;
@@ -29572,10 +35019,10 @@ function startMenuDrill(variant = "rapid") {
         title: "Resume Sudden Death?",
         text: "You have a paused Sudden Death run. Resume it or start a fresh run.",
         onResume: () => {
-          loadExamSession();
+          loadExamSession("sudden");
         },
         onStartNew: () => {
-          localStorage.removeItem("quizExamSession");
+          clearSavedExamSession("sudden", "exam");
           localStorage.removeItem("examAbandoned");
           mode = "exam";
           examVariant = "sudden";
@@ -29597,10 +35044,10 @@ function startMenuDrill(variant = "rapid") {
         title: "Resume Clinical Judgement?",
         text: "You have a paused Clinical Judgement round. Resume it or start a new round.",
         onResume: () => {
-          loadExamSession();
+          loadExamSession("clinical");
         },
         onStartNew: () => {
-          localStorage.removeItem("quizExamSession");
+          clearSavedExamSession("clinical", "exam");
           localStorage.removeItem("examAbandoned");
           mode = "exam";
           examVariant = "clinical";
@@ -29616,25 +35063,199 @@ function startMenuDrill(variant = "rapid") {
     return;
   }
   if (drill === "law") {
-    void openSavedLawDrillSession();
+    const savedSession = getSavedLawDrillSession();
+    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
     return;
   }
 }
 
 if (rapidDrillBtn) {
-  rapidDrillBtn.onclick = () => startMenuDrill("rapid");
+  rapidDrillBtn.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("rapid")) {
+      return;
+    }
+    void startMenuDrill("rapid");
+  };
 }
 
 if (suddenDrillBtn) {
-  suddenDrillBtn.onclick = () => startMenuDrill("sudden");
+  suddenDrillBtn.onclick = () => {
+    if (!requireSubscriptionAccess("sudden")) {
+      return;
+    }
+    const modalState = buildResumeSuddenSessionModalState();
+    if (modalState) {
+      openSessionResumeModal(modalState);
+      return;
+    }
+    void startMenuDrill("sudden");
+  };
 }
 
 if (clinicalDrillBtn) {
-  clinicalDrillBtn.onclick = () => startMenuDrill("clinical");
+  clinicalDrillBtn.onclick = () => {
+    if (!requireSubscriptionAccess("clinical")) {
+      return;
+    }
+    const modalState = buildResumeClinicalSessionModalState();
+    if (modalState) {
+      openSessionResumeModal(modalState);
+      return;
+    }
+    void startMenuDrill("clinical");
+  };
 }
 
 if (lawDrillBtn) {
-  lawDrillBtn.onclick = () => startMenuDrill("law");
+  lawDrillBtn.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("law")) {
+      return;
+    }
+    void startMenuDrill("law");
+  };
+}
+
+if (menuDrillsTab) {
+  menuDrillsTab.onclick = () => {
+    setMenuHubActiveTab("drills");
+    openDrillsScreen();
+  };
+}
+
+if (menuLawTab) {
+  menuLawTab.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("law")) {
+      return;
+    }
+    setMenuHubActiveTab("law");
+    const savedSession = getSavedLawDrillSession();
+    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+  };
+}
+
+if (menuGppqeTab) {
+  menuGppqeTab.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    setMenuHubActiveTab("gppqe");
+    void openGppqeScreen();
+  };
+}
+
+if (menuExtraTab) {
+  menuExtraTab.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    openExtraScreen();
+  };
+}
+
+if (drillsBackBtn) {
+  drillsBackBtn.onclick = () => showScreen("quiz-menu");
+}
+
+if (gppqeBackBtn) {
+  gppqeBackBtn.onclick = () => gppqeHandleBack();
+}
+
+if (extraBackBtn) {
+  extraBackBtn.onclick = () => showScreen("quiz-menu");
+}
+
+if (drillsMenuBtn || gppqeMenuBtn || extraMenuBtn) {
+  [drillsMenuBtn, gppqeMenuBtn, extraMenuBtn].forEach((btn) => {
+    if (!btn) return;
+    btn.onclick = () => openGlobalQuickNav(btn);
+  });
+}
+
+if (drillsLobbyTabs.length) {
+  drillsLobbyTabs.forEach((tab) => {
+    tab.onclick = async () => {
+      const variant = String(tab.dataset.drillVariant || "rapid").toLowerCase();
+      await refreshSubscriptionAccessForAction();
+      if (!requireSubscriptionAccess(variant)) {
+        return;
+      }
+      setDrillLobbyVariant(variant);
+    };
+  });
+}
+
+if (drillsPlayBtns.length) {
+  drillsPlayBtns.forEach((btn) => {
+    btn.onclick = () => {
+      const variant = String(btn.dataset.drillPlayBtn || "rapid").toLowerCase();
+      void startMenuDrill(variant);
+    };
+  });
+}
+
+if (menuNewsBtn) {
+  menuNewsBtn.onclick = async () => {
+    closeMenuUserHub();
+    await openNewsScreen();
+  };
+}
+
+if (menuGuidelinesBtn) {
+  menuGuidelinesBtn.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("extra-content")) {
+      return;
+    }
+    window.location.href = "guidelines.html";
+  };
+}
+
+if (extraScreen) {
+  extraScreen.addEventListener("click", async (event) => {
+    const target =
+      event.target instanceof HTMLElement
+        ? event.target.closest("[data-coming-soon='true'], [data-medlens='true'], [data-calculator='true']")
+        : null;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.hasAttribute("data-medlens")) {
+      await refreshSubscriptionAccessForAction();
+      if (!requireSubscriptionAccess("extra-content")) {
+        return;
+      }
+      window.location.href = "/medlens.html";
+      return;
+    }
+    if (target.hasAttribute("data-calculator")) {
+      await refreshSubscriptionAccessForAction();
+      if (!requireSubscriptionAccess("extra-content")) {
+        return;
+      }
+      window.location.href = "./calculator.html";
+      return;
+    }
+    if (target.hasAttribute("data-coming-soon")) {
+      if (!requireSubscriptionAccess("extra-content")) {
+        return;
+      }
+      openComingSoonModal();
+    }
+  });
+}
+
+if (comingSoonModal) {
+  comingSoonModal.addEventListener("pointerdown", (event) => {
+    if (event.target === comingSoonModal) {
+      closeComingSoonModal();
+    }
+  });
+  comingSoonModal.addEventListener("click", (event) => {
+    if (event.target === comingSoonModal) {
+      closeComingSoonModal();
+    }
+  });
+}
+
+if (comingSoonOkBtn) {
+  comingSoonOkBtn.onclick = closeComingSoonModal;
 }
 
 function showCountTooltip() {
@@ -29658,22 +35279,82 @@ function showCountTooltip() {
 }
 
 backReviewBtn.onclick = function () {
-  inReview = false; // 🔥 reset properly
+inReview = false; // reset properly
   showScreen("review-screen");
   buildReviewPalette();
   backReviewBtn.classList.add("hidden");
 };
 
 if (studyBtn) {
-  studyBtn.onclick = () => {
-    document.getElementById("start-study-btn").onclick = startStudy;
+  studyBtn.onclick = async () => {
+    await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
     showScreen("study-setup");
+    const modalState = buildResumeStudySessionModalState();
+    if (modalState) {
+      openSessionResumeModal(modalState);
+    }
 
     nextBtn.onclick = nextQuestion;
     prevBtn.onclick = previousQuestion;
   };
+}
+
+document.addEventListener(
+  "click",
+  (event) => {
+    const target =
+      event.target instanceof HTMLElement
+        ? event.target.closest("#start-study-btn, #sudden-drill-btn, #clinical-drill-btn")
+        : null;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.id === "start-study-btn") {
+      const modalState = buildResumeStudySessionModalState();
+      if (!modalState) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openSessionResumeModal(modalState);
+      return;
+    }
+
+    if (target.id === "sudden-drill-btn") {
+      if (!requireSubscriptionAccess("sudden")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      const modalState = buildResumeSuddenSessionModalState();
+      if (!modalState) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openSessionResumeModal(modalState);
+      return;
+    }
+
+    if (target.id === "clinical-drill-btn") {
+      if (!requireSubscriptionAccess("clinical")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      const modalState = buildResumeClinicalSessionModalState();
+      if (!modalState) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openSessionResumeModal(modalState);
+    }
+  },
+  true,
+);
+
+if (startStudyBtn) {
+  startStudyBtn.type = "button";
+  startStudyBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    void startStudy();
+  });
 }
 
 if (examBtn) {
@@ -29735,17 +35416,6 @@ if (startDailyBtn) {
                      DASHBOARD
                   ================================= */
 
-const dashboardDiv = document.getElementById("dashboard");
-
-if (dashboardBtns.length) {
-  dashboardBtns.forEach((btn) => {
-    btn.onclick = () => {
-      closeMenuUserHub();
-      showDashboard();
-    };
-  });
-}
-
 if (menuHomeBtn) {
   menuHomeBtn.addEventListener("click", () => {
     closeMenuUserHub();
@@ -29768,407 +35438,58 @@ if (menuHomeBtn) {
   });
 }
 
-function renderDashboardValues({
-  totalAttempts = 0,
-  overallAccuracy = 0,
-  weakCount = 0,
-  sessionCount = 0,
-  categories = [],
-  rotations = [],
-}) {
-  document.getElementById("dash-total").innerText = totalAttempts;
-  document.getElementById("dash-accuracy").innerText = overallAccuracy + "%";
-  document.getElementById("dash-weak").innerText = weakCount;
-  const sessionsEl = document.getElementById("dash-sessions");
-  if (sessionsEl) sessionsEl.innerText = sessionCount;
 
-  const container = document.getElementById("dash-categories");
-  container.innerHTML = "";
-
-  if (!Array.isArray(categories) || categories.length === 0) {
-    container.innerHTML = '<div class="no-data">No category data yet.</div>';
-  } else {
-    categories.forEach((rowData) => {
-      const category = rowData.category || "General";
-      const attempts = Number(rowData.attempts) || 0;
-      const accuracy = Number(rowData.accuracy) || 0;
-
-      const row = document.createElement("div");
-      row.className = "category-row";
-
-      row.innerHTML = `
-        <div class="category-info">
-          <div class="category-name">${category}</div>
-          <div class="category-meta">${attempts} attempts</div>
-        </div>
-        <div class="category-bar">
-          <div class="category-fill" style="width:${accuracy}%"></div>
-        </div>
-        <div class="category-percent">${accuracy}%</div>
-      `;
-
-      container.appendChild(row);
-    });
-  }
-
-  renderDashboardTopSubjects(categories);
-  renderDashboardRotations(rotations);
-  renderDashboardRecentResults();
-  renderDashboardTrend();
+function normalizeDashboardSessionMode(mode = "Session") {
+  const raw = String(mode || "").trim();
+  const lower = raw.toLowerCase();
+  if (!lower) return "Session";
+  if (lower.includes("law drill") || lower.includes("pharmacy law quiz")) return "Law Drill";
+  if (lower.includes("sudden death")) return "Sudden Death";
+  if (lower.includes("rapid fire") || lower.includes("rapid drill")) return "Rapid Fire";
+  if (lower.includes("clinical judgement") || lower.includes("clinical drill")) return "Clinical Judgement";
+  if (lower.startsWith("daily")) return "Daily";
+  if (lower.startsWith("study") || lower.includes("topic quiz")) return "Study";
+  if (lower.startsWith("exam")) return "Exam";
+  if (lower.startsWith("smart")) return "Smart";
+  return raw;
 }
 
-function getLocalDashboardSnapshot() {
-  let totalAttempts = 0;
-  let totalCorrect = 0;
-  let weakCount = 0;
+function refreshQuestionDependentUi() {
+  populateStudyCategories();
+  populateStudyRotations();
+  populateExamCategories();
+  populateExamRotations();
+  populateTopicLibraryCategories();
+  syncAllSetupPickerButtons();
 
-  Object.values(performanceData || {}).forEach((row) => {
-    const attempts = Math.max(0, Number(row?.attempts) || 0);
-    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
-    if (attempts <= 0) return;
-    totalAttempts += attempts;
-    totalCorrect += correct;
-    const accuracy = Math.round((correct / attempts) * 100);
-    if (accuracy < 60) weakCount += 1;
-  });
-
-  const overallAccuracy =
-    totalAttempts === 0 ? 0 : Math.round((totalCorrect / totalAttempts) * 100);
-
-  const categories = Object.keys(categoryPerformance || {})
-    .map((cat) => ({
-      category: cat,
-      attempts: Math.max(0, Number(categoryPerformance?.[cat]?.attempts) || 0),
-      accuracy: getCategoryAccuracy(cat),
-    }))
-    .sort((a, b) => String(a.category).localeCompare(String(b.category)));
-
-  const rotations = Object.keys(rotationPerformance || {})
-    .map((rotation) => ({
-      rotation,
-      attempts: Math.max(0, Number(rotationPerformance?.[rotation]?.attempts) || 0),
-      accuracy: getRotationAccuracy(rotation),
-    }))
-    .sort((a, b) => String(a.rotation).localeCompare(String(b.rotation)));
-
-  return {
-    totalAttempts,
-    overallAccuracy,
-    weakCount,
-    sessionCount: Array.isArray(sessionHistory) ? sessionHistory.length : 0,
-    categories,
-    rotations,
-  };
+  if (!questionBankReady) return;
+  const homeTotalQuestions = document.getElementById("home-total-questions");
+  if (homeTotalQuestions) homeTotalQuestions.innerText = String(questionBank.length || 0);
 }
-
-function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
-  const local = localSnapshot || {
-    totalAttempts: 0,
-    overallAccuracy: 0,
-    weakCount: 0,
-    sessionCount: 0,
-    categories: [],
-    rotations: [],
-  };
-  const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
-
-  const remoteAttempts = Math.max(
-    0,
-    Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
-  );
-  const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
-  const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
-
-  const mergedTotalAttempts = Math.max(
-    Math.max(0, Number(local.totalAttempts) || 0),
-    remoteAttempts,
-  );
-  const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
-  const mergedOverallAccuracy =
-    remoteAttempts > (Number(local.totalAttempts) || 0)
-      ? remoteAccuracy
-      : Math.max(0, Number(local.overallAccuracy) || 0);
-
-  const mergedCategoryMap = new Map();
-  (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
-    const name = String(row?.category || "").trim() || "General";
-    mergedCategoryMap.set(name, {
-      category: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
-    const name = String(row?.category || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedCategoryMap.get(name);
-    if (!existing) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedCategoryMap.set(name, { category: name, ...remoteRow });
-      return;
-    }
-    mergedCategoryMap.set(name, {
-      category: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
-    });
-  });
-
-  const mergedRotationMap = new Map();
-  (Array.isArray(local.rotations) ? local.rotations : []).forEach((row) => {
-    const name = String(row?.rotation || "").trim() || "General";
-    mergedRotationMap.set(name, {
-      rotation: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
-    const name = String(row?.rotation || "").trim() || "General";
-    const remoteRow = {
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    };
-    const existing = mergedRotationMap.get(name);
-    if (!existing) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
-    if (remoteRow.attempts > existing.attempts) {
-      mergedRotationMap.set(name, { rotation: name, ...remoteRow });
-      return;
-    }
-    mergedRotationMap.set(name, {
-      rotation: name,
-      attempts: existing.attempts,
-      accuracy: existing.accuracy,
-    });
-  });
-
-  return {
-    totalAttempts: mergedTotalAttempts,
-    overallAccuracy: mergedOverallAccuracy,
-    weakCount: mergedWeakCount,
-    sessionCount: Math.max(0, Number(local.sessionCount) || 0),
-    categories: [...mergedCategoryMap.values()].sort((a, b) =>
-      String(a.category).localeCompare(String(b.category)),
-    ),
-    rotations: [...mergedRotationMap.values()].sort((a, b) =>
-      String(a.rotation).localeCompare(String(b.rotation)),
-    ),
-  };
-}
-
-function setDashboardTrendScope(scope = "session") {
-  const safeScope = String(scope || "session").trim().toLowerCase();
-  dashboardTrendState.scope = safeScope;
-  Array.from(document.querySelectorAll("[data-trend-scope]")).forEach((button) => {
-    const buttonScope = String(button?.dataset?.trendScope || "session").trim().toLowerCase();
-    const isActive = buttonScope === safeScope;
-    button.classList.toggle("is-active", isActive);
-    button.setAttribute("aria-pressed", isActive ? "true" : "false");
-  });
-}
-
-function renderDashboardTrend() {
-  const chartEl = document.getElementById("dash-trend-chart");
-  const rateEl = document.getElementById("dash-trend-rate");
-  const copyEl = document.getElementById("dash-trend-copy");
-  if (!chartEl || !rateEl || !copyEl) return;
-
-  const scope = String(dashboardTrendState.scope || "session").trim().toLowerCase();
-  setDashboardTrendScope(scope);
-  const entries = buildTrendSeries(scope, Array.isArray(sessionHistory) ? sessionHistory : [], DASHBOARD_TREND_LIMIT);
-  const latest = entries[entries.length - 1] || { percent: 0 };
-  rateEl.textContent = `${Math.max(0, Math.round(Number(latest.percent) || 0))}%`;
-  copyEl.textContent = getTrendScopeCopy(scope);
-
-  const width = 520;
-  const height = 220;
-  const left = 18;
-  const right = 16;
-  const top = 16;
-  const bottom = 28;
-  const innerWidth = width - left - right;
-  const innerHeight = height - top - bottom;
-  const maxVal = 100;
-  const stepX = innerWidth / Math.max(1, entries.length - 1);
-  const points = entries.map((entry, index) => {
-    const x = left + index * stepX;
-    const y = top + innerHeight - (entry.percent / maxVal) * innerHeight;
-    return { x, y, label: entry.label, percent: entry.percent };
-  });
-  const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const area = `${left},${top + innerHeight} ${polyline} ${left + innerWidth},${top + innerHeight}`;
-  const circles = points
-    .map(
-      (point) =>
-        `<circle cx="${point.x}" cy="${point.y}" r="4.6"></circle>`,
-    )
-    .join("");
-  const labels = points
-    .map((point, index) => {
-      const showLabel =
-        scope !== "monthly" || index === 0 || index === points.length - 1 || index % 2 === 0;
-      if (!showLabel) return "";
-      const shortLabel = escapeHtml(String(point.label || index + 1));
-      const fullLabel = escapeHtml(String(point.title || point.label || index + 1));
-      const labelClass = scope === "monthly" ? "dashboard-trend-label-monthly" : "";
-      return `<text x="${point.x}" y="${height - 8}" text-anchor="middle" class="${labelClass}" title="${fullLabel}">${shortLabel}</text>`;
-    })
-    .join("");
-
-  chartEl.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(`${getTrendScopeCopy(scope)} score trend`)}">
-      <defs>
-        <linearGradient id="dashboardTrendFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgba(79, 133, 196, 0.34)"></stop>
-          <stop offset="100%" stop-color="rgba(79, 133, 196, 0.05)"></stop>
-        </linearGradient>
-      </defs>
-      <line x1="${left}" y1="${top + innerHeight}" x2="${left + innerWidth}" y2="${top + innerHeight}" class="dashboard-trend-axis"></line>
-      <polygon points="${area}" class="dashboard-trend-area"></polygon>
-      <polyline points="${polyline}" class="dashboard-trend-line"></polyline>
-      <g class="dashboard-trend-points">${circles}</g>
-      <g class="dashboard-trend-labels">${labels}</g>
-    </svg>
-  `;
-}
-
-function renderDashboardTopSubjects(categories = []) {
-  const container = document.getElementById("dash-top-subjects");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const rows = [...(Array.isArray(categories) ? categories : [])]
-    .sort((a, b) => {
-      const accuracyDiff = (Number(b?.accuracy) || 0) - (Number(a?.accuracy) || 0);
-      if (accuracyDiff !== 0) return accuracyDiff;
-      return (Number(b?.attempts) || 0) - (Number(a?.attempts) || 0);
-    })
-    .slice(0, 3);
-
-  if (!rows.length) {
-    container.innerHTML = '<div class="dashboard-empty-state">No subject data yet.</div>';
-    return;
-  }
-
-  rows.forEach((row) => {
-    const item = document.createElement("div");
-    item.className = "dashboard-topsubject-row";
-    item.innerHTML = `
-      <div class="dashboard-topsubject-copy">
-        <div class="dashboard-topsubject-name">${row.category || "General"}</div>
-        <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
-      </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
-    `;
-    container.appendChild(item);
-  });
-}
-
-function renderDashboardRotations(rotations = []) {
-  const container = document.getElementById("dash-rotations");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const rows = [...(Array.isArray(rotations) ? rotations : [])]
-    .sort((a, b) => {
-      const accuracyDiff = (Number(b?.accuracy) || 0) - (Number(a?.accuracy) || 0);
-      if (accuracyDiff !== 0) return accuracyDiff;
-      return (Number(b?.attempts) || 0) - (Number(a?.attempts) || 0);
-    })
-    .slice(0, 3);
-
-  if (!rows.length) {
-    container.innerHTML = '<div class="dashboard-empty-state">No rotation data yet.</div>';
-    return;
-  }
-
-  rows.forEach((row) => {
-    const item = document.createElement("div");
-    item.className = "dashboard-topsubject-row";
-    item.innerHTML = `
-      <div class="dashboard-topsubject-copy">
-        <div class="dashboard-topsubject-name">${row.rotation || "General"}</div>
-        <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
-      </div>
-      <div class="dashboard-topsubject-score">${Number(row.accuracy) || 0}%</div>
-    `;
-    container.appendChild(item);
-  });
-}
-
-function renderDashboardRecentResults() {
-  const container = document.getElementById("dash-recent-results");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const entries = (Array.isArray(sessionHistory) ? sessionHistory : []).slice(0, 6);
-  if (!entries.length) {
-    container.innerHTML = '<div class="dashboard-empty-state">No recent results yet.</div>';
-    return;
-  }
-
-  entries.forEach((entry) => {
-    const item = document.createElement("div");
-    item.className = "dashboard-recent-row";
-    const percent = Math.max(0, Number(entry?.percent) || 0);
-    item.innerHTML = `
-      <div class="dashboard-recent-copy">
-        <div class="dashboard-recent-mode">${String(entry?.mode || "Session")}</div>
-        <div class="dashboard-recent-meta">${Number(entry?.score) || 0}/${Number(entry?.total) || 0}</div>
-      </div>
-      <div class="dashboard-recent-percent">${percent}%</div>
-    `;
-    container.appendChild(item);
-  });
-}
-
-function showDashboard() {
-  showScreen("dashboard");
-
-  const localSnapshot = getLocalDashboardSnapshot();
-  renderDashboardValues(localSnapshot);
-  void syncSessionHistoryFromBackend();
-  void hydratePerformanceStateFromBackend();
-
-  backendClient
-    .fetchSyncedDashboard()
-    .then((remote) => {
-      const mergedSnapshot = mergeDashboardSnapshots(localSnapshot, remote);
-      renderDashboardValues(mergedSnapshot);
-    })
-    .catch(() => {
-      // Keep local dashboard when backend is not reachable.
-    });
-
-  const dashboardCloseBtn = document.getElementById("dashboard-close-btn");
-  if (dashboardCloseBtn) {
-    dashboardCloseBtn.onclick = hideDashboard;
-  }
-}
-
-function hideDashboard() {
-  goToPreviousScreen("quiz-menu");
-}
-
 function saveSession(mode, score, total, duration = null) {
+  const now = Date.now();
+  const normalizedMode = normalizeDashboardSessionMode(mode);
   const percent = Math.round((score / total) * 100);
+  const fingerprint = [
+    normalizedMode,
+    Math.max(0, Math.round(Number(score) || 0)),
+    Math.max(0, Math.round(Number(total) || 0)),
+    Math.max(0, Math.round(Number.isFinite(Number(percent)) ? Number(percent) : 0)),
+    String(duration || "").trim(),
+  ].join("|");
+  if (fingerprint === lastSavedSessionFingerprint && now - lastSavedSessionAt < 5000) {
+    return latestSavedSession;
+  }
+  lastSavedSessionFingerprint = fingerprint;
+  lastSavedSessionAt = now;
+
+  const sessionId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
   const entry = {
-    id:
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    sessionId,
     mode,
     score,
     total,
@@ -30180,11 +35501,19 @@ function saveSession(mode, score, total, duration = null) {
 
   // Add to top
   sessionHistory.unshift(entry);
+  latestSavedSession = entry;
+  recentSessionResults.unshift(entry);
+  if (recentSessionResults.length > DASHBOARD_RECENT_RESULTS_MAX) {
+    recentSessionResults.length = DASHBOARD_RECENT_RESULTS_MAX;
+  }
+
+  // Keep a large local window; remote sync keeps the long-term history.
+  if (sessionHistory.length > MAX_SESSION_HISTORY_ENTRIES) {
+    sessionHistory.pop();
+  }
 
   localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
-
-  backendClient.syncSession(entry);
-
+  localStorage.setItem(RECENT_RESULTS_STORAGE_KEY, JSON.stringify(recentSessionResults));
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
 }
@@ -30195,14 +35524,47 @@ function getTrend() {
   const latest = sessionHistory[0].percent;
   const previous = sessionHistory[1].percent;
 
-  if (latest > previous) return "📈 Improving";
-  if (latest < previous) return "📉 Declining";
-  return "➡ Stable";
+  if (latest > previous) return "Improving";
+  if (latest < previous) return "Declining";
+  return "Stable";
 }
 
-function renderModeHistory(modeName, containerId) {
+async function renderModeHistory(modeName, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  const normalizedModeName = String(modeName || "").trim().toLowerCase();
+  const matchesHistoryMode = (value = "") => {
+    const normalizedEntryMode = String(normalizeDashboardSessionMode(value) || "").trim().toLowerCase();
+    if (normalizedModeName === "exam") {
+      return normalizedEntryMode.startsWith("exam") || normalizedEntryMode === "law drill";
+    }
+    return normalizedEntryMode.startsWith(normalizedModeName);
+  };
+  const historyKey = (entry = {}) =>
+    [
+      String(normalizeDashboardSessionMode(entry?.mode || "")).trim().toLowerCase(),
+      Number(entry?.score) || 0,
+      Number(entry?.total) || 0,
+      String(entry?.date || entry?.createdAt || entry?.timestamp || "").trim(),
+      String(entry?.duration || "").trim(),
+    ].join("|");
+  const mergeHistoryEntries = (entries = []) => {
+    const map = new Map();
+    [...(Array.isArray(entries) ? entries : [])]
+      .filter((entry) => matchesHistoryMode(entry?.mode || ""))
+      .forEach((entry) => {
+        const key = historyKey(entry);
+        if (!map.has(key)) {
+          map.set(key, entry);
+        }
+      });
+    return [...map.values()].sort((a, b) => {
+      const aTime = new Date(a?.timestamp || a?.createdAt || a?.date || 0).getTime();
+      const bTime = new Date(b?.timestamp || b?.createdAt || b?.date || 0).getTime();
+      return bTime - aTime;
+    });
+  };
 
   const renderEntries = (entries) => {
     container.innerHTML = "";
@@ -30240,7 +35602,7 @@ function renderModeHistory(modeName, containerId) {
           opacity:0.6;
           margin-top:4px;
         ">
-          ${s.date}
+          ${formatAppDate(new Date(s.createdAt || s.date || Date.now()))}
         </div>
       </div>
 
@@ -30261,30 +35623,34 @@ function renderModeHistory(modeName, containerId) {
     });
   };
 
-  const localEntries = sessionHistory.filter((s) =>
-    s.mode.startsWith(modeName),
-  );
+  const localEntries = mergeHistoryEntries(sessionHistory);
   renderEntries(localEntries);
-
-  backendClient
-    .fetchSyncedHistory(modeName, SESSION_HISTORY_SYNC_LIMIT)
-    .then((data) => {
-      if (!Array.isArray(data?.sessions) || data.sessions.length === 0) return;
-
-      const remoteEntries = data.sessions.map((s) => ({
+  const cacheKey = `${DASHBOARD_HISTORY_CACHE_PREFIX}${normalizedModeName || "study"}`;
+  const cachedHistory = await getOfflineEntry(cacheKey);
+  if (cachedHistory?.value) {
+    const cachedSessions = Array.isArray(cachedHistory.value?.sessions)
+      ? cachedHistory.value.sessions
+      : Array.isArray(cachedHistory.value)
+        ? cachedHistory.value
+        : [];
+    const cachedEntries = mergeHistoryEntries(
+      cachedSessions.map((s) => ({
         mode: s.mode || modeName,
         score: Number(s.score) || 0,
         total: Number(s.total) || 0,
         percent: Number(s.percent) || 0,
         date: s.date || "",
+        createdAt: s.createdAt || s.date || "",
+        timestamp: new Date(s.createdAt || s.date || Date.now()).getTime(),
         duration: s.duration || null,
-      }));
+      })),
+    );
+    if (cachedEntries.length > 0) {
+      renderEntries(cachedEntries);
+    }
+  }
 
-      renderEntries(remoteEntries);
-    })
-    .catch(() => {
-      // Keep local history when backend is offline.
-    });
+  backendClient
 }
 
 function toggleHistory() {
@@ -30305,14 +35671,10 @@ function clearHistory() {
   sessionHistory = [];
 
   localStorage.removeItem("quizSessionHistory");
-  void backendClient.clearSyncedHistory();
 
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
   renderModeHistory("Smart", "smart-history");
-  if (document.getElementById("dashboard")?.classList.contains("screen-active")) {
-    renderDashboardValues(getLocalDashboardSnapshot());
-  }
 }
 
 function backToMenu() {
@@ -30326,7 +35688,7 @@ function buildCategorySummary() {
     const accuracy = getCategoryAccuracy(cat);
     summary += `
                         <p>
-                          <strong>${cat}</strong> — ${accuracy}%
+                          <strong>${cat}</strong> - ${accuracy}%
                         </p>
                       `;
   });
@@ -30658,14 +36020,6 @@ function updateModeIndicator(studyType = null) {
   if (mode === "study") {
     const resolvedStudyType = String(studyType || getCurrentStudyType()).trim().toLowerCase();
     const lawDrillActive = isLawStudyMode();
-    if (lawDrillActive) {
-      indicator.innerText = "Law Drill";
-    } else if (resolvedStudyType === "weak") {
-      indicator.innerText = "📚 Practice Weak Areas";
-    } else {
-      indicator.innerText = "📚 Study Mode";
-    }
-
     indicator.innerText =
       lawDrillActive
         ? "Law Drill"
@@ -30736,11 +36090,701 @@ function updateModeIndicator(studyType = null) {
     if (!compactHeaderMode) headerInlineMeta.innerHTML = "";
   }
 }
+function resolveSubscriptionAccess(user = currentUser, snapshot = subscriptionStatusSnapshot) {
+  return snapshot?.subscription || user?.subscriptionAccess || null;
+}
+
+function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptionStatusSnapshot) {
+  const access = resolveSubscriptionAccess(user, snapshot);
+  const latestRequest =
+    snapshot?.request ||
+    (Array.isArray(snapshot?.requests) ? snapshot.requests[0] : null) ||
+    user?.subscriptionRequest ||
+    null;
+  const requestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+  const accessStatus = String(access?.status || "").trim().toLowerCase();
+  const planLabel =
+    String(latestRequest?.planLabel || latestRequest?.planShortLabel || access?.planLabel || access?.plan || "Access").trim() ||
+    "Access";
+
+  if (requestStatus === "pending") {
+    return {
+      title: `${planLabel} pending`,
+      subtitle: "Awaiting admin approval",
+      note: latestRequest?.reviewNote || "Your payment proof is in review.",
+      pill: "pending",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (accessStatus === "pending") {
+    return {
+      title: `${planLabel} pending`,
+      subtitle: "Awaiting admin approval",
+      note: access.lockedReason || "Your payment proof is in review.",
+      pill: "pending",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (!access) {
+    return {
+      title: "Free Trial",
+      subtitle: "7 days after signup",
+      note: "You are currently on the trial access path.",
+      pill: "active",
+      locked: false,
+      isActive: true,
+    };
+  }
+
+  if (access.status === "pending") {
+    return {
+      title: `${access.planLabel || "Access"} pending`,
+      subtitle: "Awaiting admin approval",
+      note: access.lockedReason || "Your proof is in review.",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (access.status === "expired") {
+    return {
+      title: "Access expired",
+      subtitle: "",
+      note: access.lockedReason || "Your free trial or paid access has ended.",
+      pill: "expired",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  if (access.status === "rejected") {
+    return {
+      title: "Proof rejected",
+      subtitle: "Resubmit a valid payment proof",
+      note: access.lockedReason || "The admin could not verify the last submission.",
+      pill: "rejected",
+      locked: true,
+      isActive: false,
+    };
+  }
+
+  const daysLeft = Number.isFinite(Number(access.daysRemaining)) ? Number(access.daysRemaining) : null;
+  const plural = daysLeft === 1 ? "day" : "days";
+  const expirationLabel = access.expirationAt
+    ? new Date(access.expirationAt).toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "";
+  return {
+    title: access.planLabel || "Active access",
+    subtitle: daysLeft === null ? "Active access" : `${daysLeft} ${plural} left`,
+    note: expirationLabel ? `Ends ${expirationLabel}` : "Access is currently active.",
+    pill: "active",
+    locked: false,
+    isActive: true,
+  };
+}
+
+function formatSubscriptionExpiryLabel(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+  const parsed = Date.parse(rawValue);
+  if (!Number.isFinite(parsed)) return "";
+  return new Date(parsed).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function getSubscriptionPlanList() {
+  const defaultPlans = [
+        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock everything for 7 days." },
+        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 15, durationDays: 30, description: "Unlock everything for 30 days." },
+        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 120, durationDays: 365, description: "Unlock everything for 365 days." },
+      ];
+  if (Array.isArray(subscriptionPlansCache) && subscriptionPlansCache.length) {
+    return normalizeSubscriptionPlans(subscriptionPlansCache);
+  }
+  return defaultPlans;
+}
+
+function normalizeSubscriptionPlans(plans = []) {
+  const defaults = {
+    weekly: {
+      key: "weekly",
+      label: "Weekly Access",
+      shortLabel: "Week Pass",
+      priceGhs: 5,
+      durationDays: 7,
+      description: "Unlock everything for 7 days.",
+    },
+    monthly: {
+      key: "monthly",
+      label: "Monthly Access",
+      shortLabel: "Month Pass",
+      priceGhs: 15,
+      durationDays: 30,
+      description: "Unlock everything for 30 days.",
+    },
+    yearly: {
+      key: "yearly",
+      label: "Annual Access",
+      shortLabel: "Annual Pass",
+      priceGhs: 120,
+      durationDays: 365,
+      description: "Unlock everything for 365 days.",
+    },
+  };
+  return ["weekly", "monthly", "yearly"].map((key) => {
+    const source = Array.isArray(plans) ? plans.find((plan) => String(plan?.key || "").trim().toLowerCase() === key) : null;
+    return {
+      ...(source && typeof source === "object" ? source : {}),
+      ...defaults[key],
+      key,
+      priceGhs: defaults[key].priceGhs,
+      durationDays: defaults[key].durationDays,
+    };
+  });
+}
+
+function getSubscriptionFeatureList(intent = "general") {
+  const normalized = String(intent || "").toLowerCase();
+  if (normalized.includes("community")) return ["Chat", "Drills", "Exams", "Library"];
+  if (normalized.includes("library")) return ["Library", "Drills", "Exams", "Chat"];
+  return ["Drills", "Exams", "Library", "Chat"];
+}
+
+function getSubscriptionProofReference(planKey = "weekly") {
+  void planKey;
+  return "";
+}
+
+function renderSubscriptionPaymentBrand(kind = "mtn", label = "") {
+  const normalized = String(kind || "").trim().toLowerCase();
+  const icon = normalized === "fidelity"
+    ? `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 19h16"></path>
+        <path d="M6 19V9"></path>
+        <path d="M10 19V9"></path>
+        <path d="M14 19V9"></path>
+        <path d="M18 19V9"></path>
+        <path d="M4 9l8-5 8 5"></path>
+      </svg>
+    `
+    : `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 16.5c1.6-1.8 3.7-2.8 7-2.8s5.4 1 7 2.8"></path>
+        <path d="M7.5 13.7c1.1-1.2 2.7-1.9 4.5-1.9s3.4.7 4.5 1.9"></path>
+        <path d="M10 11.1c.6-.6 1.3-1 2-1s1.4.4 2 1"></path>
+      </svg>
+    `;
+  const className = normalized === "fidelity" ? "is-fidelity" : "is-mtn";
+  return `
+    <span class="subscription-payment-brand ${className}">
+      ${icon}
+      <span>${escapeHtml(label || normalized.toUpperCase())}</span>
+    </span>
+  `;
+}
+
+function openSubscriptionScreen({ intent = "general", returnScreen = "quiz-menu" } = {}) {
+  subscriptionScreenState.intent = String(intent || "general").trim().toLowerCase() || "general";
+  subscriptionScreenState.returnScreen = String(returnScreen || "quiz-menu").trim() || "quiz-menu";
+  subscriptionScreenState.paymentModalOpen = false;
+  void loadSubscriptionScreenData({ force: true }).catch(() => false);
+  showScreen("subscription-screen");
+  window.requestAnimationFrame(() => {
+    const screen = document.getElementById("subscription-screen");
+    const shell = document.querySelector("#subscription-screen .subscription-shell");
+    screen?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (screen) screen.scrollTop = 0;
+    shell?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (shell) shell.scrollTop = 0;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
+}
+
+function syncSubscriptionPaymentModalVisibility() {
+  if (!subscriptionPaymentModalEl) return;
+  const isOpen = Boolean(subscriptionScreenState.paymentModalOpen);
+  subscriptionPaymentModalEl.classList.toggle("hidden", !isOpen);
+  subscriptionPaymentModalEl.setAttribute("aria-hidden", isOpen ? "false" : "true");
+  document.body.classList.toggle("subscription-modal-open", isOpen);
+}
+
+function syncSubscriptionPaymentProofVisibility() {
+  if (!subscriptionProofPanelEl) return;
+  const isOpen = Boolean(subscriptionScreenState.paymentProofOpen);
+  subscriptionProofPanelEl.classList.toggle("hidden", !isOpen);
+  subscriptionPaymentModalCardEl?.classList.toggle("is-proof-open", isOpen);
+}
+
+function isSubscriptionPurchaseBlocked(user = currentUser, snapshot = subscriptionStatusSnapshot) {
+  const latestRequest =
+    snapshot?.request ||
+    (Array.isArray(snapshot?.requests) ? snapshot.requests[0] : null) ||
+    user?.subscriptionRequest ||
+    null;
+  const currentAccess = resolveSubscriptionAccess(user, snapshot);
+  const currentStatus = String(currentAccess?.status || user?.subscriptionStatus || "").trim().toLowerCase();
+  const currentPlan = String(currentAccess?.plan || user?.subscriptionPlan || "").trim().toLowerCase();
+  const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+  const requestIsBlocking = latestRequestStatus === "pending";
+  const activePaidAccess = currentStatus === "active" && currentPlan !== "trial";
+  const pendingAccess = currentStatus === "pending";
+  return requestIsBlocking || activePaidAccess || pendingAccess;
+}
+
+function buildSubscriptionProofPlaceholderMarkup() {
+  return `
+    <div class="subscription-proof-preview-empty" title="Click to upload screenshot">
+      <span class="subscription-proof-preview-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 10.5 6 13v4.5A1.5 1.5 0 0 0 7.5 19h9A1.5 1.5 0 0 0 18 17.5V13l-2.2-2.2a1 1 0 0 0-1.4 0L11 14.2 9.4 12.6a1 1 0 0 0-1.4 0Z" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="subscription-proof-preview-copy">
+        <strong>Click to upload screenshot</strong>
+      </span>
+    </div>
+  `;
+}
+
+function clearSubscriptionProofSelection() {
+  if (subscriptionProofInput) {
+    subscriptionProofInput.value = "";
+  }
+  renderSubscriptionProofPreview();
+}
+
+function renderSubscriptionProofPreview({ dataUrl = "" } = {}) {
+  if (!subscriptionProofPreviewContent) return;
+  const safeDataUrl = String(dataUrl || "").trim();
+  if (!safeDataUrl) {
+    subscriptionProofPreviewContent.innerHTML = buildSubscriptionProofPlaceholderMarkup();
+    subscriptionProofPreview?.classList.remove("has-file");
+    return;
+  }
+
+  subscriptionProofPreviewContent.innerHTML = `
+    <div
+      class="subscription-proof-preview-file subscription-proof-preview-file--compact subscription-proof-preview-file--image"
+    >
+      <img
+        class="subscription-proof-preview-image"
+        src="${escapeHtml(safeDataUrl)}"
+        alt="Uploaded payment screenshot preview"
+      />
+      <button
+        type="button"
+        class="subscription-proof-preview-remove"
+        data-action="clear-subscription-proof"
+        aria-label="Remove uploaded screenshot"
+        title="Remove uploaded screenshot"
+        style="all: unset; position: absolute; top: 4px; right: 4px; z-index: 3; width: 18px; height: 18px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(18,24,35,0.88); color: #fff; font-size: 12px; line-height: 1; font-weight: 900; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.28); padding: 0; display: grid; place-items: center;"
+      >&times;</button>
+    </div>
+  `;
+  subscriptionProofPreview?.classList.add("has-file");
+}
+
+function openSubscriptionPaymentProof() {
+  subscriptionScreenState.paymentProofOpen = true;
+  syncSubscriptionPaymentProofVisibility();
+  window.requestAnimationFrame(() => {
+    const proofTop = subscriptionProofPanelEl?.offsetTop || 0;
+    subscriptionPaymentModalCardEl?.scrollTo?.({ top: proofTop, behavior: "smooth" });
+    try {
+      subscriptionTransactionInput?.focus?.({ preventScroll: true });
+    } catch {
+      subscriptionTransactionInput?.focus?.();
+    }
+  });
+}
+
+function openSubscriptionPaymentModal(planKey = "weekly") {
+  if (isSubscriptionPurchaseBlocked()) {
+    const feedbackEl = document.getElementById("subscription-form-feedback");
+    if (feedbackEl) {
+      feedbackEl.dataset.persist = "1";
+      feedbackEl.textContent = "A subscription is already active or under review.";
+    }
+    return false;
+  }
+  const normalizedPlan = String(planKey || "").trim() || "weekly";
+  if (subscriptionPlanInput) {
+    subscriptionPlanInput.value = normalizedPlan;
+  }
+  subscriptionScreenState.paymentModalOpen = true;
+  subscriptionScreenState.paymentProofOpen = false;
+  renderSubscriptionScreen();
+  syncSubscriptionPaymentModalVisibility();
+  window.requestAnimationFrame(() => {
+    subscriptionPaymentModalCardEl?.scrollTo?.({ top: 0, behavior: "auto" });
+    subscriptionPaymentModalCloseBtn?.focus?.();
+  });
+}
+
+function closeSubscriptionPaymentModal({ focusPlanButton = false } = {}) {
+  subscriptionScreenState.paymentModalOpen = false;
+  subscriptionScreenState.paymentProofOpen = false;
+  syncSubscriptionPaymentModalVisibility();
+  syncSubscriptionPaymentProofVisibility();
+  if (focusPlanButton) {
+    window.requestAnimationFrame(() => {
+      const selectedPlan = subscriptionPlanInput?.value || "weekly";
+      const trigger = document.querySelector(
+        `[data-subscription-plan="${CSS.escape(selectedPlan)}"], [data-subscription-plan-card="${CSS.escape(selectedPlan)}"]`,
+      );
+      trigger?.focus?.();
+    });
+  }
+}
+
+function renderSubscriptionScreen() {
+  const state = getSubscriptionAccessSummary(currentUser, subscriptionStatusSnapshot);
+  const titleEl = document.getElementById("subscription-status-title");
+  const subtitleEl = document.getElementById("subscription-status-subtitle");
+  const noteEl = document.getElementById("subscription-status-note");
+  const pillEl = document.getElementById("subscription-status-pill");
+  const planGridEl = document.getElementById("subscription-plan-grid");
+  const sectionTitleEl = document.getElementById("subscription-section-title");
+  const sectionNoteEl = document.getElementById("subscription-section-note");
+  const statusBadgesEl = document.getElementById("subscription-status-badges");
+  const selectedTitleEl = document.getElementById("subscription-selected-plan-title");
+  const selectedCopyEl = document.getElementById("subscription-selected-plan-copy");
+  const modalTitleEl = subscriptionPaymentModalTitleEl;
+  const modalCopyEl = subscriptionPaymentModalCopyEl;
+  const amountEl = subscriptionPaymentAmountEl;
+  const accountNumberEl = subscriptionPaymentAccountNumberEl;
+  const accountNameEl = subscriptionPaymentAccountNameEl;
+  const detailsEl = subscriptionPaymentDetailsEl;
+  const planInputEl = document.getElementById("subscription-plan-input");
+  const feedbackEl = document.getElementById("subscription-form-feedback");
+  const requestStatusEl = document.getElementById("subscription-request-status");
+  const isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
+  const latestRequest =
+    subscriptionStatusSnapshot?.request ||
+    (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
+  const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
+  const currentSubscriptionStatus = String(
+    currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+  )
+    .trim()
+    .toLowerCase();
+  const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || currentUser?.subscriptionPlan || "").trim().toLowerCase();
+  const currentSubscriptionExpiryLabel = formatSubscriptionExpiryLabel(
+    currentSubscriptionAccess?.expirationAt ||
+      currentUser?.subscriptionExpirationAt ||
+      currentUser?.subscriptionEndsAt ||
+      "",
+  );
+  const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+  const subscriptionReviewing =
+    latestRequestStatus === "pending" ||
+    currentSubscriptionStatus === "pending";
+  const subscriptionActive =
+    currentSubscriptionStatus === "active" && currentSubscriptionPlan !== "trial";
+  const subscriptionActionDisabled = subscriptionReviewing || subscriptionActive;
+  const subscriptionActionDisabledReason = subscriptionActionDisabled
+    ? subscriptionActive
+      ? "Your subscription is already active."
+      : "A subscription request is already under review."
+    : "";
+  const plans = getSubscriptionPlanList();
+  const selectedPlan = planInputEl?.value || plans.find((plan) => plan.key !== "trial")?.key || "weekly";
+  const selectedPlanData = plans.find((plan) => plan.key === selectedPlan) || plans[0];
+  const featureSets = {
+    weekly: [
+      "Unlock all drill modes",
+      "Unlock exams, library, and community",
+      "Perfect for short study bursts",
+    ],
+    monthly: [
+      "Unlock all drill modes",
+      "Unlock exams, library, and community",
+      "Best value for ongoing practice",
+    ],
+    yearly: [
+      "Unlock all drill modes",
+      "Unlock exams, library, and community",
+      "Best value for long-term access",
+      "Priority renewal path",
+    ],
+  };
+  const planCardMeta = {
+    weekly: {
+      title: "7 Days",
+      subtitle: "Short term access",
+      buttonTone: "is-accent-dark",
+    },
+    monthly: {
+      title: "1 Month",
+      subtitle: "Best value monthly",
+      buttonTone: "is-accent-green",
+      featured: true,
+    },
+    yearly: {
+      title: "1 Year",
+      subtitle: "Long term savings",
+      buttonTone: "is-accent-dark",
+    },
+  };
+  const displayName = selectedPlanData?.label || selectedPlanData?.shortLabel || "Choose a pass";
+  const proofPlanName = selectedPlanData?.shortLabel || selectedPlanData?.label || displayName;
+  const priceText = Number(selectedPlanData?.priceGhs) === 0 ? "Free" : `GHS ${selectedPlanData?.priceGhs}`;
+  const durationText = Number(selectedPlanData?.durationDays) === 1 ? "1 day" : `${selectedPlanData?.durationDays} days`;
+  const proofReference = getSubscriptionProofReference(selectedPlan);
+
+  if (titleEl) titleEl.textContent = `Subscription: ${state.title}`;
+  if (subtitleEl) subtitleEl.textContent = state.subtitle;
+  if (noteEl) noteEl.textContent = state.note;
+  if (pillEl) pillEl.textContent = state.pill || (state.isActive ? "active" : "inactive");
+  if (modalTitleEl) modalTitleEl.textContent = displayName;
+  if (modalCopyEl) modalCopyEl.textContent = selectedPlanData?.description || "Pick a payment pass to continue.";
+  if (amountEl) amountEl.textContent = priceText;
+  if (requestStatusEl) {
+    requestStatusEl.textContent = "Enter your transaction ID and/or upload a screenshot so admin can activate your subscription.";
+  }
+  if (subscriptionProofPlanTitleEl) {
+    subscriptionProofPlanTitleEl.textContent = proofPlanName;
+  }
+  if (subscriptionProofPlanReferenceEl) {
+    subscriptionProofPlanReferenceEl.textContent = proofReference ? `ID: ${proofReference}` : "";
+    subscriptionProofPlanReferenceEl.hidden = !proofReference;
+  }
+  if (sectionTitleEl) {
+    sectionTitleEl.textContent = "Plans";
+  }
+  if (sectionNoteEl) {
+    sectionNoteEl.hidden = true;
+    sectionNoteEl.textContent = "";
+  }
+  if (statusBadgesEl) {
+    const currentBadgeState = subscriptionReviewing
+      ? "pending"
+      : subscriptionActive
+        ? "active"
+        : "expired";
+    statusBadgesEl.innerHTML = [
+      { key: "active", label: "Active", active: currentBadgeState === "active" },
+      { key: "pending", label: "Pending", active: currentBadgeState === "pending" },
+      { key: "expired", label: "Expired", active: currentBadgeState === "expired" },
+    ]
+      .map(
+        (badge) => `
+          <span class="subscription-status-badge ${badge.active ? `is-${badge.key} is-current` : ""}">
+            <span class="subscription-status-badge-dot" aria-hidden="true"></span>
+            <span>${escapeHtml(badge.label)}</span>
+          </span>
+        `,
+      )
+      .join("");
+  }
+  if (planGridEl) {
+    planGridEl.innerHTML = plans
+      .filter((plan) => plan.key !== "trial")
+      .map((plan) => {
+        const active = String(plan.key) === String(selectedPlan);
+        const planName = plan.label || plan.shortLabel || "Plan";
+        const planMeta = planCardMeta[plan.key] || planCardMeta.monthly;
+        const priceLabel = Number(plan.priceGhs) === 0 ? "Free" : `GHS ${plan.priceGhs}`;
+        const periodLabel =
+          Number(plan.durationDays) === 7
+            ? "week"
+            : Number(plan.durationDays) === 30
+              ? "month"
+              : "year";
+        const bullets = featureSets[plan.key] || featureSets.monthly;
+        return `
+          <article class="subscription-plan-tile ${active ? "is-active" : ""} ${planMeta.featured ? "is-popular" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""} ${plan.key === currentSubscriptionPlan ? "is-current-subscription" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}">
+            ${planMeta.featured ? '<div class="subscription-plan-popular-badge">POPULAR</div>' : ""}
+            <div class="subscription-plan-name-row">
+              <div class="subscription-plan-name">${escapeHtml(planMeta.title)}</div>
+              ${plan.key === currentSubscriptionPlan && currentSubscriptionExpiryLabel ? `<div class="subscription-plan-expiry">Expires ${escapeHtml(currentSubscriptionExpiryLabel)}</div>` : ""}
+            </div>
+            <div class="subscription-plan-desc">${escapeHtml(plan.description || planMeta.subtitle)}</div>
+            <div class="subscription-plan-price">
+              <span class="subscription-plan-price-amount">${escapeHtml(priceLabel)}</span>
+              <span class="subscription-plan-price-period"> / ${escapeHtml(periodLabel)}</span>
+            </div>
+            <ul class="subscription-plan-features">
+              ${bullets
+                .map(
+                  (bullet) => `
+                    <li>
+                      <svg class="subscription-plan-feature-icon" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      <span>${escapeHtml(bullet)}</span>
+                    </li>
+                  `,
+                )
+                .join("")}
+            </ul>
+            <button type="button" class="subscription-plan-action ${planMeta.buttonTone}" data-subscription-plan="${escapeHtml(plan.key)}" ${subscriptionActionDisabled ? "disabled aria-disabled=\"true\"" : ""}>Subscribe</button>
+          </article>
+        `;
+      })
+      .join("");
+    planGridEl.querySelectorAll("[data-subscription-plan], [data-subscription-plan-card]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        if (subscriptionActionDisabled) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (subscriptionFormFeedback && subscriptionActionDisabledReason) {
+            subscriptionFormFeedback.dataset.persist = "1";
+            subscriptionFormFeedback.textContent = subscriptionActionDisabledReason;
+          }
+          return;
+        }
+        const nextPlan =
+          String(button.getAttribute("data-subscription-plan") || button.getAttribute("data-subscription-plan-card") || "").trim();
+        if (!nextPlan) return;
+        openSubscriptionPaymentModal(nextPlan);
+        if (event.target.closest(".subscription-plan-action")) {
+          subscriptionPaymentModalEl?.scrollTo?.({ top: 0, behavior: "smooth" });
+        }
+      });
+    });
+  }
+  if (selectedTitleEl) selectedTitleEl.textContent = displayName;
+  if (selectedCopyEl) selectedCopyEl.textContent = selectedPlanData?.description || "Select a payment pass to see the review instructions.";
+  if (detailsEl) {
+    detailsEl.innerHTML = `
+      <div class="subscription-payment-method-item">
+        <div class="subscription-payment-method-left">
+          ${renderSubscriptionPaymentBrand("mtn", "MTN")}
+          <span class="subscription-payment-method-label">Mobile Money</span>
+        </div>
+        <div class="subscription-payment-method-number">0595597218</div>
+      </div>
+      <div class="subscription-payment-method-divider"></div>
+      <div class="subscription-payment-method-item">
+        <div class="subscription-payment-method-left">
+          ${renderSubscriptionPaymentBrand("fidelity", "Fidelity")}
+          <span class="subscription-payment-method-label">Bank</span>
+        </div>
+        <div class="subscription-payment-method-number">2100316766815</div>
+      </div>
+      <div class="subscription-payment-method-name">NAME: ISRAEL JOHN ASKENT</div>
+    `;
+  }
+  syncSubscriptionPaymentProofVisibility();
+  if (feedbackEl && !feedbackEl.dataset.persist) feedbackEl.textContent = "";
+  syncSubscriptionPaymentModalVisibility();
+  try {
+    history.scrollRestoration = "manual";
+  } catch {}
+  window.requestAnimationFrame(() => {
+    const screen = document.getElementById("subscription-screen");
+    const shell = document.querySelector("#subscription-screen .subscription-shell");
+    screen?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (screen) screen.scrollTop = 0;
+    shell?.scrollTo?.({ top: 0, behavior: "auto" });
+    if (shell) shell.scrollTop = 0;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
+}
+
+async function loadSubscriptionScreenData({ force = false } = {}) {
+  if (!backendClient.isAuthenticated() || !currentUser) {
+    subscriptionStatusSnapshot = null;
+    renderSubscriptionScreen();
+    return true;
+  }
+  try {
+    const plansPromise = subscriptionPlansCache.length && !force
+      ? Promise.resolve({ plans: subscriptionPlansCache })
+      : backendClient.fetchSubscriptionPlans({ preferCache: !force });
+    const [plansResponse, meResponse] = await Promise.all([
+      plansPromise,
+      backendClient.fetchMySubscription({ preferCache: !force }),
+    ]);
+    if (plansResponse?.plans) {
+      subscriptionPlansCache = normalizeSubscriptionPlans(plansResponse.plans);
+    }
+    subscriptionStatusSnapshot = meResponse || null;
+    renderSubscriptionScreen();
+    return true;
+  } catch (error) {
+    console.warn("Failed to load subscription screen:", error);
+    renderSubscriptionScreen();
+    return false;
+  }
+}
+
+const SUBSCRIPTION_LOCKED_FEATURES = new Set([
+  "exam",
+  "topic-library",
+  "community",
+  "news",
+  "rapid",
+  "sudden",
+  "clinical",
+  "law",
+  "gppqe",
+  "extra-content",
+]);
+
+function getSubscriptionGateFeature(feature = "") {
+  const normalized = String(feature || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (["exam-setup", "exam", "exams", "smart"].includes(normalized)) return "exam";
+  if (["topic-viewer", "topic-library", "library"].includes(normalized)) return "topic-library";
+  if (
+    ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen", "community"].includes(
+      normalized,
+    )
+  ) {
+    return "community";
+  }
+  if (["gppqe-screen", "gppqe"].includes(normalized)) return "gppqe";
+  if (["news-screen", "news-feed", "news-story", "news"].includes(normalized)) return "news";
+  return normalized;
+}
+
+function isSubscriptionLockedForFeature(feature = "") {
+  const gateFeature = getSubscriptionGateFeature(feature);
+  if (!SUBSCRIPTION_LOCKED_FEATURES.has(gateFeature)) return false;
+  const access = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
+  const currentStatus = String(
+    access?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+  )
+    .trim()
+    .toLowerCase();
+  if (currentStatus === "active") return false;
+  if (!access) return false;
+  if (currentStatus === "pending" || currentStatus === "expired" || currentStatus === "rejected") return true;
+  return Boolean(access.isLocked);
+}
+
+function requireSubscriptionAccess(feature = "feature", returnScreen = getActiveScreenId() || "quiz-menu") {
+  const gateFeature = getSubscriptionGateFeature(feature);
+  if (!isSubscriptionLockedForFeature(gateFeature)) {
+    return true;
+  }
+  openSubscriptionScreen({
+    intent: gateFeature || feature,
+    returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",
+  });
+  return false;
+}
 /* ==============================
                            START MODES
                         ================================= */
 
-function startStudy() {
+async function startStudy() {
   studySessionEnded = false;
   clearAiExplainStateSession();
   examVariant = "normal";
@@ -30753,50 +36797,34 @@ function startStudy() {
   timerEl.innerText = "";
 
   const studyType = getCurrentStudyType();
+  if (studyType === "law") {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("law")) {
+      return;
+    }
+  }
+
+  // Check for a paused study session before loading data so the resume modal appears immediately.
+  const modalState = buildResumeStudySessionModalState();
+  if (modalState) {
+    openSessionResumeModal(modalState);
+    return;
+  }
+
   const selectedCategory = document.getElementById(
     "study-category-select",
   ).value;
   const selectedRotation = document.getElementById("study-rotation-select").value;
 
+  await ensureQuestionBankLoaded();
+
   if (studyType === "law") {
-    void openSavedLawDrillSession();
+    const savedSession = getSavedLawDrillSession();
+    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
     return;
   }
 
   lawDrillState = null;
-
-  const sessionKey = studyType === "weak" ? "practiceSession" : "studySession";
-
-  const savedSession = localStorage.getItem(sessionKey);
-
-  if (savedSession) {
-    const state = JSON.parse(savedSession);
-    openSessionResumeModal({
-      title: "Resume Study Session?",
-      text: "You have a paused study session. Resume where you stopped or start a new one.",
-      onResume: () => {
-        mode = "study";
-        activeCase = "";
-        active = state.active;
-        current = state.current;
-        userAnswers = state.userAnswers;
-        currentStreak = state.currentStreak || 0;
-
-        updateModeIndicator(state.studyType);
-        nextBtn.onclick = nextQuestion;
-        prevBtn.onclick = previousQuestion;
-
-        showScreen("quiz-area");
-        showQuestion();
-        restoreStreakUI();
-      },
-      onStartNew: () => {
-        localStorage.removeItem(sessionKey);
-        startStudy();
-      },
-    });
-    return;
-  }
 
   // ===============================
   // Fresh Session
@@ -30838,7 +36866,7 @@ function startStudy() {
           console.warn("Failed to start backend attempt:", err);
         });
     }
-    // 🔥 Start From Logic (Normal Study Only)
+    //
     const startNumberInput =
       document.getElementById("study-start-number").value;
 
@@ -30892,10 +36920,15 @@ function startStudy() {
   showQuestion();
 }
 
-function startExam(count, requestedVariant = null) {
+async function startExam(count, requestedVariant = null) {
   const variant = String(requestedVariant || examTypeSelect?.value || "normal")
     .trim()
     .toLowerCase();
+  const gateFeature = ["rapid", "sudden", "clinical", "law"].includes(variant) ? variant : "exam";
+  await refreshSubscriptionAccessForAction();
+  if (!requireSubscriptionAccess(gateFeature)) {
+    return;
+  }
   examVariant = variant;
   mode = variant === "smart" ? "smart" : "exam";
   clearAiExplainStateSession();
@@ -30907,6 +36940,8 @@ function startExam(count, requestedVariant = null) {
   score = 0;
   userAnswers = {};
   inReview = false;
+
+  await ensureQuestionBankLoaded();
 
   const selectedCategory = document.getElementById("category-select").value;
   const selectedRotation = document.getElementById("rotation-select").value;
@@ -31031,7 +37066,7 @@ function showQuestion() {
     return;
   }
 
-  // 🔥 HARD RESET NAVIGATION STATE
+  //
   const isLawLadderView = isLawStudyMode() && getLawDrillView() === "ladder";
   prevBtn.classList.toggle("hidden", isLawLadderView);
   nextBtn.classList.toggle("hidden", isLawLadderView);
@@ -31054,11 +37089,28 @@ function showQuestion() {
   answersEl.innerHTML = "";
 
   if (isLawStudyMode()) {
+    repairLawDrillCurrentLevelIndex();
     syncLawDrillLayout();
     if (getLawDrillView() === "ladder") {
       renderLawDrillRail();
       showLawDrillLadderView();
       return;
+    }
+    if (getLawDrillView() === "result") {
+      const resultLevelIndex = Number.isInteger(lawDrillState?.resultLevelIndex)
+        ? lawDrillState.resultLevelIndex
+        : Math.max(0, (lawDrillState?.currentLevelIndex ?? 0) - 1);
+      showLawDrillLevelResult(resultLevelIndex, {
+        final: resultLevelIndex >= (lawDrillState?.levels?.length || 1) - 1,
+      });
+      return;
+    }
+    if ((!Array.isArray(active) || active.length === 0) && getLawDrillView() === "level") {
+      ensureLawDrillActiveLevel();
+      if (!Array.isArray(active) || active.length === 0) {
+        showLawDrillLadderView();
+        return;
+      }
     }
     if (nextBtn) nextBtn.onclick = nextQuestion;
     if (prevBtn) prevBtn.onclick = previousQuestion;
@@ -31102,7 +37154,7 @@ function showQuestion() {
   if (isStudyLikeMode()) {
     if (isLawStudyMode()) {
       const currentLevel = lawDrillState?.currentLevelIndex ?? 0;
-      progressEl.innerText = `Level ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS} • Q ${current + 1}/${active.length}`;
+      progressEl.innerText = `Level ${currentLevel + 1} of ${LAW_DRILL_TOTAL_LEVELS} and question ${current + 1} of ${active.length}`;
     } else {
       progressEl.innerText = `Q ${current + 1}/${active.length}`;
     }
@@ -31110,7 +37162,7 @@ function showQuestion() {
     const correctSoFar = calculateScore();
     liveScore.innerText = `${correctSoFar}/${answered}`;
     if (isTopicQuizMode()) {
-      progressEl.innerText += ` • ${getTopicQuizSessionTitle()}`;
+      progressEl.innerText += ` and ${getTopicQuizSessionTitle()}`;
     }
   } else if (mode === "exam" && examVariant === "sudden") {
     const suddenScore = calculateScore();
@@ -31166,12 +37218,12 @@ function showQuestion() {
       performanceBits.push(`${questionRotation} ${rotationAccuracy}%`);
     }
     performanceBits.push(`${q.category} ${categoryAccuracy}%`);
-    progressEl.innerText += ` • ${performanceBits.join(" • ")}`;
+    progressEl.innerText += ` and ${performanceBits.join(" and ")}`;
     if (isLawStudyMode()) {
-      progressEl.innerText = `Level ${lawDrillState?.currentLevelIndex + 1 || 1}/${LAW_DRILL_TOTAL_LEVELS} • Q ${current + 1}/${active.length}`;
+      progressEl.innerText = `Level ${lawDrillState?.currentLevelIndex + 1 || 1} of ${LAW_DRILL_TOTAL_LEVELS} and question ${current + 1} of ${active.length}`;
     }
   } else if (isTopicQuizMode()) {
-    progressEl.innerText += ` • Topic Quiz`;
+    progressEl.innerText += ` and Topic Quiz`;
   }
 
   let displayText = String(q.question || "").trim();
@@ -31216,18 +37268,40 @@ function showQuestion() {
 
   const optionList = Array.isArray(q.options) ? q.options : [];
   const statementList = Array.isArray(q.statements) ? q.statements : [];
+  const savedAnswer = userAnswers[q.id];
+  const lockSelection = shouldLockAnswerSelection() && Boolean(savedAnswer);
 
   if (q.type === "match" || q.type === "single") {
     optionList.forEach((opt) => {
       const btn = document.createElement("button");
       btn.innerText = opt;
       btn.dataset.value = opt;
-      btn.onclick = () => selectAnswer(opt, q);
+      btn.disabled = lockSelection;
+      if (lockSelection) {
+        btn.onclick = null;
+        btn.removeAttribute("onclick");
+        btn.style.pointerEvents = "none";
+      }
+      if (!lockSelection) {
+        btn.onclick = () => selectAnswer(opt, q);
+      }
+      if (savedAnswer === opt) {
+        btn.classList.add("selected-live");
+      }
+      if (lockSelection) {
+        if (opt === q.correct) {
+          btn.classList.add("correct");
+        }
+        if (savedAnswer === opt && opt !== q.correct) {
+          btn.classList.add("wrong");
+        }
+      }
       answersEl.appendChild(btn);
     });
   }
 
   if (q.type === "combo") {
+    const comboChoices = getComboChoiceRows(q);
     statementList.forEach((s, index) => {
       const p = document.createElement("p");
 
@@ -31241,19 +37315,30 @@ function showQuestion() {
       comboBlock.appendChild(p);
     });
 
-    const comboOptions = [
-      { letter: "A", text: "1, 2 and 3" },
-      { letter: "B", text: "1 and 2 only" },
-      { letter: "C", text: "2 and 3 only" },
-      { letter: "D", text: "1 only" },
-      { letter: "E", text: "3 only" },
-    ];
-
-    comboOptions.forEach((option) => {
+    comboChoices.forEach((option) => {
       const btn = document.createElement("button");
       btn.innerText = option.text;
       btn.dataset.value = option.letter;
-      btn.onclick = () => selectAnswer(option.letter, q);
+      btn.disabled = lockSelection;
+      if (lockSelection) {
+        btn.onclick = null;
+        btn.removeAttribute("onclick");
+        btn.style.pointerEvents = "none";
+      }
+      if (!lockSelection) {
+        btn.onclick = () => selectAnswer(option.letter, q);
+      }
+      if (savedAnswer === option.letter) {
+        btn.classList.add("selected-live");
+      }
+      if (lockSelection) {
+        if (option.letter === q.correct) {
+          btn.classList.add("correct");
+        }
+        if (savedAnswer === option.letter && option.letter !== q.correct) {
+          btn.classList.add("wrong");
+        }
+      }
       answersEl.appendChild(btn);
     });
   }
@@ -31266,6 +37351,14 @@ function showQuestion() {
   }
 
   restoreSelection(q);
+
+  if (lockSelection) {
+    renderQuestionExplanation(q);
+    renderQuestionTopicLink(q);
+    loadAnswerInsightForQuestion(q);
+    refreshAiExplainAvailability();
+    nextBtn.classList.remove("hidden");
+  }
 
   if (isLawStudyMode()) {
     renderLawDrillStack(lawDrillState?.currentLevelIndex ?? 0);
@@ -31315,7 +37408,7 @@ function selectAnswer(value, q) {
     if (isCorrect) {
       weakTracker[q.id].roundsPassed++;
 
-      // If 2 consecutive rounds passed → remove permanently
+      // If 2 consecutive rounds passed
       if (weakTracker[q.id].roundsPassed >= 2) {
         delete weakTracker[q.id];
       }
@@ -31326,27 +37419,29 @@ function selectAnswer(value, q) {
 
     saveWeakTracker();
   }
-  // 🔥 Mastery Engine Refresh
+  //
   if (mode === "study") {
     const studyType = document.getElementById("study-type-select").value;
   }
 
-  if (isCorrect) {
-    playCorrectAnswerSound();
-    showAnswerCheckmark();
-    showAnswerFeedback("");
-    if (shouldShowAnswerChoiceMotivation()) {
-      showAnswerChoiceMotivation(value, true);
+  if (shouldLockAnswerSelection()) {
+    if (isCorrect) {
+      playCorrectAnswerSound();
+      showAnswerCheckmark();
+      showAnswerFeedback("");
+      if (shouldShowAnswerChoiceMotivation()) {
+        showAnswerChoiceMotivation(value, true);
+      } else {
+        clearAnswerChoiceMotivation();
+      }
+      awardCorrectAnswerPoint(1);
     } else {
-      clearAnswerChoiceMotivation();
-    }
-    awardCorrectAnswerPoint(1);
-  } else {
-    showAnswerFeedback("");
-    if (shouldShowAnswerChoiceMotivation()) {
-      showAnswerChoiceMotivation(value, false);
-    } else {
-      clearAnswerChoiceMotivation();
+      showAnswerFeedback("");
+      if (shouldShowAnswerChoiceMotivation()) {
+        showAnswerChoiceMotivation(value, false);
+      } else {
+        clearAnswerChoiceMotivation();
+      }
     }
   }
 
@@ -31364,8 +37459,50 @@ function selectAnswer(value, q) {
     saveStudyProgress();
   }
 
-  if ((mode === "exam" || mode === "smart" || mode === "daily") && !inReview) {
-    if (mode === "exam" && examVariant === "sudden") {
+  if (isSubmitAtEndMode() && !inReview) {
+    const buttons = document.querySelectorAll("#answers button");
+    buttons.forEach((btn) => {
+      const btnValue = String(btn.dataset.value || "");
+      btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
+      btn.classList.remove("selected-live", "correct", "wrong");
+      if (btnValue === String(value)) {
+        btn.classList.add("selected-live");
+      }
+    });
+
+    answeredCurrent = true;
+    nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
+    showAnswerFeedback("");
+    clearAnswerChoiceMotivation();
+
+    if (mode === "exam" || mode === "smart") {
+      saveExamSession();
+    }
+
+    const isLastQuestion = current >= active.length - 1;
+    const expectedQuestionId = q.id;
+    setTimeout(() => {
+      // Avoid stale navigation if screen/question changed during delay.
+      if (!Array.isArray(active) || !active[current]) return;
+      if (active[current].id !== expectedQuestionId) return;
+
+      if (!isLastQuestion) {
+        current++;
+        showQuestion();
+      } else if (isDirectSubmitDrillMode()) {
+        void finishExam();
+      } else {
+        goToReview();
+      }
+    }, LIVE_ANSWER_ADVANCE_DELAY_MS);
+    return;
+  }
+
+  if (mode === "exam" && (examVariant === "sudden" || examVariant === "clinical") && !inReview) {
+    if (examVariant === "sudden") {
       if (isCorrect) {
         const suddenScore = calculateScore();
         const milestone = Math.floor(suddenScore / 5);
@@ -31381,7 +37518,7 @@ function selectAnswer(value, q) {
       }
     }
 
-    if (mode === "exam" && examVariant === "clinical" && !isCorrect) {
+    if (examVariant === "clinical" && !isCorrect) {
       clinicalLives = Math.max(0, clinicalLives - 1);
       if (clinicalLives > 0) {
         showDrillEventBanner(`Life lost. ${clinicalLives} left`, "info");
@@ -31394,12 +37531,31 @@ function selectAnswer(value, q) {
 
     const buttons = document.querySelectorAll("#answers button");
     buttons.forEach((btn) => {
+      const btnValue = String(btn.dataset.value || "");
       btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
       btn.classList.remove("selected-live", "correct", "wrong");
-      if (btn.dataset.value === String(value)) {
+
+      if (btnValue === String(q.correct || "")) {
+        btn.classList.add("correct");
+      }
+
+      if (btnValue === String(value)) {
         btn.classList.add("selected-live");
+        if (!isCorrect) {
+          btn.classList.add("wrong");
+        }
       }
     });
+
+    renderQuestionExplanation(q);
+    renderQuestionTopicLink(q);
+    loadAnswerInsightForQuestion(q);
+    refreshAiExplainAvailability();
+    answeredCurrent = true;
+    nextBtn.innerText = current === active.length - 1 ? "Finish" : "Next";
 
     if (mode === "exam" || mode === "smart") {
       saveExamSession();
@@ -31494,13 +37650,20 @@ function nextQuestion() {
   if (inStudyReview) return;
   if (isLawStudyMode() && lawDrillState?.reviewLevelIndex != null) return;
   if (mode === "exam" || mode === "smart" || mode === "daily") {
+    const q = active[current];
     if (mode === "exam" && examVariant === "sudden") {
-      showAnswerFeedback("No skips in Sudden Death.", "info");
-      return;
+      if (!answeredCurrent && !userAnswers[q.id]) {
+        showAnswerFeedback("No skips in Sudden Death.", "info");
+        return;
+      }
     }
     if (mode === "exam" && examVariant === "clinical") {
-      showAnswerFeedback("No skips in Clinical drill.", "info");
-      return;
+      if (!answeredCurrent && !userAnswers[q.id]) {
+        selectAnswer("Skipped", q);
+        return;
+      } else {
+        nextBtn.innerText = "Next";
+      }
     }
     nextBtn.innerText = "Next";
 
@@ -31582,6 +37745,7 @@ function restoreSelection(q) {
   const saved = userAnswers[q.id];
   if (!saved) return;
   const editableReview = isPreSubmitReviewMode();
+  const lockSelection = shouldLockAnswerSelection();
 
   const buttons = document.querySelectorAll("#answers button");
 
@@ -31603,8 +37767,11 @@ function restoreSelection(q) {
       return;
     }
 
-    if (isStudyLikeMode()) {
+    if (lockSelection) {
       btn.disabled = true;
+      btn.onclick = null;
+      btn.removeAttribute("onclick");
+      btn.style.pointerEvents = "none";
 
       if (btnValue === q.correct) {
         btn.classList.add("correct");
@@ -31635,14 +37802,14 @@ function restoreSelection(q) {
     }
   });
   // Show explanation again in study mode
-  if (isStudyLikeMode()) {
+  if (isStudyLikeMode() || lockSelection) {
     renderQuestionExplanation(q);
     renderQuestionTopicLink(q);
     loadAnswerInsightForQuestion(q);
     refreshAiExplainAvailability();
   }
 
-  if (isStudyLikeMode()) {
+  if (isStudyLikeMode() || lockSelection) {
     nextBtn.classList.remove("hidden");
   }
 }
@@ -31682,10 +37849,6 @@ function goHome() {
   closeCommunityConversationActions();
   closeCommunityFriendActions();
 
-  if (mode === "study") {
-    localStorage.removeItem("studySession");
-  }
-
   showScreen("home-screen");
 }
 
@@ -31694,7 +37857,7 @@ function goHome() {
                         ================================= */
 
 function startExamTimer() {
-  // 🔥 IMPORTANT — Prevent multiple timers
+  //
   if (examTimer) {
     clearInterval(examTimer);
   }
@@ -31727,7 +37890,7 @@ function updateTimerDisplay() {
   const formatted =
     String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
 
-  timerEl.innerHTML = `<span class="timer-icon">⏱</span> ${formatted}`;
+  timerEl.innerHTML = `<span class="timer-icon">\u23F1</span> ${formatted}`;
 
   updateTimerColor();
   renderCompactHeaderMeta();
@@ -31769,21 +37932,17 @@ function renderLawDrillInlineMetaLegacy() {
     ? targetLevel.questionIds.length
     : LAW_DRILL_QUESTIONS_PER_LEVEL;
   const reviewLabel = lawDrillState.reviewLevelIndex != null ? "Review" : "Level";
-  const score = Array.isArray(targetLevel?.history)
-    ? targetLevel.history.filter((entry) => entry?.isCorrect).length
-    : 0;
-  const tilePoints = getCurrentQuizTilePoints();
+  const sessionPoints = getCurrentSessionPoints();
   const parts = [
     `<span class="header-inline-progress">Law Drill</span>`,
     `<span class="header-inline-progress">${reviewLabel} ${targetLevelIndex + 1}/${totalLevels}</span>`,
-    `<span class="header-inline-progress">Score ${score}/${questionsInLevel}</span>`,
   ];
 
   if (Array.isArray(active) && active.length) {
     parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
   }
 
-  parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
+  parts.push(`<span class="header-inline-points">${buildPointsIconMarkup()} ${sessionPoints}</span>`);
   return parts.join("");
 }
 
@@ -31802,17 +37961,15 @@ function renderLawDrillInlineMeta() {
       : state.view === "result" && Number.isInteger(state.resultLevelIndex)
         ? state.resultLevelIndex
         : state.currentLevelIndex || 0;
-  const targetLevel = state.levels?.[targetLevelIndex] || null;
-  const questionsInLevel = Array.isArray(targetLevel?.questionIds) && targetLevel.questionIds.length
-    ? targetLevel.questionIds.length
-    : LAW_DRILL_QUESTIONS_PER_LEVEL;
-  const levelScore = Math.max(0, Number(getLawDrillLevelScore(targetLevelIndex)) || 0);
 
   if (view === "ladder") {
-    return `<span class="law-drill-inline-title">Law Drill</span><span class="law-drill-inline-score">Total Score ${getLawDrillCumulativeScore()}</span>`;
+    return `<span class="law-drill-inline-title">Law Drill</span>${buildDrillCumulativePointsBadgeMarkup(
+      getLawDrillCumulativeScore(),
+      "Total",
+    )}`;
   }
 
-  return `<span class="law-drill-inline-title">Level ${targetLevelIndex + 1}/${totalLevels}</span><span class="law-drill-inline-score">Score ${levelScore}/${questionsInLevel}</span>`;
+  return `<span class="law-drill-inline-title">Level ${targetLevelIndex + 1}/${totalLevels}</span><span class="law-drill-inline-score">Questions ${current + 1}/${active.length}</span>`;
 }
 
 function renderCompactHeaderMeta() {
@@ -31829,7 +37986,7 @@ function renderCompactHeaderMeta() {
     mode === "daily" ||
     mode === "smart" ||
     (mode === "exam" &&
-      ["normal", "rapid", "sudden", "clinical"].includes(String(examVariant || "normal"))) ||
+      ["normal", "rapid", "sudden", "clinical", "law"].includes(String(examVariant || "normal"))) ||
     isLawStudyMode();
 
   if (!compactHeaderMode) {
@@ -31838,7 +37995,6 @@ function renderCompactHeaderMeta() {
   }
 
   const parts = [];
-  const tilePoints = getCurrentQuizTilePoints();
   const timerVisible =
     timerEl &&
     !timerEl.classList.contains("hidden") &&
@@ -31846,16 +38002,19 @@ function renderCompactHeaderMeta() {
 
   if (mode === "exam" && examVariant === "sudden") {
     parts.push(`<span class="header-inline-progress">${calculateScore()}</span>`);
-    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
   } else if (mode === "exam" && examVariant === "rapid") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
-    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
   } else if (mode === "exam" && examVariant === "clinical") {
     const correctSoFar = calculateScore();
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
     parts.push(`<span class="header-inline-progress">${buildClinicalLivesMarkup(clinicalLives, 3)}</span>`);
     parts.push(`<span class="header-inline-progress">${correctSoFar}</span>`);
-    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
+  } else if (mode === "exam" && examVariant === "law") {
+    parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getCurrentDrillCumulativeScore()));
   } else if (mode === "daily") {
     parts.push(`<span class="header-inline-progress">Daily Quiz</span>`);
   } else if (mode === "topic") {
@@ -31877,7 +38036,7 @@ function renderCompactHeaderMeta() {
     const reviewLabel = lawDrillState?.reviewLevelIndex != null ? "Review" : "Level";
     parts.push(`<span class="header-inline-progress">${reviewLabel} ${currentLevel + 1}/${LAW_DRILL_TOTAL_LEVELS}</span>`);
     parts.push(`<span class="header-inline-progress">Q ${current + 1}/${active.length}</span>`);
-    parts.push(`<span class="header-inline-points">${getHeaderPointsBadgeMarkup(tilePoints)}</span>`);
+    parts.push(buildDrillCumulativePointsBadgeMarkup(getLawDrillCumulativeScore(), "Total"));
   } else if (mode === "exam" || mode === "smart") {
     parts.push(`<span class="header-inline-progress">${current + 1}/${active.length}</span>`);
   }
@@ -31921,6 +38080,10 @@ function clampSuddenReviewToSeenQuestions() {
                         ================================= */
 
 function goToReview() {
+  if (isLawStudyMode()) {
+    markLawDrillCurrentLevelComplete();
+    return;
+  }
   if (isDirectSubmitDrillMode()) {
     void finishExam();
     return;
@@ -32007,6 +38170,9 @@ async function finishDailyQuizSession() {
       Number(dailyQuizState?.stats?.gems ?? currentUser?.dailyQuiz?.gems) || 0;
     const response = await backendClient.submitDailyQuiz({ answers });
     dailyQuizState = normalizeDailyQuizPayload(response);
+    if (response?.user) {
+      currentUser = response.user;
+    }
 
     const result = dailyQuizState.result || {};
     const finalScore = Number.isFinite(Number(result.score))
@@ -32043,6 +38209,10 @@ async function finishDailyQuizSession() {
     });
 
     saveSession(`Daily (${totalQuestions})`, finalScore, totalQuestions);
+    commitFinishedSessionPoints({
+      score: finalScore,
+      setupPointsBucket: "daily",
+    });
 
     const resultTitle = document.getElementById("result-title");
     const percentEl = document.getElementById("result-percentage");
@@ -32064,14 +38234,10 @@ async function finishDailyQuizSession() {
     }
 
     clearDailyResultEnhancements();
-    let socialSnapshot = null;
-    try {
-      socialSnapshot = await backendClient.fetchDailyLeaderboard(10);
-    } catch {
-      socialSnapshot = null;
-    }
-    dailyLeaderboardSnapshot = socialSnapshot;
-    renderDailySocialCard(socialSnapshot);
+    const cachedDailyLeaderboard = await getOfflineEntry(DAILY_LEADERBOARD_CACHE_KEY);
+    const cachedSocialSnapshot = cachedDailyLeaderboard?.value || null;
+    dailyLeaderboardSnapshot = cachedSocialSnapshot;
+    renderDailySocialCard(cachedSocialSnapshot);
     configureDailyShareButton({
       date: dailyQuizState?.today?.date || "",
       score: finalScore,
@@ -32079,7 +38245,7 @@ async function finishDailyQuizSession() {
       percent,
       streak,
       gemsAwarded,
-      social: socialSnapshot,
+      social: cachedSocialSnapshot,
     });
 
     awardXp(12 + Math.round(percent / 25));
@@ -32094,6 +38260,25 @@ async function finishDailyQuizSession() {
       markDailyPopupSeen(dailyQuizState.today.date);
     }
     renderDailyQuizUi();
+    void (async () => {
+      try {
+        const socialSnapshot = await backendClient.fetchDailyLeaderboard(10);
+        dailyLeaderboardSnapshot = socialSnapshot;
+        void setOfflineEntry(DAILY_LEADERBOARD_CACHE_KEY, socialSnapshot || {});
+        renderDailySocialCard(socialSnapshot);
+        configureDailyShareButton({
+          date: dailyQuizState?.today?.date || "",
+          score: finalScore,
+          total: totalQuestions,
+          percent,
+          streak,
+          gemsAwarded,
+          social: socialSnapshot,
+        });
+      } catch {
+        // Keep the cached daily leaderboard when the backend is unavailable.
+      }
+    })();
     await refreshDailyQuizState({ force: true, silent: true });
   } catch (error) {
     const message = String(error?.message || "Failed to submit Daily Quiz.");
@@ -32122,13 +38307,14 @@ async function finishExam() {
   backReviewBtn.classList.add("hidden");
   const finishedMode = mode;
   const finishedVariant = examVariant;
+  const setupPointsBucket = getCurrentSetupPointsBucket();
   const timeBudget = Math.max(1, Number(examTimeBudget) || active.length * 40);
   const timeUsedSeconds = Math.max(0, timeBudget - (examTimeLeft || 0));
   mode = "";
   examVariant = "normal";
   examTimeBudget = 0;
 
-  localStorage.removeItem("quizExamSession");
+  clearSavedExamSession();
   localStorage.removeItem("examAbandoned");
 
   let finalScore = 0;
@@ -32149,6 +38335,8 @@ async function finishExam() {
     backendClient.finishAttempt(backendAttemptId, answers, durationSeconds);
     backendAttemptId = null;
   }
+
+  await flushPendingPerformanceStateSync();
 
   const attemptedCount = Object.values(answers).filter(
     (value) => String(value || "").trim().length > 0,
@@ -32176,9 +38364,9 @@ async function finishExam() {
         ? "Rapid Fire (" + active.length + ")"
         : finishedVariant === "sudden"
           ? "Sudden Death (" + active.length + ")"
-          : finishedVariant === "clinical"
-            ? "Clinical Judgement (" + active.length + ")"
-            : finishedVariant === "law"
+        : finishedVariant === "clinical"
+          ? "Clinical Judgement (" + active.length + ")"
+          : finishedVariant === "law"
               ? "Law Drill (" + active.length + ")"
             : "Exam (" + active.length + ")";
 
@@ -32189,6 +38377,13 @@ async function finishExam() {
     sessionTotal,
     "Time Used: " + timeUsedSeconds + "s",
   );
+  commitFinishedSessionPoints({
+    score: finalScore,
+    setupPointsBucket,
+  });
+  if (["sudden", "clinical"].includes(finishedVariant)) {
+    markSessionCompleted(finishedVariant);
+  }
 
   const xpBonusBase =
     finishedMode === "smart"
@@ -32221,9 +38416,9 @@ async function finishExam() {
         ? "Rapid Fire Complete"
         : finishedVariant === "sudden"
           ? "Sudden Death Complete"
-          : finishedVariant === "clinical"
-            ? "Clinical Judgement Complete"
-            : finishedVariant === "law"
+        : finishedVariant === "clinical"
+          ? "Clinical Judgement Complete"
+          : finishedVariant === "law"
               ? "Law Drill Complete"
             : "Exam Complete";
   if (finishedVariant === "sudden") {
@@ -32297,69 +38492,37 @@ async function finishLawDrill() {
   inDetailedReview = false;
   backReviewBtn.classList.add("hidden");
 
-  const levels = Array.isArray(lawDrillState.levels) ? lawDrillState.levels : [];
-  const answers = {};
-  levels.forEach((level) => {
-    (Array.isArray(level.history) ? level.history : []).forEach((entry) => {
-      if (entry?.questionId) {
-        answers[String(entry.questionId)] = String(entry.selectedAnswer || "").trim();
-      }
-    });
-  });
+  const resultTitle = document.getElementById("result-title");
+  const percentEl = document.getElementById("result-percentage");
+  const scoreEl = document.getElementById("result-score");
+  const feedbackEl = document.getElementById("result-feedback");
 
-  const totalAnswered = Object.keys(answers).length;
-  const correctAnswers = getLawDrillTotalCorrect();
+  const currentLevel = getLawDrillCurrentLevel();
+  const levelIndex = currentLevel?.index ?? lawDrillState?.resultLevelIndex ?? 0;
+  const levelHistory = Array.isArray(currentLevel?.history) ? currentLevel.history : [];
+  const totalAnswered = levelHistory.length;
+  const correctAnswers = levelHistory.filter((entry) => entry?.isCorrect).length;
   const percent =
     totalAnswered === 0 ? 0 : Math.round((correctAnswers / totalAnswered) * 100);
 
-  if (backendReady && backendAttemptId) {
-    backendClient.finishAttempt(backendAttemptId, answers);
-    backendAttemptId = null;
-  }
+  saveLawDrillLevelSession(levelIndex, { finishBackendAttempt: true });
 
-  const finishedState = serializeLawDrillState();
-  clearLawDrillSession();
-  lawDrillState = null;
-  mode = "";
-  examVariant = "normal";
+  if (lawDrillState) {
+    lawDrillState.view = "result";
+    persistLawDrillSession();
+  }
+  mode = "exam";
+  examVariant = "law";
   examTimeBudget = 0;
   active = [];
   current = 0;
   userAnswers = {};
   answeredCurrent = false;
 
-  const resultTitle = document.getElementById("result-title");
-  const percentEl = document.getElementById("result-percentage");
-  const scoreEl = document.getElementById("result-score");
-  const feedbackEl = document.getElementById("result-feedback");
-
-  if (resultTitle) resultTitle.innerText = "Law Drill Complete";
-  if (percentEl) percentEl.innerText = `${percent}%`;
-  if (scoreEl) scoreEl.innerText = `${correctAnswers} / ${Math.max(1, totalAnswered)} Correct`;
-  if (feedbackEl) {
-    if (percent >= 80) {
-      feedbackEl.innerText = "Excellent progress. Keep building the ladder.";
-      if (percentEl) percentEl.style.color = "#15803d";
-    } else if (percent >= 60) {
-      feedbackEl.innerText = "Good momentum. Review the harder levels again.";
-      if (percentEl) percentEl.style.color = "#f9a825";
-    } else {
-      feedbackEl.innerText = "Keep going. The stack will sharpen with more reps.";
-      if (percentEl) percentEl.style.color = "#dc2626";
-    }
-  }
-
-  saveSession("Law Drill (" + LAW_DRILL_TOTAL_LEVELS + " Levels)", correctAnswers, totalAnswered);
   awardXp(10 + Math.round(percent / 20));
 
-  clearDailyResultEnhancements();
-  showScreen("study-result-screen");
-  configureStudyLikeResultActions();
-  renderPoints();
-  renderSessionPointsDisplay();
-  if (finishedState) {
-    sessionHistory = Array.isArray(sessionHistory) ? sessionHistory : [];
-  }
+  // Hand off to the dedicated law-drill completion flow so the next level unlocks.
+  markLawDrillCurrentLevelComplete();
 }
 
 function finishStudy() {
@@ -32376,6 +38539,7 @@ function finishStudy() {
     totalAnswered === 0
       ? 0
       : Math.round((correctAnswers / totalAnswered) * 100);
+  const setupPointsBucket = getCurrentSetupPointsBucket();
 
   // Finish attempt on backend if available
   if (backendReady && backendAttemptId) {
@@ -32387,7 +38551,7 @@ function finishStudy() {
     backendAttemptId = null;
   }
 
-  // 🔥 Clear both study and practice sessions
+  //
   localStorage.removeItem("studySession");
   localStorage.removeItem("practiceSession");
 
@@ -32414,6 +38578,12 @@ function finishStudy() {
   }
 
   saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
+  commitFinishedSessionPoints({
+    score: correctAnswers,
+    setupPointsBucket,
+    awardTotal: false,
+  });
+  markSessionCompleted("study");
   awardXp(8 + Math.round(percent / 25));
 
   clearDailyResultEnhancements();
@@ -32434,8 +38604,9 @@ function endStudySession() {
     totalAnswered === 0
       ? 0
       : Math.round((correctAnswers / totalAnswered) * 100);
+  const setupPointsBucket = getCurrentSetupPointsBucket();
 
-  // 🔥 Store result AFTER calculating
+  //
   window.lastStudyResult = {
     correct: correctAnswers,
     total: totalAnswered,
@@ -32443,6 +38614,12 @@ function endStudySession() {
   };
 
   saveSession(getStudyLikeSessionLabel(), correctAnswers, totalAnswered);
+  commitFinishedSessionPoints({
+    score: correctAnswers,
+    setupPointsBucket,
+    awardTotal: false,
+  });
+  markSessionCompleted("study");
 
   const old = document.getElementById("study-result");
   if (old) old.remove();
@@ -32480,6 +38657,9 @@ function endStudySession() {
 }
 
 function returnToTopicViewerFromQuiz() {
+  if (!studySessionEnded) {
+    saveStudyProgress();
+  }
   const detailedReview = document.getElementById("detailed-review");
   if (detailedReview) detailedReview.remove();
 
@@ -32505,6 +38685,12 @@ function returnToTopicViewerFromQuiz() {
 }
 
 function configureStudyLikeResultActions() {
+  if (isLawDrillResultState()) {
+    return;
+  }
+
+  clearLawDrillResultReview();
+
   const reviewBtn = document.getElementById("result-review-btn");
   const menuBtn = document.getElementById("result-menu-btn");
   const resultTitle = document.getElementById("result-title");
@@ -32537,7 +38723,7 @@ function goToMenu() {
   const detailedReview = document.getElementById("detailed-review");
   if (detailedReview) detailedReview.remove();
 
-  // 🔥 Reset review states
+  //
   inStudyReview = false;
   answeredCurrent = false;
 
@@ -32556,6 +38742,16 @@ function goToMenu() {
 
 function rebuildStudyResult() {
   const resultScreen = document.getElementById("study-result-screen");
+
+  if (isLawDrillResultState()) {
+    const levelIndex = Number.isInteger(lawDrillState?.resultLevelIndex)
+      ? lawDrillState.resultLevelIndex
+      : Math.max(0, (lawDrillState?.currentLevelIndex ?? 0) - 1);
+    showLawDrillLevelResult(levelIndex, {
+      final: levelIndex >= (lawDrillState?.levels?.length || 1) - 1,
+    });
+    return;
+  }
 
   const data = window.lastStudyResult;
   if (!data) return;
@@ -32640,6 +38836,12 @@ function returnToReview() {
 }
 
 function showDetailedReview() {
+  if (isLawDrillResultState()) {
+    return;
+  }
+
+  clearLawDrillResultReview();
+
   const reviewSection = document.getElementById("result-review-section");
   const content = document.getElementById("result-review-content");
 
@@ -32662,7 +38864,7 @@ function showDetailedReview() {
     card.innerHTML = `
       <div class="analysis-header">
         <div>Question ${index + 1}</div>
-        <div>${isCorrect ? "✓ Correct" : "✕ Incorrect"}</div>
+        <div>${isCorrect ? "Correct" : "Incorrect"}</div>
       </div>
       <div class="analysis-question">
         ${q.question.replace(/^Q\\d+\\.\\s*/, "")}
@@ -32790,6 +38992,7 @@ function renderDetailedQuestion() {
   // COMBO TYPE
   // ==============================
   else if (q.type === "combo") {
+    const comboChoices = getComboChoiceRows(q);
     // Show statements
     comboBlock.innerHTML = "";
     answersEl.innerHTML = "";
@@ -32806,15 +39009,7 @@ function renderDetailedQuestion() {
       comboBlock.appendChild(p);
     });
 
-    const comboOptions = [
-      { letter: "A", text: "A: 1, 2 and 3" },
-      { letter: "B", text: "B: 1 and 2 only" },
-      { letter: "C", text: "C: 2 and 3 only" },
-      { letter: "D", text: "D: 1 only" },
-      { letter: "E", text: "E: 3 only" },
-    ];
-
-    comboOptions.forEach((option) => {
+    comboChoices.forEach((option) => {
       const btn = document.createElement("button");
       btn.innerText = option.text;
       btn.dataset.value = option.letter;
@@ -32946,6 +39141,7 @@ function showQuestionDetailedMode() {
 }
 
 function saveExamSession() {
+  if (mode !== "exam" && mode !== "smart") return;
   const session = {
     mode,
     examVariant,
@@ -32959,11 +39155,17 @@ function saveExamSession() {
     timestamp: Date.now(),
   };
 
-  localStorage.setItem("quizExamSession", JSON.stringify(session));
+  localStorage.setItem(getExamSessionStorageKey(), JSON.stringify(session));
 }
 
-function loadExamSession() {
-  const saved = JSON.parse(localStorage.getItem("quizExamSession"));
+function loadExamSession(storageKeyOrVariant = null) {
+  const requestedVariant = String(storageKeyOrVariant || "").toLowerCase();
+  const hasDedicatedKey = ["sudden", "clinical"].includes(requestedVariant);
+  const primaryKey = hasDedicatedKey ? getExamSessionStorageKey(requestedVariant, "exam") : getExamSessionStorageKey();
+  let saved = getSavedExamSession(primaryKey);
+  if (!saved && hasDedicatedKey) {
+    saved = getSavedExamSession("quizExamSession");
+  }
   if (!saved) return false;
   clearAiExplainStateSession();
 
@@ -33001,7 +39203,7 @@ function loadExamSession() {
     const timePassed = Math.floor((now - saved.timestamp) / 1000);
     examTimeLeft = saved.examTimeLeft - timePassed;
     if (examTimeLeft <= 0) {
-      localStorage.removeItem("quizExamSession");
+      clearSavedExamSession(examVariant, mode);
       finishExam();
       return true;
     }
@@ -33030,10 +39232,15 @@ function loadExamSession() {
 }
 
 function saveStudyProgress() {
-  if (mode !== "study" || studySessionEnded) return;
+  if ((mode !== "study" && !isTopicQuizMode()) || studySessionEnded) return;
 
   if (isLawStudyMode()) {
     persistLawDrillSession();
+    return;
+  }
+
+  if (isTopicQuizMode()) {
+    saveTopicQuizProgress();
     return;
   }
 
@@ -33043,6 +39250,7 @@ function saveStudyProgress() {
     active,
     currentStreak,
     studyType: document.getElementById("study-type-select").value,
+    timestamp: Date.now(),
   };
 
   const key =
@@ -33052,20 +39260,20 @@ function saveStudyProgress() {
 }
 
 /* ==============================
-                     PAGE LOAD – STUDY RESUME ONLY
-                  ================================= */
+                     PAGE LOAD */
 
 window.addEventListener("load", function () {
   const pendingTopicQuizLaunch = hasPendingTopicQuizLaunch();
+  const pendingScreenLaunch = String(new URLSearchParams(window.location.search || "").get("screen") || "").trim().length > 0;
   setAuthMode("login");
   profileImageMarkedForDeletion = false;
   setProfileAvatarPreview("");
   updateProfileButtonAvatar("");
   refreshProfilePhotoDeleteVisibility();
   renderAuthState();
-  restoreAuthSession();
   closeCommunityConversationActions();
   closeCommunityFriendActions();
+  void primeInstantLocalCaches();
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
   }, 900);
@@ -33074,23 +39282,9 @@ window.addEventListener("load", function () {
     consumePendingTopicQuizLaunch();
   }
 
-  // Load questions from backend first
-  loadQuestionsFromBackend().then(() => {
-    rebuildCaseMap();
-  });
-
-  backendClient.warmup().catch(() => {
-    // Keep local-first behavior if backend is offline.
-  });
-
-  populateStudyCategories();
-  populateStudyRotations();
-  populateExamCategories();
-  populateExamRotations();
-  populateTopicLibraryCategories();
-  syncAllSetupPickerButtons();
-  wireSetupPickerModal();
-  wireSetupPickerTriggers();
+  if (pendingScreenLaunch) {
+    consumePendingScreenLaunch();
+  }
 
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
@@ -33100,7 +39294,7 @@ window.addEventListener("load", function () {
   if (abandoned) {
     localStorage.removeItem("examAbandoned");
 
-    const saved = JSON.parse(localStorage.getItem("quizExamSession"));
+    const saved = getLatestSavedExamSession()?.state || null;
 
     if (saved) {
       const savedMode = String(saved.mode || "exam");
@@ -33150,7 +39344,7 @@ window.addEventListener("load", function () {
     }
   }
 
-  if (!pendingTopicQuizLaunch) {
+  if (!pendingTopicQuizLaunch && !pendingScreenLaunch) {
     if (shouldShowWelcomeIntro()) {
       markWelcomeIntroSeen();
       showScreen("welcome-screen", { recordHistory: false });
@@ -33158,12 +39352,36 @@ window.addEventListener("load", function () {
       showScreen("home-screen", { recordHistory: false });
     }
   }
+
+  window.setTimeout(() => {
+    if (getActiveScreenId() === "subscription-screen") {
+      closeSubscriptionPaymentModal({ focusPlanButton: false });
+      showScreen(currentUser || backendClient.isAuthenticated() ? "quiz-menu" : "home-screen", {
+        recordHistory: false,
+      });
+    }
+  }, 0);
+
+  const runDeferredBootstrap = () => {
+    wireSessionResumeModal();
+    wireSetupPickerModal();
+    wireSetupPickerTriggers();
+    refreshQuestionDependentUi();
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runDeferredBootstrap, { timeout: 1500 });
+  } else {
+    window.setTimeout(runDeferredBootstrap, 0);
+  }
 });
 
 window.addEventListener("resize", () => {
   syncLawDrillRailForViewport();
 });
 function showStudyReviewPalette() {
+  clearLawDrillResultReview();
+
   const reviewSection = document.getElementById("result-review-section");
   const content = document.getElementById("result-review-content");
 
@@ -33249,7 +39467,7 @@ function returnToStudyReviewPalette() {
 
 function showStudyReviewQuestion() {
   document.getElementById("end-study-btn").classList.add("hidden");
-  // 🔥 Hide quiz header buttons during review
+  //
   document.getElementById("back-btn-quiz").classList.add("hidden");
   if (menuBtnQuiz) menuBtnQuiz.classList.add("hidden");
   renderDetailedQuestion();
@@ -33295,15 +39513,40 @@ function toggleModeHistory(containerId) {
 }
 
 function showScreen(id, options = {}) {
-  const { recordHistory = true } = options;
+  const { recordHistory = true, skipSubscriptionGate = false } = options;
+  const normalizedId = String(id || "").trim();
+  if (!skipSubscriptionGate && isSubscriptionLockedForFeature(normalizedId)) {
+    if (currentUser && backendClient.isAuthenticated()) {
+      void refreshSubscriptionAccessForAction().then(() => {
+        if (isSubscriptionLockedForFeature(normalizedId)) {
+          openSubscriptionScreen({
+            intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
+            returnScreen: getActiveScreenId() || "quiz-menu",
+          });
+          return;
+        }
+        showScreen(normalizedId, { ...options, skipSubscriptionGate: true });
+      });
+      return;
+    }
+    openSubscriptionScreen({
+      intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
+      returnScreen: getActiveScreenId() || "quiz-menu",
+    });
+    return;
+  }
   const screens = [
     "welcome-screen",
     "home-screen",
     "quiz-menu",
+    "drills-screen",
+    "gppqe-screen",
+    "extra-screen",
     "profile-screen",
     "study-setup",
     "exam-setup",
     "daily-setup",
+    "subscription-screen",
     "topic-library",
     "topic-viewer",
     "tour-screen",
@@ -33313,12 +39556,17 @@ function showScreen(id, options = {}) {
     "community-group-storage-screen",
     "community-chat-screen",
     "quiz-area",
-    "review-screen",
-    "dashboard",
-    "study-result-screen",
+    "review-screen",    "study-result-screen",
+    "law-drill-result-screen",
   ];
 
   const currentActiveId = getActiveScreenId();
+  if (currentActiveId === "gppqe-screen" && normalizedId !== "gppqe-screen") {
+    gppqeStopTimer();
+  }
+  if (currentActiveId === "subscription-screen" && normalizedId !== "subscription-screen") {
+    closeSubscriptionPaymentModal({ focusPlanButton: false });
+  }
   const wasCommunityScreen = isCommunityScreenId(currentActiveId);
   const nextCommunityScreen = isCommunityScreenId(id);
   if (wasCommunityScreen && !nextCommunityScreen) {
@@ -33342,11 +39590,26 @@ function showScreen(id, options = {}) {
     target.classList.add("screen-active");
     syncViewportBackground(target);
   }
+  if (id === "gppqe-screen") {
+    setMenuHubActiveTab("gppqe");
+    renderGppqeScreen();
+  }
   syncCommunityViewportFrame();
 
   updateMenuBottomNavState(id);
   renderCommunityNotificationBadges();
   syncAppNotificationBannerVisibility();
+  if (id === "home-screen") {
+    void ensureQuestionBankLoaded()
+      .then(() => {
+        if (getActiveScreenId() === "home-screen") {
+          refreshQuestionDependentUi();
+        }
+      })
+      .catch(() => {
+        refreshQuestionDependentUi();
+      });
+  }
 
   if (id === "quiz-menu") {
     closeMenuUserHub();
@@ -33359,6 +39622,20 @@ function showScreen(id, options = {}) {
     closeCommunityConfirmModal?.();
     closeCommunityConversationActions?.();
     closeCommunityFriendActions?.();
+    window.setTimeout(() => {
+      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+    }, 0);
+  }
+
+  if (id === "drills-screen" || id === "gppqe-screen" || id === "extra-screen") {
+    closeMenuUserHub();
+    closeGlobalQuickNav();
+  }
+
+  if (["daily-setup", "study-setup", "exam-setup"].includes(id)) {
+    window.setTimeout(() => {
+      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+    }, 0);
   }
 
   if (nextCommunityScreen && !wasCommunityScreen && isCommunityLockEnabled() && !communityState.communityLockSessionUnlocked) {
@@ -33367,6 +39644,12 @@ function showScreen(id, options = {}) {
       fallbackScreen,
       redirectOnCancel: true,
     });
+  }
+
+  if (nextCommunityScreen) {
+    startCommunityOverviewPolling();
+  } else {
+    stopCommunityOverviewPolling();
   }
 
   if (id === "daily-setup") {
@@ -33419,6 +39702,18 @@ function showScreen(id, options = {}) {
     }
   }
 }
+
+window.addEventListener("focus", () => {
+  if (currentUser && backendClient.isAuthenticated()) {
+    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && currentUser && backendClient.isAuthenticated()) {
+    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
+  }
+});
 function restoreStreakUI() {
   const streakBox = document.getElementById("streak-box");
   const streakValue = document.getElementById("streak-value");
@@ -33463,6 +39758,10 @@ function shuffle(array) {
 }
 
 document.addEventListener("keydown", function (e) {
+  if (subscriptionPaymentModalEl && !subscriptionPaymentModalEl.classList.contains("hidden") && e.key === "Escape") {
+    closeSubscriptionPaymentModal({ focusPlanButton: true });
+    return;
+  }
   if (appUpdateModalEl && !appUpdateModalEl.classList.contains("hidden") && e.key === "Escape") {
     if (!Boolean(appUpdateCurrentPayload?.forceUpdate)) {
       closeAppUpdateModal();
@@ -33493,10 +39792,10 @@ document.addEventListener("keydown", function (e) {
     closeMenuUserHub();
     return;
   }
-  if (!examExitModal.classList.contains("hidden") && e.key === "Escape") {
+  if (examExitModal && !examExitModal.classList.contains("hidden") && e.key === "Escape") {
     closeExamExitModal();
   }
-  if (!studyExitModal.classList.contains("hidden") && e.key === "Escape") {
+  if (studyExitModal && !studyExitModal.classList.contains("hidden") && e.key === "Escape") {
     closeStudyExitModal();
   }
   if (sessionResumeModal && !sessionResumeModal.classList.contains("hidden") && e.key === "Escape") {
@@ -33542,21 +39841,37 @@ function registerAppUpdateResumeListeners() {
   window.addEventListener("pageshow", triggerUpdateCheck);
 }
 
+function hasVisibleAppOverlay() {
+  return Boolean(
+    (appUpdateModalEl && !appUpdateModalEl.classList.contains("hidden")) ||
+    (globalQuickNavEl && !globalQuickNavEl.classList.contains("hidden")) ||
+    leaderboardState.open ||
+    (!communityStatusModalEl?.classList.contains("hidden")) ||
+    communityState.mediaViewerOpen ||
+    (!communityStatusComposeModalEl?.classList.contains("hidden")) ||
+    (authModal && !authModal.classList.contains("hidden")) ||
+    (document.getElementById("study-exit-modal") && !document.getElementById("study-exit-modal").classList.contains("hidden")) ||
+    (sessionResumeModal && !sessionResumeModal.classList.contains("hidden"))
+  );
+}
+
+function shouldExitNativeAppOnBack() {
+  const activeId = String(getActiveScreenId() || "").trim();
+  return activeId === "home-screen" && !hasVisibleAppOverlay();
+}
+
 function registerNativeBackButtonHandler() {
   registerAppUpdateResumeListeners();
   const capacitorApp = window?.Capacitor?.Plugins?.App;
   if (!capacitorApp || typeof capacitorApp.addListener !== "function") return;
 
   capacitorApp.addListener("backButton", () => {
-    const hasHistoryEntry = window.history.length > 1;
-    const hasAppState = Boolean(history.state && (history.state.screen || history.state.overlay));
-
-    if (hasHistoryEntry || hasAppState) {
-      window.history.back();
+    if (shouldExitNativeAppOnBack() && typeof capacitorApp.exitApp === "function") {
+      capacitorApp.exitApp();
       return;
     }
 
-    triggerInAppBackNavigation(history.state || {});
+    triggerInAppBackNavigation(history.state || { screen: getActiveScreenId() || "quiz-menu" });
   });
 
   capacitorApp.addListener("appStateChange", ({ isActive }) => {
@@ -33688,7 +40003,7 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  // 1️⃣ If Study exit modal is open → close it
+  // 1
   const studyModal = document.getElementById("study-exit-modal");
   if (studyModal && !studyModal.classList.contains("hidden")) {
     studyModal.classList.add("hidden");
@@ -33701,13 +40016,13 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  // 2️⃣ If Exam exit modal is open → close it
-  if (!examExitModal.classList.contains("hidden")) {
+  // 2
+  if (examExitModal && !examExitModal.classList.contains("hidden")) {
     closeExamExitModal();
     return;
   }
 
-  // 3️⃣ Navigation based on CURRENT SCREEN (not mode)
+  // 3
 
   const stateScreenId = String(state?.screen || "").trim();
   if (
@@ -33728,6 +40043,7 @@ window.addEventListener("popstate", function (event) {
     }
 
     if (isTopicQuizMode()) {
+      saveStudyProgress();
       returnToTopicViewerFromQuiz();
       return;
     }
@@ -33802,3 +40118,4 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 });
+

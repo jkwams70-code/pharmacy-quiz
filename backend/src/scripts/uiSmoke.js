@@ -181,27 +181,6 @@ async function waitForDebugger(port, timeoutMs = 20000) {
   throw new Error("Edge DevTools endpoint did not become ready in time");
 }
 
-async function waitForHostReady(timeoutMs = 20000) {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    try {
-      const response = await fetch(`${HOST}/api/health`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
-      if (response.ok) {
-        return true;
-      }
-    } catch {
-      // Keep retrying until timeout.
-    }
-    await sleep(250);
-  }
-  throw new Error(
-    `UI smoke host not reachable at ${HOST}. Start backend first (npm --prefix Quiz/backend run start).`,
-  );
-}
-
 async function stopProcessTree(pid) {
   await new Promise((resolve) => {
     const killer = spawn("cmd", ["/c", "taskkill", "/PID", String(pid), "/T", "/F"], {
@@ -231,7 +210,6 @@ async function main() {
     throw new Error("UI smoke test requires ADMIN_KEY in environment.");
   }
 
-  await waitForHostReady();
   await fs.access(EDGE_PATH);
 
   const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), "quiz-ui-smoke-"));
@@ -297,19 +275,7 @@ async function main() {
     const enterVisible = await cdp.waitForCondition(
       "!!document.querySelector('#enter-platform-btn')",
     );
-    if (!enterVisible) {
-      const context = await cdp.evaluate(`
-        (() => ({
-          href: location.href,
-          title: document.title,
-          readyState: document.readyState,
-          hasAuthModal: Boolean(document.getElementById('auth-modal')),
-          hasQuizMenu: Boolean(document.getElementById('quiz-menu')),
-          bodyText: (document.body?.innerText || '').slice(0, 180)
-        }))();
-      `);
-      throw new Error(`Quiz home button not found. Context: ${JSON.stringify(context)}`);
-    }
+    if (!enterVisible) throw new Error("Quiz home button not found.");
 
     await cdp.evaluate(
       "document.querySelector('#enter-platform-btn')?.click(); true;",
@@ -319,33 +285,71 @@ async function main() {
     );
     if (!authModalShown) throw new Error("Auth modal did not open after portal entry.");
 
-    const smokeUserEmail = `ui-quiz-smoke+${Date.now()}@example.com`;
     const smokeUsername = `uismoke${Date.now()}`;
+await cdp.evaluate(
+  "document.getElementById('auth-tab-register')?.click(); true;",
+);
+
+const registerFormReady = await cdp.waitForCondition(
+  "document.getElementById('auth-username-wrap')?.classList.contains('hidden') === false && document.getElementById('auth-confirm-password')",
+);
+
+if (!registerFormReady) {
+  throw new Error("Registration form did not become ready.");
+}
+
     await cdp.evaluate(`
       (() => {
-        document.getElementById('auth-tab-register')?.click();
-        document.getElementById('auth-title').value = 'Dr';
-        document.getElementById('auth-first-name').value = 'UI';
-        document.getElementById('auth-last-name').value = 'Smoke';
-        document.getElementById('auth-username').value = ${JSON.stringify(smokeUsername)};
-        document.getElementById('auth-contact').value = ${JSON.stringify(smokeUserEmail)};
-        const role = document.querySelector('input[name="auth-role"][value="student"]');
-        if (role) role.checked = true;
-        document.getElementById('auth-professional-type').value = 'Doctor of Pharmacy';
-        document.getElementById('auth-country').value = 'United States';
-        document.getElementById('auth-institution').value = 'UI Smoke Institute';
-        document.getElementById('auth-password').value = 'Strong123';
-        document.getElementById('auth-form')?.requestSubmit();
+    document.getElementById('auth-first-name').value = 'UI';
+    document.getElementById('auth-last-name').value = 'Smoke';
+    document.getElementById('auth-username').value = ${JSON.stringify(smokeUsername)};
+
+    const countryCode = document.getElementById('auth-contact-country-code');
+if (countryCode) {
+  countryCode.value = '+233';
+  countryCode.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+document.getElementById('auth-contact-phone').value = '241234567';
+    document.getElementById('auth-contact-format').value = 'phone';
+
+    const role = document.querySelector('input[name="auth-role"][value="student"]');
+    if (role) role.checked = true;
+
+    document.getElementById('auth-password').value = 'Strong123';
+    document.getElementById('auth-confirm-password').value = 'Strong123';
+    document.getElementById('auth-form')?.requestSubmit();
         return true;
       })();
     `);
 
-    const menuShown = await cdp.waitForCondition(
-      "document.getElementById('quiz-menu')?.classList.contains('screen-active') === true",
-      20000,
-    );
-    if (!menuShown) throw new Error("Quiz menu did not open after authentication.");
+    const authOutcomeReady = await cdp.waitForCondition(
+  `
+    document.getElementById('quiz-menu')?.classList.contains('screen-active') === true ||
+    (document.getElementById('auth-error')?.textContent || '').trim().length > 0
+  `,
+  20000,
+);
 
+if (!authOutcomeReady) {
+  throw new Error("Registration produced no success or error response.");
+}
+
+const authError = await cdp.evaluate(
+  "document.getElementById('auth-error')?.textContent?.trim() || ''",
+);
+
+if (authError) {
+  throw new Error(`Registration failed: ${authError}`);
+}
+
+const menuShown = await cdp.evaluate(
+  "document.getElementById('quiz-menu')?.classList.contains('screen-active') === true",
+);
+
+if (!menuShown) {
+  throw new Error("Quiz menu did not open after authentication.");
+}
     // Validate dashboard open/close button flow.
     await cdp.evaluate("document.querySelector('.dashboard-mode')?.click(); true;");
     const dashboardShown = await cdp.waitForCondition(

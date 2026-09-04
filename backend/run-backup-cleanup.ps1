@@ -20,6 +20,7 @@ try {
   Write-MaintenanceLog "Starting scheduled backup + cleanup"
   npm run backup | Out-String | ForEach-Object { Write-MaintenanceLog $_.TrimEnd() }
   npm run cleanup | Out-String | ForEach-Object { Write-MaintenanceLog $_.TrimEnd() }
+  npm run cleanup:users | Out-String | ForEach-Object { Write-MaintenanceLog $_.TrimEnd() }
   Write-MaintenanceLog "Maintenance completed successfully"
 } catch {
   Write-MaintenanceLog "Maintenance failed: $($_.Exception.Message)"

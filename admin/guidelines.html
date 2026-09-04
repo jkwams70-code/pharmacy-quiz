@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <script src="admin-auth-lock.js"></script>
+  <meta charset="UTF-8" />
+  <script>try { const savedTheme = localStorage.getItem("ajix-guidelines-admin-theme") || localStorage.getItem("ajix-guidelines-theme-v1"); if (savedTheme === "dark") document.documentElement.setAttribute("data-theme", "dark"); } catch (error) {}</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" sizes="32x32" href="../images/app-logo.png?v=20260903-mascot"><link rel="shortcut icon" href="../images/app-logo.png?v=20260903-mascot"><link rel="apple-touch-icon" href="../images/app-logo.png?v=20260903-mascot">
+  <title>AjiX Guideline Database</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8f9fb;
+      --surface: #ffffff;
+      --surface-elevated: #ffffff;
+      --border: #e5e7eb;
+      --border-strong: #d1d5db;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-light: #dbeafe;
+      --success: #059669;
+      --success-bg: #d1fae5;
+      --warning: #d97706;
+      --warning-bg: #fef3c7;
+      --danger: #dc2626;
+      --danger-bg: #fee2e2;
+      --info: #0891b2;
+      --info-bg: #cffafe;
+      --purple: #7c3aed;
+      --purple-bg: #ede9fe;
+      --orange: #ea580c;
+      --orange-bg: #ffedd5;
+      --pink: #db2777;
+      --pink-bg: #fce7f3;
+      --indigo: #4f46e5;
+      --indigo-bg: #e0e7ff;
+      --teal: #0d9488;
+      --teal-bg: #ccfbf1;
+      --slate: #475569;
+      --slate-bg: #f1f5f9;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f1117;
+      --surface: #181b23;
+      --surface-elevated: #1f2330;
+      --border: #2d3142;
+      --border-strong: #3f455a;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-light: rgba(59, 130, 246, 0.15);
+      --success: #34d399;
+      --success-bg: rgba(52, 211, 153, 0.12);
+      --warning: #fbbf24;
+      --warning-bg: rgba(251, 191, 36, 0.12);
+      --danger: #f87171;
+      --danger-bg: rgba(248, 113, 113, 0.12);
+      --info: #22d3ee;
+      --info-bg: rgba(34, 211, 238, 0.12);
+      --purple: #a78bfa;
+      --purple-bg: rgba(167, 139, 250, 0.12);
+      --orange: #fb923c;
+      --orange-bg: rgba(251, 146, 60, 0.12);
+      --pink: #f472b6;
+      --pink-bg: rgba(244, 114, 182, 0.12);
+      --indigo: #818cf8;
+      --indigo-bg: rgba(129, 140, 248, 0.12);
+      --teal: #2dd4bf;
+      --teal-bg: rgba(45, 212, 191, 0.12);
+      --slate: #94a3b8;
+      --slate-bg: rgba(148, 163, 184, 0.12);
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .back-btn:hover {
+      background: var(--bg);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .brand-text {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+    .brand-text span {
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-left: 6px;
+      font-size: 15px;
+    }
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .theme-toggle:hover {
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+
+    /* Main Layout */
+    .main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* Summary Cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 1200px) { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px) { .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .summary-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+    .summary-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .summary-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+    .summary-card.total .summary-value { color: var(--accent); }
+    .summary-card.fetched .summary-value { color: var(--info); }
+    .summary-card.drafts .summary-value { color: var(--warning); }
+    .summary-card.review .summary-value { color: var(--purple); }
+    .summary-card.published .summary-value { color: var(--success); }
+    .summary-card.rejected .summary-value { color: var(--danger); }
+
+    /* Entry Buttons */
+    .entry-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 640px) { .entry-actions { grid-template-columns: 1fr; } }
+
+    .entry-btn {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      width: 100%;
+    }
+    .entry-btn:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .entry-btn-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .entry-btn.live .entry-btn-icon { background: var(--accent-light); color: var(--accent); }
+    .entry-btn.manual .entry-btn-icon { background: var(--success-bg); color: var(--success); }
+    .entry-btn-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .entry-btn-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 240px;
+      max-width: 400px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 10px 14px 10px 40px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+    .search-box svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .filter-select {
+      padding: 10px 32px 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    .filter-select:focus { border-color: var(--accent); outline: none; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .tab:hover { color: var(--text-primary); }
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+      background: var(--bg);
+      color: var(--text-secondary);
+    }
+    .tab.active .tab-count {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    /* Table Container */
+    .table-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-top: -1px;
+      overflow: hidden;
+    }
+    .table-scroll {
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    .table-scroll::-webkit-scrollbar { height: 6px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+    .table-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+    table {
+      width: 100%;
+      min-width: 1000px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:hover { color: var(--text-primary); }
+    thead th .sort-icon {
+      display: inline-block;
+      margin-left: 4px;
+      opacity: 0.4;
+      transition: opacity 0.15s;
+    }
+    thead th:hover .sort-icon { opacity: 1; }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    tbody tr:hover { background: var(--bg); }
+    tbody td {
+      padding: 14px 16px;
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+    .td-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .td-secondary {
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .td-muted {
+      color: var(--text-muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-source-live {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+    .badge-source-manual {
+      background: var(--purple-bg);
+      color: var(--purple);
+    }
+    .badge-status-fetched {
+      background: var(--info-bg);
+      color: var(--info);
+    }
+    .badge-status-draft {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+    .badge-status-review {
+      background: var(--purple-bg);
+      color: var(--purple);
+    }
+    .badge-status-published {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    .badge-status-rejected {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    /* Action Buttons */
+    .actions {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      padding: 0;
+    }
+    .btn-icon:hover {
+      background: var(--bg);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+    .btn-icon.view:hover { color: var(--accent); border-color: var(--accent); }
+    .btn-icon.edit:hover { color: var(--warning); border-color: var(--warning); }
+    .btn-icon.delete:hover { color: var(--danger); border-color: var(--danger); }
+
+    /* Preview Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+      overflow-y: auto;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 900px;
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      margin-bottom: 40px;
+    }
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 10;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .modal-close:hover {
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+    .modal-body {
+      padding: 24px;
+    }
+
+    /* Preview Meta */
+    .preview-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .meta-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .meta-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* Preview Sections */
+    .preview-section {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .preview-section-header {
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .preview-section-body {
+      padding: 20px;
+      background: var(--surface);
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+    }
+    .preview-section-body p { margin-bottom: 12px; }
+    .preview-section-body p:last-child { margin-bottom: 0; }
+    .preview-section-body ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .preview-section-body li { margin-bottom: 8px; }
+
+    /* Section Colors */
+    .sec-overview .preview-section-header { background: var(--slate-bg); color: var(--slate); }
+    .sec-recommendations .preview-section-header { background: var(--accent-light); color: var(--accent); }
+    .sec-diagnosis .preview-section-header { background: var(--orange-bg); color: var(--orange); }
+    .sec-treatment .preview-section-header { background: var(--success-bg); color: var(--success); }
+    .sec-monitoring .preview-section-header { background: var(--teal-bg); color: var(--teal); }
+    .sec-special .preview-section-header { background: var(--pink-bg); color: var(--pink); }
+    .sec-safety .preview-section-header { background: var(--danger-bg); color: var(--danger); }
+    .sec-education .preview-section-header { background: var(--purple-bg); color: var(--purple); }
+    .sec-evidence .preview-section-header { background: var(--indigo-bg); color: var(--indigo); }
+    .sec-references .preview-section-header { background: var(--slate-bg); color: var(--slate); }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main { padding: 16px; }
+      .header-inner { padding: 0 16px; }
+      .summary-card { padding: 16px; }
+      .summary-value { font-size: 22px; }
+      .entry-btn { padding: 18px; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .search-box { max-width: none; }
+      .filter-select { width: 100%; }
+      .modal-overlay { padding: 0; }
+      .modal { border-radius: 0; min-height: 100vh; }
+    }
+  </style>
+<base target="_blank">
+<style id="admin-article-heading">
+.admin-article-heading{padding:4px 2px 18px}.admin-article-breadcrumb{color:var(--text-muted);font-size:12px;margin-bottom:10px}.admin-article-heading h1{margin:0 0 8px;color:var(--text);font-size:25px;line-height:1.15}.admin-article-heading p{margin:0 0 14px;color:var(--text-muted);font-size:14px;line-height:1.55}.admin-article-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.admin-article-meta span{display:inline-flex;align-items:center;padding:8px 11px;border:1px solid var(--border);border-radius:999px;color:var(--text);background:var(--surface);font-size:12px}.admin-article-meta b{padding:9px 12px;border-radius:999px;background:#009b68;color:#fff;font-size:12px}
+.admin-disclaimer{display:flex;gap:12px;align-items:flex-start;margin:0 0 18px;padding:14px 18px;background:linear-gradient(90deg,#fff7ed 0%,#fff 100%);border:1px solid #fde68a;border-radius:16px;box-shadow:var(--shadow-md);color:#7c2d12;font-size:14px;line-height:1.65}.admin-disclaimer-icon{width:28px;height:28px;border-radius:50%;background:#f59e0b;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-weight:700}.preview-modal-title-hidden{display:none}.preview-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.preview-actions button{border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);padding:7px 11px;cursor:pointer}.preview-actions button:hover{border-color:var(--accent);color:var(--accent)}@media(max-width:600px){.admin-disclaimer{font-size:13px;padding:12px 14px}.admin-article-heading h1{font-size:22px}.admin-article-meta span{font-size:11px;padding:7px 9px}}.admin-preview-toc{margin:0 0 18px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg);max-height:150px;overflow-y:auto}.admin-preview-toc-title{margin-bottom:8px;color:var(--text-muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.admin-preview-toc-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 16px}.admin-preview-toc a{color:var(--accent);font-size:13px;line-height:1.45;text-decoration:none}.admin-preview-toc a:hover{text-decoration:underline}@media(max-width:600px){.admin-preview-toc{max-height:132px;padding:12px}.admin-preview-toc-list{display:flex;flex-direction:column;gap:6px}}.admin-preview-toc{max-height:190px}.admin-preview-toc-list{background:var(--surface);padding:2px}.admin-preview-toc a{color:var(--accent)}#previewModal .modal-header{position:sticky;top:0;z-index:10;background:var(--surface);box-shadow:var(--shadow-sm)}#previewModal .preview-section-body{background:var(--surface);color:var(--text-primary);opacity:1}#previewModal .preview-section-body p,#previewModal .preview-section-body li,#previewModal .preview-section-body td,#previewModal .preview-section-body th{color:var(--text-primary)}#previewModal .admin-article-heading h1{color:var(--text-primary)}.preview-theme-toggle{flex:0 0 auto}#previewModal .modal{display:flex;flex-direction:column;max-height:calc(100vh - 80px);margin-bottom:0}#previewModal .modal-header{position:relative;top:auto;flex:0 0 auto}#previewModal .modal-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden}#previewModal .preview-table-scroll{max-width:100%;overflow-x:auto;overflow-y:hidden;margin:14px 0;border:1px solid var(--border);border-radius:8px;background:var(--surface)}#previewModal .preview-table-scroll table{min-width:620px;width:100%;border-collapse:collapse;color:var(--text-primary);background:var(--surface)}#previewModal .preview-table-scroll th,#previewModal .preview-table-scroll td{padding:10px 12px;border:1px solid var(--border);text-align:left;vertical-align:top;color:var(--text-primary);white-space:normal}#previewModal .preview-table-scroll th{font-weight:800;background:var(--slate-bg)}#previewModal .preview-section-header{font-weight:800;opacity:.97}#previewModal .sec-overview .preview-section-header{background:#e2e8f0;color:#334155}#previewModal .sec-recommendations .preview-section-header{background:#dbeafe;color:#1d4ed8}#previewModal .sec-diagnosis .preview-section-header{background:#ffedd5;color:#c2410c}#previewModal .sec-treatment .preview-section-header{background:#d1fae5;color:#047857}#previewModal .sec-monitoring .preview-section-header{background:#ccfbf1;color:#0f766e}#previewModal .sec-special .preview-section-header{background:#fce7f3;color:#be185d}#previewModal .sec-safety .preview-section-header{background:#fee2e2;color:#b91c1c}#previewModal .sec-education .preview-section-header{background:#ede9fe;color:#6d28d9}#previewModal .sec-evidence .preview-section-header{background:#e0e7ff;color:#4338ca}#previewModal .sec-references .preview-section-header{background:#e2e8f0;color:#334155}html[data-theme="dark"] #previewModal .sec-overview .preview-section-header,html[data-theme="dark"] #previewModal .sec-references .preview-section-header{background:#334155;color:#e2e8f0}html[data-theme="dark"] #previewModal .sec-recommendations .preview-section-header{background:#1e3a8a;color:#bfdbfe}html[data-theme="dark"] #previewModal .sec-diagnosis .preview-section-header{background:#7c2d12;color:#fed7aa}html[data-theme="dark"] #previewModal .sec-treatment .preview-section-header{background:#065f46;color:#a7f3d0}html[data-theme="dark"] #previewModal .sec-monitoring .preview-section-header{background:#115e59;color:#99f6e4}html[data-theme="dark"] #previewModal .sec-special .preview-section-header{background:#831843;color:#fbcfe8}html[data-theme="dark"] #previewModal .sec-safety .preview-section-header{background:#7f1d1d;color:#fecaca}html[data-theme="dark"] #previewModal .sec-education .preview-section-header{background:#5b21b6;color:#ddd6fe}html[data-theme="dark"] #previewModal .sec-evidence .preview-section-header{background:#3730a3;color:#c7d2fe}@media(max-width:768px){#previewModal .modal{max-height:100vh}#previewModal .modal-body{padding:18px 16px}}#previewModal .preview-source-link{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;margin:0 2px;border:1px solid var(--accent);border-radius:50%;background:var(--accent);color:#fff!important;font-size:10px;font-weight:800;line-height:1;text-decoration:none;vertical-align:middle}#previewModal .preview-source-link:hover,#previewModal .preview-source-link:focus{background:var(--accent-hover);border-color:var(--accent-hover);color:#fff!important;outline:2px solid var(--accent-light);outline-offset:2px}.admin-confirm-modal{z-index:400}.admin-confirm-modal .modal{position:relative;z-index:401}.preview-actions .action-publish,.preview-actions .action-reject,.preview-actions .action-unpublish{border:0;color:#fff;font-weight:800;box-shadow:var(--shadow-sm)}.preview-actions .action-publish{background:#059669}.preview-actions .action-publish:hover{background:#047857;color:#fff}.preview-actions .action-reject{background:#dc2626}.preview-actions .action-reject:hover{background:#b91c1c;color:#fff}.preview-actions .action-unpublish{background:#d97706}.preview-actions .action-unpublish:hover{background:#b45309;color:#fff}.td-title[data-guideline-view-id]{cursor:pointer}.td-title[data-guideline-view-id]:hover{color:var(--accent);text-decoration:underline}@media(max-width:768px){.toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:center}.toolbar .search-box{grid-column:1/-1;width:100%;max-width:none;min-width:0}.toolbar .filter-select{width:100%;min-width:0;padding:10px 22px 10px 8px;font-size:11px}.toolbar .filter-select#sourceFilter{grid-column:1}.toolbar .filter-select#specialtyFilter{grid-column:2}.toolbar .filter-select#sortFilter{grid-column:3}}.admin-preview-toc{scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.38) transparent}.admin-preview-toc::-webkit-scrollbar{width:3px;height:3px}.admin-preview-toc::-webkit-scrollbar-track{background:transparent}.admin-preview-toc::-webkit-scrollbar-thumb{background:rgba(100,116,139,.38);border-radius:999px}.admin-preview-toc:hover::-webkit-scrollbar-thumb{background:rgba(37,99,235,.55)}.admin-confirm-modal{background:rgba(15,23,42,.18);align-items:center;justify-content:center;padding:20px}.admin-confirm-modal .modal{width:min(100%,390px);max-width:390px;margin:0;border-radius:var(--radius-lg);box-shadow:0 18px 45px rgba(15,23,42,.25)}.admin-confirm-modal .modal-header{position:relative;padding:16px 18px}.admin-confirm-modal .modal-body{padding:18px}.admin-confirm-modal .modal-title{font-size:16px}.admin-confirm-modal .preview-actions{margin-top:14px}.admin-confirm-modal .preview-actions button{min-width:82px}.admin-confirm-modal{background:rgba(0,0,0,.52);backdrop-filter:blur(2px);align-items:center;justify-content:center;padding:20px}.admin-confirm-modal .modal-box{width:min(420px,100%);background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 20px 55px rgba(0,0,0,.3);overflow:hidden;color:var(--text-primary)}.admin-confirm-modal .modal-hd{padding:18px 26px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}.admin-confirm-modal .modal-t{font-size:16px;font-weight:700;color:var(--text-primary)}.admin-confirm-modal .xbtn{width:28px;height:28px;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--text-secondary);font-size:14px;cursor:pointer}.admin-confirm-modal .xbtn:hover{background:var(--bg);color:var(--text-primary)}.admin-confirm-modal .modal-bd{padding:18px 26px}.admin-confirm-modal .modal-bd p{margin:0;color:var(--text-primary);font-size:14px;line-height:1.6}.admin-confirm-modal .modal-ft{padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}.admin-confirm-modal .modal-ft button{min-width:74px;padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}.admin-confirm-modal .modal-ft .btn-s{background:transparent;color:var(--text-primary)}.admin-confirm-modal .modal-ft .btn-s:hover{background:var(--bg)}.admin-confirm-modal .modal-ft .btn-p{background:var(--accent);border-color:var(--accent);color:#fff}.admin-confirm-modal .modal-ft .btn-p:hover{background:var(--accent-hover);border-color:var(--accent-hover)}@media(max-width:600px){.admin-confirm-modal{padding:16px}.admin-confirm-modal .modal-hd{padding:16px 18px}.admin-confirm-modal .modal-bd{padding:16px 18px}.admin-confirm-modal .modal-ft{padding:12px 14px}}</style><style id="manual-feed-process">.ai-process-panel{display:none;margin:0 0 14px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text-primary)}.ai-process-title{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:7px}.ai-process-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:13px;padding:4px 0}.ai-process-row small{width:100%;color:var(--danger)}.ai-process-state{font-weight:800}.ai-process-processing{color:var(--accent)}.ai-process-completed{color:#059669}.ai-process-failed{color:var(--danger)}</style><style id="preview-content-parity">
+#previewModal .preview-section-body blockquote.attention-card{margin:14px 0;padding:12px 16px;border:1px solid #a7ccd8;border-left:4px solid #2f7f9f;border-radius:10px;background:#edf5f7;color:inherit;font:inherit;line-height:inherit}
+#previewModal .preview-section-body blockquote.attention-card::before{display:none;content:none}
+#previewModal .preview-section-body blockquote.attention-key{border-color:#9bbcf0;border-left-color:#3c78c9;background:#eef4ff}
+#previewModal .preview-section-body blockquote.attention-warning{border-color:#c9a15a;border-left-color:#a97718;background:#fbf5e8}
+#previewModal .preview-section-body blockquote.attention-caution{border-color:#d69b9b;border-left-color:#b35b5b;background:#fbefef}
+html[data-theme="dark"] #previewModal .preview-section-body blockquote.attention-card{border-color:#4c8793;border-left-color:#79b9c8;background:#1d3942}
+html[data-theme="dark"] #previewModal .preview-section-body blockquote.attention-key{border-color:#4c70ad;border-left-color:#73a7f4;background:#1d2b43}
+html[data-theme="dark"] #previewModal .preview-section-body blockquote.attention-warning{border-color:#8c6b35;border-left-color:#d3a84f;background:#3b3020}
+html[data-theme="dark"] #previewModal .preview-section-body blockquote.attention-caution{border-color:#98515b;border-left-color:#d77b83;background:#3a2327}
+</style><style id="manual-ai-feed-styles">.entry-btn.ai .entry-btn-icon{background:#ede9fe;color:#6d28d9;font-size:12px;font-weight:800;letter-spacing:-.04em}.manual-ai-modal .modal-body{max-height:calc(100vh - 130px);overflow-y:auto}.manual-ai-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.manual-ai-fields input,.manual-ai-fields textarea{width:100%;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);padding:10px;font:inherit}.manual-ai-fields textarea{grid-column:1/-1;resize:vertical;min-height:220px}.manual-ai-fields input[type="file"]{grid-column:1/-1}@media(max-width:600px){.manual-ai-fields{grid-template-columns:1fr}.manual-ai-fields textarea,.manual-ai-fields input[type="file"]{grid-column:auto}}</style><style id="manual-feed-scroll-fix">.modal-overlay:has(.manual-ai-modal){overflow:hidden;padding:12px 16px}.manual-ai-modal{width:min(640px,100%);max-height:calc(100vh - 24px);height:auto;margin:0;display:flex;flex-direction:column}.manual-ai-modal .modal-body{max-height:none;min-height:0;overflow-y:auto;overflow-x:hidden}.manual-ai-modal textarea{max-height:38vh;min-height:180px;overflow-y:auto;resize:vertical}.manual-ai-modal .manual-ai-fields{min-width:0}.manual-ai-modal input,.manual-ai-modal textarea{box-sizing:border-box}@media(max-width:600px){.modal-overlay:has(.manual-ai-modal){padding:8px}.manual-ai-modal{max-height:calc(100vh - 16px)}.manual-ai-modal textarea{min-height:140px;max-height:32vh}}</style><style id="guideline-subtle-scrollbars">html,.guideline-page,*{scrollbar-width:thin;scrollbar-color:rgba(100,116,139,.28) transparent}html::-webkit-scrollbar,.guideline-page::-webkit-scrollbar,*::-webkit-scrollbar{width:2px;height:2px}html::-webkit-scrollbar-track,.guideline-page::-webkit-scrollbar-track,*::-webkit-scrollbar-track{background:transparent}html::-webkit-scrollbar-thumb,.guideline-page::-webkit-scrollbar-thumb,*::-webkit-scrollbar-thumb{background:rgba(100,116,139,.28);border-radius:999px}html::-webkit-scrollbar-thumb:hover,.guideline-page::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:hover{background:rgba(100,116,139,.48)}</style><style id="manual-feed-editor-styles">.manual-ai-modal .modal-body>textarea[data-mf-content]{display:block;width:100%;box-sizing:border-box;min-height:300px;max-height:48vh;margin:14px 0 12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font:inherit;font-size:14px;line-height:1.5;resize:vertical;overflow:auto}.manual-ai-modal [data-save-manual-feed]{display:inline-flex;align-items:center;justify-content:center;margin-top:2px;padding:10px 16px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer}.manual-ai-modal [data-save-manual-feed]:hover{background:var(--accent-hover);border-color:var(--accent-hover)}.manual-ai-modal [data-save-manual-feed]:disabled{opacity:.65;cursor:wait}.manual-ai-modal [data-mf-message]{min-height:20px;color:var(--text-muted);font-size:13px}@media(max-width:600px){.manual-ai-modal .modal-body>textarea[data-mf-content]{min-height:240px;max-height:42vh}}</style><style id="manual-feed-rich-editor">.manual-feed-editor{display:block;width:100%;box-sizing:border-box;min-height:300px;max-height:48vh;margin:14px 0 12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font:inherit;font-size:14px;line-height:1.5;overflow:auto;white-space:pre-wrap;word-break:break-word}.manual-feed-editor:empty:before{content:attr(data-placeholder);color:var(--text-muted);pointer-events:none}.manual-feed-editor:focus{outline:2px solid var(--accent-light);outline-offset:1px}.manual-feed-editor table{width:100%;border-collapse:collapse}.manual-feed-editor th,.manual-feed-editor td{border:1px solid var(--border);padding:6px;text-align:left}.manual-feed-editor img{max-width:100%;height:auto}@media(max-width:600px){.manual-feed-editor{min-height:240px;max-height:42vh}}.manual-ai-modal .manual-feed-editor[data-mf-content]{min-height:300px}</style><style id="manual-feed-row-cursor">.td-title[data-manual-view-id]{cursor:pointer}.td-title[data-manual-view-id]:hover{color:var(--accent);text-decoration:underline}</style><style id="ai-process-compact">.ai-process-panel{padding:7px 10px;margin-bottom:10px}.ai-process-title{font-size:9px;margin-bottom:3px}.ai-process-row{font-size:11px;padding:2px 0;gap:7px}.ai-process-row small{font-size:10px}.ai-process-state{font-size:11px}</style><style id="ai-process-queue">.ai-process-queued{color:var(--text-muted)}</style><style id="ai-action-disabled-style">.actions{align-items:center;min-width:0}.actions .btn-icon[data-ai-id][disabled]{width:auto;min-width:74px;height:30px;padding:0 7px;font-size:10px;white-space:nowrap;opacity:.62;cursor:wait}.actions .btn-icon[data-manual-view-id][disabled]{opacity:.42;cursor:wait}.actions .btn-icon[disabled]{pointer-events:none}</style><style id="editorial-guideline-layout">
+/* Present guidelines as one continuous article rather than a stack of cards. */
+.detail-content .article-block,
+.detail-content .content-section,
+#previewModal .preview-section {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  overflow: visible !important;
+}
+.detail-content .article-block .section-header,
+.detail-content .content-section .section-header,
+#previewModal .preview-section-header {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 10px !important;
+  padding: 30px 0 10px !important;
+  min-height: 0 !important;
+  border-bottom: 2px solid var(--border) !important;
+  background: transparent !important;
+  color: var(--text-main, var(--text-primary)) !important;
+}
+.detail-content .article-block:first-child .section-header,
+.detail-content .content-section:first-child .section-header,
+#previewModal .preview-section:first-of-type .preview-section-header {
+  padding-top: 4px !important;
+}
+.detail-content .section-title,
+#previewModal .preview-section-header {
+  font-size: 20px !important;
+  line-height: 1.3 !important;
+  font-weight: 800 !important;
+  letter-spacing: -.01em !important;
+  text-transform: none !important;
+}
+.detail-content .article-block-icon,
+#previewModal .preview-section-header > span[aria-hidden="true"] {
+  display: none !important;
+}
+.detail-content .article-block .section-body,
+.detail-content .content-section .section-body,
+#previewModal .preview-section-body {
+  padding: 18px 0 26px !important;
+  background: transparent !important;
+  color: var(--text-main, var(--text-primary)) !important;
+  font-size: 15px !important;
+  line-height: 1.78 !important;
+}
+.detail-content .section-body p,
+#previewModal .preview-section-body p { margin: 0 0 15px !important; }
+.detail-content .section-body p:last-child,
+#previewModal .preview-section-body p:last-child { margin-bottom: 0 !important; }
+.detail-content .section-body h2,
+#previewModal .preview-section-body h2 {
+  margin: 25px 0 10px !important;
+  font-size: 18px !important;
+  line-height: 1.35 !important;
+  color: inherit !important;
+}
+.detail-content .section-body h3,
+#previewModal .preview-section-body h3 {
+  margin: 22px 0 8px !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  color: inherit !important;
+}
+.detail-content .section-body ul,
+.detail-content .section-body ol,
+#previewModal .preview-section-body ul,
+#previewModal .preview-section-body ol {
+  margin: 10px 0 18px !important;
+  padding-left: 24px !important;
+}
+.detail-content .section-body li,
+#previewModal .preview-section-body li { margin: 0 0 8px !important; padding-left: 3px; }
+.detail-content blockquote.attention-card,
+#previewModal .preview-section-body blockquote.attention-card {
+  margin: 18px 0 !important;
+  padding: 5px 0 5px 16px !important;
+  border: 0 !important;
+  border-left: 3px solid #4b91b0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  font: inherit !important;
+}
+.detail-content blockquote.attention-card::before,
+#previewModal .preview-section-body blockquote.attention-card::before { display: none !important; content: none !important; }
+.detail-content .info-box,
+#previewModal .preview-section-body .info-box {
+  margin: 18px 0 !important;
+  padding: 5px 0 5px 16px !important;
+  border: 0 !important;
+  border-left: 3px solid #4b91b0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.detail-content .info-box-title,
+#previewModal .preview-section-body .info-box-title {
+  margin-bottom: 5px !important;
+  font-weight: 800 !important;
+  color: inherit !important;
+}
+#previewModal .preview-table-scroll,
+.detail-content .preview-table-scroll { margin: 18px 0 !important; }
+@media (max-width: 640px) {
+  .detail-content .section-title,
+  #previewModal .preview-section-header { font-size: 17px !important; }
+  .detail-content .article-block .section-body,
+  .detail-content .content-section .section-body,
+  #previewModal .preview-section-body {
+    padding: 14px 0 21px !important;
+    font-size: 13px !important;
+    line-height: 1.65 !important;
+  }
+  .detail-content .section-body h2,
+  #previewModal .preview-section-body h2 { font-size: 16px !important; }
+  .detail-content .section-body h3,
+  #previewModal .preview-section-body h3 { font-size: 14px !important; }
+  .detail-content .section-body li,
+  #previewModal .preview-section-body li { margin-bottom: 6px !important; }
+}
+</style><style id="compact-guideline-disclaimer">
+.disclaimer-banner {
+  margin-top: 14px !important;
+  padding: 9px 13px !important;
+  border-radius: 10px !important;
+}
+.disclaimer-inner { gap: 8px !important; }
+.disclaimer-icon {
+  width: 21px !important;
+  height: 21px !important;
+  font-size: 12px !important;
+  flex-basis: 21px !important;
+}
+.disclaimer-banner,
+.disclaimer-banner p {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+.admin-disclaimer {
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+  padding: 9px 12px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+.admin-disclaimer-icon {
+  width: 22px !important;
+  height: 22px !important;
+  font-size: 12px !important;
+}
+@media (max-width: 600px) {
+  .disclaimer-banner { padding: 8px 10px !important; }
+  .disclaimer-banner,
+  .disclaimer-banner p,
+  .admin-disclaimer { font-size: 11px !important; }
+  .admin-disclaimer { padding: 8px 10px !important; }
+}
+</style></head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <button class="back-btn" type="button" title="Back to Dashboard" aria-label="Back to Admin Dashboard" onclick="location.href='index.html'">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="brand">
+          <img class="brand-icon" src="../images/app-logo.png?v=20260903-mascot" alt="AjiX mascot">
+          <div class="brand-text">AjiX<span>Guideline Database</span></div>
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <svg id="moonIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg id="sunIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="summary-card total">
+        <div class="summary-label">Total Guidelines</div>
+        <div class="summary-value">1,247</div>
+      </div>
+      <div class="summary-card fetched">
+        <div class="summary-label">Fetched</div>
+        <div class="summary-value">312</div>
+      </div>
+      <div class="summary-card drafts">
+        <div class="summary-label">Drafts</div>
+        <div class="summary-value">89</div>
+      </div>
+      <div class="summary-card review">
+        <div class="summary-label">In Review</div>
+        <div class="summary-value">45</div>
+      </div>
+      <div class="summary-card published">
+        <div class="summary-label">Published</div>
+        <div class="summary-value">756</div>
+      </div>
+      <div class="summary-card rejected">
+        <div class="summary-label">Rejected</div>
+        <div class="summary-value">45</div>
+      </div>
+    </div>
+
+    <!-- Entry Actions -->
+    <div class="entry-actions">
+      <button class="entry-btn live" onclick="alert('Fetch from Live Source  -  placeholder')">
+        <div class="entry-btn-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+        </div>
+        <div>
+          <div class="entry-btn-title">Fetch From Live Source</div>
+          <div class="entry-btn-desc">Import guidelines automatically from connected repositories and APIs</div>
+        </div>
+      </button>
+      <button class="entry-btn manual" onclick="location.href='guideline-editor.html?v=20260902-editor2'">
+        <div class="entry-btn-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div>
+          <div class="entry-btn-title">Create Guideline Manually</div>
+          <div class="entry-btn-desc">Build a new guideline from scratch with structured sections</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="searchInput" placeholder="Search guidelines by title, condition, or source...">
+      </div>
+      <select class="filter-select" id="sourceFilter">
+        <option value="">All Sources</option>
+        <option value="Live Source">Live Source</option>
+        <option value="Manual Entry">Manual Entry</option>
+      </select>
+      <select class="filter-select" id="specialtyFilter">
+        <option value="">All Specialties</option>
+        <option value="Cardiology">Cardiology</option>
+        <option value="Endocrinology">Endocrinology</option>
+        <option value="Oncology">Oncology</option>
+        <option value="Neurology">Neurology</option>
+        <option value="Pulmonology">Pulmonology</option>
+      </select>
+      <select class="filter-select" id="sortFilter">
+        <option value="date-desc">Latest Activity</option>
+        <option value="date-asc">Oldest Activity</option>
+        <option value="title-asc">Title A-Z</option>
+        <option value="title-desc">Title Z-A</option>
+      </select>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabContainer">
+      <button class="tab active" data-tab="all" onclick="switchTab('all')">All<span class="tab-count">1,247</span></button>
+      <button class="tab" data-tab="fetched" onclick="switchTab('fetched')">Fetched<span class="tab-count">312</span></button>
+      <button class="tab" data-tab="manual_feed" onclick="switchTab('manual_feed')">Manual Feeds<span class="tab-count">0</span></button>
+      <button class="tab" data-tab="drafts" onclick="switchTab('drafts')">Drafts<span class="tab-count">89</span></button>
+      <button class="tab" data-tab="review" onclick="switchTab('review')">In Review<span class="tab-count">45</span></button>
+      <button class="tab" data-tab="published" onclick="switchTab('published')">Published<span class="tab-count">756</span></button>
+      <button class="tab" data-tab="rejected" onclick="switchTab('rejected')">Rejected<span class="tab-count">45</span></button>
+    </div>
+
+    <!-- Table Panel -->
+    <div class="table-panel">
+      <div class="table-scroll">
+        <table id="guidelinesTable">
+          <thead>
+            <tr>
+              <th>Guideline Title <span class="sort-icon">sort</span></th>
+              <th>Condition / Specialty</th>
+              <th>Source Organization</th>
+              <th>Entry Type</th>
+              <th>Version</th>
+              <th>Latest Activity</th>
+              <th>Status</th>
+              <th style="width:120px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Preview Modal -->
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="previewTitle">Guideline Preview</div>
+        <button class="modal-close" onclick="closePreview()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="previewBody">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== MOCK DATA =====
+    let guidelines = [
+      { id: 1, title: "2024 ACC/AHA Guideline for the Management of Heart Failure", condition: "Heart Failure", specialty: "Cardiology", org: "ACC/AHA", entryType: "Live Source", version: "v2024.2", activity: "2026-08-28", status: "published" },
+      { id: 2, title: "ADA Standards of Care in Diabetes  -  2024", condition: "Diabetes Mellitus", specialty: "Endocrinology", org: "American Diabetes Association", entryType: "Live Source", version: "v2024.1", activity: "2026-08-27", status: "published" },
+      { id: 3, title: "NCCN Clinical Practice Guidelines: Non-Small Cell Lung Cancer", condition: "Lung Cancer", specialty: "Oncology", org: "NCCN", entryType: "Live Source", version: "v5.2024", activity: "2026-08-25", status: "review" },
+      { id: 4, title: "Management of Acute Ischemic Stroke: AHA/ASA Update", condition: "Ischemic Stroke", specialty: "Neurology", org: "AHA/ASA", entryType: "Manual Entry", version: "v1.0", activity: "2026-08-24", status: "draft" },
+      { id: 5, title: "GOLD 2024 Report: Global Strategy for COPD", condition: "COPD", specialty: "Pulmonology", org: "GOLD Initiative", entryType: "Live Source", version: "v2024", activity: "2026-08-22", status: "published" },
+      { id: 6, title: "Hypertension Detection and Management in Primary Care", condition: "Hypertension", specialty: "Cardiology", org: "MedLens Internal", entryType: "Manual Entry", version: "v2.1", activity: "2026-08-20", status: "draft" },
+      { id: 7, title: "ESMO Guidelines: Metastatic Colorectal Cancer", condition: "Colorectal Cancer", specialty: "Oncology", org: "ESMO", entryType: "Live Source", version: "v2023.3", activity: "2026-08-18", status: "fetched" },
+      { id: 8, title: "Seizure Management in Pediatric Patients", condition: "Epilepsy", specialty: "Neurology", org: "MedLens Internal", entryType: "Manual Entry", version: "v1.2", activity: "2026-08-15", status: "rejected" },
+      { id: 9, title: "Thyroid Nodule Evaluation and Management", condition: "Thyroid Nodules", specialty: "Endocrinology", org: "ATA", entryType: "Live Source", version: "v2015-R2", activity: "2026-08-14", status: "published" },
+      { id: 10, title: "Asthma Management in Adolescents and Adults", condition: "Asthma", specialty: "Pulmonology", org: "GINA", entryType: "Live Source", version: "v2024.1", activity: "2026-08-12", status: "review" },
+      { id: 11, title: "Atrial Fibrillation: Diagnosis and Management", condition: "Atrial Fibrillation", specialty: "Cardiology", org: "ESC", entryType: "Live Source", version: "v2023", activity: "2026-08-10", status: "published" },
+      { id: 12, title: "Osteoporosis Prevention and Treatment Protocol", condition: "Osteoporosis", specialty: "Endocrinology", org: "MedLens Internal", entryType: "Manual Entry", version: "v1.0", activity: "2026-08-08", status: "draft" },
+      { id: 13, title: "Palliative Care in Advanced Cancer", condition: "Advanced Cancer", specialty: "Oncology", org: "ASCO", entryType: "Live Source", version: "v2024", activity: "2026-08-05", status: "fetched" },
+      { id: 14, title: "Migraine Prophylaxis: Updated Recommendations", condition: "Migraine", specialty: "Neurology", org: "AHS", entryType: "Live Source", version: "v2024.1", activity: "2026-08-03", status: "published" },
+      { id: 15, title: "Sleep Apnea Screening in Primary Care", condition: "Obstructive Sleep Apnea", specialty: "Pulmonology", org: "MedLens Internal", entryType: "Manual Entry", version: "v1.1", activity: "2026-08-01", status: "rejected" },
+    ];
+
+    const previewData = {
+      1: {
+        org: "American College of Cardiology / American Heart Association",
+        version: "v2024.2",
+        source: "Live Source  -  ACC/AHA Guideline Central",
+        category: "Cardiology / Heart Failure",
+        sections: {
+          overview: "<p>This guideline provides recommendations for the management of heart failure (HF) in adult patients. It covers the spectrum from prevention of HF in patients at risk, to management of patients with symptomatic HF, including those with HF with reduced ejection fraction (HFrEF), HF with mildly reduced ejection fraction (HFmrEF), and HF with preserved ejection fraction (HFpEF).</p><p>The writing committee reviewed evidence published since the previous guideline to formulate new recommendations and revise existing ones where appropriate.</p>",
+          recommendations: "<ul><li>Class I: SGLT2 inhibitors are recommended for patients with HFrEF to reduce hospitalization for HF and cardiovascular death, regardless of diabetes status.</li><li>Class I: Guideline-directed medical therapy (GDMT) including ACE inhibitors, beta-blockers, MRAs, and SGLT2 inhibitors is recommended for all patients with HFrEF unless contraindicated.</li><li>Class IIa: ARNI is reasonable to use in place of ACE inhibitors in patients with chronic symptomatic HFrEF.</li><li>Class IIa: Iron supplementation is reasonable in patients with HFrEF and iron deficiency to improve functional status and quality of life.</li></ul>",
+          diagnosis: "<ul><li>Initial evaluation should include history, physical examination, and appropriate diagnostic tests to identify cardiac and non-cardiac disorders.</li><li>Natriuretic peptide biomarker testing (BNP or NT-proBNP) is recommended for diagnosis and prognostication.</li><li>Echocardiography is indicated for initial evaluation of suspected HF to assess cardiac structure and function.</li><li>Chest X-ray, ECG, and complete blood count with differential are recommended as part of the initial workup.</li></ul>",
+          treatment: "<ul><li>Diuretics should be used for relief of congestive symptoms in patients with HF and fluid overload.</li><li>Evidence-based beta-blockers (bisoprolol, carvedilol, metoprolol succinate) are recommended for all stable patients with HFrEF.</li><li>ICD therapy is recommended for primary prevention of sudden cardiac death in selected patients with HFrEF.</li><li>Cardiac resynchronization therapy (CRT) is indicated for patients with LVEF <=35%, sinus rhythm, LBBB with QRS duration >=150 ms, and NYHA class II-IV symptoms despite GDMT.</li></ul>",
+          monitoring: "<ul><li>Patients should be assessed at every visit for clinical stability, volume status, and medication tolerance.</li><li>Serum electrolytes and renal function should be monitored 1-2 weeks after initiation or titration of GDMT.</li><li>Periodic assessment of LVEF is reasonable to guide therapeutic decisions, especially after significant clinical events.</li><li>Remote patient monitoring and telehealth follow-up may be considered to reduce hospital readmissions.</li></ul>",
+          special: "<ul><li>In older adults (>=75 years), treatment goals should focus on symptom relief, quality of life, and preservation of functional status.</li><li>Pregnancy is contraindicated with ACE inhibitors, ARBs, and ARNIs; hydralazine-isosorbide dinitrate is preferred.</li><li>In patients with chronic kidney disease, GDMT should be initiated at low doses with careful monitoring of renal function.</li><li>Shared decision-making is essential for patients with advanced HF considering inotropic therapy or transplant.</li></ul>",
+          safety: "<ul><li>Monitor for hyperkalemia when combining ACE inhibitors/ARBs with MRAs or potassium supplements.</li><li>Avoid NSAIDs in patients with HF due to risk of fluid retention and renal dysfunction.</li><li>Warn patients about signs of worsening HF and when to seek urgent medical attention.</li><li>Drug-drug interactions are common; review medication lists at every encounter.</li></ul>",
+          education: "<ul><li>Educate patients on daily weight monitoring and maintaining a sodium-restricted diet (<=3g/day).</li><li>Encourage adherence to prescribed medications and clarify that symptoms may improve before cardiac remodeling benefits occur.</li><li>Provide guidance on activity levels; cardiac rehabilitation is beneficial for stable patients.</li><li>Discuss advance care planning early, particularly for patients with advanced HF.</li></ul>",
+          evidence: "<ul><li>DAPA-HF Trial: Dapagliflozin reduced the composite endpoint of worsening HF or cardiovascular death by 26%.</li><li>EMPEROR-Reduced Trial: Empagliflozin demonstrated consistent benefits across ejection fraction subgroups.</li><li>PARADIGM-HF Trial: Sacubitril/valsartan reduced cardiovascular death or HF hospitalization by 20% vs. enalapril.</li><li>Updated meta-analyses support SGLT2 inhibitor class effect across the full HF spectrum.</li></ul>",
+          references: "<ul><li>Heidenreich PA, et al. 2022 AHA/ACC/HFSA Guideline for the Management of Heart Failure. Circulation. 2022;145(18):e895-e1032.</li><li>McDonagh TA, et al. 2023 Focused Update of the 2021 ESC Guidelines for the diagnosis and treatment of acute and chronic heart failure. Eur Heart J. 2023;44(37):3627-3639.</li><li>Solomon SD, et al. Dapagliflozin in Heart Failure with Mildly Reduced or Preserved Ejection Fraction. N Engl J Med. 2022;387(12):1089-1098.</li><li>Vaduganathan M, et al. Estimating Lifetime Benefits of Combination Therapies. JACC. 2020;75(13):1483-1486.</li></ul>"
+        }
+      },
+      2: {
+        org: "American Diabetes Association",
+        version: "v2024.1",
+        source: "Live Source  -  ADA Professional Portal",
+        category: "Endocrinology / Diabetes Mellitus",
+        sections: {
+          overview: "<p>The Standards of Care in Diabetes is intended to provide clinicians, patients, researchers, payers, and other interested individuals with the components of diabetes care, general treatment goals, and tools to evaluate the quality of care. The recommendations are based on an extensive review of the clinical diabetes literature.</p>",
+          recommendations: "<ul><li>Most adults with type 1 diabetes should use continuous glucose monitoring (CGM) to improve glycemic outcomes.</li><li>Metformin remains the preferred initial pharmacologic agent for type 2 diabetes.</li><li>For adults with type 2 diabetes and established ASCVD, SGLT2 inhibitors or GLP-1 receptor agonists with proven cardiovascular benefit are recommended.</li><li>All people with diabetes should receive DSMES at diagnosis and as needed thereafter.</li></ul>",
+          diagnosis: "<ul><li>Diabetes is diagnosed by A1C >=6.5%, fasting plasma glucose >=126 mg/dL, 2-h PG >=200 mg/dL during OGTT, or random glucose >=200 mg/dL with symptoms.</li><li>Prediabetes is identified by A1C 5.7-6.4%, fasting plasma glucose 100-125 mg/dL, or 2-h PG 140-199 mg/dL.</li><li>Screening for type 2 diabetes should begin at age 35 for all adults.</li><li>Autoantibody testing is recommended for distinguishing type 1 from type 2 diabetes when etiology is unclear.</li></ul>",
+          treatment: "<ul><li>Individualize glycemic targets: A1C &lt;7% for many nonpregnant adults, less stringent for older/frail patients.</li><li>Early combination therapy is reasonable in patients with A1C >=1.5% above target at diagnosis.</li><li>Insulin therapy should be initiated promptly for patients with catabolic symptoms or A1C &gt;10%.</li><li>Weight management is a primary therapeutic target; consider metabolic surgery for eligible patients with BMI >=40 (or >=35 with comorbidities).</li></ul>",
+          monitoring: "<ul><li>A1C should be checked at least twice yearly in stable patients and quarterly when treatment changes.</li><li>CGM metrics including time-in-range, time-above-range, and time-below-range should be reviewed regularly.</li><li>Annual comprehensive foot examination is recommended for all patients with diabetes.</li><li>Albumin-to-creatinine ratio and eGFR should be assessed at least annually.</li></ul>",
+          special: "<ul><li>In older adults, glycemic targets should be relaxed to avoid hypoglycemia; A1C &lt;8.0-8.5% may be appropriate.</li><li>Gestational diabetes screening at 24-28 weeks for all pregnant individuals not previously diagnosed with diabetes.</li><li>Youth-onset type 2 diabetes often presents with more aggressive disease progression; early intensive management is warranted.</li><li>Consider social determinants of health when setting treatment goals and selecting interventions.</li></ul>",
+          safety: "<ul><li>Hypoglycemia is the most common acute complication; educate patients on recognition and treatment.</li><li>SGLT2 inhibitors carry risk of euglycemic DKA; hold before surgery and during acute illness.</li><li>Thiazolidinediones are contraindicated in patients with symptomatic heart failure.</li><li>Review immunization status annually; influenza, pneumococcal, hepatitis B, and COVID-19 vaccines are recommended.</li></ul>",
+          education: "<ul><li>DSMES should be offered at four critical times: at diagnosis, annually, when complicating factors arise, and when transitions in care occur.</li><li>Teach carbohydrate counting or plate method for meal planning.</li><li>Discuss sick-day rules and when to contact the care team.</li><li>Address diabetes distress and psychological well-being at regular intervals.</li></ul>",
+          evidence: "<ul><li>DCCT/EDIC: Intensive glycemic control reduces microvascular complications and long-term cardiovascular events.</li><li>UKPDS: Each 1% reduction in A1C was associated with a 37% reduction in microvascular complications.</li><li>LEADER Trial: Liraglutide reduced cardiovascular death by 22% in patients with type 2 diabetes and high CV risk.</li><li>EMPA-REG OUTCOME: Empagliflozin reduced cardiovascular death by 38% in patients with established CVD.</li></ul>",
+          references: "<ul><li>American Diabetes Association. Standards of Care in Diabetes - 2024. Diabetes Care. 2024;47(Suppl 1):S1-S321.</li><li>Marso SP, et al. Liraglutide and Cardiovascular Outcomes in Type 2 Diabetes. N Engl J Med. 2016;375(4):311-322.</li><li>Zinman B, et al. Empagliflozin, Cardiovascular Outcomes, and Mortality in Type 2 Diabetes. N Engl J Med. 2015;373(22):2117-2128.</li><li>Diabetes Control and Complications Trial Research Group. N Engl J Med. 1993;329(14):977-986.</li></ul>"
+        }
+      }
+    };
+
+    // Default preview for items without specific data
+    function getDefaultPreview(item) {
+      return {
+        org: item.org,
+        version: item.version,
+        source: item.entryType + (item.entryType === 'Live Source' ? '  -  Connected Repository' : '  -  MedLens Editor'),
+        category: item.specialty + ' / ' + item.condition,
+        sections: {
+          overview: "<p>This guideline covers the evaluation, diagnosis, and management of <strong>" + item.condition + "</strong> within the specialty of <strong>" + item.specialty + "</strong>. The recommendations are intended to support clinical decision-making and standardize care pathways.</p><p>Please refer to the full source document for comprehensive details and any recent updates.</p>",
+          recommendations: "<ul><li>Recommendation 1: Early identification and risk stratification are recommended for all patients presenting with signs or symptoms consistent with " + item.condition + ".</li><li>Recommendation 2: First-line therapy should be initiated based on disease severity, comorbidities, and patient preferences.</li><li>Recommendation 3: Regular monitoring and follow-up are essential to assess treatment response and modify therapy as needed.</li><li>Recommendation 4: Multidisciplinary care coordination improves outcomes in complex cases.</li></ul>",
+          diagnosis: "<ul><li>Obtain a detailed history and perform a focused physical examination.</li><li>Order appropriate laboratory tests and imaging studies based on clinical presentation.</li><li>Apply validated diagnostic criteria and scoring systems where available.</li><li>Consider differential diagnoses and rule out mimicking conditions.</li></ul>",
+          treatment: "<ul><li>Initiate evidence-based pharmacologic therapy according to disease stage.</li><li>Consider non-pharmacologic interventions including lifestyle modifications and rehabilitation.</li><li>Refer to specialist care when disease progression or complications arise.</li><li>Reassess treatment goals periodically and adjust the care plan accordingly.</li></ul>",
+          monitoring: "<ul><li>Schedule regular follow-up visits to evaluate clinical status and treatment adherence.</li><li>Monitor relevant biomarkers and clinical indicators at intervals appropriate to disease severity.</li><li>Document response to therapy and any adverse events in the patient record.</li><li>Use patient-reported outcome measures to assess quality of life and functional status.</li></ul>",
+          special: "<ul><li>Adjust treatment intensity and goals for older adults based on frailty, life expectancy, and patient preferences.</li><li>Consider pregnancy-related modifications to medication regimens when applicable.</li><li>Account for renal and hepatic impairment when dosing medications.</li><li>Address health equity and access barriers that may affect care delivery.</li></ul>",
+          safety: "<ul><li>Review medication lists for potential drug-drug interactions at each visit.</li><li>Educate patients on warning signs that require urgent evaluation.</li><li>Monitor for common adverse effects associated with first-line therapies.</li><li>Ensure appropriate vaccination and infection prevention measures are up to date.</li></ul>",
+          education: "<ul><li>Provide clear, culturally appropriate education on the condition and its management.</li><li>Encourage self-monitoring and active participation in care decisions.</li><li>Connect patients with support groups and community resources.</li><li>Reinforce the importance of medication adherence and lifestyle modifications.</li></ul>",
+          evidence: "<ul><li>Systematic reviews and meta-analyses support the recommended treatment approach.</li><li>Randomized controlled trials demonstrate improved outcomes with guideline-concordant care.</li><li>Real-world evidence confirms the generalizability of trial findings to diverse populations.</li><li>Ongoing studies are evaluating emerging therapies and biomarker-guided strategies.</li></ul>",
+          references: "<ul><li>Primary guideline source: " + item.org + "  -  " + item.title + " (" + item.version + ").</li><li>Supporting literature and systematic reviews are cited in the full guideline document.</li><li>Consult the original publication for complete reference lists and evidence grading.</li></ul>"
+        }
+      };
+    }
+
+    // ===== STATE =====
+    let currentTab = 'all';
+    let searchQuery = '';
+    let sourceFilter = '';
+    let specialtyFilter = '';
+    let sortMode = 'date-desc';
+
+    // ===== DOM =====
+    const tableBody = document.getElementById('tableBody');
+    const searchInput = document.getElementById('searchInput');
+    const sourceFilterEl = document.getElementById('sourceFilter');
+    const specialtyFilterEl = document.getElementById('specialtyFilter');
+    const sortFilterEl = document.getElementById('sortFilter');
+    const previewModal = document.getElementById('previewModal');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewBody = document.getElementById('previewBody');
+
+    // ===== RENDER =====
+    function getStatusBadge(status) {
+      const map = {
+        fetched: '<span class="badge badge-status-fetched">Fetched</span>',
+        draft: '<span class="badge badge-status-draft">Draft</span>',
+        review: '<span class="badge badge-status-review">In Review</span>',
+        published: '<span class="badge badge-status-published">Published</span>',
+        rejected: '<span class="badge badge-status-rejected">Rejected</span>',
+        manual_feed: '<span class="badge badge-status-draft">Manual Feed</span>'
+      };
+      return map[status] || status;
+    }
+
+    function getSourceBadge(type) {
+      if (type === 'Live Source') return '<span class="badge badge-source-live">Live Source</span>';
+      return '<span class="badge badge-source-manual">Manual Entry</span>';
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function filterAndSortData() {
+      let data = [...guidelines];
+
+      // Tab filter
+      if (currentTab !== 'all') {
+        data = data.filter(g => g.status === currentTab);
+      }
+
+      // Search
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        data = data.filter(g =>
+          g.title.toLowerCase().includes(q) ||
+          g.condition.toLowerCase().includes(q) ||
+          g.org.toLowerCase().includes(q) ||
+          g.specialty.toLowerCase().includes(q)
+        );
+      }
+
+      // Source filter
+      if (sourceFilter) {
+        data = data.filter(g => g.entryType === sourceFilter);
+      }
+
+      // Specialty filter
+      if (specialtyFilter) {
+        data = data.filter(g => g.specialty === specialtyFilter);
+      }
+
+      // Sort
+      data.sort((a, b) => {
+        if (sortMode === 'date-desc') return new Date(b.activity) - new Date(a.activity);
+        if (sortMode === 'date-asc') return new Date(a.activity) - new Date(b.activity);
+        if (sortMode === 'title-asc') return a.title.localeCompare(b.title);
+        if (sortMode === 'title-desc') return b.title.localeCompare(a.title);
+        return 0;
+      });
+
+      return data;
+    }
+
+    function renderTable() {
+      const data = filterAndSortData();
+      tableBody.innerHTML = '';
+
+      if (data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">No guidelines match your filters.</td></tr>';
+        return;
+      }
+
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'animate-in';
+        tr.innerHTML = `
+          <td><div class="td-title" title="${item.title}">${item.title}</div></td>
+          <td class="td-secondary">${item.condition}</td>
+          <td class="td-secondary">${item.org}</td>
+          <td>${getSourceBadge(item.entryType)}</td>
+          <td class="td-secondary">${item.version}</td>
+          <td class="td-muted">${formatDate(item.activity)}</td>
+          <td>${getStatusBadge(item.status)}</td>
+          <td>
+            <div class="actions">
+              <button class="btn-icon view" title="Preview" onclick="openPreview(${item.id})">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              <button class="btn-icon edit" title="Edit" onclick="alert('Edit guideline ${item.id}  -  placeholder')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="btn-icon delete" title="Delete" onclick="alert('Delete guideline ${item.id}  -  placeholder')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // ===== TABS =====
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
+    }
+
+    // ===== PREVIEW =====
+    function openPreview(id) {
+      const item = guidelines.find(g => g.id === id);
+      if (!item) return;
+
+      const data = previewData[id] || getDefaultPreview(item);
+      previewTitle.textContent = item.title;
+
+      const sectionOrder = ['overview','recommendations','diagnosis','treatment','monitoring','special','safety','education','evidence','references'];
+      const sectionNames = {
+        overview: 'Overview',
+        recommendations: 'Recommendations',
+        diagnosis: 'Diagnosis',
+        treatment: 'Treatment',
+        monitoring: 'Monitoring',
+        special: 'Special Populations',
+        safety: 'Safety & Cautions',
+        education: 'Patient Education',
+        evidence: 'Evidence Summary',
+        references: 'References'
+      };
+
+      let html = `
+        <div class="preview-meta">
+          <div class="meta-item"><div class="meta-label">Organization</div><div class="meta-value">${data.org}</div></div>
+          <div class="meta-item"><div class="meta-label">Version</div><div class="meta-value">${data.version}</div></div>
+          <div class="meta-item"><div class="meta-label">Source</div><div class="meta-value">${data.source}</div></div>
+          <div class="meta-item"><div class="meta-label">Category</div><div class="meta-value">${data.category}</div></div>
+        </div>
+      `;
+
+      sectionOrder.forEach(key => {
+        if (data.sections[key]) {
+          html += `
+            <div class="preview-section sec-${key}">
+              <div class="preview-section-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                ${sectionNames[key]}
+              </div>
+              <div class="preview-section-body">${data.sections[key]}</div>
+            </div>
+          `;
+        }
+      });
+
+      previewBody.innerHTML = html;
+      previewModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePreview() {
+      previewModal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    previewModal.addEventListener('click', (e) => {
+      if (e.target === previewModal) closePreview();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePreview();
+    });
+
+    // ===== EVENTS =====
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
+    });
+
+    sourceFilterEl.addEventListener('change', (e) => {
+      sourceFilter = e.target.value;
+      if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
+    });
+
+    specialtyFilterEl.addEventListener('change', (e) => {
+      specialtyFilter = e.target.value;
+      if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
+    });
+
+    sortFilterEl.addEventListener('change', (e) => {
+      sortMode = e.target.value;
+      if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
+    });
+
+    // ===== THEME =====
+    const themeToggle = document.getElementById('themeToggle');
+    const moonIcon = document.getElementById('moonIcon');
+    const sunIcon = document.getElementById('sunIcon');
+
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next); try { localStorage.setItem('ajix-guidelines-admin-theme', next); localStorage.setItem('ajix-guidelines-theme-v1', next); } catch (error) {}
+      if (next === 'dark') {
+        moonIcon.style.display = 'none';
+        sunIcon.style.display = 'block';
+      } else {
+        moonIcon.style.display = 'block';
+        sunIcon.style.display = 'none';
+      }
+    });
+
+
+    const API_BASE = window.GUIDELINES_API_BASE || localStorage.getItem('quizApiBase') || (location.hostname === 'localhost' ? 'http://localhost:4000/api' : '/api');
+    let ADMIN_KEY = window.ADMIN_API_KEY || localStorage.getItem('adminKey') || '';
+    async function guidelineApi(pathname, options={}, retry=true) {
+      const response=await fetch(API_BASE+pathname,{...options,headers:{'Content-Type':'application/json','x-admin-key':ADMIN_KEY,...(options.headers||{})}});
+      const body=await response.json().catch(()=>({}));
+      if(response.status===403&&retry){const key=window.prompt('Enter the admin API key');if(key){ADMIN_KEY=key.trim();localStorage.setItem('adminKey',ADMIN_KEY);return guidelineApi(pathname,options,false)}}
+      if(!response.ok)throw new Error(body.error||'Request failed');
+      return body;
+    }
+    async function loadGuidelinesFromApi(){
+      try{
+        const result=await guidelineApi('/admin/guidelines?status=all');
+        guidelines=(result.items||[]).map(item=>({...item,status:item.status==='in_review'?'review':item.status,org:item.org||item.organization||item.source||'Unknown',activity:item.activity||item.updatedAt||item.createdAt||''}));
+        if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
+      }catch(error){tableBody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--danger);">Guideline API unavailable: '+String(error.message||'')+'</td></tr>'}
+    }
+
+    // ===== INIT =====
+    if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
+  </script>
+<script src="guidelines-runtime.js?v=20260903-runtime24"></script>
+</body>
+</html>
+

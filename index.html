@@ -21,6 +21,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Ajix Quiz" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Ajix Pharmacy Quiz | Pharmacy Practice & Assessment Portal</title>
     <script type="application/ld+json">
       {
@@ -65,7 +68,19 @@
         }
       })();
     </script>
+
+    <script>
+      (() => {
+        try {
+          const directScreen = new URLSearchParams(window.location.search || "").get("screen");
+          if (directScreen) document.documentElement.setAttribute("data-direct-screen", directScreen);
+        } catch (error) {
+          console.warn("Direct screen boot guard failed:", error);
+        }
+      })();
+    </script>
     <style>
+      html[data-direct-screen] #home-screen { display: none !important; }
       html[data-app-boot="hold"] body {
         opacity: 0;
         visibility: hidden;
@@ -83,7 +98,1439 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260611-lawdrill22" />
+    <link rel="stylesheet" href="/styles.css?v=20260904-supplied-performance-dashboard-v1" />
+    <style id="home-critical-fix">
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        overflow: hidden;
+        font-family: "Inter", "Segoe UI", Tahoma, Verdana, sans-serif;
+        background: linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
+      }
+
+      #home-screen {
+        position: fixed !important;
+        inset: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        background: linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%) !important;
+        color: #1f2d3d !important;
+      }
+
+      .home-minimal-scroll {
+        position: relative !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+
+      .home-minimal-bg-image {
+        position: absolute !important;
+        inset: 0 !important;
+        background: url("images/pharmacist-hero.png.png?v=20260324-imgrefresh2") center center / cover no-repeat !important;
+        opacity: 0.16 !important;
+        pointer-events: none !important;
+        z-index: 0 !important;
+      }
+
+      .home-minimal-shape {
+        display: none !important;
+      }
+
+      .home-minimal-nav {
+        position: relative !important;
+        z-index: 2 !important;
+        padding: 14px 16px 10px !important;
+      }
+
+      .home-minimal-logo-image {
+        width: min(148px, 100%) !important;
+        height: auto !important;
+        display: block !important;
+      }
+
+      .home-minimal-container {
+        position: relative !important;
+        z-index: 2 !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 12px 16px 8px !important;
+      }
+
+      .home-minimal-content {
+        width: min(100%, 430px) !important;
+        max-width: 430px !important;
+        padding: 24px 20px !important;
+        border-radius: 24px !important;
+        border: 1px solid rgba(220, 228, 239, 0.62) !important;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 251, 255, 0.86) 100%) !important;
+        box-shadow: 0 18px 34px rgba(33, 56, 92, 0.08) !important;
+        backdrop-filter: blur(6px) !important;
+        text-align: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+      }
+
+      .home-minimal-title {
+        margin: 0 !important;
+        font-family: "Montserrat", "Inter", "Segoe UI", Tahoma, Verdana, sans-serif !important;
+        font-size: clamp(1.95rem, 8vw, 2.35rem) !important;
+        line-height: 1.08 !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.055em !important;
+        color: #1f2d3d !important;
+      }
+
+      .home-minimal-title span {
+        color: #4a7bd1 !important;
+        font-weight: 500 !important;
+      }
+
+      .home-minimal-subtext {
+        margin-top: 14px !important;
+        font-size: 13px !important;
+        line-height: 1.56 !important;
+        color: #66768d !important;
+      }
+
+      .home-minimal-button-row {
+        margin-top: 20px !important;
+        position: relative !important;
+        z-index: 3 !important;
+      }
+
+      .home-minimal-button {
+        min-height: 44px !important;
+        padding: 0 20px !important;
+        border: none !important;
+        border-radius: 12px !important;
+        background: linear-gradient(180deg, #4b7bd0 0%, #3a64b2 100%) !important;
+        color: #ffffff !important;
+        font-family: inherit !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+      }
+
+      .home-minimal-footer {
+        padding: 10px 16px 12px !important;
+        gap: 6px !important;
+        font-size: 12px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        z-index: 2 !important;
+      }
+
+      .home-minimal-footer-title {
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+      }
+
+      .home-minimal-footer-line,
+      .home-minimal-footer-link {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        color: #6f7f96 !important;
+        text-decoration: none !important;
+      }
+
+      .home-minimal-copyright {
+        margin-top: 14px !important;
+        font-size: 10.5px !important;
+        color: #96a2b3 !important;
+      }
+    </style>
+    <style>
+      #subscription-screen.subscription-page {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100dvh;
+        min-height: 100dvh;
+        display: none;
+        overflow: hidden;
+        overscroll-behavior: none;
+        isolation: isolate;
+        flex-direction: column;
+        padding: clamp(16px, 3vw, 28px);
+        background:
+          radial-gradient(circle at top left, rgba(15, 63, 127, 0.06), transparent 30%),
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 30%),
+          linear-gradient(180deg, #fbfdff 0%, #f3f7fb 100%);
+        font-family: var(--font-body);
+        color: #10233f;
+      }
+
+      #subscription-screen .subscription-shell {
+        flex: 1;
+        min-height: 0;
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        gap: 14px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #subscription-screen .subscription-header-row,
+      #subscription-screen .subscription-section-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      #subscription-screen .subscription-section-row {
+        margin-top: 20px;
+      }
+
+      #subscription-screen .subscription-page-title {
+        margin: 0;
+        font-family: var(--font-heading);
+        font-size: clamp(24px, 2.6vw, 36px);
+        line-height: 1.05;
+        font-weight: 900;
+        color: #10233f;
+      }
+
+      #subscription-screen .subscription-page-subtitle {
+        margin: 6px 0 0;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      #subscription-screen .subscription-close-btn {
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 700;
+        padding: 8px 0;
+        cursor: pointer;
+      }
+
+      #subscription-screen .subscription-status-card,
+      #subscription-screen .subscription-payment-card,
+      #subscription-screen .subscription-proof-card {
+        background: #fff;
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+      }
+
+      #subscription-screen .subscription-status-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 24px;
+        padding: 18px 18px 17px;
+        background:
+          radial-gradient(circle at top right, rgba(15, 123, 194, 0.12), transparent 34%),
+          radial-gradient(circle at left center, rgba(13, 148, 136, 0.08), transparent 28%),
+          linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%);
+        border-color: rgba(122, 172, 230, 0.28);
+        box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
+      }
+
+      #subscription-screen .subscription-status-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, #0f7bc2, #14b8a6 58%, #f59e0b);
+      }
+
+      #subscription-screen .subscription-status-label,
+      #subscription-screen .subscription-section-title {
+        margin: 0;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: #64748b;
+      }
+
+      #subscription-screen .subscription-status-label {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(237, 247, 255, 0.95);
+        color: #0f7bc2;
+        letter-spacing: 0.12em;
+        box-shadow: inset 0 0 0 1px rgba(122, 172, 230, 0.22);
+      }
+
+      #subscription-screen .subscription-status-line {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+      }
+
+      #subscription-screen .subscription-status-title {
+        margin: 0;
+        font-size: clamp(18px, 2vw, 24px);
+        line-height: 1.15;
+        font-weight: 900;
+        color: #10233f;
+        letter-spacing: -0.02em;
+      }
+
+      #subscription-screen .subscription-status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 82px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #eef8ff 0%, #dff2ff 100%);
+        color: #0f7bc2;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        box-shadow: 0 10px 18px rgba(14, 116, 144, 0.12);
+      }
+
+      #subscription-screen .subscription-status-subtitle,
+      #subscription-screen .subscription-status-note,
+      #subscription-screen .subscription-request-status,
+      #subscription-screen .subscription-section-note,
+      #subscription-screen .subscription-payment-head p,
+      #subscription-screen .subscription-payment-note {
+        margin: 0;
+        color: #64748b;
+        line-height: 1.5;
+      }
+
+      #subscription-screen .subscription-status-subtitle {
+        margin-top: 10px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #174271;
+      }
+
+      #subscription-screen .subscription-status-note {
+        font-size: 13px;
+      }
+
+      #subscription-screen .subscription-section-note {
+        font-size: 12px;
+        text-align: right;
+      }
+
+      #subscription-screen .subscription-plan-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      #subscription-screen .subscription-plan-card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 236px;
+        padding: 14px;
+        border-radius: 16px;
+        background: #fff;
+        border: 2px solid #d6e4f0;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+      }
+
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="daily"] {
+        border-color: #53c2f6;
+      }
+
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] {
+        border-color: #26d7c3;
+      }
+
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] {
+        border-color: #ffb52f;
+      }
+
+      #subscription-screen .subscription-plan-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      #subscription-screen .subscription-plan-card-title {
+        font-size: 16px;
+        font-weight: 900;
+        color: #1f2937;
+      }
+
+      #subscription-screen .subscription-plan-card-copy {
+        margin-top: 4px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #64748b;
+      }
+
+      #subscription-screen .subscription-plan-card-price {
+        text-align: right;
+        min-width: 74px;
+      }
+
+      #subscription-screen .subscription-plan-price-amount {
+        display: block;
+        font-size: 16px;
+        font-weight: 900;
+        color: #0f7bc2;
+      }
+
+      #subscription-screen .subscription-plan-price-meta {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 700;
+      }
+
+      #subscription-screen .subscription-plan-card-chip {
+        display: inline-flex;
+        align-self: flex-start;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eef6ff;
+        color: #0f7bc2;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      #subscription-screen .subscription-plan-benefits {
+        list-style: none;
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+      }
+
+      #subscription-screen .subscription-plan-benefits li {
+        position: relative;
+        padding-left: 24px;
+        color: #334155;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      #subscription-screen .subscription-plan-benefits li::before {
+        content: "ÃƒÆ’Ã‚¢Ãƒ…Ã¢â‚¬Å“Ãƒ¢Ã¢â€š¬Ã…â€œ";
+        position: absolute;
+        left: 0;
+        top: 0;
+        color: #0f7bc2;
+        font-weight: 900;
+      }
+
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-chip,
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-price-amount,
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-benefits li::before {
+        color: #0f9f73;
+      }
+
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-chip,
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-price-amount,
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-benefits li::before {
+        color: #d97706;
+      }
+
+      #subscription-screen .subscription-plan-card-button {
+        margin-top: auto;
+        width: 100%;
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: #fff;
+        background: #0f7bc2;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="monthly"] .subscription-plan-card-button {
+        background: #0f9f73;
+      }
+
+      #subscription-screen .subscription-plan-card[data-subscription-plan-card="yearly"] .subscription-plan-card-button {
+        background: #f59e0b;
+      }
+
+      #subscription-screen .subscription-payment-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+        gap: 14px;
+      }
+
+      #subscription-screen .subscription-payment-card,
+      #subscription-screen .subscription-proof-card {
+        border-radius: 20px;
+        padding: 14px;
+      }
+
+      #subscription-screen .subscription-payment-head h3,
+      #subscription-screen .subscription-proof-card h3 {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.2;
+        color: #10233f;
+      }
+
+      #subscription-screen .subscription-payment-head p {
+        margin-top: 6px;
+      }
+
+      #subscription-screen .subscription-payment-details {
+        margin-top: 12px;
+      }
+
+      #subscription-screen .subscription-payment-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        margin-bottom: 8px;
+      }
+
+      #subscription-screen .subscription-form {
+        margin-top: 10px;
+        display: grid;
+        gap: 10px;
+      }
+
+      #subscription-screen .subscription-field span {
+        font-weight: 700;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      #subscription-screen .subscription-field {
+        gap: 6px;
+      }
+
+      #subscription-screen .subscription-field input,
+      #subscription-screen .subscription-field textarea {
+        min-height: 38px;
+        padding-top: 9px;
+        padding-bottom: 9px;
+      }
+
+      #subscription-screen .subscription-proof-preview {
+        max-width: 100%;
+        min-height: 76px;
+      }
+
+      #subscription-screen .subscription-form button {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: #fff;
+        background: #0f7bc2;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      @media (max-width: 900px) {
+        #home-screen .home-minimal-shape {
+          display: none !important;
+        }
+
+        #home-screen .home-minimal-container {
+          padding-top: 16px !important;
+          padding-bottom: 10px !important;
+        }
+
+        #home-screen .home-minimal-content {
+          width: min(100%, 430px) !important;
+          max-width: 430px !important;
+          padding: 24px 20px 24px !important;
+          border-radius: 24px !important;
+        }
+
+        #home-screen .home-minimal-bg-image {
+          display: block !important;
+          background-position: center center !important;
+          background-size: cover !important;
+          opacity: 0.16 !important;
+          filter: saturate(0.95) blur(0.2px) !important;
+        }
+
+        #home-screen .home-minimal-button-row {
+          position: relative !important;
+          z-index: 999 !important;
+        }
+
+        #home-screen .home-minimal-button {
+          position: relative !important;
+          z-index: 1000 !important;
+          pointer-events: auto !important;
+        }
+      }
+
+      @media (min-width: 1025px) {
+        #subscription-screen.subscription-page {
+          padding-top: 18px;
+          padding-bottom: 18px;
+        }
+
+        #subscription-screen .subscription-shell {
+          gap: 12px;
+        }
+
+        #subscription-screen .subscription-status-card {
+          padding: 12px 16px;
+        }
+
+        #subscription-screen .subscription-plan-card {
+          min-height: 224px;
+        }
+
+        #subscription-screen .subscription-payment-card,
+        #subscription-screen .subscription-proof-card {
+          padding: 12px;
+        }
+
+        #subscription-screen .subscription-field input,
+        #subscription-screen .subscription-field textarea {
+          min-height: 36px;
+        }
+      }
+
+      @media (max-width: 1024px) {
+        #subscription-screen .subscription-plan-grid,
+        #subscription-screen .subscription-payment-grid {
+          grid-template-columns: 1fr;
+        }
+
+        #subscription-screen .subscription-shell {
+          gap: 12px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        #subscription-screen.subscription-page {
+          padding: 14px 12px 16px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+
+        #subscription-screen .subscription-shell {
+          width: 100%;
+          max-width: none;
+          gap: 12px;
+          padding-bottom: 24px;
+          flex: none;
+          min-height: auto;
+          overflow: visible;
+        }
+
+        #subscription-screen .subscription-header-row,
+        #subscription-screen .subscription-section-row {
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        #subscription-screen .subscription-section-row {
+          flex-direction: column;
+          margin-top: 16px;
+        }
+
+        #subscription-screen .subscription-status-badges {
+          width: 100%;
+          justify-content: flex-start;
+        }
+
+        #subscription-screen .subscription-section-copy {
+          width: 100%;
+        }
+
+        #subscription-screen .subscription-header-copy {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+
+        #subscription-screen .subscription-close-btn {
+          padding-top: 2px;
+          white-space: nowrap;
+        }
+
+        #subscription-screen .subscription-page-title {
+          font-size: clamp(20px, 6vw, 26px);
+        }
+
+        #subscription-screen .subscription-page-subtitle {
+          font-size: 12px;
+        }
+
+        #subscription-screen .subscription-section-note {
+          display: block;
+          margin: 0;
+          font-size: 10px;
+          line-height: 1.35;
+          color: #64748b;
+          max-width: 100%;
+        }
+
+        #subscription-screen .subscription-status-card {
+          display: grid;
+          gap: 6px;
+          padding: 14px 14px 13px;
+          border-radius: 18px;
+          background:
+            radial-gradient(circle at top right, rgba(15, 123, 194, 0.16), transparent 38%),
+            radial-gradient(circle at left center, rgba(13, 148, 136, 0.1), transparent 26%),
+            linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
+        }
+
+        #subscription-screen .subscription-status-line {
+          margin-top: 0;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 8px;
+        }
+
+        #subscription-screen .subscription-status-title {
+          font-size: 15px;
+          color: #10233f;
+        }
+
+        #subscription-screen .subscription-status-pill {
+          min-width: 64px;
+          padding: 4px 8px;
+          font-size: 8px;
+        }
+
+        #subscription-screen .subscription-status-subtitle {
+          margin-top: 0;
+          font-size: 12px;
+        }
+
+        #subscription-screen .subscription-status-note {
+          display: block;
+          margin: 0;
+          font-size: 11px;
+          line-height: 1.45;
+        }
+
+        #subscription-screen .subscription-plan-grid {
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+
+        #subscription-screen .subscription-plan-card {
+          width: 100%;
+          padding: 18px 16px 16px;
+          border-radius: 18px;
+          min-height: 0;
+        }
+
+        #subscription-screen .subscription-plan-card-head {
+          align-items: flex-start;
+        }
+
+        #subscription-screen .subscription-plan-card-title {
+          font-size: 18px;
+        }
+
+        #subscription-screen .subscription-plan-card-copy {
+          font-size: 13px;
+        }
+
+        #subscription-screen .subscription-plan-card-price {
+          min-width: 72px;
+        }
+
+        #subscription-screen .subscription-plan-price-amount {
+          font-size: 18px;
+        }
+
+        #subscription-screen .subscription-plan-benefits {
+          gap: 8px;
+        }
+
+        #subscription-screen .subscription-plan-benefits li {
+          font-size: 13px;
+        }
+
+        #subscription-screen .subscription-plan-card-button {
+          min-height: 46px;
+          padding: 13px 14px;
+          border-radius: 13px;
+        }
+
+        #subscription-screen .subscription-form {
+          gap: 10px;
+        }
+      }
+
+      body.subscription-modal-open {
+        overflow: hidden;
+      }
+
+      #subscription-payment-modal.subscription-payment-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 6000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(2, 6, 23, 0.72);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+
+      #subscription-payment-modal.hidden {
+        display: none !important;
+      }
+
+      #subscription-payment-modal .subscription-payment-modal-card {
+        width: min(456px, calc(100vw - 24px));
+        max-height: calc(100dvh - 24px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        padding: 0;
+        border-radius: 28px;
+        background: linear-gradient(180deg, #08101d 0%, #050913 100%);
+        color: #dbe5f5;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58);
+      }
+
+      #subscription-payment-modal .subscription-payment-modal-card {
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+      }
+
+      #subscription-payment-modal .subscription-payment-modal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 14px 12px;
+        padding-right: 104px;
+        position: relative;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      #subscription-payment-modal .subscription-payment-modal-eyebrow {
+        color: #ffd76a;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      #subscription-payment-modal .subscription-payment-modal-header h3,
+      #subscription-payment-modal .subscription-proof-panel h3 {
+        margin: 6px 0 0;
+        color: #ffe08a;
+        font-family: var(--font-heading);
+        font-size: clamp(16px, 1.8vw, 22px);
+        line-height: 1.1;
+        font-weight: 900;
+      }
+
+      #subscription-payment-modal .subscription-payment-modal-header p,
+      #subscription-payment-modal .subscription-request-status {
+        margin: 6px 0 0;
+        color: #97a6bf;
+        line-height: 1.45;
+        font-size: 12px;
+      }
+
+      #subscription-payment-modal .subscription-payment-modal-close {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        z-index: 1;
+        flex: 0 0 auto;
+        align-self: auto;
+        margin-left: 0;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.03);
+        color: #f8fafc;
+        border-radius: 14px;
+        padding: 8px 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      #subscription-payment-modal .subscription-payment-summary-panel,
+      #subscription-payment-modal .subscription-proof-panel {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 14px;
+        margin: 10px 14px 10px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(9, 18, 33, 0.96), rgba(5, 11, 22, 0.96));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      #subscription-payment-modal .subscription-payment-summary-panel {
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        flex: 0 0 auto;
+      }
+
+      #subscription-payment-modal .subscription-payment-amount-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: 68px;
+        padding: 10px 14px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        text-align: center;
+      }
+
+      #subscription-payment-modal .subscription-payment-amount-label {
+        color: #a7b5cc;
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      #subscription-payment-modal .subscription-payment-amount-value {
+        color: #ffe08a;
+        font-size: clamp(22px, 2.6vw, 34px);
+        line-height: 1;
+        font-weight: 900;
+      }
+
+      #subscription-payment-modal .subscription-payment-account-row {
+        display: none;
+      }
+
+      #subscription-payment-modal .subscription-payment-account-row strong {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        line-height: 1.2;
+      }
+
+      #subscription-payment-modal .subscription-payment-account-label {
+        color: #dbe5f5;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      #subscription-payment-modal .subscription-payment-account-row span {
+        color: #ffffff;
+        font-size: 14px;
+        line-height: 1.35;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+        text-align: right;
+      }
+
+      #subscription-payment-modal .subscription-payment-details {
+        display: grid;
+        gap: 10px;
+        margin-top: 2px;
+        padding: 10px 12px;
+        border-radius: 18px;
+        background: rgba(15, 23, 42, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      #subscription-payment-modal .subscription-payment-method-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      #subscription-payment-modal .subscription-payment-method-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      #subscription-payment-modal .subscription-payment-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      #subscription-payment-modal .subscription-payment-brand svg {
+        width: 13px;
+        height: 13px;
+        flex: 0 0 auto;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2.1;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      #subscription-payment-modal .subscription-payment-brand.is-mtn {
+        background: rgba(255, 204, 51, 0.14);
+        border: 1px solid rgba(255, 204, 51, 0.2);
+        color: #ffe08a;
+      }
+
+      #subscription-payment-modal .subscription-payment-brand.is-fidelity {
+        background: rgba(59, 130, 246, 0.14);
+        border: 1px solid rgba(59, 130, 246, 0.22);
+        color: #9fc1ff;
+      }
+
+      #subscription-payment-modal .subscription-payment-method-label {
+        color: #dbe5f5;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      #subscription-payment-modal .subscription-payment-method-number {
+        color: #ffffff;
+        font-size: 14px;
+        line-height: 1.3;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      #subscription-payment-modal .subscription-payment-method-divider {
+        width: 100%;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      #subscription-payment-modal .subscription-payment-method-name {
+        margin-top: 2px;
+        color: #9fb0c7;
+        font-size: 11px;
+        line-height: 1.45;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      #subscription-payment-modal .subscription-payment-note {
+        margin: 2px 0 0;
+        color: #9fb0c7;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      #subscription-payment-modal .subscription-payment-steps {
+        display: grid;
+        gap: 8px;
+        padding: 9px 12px;
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      #subscription-payment-modal .subscription-payment-steps-title {
+        color: #ffe08a;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      #subscription-payment-modal .subscription-payment-steps ol {
+        margin: 0;
+        padding-left: 16px;
+        display: grid;
+        gap: 5px;
+        color: #e2e8f0;
+        line-height: 1.5;
+        font-size: 11px;
+      }
+
+      #subscription-payment-modal .subscription-proof-jump-btn,
+      #subscription-payment-modal .subscription-modal-submit-btn {
+        width: 100%;
+        border: 0;
+        border-radius: 14px;
+        padding: 13px 16px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+      }
+
+      #subscription-payment-modal .subscription-proof-jump-btn {
+        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
+        color: #140f07;
+        box-shadow: 0 12px 28px rgba(255, 152, 0, 0.24);
+      }
+
+      #subscription-payment-modal .subscription-proof-jump-btn:hover,
+      #subscription-payment-modal .subscription-modal-submit-btn:hover,
+      #subscription-payment-modal .subscription-modal-cancel-btn:hover,
+      #subscription-payment-modal .subscription-payment-modal-close:hover {
+        transform: translateY(-1px);
+      }
+
+      #subscription-payment-modal .subscription-proof-panel h3 {
+        color: #ffd76a;
+        margin-top: 0;
+        font-size: 15px;
+      }
+
+      #subscription-payment-modal .subscription-proof-panel .subscription-form {
+        display: grid;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      #subscription-payment-modal .subscription-proof-plan-card {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 9px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      #subscription-payment-modal .subscription-proof-plan-title {
+        color: #eef4ff;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      #subscription-payment-modal .subscription-proof-plan-reference {
+        color: #97a6bf;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      #subscription-payment-modal .subscription-proof-panel .subscription-field {
+        display: grid;
+        gap: 8px;
+      }
+
+      #subscription-payment-modal .subscription-proof-panel .subscription-field span {
+        color: #dbe5f5;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      #subscription-payment-modal .subscription-proof-panel .subscription-field input,
+      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
+        width: 100%;
+        min-height: 40px;
+        border-radius: 13px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(7, 15, 27, 0.94);
+        color: #eef4ff;
+        padding: 9px 11px;
+        font-size: 14px;
+      }
+
+      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea {
+        min-height: 72px;
+        resize: vertical;
+      }
+
+      #subscription-payment-modal .subscription-proof-dropzone {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 58px;
+        padding: 12px 12px;
+        border-radius: 14px;
+        border: 1px dashed rgba(116, 152, 203, 0.4);
+        background: rgba(7, 15, 27, 0.94);
+        color: #8ea0ba;
+        cursor: pointer;
+        overflow: hidden;
+      }
+
+      #subscription-payment-modal .subscription-proof-dropzone:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      #subscription-payment-modal .subscription-proof-file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+        overflow: hidden;
+        clip-path: inset(50%);
+        clip: rect(0 0 0 0);
+      }
+
+      #subscription-payment-modal .subscription-proof-dropzone-copy {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+        color: #7f92ac;
+      }
+
+      #subscription-payment-modal .subscription-proof-panel .subscription-field input::placeholder,
+      #subscription-payment-modal .subscription-proof-panel .subscription-field textarea::placeholder {
+        color: #6f8099;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        width: 124px;
+        height: 124px;
+        min-height: 124px;
+        padding: 8px;
+        border-radius: 16px;
+        background:
+          radial-gradient(circle at 50% 38%, rgba(255, 216, 106, 0.14), transparent 42%),
+          linear-gradient(180deg, rgba(10, 18, 32, 0.98), rgba(5, 9, 19, 0.98));
+        border: 1px solid rgba(255, 216, 106, 0.16);
+        flex: 0 0 auto;
+        align-self: flex-start;
+        cursor: pointer;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-content {
+        min-height: 108px;
+        padding: 8px;
+        pointer-events: auto;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-empty {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        min-height: 108px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 12px 12px;
+        border: 1px dashed rgba(255, 216, 106, 0.18);
+        background:
+          radial-gradient(circle at 50% 32%, rgba(255, 216, 106, 0.12), transparent 36%),
+          rgba(255, 255, 255, 0.03);
+        color: #d6e4f7;
+        text-align: center;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: rgba(255, 216, 106, 0.14);
+        color: #ffd76a;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-icon svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+        text-align: center;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-copy strong {
+        font-size: 10px;
+        line-height: 1.25;
+        font-weight: 800;
+        color: #f4f7fb;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-copy span {
+        font-size: 9px;
+        line-height: 1.25;
+        color: #94a3b8;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-image {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        object-fit: contain;
+        object-position: center center;
+        display: block;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-file--image {
+        position: relative;
+        width: 112px;
+        height: 112px;
+        min-width: 112px;
+        min-height: 112px;
+        max-width: 112px;
+        max-height: 112px;
+        background-color: #fff;
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        flex: 0 0 112px;
+        overflow: hidden;
+      }
+
+      #subscription-payment-modal .subscription-modal-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-remove {
+        top: 4px;
+        right: 4px;
+        width: 18px;
+        height: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 999px;
+        background: rgba(18, 24, 35, 0.88);
+        color: #fff;
+        font-size: 12px;
+        line-height: 1;
+        font-weight: 900;
+        padding: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        pointer-events: auto;
+      }
+
+      #subscription-payment-modal .subscription-proof-preview-remove:hover {
+        background: rgba(30, 37, 49, 0.96);
+      }
+
+      #subscription-payment-modal .subscription-modal-cancel-btn {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: #e2e8f0;
+        border-radius: 14px;
+        padding: 13px 16px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      #subscription-payment-modal .subscription-modal-submit-btn {
+        background: linear-gradient(180deg, #ffb11c 0%, #ff9800 100%);
+        color: #140f07;
+        box-shadow: 0 14px 30px rgba(255, 152, 0, 0.24);
+      }
+
+      #subscription-payment-modal .subscription-form-feedback {
+        min-height: 22px;
+        color: #a7f3d0;
+        font-weight: 700;
+        font-size: 11px;
+      }
+
+      #subscription-payment-modal .subscription-proof-panel {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      @media (max-width: 900px) {
+        #subscription-payment-modal.subscription-payment-modal {
+          align-items: center;
+          padding: 8px;
+        }
+
+        #subscription-payment-modal .subscription-payment-modal-card {
+          max-height: calc(100dvh - 16px);
+          width: min(456px, calc(100vw - 16px));
+        }
+
+        #subscription-payment-modal .subscription-payment-modal-header {
+          flex-direction: column;
+          padding: 12px 13px 9px;
+        }
+
+        #subscription-payment-modal .subscription-payment-summary-panel,
+        #subscription-payment-modal .subscription-proof-panel {
+          margin: 9px 10px 9px;
+          padding: 11px 11px;
+        }
+
+        #subscription-payment-modal .subscription-modal-actions {
+          grid-template-columns: 1fr;
+        }
+
+      }
+    </style>
   </head>
 
   <body>
@@ -200,15 +1647,33 @@
             <input id="auth-username" type="text" autocomplete="username" />
           </label>
 
-          <label id="auth-contact-wrap" class="auth-field hidden">
+          <div id="auth-contact-wrap" class="auth-field hidden">
             <span>Contact</span>
-            <input
-              id="auth-contact"
-              type="text"
-              autocomplete="email"
-              placeholder="Email or phone number"
-            />
-          </label>
+            <div class="auth-phone-grid auth-contact-grid">
+              <div class="auth-icon-select auth-country-picker">
+                <select id="auth-contact-country-code" autocomplete="tel-country-code" aria-label="Country code"></select>
+                <span class="auth-icon-select-icon" aria-hidden="true"></span>
+              </div>
+              <div class="auth-contact-phone-field">
+                <span id="auth-contact-prefix" class="auth-contact-prefix" aria-hidden="true"></span>
+                <input
+                  id="auth-contact-phone"
+                  type="tel"
+                  inputmode="numeric"
+                  autocomplete="tel-national"
+                  aria-label="Contact value"
+                  placeholder="Enter mobile number"
+                />
+              </div>
+              <div class="auth-icon-select auth-format-picker">
+                <select id="auth-contact-format" aria-label="Contact type">
+                  <option value="phone" selected>Phone</option>
+                  <option value="email">Email</option>
+                </select>
+                <span class="auth-icon-select-icon" aria-hidden="true"></span>
+              </div>
+            </div>
+          </div>
 
           <label id="auth-reset-code-wrap" class="auth-field hidden">
             <span>Reset Code</span>
@@ -414,7 +1879,7 @@
                 <span id="menu-daily-points-badge">0</span>
               </span>
               <span class="menu-modern-daily-art" aria-hidden="true">
-                <img src="images/daily.png" alt="" class="menu-modern-art-image is-daily-art" />
+                <img src="images/daily.png?v=20260902-mascot" alt="" class="menu-modern-art-image is-daily-art" />
               </span>
               <span class="menu-modern-daily-copy">
                 <span class="menu-modern-card-eyebrow">Daily Quiz</span>
@@ -434,75 +1899,12 @@
               </span>
             </button>
 
-            <section class="menu-modern-section">
-              <div class="menu-modern-section-head">
-                <h2 class="menu-modern-section-title">Drills</h2>
-                <span class="menu-modern-section-note">Quick launches</span>
-              </div>
-
-              <div class="menu-modern-drills-grid" aria-label="Quiz drills and quick tools">
-                <button id="rapid-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Rapid points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-rapid-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-rapid" aria-hidden="true">
-                    <img src="images/rapid.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Rapid</span>
-                </button>
-
-                <button id="sudden-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Sudden points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-sudden-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-sudden" aria-hidden="true">
-                    <img src="images/sudden.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Sudden</span>
-                </button>
-
-                <button id="clinical-drill-btn" type="button" class="menu-modern-drill-tile" style="position:relative;overflow:hidden;">
-                  <span class="menu-modern-card-points-badge is-drill" style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;" title="Clinical points">
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-clinical-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-clinical" aria-hidden="true">
-                    <img src="images/clinical.png" alt="" class="menu-modern-drill-image" />
-                  </span>
-                  <span class="menu-modern-drill-label">Clinical</span>
-                </button>
-
-                <button
-                  id="law-drill-btn"
-                  type="button"
-                  class="menu-modern-drill-tile"
-                  style="position:relative;overflow:hidden;"
-                  aria-label="Start law drill"
-                  title="Law Drill"
-                >
-                  <span
-                    class="menu-modern-card-points-badge is-drill"
-                    style="position:absolute;top:6px;right:8px;left:auto;z-index:4;pointer-events:none;"
-                    title="Law points"
-                  >
-                    <span class="menu-modern-card-points-icon" aria-hidden="true">+</span>
-                    <span id="menu-law-points-badge">0</span>
-                  </span>
-                  <span class="menu-modern-drill-icon is-law" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 3v18"></path>
-                      <path d="M5 7h14"></path>
-                      <path d="M6 7 3 12h6L6 7Z"></path>
-                      <path d="M18 7 15 12h6L18 7Z"></path>
-                      <path d="M6 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M21 12c0 2.2-1.3 4-3 4s-3-1.8-3-4"></path>
-                      <path d="M8 21h8"></path>
-                    </svg>
-                  </span>
-                  <span class="menu-modern-drill-label">Law</span>
-                </button>
+            <section class="menu-modern-section menu-modern-hub-tabs-section">
+              <div class="menu-modern-hub-tabs" role="tablist" aria-label="Menu sections">
+                <button id="menu-drills-tab" type="button" class="menu-modern-hub-tab is-active" data-menu-section="drills">Drills</button>
+                <button id="menu-law-tab" type="button" class="menu-modern-hub-tab" data-menu-section="law">Law</button>
+                <button id="menu-gppqe-tab" type="button" class="menu-modern-hub-tab" data-menu-section="gppqe">GPPQE</button>
+                <button id="menu-extra-tab" type="button" class="menu-modern-hub-tab" data-menu-section="extra">Extra</button>
               </div>
             </section>
 
@@ -523,7 +1925,7 @@
                     <span id="menu-study-points-badge">0</span>
                   </span>
                   <span class="menu-modern-feature-art is-study" aria-hidden="true">
-                    <img src="images/stduy.png" alt="" class="menu-modern-art-image is-feature-art" />
+                    <img src="images/study-tool.png" alt="" class="menu-modern-art-image is-feature-art" />
                   </span>
                   <span class="menu-modern-feature-title">Study</span>
                   <span class="menu-modern-feature-text">Learn with a steady question flow and resume where you left off.</span>
@@ -559,12 +1961,7 @@
               <span class="menu-modern-tab-label">Home</span>
             </button>
 
-            <button
-              type="button"
-              class="menu-modern-tab dashboard-mode"
-              data-open-dashboard="true"
-              data-menu-nav="performance"
-            >
+                        <a id="menu-performance-btn" class="menu-modern-tab" href="/performance-dashboard-new.html" target="_self" aria-label="Open performance dashboard" data-menu-nav="performance">
               <span class="menu-modern-tab-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 19h14"></path>
@@ -574,23 +1971,21 @@
                 </svg>
               </span>
               <span class="menu-modern-tab-label">Performance</span>
-            </button>
+            </a>
+            
 
-            <button
-              id="menu-community-btn"
+            <button id="menu-community-btn"
               type="button"
               class="menu-modern-tab"
               data-menu-nav="community"
             >
               <span class="menu-modern-tab-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9.5" cy="7" r="3.2"></circle>
-                  <path d="M21 21v-2a3.6 3.6 0 0 0-2.6-3.5"></path>
-                  <path d="M14.8 3.7a3.3 3.3 0 0 1 0 6.2"></path>
+                  <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H7l-4 2v-5.5A7.5 7.5 0 1 1 20 11.5Z"></path>
+                  <path d="M8 10h8M8 13h5"></path>
                 </svg>
               </span>
-              <span class="menu-modern-tab-label">Community</span>
+              <span class="menu-modern-tab-label">Chat</span>
             </button>
 
             <button
@@ -672,6 +2067,20 @@
                 </span>
               </button>
 
+              <button id="menu-subscription-btn" class="menu-modern-settings-link" type="button">
+                <span class="menu-modern-settings-link-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 7h14v10H5z"></path>
+                    <path d="M5 10h14"></path>
+                    <path d="M8 14h4"></path>
+                  </svg>
+                </span>
+                <span class="menu-modern-settings-link-copy">
+                  <span class="menu-modern-settings-link-title">Subscription</span>
+                  <span class="menu-modern-settings-link-text">Choose a pass and submit proof</span>
+                </span>
+              </button>
+
               <button id="quiz-logout-btn" class="menu-modern-settings-link hidden" type="button">
                 <span class="menu-modern-settings-link-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -706,16 +2115,580 @@
           </div>
         </div>
       </div>
+      <div id="drills-screen" class="setup-page drills-page">
+        <div class="study-fixed-header drills-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/app-logo.png?v=20260903-mascot" alt="AjiX mascot" />
+            <div class="setup-page-title drills-page-title">Drills</div>
+            <div class="study-reference-topbar-actions">
+              <button id="drills-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="drills-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell drill-lobby-shell">
+            <div class="drill-lobby-tabs" role="tablist" aria-label="Drill variants">
+              <button class="drill-lobby-tab is-rapid is-active" type="button" data-drill-variant="rapid">Rapid</button>
+              <button class="drill-lobby-tab is-sudden" type="button" data-drill-variant="sudden">Sudden</button>
+              <button class="drill-lobby-tab is-clinical" type="button" data-drill-variant="clinical">Clinical</button>
+            </div>
+
+            <div class="drill-lobby-panels">
+              <section class="drill-lobby-panel is-rapid is-active" data-drill-panel="rapid">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-rapid" aria-hidden="true">&#128293;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Rapid</div>
+                        <div class="drill-lobby-points-badge">PTS 1</div>
+                      </div>
+                      <div class="drill-lobby-copy">A fast 5-question sprint that rewards sharp recall and clean streaks.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>5 questions, quick pace.</li>
+                    <li>Answer fast and keep your streak alive.</li>
+                    <li>Best runs are saved in your history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="rapid">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="rapid">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-sudden" data-drill-panel="sudden">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-sudden" aria-hidden="true">&#127919;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Sudden</div>
+                        <div class="drill-lobby-points-badge">PTS 9</div>
+                      </div>
+                      <div class="drill-lobby-copy">A sharper race with mixed timing and tougher selections.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>All questions are timed.</li>
+                    <li>Accuracy matters more than speed.</li>
+                    <li>Each win is tracked in history.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="sudden">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="sudden">Play Now</button>
+                </article>
+              </section>
+
+              <section class="drill-lobby-panel is-clinical" data-drill-panel="clinical">
+                <article class="drill-lobby-card">
+                  <div class="drill-lobby-hero">
+                    <div class="drill-lobby-hero-art is-clinical" aria-hidden="true">&#129516;</div>
+                    <div class="drill-lobby-hero-copy">
+                      <div class="drill-lobby-title-row">
+                        <div class="drill-lobby-title">Clinical</div>
+                        <div class="drill-lobby-points-badge">PTS 0</div>
+                      </div>
+                      <div class="drill-lobby-copy">Clinical judgment questions with a steadier, decision-based rhythm.</div>
+                    </div>
+                  </div>
+
+                  <div class="drill-lobby-section-head">Game Rules</div>
+                  <ul class="drill-rule-list">
+                    <li>Choose the safest option.</li>
+                    <li>Think through the case before you tap.</li>
+                    <li>Previous runs stay in the trail.</li>
+                  </ul>
+
+                  <div class="drill-lobby-section-head">History</div>
+                  <div class="drill-history-list" data-drill-history-list="clinical">
+                    <div class="drill-history-empty">No runs yet. Hit Play Now to start the trail.</div>
+                  </div>
+
+                  <button type="button" class="drill-play-btn" data-drill-play-btn="clinical">Play Now</button>
+                </article>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="gppqe-screen" class="setup-page gppqe-page">
+        <div class="study-fixed-header gppqe-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/app-logo.png?v=20260903-mascot" alt="AjiX mascot" />
+            <div class="setup-page-title drills-page-title gppqe-page-title">GPPQE</div>
+            <div class="study-reference-topbar-actions">
+              <button id="gppqe-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+              <button id="gppqe-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content"></div>
+      </div>
+
+      <div id="extra-screen" class="setup-page extra-page">
+        <div class="study-fixed-header extra-fixed-header">
+          <div class="study-reference-topbar">
+            <img class="study-reference-logo-image" src="images/app-logo.png?v=20260903-mascot" alt="AjiX mascot" />
+            <div class="setup-page-title extra-page-title">Extra</div>
+            <div class="study-reference-topbar-actions">
+              <button id="extra-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
+                <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+                </svg>
+              </button>
+                            <button id="extra-menu-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Menu" title="Menu">
+                <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="5" width="4" height="4" rx="1"></rect>
+                  <rect x="5" y="15" width="4" height="4" rx="1"></rect>
+                  <rect x="15" y="15" width="4" height="4" rx="1"></rect>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="study-scroll-content">
+          <div class="study-reference-shell extra-shell">
+            <style>
+              #extra-screen {
+                overflow: hidden !important;
+              }
+
+              #extra-screen .study-scroll-content {
+                flex: 1 1 auto !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 24px !important;
+              }
+
+              #extra-screen .study-reference-shell {
+                width: min(1180px, 100%) !important;
+              }
+
+              #extra-screen .menu-extra-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-item {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+                gap: 8px !important;
+                min-height: 0 !important;
+                aspect-ratio: auto !important;
+                padding: 12px 10px 12px !important;
+                border-radius: 14px !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-item-copy {
+                display: grid !important;
+                gap: 2px !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-item-title {
+                font-size: 0.96rem !important;
+                font-weight: 800 !important;
+                line-height: 1.2 !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-item-text {
+                display: block !important;
+                font-size: 0.8rem !important;
+                line-height: 1.35 !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-icon {
+                width: 38px !important;
+                height: 38px !important;
+                border-radius: 12px !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-icon svg {
+                width: 18px !important;
+                height: 18px !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-dot {
+                top: 10px !important;
+                right: 10px !important;
+              }
+
+              @media (max-width: 760px) {
+                #extra-screen .menu-extra-grid {
+                  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                  gap: 8px !important;
+                }
+
+                #extra-screen .menu-extra-grid .menu-extra-item {
+                  padding: 10px 9px 11px !important;
+                }
+              }
+            
+              /* WWW-only Extra icon scale and name typography. */
+              #extra-screen .menu-extra-icon {
+                width: 100px !important;
+                height: 100px !important;
+                flex: 0 0 100px !important;
+                border-radius: 24px !important;
+              }
+
+              #extra-screen .menu-extra-item-title {
+                font-weight: 500 !important;
+                letter-spacing: 0.04em !important;
+                text-transform: uppercase !important;
+              }
+
+              /* WWW-only Extra square icon lock. */
+              #extra-screen .menu-extra-icon {
+                width: 100px !important;
+                height: 100px !important;
+                min-width: 100px !important;
+                min-height: 100px !important;
+                max-width: 100px !important;
+                max-height: 100px !important;
+                flex: 0 0 100px !important;
+                aspect-ratio: 1 / 1 !important;
+                box-sizing: border-box !important;
+              }
+
+              /* WWW-only Extra inner icon scale and rounded corners. */
+              #extra-screen .menu-extra-icon {
+                font-size: 48px !important;
+                border-radius: 30px !important;
+              }
+
+              /* WWW-only Extra icon name alignment. */
+              #extra-screen .menu-extra-item {
+                align-items: center !important;
+              }
+
+              #extra-screen .menu-extra-item-copy {
+                width: 100% !important;
+                margin-top: 6px !important;
+                text-align: center !important;
+              }
+
+              #extra-screen .menu-extra-item-title {
+                color: rgba(51, 78, 104, 0.78) !important;
+                font-size: 0.9rem !important;
+                font-weight: 500 !important;
+                text-align: center !important;
+              }
+
+              /* WWW-only Extra name alignment to icon tile. */
+              #extra-screen .menu-extra-item-copy {
+                width: 100px !important;
+                max-width: 100px !important;
+                align-self: center !important;
+                text-align: center !important;
+              }
+
+              /* WWW-only Extra icon/name cascade alignment. */
+              #extra-screen .menu-extra-grid .menu-extra-item {
+                align-items: center !important;
+                padding: 0 !important;
+              }
+
+              #extra-screen .menu-extra-grid .menu-extra-item-copy {
+                width: 100px !important;
+                max-width: 100px !important;
+                align-self: center !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                text-align: center !important;
+              }
+
+              /* WWW-only Extra spacing, subtle names, and stronger icon surfaces. */
+              #extra-screen .menu-extra-grid {
+                row-gap: 44px !important;
+              }
+
+              #extra-screen .menu-extra-item-title {
+                color: rgba(51, 78, 104, 0.62) !important;
+                font-size: 0.78rem !important;
+                font-weight: 500 !important;
+                letter-spacing: 0.05em !important;
+              }
+
+              #extra-screen .menu-extra-icon.is-news {
+                background: linear-gradient(145deg, #f0dcbf 0%, #dcba88 52%, #c79e69 100%) !important;
+              }
+              #extra-screen .menu-extra-icon.is-guidelines {
+                background: linear-gradient(145deg, #b9e5cd 0%, #76c49b 52%, #43a978 100%) !important;
+              }
+              #extra-screen .menu-extra-icon.is-articles {
+                background: linear-gradient(145deg, #f8d29e 0%, #eaae68 52%, #d68d35 100%) !important;
+              }
+              #extra-screen .menu-extra-icon.is-medlens {
+                background: linear-gradient(145deg, #c6e7f0 0%, #83c4d9 52%, #4ba4c1 100%) !important;
+              }
+              #extra-screen .menu-extra-icon.is-calculator {
+                background: linear-gradient(145deg, #e3cfea 0%, #bd9fcf 52%, #9e73b2 100%) !important;
+              }
+
+              /* WWW-only Extra bold opaque icon colors. */
+              #extra-screen .menu-extra-icon.is-news { background: #c88d4f !important; }
+              #extra-screen .menu-extra-icon.is-guidelines { background: #24ad79 !important; }
+              #extra-screen .menu-extra-icon.is-articles { background: #e89432 !important; }
+              #extra-screen .menu-extra-icon.is-medlens { background: #269fbe !important; }
+              #extra-screen .menu-extra-icon.is-calculator { background: #9c6db0 !important; }
+
+              /* WWW-only Extra header-matched icon colors. */
+              #extra-screen .menu-extra-icon.is-news { background: #1d4ed8 !important; }
+              #extra-screen .menu-extra-icon.is-guidelines { background: #0f766e !important; }
+              #extra-screen .menu-extra-icon.is-articles { background: #d97706 !important; }
+              #extra-screen .menu-extra-icon.is-medlens { background: #0d7377 !important; }
+              #extra-screen .menu-extra-icon.is-calculator { background: #b45309 !important; }
+
+              /* WWW-only Extra updated inner symbols and compact names. */
+              #extra-screen .menu-extra-item-title {
+                color: rgba(51, 78, 104, 0.52) !important;
+                font-size: 0.62rem !important;
+                font-weight: 500 !important;
+                letter-spacing: 0.06em !important;
+                line-height: 1.1 !important;
+              }
+
+              /* WWW-only Extra centered invisible container and compact labels. */
+              #extra-screen .study-scroll-content .study-reference-shell .menu-extra-grid {
+                width: min(920px, calc(100% - 32px)) !important;
+                max-width: 920px !important;
+                margin: clamp(56px, 12vh, 110px) auto 0 !important;
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+              }
+
+              #extra-screen .study-scroll-content .study-reference-shell .menu-extra-grid .menu-extra-item-title {
+                color: rgba(40, 63, 85, 0.48) !important;
+                font-size: 0.78rem !important;
+                font-weight: 600 !important;
+                letter-spacing: 0.05em !important;
+              }
+
+              @media (max-width: 760px) {
+                #extra-screen .study-scroll-content .study-reference-shell .menu-extra-grid {
+                  width: min(460px, calc(100% - 24px)) !important;
+                  max-width: 460px !important;
+                  margin-top: clamp(56px, 12vh, 96px) !important;
+                }
+              }
+
+              /* WWW-only Extra theme-aware name colors. */
+              #extra-screen .study-scroll-content .study-reference-shell .menu-extra-grid .menu-extra-item-title {
+                color: #173963 !important;
+              }
+
+              body.theme-dark #extra-screen .study-scroll-content .study-reference-shell .menu-extra-grid .menu-extra-item-title {
+                color: #b8d8f0 !important;
+              }
+</style>
+            
+            <div id="menu-extra-grid" class="menu-extra-grid is-cards" aria-label="Extra resources">
+              <button id="menu-news-btn" type="button" class="menu-extra-item is-news">
+                <span class="menu-extra-icon is-news" aria-hidden="true">&#128240;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">News</span>
+                  <span class="menu-extra-item-text">Open the news feed.</span>
+                </span>
+              </button>
+
+              <button id="menu-guidelines-btn" type="button" class="menu-extra-item is-guidelines">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-guidelines" aria-hidden="true">&#128203;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Guidelines</span>
+                  <span class="menu-extra-item-text">Clinical references and practice notes.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-coming-soon="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-articles" aria-hidden="true">&#128218;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Articles</span>
+                  <span class="menu-extra-item-text">Deep reads for study and revision.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-medlens="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-medlens" aria-hidden="true">&#128138;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">MedLens</span>
+                  <span class="menu-extra-item-text">Search tools for better clinical clarity.</span>
+                </span>
+              </button>
+
+              <button type="button" class="menu-extra-item" data-calculator="true">
+                <span class="menu-extra-dot" aria-hidden="true"></span>
+                <span class="menu-extra-icon is-calculator" aria-hidden="true">&#129518;</span>
+                <span class="menu-extra-item-copy">
+                  <span class="menu-extra-item-title">Calculator</span>
+                  <span class="menu-extra-item-text">Dose and score helper tools.</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="coming-soon-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="coming-soon-title">
+        <div class="modal-card coming-soon-card">
+          <div class="coming-soon-emoji" aria-hidden="true">&#128640;</div>
+          <div id="coming-soon-title" class="modal-title">Coming Soon</div>
+          <div class="modal-text">This section is being prepared for a future release.</div>
+          <div class="modal-actions">
+            <button id="coming-soon-ok-btn" type="button" class="modal-btn primary">Got it</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="subscription-screen" class="setup-page subscription-page">
+        <div class="subscription-shell">
+          <div class="subscription-header-row">
+            <div class="subscription-header-copy">
+              <h2 class="subscription-page-title">Subscription</h2>
+              <p class="subscription-page-subtitle">Choose a plan and complete payment.</p>
+            </div>
+            <button id="subscription-back-btn" class="subscription-close-btn" type="button">Close</button>
+          </div>
+
+          <div class="subscription-section-row">
+            <div class="subscription-section-copy">
+              <h3 id="subscription-section-title" class="subscription-section-title">Plans</h3>
+              <p id="subscription-section-note" class="subscription-section-note" hidden></p>
+            </div>
+            <div id="subscription-status-badges" class="subscription-status-badges" aria-label="Subscription status badges"></div>
+          </div>
+
+          <section class="subscription-plan-grid-wrap">
+            <div id="subscription-plan-grid" class="subscription-plan-grid"></div>
+          </section>
+
+          <div id="subscription-payment-modal" class="subscription-payment-modal modal hidden" aria-hidden="true">
+            <div class="subscription-payment-modal-card" role="dialog" aria-modal="true" aria-labelledby="subscription-payment-modal-title">
+            <div class="subscription-payment-modal-header">
+              <div class="subscription-payment-modal-header-copy">
+                <div class="subscription-payment-modal-eyebrow">Payment Details</div>
+                <h3 id="subscription-payment-modal-title">Select a plan</h3>
+                <p id="subscription-payment-modal-copy">Pick a plan to see the payment details.</p>
+              </div>
+              <button id="subscription-payment-modal-close-btn" class="subscription-payment-modal-close" type="button">Close</button>
+            </div>
+
+              <section class="subscription-payment-summary-panel">
+                <div class="subscription-payment-amount-card">
+                  <div class="subscription-payment-amount-label">Amount due</div>
+                  <div id="subscription-payment-amount" class="subscription-payment-amount-value">GHS 0</div>
+                </div>
+
+                <div id="subscription-payment-details" class="subscription-payment-details"></div>
+
+                <div class="subscription-payment-steps">
+                  <div class="subscription-payment-steps-title">Steps</div>
+                  <ol>
+                    <li>Send the exact amount via Momo or bank transfer</li>
+                    <li>Take a screenshot of the transaction confirmation</li>
+                    <li>Return to this app and upload the screenshot</li>
+                    <li>Your subscription will be activated within 24 hours after verification</li>
+                  </ol>
+                </div>
+
+                <button id="subscription-proof-jump-btn" class="subscription-proof-jump-btn" type="button">Upload Payment Proof</button>
+              </section>
+
+              <section id="subscription-proof-panel" class="subscription-proof-panel hidden">
+                <h3>Upload Payment Proof</h3>
+                <p id="subscription-request-status" class="subscription-request-status">Enter your transaction ID and/or upload a screenshot so admin can activate your subscription.</p>
+                <div class="subscription-proof-plan-card">
+                  <div id="subscription-proof-plan-title" class="subscription-proof-plan-title">Day Pass</div>
+                  <div id="subscription-proof-plan-reference" class="subscription-proof-plan-reference"></div>
+                </div>
+                <form id="subscription-form" class="subscription-form">
+                  <input id="subscription-plan-input" type="hidden" value="daily" />
+                  <label class="setup-field subscription-field">
+                    <input id="subscription-transaction-input" type="text" placeholder="Enter transaction ID" />
+                  </label>
+                  <div class="subscription-field">
+                    <div id="subscription-proof-preview" class="subscription-proof-preview subscription-proof-uploader">
+                      <input id="subscription-proof-input" class="subscription-proof-file-input" type="file" accept="image/*" />
+                      <div id="subscription-proof-preview-content" class="subscription-proof-preview-content">
+                        <div class="subscription-proof-preview-empty">
+                          <span class="subscription-proof-preview-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                              <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 10.5 6 13v4.5A1.5 1.5 0 0 0 7.5 19h9A1.5 1.5 0 0 0 18 17.5V13l-2.2-2.2a1 1 0 0 0-1.4 0L11 14.2 9.4 12.6a1 1 0 0 0-1.4 0Z" fill="currentColor" />
+                            </svg>
+                          </span>
+                          <span class="subscription-proof-preview-copy">
+                            <strong>Click to upload screenshot</strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <div class="subscription-modal-actions">
+                    <button id="subscription-payment-cancel-btn" class="subscription-modal-cancel-btn" type="button">Cancel</button>
+                    <button id="subscription-submit-btn" class="subscription-modal-submit-btn" type="submit">Confirm complete transaction</button>
+                  </div>
+                </form>
+                <div id="subscription-form-feedback" class="subscription-form-feedback"></div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="study-setup" class="setup-page">
         <div class="study-fixed-header">
           <div class="study-reference-topbar">
             <img
               class="study-reference-logo-image"
-              src="images/ajix-logo.png.png?v=20260324-headerlogo1"
-              alt="Ajix Pharmacy"
+              src="images/app-logo.png?v=20260903-mascot"
+              alt="AjiX mascot"
             />
             <div class="setup-points-chip study-setup-points-chip" aria-live="polite" aria-label="Study points">
-              <span class="setup-points-icon" aria-hidden="true">👑</span>
+              <span class="setup-points-icon" aria-hidden="true">&#10022;</span>
               <span class="setup-points-copy">
                 <span class="setup-points-label">Study Points</span>
                 <span id="study-setup-points-value" class="setup-points-value">0</span>
@@ -822,9 +2795,13 @@
                 />
               </label>
 
-              <button id="start-study-btn" class="study-reference-start-btn">
+              <button id="start-study-btn" type="button" class="study-reference-start-btn">
                 Start Session
               </button>
+              <p class="study-points-notice" role="note">
+                <span class="study-points-notice-icon" aria-hidden="true">i</span>
+                Study quiz points are for practice only and do not count toward leaderboard points.
+              </p>
             </section>
 
             <section class="study-reference-history-block">
@@ -853,11 +2830,11 @@
           <div class="study-reference-topbar">
             <img
               class="study-reference-logo-image"
-              src="images/ajix-logo.png.png?v=20260324-headerlogo1"
-              alt="AJIX Pharmacy"
+              src="images/app-logo.png?v=20260903-mascot"
+              alt="AjiX mascot"
             />
             <div class="setup-points-chip exam-setup-points-chip" aria-live="polite" aria-label="Exam points">
-              <span class="setup-points-icon" aria-hidden="true">👑</span>
+              <span class="setup-points-icon" aria-hidden="true">&#10022;</span>
               <span class="setup-points-copy">
                 <span class="setup-points-label">Exam Points</span>
                 <span id="exam-setup-points-value" class="setup-points-value">0</span>
@@ -986,11 +2963,11 @@
           <div class="study-reference-topbar">
             <img
               class="study-reference-logo-image"
-              src="images/ajix-logo.png.png?v=20260324-headerlogo1"
-              alt="AJIX Pharmacy"
+              src="images/app-logo.png?v=20260903-mascot"
+              alt="AjiX mascot"
             />
             <div class="setup-points-chip daily-setup-points-chip" aria-live="polite" aria-label="Daily points">
-              <span class="setup-points-icon" aria-hidden="true">👑</span>
+              <span class="setup-points-icon" aria-hidden="true">&#10022;</span>
               <span class="setup-points-copy">
                 <span class="setup-points-label">Daily Points</span>
                 <span id="daily-setup-points-value" class="setup-points-value">0</span>
@@ -1053,7 +3030,7 @@
             </div>
 
             <div id="daily-celebration" class="daily-celebration hidden" aria-live="polite">
-              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">✓</span>
+              <span id="daily-complete-check" class="daily-complete-check" aria-hidden="true">&#10003;</span>
               <span id="daily-gems-ribbon" class="daily-gems-ribbon">+0 Gems</span>
             </div>
 
@@ -1079,8 +3056,8 @@
           <div class="topic-library-topbar">
             <img
               class="topic-library-logo-image"
-              src="images/ajix-logo.png.png?v=20260324-headerlogo1"
-              alt="Ajix Pharmacy"
+              src="images/app-logo.png?v=20260903-mascot"
+              alt="AjiX mascot"
             />
             <div class="topic-library-topbar-actions">
               <button id="topic-library-back-btn" class="topic-library-back-btn" type="button" aria-label="Back">
@@ -1302,10 +3279,34 @@
                     <span>Username</span>
                     <input id="profile-username" type="text" />
                   </label>
-                  <label class="auth-field">
-                    <span>Contact (Email or Mobile)</span>
-                    <input id="profile-contact" type="text" placeholder="name@example.com or +233..." />
-                  </label>
+                    <div id="profile-contact-wrap" class="auth-field profile-grid-span">
+                      <span>Contact</span>
+                      <div class="auth-phone-grid auth-contact-grid">
+                        <div class="auth-icon-select auth-country-picker">
+                          <select id="profile-contact-country-code" autocomplete="tel-country-code" aria-label="Country code"></select>
+                          <span class="auth-icon-select-icon" aria-hidden="true"></span>
+                        </div>
+                        <div class="auth-contact-phone-field">
+                          <span id="profile-contact-prefix" class="auth-contact-prefix" aria-hidden="true"></span>
+                          <input
+                            id="profile-contact-phone"
+                            type="tel"
+                            inputmode="numeric"
+                            autocomplete="tel-national"
+                            aria-label="Contact value"
+                            placeholder="Enter mobile number"
+                          />
+                        </div>
+                        <div class="auth-icon-select auth-format-picker">
+                          <select id="profile-contact-format" aria-label="Contact type">
+                            <option value="phone" selected>Phone</option>
+                            <option value="email">Email</option>
+                          </select>
+                          <span class="auth-icon-select-icon" aria-hidden="true"></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <div class="auth-field profile-role-field">
                     <span>Role</span>
                     <div class="auth-inline-options profile-role-options">
@@ -1437,8 +3438,16 @@
         <input id="community-status-camera-input" type="file" accept="image/*,video/*" hidden />
         <header class="study-fixed-header community-fixed-header">
           <div class="community-topbar">
-            <div class="community-topbar-copy">
-              <h2 class="setup-page-title">Community</h2>
+            <button id="community-back-btn" class="study-menu-btn community-back-btn" type="button" aria-label="Back to menu" title="Back to menu">
+              <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+              </svg>
+            </button>
+            <div class="community-chat-brand">
+              <img class="community-brand-mascot" src="images/app-logo.png?v=20260831-ajix-chat" alt="" aria-hidden="true" />
+              <div class="community-topbar-copy">
+                <h2 class="setup-page-title">AjiX Chat</h2>
+              </div>
             </div>
             <div class="community-topbar-actions">
               <button
@@ -1501,7 +3510,7 @@
                 </span>
                 <span id="community-groups-toggle-label" class="community-utility-btn-label">Groups</span>
               </button>
-              <button id="community-settings-toggle-btn" class="community-utility-btn" type="button" aria-label="Open community settings" title="Community settings">
+              <button id="community-settings-toggle-btn" class="community-utility-btn" type="button" aria-label="Open Chat settings" title="Chat settings">
                 <span class="community-utility-btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="3"></circle>
@@ -1556,7 +3565,7 @@
                     </svg>
                   </button>
                   <div class="community-settings-head-copy">
-                    <h3 id="community-settings-title" class="community-settings-title">Community Settings</h3>
+                    <h3 id="community-settings-title" class="community-settings-title">Chat Settings</h3>
                     <p id="community-settings-copy" class="community-settings-copy">Privacy, chats, media, and account.</p>
                   </div>
                   <button id="community-settings-close-btn" type="button" class="community-settings-icon-btn" aria-label="Close community settings" title="Close">
@@ -1567,7 +3576,7 @@
                   </button>
                 </div>
                 <div class="community-settings-views">
-                  <section class="community-settings-view" data-community-settings-view="main" data-settings-title="Community Settings" data-settings-copy="Privacy, chats, media, and account.">
+                  <section class="community-settings-view" data-community-settings-view="main" data-settings-title="Chat Settings" data-settings-copy="Privacy, chats, media, and account.">
                     <div class="community-settings-section">
                       <div class="community-settings-section-label">General</div>
                       <button type="button" class="community-settings-item is-link" data-community-settings-account="true">
@@ -1576,7 +3585,7 @@
                           <span class="community-settings-item-note">Profile, bio, password, and account actions.</span>
                         </span>
                         <span id="community-settings-account-value" class="community-settings-item-value">Profile</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="appearance">
                         <span class="community-settings-item-copy">
@@ -1584,7 +3593,7 @@
                           <span class="community-settings-item-note">Theme and visual style.</span>
                         </span>
                         <span id="community-settings-appearance-value" class="community-settings-item-value">Light</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="global-notifications">
                         <span class="community-settings-item-copy">
@@ -1592,7 +3601,7 @@
                           <span class="community-settings-item-note">Alerts, previews, and sound preferences.</span>
                         </span>
                         <span id="community-settings-global-notifications-value" class="community-settings-item-value">Enabled</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="storage">
                         <span class="community-settings-item-copy">
@@ -1600,7 +3609,7 @@
                           <span class="community-settings-item-note">Media cache and download handling.</span>
                         </span>
                         <span id="community-settings-storage-value" class="community-settings-item-value">Manage</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                     </div>
                     <div class="community-settings-section">
@@ -1611,7 +3620,7 @@
                           <span class="community-settings-item-note">Who can message you and view your status.</span>
                         </span>
                         <span id="community-settings-privacy-value" class="community-settings-item-value">Friends</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="security">
                         <span class="community-settings-item-copy">
@@ -1619,7 +3628,7 @@
                           <span class="community-settings-item-note">Community lock and encryption details.</span>
                         </span>
                         <span id="community-settings-security-value" class="community-settings-item-value">Off</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="chat-behavior">
                         <span class="community-settings-item-copy">
@@ -1627,7 +3636,7 @@
                           <span class="community-settings-item-note">Read receipts and typing indicators.</span>
                         </span>
                         <span id="community-settings-chat-value" class="community-settings-item-value">Balanced</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="community-notifications">
                         <span class="community-settings-item-copy">
@@ -1635,7 +3644,7 @@
                           <span class="community-settings-item-note">Mute chats and set custom alerts.</span>
                         </span>
                         <span id="community-settings-community-notifications-value" class="community-settings-item-value">Active</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="media">
                         <span class="community-settings-item-copy">
@@ -1643,7 +3652,7 @@
                           <span class="community-settings-item-note">Auto-download and upload quality.</span>
                         </span>
                         <span id="community-settings-media-value" class="community-settings-item-value">Wi-Fi only</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-settings-target="status">
                         <span class="community-settings-item-copy">
@@ -1651,7 +3660,7 @@
                           <span class="community-settings-item-note">Replies, archiving, and status defaults.</span>
                         </span>
                         <span id="community-settings-status-value" class="community-settings-item-value">Replies on</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                     </div>
                   </section>
@@ -1672,7 +3681,7 @@
                             aria-expanded="false"
                           >
                             <span id="community-settings-theme-trigger-label">System</span>
-                            <span class="community-settings-theme-trigger-chevron" aria-hidden="true">▾</span>
+                            <span class="community-settings-theme-trigger-chevron" aria-hidden="true">&#9662;</span>
                           </button>
                           <div id="community-settings-theme-menu" class="community-settings-theme-menu hidden" role="listbox" aria-label="Choose theme">
                             <button type="button" class="community-settings-theme-option" data-community-settings-theme-option="system" role="option">System</button>
@@ -1868,7 +3877,7 @@
                       <label class="community-settings-item is-toggle">
                         <span class="community-settings-item-copy">
                           <span class="community-settings-item-label">Enable lock</span>
-                          <span class="community-settings-item-note">Turn on to require PIN when re-entering Community.</span>
+                          <span class="community-settings-item-note">Turn on to require PIN when re-entering AjiX Chat.</span>
                         </span>
                         <span class="community-settings-toggle">
                           <input id="community-settings-security-lock-enabled" type="checkbox" disabled>
@@ -2023,7 +4032,7 @@
                           <span class="community-settings-item-note">Send a read-only announcement to every user.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">â€º</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" class="community-settings-item is-link" data-community-admin-action="broadcast-status">
                         <span class="community-settings-item-copy">
@@ -2031,7 +4040,7 @@
                           <span class="community-settings-item-note">Publish an announcement status with no replies.</span>
                         </span>
                         <span class="community-settings-item-value">Compose</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">â€º</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                       <button type="button" id="community-settings-admin-target-btn" class="community-settings-item is-link hidden" data-community-settings-target="admin">
                         <span class="community-settings-item-copy">
@@ -2039,7 +4048,7 @@
                           <span class="community-settings-item-note">Send announcements to everyone.</span>
                         </span>
                         <span class="community-settings-item-value">Open</span>
-                        <span class="community-settings-item-chevron" aria-hidden="true">›</span>
+                        <span class="community-settings-item-chevron" aria-hidden="true">&#10095;</span>
                       </button>
                     </div>
                   </section>
@@ -2061,7 +4070,7 @@
             <button id="community-forward-send-btn" type="button" class="community-forward-btn primary">Send</button>
           </div>
         </div>
-        <nav class="community-bottom-dock" aria-label="Community sections">
+        <nav class="community-bottom-dock" aria-label="Chat sections">
           <button class="community-tab community-dock-tab is-active" type="button" data-community-tab="chats" aria-label="Chats" title="Chats">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 6.5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 17.5H10l-4.5 3v-3H5A1.5 1.5 0 0 1 3.5 16V8A1.5 1.5 0 0 1 5 6.5Z"></path>
@@ -2353,8 +4362,8 @@
             <div class="topic-viewer-brand" aria-label="Ajix Pharmacy">
               <img
                 class="topic-viewer-logo-image"
-                src="images/ajix-logo.png.png?v=20260324-headerlogo1"
-                alt="Ajix Pharmacy"
+                src="images/app-logo.png?v=20260903-mascot"
+                alt="AjiX mascot"
               />
             </div>
             <div class="topic-viewer-header-actions">
@@ -2415,8 +4424,8 @@
               <span class="menu-dashboard-brand-stack">
                 <img
                   class="menu-dashboard-logo-image"
-                  src="images/ajix-logo.png.png?v=20260324-headerlogo1"
-                  alt="Ajix Pharmacy"
+                  src="images/app-logo.png?v=20260903-mascot"
+                  alt="AjiX mascot"
                 />
               </span>
             </div>
@@ -2467,181 +4476,128 @@
                   <button class="tour-step-dot" type="button" data-tour-step-target="1">2</button>
                   <button class="tour-step-dot" type="button" data-tour-step-target="2">3</button>
                   <button class="tour-step-dot" type="button" data-tour-step-target="3">4</button>
+                  <button class="tour-step-dot" type="button" data-tour-step-target="4">5</button>
+                  <button class="tour-step-dot" type="button" data-tour-step-target="5">6</button>
+                  <button class="tour-step-dot" type="button" data-tour-step-target="6">7</button>
                 </div>
               </div>
 
               <div class="tour-slide-stack">
                 <section class="tour-slide is-active" data-tour-step="0">
                   <div class="tour-slide-copy">
-                    <h3 class="tour-slide-heading">Getting Started</h3>
-                    <p class="tour-slide-text">Choose the session type that fits how you want to practice, revise weak areas, or work under timed pressure.</p>
+                    <h3 class="tour-slide-heading">Study Mode</h3>
+                    <p class="tour-slide-text">Practice at your own pace when you want to learn before the clock starts.</p>
                   </div>
-
-                  <div class="tour-visual-frame">
-                    <img
-                      class="tour-visual-image"
-                      src="images/get-started.png.png?v=20260324-imgrefresh2"
-                      alt="Pharmacist using a tablet in a clinical environment"
-                    />
-                  </div>
-
                   <div class="tour-article">
                     <section class="tour-article-section">
-                      <h4 class="tour-article-title">Study Mode</h4>
-                      <p class="tour-article-text">
-                        Study Mode is for practicing questions at your own pace. You can focus on a single category such as
-                        cardiovascular, pulmonary, or any other available topic, or choose a mixed session when you want broader
-                        coverage. It also includes weak practice, which lets you return to questions you previously got wrong in
-                        study sessions.
-                      </p>
-                    </section>
-
-                    <section class="tour-article-section">
-                      <h4 class="tour-article-title">Exam Mode and Smart Exam</h4>
-                      <p class="tour-article-text">
-                        Exam Mode follows the same question structure as Study Mode, but under a time limit. You can choose how
-                        many questions you want to answer, such as 30, 50, 100, or more, and you can run the exam by category or
-                        as a mixed paper. Smart Exam is available for practicing weak questions in a more targeted way when you
-                        want timed revision around your weaker areas.
-                      </p>
-                    </section>
-
-                    <section class="tour-article-section">
-                      <h4 class="tour-article-title">Quick Drills</h4>
-                      <p class="tour-article-text">
-                        Quick Drills are short focused rounds. Rapid gives you 5 random questions to answer in 60 seconds.
-                        Sudden keeps going until the first wrong answer. Clinical gives you 10 solid case-scenario questions for
-                        more deliberate clinical thinking.
-                      </p>
-                    </section>
-
-                    <section class="tour-article-section">
-                      <h4 class="tour-article-title">Daily Quiz</h4>
-                      <p class="tour-article-text">
-                        Daily Quiz gives you 10 random questions each day. Completing the daily set helps you build streaks and
-                        accumulate gems while keeping your revision consistent.
-                      </p>
+                      <h4 class="tour-article-title">How it helps</h4>
+                      <ul class="tour-article-list">
+                        <li><strong>Choose a category or rotation:</strong> stay focused on one area or mix the set.</li>
+                        <li><strong>Use weak-question practice:</strong> return to items you previously missed.</li>
+                        <li><strong>Build confidence first:</strong> this is the calm space before timed work.</li>
+                      </ul>
                     </section>
                   </div>
                 </section>
 
                 <section class="tour-slide" data-tour-step="1">
                   <div class="tour-slide-copy">
-                    <h3 class="tour-slide-heading">Question Flow</h3>
-                    <p class="tour-slide-text">Each session follows a simple answer-review-progress workflow.</p>
+                    <h3 class="tour-slide-heading">Exam Mode</h3>
+                    <p class="tour-slide-text">Switch to a timed paper when you want the same questions with more pressure.</p>
                   </div>
-
-                  <div class="tour-visual-frame">
-                    <img
-                      class="tour-visual-image"
-                      src="images/question-flow.png.png?v=20260324-imgrefresh2"
-                      alt="Quiz question flow interface"
-                    />
-                  </div>
-
                   <div class="tour-article">
                     <section class="tour-article-section">
-                      <h4 class="tour-article-title">Answer and move through the session</h4>
-                      <p class="tour-article-text">
-                        Work through questions in order using the session controls. The interface keeps the question, answers,
-                        progress, and timing information close together so you can stay focused.
-                      </p>
-                    </section>
-
-                    <section class="tour-article-section">
-                      <h4 class="tour-article-title">Open explanations when needed</h4>
-                      <p class="tour-article-text">
-                        After answering, use the explanation area to review the reasoning behind the correct option. This is the
-                        main place to correct misunderstandings before moving on.
-                      </p>
-                    </section>
-
-                    <section class="tour-article-section">
-                      <h4 class="tour-article-title">Finish with review and results</h4>
-                      <p class="tour-article-text">
-                        Every session ends with a result view. Use it to see how you performed, identify weaker areas, and decide
-                        whether to continue practicing or switch to study tools.
-                      </p>
+                      <h4 class="tour-article-title">What to expect</h4>
+                      <ul class="tour-article-list">
+                        <li><strong>Pick the scope:</strong> choose a question count and focus area before you begin.</li>
+                        <li><strong>Work against the timer:</strong> stay steady and keep moving through each question.</li>
+                        <li><strong>Review the result page:</strong> check what needs more practice after the session.</li>
+                      </ul>
                     </section>
                   </div>
                 </section>
 
                 <section class="tour-slide" data-tour-step="2">
                   <div class="tour-slide-copy">
-                    <h3 class="tour-slide-heading">Study Tools</h3>
-                    <p class="tour-slide-text">Use the supporting tools between sessions to build stronger coverage.</p>
+                    <h3 class="tour-slide-heading">Quick Drills</h3>
+                    <p class="tour-slide-text">Use short rounds when you only have a few minutes to sharpen speed and recall.</p>
                   </div>
-
-                  <div class="tour-visual-frame">
-                    <img
-                      class="tour-visual-image"
-                      src="images/study-tool.png.png?v=20260324-imgrefresh2"
-                      alt="Study tools and learning support screens"
-                    />
-                  </div>
-
                   <div class="tour-article">
                     <section class="tour-article-section">
-                      <h4 class="tour-article-title">Topic Library</h4>
-                      <p class="tour-article-text">
-                        Browse study notes by subject and open reading material directly inside the app. This is useful before a
-                        session when you want preparation, and after a session when you want reinforcement.
-                      </p>
-                    </section>
-
-                    <section class="tour-article-section">
-                      <h4 class="tour-article-title">Performance Dashboard</h4>
-                      <p class="tour-article-text">
-                        Review overall results, patterns, and weaker areas over time. The dashboard is best used as a follow-up
-                        tool after several practice sessions.
-                      </p>
-                    </section>
-
-                    <section class="tour-article-section">
-                      <h4 class="tour-article-title">AI Explanation</h4>
-                      <p class="tour-article-text">
-                        Use AI Explanation when you need a deeper breakdown of the answer logic. It is intended to supplement,
-                        not replace, the standard explanation panel.
-                      </p>
+                      <h4 class="tour-article-title">Drill types</h4>
+                      <ul class="tour-article-list">
+                        <li><strong>Rapid:</strong> 5 random questions in 60 seconds.</li>
+                        <li><strong>Sudden:</strong> keep going until the first wrong answer.</li>
+                        <li><strong>Clinical:</strong> 10 case-style questions for judgment practice.</li>
+                      </ul>
                     </section>
                   </div>
                 </section>
 
                 <section class="tour-slide" data-tour-step="3">
                   <div class="tour-slide-copy">
-                    <h3 class="tour-slide-heading">Account and Settings</h3>
-                    <p class="tour-slide-text">Use the top-right tools to manage account details and app preferences.</p>
+                    <h3 class="tour-slide-heading">Law Drill</h3>
+                    <p class="tour-slide-text">Law Drill turns pharmacy law into a ladder so you can climb one level at a time.</p>
                   </div>
-
-                  <div class="tour-visual-frame">
-                    <img
-                      class="tour-visual-image"
-                      src="images/account-and-settings.png.png?v=20260324-imgrefresh2"
-                      alt="Account profile and settings screens"
-                    />
-                  </div>
-
                   <div class="tour-article">
                     <section class="tour-article-section">
-                      <h4 class="tour-article-title">Profile</h4>
-                      <p class="tour-article-text">
-                        Keep your personal details and training identity current so your workspace remains organised around your account.
-                      </p>
+                      <h4 class="tour-article-title">How the ladder works</h4>
+                      <ul class="tour-article-list">
+                        <li><strong>100 levels:</strong> each level has 5 questions to keep the steps focused.</li>
+                        <li><strong>Tap a yellow level:</strong> start where you are ready and reopen completed stacks later.</li>
+                        <li><strong>Use review tools:</strong> the stack, memory tips, and AI explanation help fix weak points.</li>
+                      </ul>
                     </section>
+                  </div>
+                </section>
 
+                <section class="tour-slide" data-tour-step="4">
+                  <div class="tour-slide-copy">
+                    <h3 class="tour-slide-heading">GPPQE</h3>
+                    <p class="tour-slide-text">GPPQE splits written-paper practice into Study and Exam sessions by year and category.</p>
+                  </div>
+                  <div class="tour-article">
                     <section class="tour-article-section">
-                      <h4 class="tour-article-title">Settings</h4>
-                      <p class="tour-article-text">
-                        Adjust theme, text size, font, and motion preferences to make the app more comfortable during longer sessions.
-                      </p>
+                      <h4 class="tour-article-title">What the page does</h4>
+                      <ul class="tour-article-list">
+                        <li><strong>Select a year and category:</strong> narrow the paper before starting your session.</li>
+                        <li><strong>Pick Study or Exam:</strong> Study gives instant feedback and Exam adds the timer.</li>
+                        <li><strong>Resume when needed:</strong> continue paused sessions and revisit the last 20 results in history.</li>
+                      </ul>
                     </section>
+                  </div>
+                </section>
 
+                <section class="tour-slide" data-tour-step="5">
+                  <div class="tour-slide-copy">
+                    <h3 class="tour-slide-heading">Extra</h3>
+                    <p class="tour-slide-text">Extra is your support hub for reference content and helper tools outside quizzes.</p>
+                  </div>
+                  <div class="tour-article">
                     <section class="tour-article-section">
-                      <h4 class="tour-article-title">Continue to the workspace</h4>
-                      <p class="tour-article-text">
-                        When you finish this guide, return to the menu and continue with study, exam, drills, topics, analytics,
-                        or account management as needed.
-                      </p>
+                      <h4 class="tour-article-title">What lives here</h4>
+                      <ul class="tour-article-list">
+                        <li><strong>News:</strong> open the feed for updates.</li>
+                        <li><strong>Guidelines and Articles:</strong> browse the reference slots in the hub.</li>
+                        <li><strong>MedLens and Calculator:</strong> use search and helper tools when you need quick support.</li>
+                      </ul>
+                    </section>
+                  </div>
+                </section>
+
+                <section class="tour-slide" data-tour-step="6">
+                  <div class="tour-slide-copy">
+                    <h3 class="tour-slide-heading">Profile and Settings</h3>
+                    <p class="tour-slide-text">Keep your account and app preferences comfortable for long sessions.</p>
+                  </div>
+                  <div class="tour-article">
+                    <section class="tour-article-section">
+                      <h4 class="tour-article-title">What you can adjust</h4>
+                      <ul class="tour-article-list">
+                        <li><strong>Profile details:</strong> keep your identity and account info up to date.</li>
+                        <li><strong>Appearance:</strong> adjust theme, font, text size, and motion settings.</li>
+                        <li><strong>Back to work:</strong> use the top-right actions to return to the menu when you are done.</li>
+                      </ul>
                     </section>
                   </div>
                 </section>
@@ -2802,6 +4758,20 @@
               </div>
 
               <div class="settings-device-card">
+                <div class="settings-app-download-copy">
+                  <h4 class="settings-app-download-title">Android App</h4>
+                  <p class="settings-help">
+                    Download Ajix Pharm for your phone and install the latest release directly from the site.
+                  </p>
+                </div>
+                <div class="settings-actions">
+                  <button id="settings-download-app-btn" type="button" class="settings-primary-btn">
+                    Download APK
+                  </button>
+                </div>
+              </div>
+
+              <div class="settings-device-card">
                 <p class="settings-help">
                   Clear local practice cache on this device only. This removes saved local sessions and temporary progress, but it
                   does not delete your online account data.
@@ -2824,7 +4794,7 @@
         <!-- HEADER -->
         <div class="app-header">
           <div class="quiz-brand-bar">
-            <img class="quiz-brand-logo" src="images/ajix-logo.png.png?v=20260324-headerlogo1" alt="AJIX Pharmacy" />
+            <img class="quiz-brand-logo" src="images/app-logo.png?v=20260903-mascot" alt="AjiX mascot" />
             <div id="header-inline-meta" class="header-inline-meta hidden" aria-live="polite"></div>
             <div class="header-right">
               <button id="end-study-btn" class="header-btn danger hidden" aria-label="Close Study">
@@ -2876,7 +4846,7 @@
           <div class="header-meta">
             <div id="progress"></div>
             <div id="session-points-chip" class="session-points-chip hidden" aria-live="polite">
-              <span class="session-points-icon" aria-hidden="true">👑</span>
+              <span class="session-points-icon" aria-hidden="true">&#10022;</span>
               <span id="session-points-value" class="session-points-value">0</span>
             </div>
             <div id="timer"></div>
@@ -2983,134 +4953,6 @@
           <button id="submit-exam" class="start-btn hidden">Submit Exam</button>
         </div>
       </div>
-      <div id="dashboard">
-        <div class="dashboard-wrapper">
-          <div class="dashboard-card">
-            <div class="dashboard-header">
-              <div class="dashboard-topbar">
-                <div class="dashboard-brand">
-                  <img
-                    class="dashboard-brand-logo"
-                    src="images/ajix-logo.png.png?v=20260324-headerlogo1"
-                    alt="Ajix Pharmacy"
-                  />
-                </div>
-                <div class="dashboard-title">Performance Dashboard</div>
-                <div class="dashboard-topbar-actions">
-                  <button id="dashboard-close-btn" class="dashboard-close-btn" aria-label="Close dashboard">
-                    &#10005;
-                  </button>
-                  <button
-                    id="dashboard-menu-btn"
-                    class="dashboard-close-btn quick-nav-trigger-btn"
-                    type="button"
-                    aria-label="Open quick navigation"
-                    aria-expanded="false"
-                    title="Navigate"
-                    data-global-nav-btn="dashboard"
-                  >
-                    <svg class="quick-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <rect x="5" y="5" width="4" height="4" rx="1"></rect>
-                      <rect x="15" y="5" width="4" height="4" rx="1"></rect>
-                      <rect x="5" y="15" width="4" height="4" rx="1"></rect>
-                      <rect x="15" y="15" width="4" height="4" rx="1"></rect>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="dashboard-body">
-              <section class="dashboard-overview-grid">
-                <section class="dashboard-panel dashboard-summary-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-section-title">Quiz Summary</div>
-                  </div>
-
-                  <div class="dashboard-metrics">
-                    <div class="metric-tile metric-tile-total">
-                      <div class="metric-label">Total Attempts</div>
-                      <div class="metric-value" id="dash-total"></div>
-                    </div>
-
-                    <div class="metric-tile metric-tile-accuracy">
-                      <div class="metric-label">Overall Accuracy</div>
-                      <div class="metric-value" id="dash-accuracy"></div>
-                    </div>
-
-                    <div class="metric-tile metric-tile-weak">
-                      <div class="metric-label">Weak Questions</div>
-                      <div class="metric-value" id="dash-weak"></div>
-                    </div>
-
-                    <div class="metric-tile metric-tile-sessions">
-                      <div class="metric-label">Sessions</div>
-                      <div class="metric-value" id="dash-sessions"></div>
-                    </div>
-                  </div>
-                </section>
-
-                <section class="dashboard-panel dashboard-trend-panel">
-                  <div class="dashboard-trend-top">
-                    <div class="dashboard-trend-headline">
-                      <div class="dashboard-trend-copy-block">
-                        <div class="dashboard-section-title">Score Trend</div>
-                        <div class="dashboard-section-subtitle" id="dash-trend-copy">Recent sessions</div>
-                      </div>
-                      <div class="dashboard-trend-badge" id="dash-trend-rate">0%</div>
-                    </div>
-                    <div class="dashboard-trend-scopes" role="tablist" aria-label="Trend scope">
-                      <button type="button" class="dashboard-trend-scope is-active" data-trend-scope="session">Session</button>
-                      <button type="button" class="dashboard-trend-scope" data-trend-scope="daily">Daily</button>
-                      <button type="button" class="dashboard-trend-scope" data-trend-scope="weekly">Weekly</button>
-                      <button type="button" class="dashboard-trend-scope" data-trend-scope="monthly">Monthly</button>
-                      <button type="button" class="dashboard-trend-scope" data-trend-scope="yearly">Yearly</button>
-                    </div>
-                  </div>
-                  <div class="dashboard-trend-stage">
-                    <div class="dashboard-trend-chart" id="dash-trend-chart"></div>
-                  </div>
-                </section>
-
-                <section class="dashboard-panel dashboard-topsubjects-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-section-title">Top Subjects</div>
-                  </div>
-                  <div class="dashboard-topsubjects-list" id="dash-top-subjects"></div>
-                </section>
-              </section>
-
-              <section class="dashboard-lower-grid">
-                <section class="dashboard-panel dashboard-breakdown-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-section-title">Category Breakdown</div>
-                    <div class="dashboard-section-subtitle">Accuracy by subject area</div>
-                  </div>
-
-                  <div class="dashboard-category-list" id="dash-categories"></div>
-                </section>
-
-                <section class="dashboard-panel dashboard-breakdown-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-section-title">Rotation Breakdown</div>
-                    <div class="dashboard-section-subtitle">Accuracy by rotation</div>
-                  </div>
-
-                  <div class="dashboard-category-list" id="dash-rotations"></div>
-                </section>
-
-                <section class="dashboard-panel dashboard-recent-panel">
-                  <div class="dashboard-panel-head">
-                    <div class="dashboard-section-title">Recent Results</div>
-                    <div class="dashboard-section-subtitle">Latest completed sessions</div>
-                  </div>
-                  <div class="dashboard-recent-list" id="dash-recent-results"></div>
-                </section>
-              </section>
-            </div>
-          </div>
-        </div>
-      </div>
       <div id="study-result-screen">
         <div class="result-wrapper">
           <div class="result-card">
@@ -3140,6 +4982,37 @@
               </button>
               <button id="result-menu-btn" class="result-btn secondary-btn">
                 Back to Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="law-drill-result-screen">
+        <div class="result-wrapper">
+          <div class="result-card">
+            <div class="result-title" id="law-drill-result-title"></div>
+            <div id="law-drill-result-badge" class="result-badge hidden"></div>
+
+            <div class="result-body">
+              <div class="result-score-block">
+                <div class="result-percentage" id="law-drill-result-percentage"></div>
+                <div class="result-score" id="law-drill-result-score"></div>
+              </div>
+
+              <div class="result-feedback" id="law-drill-result-feedback"></div>
+              <div id="law-drill-result-stack" class="law-drill-stack law-drill-result-stack hidden" aria-live="polite"></div>
+            </div>
+
+            <div class="result-actions">
+              <button id="law-drill-next-level-btn" class="result-btn primary-btn hidden" type="button">
+                Level 2
+              </button>
+              <button id="law-drill-close-btn" class="result-btn secondary-btn" type="button">
+                Close
+              </button>
+              <button id="law-drill-menu-btn" class="result-btn secondary-btn" type="button">
+                Menu
               </button>
             </div>
           </div>
@@ -3380,6 +5253,7 @@
           <div class="community-admin-broadcast-attachment">
             <button id="community-admin-broadcast-attach-btn" type="button" class="modal-btn secondary">Attach file</button>
             <div id="community-admin-broadcast-attachment-name" class="community-admin-broadcast-attachment-name">No attachment selected.</div>
+            <button id="community-admin-broadcast-preview-btn" type="button" class="modal-btn secondary hidden">Preview</button>
             <button id="community-admin-broadcast-clear-btn" type="button" class="modal-btn secondary hidden">Remove</button>
           </div>
           <input id="community-admin-broadcast-file-input" type="file" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.ppt,.pptx,.txt" hidden />
@@ -3420,9 +5294,7 @@
       <div id="community-thread-actions-modal" class="modal hidden">
         <div class="modal-card community-thread-actions-card">
           <button id="community-thread-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
-          <div class="community-thread-actions-kicker">Conversation actions</div>
           <div id="community-thread-actions-title" class="modal-title">Select action</div>
-          <div id="community-thread-actions-summary" class="modal-text">Choose what you want to do with the selected threads.</div>
           <div id="community-thread-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-thread-actions-grid">
             <button id="community-thread-actions-view-btn" type="button" class="modal-btn secondary">View</button>
@@ -3439,9 +5311,7 @@
       <div id="community-friend-actions-modal" class="modal hidden">
         <div class="modal-card community-friend-actions-card">
           <button id="community-friend-actions-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close actions">&times;</button>
-          <div class="community-thread-actions-kicker">Friend actions</div>
           <div id="community-friend-actions-title" class="modal-title">Select action</div>
-          <div id="community-friend-actions-summary" class="modal-text">Choose what you want to do with this learner.</div>
           <div id="community-friend-actions-selected" class="community-thread-actions-selected"></div>
           <div class="community-friend-actions-grid">
             <button id="community-friend-actions-view-btn" type="button" class="modal-btn secondary">View Profile</button>
@@ -3459,8 +5329,8 @@
 
       <div id="community-lock-modal" class="modal hidden">
         <div class="modal-card community-lock-modal-card">
-          <div class="modal-title">Community Locked</div>
-          <div class="modal-text">Enter your security PIN to unlock Community.</div>
+          <div class="modal-title">Chat Locked</div>
+          <div class="modal-text">Enter your security PIN to unlock AjiX Chat.</div>
           <input id="community-lock-pin-input" class="community-lock-pin-input community-pin-masked" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="Enter PIN" autocomplete="one-time-code" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" />
           <button id="community-lock-biometric-btn" type="button" class="modal-btn secondary community-lock-biometric-btn hidden">Use Face / Fingerprint</button>
           <div id="community-lock-feedback" class="community-lock-feedback hidden"></div>
@@ -3534,38 +5404,25 @@
 
       <div id="community-group-invite-modal" class="modal hidden">
         <div class="modal-card community-group-invite-card">
-          <div class="community-group-invite-header">
-            <div>
+          <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close invite">&times;</button>
+          <div class="community-group-invite-top">
+            <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
+            <div class="community-group-invite-copy">
               <div id="community-group-invite-name" class="modal-title">Study Group</div>
-              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready to share.</div>
+              <div id="community-group-invite-subtitle" class="modal-text">Invite link ready.</div>
             </div>
-            <button id="community-group-invite-close-btn" type="button" class="dashboard-close-btn community-group-invite-close-btn" aria-label="Close invite">
-              &times;
-            </button>
           </div>
-
-          <div class="community-group-invite-body">
-            <div class="community-group-invite-top">
-              <div id="community-group-invite-avatar" class="community-group-invite-avatar" aria-hidden="true"></div>
-              <div class="community-group-invite-copy">
-                <div class="community-group-invite-label">Members</div>
-                <div id="community-group-invite-members" class="community-group-invite-members"></div>
-              </div>
-            </div>
-
-            <div class="community-group-invite-link-card">
-              <div class="community-group-invite-label">Invite link</div>
-              <div class="community-group-invite-link-row">
-                <button id="community-group-invite-short-link" type="button" class="community-group-invite-short-link" aria-label="Invite link"></button>
-                <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
-              </div>
-            </div>
-
+          <div class="community-group-invite-members-wrap">
+            <div class="community-group-invite-members-title">Members</div>
+            <div id="community-group-invite-members" class="community-group-invite-members"></div>
+          </div>
+          <div class="community-group-invite-link-box">
+            <div id="community-group-invite-short-link" class="community-group-invite-short-link"></div>
             <div id="community-group-invite-note" class="community-group-invite-note"></div>
           </div>
-
-          <div class="modal-actions community-group-invite-actions">
-            <button id="community-group-invite-primary-btn" type="button" class="modal-btn resume-primary">Share link</button>
+          <div class="community-group-invite-actions">
+            <button id="community-group-invite-copy-btn" type="button" class="modal-btn secondary">Copy link</button>
+            <button id="community-group-invite-primary-btn" type="button" class="modal-btn primary">Share link</button>
           </div>
         </div>
       </div>
@@ -3879,7 +5736,8 @@
           <div class="global-quick-nav-links">
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="home">Home</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="menu">Menu</button>
-            <button class="global-quick-nav-link" type="button" data-quick-nav-destination="community">Community</button>
+            <button class="global-quick-nav-link" type="button" data-quick-nav-destination="extra">Extra</button>
+            <button class="global-quick-nav-link" type="button" data-quick-nav-destination="community">Chat</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="settings">Settings</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="profile">Profile</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="help">Help</button>
@@ -3938,12 +5796,11 @@
         }
       };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script type="module" src="engine.js?v=20260613-manufacturing-set2"></script>
+    <script type="module" src="/engine.js?v=20260904-rotation-tracking-v1"></script>
     <script>
-      const APP_BUILD_ID = "20260613-rollback106";
-      const APP_STANDALONE_BUILD = "20260613-rollback106";
-      const APP_NATIVE_VERSION = "1.0.6";
+      const APP_BUILD_ID = "20260903-extra-layout-v2";
+      const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
+      const APP_NATIVE_VERSION = "1.1.14";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
       document.documentElement.dataset.nativeAppVersion = APP_NATIVE_VERSION;
 

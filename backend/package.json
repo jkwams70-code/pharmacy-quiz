@@ -9,8 +9,10 @@
     "dev": "node --watch src/server.js",
     "seed": "node src/scripts/seedQuestions.js",
     "backup": "node src/scripts/backupData.js",
+    "restore": "powershell -ExecutionPolicy Bypass -File restore-from-backup.ps1",
     "cleanup": "node src/scripts/cleanupRuntimeFiles.js",
     "cleanup:users": "node src/scripts/cleanupInactiveUsers.js",
+    "cleanup:admin-notices": "node src/scripts/cleanupAdminNoticeThreads.js",
     "validate:data": "node src/scripts/validateDataRelations.js",
     "repair:data": "node src/scripts/repairDataRelations.js",
     "renumber:questions": "node src/scripts/renumberQuestionIds.js",
@@ -42,6 +44,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "pg": "^8.22.0",
     "quiz": "file:.."
   }
 }

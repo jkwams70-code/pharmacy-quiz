@@ -1,7 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Ajix</string>
-    <string name="title_activity_main">Ajix</string>
-    <string name="package_name">com.ajix.quiz</string>
-    <string name="custom_url_scheme">com.ajix.quiz</string>
+    <string name="app_name">Ajix Pharm</string>
 </resources>

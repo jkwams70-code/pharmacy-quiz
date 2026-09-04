@@ -1,26 +1,50 @@
+# Dependencies and local installs
 node_modules/
 
-# Local build caches
+# Android and local build outputs
 .gradle-local/
-.cache/
-
-# Capacitor generated web output
-www/
-
-# Android build/cache outputs
 android/.gradle/
+android/.gradle-local/
 android/build/
-android/app/build/
-android/.idea/
+android/**/build/
 android/local.properties
-android/captures/
-android/.cxx/
+android/keystore.properties
+android/keystore/
+*.apk
+*.aab
+!www/downloads/
+!www/downloads/*.apk
 
-# Logs and temp outputs
+# Local preview certificates and keys
+certs/local-preview.pfx
+certs/*.pfx
+certs/*.pem
+certs/*.key
+backend/certs/
+backend/backups/*
+!backend/backups/data_20260619_183446/
+backend/backups/data_20260619_183446/*
+!backend/backups/data_20260619_183446/questions.json
+backend/data_backup_*/
+backend/.env
+backend/certs/*.pfx
+backend/certs/*.pem
+backend/certs/*.key
+backend/setup-scheduled-backup.ps1
+archive/
+downloads/
+
+# Temporary preview and scratch files
+menu-desktop-*.png
+_pdf_extracted.txt
 *.log
-*.err
-*.out
-backend/run-err.log
-backend/run-out.log
-frontend-preview.err
-frontend-preview.log
+*.tmp
+*.bak
+*.swp
+*.orig
+
+# OS noise
+.DS_Store
+Thumbs.db
+.env
+.env.local

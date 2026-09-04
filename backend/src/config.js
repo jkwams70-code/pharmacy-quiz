@@ -1,6 +1,14 @@
 import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({
+  path: path.join(__dirname, "..", ".env"),
+  override: true,
+});
 
 const isProduction = process.env.NODE_ENV === "production";
 const port = Number(process.env.PORT || 4000);
@@ -14,60 +22,37 @@ const logDir = process.env.LOG_DIR || "logs";
 const logRetentionDays = Number(process.env.LOG_RETENTION_DAYS || 30);
 const logLevel = (process.env.LOG_LEVEL || "info").toLowerCase();
 const dbPath = process.env.DB_PATH || "./data";
+const databaseUrl = String(process.env.DATABASE_URL || "").trim();
+const databaseSsl =
+  String(process.env.DATABASE_SSL || "").trim().toLowerCase() === "true" ||
+  /supabase\.co/i.test(databaseUrl) ||
+  /sslmode=require/i.test(databaseUrl);
+const databasePoolMax = Math.max(
+  1,
+  Math.round(Number(process.env.DATABASE_POOL_MAX || 5) || 5),
+);
 const enableGzip = String(process.env.ENABLE_GZIP || "true").toLowerCase() !== "false";
 const httpsEnabled = process.env.HTTPS_ENABLED === "true";
 const httpsEnforce = process.env.HTTPS_ENFORCE === "true";
 const httpsPort = Number(process.env.HTTPS_PORT || 4443);
 const httpsPfxPath = process.env.HTTPS_PFX_PATH || "";
 const httpsPfxPassphrase = process.env.HTTPS_PFX_PASSPHRASE || "";
-const exposeResetCode = process.env.EXPOSE_RESET_CODE === "true";
-const enableAdminReset = process.env.ENABLE_ADMIN_RESET === "true";
-const aiEnabled = String(process.env.AI_ENABLED || "true").toLowerCase() !== "false";
-const aiFreeProvider = String(process.env.AI_FREE_PROVIDER || "openrouter")
-  .trim()
-  .toLowerCase();
-const aiPremiumProvider = String(process.env.AI_PREMIUM_PROVIDER || "openai")
-  .trim()
-  .toLowerCase();
-const geminiApiKey = String(process.env.GEMINI_API_KEY || "").trim();
-const geminiModelFree = String(process.env.GEMINI_MODEL_FREE || "gemini-2.0-flash")
-  .trim();
-const openRouterApiKey = String(process.env.OPENROUTER_API_KEY || "").trim();
-const openRouterModelFree = String(
-  process.env.OPENROUTER_MODEL_FREE || "meta-llama/llama-3.1-8b-instruct:free",
-).trim();
-const openAiApiKey = String(process.env.OPENAI_API_KEY || "").trim();
-const openAiModelPremium = String(process.env.OPENAI_MODEL_PREMIUM || "gpt-5-mini")
-  .trim();
-const openAiModerationModel = String(process.env.OPENAI_MODERATION_MODEL || "omni-moderation-latest")
-  .trim();
-const googleVisionApiKey = String(process.env.GOOGLE_VISION_API_KEY || "").trim();
-const aiRequestTimeoutMs = Number(process.env.AI_REQUEST_TIMEOUT_MS || 25000);
-const aiFreeDailyRequests = Number(process.env.AI_FREE_DAILY_REQUESTS || 25);
-const aiPremiumDailyRequests = Number(process.env.AI_PREMIUM_DAILY_REQUESTS || 300);
-const aiFreeInputCharLimit = Number(process.env.AI_FREE_INPUT_CHAR_LIMIT || 4000);
-const aiPremiumInputCharLimit = Number(
-  process.env.AI_PREMIUM_INPUT_CHAR_LIMIT || 12000,
-);
-const aiFreeMaxOutputTokens = Number(process.env.AI_FREE_MAX_OUTPUT_TOKENS || 450);
-const aiPremiumMaxOutputTokens = Number(
-  process.env.AI_PREMIUM_MAX_OUTPUT_TOKENS || 900,
-);
-const aiPremiumUserIds = String(process.env.AI_PREMIUM_USER_IDS || "")
-  .split(",")
-  .map((value) => value.trim())
-  .filter(Boolean);
-const supabaseRealtimeUrl = String(process.env.SUPABASE_REALTIME_URL || "").trim();
-const supabaseRealtimeAnonKey = String(process.env.SUPABASE_REALTIME_ANON_KEY || "").trim();
-const supabaseRealtimeServiceKey = String(process.env.SUPABASE_REALTIME_SERVICE_KEY || "").trim();
-const supabaseStorageBucket = String(process.env.SUPABASE_STORAGE_BUCKET || "community-media").trim();
-const supabaseStorageFolder = String(process.env.SUPABASE_STORAGE_FOLDER || "ajix-community").trim();
-const oneSignalAppId = String(process.env.ONESIGNAL_APP_ID || "").trim();
-const oneSignalRestApiKey = String(process.env.ONESIGNAL_REST_API_KEY || "").trim();
-const oneSignalSafariWebId = String(process.env.ONESIGNAL_SAFARI_WEB_ID || "").trim();
-const agoraAppId = String(process.env.AGORA_APP_ID || "").trim();
-const agoraAppCertificate = String(process.env.AGORA_APP_CERTIFICATE || "").trim();
-const agoraTokenExpirySeconds = Number(process.env.AGORA_TOKEN_EXPIRY_SECONDS || 3600);
+const openAiApiKey = process.env.OPENAI_API_KEY || "";
+const openRouterApiKey = process.env.OPENROUTER_API_KEY || "";
+const geminiApiKey = process.env.GEMINI_API_KEY || "";
+const googleVisionApiKey = process.env.GOOGLE_VISION_API_KEY || "";
+const aiFreeProvider = (process.env.AI_FREE_PROVIDER || "gemini").trim().toLowerCase();
+const aiPremiumProvider = (process.env.AI_PREMIUM_PROVIDER || "openai").trim().toLowerCase();
+const aiFreeDailyRequests = Math.max(0, Math.round(Number(process.env.AI_FREE_DAILY_REQUESTS || 20) || 20));
+const aiPremiumDailyRequests = Math.max(0, Math.round(Number(process.env.AI_PREMIUM_DAILY_REQUESTS || 100) || 100));
+const aiFreeInputCharLimit = Math.max(0, Math.round(Number(process.env.AI_FREE_INPUT_CHAR_LIMIT || 6000) || 6000));
+const aiPremiumInputCharLimit = Math.max(0, Math.round(Number(process.env.AI_PREMIUM_INPUT_CHAR_LIMIT || 12000) || 12000));
+const aiFreeMaxOutputTokens = Math.max(0, Math.round(Number(process.env.AI_FREE_MAX_OUTPUT_TOKENS || 1000) || 1000));
+const aiPremiumMaxOutputTokens = Math.max(0, Math.round(Number(process.env.AI_PREMIUM_MAX_OUTPUT_TOKENS || 1800) || 1800));
+const aiRequestTimeoutMs = Math.max(1000, Math.round(Number(process.env.AI_REQUEST_TIMEOUT_MS || 30000) || 30000));
+const aiEnabled =
+  String(process.env.AI_ENABLED || "").trim().toLowerCase() === "true" ||
+  Boolean(openAiApiKey || openRouterApiKey || geminiApiKey);
 
 if (!Number.isFinite(port) || port <= 0) {
   throw new Error("Invalid PORT. Set a positive numeric PORT value.");
@@ -89,56 +74,8 @@ if (!Number.isFinite(logRetentionDays) || logRetentionDays <= 0) {
   throw new Error("Invalid LOG_RETENTION_DAYS. Use a positive number.");
 }
 
-if (!Number.isFinite(aiRequestTimeoutMs) || aiRequestTimeoutMs < 3000) {
-  throw new Error("Invalid AI_REQUEST_TIMEOUT_MS. Use a number >= 3000.");
-}
-
-if (!Number.isFinite(aiFreeDailyRequests) || aiFreeDailyRequests < 1) {
-  throw new Error("Invalid AI_FREE_DAILY_REQUESTS. Use a positive number.");
-}
-
-if (!Number.isFinite(aiPremiumDailyRequests) || aiPremiumDailyRequests < 1) {
-  throw new Error("Invalid AI_PREMIUM_DAILY_REQUESTS. Use a positive number.");
-}
-
-if (!Number.isFinite(aiFreeInputCharLimit) || aiFreeInputCharLimit < 300) {
-  throw new Error("Invalid AI_FREE_INPUT_CHAR_LIMIT. Use a number >= 300.");
-}
-
-if (!Number.isFinite(aiPremiumInputCharLimit) || aiPremiumInputCharLimit < 300) {
-  throw new Error("Invalid AI_PREMIUM_INPUT_CHAR_LIMIT. Use a number >= 300.");
-}
-
-if (!Number.isFinite(aiFreeMaxOutputTokens) || aiFreeMaxOutputTokens < 64) {
-  throw new Error("Invalid AI_FREE_MAX_OUTPUT_TOKENS. Use a number >= 64.");
-}
-
-if (!Number.isFinite(aiPremiumMaxOutputTokens) || aiPremiumMaxOutputTokens < 64) {
-  throw new Error("Invalid AI_PREMIUM_MAX_OUTPUT_TOKENS. Use a number >= 64.");
-}
-
-if (!Number.isFinite(agoraTokenExpirySeconds) || agoraTokenExpirySeconds < 300) {
-  throw new Error("Invalid AGORA_TOKEN_EXPIRY_SECONDS. Use a number >= 300.");
-}
-
 if (!["debug", "info", "silent"].includes(logLevel)) {
   throw new Error("Invalid LOG_LEVEL. Use one of: debug, info, silent.");
-}
-
-if (!["gemini", "openai", "openrouter"].includes(aiFreeProvider)) {
-  throw new Error(
-    "Invalid AI_FREE_PROVIDER. Use 'gemini', 'openrouter', or 'openai'.",
-  );
-}
-
-if (!["gemini", "openai", "openrouter"].includes(aiPremiumProvider)) {
-  throw new Error(
-    "Invalid AI_PREMIUM_PROVIDER. Use 'gemini', 'openrouter', or 'openai'.",
-  );
-}
-
-if (isProduction && corsOrigin === "*") {
-  throw new Error("CORS_ORIGIN cannot be '*' in production.");
 }
 
 if (isProduction && jwtSecret.length < 32) {
@@ -158,12 +95,26 @@ if (httpsEnabled && httpsEnforce && port === httpsPort) {
 }
 
 const corsOrigins =
-  corsOrigin === "*"
-    ? ["*"]
-    : corsOrigin
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
+  (() => {
+    const parsed =
+      corsOrigin === "*"
+        ? []
+        : corsOrigin
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+    if (!isProduction) {
+      return corsOrigin === "*" ? ["*"] : parsed;
+    }
+    const defaults = new Set([
+      "https://ajixpharmacy.online",
+      "https://www.ajixpharmacy.online",
+    ]);
+    for (const origin of parsed) {
+      defaults.add(origin);
+    }
+    return Array.from(defaults);
+  })();
 
 export const config = {
   port,
@@ -177,43 +128,28 @@ export const config = {
   logRetentionDays,
   logLevel,
   dbPath,
+  databaseUrl,
+  databaseSsl,
+  databasePoolMax,
   enableGzip,
   httpsEnabled,
   httpsEnforce,
   httpsPort,
   httpsPfxPath,
   httpsPfxPassphrase,
-  exposeResetCode,
-  enableAdminReset,
+  openAiApiKey,
+  openRouterApiKey,
+  geminiApiKey,
+  googleVisionApiKey,
   aiEnabled,
   aiFreeProvider,
   aiPremiumProvider,
-  geminiApiKey,
-  geminiModelFree,
-  openRouterApiKey,
-  openRouterModelFree,
-  openAiApiKey,
-  openAiModelPremium,
-  openAiModerationModel,
-  googleVisionApiKey,
-  aiRequestTimeoutMs,
   aiFreeDailyRequests,
   aiPremiumDailyRequests,
   aiFreeInputCharLimit,
   aiPremiumInputCharLimit,
   aiFreeMaxOutputTokens,
   aiPremiumMaxOutputTokens,
-  aiPremiumUserIds,
-  supabaseRealtimeUrl,
-  supabaseRealtimeAnonKey,
-  supabaseRealtimeServiceKey,
-  supabaseStorageBucket,
-  supabaseStorageFolder,
-  oneSignalAppId,
-  oneSignalRestApiKey,
-  oneSignalSafariWebId,
-  agoraAppId,
-  agoraAppCertificate,
-  agoraTokenExpirySeconds,
+  aiRequestTimeoutMs,
   tokenTtl: "7d",
 };

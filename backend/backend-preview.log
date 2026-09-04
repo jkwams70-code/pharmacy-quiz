@@ -1,0 +1,4 @@
+
+> pharmacy-quiz-backend@1.1.0 dev
+> node --watch src/server.js
+

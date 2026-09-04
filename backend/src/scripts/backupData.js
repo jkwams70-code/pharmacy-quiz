@@ -1,10 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { collectionNames, ensureStore, readCollection } from "../store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dataDir = path.join(__dirname, "..", "..", "data");
 const backupRoot = path.join(__dirname, "..", "..", "backups");
 
 function timestamp() {
@@ -23,15 +23,19 @@ async function run() {
   const target = path.join(backupRoot, `data_${timestamp()}`);
   await fs.mkdir(target, { recursive: true });
 
-  const files = await fs.readdir(dataDir);
-  const jsonFiles = files.filter((file) => file.endsWith(".json"));
+  await ensureStore();
 
-  for (const file of jsonFiles) {
-    await fs.copyFile(path.join(dataDir, file), path.join(target, file));
+  for (const collection of collectionNames) {
+    const data = await readCollection(collection);
+    await fs.writeFile(
+      path.join(target, `${collection}.json`),
+      JSON.stringify(data, null, 2),
+      "utf8",
+    );
   }
 
   console.log(`Backup created at: ${target}`);
-  console.log(`Files copied: ${jsonFiles.length}`);
+  console.log(`Collections exported: ${collectionNames.length}`);
 }
 
 run().catch((error) => {

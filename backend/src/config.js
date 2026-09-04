@@ -1,6 +1,14 @@
 import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({
+  path: path.join(__dirname, "..", ".env"),
+  override: true,
+});
 
 const isProduction = process.env.NODE_ENV === "production";
 const port = Number(process.env.PORT || 4000);
@@ -14,12 +22,37 @@ const logDir = process.env.LOG_DIR || "logs";
 const logRetentionDays = Number(process.env.LOG_RETENTION_DAYS || 30);
 const logLevel = (process.env.LOG_LEVEL || "info").toLowerCase();
 const dbPath = process.env.DB_PATH || "./data";
+const databaseUrl = String(process.env.DATABASE_URL || "").trim();
+const databaseSsl =
+  String(process.env.DATABASE_SSL || "").trim().toLowerCase() === "true" ||
+  /supabase\.co/i.test(databaseUrl) ||
+  /sslmode=require/i.test(databaseUrl);
+const databasePoolMax = Math.max(
+  1,
+  Math.round(Number(process.env.DATABASE_POOL_MAX || 5) || 5),
+);
 const enableGzip = String(process.env.ENABLE_GZIP || "true").toLowerCase() !== "false";
 const httpsEnabled = process.env.HTTPS_ENABLED === "true";
 const httpsEnforce = process.env.HTTPS_ENFORCE === "true";
 const httpsPort = Number(process.env.HTTPS_PORT || 4443);
 const httpsPfxPath = process.env.HTTPS_PFX_PATH || "";
 const httpsPfxPassphrase = process.env.HTTPS_PFX_PASSPHRASE || "";
+const openAiApiKey = process.env.OPENAI_API_KEY || "";
+const openRouterApiKey = process.env.OPENROUTER_API_KEY || "";
+const geminiApiKey = process.env.GEMINI_API_KEY || "";
+const googleVisionApiKey = process.env.GOOGLE_VISION_API_KEY || "";
+const aiFreeProvider = (process.env.AI_FREE_PROVIDER || "gemini").trim().toLowerCase();
+const aiPremiumProvider = (process.env.AI_PREMIUM_PROVIDER || "openai").trim().toLowerCase();
+const aiFreeDailyRequests = Math.max(0, Math.round(Number(process.env.AI_FREE_DAILY_REQUESTS || 20) || 20));
+const aiPremiumDailyRequests = Math.max(0, Math.round(Number(process.env.AI_PREMIUM_DAILY_REQUESTS || 100) || 100));
+const aiFreeInputCharLimit = Math.max(0, Math.round(Number(process.env.AI_FREE_INPUT_CHAR_LIMIT || 6000) || 6000));
+const aiPremiumInputCharLimit = Math.max(0, Math.round(Number(process.env.AI_PREMIUM_INPUT_CHAR_LIMIT || 12000) || 12000));
+const aiFreeMaxOutputTokens = Math.max(0, Math.round(Number(process.env.AI_FREE_MAX_OUTPUT_TOKENS || 1000) || 1000));
+const aiPremiumMaxOutputTokens = Math.max(0, Math.round(Number(process.env.AI_PREMIUM_MAX_OUTPUT_TOKENS || 1800) || 1800));
+const aiRequestTimeoutMs = Math.max(1000, Math.round(Number(process.env.AI_REQUEST_TIMEOUT_MS || 30000) || 30000));
+const aiEnabled =
+  String(process.env.AI_ENABLED || "").trim().toLowerCase() === "true" ||
+  Boolean(openAiApiKey || openRouterApiKey || geminiApiKey);
 
 if (!Number.isFinite(port) || port <= 0) {
   throw new Error("Invalid PORT. Set a positive numeric PORT value.");
@@ -95,11 +128,28 @@ export const config = {
   logRetentionDays,
   logLevel,
   dbPath,
+  databaseUrl,
+  databaseSsl,
+  databasePoolMax,
   enableGzip,
   httpsEnabled,
   httpsEnforce,
   httpsPort,
   httpsPfxPath,
   httpsPfxPassphrase,
+  openAiApiKey,
+  openRouterApiKey,
+  geminiApiKey,
+  googleVisionApiKey,
+  aiEnabled,
+  aiFreeProvider,
+  aiPremiumProvider,
+  aiFreeDailyRequests,
+  aiPremiumDailyRequests,
+  aiFreeInputCharLimit,
+  aiPremiumInputCharLimit,
+  aiFreeMaxOutputTokens,
+  aiPremiumMaxOutputTokens,
+  aiRequestTimeoutMs,
   tokenTtl: "7d",
 };

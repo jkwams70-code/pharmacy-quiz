@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Performance Dashboard</title>
+<link rel="icon" type="image/png" href="images/app-logo.png?v=20260903-mascot" />
+<style>
+  /* ============ Theme tokens ============ */
+  :root {
+    --bg: #f4f6fa;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e5e9f0;
+    --text: #1a2233;
+    --text-2: #5b6474;
+    --text-3: #8a93a3;
+    --accent: #4f7cff;
+    --accent-soft: rgba(79, 124, 255, 0.12);
+    --green: #2fbf8f;
+    --amber: #e8a13c;
+    --red: #e2606a;
+    --violet: #8b7cf6;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.05);
+    --shadow-hover: 0 2px 4px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.08);
+    --radius: 14px;
+    --radius-sm: 10px;
+  }
+  [data-theme="dark"] {
+    --bg: #0e1220;
+    --surface: #161b2e;
+    --surface-2: #1c2338;
+    --border: #262e47;
+    --text: #e8ecf4;
+    --text-2: #a3adc2;
+    --text-3: #6e7890;
+    --accent: #6b93ff;
+    --accent-soft: rgba(107, 147, 255, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+  .app {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 24px 24px 48px;
+  }
+
+  /* ============ Header ============ */
+  .dash-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding: 12px 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    margin-top: -24px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .dash-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-self: start;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .dash-logo img { width: 36px; height: 36px; display: block; object-fit: contain; border-radius: 8px; }
+  .dash-title {
+    justify-self: center;
+    font-size: 17px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .dash-actions {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    box-shadow: var(--shadow);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  }
+  .icon-btn:hover { color: var(--text); transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+  .dash-nav-panel { position: absolute; top: 58px; right: 18px; z-index: 20; width: 210px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-hover); }
+  .dash-nav-panel[hidden] { display: none; }
+  .dash-nav-title { padding: 4px 10px 8px; color: var(--text-3); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .dash-nav-link { width: 100%; display: block; padding: 10px; border: 0; border-top: 1px solid var(--border); background: transparent; color: var(--text); text-align: left; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .dash-nav-link:hover, .dash-nav-link:focus-visible { color: var(--accent); background: var(--surface-2); outline: none; }
+
+  .icon-btn:active { transform: translateY(0); }
+
+  /* ============ Metrics ============ */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .metric-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+  .metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .metric-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .metric-delta.up   { color: var(--green); background: rgba(47, 191, 143, 0.12); }
+  .metric-delta.down { color: var(--red);   background: rgba(226, 96, 106, 0.12); }
+
+  .metric-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .streak-pill { color: var(--text-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+
+  /* ============ Cards ============ */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-title .hint { font-size: 12px; font-weight: 500; color: var(--text-3); }
+
+  /* ============ Session trend ============ */
+  .trend-card { margin-bottom: 20px; }
+  .trend-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .trend-head h2 { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+  .period-tabs {
+    display: inline-flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .period-tab {
+    padding: 5px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-2);
+    border-radius: 999px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .period-tab:hover { color: var(--text); }
+  .period-tab.active {
+    background: var(--surface);
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+  }
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 300px;
+  }
+  #sessionTrendChart {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-hover);
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    opacity: 0;
+    transform: translate(-50%, -110%);
+    transition: opacity 0.12s ease;
+    white-space: nowrap;
+  }
+  .chart-tooltip .tt-label { color: var(--text-3); font-weight: 500; margin-right: 6px; }
+
+  /* ============ Bottom grid ============ */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 20px;
+  }
+  .card-subjects  { grid-column: span 4; }
+  .card-category  { grid-column: span 4; }
+  .card-rotation  { grid-column: span 4; }
+  .card-results   { grid-column: span 12; }
+
+  /* Top subjects */
+  .subject-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .subject-row:last-child { border-bottom: none; }
+  .subject-rank {
+    width: 22px; height: 22px;
+    flex: 0 0 22px;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text-3);
+  }
+  .subject-row:nth-child(1) .subject-rank,
+  .subject-row:nth-child(2) .subject-rank,
+  .subject-row:nth-child(3) .subject-rank { background: var(--accent-soft); color: var(--accent); }
+  .subject-info { flex: 1; min-width: 0; }
+  .subject-name { font-size: 13.5px; font-weight: 600; }
+  .subject-meta { font-size: 11.5px; color: var(--text-3); }
+  .subject-score { font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Category bars */
+  .cat-row { margin-bottom: 14px; }
+  .cat-row:last-child { margin-bottom: 2px; }
+  .cat-head {
+    display: flex; justify-content: space-between;
+    font-size: 12.5px; margin-bottom: 6px;
+  }
+  .cat-head .cat-name { font-weight: 600; color: var(--text-2); }
+  .cat-head .cat-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cat-track {
+    height: 7px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .cat-fill {
+    height: 100%;
+    border-radius: 999px;
+    width: 0;
+    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Rotation donut */
+  .rotation-body {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .donut { flex: 0 0 118px; position: relative; width: 118px; height: 118px; }
+  .donut svg { transform: rotate(-90deg); }
+  .donut-center {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    text-align: center;
+  }
+  .donut-center .dc-value { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .donut-center .dc-label { font-size: 10.5px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .legend { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px;
+  }
+  .legend-dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 9px; }
+  .legend-name { color: var(--text-2); font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .legend-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Recent results */
+  .data-empty { color: var(--text-3); font-size: 12px; padding: 12px 0; }
+  .results-list { display: flex; flex-direction: column; }
+  .result-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 4px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-date { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .result-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .result-sub { color: var(--text-3); font-size: 12px; white-space: nowrap; }
+  .result-badge {
+    font-size: 11.5px; font-weight: 700;
+    padding: 3px 10px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .result-badge.pass { color: var(--green); background: rgba(47, 191, 143, 0.12); }
+  .result-badge.avg  { color: var(--amber); background: rgba(232, 161, 60, 0.14); }
+  .result-badge.fail { color: var(--red); background: rgba(226, 96, 106, 0.12); }
+
+  /* ============ Responsive ============ */
+  @media (max-width: 920px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .card-subjects, .card-category, .card-rotation { grid-column: span 6; }
+  }
+  @media (max-width: 640px) {
+    .app { padding: 16px 14px 40px; }
+    .dash-header { grid-template-columns: auto 1fr auto; }
+    .dash-title { font-size: 15px; }
+    .dash-logo span { display: none; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .metric-card { padding: 13px 14px; }
+    .metric-value { font-size: 21px; }
+    .chart-wrap { height: 230px; }
+    .trend-head { flex-direction: column; align-items: flex-start; }
+    .card-subjects, .card-category, .card-rotation, .card-results { grid-column: span 12; }
+    .result-row { grid-template-columns: auto 1fr auto; }
+    .result-sub { display: none; }
+    .rotation-body { flex-direction: column; }
+  }
+</style>
+<base target="_blank">
+    <script src="auth-lock.js" data-login-url="index.html"></script>
+</head>
+<body>
+
+<div class="app" id="performanceDashboard" data-dashboard="performance">
+
+  <!-- ================= Header ================= -->
+  <header class="dash-header" id="dashHeader">
+    <div class="dash-logo" id="dashLogo">
+      <img src="images/app-logo.png?v=20260903-mascot" alt="AjiX mascot" />
+    </div>
+
+    <h1 class="dash-title" id="dashTitle">Performance Dashboard</h1>
+
+    <div class="dash-actions">
+      <button class="icon-btn" id="themeToggle" data-action="theme" aria-label="Toggle color theme" title="Toggle theme">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="dashMenuBtn" data-action="menu" aria-label="Open menu">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="dashCloseBtn" data-action="close" aria-label="Close dashboard">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="dash-nav-panel" id="dashNavPanel" hidden aria-label="Dashboard navigation">
+    <div class="dash-nav-title">Dashboard</div>
+    <button class="dash-nav-link" type="button" data-dash-route="quiz-menu">Menu</button>
+    <button class="dash-nav-link" type="button" data-dash-route="home-screen">Home</button>
+    <button class="dash-nav-link" type="button" data-dash-route="extra-screen">Extra</button>
+    <button class="dash-nav-link" type="button" data-dash-route="community-screen">Chat</button>
+    <button class="dash-nav-link" type="button" data-dash-route="settings-screen">Settings</button>
+    <button class="dash-nav-link" type="button" data-dash-route="profile-screen">Profile</button>
+    <button class="dash-nav-link" type="button" data-dash-route="tour-screen">Help</button>
+  </div>
+
+  <!-- ================= Summary metrics ================= -->
+  <section class="metrics-grid" id="summaryMetrics" aria-label="Summary metrics">
+    <div class="metric-card" data-metric="sessions">
+      <div class="metric-card-head"><div class="metric-label">Total Sessions</div><span class="streak-pill" id="metricStreakPill">0 day streak</span></div>
+      <div class="metric-value" id="metricSessions">0</div>
+      <span class="metric-delta" id="deltaSessions">New</span>
+    </div>
+    <div class="metric-card" data-metric="accuracy">
+      <div class="metric-label">Avg. Accuracy</div>
+      <div class="metric-value" id="metricAccuracy">0.0%</div>
+      <span class="metric-delta" id="deltaAccuracy">New</span>
+    </div>
+    <div class="metric-card" data-metric="studyTime">
+      <div class="metric-label">Study Time</div>
+      <div class="metric-value" id="metricStudyTime">0.0h</div>
+      <span class="metric-delta" id="deltaStudyTime">New</span>
+    </div>
+    <div class="metric-card" data-metric="score">
+      <div class="metric-label">Total Score</div>
+      <div class="metric-value" id="metricScore">0</div>
+      <span class="metric-delta" id="deltaScore">New</span>
+    </div>
+  </section>
+
+  <!-- ================= Session trend ================= -->
+  <section class="card trend-card" id="sessionTrend" data-chart="session-trend">
+    <div class="trend-head">
+      <h2>Session Trend</h2>
+      <div class="period-tabs" id="periodTabs" role="tablist" aria-label="Chart period">
+        <button class="period-tab active" data-period="SS" role="tab" aria-selected="true">SS</button>
+        <button class="period-tab" data-period="DD" role="tab">DD</button>
+        <button class="period-tab" data-period="MM" role="tab">MM</button>
+        <button class="period-tab" data-period="YY" role="tab">YY</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="sessionTrendChart"></canvas>
+      <div class="chart-tooltip" id="chartTooltip"></div>
+    </div>
+  </section>
+
+  <!-- ================= Bottom grid ================= -->
+  <section class="bottom-grid">
+
+    <div class="card card-subjects" id="topSubjects">
+      <div class="card-title">Top Subjects <span class="hint">by accuracy</span></div>
+      <div class="subject-row" data-subject="mathematics" data-score="92">
+        <span class="subject-rank">1</span>
+        <div class="subject-info">
+          <div class="subject-name">Mathematics</div>
+          <div class="subject-meta">64 sessions</div>
+        </div>
+        <span class="subject-score">92%</span>
+      </div>
+      <div class="subject-row" data-subject="physics" data-score="88">
+        <span class="subject-rank">2</span>
+        <div class="subject-info">
+          <div class="subject-name">Physics</div>
+          <div class="subject-meta">51 sessions</div>
+        </div>
+        <span class="subject-score">88%</span>
+      </div>
+      <div class="subject-row" data-subject="chemistry" data-score="85">
+        <span class="subject-rank">3</span>
+        <div class="subject-info">
+          <div class="subject-name">Chemistry</div>
+          <div class="subject-meta">47 sessions</div>
+        </div>
+        <span class="subject-score">85%</span>
+      </div>
+      <div class="subject-row" data-subject="biology" data-score="79">
+        <span class="subject-rank">4</span>
+        <div class="subject-info">
+          <div class="subject-name">Biology</div>
+          <div class="subject-meta">42 sessions</div>
+        </div>
+        <span class="subject-score">79%</span>
+      </div>
+      <div class="subject-row" data-subject="english" data-score="74">
+        <span class="subject-rank">5</span>
+        <div class="subject-info">
+          <div class="subject-name">English</div>
+          <div class="subject-meta">44 sessions</div>
+        </div>
+        <span class="subject-score">74%</span>
+      </div>
+    </div>
+
+    <div class="card card-category" id="categoryBreakdown">
+      <div class="card-title">Category Breakdown <span class="hint">this month</span></div>
+      <div class="cat-row" data-category="practice">
+        <div class="cat-head"><span class="cat-name">Practice Tests</span><span class="cat-val">42%</span></div>
+        <div class="cat-track"><div class="cat-fill" data-fill="42" style="background:var(--accent)"></div></div>
+      </div>
+      <div class="cat-row" data-category="review">
+        <div class="cat-head"><span class="cat-name">Review</span><span class="cat-val">27%</span></div>
+        <div class="cat-track"><div class="cat-fill" data-fill="27" style="background:var(--violet)"></div></div>
+      </div>
+      <div class="cat-row" data-category="lessons">
+        <div class="cat-head"><span class="cat-name">Lessons</span><span class="cat-val">19%</span></div>
+        <div class="cat-track"><div class="cat-fill" data-fill="19" style="background:var(--green)"></div></div>
+      </div>
+      <div class="cat-row" data-category="flashcards">
+        <div class="cat-head"><span class="cat-name">Flashcards</span><span class="cat-val">12%</span></div>
+        <div class="cat-track"><div class="cat-fill" data-fill="12" style="background:var(--amber)"></div></div>
+      </div>
+    </div>
+
+    <div class="card card-rotation" id="rotationBreakdown">
+      <div class="card-title">Rotation Breakdown <span class="hint">time split</span></div>
+      <div class="rotation-body">
+        <div class="donut" id="rotationDonut">
+          <svg width="118" height="118" viewBox="0 0 118 118">
+            <circle cx="59" cy="59" r="48" fill="none" stroke="var(--surface-2)" stroke-width="13"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--accent)"  stroke-width="13" data-seg="38" stroke-linecap="round"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--violet)" stroke-width="13" data-seg="27" stroke-linecap="round"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--green)"  stroke-width="13" data-seg="21" stroke-linecap="round"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--amber)"  stroke-width="13" data-seg="14" stroke-linecap="round"/>
+          </svg>
+          <div class="donut-center">
+            <div>
+              <div class="dc-value">36.5h</div>
+              <div class="dc-label">Total</div>
+            </div>
+          </div>
+        </div>
+        <div class="legend" id="rotationLegend">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span><span class="legend-name">Deep Work</span><span class="legend-val">38%</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--violet)"></span><span class="legend-name">Problem Sets</span><span class="legend-val">27%</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--green)"></span><span class="legend-name">Reading</span><span class="legend-val">21%</span></div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span><span class="legend-name">Drills</span><span class="legend-val">14%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-results" id="recentResults">
+      <div class="card-title">Recent Results <span class="hint">latest sessions</span></div>
+      <div class="results-list" id="resultsList">
+                <div class="result-empty">Loading recent results...</div>
+      </div>
+        <div class="result-row" data-result="pass" data-score="88">
+          <span class="result-date">Sep 02</span>
+          <span class="result-name">Thermodynamics Quiz</span>
+          <span class="result-sub">Physics</span>
+          <span class="result-badge pass">88%</span>
+        </div>
+        <div class="result-row" data-result="avg" data-score="76">
+          <span class="result-date">Sep 01</span>
+          <span class="result-name">Organic Chemistry Review</span>
+          <span class="result-sub">Chemistry</span>
+          <span class="result-badge avg">76%</span>
+        </div>
+        <div class="result-row" data-result="pass" data-score="91">
+          <span class="result-date">Aug 31</span>
+          <span class="result-name">Cell Biology Mock Exam</span>
+          <span class="result-sub">Biology</span>
+          <span class="result-badge pass">91%</span>
+        </div>
+        <div class="result-row" data-result="fail" data-score="58">
+          <span class="result-date">Aug 30</span>
+          <span class="result-name">Reading Comprehension Set 8</span>
+          <span class="result-sub">English</span>
+          <span class="result-badge fail">58%</span>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+    });
+  }
+
+  function readStoredArray(key) {
+    try {
+      var value = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch (e) { return []; }
+  }
+
+  function getStoredSessions() {
+    var combined = readStoredArray('quizSessionHistory').concat(readStoredArray('recentSessionResults'));
+    var seen = {};
+    return combined.filter(function (entry) {
+      if (!entry || typeof entry !== 'object' || !entry.total) return false;
+      var key = String(entry.sessionId || '') + '|' + String(entry.timestamp || entry.date || '') + '|' + String(entry.score || '') + '|' + String(entry.total || '');
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    }).map(function (entry) {
+      var score = Number(entry.score) || 0;
+      var total = Number(entry.total) || 0;
+      var date = new Date(entry.timestamp || entry.createdAt || entry.date || 0);
+      return { entry: entry, score: score, total: total, percent: Number(entry.percent) || Math.round(score / total * 100), date: date };
+    }).filter(function (item) { return !isNaN(item.date.getTime()); }).sort(function (a, b) { return a.date - b.date; });
+  }
+
+  function durationHours(value) {
+    if (typeof value === 'number' && isFinite(value)) return value > 1000 ? value / 3600000 : value / 3600;
+    var text = String(value || '').toLowerCase();
+    var hours = Number((text.match(/([0-9.]+)\\s*h/) || [])[1]) || 0;
+    var minutes = Number((text.match(/([0-9.]+)\\s*m/) || [])[1]) || 0;
+    var seconds = Number((text.match(/([0-9.]+)\\s*s/) || [])[1]) || 0;
+    return hours + minutes / 60 + seconds / 3600;
+  }
+
+  function renderSummary() {
+    var sessions = getStoredSessions();
+    var total = sessions.length;
+    var totalScore = sessions.reduce(function (sum, item) { return sum + item.score; }, 0);
+    var totalQuestions = sessions.reduce(function (sum, item) { return sum + item.total; }, 0);
+    var accuracy = totalQuestions ? Math.round(totalScore / totalQuestions * 1000) / 10 : 0;
+    var studyHours = sessions.reduce(function (sum, item) { return sum + durationHours(item.entry.duration); }, 0);
+    var days = {};
+    sessions.forEach(function (item) { days[item.date.toISOString().slice(0, 10)] = true; });
+    var streak = 0;
+    var cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+    while (days[cursor.toISOString().slice(0, 10)]) { streak++; cursor.setDate(cursor.getDate() - 1); }
+    var values = { metricSessions: total, metricAccuracy: accuracy.toFixed(1) + "%", metricStudyTime: studyHours.toFixed(1) + "h", metricScore: totalScore };
+    Object.keys(values).forEach(function (id) { var node = document.getElementById(id); if (node) node.textContent = values[id]; });
+    var pill = document.getElementById("metricStreakPill");
+    if (pill) pill.textContent = streak + (streak === 1 ? " day streak" : " day streak");
+    function dayStart(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
+    function rangeFor(mode, offset) {
+      var now = new Date();
+      if (mode === "SS") {
+        var index = sessions.length - 1 - offset;
+        if (index < 0) return null;
+        return { start: sessions[index].date, end: new Date(sessions[index].date.getTime() + 1), single: true };
+      }
+      if (mode === "DD") {
+        var day = dayStart(now);
+        day.setDate(day.getDate() - offset);
+        return { start: day, end: new Date(day.getTime() + 86400000) };
+      }
+      if (mode === "MM") {
+        var month = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+        return { start: month, end: new Date(month.getFullYear(), month.getMonth() + 1, 1) };
+      }
+      var year = new Date(now.getFullYear() - offset, 0, 1);
+      return { start: year, end: new Date(year.getFullYear() + 1, 0, 1) };
+    }
+    function metricsFor(range) {
+      if (!range) return null;
+      var selected = sessions.filter(function (item) { return item.date >= range.start && item.date < range.end; });
+      return { sessions: range.single ? selected.length : selected.length, score: selected.reduce(function (sum, item) { return sum + item.score; }, 0), studyHours: selected.reduce(function (sum, item) { return sum + durationHours(item.entry.duration); }, 0) };
+    }
+    function cumulativeAccuracy(end) {
+      var selected = sessions.filter(function (item) { return item.date < end; });
+      var score = selected.reduce(function (sum, item) { return sum + item.score; }, 0);
+      var questions = selected.reduce(function (sum, item) { return sum + item.total; }, 0);
+      return questions ? score / questions * 100 : null;
+    }
+    var mode = typeof currentPeriod === "string" ? currentPeriod : "SS";
+    var currentRange = rangeFor(mode, 0);
+    var previousRange = rangeFor(mode, 1);
+    var currentMetrics = metricsFor(currentRange);
+    var previousMetrics = metricsFor(previousRange);
+    var currentEnd = currentRange ? currentRange.end : new Date();
+    var previousEnd = previousRange ? previousRange.end : null;
+    function setDelta(id, currentValue, previousValue, suffix, percentagePoints) {
+      var node = document.getElementById(id);
+      if (!node) return;
+      node.className = 'metric-delta';
+      if (previousValue == null || currentValue == null) { node.textContent = 'New'; return; }
+      var change = percentagePoints ? currentValue - previousValue : currentValue - previousValue;
+      if (!percentagePoints && currentValue === previousValue) change = 0;
+      var rounded = Math.round(Math.abs(change) * 10) / 10;
+      if (rounded === 0) { node.textContent = 'No change'; return; }
+      node.classList.add(change > 0 ? 'up' : 'down');
+      node.textContent = (change > 0 ? '\u2191 ' : '\u2193 ') + rounded + suffix;
+    }
+    setDelta("deltaSessions", currentMetrics && currentMetrics.sessions, previousMetrics && previousMetrics.sessions, "", false);
+    setDelta("deltaAccuracy", cumulativeAccuracy(currentEnd), previousEnd ? cumulativeAccuracy(previousEnd) : null, " pp", true);
+    setDelta("deltaStudyTime", currentMetrics && currentMetrics.studyHours, previousMetrics && previousMetrics.studyHours, "h", false);
+    setDelta("deltaScore", currentMetrics && currentMetrics.score, previousMetrics && previousMetrics.score, "", false);
+  }
+
+  function buildRealPeriods() {
+    var sessions = getStoredSessions();
+    var DAY = 86400000;
+    function localDay(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
+    function keyFor(date, mode) {
+      if (mode === 'DD') return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate();
+      if (mode === 'MM') return date.getFullYear() + '-' + date.getMonth();
+      return String(date.getFullYear());
+    }
+    function average(values) {
+      return values.length ? Math.round(values.reduce(function (sum, value) { return sum + value; }, 0) / values.length) : null;
+    }
+    function bucketed(mode, count) {
+      var today = localDay(new Date());
+      var buckets = [];
+      for (var offset = count - 1; offset >= 0; offset--) {
+        var date;
+        if (mode === 'DD') date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset);
+        else if (mode === 'MM') date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+        else date = new Date(today.getFullYear() - offset, 0, 1);
+        buckets.push({ date: date, values: [] });
+      }
+      sessions.forEach(function (session) {
+        var key = keyFor(session.date, mode);
+        buckets.forEach(function (bucket) {
+          if (keyFor(bucket.date, mode) === key) bucket.values.push(session.percent);
+        });
+      });
+      return {
+        labels: buckets.map(function (bucket) {
+          if (mode === 'DD') return bucket.date.toLocaleDateString(undefined, { weekday: 'short' });
+          if (mode === 'MM') return bucket.date.toLocaleDateString(undefined, { month: 'short' });
+          return String(bucket.date.getFullYear());
+        }),
+        data: buckets.map(function (bucket) { return average(bucket.values); }),
+        unit: 'accuracy'
+      };
+    }
+    var lastSessions = sessions.slice(-8);
+    return {
+      SS: { labels: Array.from({ length: 8 }, function (_, index) { return lastSessions[index] ? lastSessions[index].date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '--'; }), data: Array.from({ length: 8 }, function (_, index) { return lastSessions[index] ? lastSessions[index].percent : null; }), unit: 'accuracy' },
+      DD: bucketed('DD', 8),
+      MM: bucketed('MM', 8),
+      YY: bucketed('YY', 8)
+    };
+  }
+
+  function renderRecentResults() {
+    var list = document.getElementById('resultsList');
+    if (!list) return;
+    var combined = readStoredArray('quizSessionHistory').concat(readStoredArray('recentSessionResults'));
+    var seen = {};
+    var entries = combined.filter(function (entry) {
+      if (!entry || typeof entry !== 'object') return false;
+      var key = String(entry.sessionId || '') + '|' + String(entry.timestamp || entry.date || '') + '|' + String(entry.score || '') + '|' + String(entry.total || '');
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    }).sort(function (a, b) {
+      return new Date(b.timestamp || b.createdAt || b.date || 0).getTime() - new Date(a.timestamp || a.createdAt || a.date || 0).getTime();
+    }).slice(0, 20);
+    if (!entries.length) {
+      list.innerHTML = '<div class="result-empty">No recent results yet.</div>';
+      return;
+    }
+    list.innerHTML = entries.map(function (entry) {
+      var score = Number(entry.score) || 0;
+      var total = Number(entry.total) || 0;
+      var percent = Math.max(0, Math.min(100, Number(entry.percent) || (total ? Math.round(score / total * 100) : 0)));
+      var status = percent >= 80 ? 'pass' : (percent >= 60 ? 'avg' : 'fail');
+      var date = new Date(entry.timestamp || entry.createdAt || entry.date || 0);
+      var dateLabel = isNaN(date.getTime()) ? 'Recent session' : date.toLocaleDateString(undefined, { month: 'short', day: '2-digit' });
+      var mode = String(entry.mode || 'Practice session');
+      return '<div class="result-row" data-result="' + status + '" data-score="' + percent + '">' +
+        '<span class="result-date">' + escapeHtml(dateLabel) + '</span>' +
+        '<span class="result-name">' + escapeHtml(mode) + '</span>' +
+        '<span class="result-sub">' + escapeHtml(score + '/' + total) + '</span>' +
+        '<span class="result-badge ' + status + '">' + percent + '%</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  renderRecentResults();
+
+  function renderTopSubjects() {
+    var rows = readStoredObject('quizCategoryPerformance');
+    var card = document.getElementById('topSubjects');
+    if (!card) return;
+    var subjects = Object.keys(rows).map(function (name) {
+      var item = rows[name] || {};
+      var attempts = Number(item.attempts) || 0;
+      var correct = Math.min(attempts, Number(item.correct) || 0);
+      return { name: name, attempts: attempts, accuracy: attempts ? Math.round(correct / attempts * 1000) / 10 : 0 };
+    }).filter(function (item) { return item.attempts > 0; }).sort(function (a, b) {
+      return b.accuracy - a.accuracy || b.attempts - a.attempts;
+    }).slice(0, 5);
+    card.querySelectorAll('.subject-row, .data-empty').forEach(function (node) { node.remove(); });
+    if (!subjects.length) {
+      card.insertAdjacentHTML('beforeend', '<div class="data-empty">No subject data yet.</div>');
+      return;
+    }
+    subjects.forEach(function (item, index) {
+      var row = document.createElement('div');
+      row.className = 'subject-row';
+      row.innerHTML = '<span class="subject-rank">' + (index + 1) + '</span>' +
+        '<div class="subject-info"><div class="subject-name">' + escapeHtml(item.name) + '</div>' +
+        '<div class="subject-meta">' + item.attempts + ' attempts</div></div>' +
+        '<span class="subject-score">' + item.accuracy + '%</span>';
+      card.appendChild(row);
+    });
+  }
+
+  renderTopSubjects();
+
+  function renderCategoryBreakdown() {
+    var rows = readStoredObject('quizCategoryPerformance');
+    var card = document.getElementById('categoryBreakdown');
+    if (!card) return;
+    var categories = Object.keys(rows).map(function (name) {
+      var item = rows[name] || {};
+      var attempts = Number(item.attempts) || 0;
+      var correct = Math.min(attempts, Number(item.correct) || 0);
+      return { name: name, attempts: attempts, accuracy: attempts ? Math.round(correct / attempts * 1000) / 10 : 0 };
+    }).filter(function (item) { return item.attempts > 0; }).sort(function (a, b) { return b.attempts - a.attempts; });
+    var title = card.querySelector('.card-title');
+    card.querySelectorAll('.cat-row, .data-empty').forEach(function (node) { node.remove(); });
+    if (!categories.length) {
+      card.insertAdjacentHTML('beforeend', '<div class="data-empty">No category data yet.</div>');
+      return;
+    }
+    categories.forEach(function (item, index) {
+      var colors = ['var(--accent)', 'var(--violet)', 'var(--green)', 'var(--amber)'];
+      var row = document.createElement('div');
+      row.className = 'cat-row';
+      row.innerHTML = '<div class="cat-head"><span class="cat-name">' + escapeHtml(item.name) + '</span><span class="cat-val">' + item.accuracy + '%</span></div>' +
+        '<div class="cat-track"><div class="cat-fill" style="width:' + item.accuracy + '%;background:' + colors[index % colors.length] + '"></div></div>';
+      card.appendChild(row);
+    });
+  }
+
+  function readStoredObject(key) {
+    try {
+      var value = JSON.parse(localStorage.getItem(key) || '{}');
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    } catch (e) { return {}; }
+  }
+
+  function renderRotationBreakdown(sourceRows) {
+    var rows = sourceRows || readStoredObject('quizRotationPerformance');
+    var card = document.getElementById('rotationBreakdown');
+    var legend = document.getElementById('rotationLegend');
+    if (!card || !legend) return;
+    var rotations = Object.keys(rows).map(function (name) {
+      var item = rows[name] || {};
+      return { name: name, attempts: Number(item.attempts) || 0, correct: Number(item.correct) || 0 };
+    }).filter(function (item) { return item.attempts > 0; }).sort(function (a, b) { return b.attempts - a.attempts; }).slice(0, 4);
+    var total = rotations.reduce(function (sum, item) { return sum + item.attempts; }, 0);
+    var colors = ['var(--accent)', 'var(--violet)', 'var(--green)', 'var(--amber)'];
+    var circumference = 2 * Math.PI * 48;
+    var segments = card.querySelectorAll('circle.seg');
+    var offset = 0;
+    Array.prototype.forEach.call(segments, function (circle, index) {
+      var share = rotations[index] && total ? rotations[index].attempts / total : 0;
+      var length = share * circumference;
+      circle.style.strokeDasharray = length + ' ' + circumference;
+      circle.style.strokeDashoffset = -offset;
+      circle.style.stroke = colors[index % colors.length];
+      offset += length;
+    });
+    legend.innerHTML = rotations.length ? rotations.map(function (item, index) {
+      var share = Math.round(item.attempts / total * 100);
+      return '<div class="legend-item"><span class="legend-dot" style="background:' + colors[index % colors.length] + '"></span><span class="legend-name">' + escapeHtml(item.name) + '</span><span class="legend-val">' + share + '%</span></div>';
+    }).join('') : '<div class="data-empty">No rotation data yet.</div>';
+    var totalLabel = card.querySelector('.dc-value');
+    if (totalLabel) totalLabel.textContent = total ? String(total) : '0';
+  }
+
+  function hydrateRotationBreakdown() {
+    var stats = readStoredObject('quizPerformance');
+    if (!Object.keys(stats).length) return;
+    Promise.all([
+      import('./data.js?v=20260904-dashboard-rotation-data'),
+      import('./rotationTaxonomy.js?v=20260904-dashboard-rotation-data')
+    ]).then(function (modules) {
+      var module = modules[0];
+      var rotationModule = modules[1];
+      var questions = Array.isArray(module.baseQuestions) ? module.baseQuestions : [];
+      var derived = {};
+      questions.forEach(function (question) {
+        var stat = stats[String(question.id)] || stats[question.id];
+        var attempts = Number(stat && stat.attempts) || 0;
+        if (!attempts) return;
+        var correct = Math.min(attempts, Number(stat.correct) || 0);
+        var rotations = Array.isArray(question.rotations) ? question.rotations.slice() : [question.rotation || question.rotationGroup || question.rotationName];
+        if (!rotations.filter(Boolean).length && rotationModule && rotationModule.inferQuestionRotations) {
+          rotations = rotationModule.inferQuestionRotations(question);
+        } else if (!rotations.filter(Boolean).length && rotationModule && rotationModule.inferQuestionRotation) {
+          rotations = [rotationModule.inferQuestionRotation(question)];
+        }
+        rotations.filter(Boolean).forEach(function (rotation) {
+          var key = String(rotation).trim();
+          if (!key || key.toLowerCase() === 'all') return;
+          if (!derived[key]) derived[key] = { attempts: 0, correct: 0 };
+          derived[key].attempts += attempts;
+          derived[key].correct += correct;
+        });
+      });
+      if (Object.keys(derived).length) renderRotationBreakdown(derived);
+    }).catch(function () {});
+  }
+
+  renderCategoryBreakdown();
+  renderRotationBreakdown();
+  hydrateRotationBreakdown();
+
+  /* ================= Theme ================= */
+  var root = document.documentElement;
+  var themeToggle = document.getElementById('themeToggle');
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    try { localStorage.setItem('dashboard-theme', theme); } catch (e) {}
+    drawChart(currentPeriod, 1); // repaint chart with new colors
+  }
+  try {
+    var saved = localStorage.getItem('dashboard-theme');
+    if (saved) root.setAttribute('data-theme', saved);
+  } catch (e) {}
+
+  themeToggle.addEventListener('click', function () {
+    applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  /* ================= CSS variable reader ================= */
+  function cssVar(name) {
+    return getComputedStyle(root).getPropertyValue(name).trim();
+  }
+
+  /* ================= Chart data ================= */
+  var PERIODS = buildRealPeriods();
+  /* ================= Canvas chart ================= */
+  var canvas = document.getElementById('sessionTrendChart');
+  var ctx = canvas.getContext('2d');
+  var tooltip = document.getElementById('chartTooltip');
+  var chartWrap = canvas.parentElement;
+  var currentPeriod = 'SS';
+  renderSummary();
+  var animFrame = null;
+  var hoverIndex = -1;
+
+  var PAD = { top: 14, right: 14, bottom: 26, left: 40 };
+
+  function niceTicks(min, max, count) {
+    var span = max - min || 1;
+    var step0 = span / count;
+    var mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    var step = mag * (step0 / mag > 5 ? 10 : step0 / mag > 2 ? 5 : step0 / mag > 1 ? 2 : 1);
+    var lo = Math.floor(min / step) * step;
+    var ticks = [];
+    for (var v = lo; v <= max + step * 0.5; v += step) ticks.push(v);
+    return ticks;
+  }
+
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function drawChart(period, progress) {
+    var cfg = PERIODS[period];
+    var data = cfg.data;
+    var labels = cfg.labels;
+
+    var dpr = window.devicePixelRatio || 1;
+    var w = chartWrap.clientWidth;
+    var h = chartWrap.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var cText3 = cssVar('--text-3') || '#8a93a3';
+    var cBorder = cssVar('--border') || '#e5e9f0';
+    var cAccent = cssVar('--accent') || '#4f7cff';
+
+    var iw = w - PAD.left - PAD.right;
+    var ih = h - PAD.top - PAD.bottom;
+
+    var numericData = data.filter(function (value) { return value != null && isFinite(value); });
+    if (!numericData.length) numericData = [0];
+    var min = Math.min.apply(null, numericData), max = Math.max.apply(null, numericData);
+    var padY = (max - min) * 0.15 || 1;
+    min -= padY; max += padY;
+    var ticks = niceTicks(min, max, 4);
+    min = ticks[0];
+    max = ticks[ticks.length - 1];
+
+    function x(i) { return PAD.left + (data.length === 1 ? iw / 2 : (i / (data.length - 1)) * iw); }
+    function y(v) { return PAD.top + ih - ((v - min) / (max - min)) * ih; }
+
+    /* Grid lines + Y labels */
+    ctx.font = '11px -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ticks.forEach(function (t) {
+      var yy = y(t);
+      ctx.strokeStyle = cBorder;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, yy);
+      ctx.lineTo(w - PAD.right, yy);
+      ctx.stroke();
+      ctx.fillStyle = cText3;
+      ctx.fillText(String(Math.round(t)), PAD.left - 8, yy);
+    });
+
+    /* X labels (thin out if crowded) */
+    var stepL = 1;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (var i = 0; i < labels.length; i += stepL) {
+      ctx.fillStyle = cText3;
+      ctx.fillText(labels[i], x(i), PAD.top + ih + 8);
+    }
+
+    /* Smooth path via midpoint quadratics */
+    var plotData = data.map(function (value, index) {
+      if (value != null) return value;
+      var before = index - 1;
+      while (before >= 0 && data[before] == null) before--;
+      var after = index + 1;
+      while (after < data.length && data[after] == null) after++;
+      if (before < 0 && after >= data.length) return 0;
+      if (before < 0) return data[after];
+      if (after >= data.length) return data[before];
+      var ratio = (index - before) / (after - before);
+      return data[before] + (data[after] - data[before]) * ratio;
+    });
+    var pts = plotData.map(function (v, i) { return [x(i), y(v)]; });
+    function tracePath() {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var i = 1; i < pts.length; i++) {
+        var mx = (pts[i - 1][0] + pts[i][0]) / 2;
+        var my = (pts[i - 1][1] + pts[i][1]) / 2;
+        ctx.quadraticCurveTo(pts[i - 1][0], pts[i - 1][1], mx, my);
+      }
+      ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+    }
+
+    /* Area fill */
+    tracePath();
+    ctx.lineTo(pts[pts.length - 1][0], PAD.top + ih);
+    ctx.lineTo(pts[0][0], PAD.top + ih);
+    ctx.closePath();
+    var grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ih);
+    grad.addColorStop(0, cAccent + '2e');
+    grad.addColorStop(1, cAccent + '00');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    /* Line */
+    tracePath();
+    ctx.strokeStyle = cAccent;
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    /* Points */
+    var lastVisible = Math.floor((data.length - 1) * progress) + 1;
+    pts.forEach(function (p, i) {
+      if (i >= lastVisible) return;
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], i === hoverIndex ? 5 : 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = cssVar('--surface') || '#fff';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = cAccent;
+      ctx.stroke();
+    });
+
+    /* Hover marker */
+    if (hoverIndex >= 0 && hoverIndex < pts.length) {
+      var hp = pts[hoverIndex];
+      ctx.strokeStyle = cBorder;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(hp[0], PAD.top);
+      ctx.lineTo(hp[0], PAD.top + ih);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    canvas._pts = pts;
+  }
+
+  function animateChart(period) {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    var start = performance.now();
+    var DUR = 500;
+    function frame(now) {
+      var t = Math.min(1, (now - start) / DUR);
+      drawChart(period, easeOut(t));
+      if (t < 1) animFrame = requestAnimationFrame(frame);
+    }
+    animFrame = requestAnimationFrame(frame);
+  }
+
+  /* Tooltip */
+  canvas.addEventListener('mousemove', function (e) {
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var pts = canvas._pts || [];
+    if (!pts.length) return;
+    var best = 0, bestD = Infinity;
+    pts.forEach(function (p, i) {
+      var d = Math.abs(p[0] - mx);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    if (best !== hoverIndex) { hoverIndex = best; drawChart(currentPeriod, 1); }
+    var cfg = PERIODS[currentPeriod];
+    tooltip.innerHTML = '<span class="tt-label">' + cfg.labels[best] + '</span>' +
+                        cfg.data[best] + ' ' + cfg.unit;
+    tooltip.style.left = pts[best][0] + 'px';
+    tooltip.style.top = pts[best][1] + 'px';
+    tooltip.style.opacity = '1';
+  });
+  canvas.addEventListener('mouseleave', function () {
+    hoverIndex = -1;
+    tooltip.style.opacity = '0';
+    drawChart(currentPeriod, 1);
+  });
+
+  /* Period tabs */
+  var tabs = document.querySelectorAll('.period-tab');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      tabs.forEach(function (t) {
+        t.classList.remove('active');
+        t.removeAttribute('aria-selected');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      currentPeriod = tab.getAttribute('data-period');
+      renderSummary();
+      animateChart(currentPeriod);
+    });
+  });
+
+  /* ================= Category bar fills ================= */
+  function fillBars() {
+    document.querySelectorAll('.cat-fill').forEach(function (el) {
+      el.style.width = el.getAttribute('data-fill') + '%';
+    });
+  }
+
+  /* ================= Donut segments ================= */
+  function drawDonut() {
+    var segs = document.querySelectorAll('#rotationDonut .seg');
+    var C = 2 * Math.PI * 48; // r = 48
+    var offset = 0;
+    segs.forEach(function (s) {
+      var pct = parseFloat(s.getAttribute('data-seg')) / 100;
+      var len = pct * C;
+      s.setAttribute('stroke-dasharray', Math.max(0, len - 4) + ' ' + (C - len + 4));
+      s.setAttribute('stroke-dashoffset', String(-offset));
+      offset += len;
+    });
+  }
+
+  /* ================= Header actions ================= */
+  function navigateToAppScreen(screenId) {
+    window.location.assign('/index.html?screen=' + encodeURIComponent(screenId));
+  }
+  var dashNavPanel = document.getElementById('dashNavPanel');
+  document.getElementById('dashCloseBtn').addEventListener('click', function () { navigateToAppScreen('quiz-menu'); });
+  document.getElementById('dashMenuBtn').addEventListener('click', function (event) { event.stopPropagation(); dashNavPanel.hidden = !dashNavPanel.hidden; });
+  dashNavPanel.addEventListener('click', function (event) { var button = event.target.closest('[data-dash-route]'); if (button) navigateToAppScreen(button.getAttribute('data-dash-route')); });
+  document.addEventListener('click', function (event) { if (!dashNavPanel.hidden && !dashNavPanel.contains(event.target) && event.target.id !== 'dashMenuBtn') dashNavPanel.hidden = true; });
+  /* ================= Init / resize ================= */
+  var resizeT;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(function () { drawChart(currentPeriod, 1); }, 120);
+  });
+
+  drawDonut();
+  requestAnimationFrame(function () {
+    animateChart(currentPeriod);
+    fillBars();
+  });
+})();
+</script>
+
+</body>
+</html>

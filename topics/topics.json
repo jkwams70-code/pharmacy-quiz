@@ -36,8 +36,6 @@
         "resistant-hypertension"
       ],
       "sections": [
-<<<<<<< HEAD
-<<<<<<< HEAD
         { "id": "learning-objectives", "title": "Learning Objectives" },
         { "id": "introduction", "title": "Introduction: The Silent Killer" },
         { "id": "classification-of-blood-pressure", "title": "Classification of Blood Pressure" },
@@ -51,25 +49,6 @@
         { "id": "summary-for-exam-preparation", "title": "Summary for Exam Preparation" },
         { "id": "key-guidelines-links", "title": "Key Guidelines Links" },
         { "id": "comprehensive-question-bank", "title": "Questions & Topic Quiz" }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        { "id": "what-is-hypertension", "title": "What Is Hypertension?" },
-        { "id": "primary-vs-secondary", "title": "Primary vs Secondary Hypertension" },
-        { "id": "risk-factors", "title": "Risk Factors" },
-        { "id": "complications", "title": "Complications" },
-        { "id": "treatment-goals", "title": "Treatment Goals" },
-        { "id": "lifestyle-management", "title": "Non-Pharmacologic Management" },
-        { "id": "first-line-drug-classes", "title": "First-Line Drug Classes" },
-        { "id": "special-populations", "title": "Special Populations" },
-        { "id": "resistant-hypertension", "title": "Resistant Hypertension" },
-        { "id": "hypertensive-crisis", "title": "Hypertensive Crisis" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       ]
     },
     {
@@ -132,23 +111,13 @@
       "slug": "arrhythmias",
       "title": "Arrhythmias",
       "category": "Cardiovascular Disorders",
-<<<<<<< HEAD
-<<<<<<< HEAD
       "summary": "Comprehensive lecture note covering electrophysiology, antiarrhythmic classes, AF anticoagulation, ACLS arrhythmia management, and device strategy.",
-=======
-      "summary": "AF, VT, bradyarrhythmias, antiarrhythmic drug classes, and anticoagulation strategy.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-      "summary": "AF, VT, bradyarrhythmias, antiarrhythmic drug classes, and anticoagulation strategy.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       "level": "core",
       "notePath": "arrhythmias.html",
       "tags": [
         "af",
         "atrial-fibrillation",
         "vt",
-<<<<<<< HEAD
-<<<<<<< HEAD
         "avnrt",
         "torsades",
         "vaughan-williams",
@@ -170,31 +139,6 @@
         { "id": "patient-counseling-points", "title": "Patient Counseling Points" },
         { "id": "summary-for-exam-preparation", "title": "Summary for Exam Preparation" },
         { "id": "key-guidelines-links", "title": "Key Guidelines Links" }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        "vaughan-williams",
-        "doac",
-        "warfarin",
-        "amiodarone",
-        "digoxin"
-      ],
-      "sections": [
-        { "id": "what-are-arrhythmias", "title": "What Are Arrhythmias?" },
-        { "id": "electrophysiology-refresher", "title": "Basic Electrophysiology Refresher" },
-        { "id": "major-arrhythmias-tested", "title": "Major Arrhythmias Tested" },
-        { "id": "atrial-fibrillation", "title": "Atrial Fibrillation (AF)" },
-        { "id": "stroke-prevention-in-af", "title": "Stroke Prevention in AF" },
-        { "id": "ventricular-arrhythmias", "title": "Ventricular Arrhythmias" },
-        { "id": "bradyarrhythmias", "title": "Bradyarrhythmias" },
-        { "id": "vaughan-williams-summary", "title": "Vaughan-Williams Classification Summary" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       ]
     },
     {
@@ -230,15 +174,7 @@
       "slug": "anticoagulation-vte",
       "title": "Anticoagulation & VTE",
       "category": "Hematology",
-<<<<<<< HEAD
-<<<<<<< HEAD
       "summary": "A comprehensive lecture note covering hemostasis, DVT and PE, anticoagulant classes, reversal strategies, HIT, peri-procedural management, and VTE treatment decisions.",
-=======
-      "summary": "DVT/PE framework, DOAC-first strategy, heparins, warfarin, HIT, thrombolysis, and duration decisions.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-      "summary": "DVT/PE framework, DOAC-first strategy, heparins, warfarin, HIT, thrombolysis, and duration decisions.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       "level": "core",
       "notePath": "anticoagulation-vte.html",
       "tags": [
@@ -252,8 +188,6 @@
         "thrombolysis"
       ],
       "sections": [
-<<<<<<< HEAD
-<<<<<<< HEAD
         { "id": "learning-objectives", "title": "1. Learning Objectives" },
         { "id": "introduction-to-hemostasis-and-thrombosis", "title": "2. Introduction to Hemostasis and Thrombosis" },
         { "id": "venous-thromboembolism", "title": "3. Venous Thromboembolism" },
@@ -269,26 +203,6 @@
         { "id": "patient-counseling-points", "title": "13. Patient Counseling Points" },
         { "id": "summary-for-exam-preparation", "title": "14. Summary for Exam Preparation" },
         { "id": "key-guidelines-links", "title": "15. Key Guidelines Links" }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        { "id": "what-is-vte", "title": "What Is VTE?" },
-        { "id": "pathophysiology", "title": "Pathophysiology" },
-        { "id": "clinical-presentation", "title": "Clinical Presentation" },
-        { "id": "management-overview", "title": "Management Overview" },
-        { "id": "doacs", "title": "DOACs" },
-        { "id": "heparins", "title": "Heparins" },
-        { "id": "warfarin", "title": "Warfarin" },
-        { "id": "duration-of-therapy", "title": "Duration of Therapy" },
-        { "id": "pe-severity", "title": "PE Severity and Thrombolysis" },
-        { "id": "special-situations", "title": "Special Situations" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       ]
     },
     {
@@ -383,8 +297,6 @@
     },
     {
       "slug": "aortic-diseases",
-<<<<<<< HEAD
-<<<<<<< HEAD
       "title": "Aortic Disease",
       "category": "Cardiovascular Disorders",
       "summary": "Comprehensive lecture note covering aneurysm and dissection classification, surveillance, anti-impulse therapy, and repair thresholds.",
@@ -392,25 +304,10 @@
       "notePath": "aortic-diseases.html",
       "tags": [
         "aortic-aneurysm",
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-      "title": "Aortic Diseases",
-      "category": "Cardiovascular Disorders",
-      "summary": "Aortic dissection emergency sequence, AAA/TAA surveillance, blood pressure strategy, and repair thresholds.",
-      "level": "core",
-      "notePath": "aortic-diseases.html",
-      "tags": [
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         "aortic-dissection",
         "aaa",
         "taa",
         "beta-blocker",
-<<<<<<< HEAD
-<<<<<<< HEAD
         "marfan",
         "tevar",
         "surgical-threshold"
@@ -429,24 +326,6 @@
         { "id": "patient-counseling-points", "title": "Patient Counseling Points" },
         { "id": "summary-for-exam-preparation", "title": "Summary for Exam Preparation" },
         { "id": "key-guidelines-links", "title": "Key Guidelines Links" }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        "nitroprusside",
-        "marfan",
-        "surgical-threshold"
-      ],
-      "sections": [
-        { "id": "what-are-aortic-diseases", "title": "What Are Aortic Diseases?" },
-        { "id": "aortic-dissection", "title": "Aortic Dissection" },
-        { "id": "aortic-aneurysm", "title": "Aortic Aneurysm" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       ]
     },
     {
@@ -744,15 +623,7 @@
       "slug": "diabetes-mellitus",
       "title": "Diabetes Mellitus",
       "category": "Endocrinology",
-<<<<<<< HEAD
-<<<<<<< HEAD
       "summary": "A comprehensive lecture note covering diagnosis, glycemic monitoring, insulin and non-insulin therapy, ADA/EASD selection, acute emergencies, chronic complications, and patient counseling.",
-=======
-      "summary": "T1DM and T2DM diagnosis, insulin and non-insulin drug classes, DKA/HHS management, and complication prevention.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-      "summary": "T1DM and T2DM diagnosis, insulin and non-insulin drug classes, DKA/HHS management, and complication prevention.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       "level": "core",
       "notePath": "diabetes-mellitus.html",
       "tags": [
@@ -766,8 +637,6 @@
         "hhs"
       ],
       "sections": [
-<<<<<<< HEAD
-<<<<<<< HEAD
         { "id": "learning-objectives", "title": "1. Learning Objectives" },
         { "id": "introduction-to-diabetes-mellitus", "title": "2. Introduction to Diabetes Mellitus" },
         { "id": "classification-of-diabetes-mellitus", "title": "3. Classification of Diabetes Mellitus" },
@@ -785,25 +654,6 @@
         { "id": "patient-counseling-points", "title": "15. Patient Counseling Points" },
         { "id": "summary-for-exam-preparation", "title": "16. Summary for Exam Preparation" },
         { "id": "key-guidelines-links", "title": "17. Key Guidelines Links" }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        { "id": "what-is-diabetes", "title": "What Is Diabetes Mellitus?" },
-        { "id": "classification", "title": "Classification" },
-        { "id": "diagnostic-criteria", "title": "Diagnostic Criteria" },
-        { "id": "pathophysiology", "title": "Type 2 Pathophysiology" },
-        { "id": "goals-of-therapy", "title": "Goals of Therapy" },
-        { "id": "type-1-management", "title": "Type 1 Management" },
-        { "id": "type-2-pharmacology", "title": "Type 2 Pharmacologic Therapy" },
-        { "id": "acute-complications", "title": "Acute Complications" },
-        { "id": "chronic-complications", "title": "Chronic Complications" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       ]
     },
     {
@@ -840,15 +690,7 @@
       "slug": "adrenal-disorders",
       "title": "Adrenal Disorders",
       "category": "Endocrinology",
-<<<<<<< HEAD
-<<<<<<< HEAD
       "summary": "A comprehensive lecture note covering adrenal physiology, cortisol excess, adrenal insufficiency, pheochromocytoma, emergency care, and pharmacologic management.",
-=======
-      "summary": "Cortisol excess/deficiency patterns, adrenal crisis emergency therapy, and hyperaldosteronism management.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-      "summary": "Cortisol excess/deficiency patterns, adrenal crisis emergency therapy, and hyperaldosteronism management.",
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       "level": "core",
       "notePath": "adrenal-disorders.html",
       "tags": [
@@ -861,8 +703,6 @@
         "hydrocortisone"
       ],
       "sections": [
-<<<<<<< HEAD
-<<<<<<< HEAD
         { "id": "learning-objectives", "title": "1. Learning Objectives" },
         { "id": "introduction-to-the-adrenal-gland", "title": "2. Introduction to the Adrenal Gland" },
         { "id": "disorders-of-adrenal-cortical-excess", "title": "3. Disorders of Adrenal Cortical Excess" },
@@ -872,22 +712,6 @@
         { "id": "patient-counseling-points", "title": "7. Patient Counseling Points" },
         { "id": "summary-for-exam-preparation", "title": "8. Summary for Exam Preparation" },
         { "id": "key-guidelines-links", "title": "9. Key Guidelines Links" }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        { "id": "adrenal-physiology", "title": "Adrenal Physiology" },
-        { "id": "cushing-syndrome", "title": "Cushing Syndrome" },
-        { "id": "addison-disease", "title": "Addison Disease" },
-        { "id": "adrenal-crisis", "title": "Adrenal Crisis" },
-        { "id": "secondary-adrenal-insufficiency", "title": "Secondary Adrenal Insufficiency" },
-        { "id": "primary-hyperaldosteronism", "title": "Primary Hyperaldosteronism" },
-        { "id": "management-recap-drill", "title": "Management Recap Drill" },
-        { "id": "exam-traps", "title": "Common Exam Traps" },
-        { "id": "quick-revision", "title": "Quick Revision Summary" }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       ]
     },
     {

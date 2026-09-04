@@ -6,15 +6,7 @@
 - Confirm backup folder exists and latest timestamp is current
 
 ## Weekly Tasks
-<<<<<<< HEAD
-<<<<<<< HEAD
-- Run API smoke tests: `cd AjixPharmacy/backend && npm run smoke`
-=======
 - Run API smoke tests: `cd Quiz/backend && npm run smoke`
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-- Run API smoke tests: `cd Quiz/backend && npm run smoke`
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 - Review `admin-access.log` for suspicious activity
 - Verify disk free space on deployment host
 
@@ -23,7 +15,7 @@
 - Rotate `JWT_SECRET` (planned maintenance)
 - Run backup restore drill in staging/local
 - Review CORS allowlist
-- Review inactive-user cleanup results (`logs/maintenance.log`)
+- Review inactive-user audit results (`logs/maintenance.log`)
 
 ## Quarterly Tasks
 - Dependency updates and security patches

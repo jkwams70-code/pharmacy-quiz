@@ -1,54 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-# Pharmacy Quiz Backend
-
-This backend adds persistent server-side APIs for:
-- authentication (`register`, `login`, `me`)
-- question bank + categories
-- exam/study attempt lifecycle
-- history + dashboard metrics
-- sync endpoints used by the current frontend
-
-## 1) Install
-
-```bash
-cd AjixPharmacy/backend
-npm install
-```
-
-## 2) Configure
-
-Copy `.env.example` to `.env` and set at least:
-
-```env
-PORT=4000
-JWT_SECRET=replace-with-a-random-secret
-```
-
-## 3) Run
-
-```bash
-npm run dev
-```
-
-On first startup, questions are auto-seeded from `AjixPharmacy/data.js`.
-
-## 4) Frontend
-
-The frontend sends sync events to:
-
-`http://localhost:4000/api`
-
-If your backend runs on a different host/port, set in browser console once:
-
-```js
-localStorage.setItem("quizApiBase", "http://localhost:4000/api");
-```
-
-Then reload the quiz page.
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 # 🏥 Pharmacy Quiz Platform
 
 A comprehensive, full-stack pharmacy examination and study platform with real-time performance tracking and admin management.
@@ -311,7 +260,7 @@ npm run start           # Start production mode
 npm run seed            # Re-seed questions from Quiz/data.js
 npm run backup          # Backup backend/data/*.json with timestamp
 npm run cleanup         # Remove old logs/backups by retention policy
-npm run cleanup:users   # Remove inactive users (no activity history, retention-based)
+npm run cleanup:users   # Audit inactive users (no automatic deletes)
 npm run validate:data   # Validate user/question references in JSON data
 npm run smoke           # Run API smoke tests
 npm run smoke:ui        # Run headless UI smoke test (quiz + admin flows)
@@ -344,6 +293,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on:
 - Production monitoring
 
 Additional operational docs:
+- [DEPLOYMENT_COMPLETION_CHECKLIST.md](DEPLOYMENT_COMPLETION_CHECKLIST.md)
 - [ADMIN_GUIDE.md](ADMIN_GUIDE.md)
 - [USER_GUIDE.md](USER_GUIDE.md)
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
@@ -554,7 +504,3 @@ Potential future features:
 **Questions?** Check the [DEPLOYMENT.md](DEPLOYMENT.md) guide or review the code documentation.
 
 🚀 **Ready to deploy?** See DEPLOYMENT.md for production setup!
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)

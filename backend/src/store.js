@@ -1,15 +1,24 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const backupsDir = path.join(__dirname, "..", "backups");
 
 const dataDir = path.isAbsolute(config.dbPath)
   ? config.dbPath
   : path.join(__dirname, "..", config.dbPath);
-const backupsDir = path.join(__dirname, "..", "backups");
+
+const COLLECTION_ALIASES = {
+  syncPerformanceState: "syncPerformance",
+};
+
+function resolveCollectionName(collection) {
+  return COLLECTION_ALIASES[collection] || collection;
+}
 
 const defaults = {
   users: [],
@@ -27,13 +36,25 @@ const defaults = {
   adminBroadcastMessages: [],
   uploads: [],
   statuses: [],
+  subscriptionRequests: [],
+  passwordResetRequests: [],
+  newsCategories: [],
+  newsSources: [],
+  newsItems: [],
+  newsCollectRuns: [],
   reports: [],
   syncSessions: [],
   syncPerformance: [],
-  syncPerformanceState: [],
   syncWeakTracker: [],
   aiUsage: [],
+  medlensDrugQueue: [],
+  medlensAiProgress: [],
+  medlensDiseaseQueue: [],
+  medlensInteractionQueue: [],
+  guidelineQueue: [],
 };
+
+export const collectionNames = Object.keys(defaults);
 
 const WRITE_RETRY_CODES = new Set(["EBUSY", "EPERM"]);
 const WRITE_RETRY_DELAYS_MS = [40, 100, 180, 320, 520];
@@ -41,12 +62,26 @@ const READ_RETRY_CODES = new Set(["EBUSY", "EPERM"]);
 const READ_RETRY_DELAYS_MS = [30, 80, 150, 260];
 
 function pathFor(collection) {
-  return path.join(dataDir, `${collection}.json`);
+  return path.join(dataDir, `${resolveCollectionName(collection)}.json`);
 }
 
 function backupPathFor(collection) {
-  return path.join(dataDir, `${collection}.bak.json`);
+  return path.join(dataDir, `${resolveCollectionName(collection)}.bak.json`);
 }
+
+async function writeGuidelineQueueAtomically(filePath, data) {
+  const tempPath = filePath + "." + process.pid + "." + randomUUID() + ".tmp";
+  const serialized = JSON.stringify(data, null, 2);
+  try {
+    await runWithWriteRetry(() => fs.writeFile(tempPath, serialized, "utf8"));
+    const verification = JSON.parse(await fs.readFile(tempPath, "utf8"));
+    if (!Array.isArray(verification)) throw new Error("Guideline queue safety check failed: expected an array.");
+    await runWithWriteRetry(() => fs.rename(tempPath, filePath));
+  } finally {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+  }
+}
+
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -91,7 +126,6 @@ async function readLatestUsersSnapshotBackup() {
     const entries = await fs.readdir(backupsDir, { withFileTypes: true });
     let latestPath = "";
     let latestTime = 0;
-
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const candidate = path.join(backupsDir, entry.name, "users.json");
@@ -106,7 +140,6 @@ async function readLatestUsersSnapshotBackup() {
         // Ignore folders that do not contain a valid users snapshot.
       }
     }
-
     if (!latestPath) return null;
     const raw = await runWithReadRetry(() => fs.readFile(latestPath, "utf8"));
     const parsed = JSON.parse(raw);
@@ -116,7 +149,6 @@ async function readLatestUsersSnapshotBackup() {
   } catch {
     // Ignore snapshot lookup failures and fall through to the default fallback.
   }
-
   return null;
 }
 
@@ -134,8 +166,10 @@ export async function ensureStore() {
 }
 
 export async function readCollection(collection) {
-  const filePath = pathFor(collection);
-  const fallback = defaults[collection];
+  const resolvedCollection = resolveCollectionName(collection);
+  const filePath = pathFor(resolvedCollection);
+  const backupPath = backupPathFor(resolvedCollection);
+  const fallback = defaults[resolvedCollection];
 
   if (fallback === undefined) {
     throw new Error(`Unknown collection: ${collection}`);
@@ -145,11 +179,18 @@ export async function readCollection(collection) {
     const raw = await runWithReadRetry(() => fs.readFile(filePath, "utf8"));
     return JSON.parse(raw);
   } catch (primaryError) {
+    if (resolvedCollection === "guidelineQueue") {
+      try {
+        const backupRaw = await runWithReadRetry(() => fs.readFile(backupPath, "utf8"));
+        const parsedBackup = JSON.parse(backupRaw);
+        if (Array.isArray(parsedBackup)) return parsedBackup;
+      } catch {
+        // Fall through to the standard collection fallback below.
+      }
+    }
     if (collection === "users") {
       try {
-        const backupRaw = await runWithReadRetry(() =>
-          fs.readFile(backupPathFor(collection), "utf8"),
-        );
+        const backupRaw = await runWithReadRetry(() => fs.readFile(backupPath, "utf8"));
         const parsedBackup = JSON.parse(backupRaw);
         if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
           return parsedBackup;
@@ -157,27 +198,24 @@ export async function readCollection(collection) {
       } catch {
         // Fall through to the standard fallback below.
       }
-
       const latestSnapshotBackup = await readLatestUsersSnapshotBackup();
       if (latestSnapshotBackup) {
         return latestSnapshotBackup;
       }
     }
-
     const code = String(primaryError?.code || "").trim().toUpperCase();
     if (collection === "users" && READ_RETRY_CODES.has(code)) {
       throw primaryError;
     }
-
     return structuredClone(fallback);
   }
 }
 
 export async function writeCollection(collection, data) {
-  const filePath = pathFor(collection);
-
+  const resolvedCollection = resolveCollectionName(collection);
+  const filePath = pathFor(resolvedCollection);
   if (
-    collection === "users" &&
+    resolvedCollection === "users" &&
     Array.isArray(data) &&
     data.length === 0 &&
     process.env.ENABLE_ADMIN_RESET !== "true" &&
@@ -187,15 +225,22 @@ export async function writeCollection(collection, data) {
       "Refusing to write an empty users collection. Set ALLOW_EMPTY_USERS_WRITE=true to override.",
     );
   }
-
-  if (collection === "users") {
+  if (resolvedCollection === "guidelineQueue") {
     try {
-      await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(collection)));
+      await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(resolvedCollection)));
+    } catch (error) {
+      if (String(error?.code || "").toUpperCase() !== "ENOENT") throw error;
+    }
+    await writeGuidelineQueueAtomically(filePath, data);
+    return;
+  }
+  if (resolvedCollection === "users") {
+    try {
+      await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(resolvedCollection)));
     } catch {
       // Ignore backup copy failure when file does not exist yet.
     }
   }
-
   await runWithWriteRetry(() =>
     fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf8"),
   );
@@ -207,3 +252,4 @@ export async function updateCollection(collection, updater) {
   await writeCollection(collection, next);
   return next;
 }
+

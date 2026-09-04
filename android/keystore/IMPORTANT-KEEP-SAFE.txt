@@ -1,0 +1,10 @@
+﻿Ajix Android Signing Keystore
+------------------------------
+Created: 2026-03-31T00:45:15
+Keystore: c:\Users\John_Israel\Desktop\HTML\Quiz\android\keystore\ajix-release-key.jks
+Alias: ajix-key
+Store Password: uCbtUYVuXH3Fgg1XyEVuI81z
+Key Password: hqGhcK5ZahiCtnqEjuBKaLoL
+
+Back up this keystore file and passwords in a secure place.
+If lost, you cannot update the app with the same package name on Play Store.

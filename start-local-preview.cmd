@@ -2,7 +2,7 @@
 setlocal
 
 set "ROOT=%~dp0"
-set "FRONTEND=%ROOT%"
+set "FRONTEND=%ROOT%www"
 set "BACKEND=%ROOT%backend"
 set "LOCAL_IP="
 
@@ -18,7 +18,7 @@ if not exist "%FRONTEND%\index.html" (
   echo Frontend files were not found at:
   echo   %FRONTEND%
   echo.
-  echo Run this file from the AjixPharmacy repository root.
+  echo Run this file from the AjixPharmacy-mainmerge repository root.
   exit /b 1
 )
 
@@ -26,7 +26,7 @@ if not exist "%BACKEND%\package.json" (
   echo Backend package.json was not found at:
   echo   %BACKEND%
   echo.
-  echo Run this file from the AjixPharmacy repository root.
+  echo Run this file from the AjixPharmacy-mainmerge repository root.
   exit /b 1
 )
 

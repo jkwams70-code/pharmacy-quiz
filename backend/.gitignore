@@ -3,6 +3,9 @@ node_modules/
 data/*.json
 certs/*.pfx
 logs/
-backups/
+backups/*
+!backups/data_20260619_183446/
+backups/data_20260619_183446/*
+!backups/data_20260619_183446/questions.json
 data_backup_*/
 run_*.log

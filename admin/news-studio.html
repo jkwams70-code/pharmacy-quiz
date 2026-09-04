@@ -1,0 +1,3135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="admin-auth-lock.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
+<link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+<link rel="apple-touch-icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+<title>AjixPharmacy Admin</title>
+<style>
+:root{--bg:#f5f5f7;--surface:#fff;--border:#e5e5e7;--t1:#1a1a1a;--t2:#555;--t3:#888;--blue:#2563eb;--green:#16a34a;--purple:#9333ea;--red:#dc2626;--orange:#ea580c;--r:6px;--r2:10px;--r3:14px;--s:0 1px 2px rgba(0,0,0,0.04);--s2:0 2px 8px rgba(0,0,0,0.06)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--t1);background:var(--bg);line-height:1.6}
+button,input,textarea,select{font:inherit;outline:none;border:none;background:none;cursor:pointer}
+a{text-decoration:none;color:inherit}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo{font-size:18px;font-weight:700;letter-spacing:-0.3px}.logo span{color:var(--blue)}
+.badge{font-size:10px;font-weight:700;text-transform:uppercase;background:var(--t1);color:#fff;padding:2px 8px;border-radius:var(--r)}
+.nav{flex:1;padding:16px 12px}.nav-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--t3);padding:16px 12px 8px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r2);font-size:14px;font-weight:500;color:var(--t2);transition:all .15s;cursor:pointer}
+.nav-item:hover{background:var(--bg);color:var(--t1)}.nav-item.active{background:var(--t1);color:#fff}
+.nav-item .count{margin-left:auto;font-size:12px;font-weight:600;background:var(--bg);color:var(--t3);padding:2px 8px;border-radius:var(--r);min-width:24px;text-align:center}
+.nav-item.active .count{background:rgba(255,255,255,0.2);color:#fff}
+.nav-icon{width:18px;height:18px;flex-shrink:0}
+.sidebar-footer{padding:16px 24px;border-top:1px solid var(--border)}
+.user{display:flex;align-items:center;gap:12px}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600}
+.user-name{font-size:13px;font-weight:600}.user-role{font-size:12px;color:var(--t3)}
+.main{min-width:0;overflow-y:auto;max-height:100vh}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(245,245,247,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.topbar-left{display:flex;align-items:center;gap:12px;min-width:0}
+.topbar-title{font-size:18px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:8px 14px;width:320px;font-size:14px;color:var(--t3)}
+.search:focus-within{border-color:var(--t3)}.search input{border:none;background:none;font:inherit;color:var(--t1);width:100%}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.mobile-only{display:none}
+.btn-p{background:var(--t1);color:#fff}.btn-p:hover{background:#000}
+.btn-s{background:var(--surface);color:var(--t1);border:1px solid var(--border)}.btn-s:hover{border-color:var(--t3)}
+.btn-d{background:rgba(220,38,38,0.08);color:var(--red);border:1px solid rgba(220,38,38,0.2)}.btn-d:hover{background:rgba(220,38,38,0.12)}
+.btn-sm{padding:6px 12px;font-size:12px}.icon-btn{width:40px;height:40px;min-width:40px;padding:0;justify-content:center}.icon-btn svg{width:16px;height:16px;flex-shrink:0}
+.content{padding:32px}
+.view{display:none}.view.active{display:block}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:32px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:20px;box-shadow:var(--s);transition:all .15s}
+.stat-card:hover{box-shadow:var(--s2)}.stat-label{font-size:12px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px}
+.stat-up{color:var(--green)}.stat-down{color:var(--red)}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.sec-title{font-size:18px;font-weight:700}.link{font-size:12px;color:var(--blue);font-weight:500}.link:hover{text-decoration:underline}
+.filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.chip{padding:6px 14px;border-radius:var(--r3);font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--t2);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--t3)}.chip.on{background:var(--t1);color:#fff;border-color:var(--t1)}
+.table{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);overflow:hidden;box-shadow:var(--s)}
+.table table{width:100%;border-collapse:collapse}
+.table th{text-align:left;padding:14px 20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--t3);background:var(--bg);border-bottom:1px solid var(--border);white-space:nowrap}
+.table td{padding:14px 20px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--border);vertical-align:middle}
+.table tr:last-child td{border-bottom:none}.table tr:hover td{background:var(--bg)}
+.title-cell{font-weight:600;color:var(--t1);max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.title-cell:hover{color:var(--blue)}
+.status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--r);font-size:12px;font-weight:600}
+.status::before{content:"";width:6px;height:6px;border-radius:50%}
+.st-pub{background:rgba(22,163,74,0.08);color:var(--green)}.st-pub::before{background:var(--green)}
+.st-draft{background:rgba(170,170,170,0.12);color:var(--t3)}.st-draft::before{background:var(--t3)}
+.st-sch{background:rgba(234,88,12,0.08);color:var(--orange)}.st-sch::before{background:var(--orange)}
+.st-rev{background:rgba(147,51,234,0.08);color:var(--purple)}.st-rev::before{background:var(--purple)}
+.tactions{display:flex;gap:4px}.tact{width:32px;height:32px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--t3);cursor:pointer;transition:all .15s}
+.tact:hover{background:var(--bg);color:var(--t1)}.tact.del:hover{color:var(--red);background:rgba(220,38,38,0.06)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.pag{display:flex;align-items:center;justify-content:space-between;margin-top:20px;padding:0 4px}
+.pag-info{font-size:13px;color:var(--t3)}.pag-btns{display:flex;gap:4px}
+.pbtn{width:36px;height:36px;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--t2);border:1px solid var(--border);background:var(--surface);cursor:pointer}
+.pbtn:hover{border-color:var(--t3)}.pbtn.on{background:var(--t1);color:#fff;border-color:var(--t1)}.pbtn:disabled{opacity:0.4;cursor:not-allowed}
+.activity{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:20px;box-shadow:var(--s)}
+.act-item{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
+.act-item:last-child{border-bottom:none;padding-bottom:0}.act-item:first-child{padding-top:0}
+.act-av{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--t3);flex-shrink:0}
+.act-content{flex:1}.act-text{font-size:13px;color:var(--t2);line-height:1.5}.act-text strong{color:var(--t1);font-weight:600}.act-time{font-size:12px;color:var(--t3);margin-top:2px}
+.two-col{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,0.8fr);gap:24px}
+.two-col > div{min-width:0}
+.editor{display:grid;grid-template-columns:1fr 320px;gap:24px}
+.ed-main{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:28px;box-shadow:var(--s)}
+.ed-side{display:flex;flex-direction:column;gap:20px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:20px;box-shadow:var(--s)}
+.panel-title{font-size:13px;font-weight:700;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.5px;color:var(--t3)}
+.fg{margin-bottom:18px}.fg:last-child{margin-bottom:0}
+.fl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px}
+.fi,.ft,.fs{width:100%;padding:10px 14px;border-radius:var(--r2);border:1px solid var(--border);background:var(--bg);color:var(--t1);font-size:14px;transition:all .15s}
+.fi:focus,.ft:focus,.fs:focus{border-color:var(--t3);background:var(--surface)}.ft{resize:vertical;min-height:120px;line-height:1.6}.ft[contenteditable="true"]{resize:none;overflow:auto;outline:none;white-space:normal}.ft[contenteditable="true"]:empty:before{content:attr(data-placeholder);color:var(--t3);pointer-events:none}.fs{cursor:pointer}
+.fh{font-size:12px;color:var(--t3);margin-top:4px}
+.img-up{position:relative;overflow:hidden;min-height:220px;border:2px dashed var(--border);border-radius:var(--r2);padding:24px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg);display:flex;align-items:stretch;justify-content:stretch}
+.img-up:hover{border-color:var(--t3);background:var(--surface)}.img-up.dragging{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}.img-up.is-filled{border-style:solid;background:#111;color:#fff}.img-up.is-filled:hover{background:#111}
+.img-up-preview{position:absolute;inset:0;background-position:center;background-repeat:no-repeat;background-size:cover;opacity:0;transition:opacity .2s ease}
+.img-up.is-filled .img-up-preview{opacity:1}
+.img-up-overlay{position:relative;z-index:1;min-height:170px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px;border-radius:calc(var(--r2) - 2px);background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.12))}
+.img-up.is-filled .img-up-overlay{background:linear-gradient(180deg,rgba(0,0,0,0.12),rgba(0,0,0,0.36))}
+.img-up-t{font-size:13px;color:var(--t2);font-weight:600}.img-up.is-filled .img-up-t{color:#fff}
+.img-up-h{font-size:12px;color:var(--t3);margin-top:2px}.img-up.is-filled .img-up-h{color:rgba(255,255,255,0.82)}
+.img-up-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.img-up-chip{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.26);background:rgba(255,255,255,0.12);color:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.img-up-chip:hover{background:rgba(255,255,255,0.18)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border-radius:var(--r2);border:1px solid var(--border);background:var(--bg);min-height:42px;align-items:center}
+.tag-pill{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);font-size:12px;font-weight:500;color:var(--t2)}
+.tag-pill button{color:var(--t3);font-size:14px;line-height:1}.tag-pill button:hover{color:var(--red)}
+.tag-chip-list{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tag-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(37,99,235,.12);color:var(--blue);font-size:12px;font-weight:700}
+.tag-chip button{border:none;background:none;color:inherit;cursor:pointer;padding:0;font-size:14px;line-height:1}
+.tags input{flex:1;min-width:90px;border:none;background:none;font-size:13px;color:var(--t1);padding:4px 0;outline:none}
+.seo-prev{background:var(--bg);border-radius:var(--r2);padding:16px;margin-top:12px}
+.seo-url{font-size:12px;color:var(--green);margin-bottom:4px}.seo-t{font-size:14px;color:var(--blue);font-weight:500;margin-bottom:4px}.seo-d{font-size:12px;color:var(--t2);line-height:1.5}
+.trow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.trow:last-child{border-bottom:none;padding-bottom:0}.trow:first-child{padding-top:0}
+.tl{font-size:13px;font-weight:500;color:var(--t1)}.tl-d{font-size:12px;color:var(--t3);margin-top:2px}
+.tsw{width:40px;height:22px;border-radius:11px;background:var(--border);position:relative;cursor:pointer;transition:all .2s;flex-shrink:0}
+.tsw::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.tsw.on{background:var(--green)}.tsw.on::after{left:20px}
+.toolbar{display:flex;gap:4px;padding:8px;border:1px solid var(--border);border-radius:var(--r2);margin-bottom:12px;background:var(--bg);flex-wrap:wrap}
+.tbtn{width:32px;height:32px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--t2);cursor:pointer;transition:all .15s}
+.tbtn:hover{background:var(--surface);color:var(--t1)}.tbtn.on{background:var(--t1);color:#fff}
+.tdiv{width:1px;height:24px;background:var(--border);margin:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal.show{display:flex}.modal-box{background:var(--surface);border-radius:var(--r3);width:480px;max-width:90%;box-shadow:var(--s2);overflow:hidden}
+.modal-hd{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-t{font-size:16px;font-weight:700}.modal-bd{padding:20px 24px}.modal-ft{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.xbtn{width:32px;height:32px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--t3);cursor:pointer}.xbtn:hover{background:var(--bg);color:var(--t1)}
+.media-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.media-item{aspect-ratio:16/9;border-radius:var(--r2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;border:1px solid var(--border);cursor:pointer;transition:all .15s}
+.media-item:hover{box-shadow:var(--s2)}
+.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:280;display:none}
+.drawer-backdrop.show{display:block}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(320px,86vw);background:var(--surface);border-left:1px solid var(--border);box-shadow:-8px 0 24px rgba(0,0,0,.12);z-index:290;transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column}
+.drawer.show{transform:translateX(0)}
+.drawer-hd{padding:18px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.drawer-title{font-size:15px;font-weight:700}
+.drawer-bd{padding:12px;overflow-y:auto}
+.drawer-link{display:flex;align-items:center;gap:12px;width:100%;padding:12px 12px;border-radius:var(--r2);font-size:14px;font-weight:500;color:var(--t2);cursor:pointer}
+.drawer-link:hover{background:var(--bg);color:var(--t1)}
+.drawer-link .nav-icon{width:18px;height:18px}
+.news-banner{margin:0 0 20px;padding:14px 16px;border-radius:var(--r3);border:1px solid rgba(37,99,235,0.16);background:linear-gradient(135deg,rgba(37,99,235,0.08),rgba(147,51,234,0.08));color:var(--t1);font-size:13px;line-height:1.5}
+.news-banner strong{font-weight:700}
+.news-pipeline{margin:28px 0 8px}
+.news-pipeline .sec-hd{margin-bottom:14px}
+.news-pipeline-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.news-pipeline-grid{display:grid;grid-template-columns:1.15fr 0.85fr;gap:20px}
+.news-pipeline-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:18px;box-shadow:var(--s);min-width:0}
+.news-pipeline-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.news-pipeline-card-title{font-size:15px;font-weight:700}
+.news-pipeline-card-sub{font-size:12px;color:var(--t3);margin-top:3px}
+.news-pipeline-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.news-pipeline-stat{padding:12px;border-radius:var(--r2);background:var(--bg);border:1px solid var(--border)}
+.news-pipeline-stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--t3)}
+.news-pipeline-stat-value{font-size:22px;font-weight:800;line-height:1.1;margin-top:4px}
+.news-pipeline-list{display:flex;flex-direction:column;gap:10px;max-height:340px;overflow:auto;-webkit-overflow-scrolling:touch;padding-right:4px}
+.news-pipeline-item{width:100%;text-align:left;border:1px solid var(--border);border-radius:var(--r2);padding:12px;background:var(--surface);transition:all .15s}
+.news-pipeline-item:hover{border-color:var(--t3);box-shadow:var(--s)}
+.news-pipeline-item.active{border-color:var(--blue);background:rgba(37,99,235,0.04)}
+.news-pipeline-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.news-pipeline-item-title{font-size:14px;font-weight:700;color:var(--t1);line-height:1.35}
+.news-pipeline-item-meta{font-size:12px;color:var(--t3);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px}
+.news-pipeline-item-summary{font-size:13px;color:var(--t2);margin-top:8px;line-height:1.5}
+.news-pipeline-detail{display:flex;flex-direction:column;gap:12px;max-height:340px;overflow:auto;-webkit-overflow-scrolling:touch;padding-right:4px}
+.news-pipeline-detail-title{font-size:18px;font-weight:800;line-height:1.3}
+.news-pipeline-detail-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--t3)}
+.news-pipeline-detail-panel{padding:12px;border-radius:var(--r2);background:var(--bg);border:1px solid var(--border)}
+.news-pipeline-detail-panel strong{color:var(--t1)}
+.news-pipeline-detail-summary{font-size:14px;font-weight:600;color:var(--t1);line-height:1.5}
+.news-pipeline-detail-body{font-size:13px;color:var(--t2);line-height:1.7;white-space:pre-wrap}
+.news-pipeline-detail-actions{display:flex;gap:8px;flex-wrap:wrap}
+.news-pipeline-note{display:flex;flex-direction:column;gap:6px}
+.news-pipeline-note textarea{width:100%;min-height:92px;resize:vertical}
+.news-source-list,.news-run-list{display:flex;flex-direction:column;gap:10px}
+.news-source-item,.news-run-item{padding:12px;border:1px solid var(--border);border-radius:var(--r2);background:var(--bg)}
+.news-source-name,.news-run-name{font-size:13px;font-weight:700;color:var(--t1)}
+.news-source-meta,.news-run-meta{font-size:12px;color:var(--t3);margin-top:4px;line-height:1.5}
+.news-source-url{font-size:12px;color:var(--blue);margin-top:4px;word-break:break-word}
+.news-mini-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.news-mini-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--t3)}
+.news-empty{padding:14px;border:1px dashed var(--border);border-radius:var(--r2);color:var(--t3);font-size:13px;line-height:1.5;background:var(--bg)}
+.editor-actions{display:flex;gap:8px;flex-wrap:wrap}
+.editor-note{font-size:12px;color:var(--t3);margin-top:6px;line-height:1.5}
+.tsw{width:40px;height:22px;border-radius:11px;background:var(--border);position:relative;cursor:pointer;transition:all .2s;flex-shrink:0}
+.tsw::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.tsw.on{background:var(--green)}.tsw.on::after{left:20px}
+@media(max-width:1100px){.layout{grid-template-columns:1fr}.sidebar{display:none}.editor{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  #view-dashboard .two-col > div{min-width:0}
+  #view-dashboard .table,
+  #view-dashboard .activity{
+    max-height:min(58vh,420px);
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  #view-dashboard .news-pipeline-list,
+  #view-dashboard .news-pipeline-detail{
+    max-height:min(42vh,360px);
+  }
+  .news-pipeline-grid{grid-template-columns:1fr}
+  .news-pipeline-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .table{overflow-x:auto}.table table{min-width:800px}
+  .search{display:none}
+  .topbar{padding:0 14px}
+  .topbar-left{gap:8px}
+  .topbar-title{font-size:16px}.icon-btn{width:34px;height:34px;min-width:34px}.icon-btn svg{width:14px;height:14px}
+  .btn-p.desktop-new{display:none}
+  .mobile-only{display:inline-flex}
+}
+</style>
+<base target="_blank">
+</head>
+<body>
+
+<!-- DELETE MODAL -->
+<div class="modal" id="deleteModal">
+  <div class="modal-box">
+    <div class="modal-hd"><span class="modal-t">Delete article?</span><button class="xbtn" onclick="closeModal()">&#10005;</button></div>
+    <div class="modal-bd"><p style="font-size:14px;color:var(--t2);line-height:1.6">This will permanently delete the article and remove it from the site. This action cannot be undone.</p></div>
+    <div class="modal-ft"><button class="btn btn-s" onclick="closeModal()">Cancel</button><button class="btn btn-d" onclick="confirmDelete()">Delete article</button></div>
+  </div>
+</div>
+
+<!-- NEWS ACTION MODAL -->
+<div class="modal" id="newsActionModal" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="newsActionModalTitle">
+    <div class="modal-hd"><span class="modal-t" id="newsActionModalTitle">Confirm action</span><button class="xbtn" type="button" id="newsActionModalClose" aria-label="Close">&#10005;</button></div>
+    <div class="modal-bd"><p id="newsActionModalMessage" style="font-size:14px;color:var(--t2);line-height:1.6"></p></div>
+    <div class="modal-ft"><button class="btn btn-s" type="button" id="newsActionModalCancel">Cancel</button><button class="btn btn-p" type="button" id="newsActionModalConfirm">Confirm</button></div>
+  </div>
+</div>
+
+<!-- EDITOR DRAFT RECOVERY MODAL -->
+<div class="modal" id="newsDraftModal" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="newsDraftModalTitle">
+    <div class="modal-hd"><span class="modal-t" id="newsDraftModalTitle">Recover unsaved article?</span><button class="xbtn" type="button" id="newsDraftModalClose" aria-label="Close">&#10005;</button></div>
+    <div class="modal-bd"><p id="newsDraftModalMessage" style="font-size:14px;color:var(--t2);line-height:1.6">An unfinished article draft was saved on this device.</p></div>
+    <div class="modal-ft"><button class="btn btn-s" type="button" id="newsDraftDiscardBtn">Discard draft</button><button class="btn btn-p" type="button" id="newsDraftRecoverBtn">Recover draft</button></div>
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="navBackdrop" onclick="toggleNav(false)"></div>
+<aside class="drawer" id="navDrawer" aria-label="Dashboard navigation">
+  <div class="drawer-hd">
+    <div class="drawer-title">Dashboard</div>
+    <button class="btn btn-s btn-sm" onclick="toggleNav(false)">Close</button>
+  </div>
+  <div class="drawer-bd">
+    <div class="drawer-link" onclick="go('dashboard'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>Dashboard</div>
+    <div class="drawer-link" onclick="go('articles'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>Articles</div>
+    <div class="drawer-link" onclick="go('sources'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h10M4 18h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Sources</div>
+    <div class="drawer-link" onclick="go('activity'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 12a8 8 0 1 1-8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Activity</div>
+    <div class="drawer-link" onclick="startNewArticle(); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>New article</div>
+    <div class="drawer-link" onclick="go('media'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>Media library</div>
+    <div class="drawer-link" onclick="go('categories'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2l-5.5 9h11zM12 5.84L13.93 9h-3.87zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zM5 21.5h8v-8H5v8z" fill="currentColor"/></svg>Categories</div>
+    <div class="drawer-link" onclick="go('users'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg>Users</div>
+    <div class="drawer-link" onclick="go('analytics'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="currentColor"/></svg>Analytics</div>
+    <div class="drawer-link" onclick="go('settings'); toggleNav(false)"><svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13.56 1.62.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="currentColor"/></svg>Settings</div>
+  </div>
+</aside>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-header"><div class="logo">Ajix<span>Pharmacy</span></div><span class="badge">Admin</span></div>
+    <nav class="nav">
+      <div class="nav-title">Content</div>
+      <div class="nav-item active" data-view="dashboard" onclick="go('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>Dashboard
+      </div>
+      <div class="nav-item" data-view="articles" onclick="go('articles')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>Articles<span class="count" id="articleCountBadge">24</span>
+      </div>
+      <div class="nav-item" data-view="sources" onclick="go('sources')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h10M4 18h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Sources<span class="count" id="sourceCountBadge">0</span>
+      </div>
+      <div class="nav-item" data-view="activity" onclick="go('activity')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 12a8 8 0 1 1-8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Activity
+      </div>
+      <div class="nav-item" data-view="editor" onclick="startNewArticle()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>New article
+      </div>
+      <div class="nav-item" data-view="media" onclick="go('media')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>Media library
+      </div>
+      <div class="nav-item" data-view="categories" onclick="go('categories')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2l-5.5 9h11zM12 5.84L13.93 9h-3.87zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zM5 21.5h8v-8H5v8z" fill="currentColor"/></svg>Categories
+      </div>
+      <div class="nav-title">System</div>
+      <div class="nav-item" data-view="users" onclick="go('users')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg>Users<span class="count">8</span>
+      </div>
+      <div class="nav-item" data-view="analytics" onclick="go('analytics')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="currentColor"/></svg>Analytics
+      </div>
+      <div class="nav-item" data-view="settings" onclick="go('settings')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13.56 1.62.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="currentColor"/></svg>Settings
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user"><div class="user-avatar">JD</div><div><div class="user-name">James Doe</div><div class="user-role">Chief Editor</div></div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+            <div class="topbar-left">
+        <button class="btn btn-s btn-sm icon-btn" type="button" onclick="window.location.href='./index.html'" aria-label="Admin dashboard" title="Admin dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg></button>
+        <div class="topbar-title" id="pageTitle">Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg><input type="text" placeholder="Search..."></div>
+        <button class="btn btn-p btn-sm icon-btn news-nav-btn" id="newsNavBtn" onclick="go('articles')" aria-label="Open review queue" title="Open review queue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg></button>
+        <button class="btn btn-s btn-sm icon-btn studio-nav-btn studio-articles-btn" style="display:none" id="backBtn" onclick="go('articles')" aria-label="Back to articles" title="Back to articles"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="btn btn-p btn-sm icon-btn new-article-btn" id="newArticleBtn" onclick="startNewArticle()" aria-label="New article" title="New article"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg></button>
+        <button class="btn btn-s btn-sm mobile-only" type="button" aria-label="Open dashboard menu" onclick="toggleNav(true)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v7H4V5zm9 0h7v7h-7V5zM4 14h7v5H4v-5zm9 0h7v5h-7v-5z" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+      <div class="content">
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="stats">
+          <div class="stat-card"><div class="stat-label">Total Articles</div><div class="stat-value" id="dashboardTotalArticles">0</div><div class="stat-up">Live review queue</div></div>
+          <div class="stat-card"><div class="stat-label">Published</div><div class="stat-value" id="dashboardPublishedArticles" style="color:var(--green)">0</div><div class="stat-up">Ready for readers</div></div>
+          <div class="stat-card"><div class="stat-label">In Review</div><div class="stat-value" id="dashboardReviewArticles" style="color:var(--purple)">0</div><div class="stat-down">Waiting for approval</div></div>
+          <div class="stat-card"><div class="stat-label">Live Sources</div><div class="stat-value" id="dashboardLiveSourceStat" style="color:var(--blue)">0</div><div class="stat-up">Authentic feeds enabled</div></div>
+        </div>
+        <div class="two-col">
+          <div>
+            <div class="sec-hd"><h2 class="sec-title">Recent articles</h2><a href="#" class="link" onclick="go('articles'); return false;">View all &rarr;</a></div>
+            <div class="table"><table><thead><tr><th>Article</th><th>Status</th><th>Views</th><th>Date</th></tr></thead><tbody id="recentArticleRows"></tbody></table></div>
+          </div>
+          <div>
+            <div class="sec-hd"><h2 class="sec-title">Recent activity</h2><a href="#" class="link" onclick="go('activity'); return false;">View all &rarr;</a></div>
+            <div class="activity" id="recentActivityList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARTICLES -->
+      <div class="view" id="view-articles">
+        <div id="newsStudioMessage" class="news-banner" hidden></div>
+        <div class="sec-hd"><h2 class="sec-title">Review queue</h2></div>
+        <div class="filters">
+          <button class="chip on" data-filter="all" onclick="filter(this,'all')">All</button>
+          <button class="chip" data-filter="pending_review" onclick="filter(this,'pending_review')">In review</button>
+          <button class="chip" data-filter="approved" onclick="filter(this,'approved')">Approved</button>
+          <button class="chip" data-filter="published" onclick="filter(this,'published')">Published</button>
+          <button class="chip" data-filter="rejected" onclick="filter(this,'rejected')">Rejected</button>
+          <select class="fs" style="width:auto;padding:6px 12px;font-size:13px;margin-left:auto" id="queueSort"><option value="newest">Sort: Newest</option><option value="oldest">Sort: Oldest</option><option value="status">Sort: Status</option></select>
+        </div>
+        <div class="table"><table><thead><tr><th>Article</th><th>Source</th><th>Author</th><th>Category</th><th>Status</th><th>Views</th><th>Modified</th><th style="width:132px">Actions</th></tr></thead><tbody id="articleRows"></tbody></table></div>
+        <div class="pag"><div class="pag-info" id="queueInfo">Loading review queue&hellip;</div><div class="pag-btns"><button class="pbtn" id="queuePrevBtn" disabled>&larr;</button><button class="pbtn on" id="queuePageBtn">1</button><button class="pbtn" id="queueNextBtn">&rarr;</button></div></div>
+      </div>
+
+      <!-- SOURCES -->
+      <div class="view" id="view-sources">
+        <div id="sourceStudioMessage" class="news-banner" hidden></div>
+        <div class="sec-hd"><h2 class="sec-title">Sources</h2><div style="display:flex;gap:8px"><button class="btn btn-s btn-sm" id="sourceRefreshBtn" type="button">Refresh sources</button><button class="btn btn-p btn-sm" id="sourceAddBtn" type="button">Add source</button></div></div>
+        <div class="stats">
+          <div class="stat-card"><div class="stat-label">Live sources</div><div class="stat-value" id="sourceLiveCount">0</div><div class="stat-up">Enabled feeds being queried</div></div>
+          <div class="stat-card"><div class="stat-label">Admin entries</div><div class="stat-value" id="sourceManualCount">0</div><div class="stat-up">Articles added by admins</div></div>
+          <div class="stat-card"><div class="stat-label">Live articles</div><div class="stat-value" id="sourceArticleCount">0</div><div class="stat-up">Collected from authentic sources</div></div>
+          <div class="stat-card"><div class="stat-label">Last run</div><div class="stat-value" id="sourceLastRun">—</div><div class="stat-up" id="sourceLastRunMeta">No collection yet</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Add or edit source</div>
+          <div class="editor" style="grid-template-columns:minmax(0,1fr) 340px">
+            <div class="ed-main">
+              <input type="hidden" id="sourceIdInput">
+              <div class="fg"><label class="fl">Source name</label><input type="text" class="fi" id="sourceNameInput" placeholder="Example: WHO Newsroom"></div>
+              <div class="fg"><label class="fl">Source URL</label><input type="url" class="fi" id="sourceUrlInput" placeholder="https://example.com/feed"></div>
+              <div class="fg"><label class="fl">Description</label><textarea class="ft" rows="4" id="sourceDescriptionInput" placeholder="Short note about what this source covers"></textarea></div>
+            </div>
+            <div class="ed-side">
+              <div class="panel" style="margin:0">
+                <div class="panel-title">Source settings</div>
+                <div class="fg"><label class="fl">Category</label><select class="fs" id="sourceCategoryInput"></select></div>
+                <div class="fg"><label class="fl">Extract mode</label><select class="fs" id="sourceTypeInput"><option value="structured">Structured</option><option value="rss">RSS</option></select></div>
+                <div class="fg"><label class="fl">Priority</label><input type="number" class="fi" id="sourcePriorityInput" min="0" max="100" step="1" value="50"></div>
+                <div class="trow"><div><div class="tl">Enabled</div><div class="tl-d">Allow the API to source from this feed</div></div><div class="tsw on" id="sourceEnabledInput" data-source-toggle="enabled"></div></div>
+                <div class="trow"><div><div class="tl">Review required</div><div class="tl-d">Queue items for admin review</div></div><div class="tsw on" id="sourceReviewRequiredInput" data-source-toggle="reviewRequired"></div></div>
+                <div class="editor-actions" style="margin-top:14px"><button class="btn btn-s" type="button" id="sourceResetBtn" style="flex:1">Clear</button><button class="btn btn-p" type="button" id="sourceCreateBtn" style="flex:1">Save source</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="table"><table><thead><tr><th>Source</th><th>Category</th><th>Type</th><th>Articles</th><th>First seen</th><th>Last collected</th><th>Status</th><th style="width:156px">Actions</th></tr></thead><tbody id="sourceRows"></tbody></table></div>
+        <div class="panel">
+          <div class="panel-title">Recent collection runs</div>
+          <div class="news-run-list" id="sourceRunList"></div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY -->
+      <div class="view" id="view-activity">
+        <div class="sec-hd"><h2 class="sec-title">Activity</h2><button class="btn btn-s btn-sm" id="activityRefreshBtn" type="button">Refresh feed</button></div>
+        <div class="stats">
+          <div class="stat-card"><div class="stat-label">Events</div><div class="stat-value" id="activityTotalCount">0</div><div class="stat-up">Recent activity across articles and runs</div></div>
+          <div class="stat-card"><div class="stat-label">Published</div><div class="stat-value" id="activityPublishedCount" style="color:var(--green)">0</div><div class="stat-up">Articles pushed live</div></div>
+          <div class="stat-card"><div class="stat-label">Admin entries</div><div class="stat-value" id="activityManualCount" style="color:var(--blue)">0</div><div class="stat-up">Admin-created stories</div></div>
+          <div class="stat-card"><div class="stat-label">Runs</div><div class="stat-value" id="activityRunCount" style="color:var(--purple)">0</div><div class="stat-up">Backend collection jobs</div></div>
+        </div>
+        <div class="activity" id="activityList"></div>
+      </div>
+
+      <!-- EDITOR -->
+      <div class="view" id="view-editor">
+        <div class="editor">
+          <div class="ed-main">
+            <div class="fg"><label class="fl">Headline</label><input type="text" class="fi" id="newsHeadline" placeholder="Enter headline"></div>
+            <div class="fg"><label class="fl">Subtitle / Excerpt</label><input type="text" class="fi" id="newsExcerpt" placeholder="Enter a short excerpt"></div>
+            <div class="fg">
+              <label class="fl">Hero Image</label>
+              <div class="img-up" id="newsHeroDropzone" role="button" tabindex="0" aria-label="Upload hero image">
+                <input type="file" id="newsHeroInput" accept="image/*" hidden>
+                <div class="img-up-preview" id="newsHeroPreview"></div>
+                <div class="img-up-overlay">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style="margin-bottom:6px;color:currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
+                  <div class="img-up-t" id="newsHeroTitle">Drag & drop an image or click to browse</div>
+                  <div class="img-up-h" id="newsHeroHint">Recommended: 1200&times;630px, JPG or PNG, max 2MB</div>
+                  <div class="img-up-actions">
+                    <button class="img-up-chip" type="button" data-hero-action="browse">Choose file</button>
+                    <button class="img-up-chip" type="button" data-hero-action="clear">Remove image</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="fg"><label class="fl">Body Content</label>
+              <div class="toolbar" id="newsBodyToolbar"><button class="tbtn on" type="button" data-command="bold"><b>B</b></button><button class="tbtn" type="button" data-command="italic"><i>I</i></button><button class="tbtn" type="button" data-command="underline">U</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="formatBlock" data-value="H1">H1</button><button class="tbtn" type="button" data-command="formatBlock" data-value="H2">H2</button><button class="tbtn" type="button" data-command="formatBlock" data-value="H3">H3</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="insertUnorderedList">UL</button><button class="tbtn" type="button" data-command="insertOrderedList">OL</button><button class="tbtn" type="button" data-command="formatBlock" data-value="BLOCKQUOTE">Quote</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="createLink">Link</button><button class="tbtn" type="button" data-command="insertImage">IMG</button></div>
+              <div class="ft" id="newsBody" contenteditable="true" spellcheck="true" data-placeholder="Write your article here..."></div>
+            </div>
+            <div class="fg"><label class="fl">Tags</label><div class="tags" id="newsTagsField"><div class="tag-chip-list" id="newsTagChips"></div><input type="text" id="newsTagInput" placeholder="Add tag..." autocomplete="off" spellcheck="false"></div></div>
+          </div>
+          <div class="ed-side"> <div class="panel">
+              <div class="panel-title">Publish</div>
+              <div class="fg"><label class="fl">Status</label><select class="fs" id="newsStatus" disabled><option value="pending_review" selected>In review</option></select></div>
+              <div class="fg"><label class="fl">Publish date</label><input type="datetime-local" class="fi" id="newsPublishDate"></div>
+              <div class="fg"><label class="fl">Source</label><input type="text" class="fi" id="newsSourceName" placeholder="Enter source"></div>
+              <div class="fg"><label class="fl">Author</label><input type="text" class="fi" id="newsAuthor" placeholder="Ajixpharmacy Desk"></div>
+              <div class="editor-actions"><button class="btn btn-s" style="flex:1" id="newsSaveDraftBtn" type="button">Save draft</button><button class="btn btn-p" style="flex:1" id="newsSubmitReviewBtn" type="button">Submit for review</button></div>
+              <div class="editor-note">Manual articles are stored in the review queue. Featured marks hero cards only, while all published stories still flow into latest and medicine automatically.</div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Category</div>
+              <div class="fg" style="margin-bottom:0"><select class="fs" id="newsCategory"></select><div class="fh">Determines color coding on the news feed. Choose "Add new category" to create another option.</div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">SEO & Meta</div>
+              <div class="fg"><label class="fl">Meta title</label><input type="text" class="fi" id="newsMetaTitle" placeholder="Enter meta title"></div>
+              <div class="fg"><label class="fl">Meta description</label><textarea class="ft" rows="2" id="newsMetaDescription" placeholder="Enter meta description"></textarea></div>
+              <div class="fg" style="margin-bottom:0"><label class="fl">Slug</label><input type="text" class="fi" id="newsSlug" placeholder="article-slug"></div>
+              <div class="seo-prev" id="newsSeoPreview"><div class="seo-url">ajixpharmacy.com/news/article-slug</div><div class="seo-t">Your article title will appear here</div><div class="seo-d">Write a meta description to preview how the article may appear in search results.</div><div class="fh" id="newsTagPreview" style="margin-top:10px">No tags added yet.</div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Settings</div>
+              <div class="trow"><div><div class="tl">Featured article</div><div class="tl-d">Show in hero cards only</div></div><div class="tsw" data-news-toggle="featured"></div></div>
+              <div class="trow"><div><div class="tl">Breaking news</div><div class="tl-d">Add red breaking badge</div></div><div class="tsw" data-news-toggle="breaking"></div></div>
+              <div class="trow"><div><div class="tl">Allow comments</div><div class="tl-d">Enable reader discussion</div></div><div class="tsw on" data-news-toggle="comments"></div></div>
+              <div class="trow"><div><div class="tl">Send newsletter</div><div class="tl-d">Include in daily brief</div></div><div class="tsw" data-news-toggle="newsletter"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEDIA -->
+      <div class="view" id="view-media">
+        <div class="sec-hd"><h2 class="sec-title">Media Library</h2><button class="btn btn-p">Upload new</button></div>
+        <div class="media-grid">
+          <div class="media-item" style="background:linear-gradient(135deg,#e8f0fe,#dbeafe);color:var(--blue)">IMG-001</div>
+          <div class="media-item" style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:var(--green)">IMG-002</div>
+          <div class="media-item" style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff);color:var(--purple)">IMG-003</div>
+          <div class="media-item" style="background:linear-gradient(135deg,#fee2e2,#fecaca);color:var(--red)">IMG-004</div>
+          <div class="media-item" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#d97706">IMG-005</div>
+          <div class="media-item" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd);color:#0284c7">IMG-006</div>
+          <div class="media-item" style="background:linear-gradient(135deg,#f1f5f9,#cbd5e1);color:#64748b">IMG-007</div>
+          <div class="media-item" style="background:linear-gradient(135deg,#0b3d2e,#145a45);color:rgba(255,255,255,0.5)">IMG-008</div>
+        </div>
+      </div>
+
+      <div class="view" id="view-categories">
+        <div class="sec-hd">
+          <h2 class="sec-title">Categories</h2>
+          <div class="editor-actions">
+            <button class="btn btn-s" type="button" id="refreshCategoriesBtn">Refresh</button>
+            <button class="btn btn-p" type="button" id="addCategoryBtn">Add category</button>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat-card"><div class="stat-label">Total categories</div><div class="stat-value" id="categoryTotalValue">0</div></div>
+          <div class="stat-card"><div class="stat-label">System</div><div class="stat-value" id="categorySystemValue">0</div></div>
+          <div class="stat-card"><div class="stat-label">Custom</div><div class="stat-value" id="categoryCustomValue">0</div></div>
+          <div class="stat-card"><div class="stat-label">Tagged articles</div><div class="stat-value" id="categoryArticleValue">0</div></div>
+        </div>
+        <div class="editor">
+          <div class="ed-main">
+            <div class="panel-title">Category form</div>
+            <input type="hidden" id="newsCategoryId">
+            <div class="fg"><label class="fl">Category name</label><input type="text" class="fi" id="newsCategoryName" placeholder="Example: Nutrition"></div>
+            <div class="fg"><label class="fl">Slug</label><input type="text" class="fi" id="newsCategorySlug" placeholder="nutrition"></div>
+            <div class="fg"><label class="fl">Color</label><input type="text" class="fi" id="newsCategoryColor" placeholder="#2563eb"></div>
+            <div class="fg"><label class="fl">Description</label><textarea class="ft" rows="3" id="newsCategoryDescription" placeholder="Short note about what this category covers"></textarea></div>
+            <div class="editor-actions"><button class="btn btn-s" style="flex:1" type="button" id="newsCategoryResetBtn">Reset</button><button class="btn btn-p" style="flex:1" type="button" id="newsCategorySaveBtn">Save category</button></div>
+            <div class="editor-note">Saved categories update the article and source dropdowns immediately.</div>
+          </div>
+          <div class="ed-side">
+            <div class="panel" style="margin:0">
+              <div class="panel-title">Category list</div>
+              <div class="table"><table><thead><tr><th>Name</th><th>Slug</th><th>Articles</th><th>Color</th><th>Actions</th></tr></thead><tbody id="categoryRows"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CATEGORIES -->
+      <div class="view" id="view-categories-static" style="display:none">
+        <div class="sec-hd"><h2 class="sec-title">Categories</h2><button class="btn btn-p">Add category</button></div>
+        <div class="table"><table><thead><tr><th>Name</th><th>Slug</th><th>Articles</th><th>Color</th><th>Actions</th></tr></thead><tbody>
+          <tr><td class="title-cell">Medicine</td><td>medicine</td><td>86</td><td><span class="dot" style="background:var(--blue)"></span>#2563eb</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
+          <tr><td class="title-cell">Wellness</td><td>wellness</td><td>64</td><td><span class="dot" style="background:var(--green)"></span>#16a34a</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
+          <tr><td class="title-cell">Research</td><td>research</td><td>52</td><td><span class="dot" style="background:var(--purple)"></span>#9333ea</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
+          <tr><td class="title-cell">Trending</td><td>trending</td><td>46</td><td><span class="dot" style="background:var(--red)"></span>#dc2626</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <!-- USERS -->
+      <div class="view" id="view-users">
+        <div class="sec-hd"><h2 class="sec-title">Users</h2><button class="btn btn-p">Invite user</button></div>
+        <div class="table"><table><thead><tr><th>User</th><th>Role</th><th>Articles</th><th>Last active</th><th>Actions</th></tr></thead><tbody>
+          <tr><td style="font-weight:600">James Doe</td><td>Chief Editor</td><td>124</td><td>Just now</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Dr. Sarah Chen</td><td>Senior Writer</td><td>86</td><td>2 hours ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Amy Liu</td><td>Writer</td><td>42</td><td>5 hours ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Mark Kim</td><td>Writer</td><td>28</td><td>1 day ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Dr. Rachel Wong</td><td>Contributor</td><td>18</td><td>2 days ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="view" id="view-analytics">
+        <div class="sec-hd"><h2 class="sec-title">Analytics</h2><select class="fs" style="width:auto;padding:6px 12px;font-size:13px"><option>Last 7 days</option><option>Last 30 days</option><option>Last 90 days</option></select></div>
+        <div class="stats">
+          <div class="stat-card"><div class="stat-label">Page Views</div><div class="stat-value" style="color:var(--blue)">342K</div><div class="stat-up">↑ 18%</div></div>
+          <div class="stat-card"><div class="stat-label">Unique Visitors</div><div class="stat-value" style="color:var(--purple)">89K</div><div class="stat-up">↑ 12%</div></div>
+          <div class="stat-card"><div class="stat-label">Avg. Read Time</div><div class="stat-value">4m 32s</div><div class="stat-up">↑ 8%</div></div>
+          <div class="stat-card"><div class="stat-label">Bounce Rate</div><div class="stat-value" style="color:var(--red)">34%</div><div class="stat-down">↓ 3%</div></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:40px;text-align:center;color:var(--t3);font-size:14px">Chart placeholder — top articles by views over time</div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="view" id="view-settings">
+        <div class="sec-hd"><h2 class="sec-title">Site Settings</h2></div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title">General</div>
+            <div class="fg"><label class="fl">Site Name</label><input type="text" class="fi" value="AjixPharmacy"></div>
+            <div class="fg"><label class="fl">Site Description</label><textarea class="ft" rows="2">Your trusted source for health news, drug information, and medical research.</textarea></div>
+            <div class="fg"><label class="fl">Contact Email</label><input type="email" class="fi" value="editor@ajixpharmacy.com"></div>
+            <button class="btn btn-p">Save changes</button>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Notifications</div>
+            <div class="trow"><div><div class="tl">Email on new submission</div><div class="tl-d">Notify editors when writers submit articles</div></div><div class="tsw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="trow"><div><div class="tl">Email on publish</div><div class="tl-d">Notify author when article goes live</div></div><div class="tsw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="trow"><div><div class="tl">Weekly digest</div><div class="tl-d">Send performance summary every Monday</div></div><div class="tsw" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
+const currentHost = String(window.location.hostname || "").trim();
+const currentOrigin = String(window.location.origin || "").trim();
+const isLocalHost = ["localhost", "127.0.0.1"].includes(currentHost);
+const inferredApiBase = isLocalHost ? "http://localhost:4000/api" : "https://api.ajixpharmacy.online/api";
+const hasStaleStoredApiBase =
+  !!storedApiBase &&
+  (/trycloudflare\.com/i.test(storedApiBase) ||
+    /your-new-tunnel/i.test(storedApiBase) ||
+    /api\.139\.84\.233\.243\.sslip\.io/i.test(storedApiBase));
+if (hasStaleStoredApiBase) {
+  localStorage.removeItem("quizApiBase");
+}
+let API_BASE = hasStaleStoredApiBase ? inferredApiBase : storedApiBase || inferredApiBase;
+let apiBaseResolvedPromise = null;
+const ADMIN_KEY_STORAGE = "adminKey";
+let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE) || "";
+let newsStudioLoaded = false;
+let newsPipelineState = {
+  items: [],
+  categories: [],
+  sources: [],
+  runs: [],
+  selectedId: "",
+  filter: "pending_review",
+  search: "",
+};
+let editingNewsId = "";
+let pendingNewsAction = null;
+let newsQueuePage = 1;
+const NEWS_STUDIO_ARTICLES_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>';
+const NEWS_STUDIO_DASHBOARD_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>';
+const NEWS_PIPELINE_REFRESH_KEY = "ajix-news-pipeline-refresh-v1";
+const PUBLIC_NEWS_FEED_CACHE_KEY = "ajix-news-public-feed-v1";
+const NEWS_EDITOR_DRAFT_KEY = "ajix-news-editor-draft-v1";
+let newsEditorAutosaveTimer = null;
+
+function normalizeApiBase(value = "") {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function getApiBaseCandidates() {
+  return [
+    storedApiBase,
+    `${currentOrigin}/api`,
+    inferredApiBase,
+    !isLocalHost && currentHost ? `http://${currentHost}:4000/api` : "",
+    "http://localhost:4000/api",
+  ]
+    .map(normalizeApiBase)
+    .filter(Boolean);
+}
+
+async function probeApiBase(base = "") {
+  const safeBase = normalizeApiBase(base);
+  if (!safeBase) return false;
+  try {
+    const res = await fetch(`${safeBase}/health`, { cache: "no-store" });
+    return Boolean(res && res.ok);
+  } catch {
+    return false;
+  }
+}
+
+async function handleNewsPipelineRefresh(event) {
+  if (event?.key !== NEWS_PIPELINE_REFRESH_KEY) return;
+  if (event.newValue === event.oldValue) return;
+  await loadNewsPipeline();
+}
+
+async function ensureApiBase({ force = false } = {}) {
+  if (apiBaseResolvedPromise && !force) return apiBaseResolvedPromise;
+  apiBaseResolvedPromise = (async () => {
+    const candidates = getApiBaseCandidates();
+    for (const candidate of candidates) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await probeApiBase(candidate)) {
+        API_BASE = candidate;
+        localStorage.setItem("quizApiBase", candidate);
+        return candidate;
+      }
+    }
+    return API_BASE;
+  })();
+  try {
+    return await apiBaseResolvedPromise;
+  } finally {
+    apiBaseResolvedPromise = null;
+  }
+}
+
+function loadCachedPublishedNewsFeed() {
+  try {
+    const raw = localStorage.getItem(PUBLIC_NEWS_FEED_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function normalizeNewsStatusValue(value = "") {
+  const next = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!next) return "pending_review";
+  if (
+    next === "draft" ||
+    next === "queued" ||
+    next === "pending" ||
+    next === "submitted" ||
+    next === "submitted_for_review" ||
+    next === "awaiting_review" ||
+    next === "in_review" ||
+    next === "inreview" ||
+    next === "review" ||
+    next === "under_review"
+  ) return "pending_review";
+  if (next === "approved" || next === "reviewed") return "approved";
+  if (next === "published" || next === "live" || next.startsWith("publish") || next.startsWith("live_")) return "published";
+  if (next === "rejected" || next === "rejected_by_admin") return "rejected";
+  if (next === "archived" || next === "hidden") return "archived";
+  return next === "pending_review" ? next : "pending_review";
+}
+
+function isPublishedNewsItem(value = "") {
+  return normalizeNewsStatusValue(value) === "published";
+}
+
+async function syncPublicNewsFeedCache(items = []) {
+  if (!Array.isArray(items)) return;
+  const publishedItems = items
+    .filter((item) => isPublishedNewsItem(item?.status || ""))
+    .map((item) => ({ ...item }))
+    .sort((a, b) => {
+      const aTime = String(a.publishedAt || a.updatedAt || a.createdAt || "");
+      const bTime = String(b.publishedAt || b.updatedAt || b.createdAt || "");
+      return bTime.localeCompare(aTime);
+    });
+  if (!publishedItems.length) {
+    try {
+      localStorage.removeItem(PUBLIC_NEWS_FEED_CACHE_KEY);
+    } catch (error) {
+      void error;
+    }
+    return;
+  }
+
+  try {
+    const feed = {
+      ok: true,
+      total: publishedItems.length,
+      items: publishedItems,
+      sections: {},
+      cachedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(PUBLIC_NEWS_FEED_CACHE_KEY, JSON.stringify(feed));
+    await ensureApiBase();
+    await fetch(`${API_BASE}/news/feed`, {
+      method: "POST",
+      headers: getHeaders(),
+      cache: "no-store",
+      body: JSON.stringify({ items: publishedItems }),
+    });
+  } catch (error) {
+    void error;
+  }
+}
+
+function getHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "x-admin-key": adminKey,
+  };
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatNewsDateTime(value) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function slugifyNewsText(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+function getNewsStatusLabel(status = "") {
+  const next = normalizeNewsStatusValue(status);
+  if (next === "pending_review") return "In review";
+  if (next === "approved") return "Approved";
+  if (next === "published") return "Published";
+  if (next === "rejected") return "Rejected";
+  if (next === "archived") return "Archived";
+  return "Unknown";
+}
+
+function getNewsStatusClass(status = "") {
+  const next = normalizeNewsStatusValue(status);
+  if (next === "published") return "st-pub";
+  if (next === "approved" || next === "pending_review") return "st-rev";
+  if (next === "rejected") return "st-draft";
+  return "st-draft";
+}
+
+function showNotice(message, type = "info") {
+  const notices = [
+    document.getElementById("newsStudioMessage"),
+    document.getElementById("sourceStudioMessage"),
+  ].filter(Boolean);
+  if (!notices.length) return;
+  if (!message) {
+    notices.forEach((notice) => {
+      notice.hidden = true;
+      notice.textContent = "";
+    });
+    return;
+  }
+  notices.forEach((notice) => {
+    notice.hidden = false;
+    notice.textContent = message;
+    notice.style.borderColor = type === "error" ? "rgba(220,38,38,0.25)" : "rgba(37,99,235,0.16)";
+    notice.style.background = type === "error"
+      ? "linear-gradient(135deg, rgba(220,38,38,0.08), rgba(220,38,38,0.04))"
+      : "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(147,51,234,0.08))";
+    notice.style.color = "var(--t1)";
+  });
+}
+
+function formatNewsRelativeTime(value) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const diff = Date.now() - date.getTime();
+  if (diff < 60_000) return "Just now";
+  if (diff < 3_600_000) return `${Math.max(1, Math.round(diff / 60_000))}m ago`;
+  if (diff < 86_400_000) return `${Math.max(1, Math.round(diff / 3_600_000))}h ago`;
+  if (diff < 604_800_000) return `${Math.max(1, Math.round(diff / 86_400_000))}d ago`;
+  return formatNewsDateTime(value);
+}
+
+function getNewsInitials(value = "") {
+  const parts = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "NW";
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0] || "")
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "NW";
+}
+
+function isManualNewsItem(item = {}) {
+  const sourceId = String(item.sourceId || "").trim().toLowerCase();
+  const sourceType = String(item.sourceType || "").trim().toLowerCase();
+  return sourceType === "manual" || sourceId === "manual" || sourceId.startsWith("manual-");
+}
+
+function getNewsSourceUsage() {
+  const sources = Array.isArray(newsPipelineState.sources) ? newsPipelineState.sources : [];
+  const items = Array.isArray(newsPipelineState.items) ? newsPipelineState.items : [];
+  const runs = Array.isArray(newsPipelineState.runs) ? newsPipelineState.runs : [];
+  const sourceUsage = new Map();
+  const manualItems = [];
+  const liveItems = [];
+
+  sources.forEach((source) => {
+    const safeId = String(source?.id || "").trim();
+    if (!safeId) return;
+    sourceUsage.set(safeId, {
+      source,
+      count: 0,
+      firstSeenAt: String(source.createdAt || "").trim(),
+      lastCollectedAt: String(source.lastCollectedAt || "").trim(),
+      lastStatus: String(source.lastStatus || "").trim(),
+      lastError: String(source.lastError || "").trim(),
+    });
+  });
+
+  items.forEach((item) => {
+    if (isManualNewsItem(item)) {
+      manualItems.push(item);
+      return;
+    }
+    liveItems.push(item);
+    const key = String(item.sourceId || item.sourceName || "").trim();
+    if (!key) return;
+    if (!sourceUsage.has(key)) {
+      sourceUsage.set(key, {
+        source: null,
+        count: 0,
+        firstSeenAt: "",
+        lastCollectedAt: "",
+        lastStatus: "",
+        lastError: "",
+      });
+    }
+    const usage = sourceUsage.get(key);
+    usage.count += 1;
+    const seenAt = String(item.createdAt || item.collectedAt || item.updatedAt || item.publishedAt || "").trim();
+    const collectedAt = String(item.collectedAt || item.updatedAt || item.createdAt || item.publishedAt || "").trim();
+    if (!usage.firstSeenAt || (seenAt && seenAt < usage.firstSeenAt)) usage.firstSeenAt = seenAt;
+    if (!usage.lastCollectedAt || (collectedAt && collectedAt > usage.lastCollectedAt)) usage.lastCollectedAt = collectedAt;
+  });
+
+  const manualFirstSeen = manualItems.reduce((latest, item) => {
+    const seenAt = String(item.createdAt || item.collectedAt || item.updatedAt || item.publishedAt || "").trim();
+    if (!seenAt) return latest;
+    if (!latest || seenAt < latest) return seenAt;
+    return latest;
+  }, "");
+  const manualLastSeen = manualItems.reduce((latest, item) => {
+    const seenAt = String(item.updatedAt || item.createdAt || item.collectedAt || item.publishedAt || "").trim();
+    if (!seenAt) return latest;
+    if (!latest || seenAt > latest) return seenAt;
+    return latest;
+  }, "");
+
+  const sourceRows = sources
+    .slice()
+    .sort((a, b) => {
+      const aTime = String(a?.updatedAt || a?.createdAt || "");
+      const bTime = String(b?.updatedAt || b?.createdAt || "");
+      return bTime.localeCompare(aTime) || String(a?.name || "").localeCompare(String(b?.name || ""));
+    })
+    .map((source) => {
+      const key = String(source?.id || "").trim();
+      const usage = sourceUsage.get(key) || {
+        count: 0,
+        firstSeenAt: "",
+        lastCollectedAt: "",
+        lastStatus: "",
+        lastError: "",
+      };
+      return {
+        ...source,
+        count: usage.count || 0,
+        firstSeenAt: usage.firstSeenAt || source.createdAt || "",
+        lastCollectedAt: usage.lastCollectedAt || source.lastCollectedAt || "",
+        lastStatus: usage.lastStatus || source.lastStatus || "",
+        lastError: usage.lastError || source.lastError || "",
+        manual: false,
+      };
+    });
+
+  sourceRows.unshift({
+    id: "manual-feed",
+    name: "Admin entries",
+    url: "Articles created by admins in the news studio",
+    category: "manual",
+    extractMode: "manual",
+    priority: 0,
+    enabled: true,
+    reviewRequired: true,
+    description: "Stories entered directly by the admin team.",
+    count: manualItems.length,
+    firstSeenAt: manualFirstSeen,
+    lastCollectedAt: manualLastSeen,
+    lastStatus: manualItems.length ? "manual" : "",
+    lastError: "",
+    manual: true,
+  });
+
+  return {
+    sources,
+    runs,
+    items,
+    manualItems,
+    liveItems,
+    sourceRows,
+    liveSourceCount: sources.filter((source) => source.enabled !== false).length,
+    totalSourceCount: sources.length,
+    manualCount: manualItems.length,
+    liveArticleCount: liveItems.length,
+    totalArticleCount: items.length,
+    latestRun: runs[0] || null,
+  };
+}
+
+function getNewsActivityEntries(limit = 50) {
+  const { items, runs } = getNewsSourceUsage();
+  const entries = [];
+
+  runs.forEach((run) => {
+    entries.push({
+      id: `run-${run.id || run.startedAt || run.createdAt || crypto.randomUUID()}`,
+      type: "run",
+      time: run.startedAt || run.createdAt || run.finishedAt || "",
+      actor: run.triggeredBy || "system",
+      avatar: "CR",
+      title: "Collection run",
+      detail: `${String(run.status || "success").toUpperCase()} · ${Number(run.sourceCount || 0)} sources · ${Number(run.addedCount || 0)} added, ${Number(run.updatedCount || 0)} updated, ${Number(run.errorCount || 0)} errors`,
+    });
+  });
+
+  items.forEach((item) => {
+    const status = normalizeNewsStatusValue(item.status || "");
+    const actor = item.author || item.sourceName || "Not set";
+    const action = status === "published"
+      ? "published"
+      : status === "approved"
+        ? "approved"
+        : status === "rejected"
+          ? "rejected"
+          : status === "pending_review"
+            ? "submitted"
+            : "updated";
+    const sourceLabel = item.sourceName || item.sourceId || "Not set";
+    entries.push({
+      id: `item-${item.id || crypto.randomUUID()}`,
+      type: "item",
+      time: item.updatedAt || item.publishedAt || item.createdAt || item.collectedAt || "",
+      actor,
+      avatar: getNewsInitials(actor),
+      title: item.title || "Untitled article",
+      detail: `${action} via ${sourceLabel}`,
+      newsId: item.id || "",
+      status,
+    });
+  });
+
+  return entries
+    .sort((a, b) => {
+      const aTime = new Date(a.time || 0).getTime() || 0;
+      const bTime = new Date(b.time || 0).getTime() || 0;
+      return bTime - aTime || String(a.id || "").localeCompare(String(b.id || ""));
+    })
+    .slice(0, Math.max(1, Math.round(Number(limit) || 0) || 50));
+}
+
+function renderActivityEntries(target, entries, compact = false) {
+  return entries.length
+    ? entries.map((entry) => {
+        const timeLabel = formatNewsRelativeTime(entry.time);
+        const title = escapeHtml(entry.title || "Untitled entry");
+        const detail = escapeHtml(entry.detail || "");
+        const actor = escapeHtml(entry.actor || "");
+        const avatar = escapeHtml(entry.avatar || getNewsInitials(entry.actor || ""));
+        const isItem = entry.type === "item";
+        const actionButton = !compact && isItem && entry.newsId
+          ? `<button type="button" class="btn btn-s btn-sm" data-activity-view-id="${escapeHtml(entry.newsId)}">View</button>`
+          : "";
+        const textHtml = isItem
+          ? `<strong>${actor}</strong> ${detail ? `${detail} <strong>${title}</strong>` : `<strong>${title}</strong>`}`
+          : `<strong>${title}</strong> by <strong>${actor}</strong>${detail ? ` · ${detail}` : ""}`;
+        return `
+          <div class="act-item${compact ? " compact" : ""}">
+            <div class="act-av">${avatar}</div>
+            <div class="act-content">
+              <div class="act-text">${textHtml}</div>
+              <div class="act-time">${escapeHtml(timeLabel)}</div>
+            </div>
+            ${actionButton ? `<div style="margin-left:auto">${actionButton}</div>` : ""}
+          </div>
+        `;
+      }).join("")
+    : '<div class="news-empty" style="margin:0">No recent activity yet.</div>';
+}
+
+function renderDashboardView() {
+  const data = getNewsSourceUsage();
+  const counts = data.items.reduce((accumulator, item) => {
+    const status = normalizeNewsStatusValue(item.status || "");
+    if (accumulator[status] !== undefined) accumulator[status] += 1;
+    return accumulator;
+  }, { pending_review: 0, approved: 0, published: 0, rejected: 0 });
+
+  const totalArticles = document.getElementById("dashboardTotalArticles");
+  if (totalArticles) totalArticles.textContent = String(data.totalArticleCount);
+  const publishedArticles = document.getElementById("dashboardPublishedArticles");
+  if (publishedArticles) publishedArticles.textContent = String(counts.published);
+  const reviewArticles = document.getElementById("dashboardReviewArticles");
+  if (reviewArticles) reviewArticles.textContent = String(counts.pending_review);
+  const liveSources = document.getElementById("dashboardLiveSourceStat");
+  if (liveSources) liveSources.textContent = String(data.liveSourceCount);
+  const articleBadge = document.getElementById("articleCountBadge");
+  if (articleBadge) articleBadge.textContent = String(data.totalArticleCount);
+  const sourceBadge = document.getElementById("sourceCountBadge");
+  if (sourceBadge) sourceBadge.textContent = String(data.liveSourceCount);
+
+  const recentRows = document.getElementById("recentArticleRows");
+  if (recentRows) {
+    const rows = sortQueueItems([...data.items]).slice(0, 5);
+    recentRows.innerHTML = rows.length
+      ? rows.map((item) => {
+          const statusLabel = getNewsStatusLabel(item.status || "");
+          const statusClass = getNewsStatusClass(item.status || "");
+          const modifiedAt = formatNewsDateTime(item.updatedAt || item.publishedAt || item.createdAt || item.collectedAt || "");
+          const viewsValue = formatQueueViews(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views ?? "—");
+          return `
+            <tr data-news-id="${escapeHtml(item.id || "")}">
+              <td class="title-cell" data-news-id="${escapeHtml(item.id || "")}">${escapeHtml(item.title || "Untitled article")}</td>
+              <td><span class="status ${statusClass}">${escapeHtml(statusLabel)}</span></td>
+              <td>${escapeHtml(viewsValue)}</td>
+              <td>${escapeHtml(modifiedAt)}</td>
+            </tr>
+          `;
+        }).join("")
+      : `<tr><td colspan="4"><div class="news-empty" style="margin:0">No recent articles yet.</div></td></tr>`;
+  }
+
+  const recentActivityList = document.getElementById("recentActivityList");
+  if (recentActivityList) {
+    recentActivityList.innerHTML = renderActivityEntries(recentActivityList, getNewsActivityEntries(4), true);
+  }
+}
+
+function renderActivityView() {
+  const data = getNewsSourceUsage();
+  const entries = getNewsActivityEntries(40);
+  const total = document.getElementById("activityTotalCount");
+  if (total) total.textContent = String(entries.length);
+  const published = document.getElementById("activityPublishedCount");
+  if (published) published.textContent = String(data.items.filter((item) => isPublishedNewsItem(item.status || "")).length);
+  const manual = document.getElementById("activityManualCount");
+  if (manual) manual.textContent = String(data.manualCount);
+  const runs = document.getElementById("activityRunCount");
+  if (runs) runs.textContent = String(data.runs.length);
+
+  const activityList = document.getElementById("activityList");
+  if (activityList) {
+    activityList.innerHTML = renderActivityEntries(activityList, entries, false);
+  }
+}
+
+function renderSourcesView() {
+  const data = getNewsSourceUsage();
+  const sourceRows = document.getElementById("sourceRows");
+  if (sourceRows) {
+    sourceRows.innerHTML = data.sourceRows.length
+      ? data.sourceRows.map((source) => {
+          const isManual = source.manual === true || String(source.id || "").trim() === "manual-feed";
+          const statusLabel = isManual
+            ? "Manual"
+            : (source.enabled === false ? "Disabled" : "Enabled");
+          const statusClass = isManual ? "st-rev" : (source.enabled === false ? "st-draft" : "st-pub");
+          const lastCollected = source.lastCollectedAt ? formatNewsDateTime(source.lastCollectedAt) : "Never";
+          const firstSeen = source.firstSeenAt ? formatNewsDateTime(source.firstSeenAt) : "Not set";
+          const actions = isManual
+            ? `<div class="tactions"><button type="button" class="tact" disabled title="Admin entries are managed by admins">—</button></div>`
+            : `<div class="tactions"><button type="button" class="tact" data-source-action="edit" data-source-id="${escapeHtml(source.id || "")}">Edit</button><button type="button" class="tact del" data-source-action="remove" data-source-id="${escapeHtml(source.id || "")}">Remove</button></div>`;
+          return `
+            <tr data-source-id="${escapeHtml(source.id || "")}" data-source-manual="${isManual ? "true" : "false"}">
+              <td>
+                <div class="title-cell">${escapeHtml(source.name || source.id || "Source")}</div>
+                <div style="font-size:12px;color:var(--t3);margin-top:3px;max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(source.description || source.url || "")}</div>
+              </td>
+              <td>${escapeHtml(formatNewsCategoryLabel(source.category || ""))}</td>
+              <td><span class="status ${statusClass}">${escapeHtml(source.extractMode || "structured")}</span></td>
+              <td>${escapeHtml(String(source.count || 0))}</td>
+              <td>${escapeHtml(firstSeen)}</td>
+              <td>${escapeHtml(lastCollected)}</td>
+              <td><span class="status ${statusClass}">${escapeHtml(statusLabel)}</span></td>
+              <td>${actions}</td>
+            </tr>
+          `;
+        }).join("")
+      : `<tr><td colspan="8"><div class="news-empty" style="margin:0">No sources are configured yet.</div></td></tr>`;
+  }
+
+  const sourceLiveCount = document.getElementById("sourceLiveCount");
+  if (sourceLiveCount) sourceLiveCount.textContent = String(data.liveSourceCount);
+  const sourceManualCount = document.getElementById("sourceManualCount");
+  if (sourceManualCount) sourceManualCount.textContent = String(data.manualCount);
+  const sourceArticleCount = document.getElementById("sourceArticleCount");
+  if (sourceArticleCount) sourceArticleCount.textContent = String(data.liveArticleCount);
+  const sourceLastRun = document.getElementById("sourceLastRun");
+  if (sourceLastRun) sourceLastRun.textContent = data.latestRun ? formatNewsDateTime(data.latestRun.startedAt || data.latestRun.createdAt || data.latestRun.finishedAt || "") : "—";
+  const sourceLastRunMeta = document.getElementById("sourceLastRunMeta");
+  if (sourceLastRunMeta) {
+    sourceLastRunMeta.textContent = data.latestRun
+      ? `${String(data.latestRun.status || "success").toUpperCase()} · ${Number(data.latestRun.sourceCount || 0)} sources · ${Number(data.latestRun.addedCount || 0)} added`
+      : "No collection yet";
+  }
+  const sourceBadge = document.getElementById("sourceCountBadge");
+  if (sourceBadge) sourceBadge.textContent = String(data.liveSourceCount);
+
+  const sourceRunList = document.getElementById("sourceRunList");
+  if (sourceRunList) {
+    sourceRunList.innerHTML = data.runs.length
+      ? data.runs.slice(0, 6).map((run) => `
+          <div class="news-run-item">
+            <div class="news-run-name">${escapeHtml(formatNewsDateTime(run.startedAt || run.createdAt || run.finishedAt || ""))}</div>
+            <div class="news-run-meta">${escapeHtml(String(run.status || "success").toUpperCase())} · ${escapeHtml(run.triggeredBy || "system")} · ${escapeHtml(run.sourceCount || 0)} sources, ${escapeHtml(run.addedCount || 0)} added, ${escapeHtml(run.updatedCount || 0)} updated, ${escapeHtml(run.errorCount || 0)} errors</div>
+          </div>
+        `).join("")
+      : `<div class="news-empty" style="margin:0">No collection runs recorded yet.</div>`;
+  }
+}
+
+function resetSourceForm(source = null) {
+  const idEl = document.getElementById("sourceIdInput");
+  const nameEl = document.getElementById("sourceNameInput");
+  const urlEl = document.getElementById("sourceUrlInput");
+  const descriptionEl = document.getElementById("sourceDescriptionInput");
+  const categoryEl = document.getElementById("sourceCategoryInput");
+  const typeEl = document.getElementById("sourceTypeInput");
+  const priorityEl = document.getElementById("sourcePriorityInput");
+  const categoryValue = source ? String(source.category || "clinical-news").trim() : "clinical-news";
+  if (idEl) idEl.value = source ? String(source.id || "").trim() : "";
+  if (nameEl) nameEl.value = source ? String(source.name || "").trim() : "";
+  if (urlEl) urlEl.value = source ? String(source.url || "").trim() : "";
+  if (descriptionEl) descriptionEl.value = source ? String(source.description || "").trim() : "";
+  if (typeEl) typeEl.value = source ? String(source.extractMode || "structured").trim() : "structured";
+  if (priorityEl) priorityEl.value = String(source ? Number(source.priority || 50) : 50);
+  setSourceToggleState("enabled", source ? source.enabled !== false : true);
+  setSourceToggleState("reviewRequired", source ? source.reviewRequired !== false : true);
+  refreshNewsCategorySelects(categoryValue);
+  if (categoryEl) {
+    categoryEl.value = categoryValue;
+    categoryEl.dataset.lastValidValue = categoryValue;
+  }
+  const button = document.getElementById("sourceCreateBtn");
+  if (button) button.textContent = source ? "Update source" : "Save source";
+}
+
+function setSourceToggleState(name, on) {
+  document.querySelectorAll(`[data-source-toggle="${name}"]`).forEach((el) => {
+    el.classList.toggle("on", Boolean(on));
+  });
+}
+
+function getSourceToggleState(name) {
+  const el = document.querySelector(`[data-source-toggle="${name}"]`);
+  return Boolean(el && el.classList.contains("on"));
+}
+
+function getSourceFormPayload() {
+  const id = String(document.getElementById("sourceIdInput")?.value || "").trim();
+  const name = String(document.getElementById("sourceNameInput")?.value || "").trim();
+  const url = String(document.getElementById("sourceUrlInput")?.value || "").trim();
+  const description = String(document.getElementById("sourceDescriptionInput")?.value || "").trim();
+  const category = String(document.getElementById("sourceCategoryInput")?.value || "clinical-news").trim();
+  const extractMode = String(document.getElementById("sourceTypeInput")?.value || "structured").trim().toLowerCase();
+  const priority = Math.max(0, Math.min(100, Math.round(Number(document.getElementById("sourcePriorityInput")?.value || 50) || 50)));
+  return {
+    id,
+    name,
+    url,
+    description,
+    category,
+    extractMode,
+    priority,
+    enabled: getSourceToggleState("enabled"),
+    reviewRequired: getSourceToggleState("reviewRequired"),
+  };
+}
+
+async function saveNewsSource() {
+  const payload = getSourceFormPayload();
+  if (!payload.name) {
+    showNotice("Please enter a source name.", "error");
+    return false;
+  }
+  if (!payload.url) {
+    showNotice("Please enter a source URL.", "error");
+    return false;
+  }
+
+  try {
+    await ensureApiBase();
+    const isEditing = Boolean(payload.id);
+    const endpoint = isEditing
+      ? `${API_BASE}/admin/news/sources/${encodeURIComponent(payload.id)}`
+      : `${API_BASE}/admin/news/sources`;
+    const body = { ...payload };
+    if (!isEditing) delete body.id;
+    const res = await fetch(endpoint, {
+      method: isEditing ? "PATCH" : "POST",
+      headers: getHeaders(),
+      cache: "no-store",
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to save source");
+    }
+    showNotice(isEditing ? "Source updated." : "Source added.", "info");
+    resetSourceForm();
+    await loadNewsPipeline();
+    go("sources");
+    return true;
+  } catch (error) {
+    showNotice(`Could not save source: ${error.message}`, "error");
+    return false;
+  }
+}
+
+async function removeNewsSource(sourceId = "") {
+  const safeId = String(sourceId || "").trim();
+  if (!safeId) return false;
+  if (!window.confirm("Remove this source from the sourcing list?")) return false;
+
+  try {
+    await ensureApiBase();
+    const res = await fetch(`${API_BASE}/admin/news/sources/${encodeURIComponent(safeId)}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to remove source");
+    }
+    showNotice("Source removed.", "info");
+    if (String(document.getElementById("sourceIdInput")?.value || "").trim() === safeId) {
+      resetSourceForm();
+    }
+    await loadNewsPipeline();
+    go("sources");
+    return true;
+  } catch (error) {
+    showNotice(`Could not remove source: ${error.message}`, "error");
+    return false;
+  }
+}
+
+function setToggleState(name, on) {
+  document.querySelectorAll(`[data-news-toggle="${name}"]`).forEach((el) => {
+    el.classList.toggle("on", Boolean(on));
+  });
+}
+
+function getToggleState(name) {
+  const el = document.querySelector(`[data-news-toggle="${name}"]`);
+  return Boolean(el && el.classList.contains("on"));
+}
+
+const NEWS_EDITOR_AUTHOR = "Ajixpharmacy Desk";
+const NEWS_EDITOR_SOURCE_NAME = "";
+const NEWS_EDITOR_STATUS = "pending_review";
+const NEWS_HERO_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const NEWS_HERO_IMAGE_PLACEHOLDER = "Drag & drop an image or click to browse";
+const NEWS_HERO_IMAGE_HELP = "Recommended: 1200x630px, JPG or PNG, max 2MB";
+const newsHeroImageState = {
+  url: "",
+  alt: "",
+  name: "",
+};
+
+function getNewsBodyEditor() {
+  return document.getElementById("newsBody");
+}
+
+function getNewsHeroDropzone() {
+  return document.getElementById("newsHeroDropzone");
+}
+
+function getNewsHeroInput() {
+  return document.getElementById("newsHeroInput");
+}
+
+function getNewsHeroPreview() {
+  return document.getElementById("newsHeroPreview");
+}
+
+function getNewsHeroTitle() {
+  return document.getElementById("newsHeroTitle");
+}
+
+function getNewsHeroHint() {
+  return document.getElementById("newsHeroHint");
+}
+
+function escapeCssUrl(value = "") {
+  return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function syncNewsHeroPreview() {
+  const dropzone = getNewsHeroDropzone();
+  const preview = getNewsHeroPreview();
+  const title = getNewsHeroTitle();
+  const hint = getNewsHeroHint();
+  const hasImage = Boolean(newsHeroImageState.url);
+  if (dropzone) {
+    dropzone.classList.toggle("is-filled", hasImage);
+  }
+  if (preview) {
+    preview.style.backgroundImage = hasImage ? `url("${escapeCssUrl(newsHeroImageState.url)}")` : "";
+  }
+  if (title) {
+    title.textContent = hasImage ? "Hero image selected" : NEWS_HERO_IMAGE_PLACEHOLDER;
+  }
+  if (hint) {
+    hint.textContent = hasImage
+      ? newsHeroImageState.name || "This image is saved with the story."
+      : NEWS_HERO_IMAGE_HELP;
+  }
+}
+
+function setNewsHeroImage(imageUrl = "", imageAlt = "", name = "") {
+  newsHeroImageState.url = String(imageUrl || "").trim();
+  newsHeroImageState.alt = String(imageAlt || "").trim();
+  newsHeroImageState.name = String(name || "").trim();
+  syncNewsHeroPreview();
+}
+
+function clearNewsHeroImage() {
+  setNewsHeroImage("", "", "");
+  const input = getNewsHeroInput();
+  if (input) input.value = "";
+}
+
+function loadNewsHeroFile(file = null) {
+  const safeFile = file instanceof File ? file : null;
+  if (!safeFile) return;
+  if (!safeFile.type || !safeFile.type.startsWith("image/")) {
+    showNotice("Please choose an image file.", "error");
+    return;
+  }
+  if (safeFile.size > NEWS_HERO_IMAGE_MAX_BYTES) {
+    showNotice("Image must be 2MB or smaller.", "error");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = String(reader.result || "").trim();
+    if (!dataUrl) {
+      showNotice("Could not read that image.", "error");
+      return;
+    }
+    setNewsHeroImage(dataUrl, newsHeroImageState.alt || String(safeFile.name || "").trim(), safeFile.name || "");
+    syncEditorPreview();
+  };
+  reader.onerror = () => {
+    showNotice("Could not load that image.", "error");
+  };
+  reader.readAsDataURL(safeFile);
+}
+
+function openNewsHeroPicker() {
+  const input = getNewsHeroInput();
+  if (!input) return;
+  if (typeof input.showPicker === "function") {
+    try {
+      input.showPicker();
+      return;
+    } catch (error) {
+      void error;
+    }
+  }
+  input.click();
+}
+
+function getNewsTagInput() {
+  return document.getElementById("newsTagInput");
+}
+
+function getNewsTagChips() {
+  return document.getElementById("newsTagChips");
+}
+
+function normalizeNewsEditorHtml(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (!/<[a-z][\s\S]*>/i.test(raw)) {
+    return raw
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+      .join("");
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = raw;
+  wrapper.querySelectorAll("script,style,iframe,object,embed,form,input,button,textarea,select,option,noscript").forEach((el) => el.remove());
+  wrapper.querySelectorAll("*").forEach((el) => {
+    Array.from(el.attributes || []).forEach((attr) => {
+      if (/^on/i.test(attr.name)) {
+        el.removeAttribute(attr.name);
+        return;
+      }
+      if ((attr.name === "href" || attr.name === "src") && /^javascript:/i.test(attr.value || "")) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return wrapper.innerHTML.trim();
+}
+
+function setNewsBodyContent(value = "") {
+  const bodyEl = getNewsBodyEditor();
+  if (!bodyEl) return;
+  bodyEl.innerHTML = normalizeNewsEditorHtml(value);
+}
+
+function getNewsBodyContent() {
+  const bodyEl = getNewsBodyEditor();
+  if (!bodyEl) return "";
+  return normalizeNewsEditorHtml(bodyEl.innerHTML || "");
+}
+
+function normalizeNewsTagList(values = []) {
+  const seen = new Set();
+  const tags = [];
+  (Array.isArray(values) ? values : [])
+    .flatMap((entry) => String(entry || "").split(","))
+    .map((tag) => String(tag || "").trim())
+    .filter(Boolean)
+    .forEach((tag) => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      tags.push(tag);
+    });
+  return tags.slice(0, 20);
+}
+
+function createNewsTagChip(tag = "") {
+  const chip = document.createElement("span");
+  chip.className = "tag-chip";
+  chip.dataset.tag = String(tag || "").trim();
+  const label = document.createElement("span");
+  label.textContent = chip.dataset.tag;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("aria-label", `Remove ${chip.dataset.tag}`);
+  button.textContent = "x";
+  button.addEventListener("click", () => {
+    chip.remove();
+    syncEditorPreview();
+  });
+  chip.append(label, button);
+  return chip;
+}
+
+function renderNewsTagChips(tags = []) {
+  const container = getNewsTagChips();
+  if (!container) return;
+  container.innerHTML = "";
+  normalizeNewsTagList(tags).forEach((tag) => {
+    container.appendChild(createNewsTagChip(tag));
+  });
+  syncEditorPreview();
+}
+
+function getNewsTagValues() {
+  return Array.from(getNewsTagChips()?.querySelectorAll(".tag-chip") || [])
+    .map((chip) => String(chip.dataset.tag || chip.textContent || "").trim())
+    .filter(Boolean);
+}
+
+function commitNewsTagInput() {
+  const input = getNewsTagInput();
+  if (!input) return;
+  const values = String(input.value || "")
+    .split(/[\n,]+/)
+    .map((tag) => String(tag || "").trim())
+    .filter(Boolean);
+  if (values.length) {
+    const current = normalizeNewsTagList(getNewsTagValues().concat(values));
+    renderNewsTagChips(current);
+  }
+  input.value = "";
+}
+
+function removeLastNewsTag() {
+  const chips = Array.from(getNewsTagChips()?.querySelectorAll(".tag-chip") || []);
+  const last = chips[chips.length - 1];
+  if (last) {
+    last.remove();
+    syncEditorPreview();
+  }
+}
+
+function applyNewsEditorCommand(command = "", value = "") {
+  const bodyEl = getNewsBodyEditor();
+  if (!bodyEl || !command) return;
+  bodyEl.focus();
+  let nextValue = value;
+  if (command === "createLink") {
+    nextValue = String(window.prompt("Enter link URL", "https://") || "").trim();
+    if (!nextValue) return;
+  } else if (command === "insertImage") {
+    nextValue = String(window.prompt("Enter image URL", "https://") || "").trim();
+    if (!nextValue) return;
+  } else if (command === "formatBlock" && nextValue) {
+    nextValue = `<${String(nextValue).toLowerCase()}>`;
+  }
+  document.execCommand(command, false, nextValue || null);
+  syncEditorPreview();
+}
+
+function syncEditorPreview() {
+  const headline = String(document.getElementById("newsHeadline")?.value || "").trim();
+  const excerpt = String(document.getElementById("newsExcerpt")?.value || "").trim();
+  const metaTitle = String(document.getElementById("newsMetaTitle")?.value || "").trim();
+  const metaDescription = String(document.getElementById("newsMetaDescription")?.value || "").trim();
+  const tags = normalizeNewsTagList(getNewsTagValues());
+  const slugInput = document.getElementById("newsSlug");
+  const slug = String(slugInput?.value || "").trim() || slugifyNewsText(headline) || "article-slug";
+  const seoPrev = document.getElementById("newsSeoPreview");
+  if (!seoPrev) return;
+  const urlEl = seoPrev.querySelector(".seo-url");
+  const titleEl = seoPrev.querySelector(".seo-t");
+  const descEl = seoPrev.querySelector(".seo-d");
+  const tagEl = document.getElementById("newsTagPreview");
+  if (urlEl) urlEl.textContent = `ajixpharmacy.com/news/${slug}`;
+  if (titleEl) titleEl.textContent = metaTitle || headline || "Your article title will appear here";
+  if (descEl) descEl.textContent = metaDescription || excerpt || "Write a meta description to preview how the article may appear in search results.";
+  if (tagEl) tagEl.textContent = tags.length ? `Tags: ${tags.join(", ")}` : "No tags added yet.";
+  scheduleNewsEditorAutosave();
+}
+
+function readNewsEditorDraft() {
+  try {
+    const raw = localStorage.getItem(NEWS_EDITOR_DRAFT_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== "object" || !draft.payload || typeof draft.payload !== "object") return null;
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function clearNewsEditorDraft() {
+  if (newsEditorAutosaveTimer) {
+    clearTimeout(newsEditorAutosaveTimer);
+    newsEditorAutosaveTimer = null;
+  }
+  try {
+    localStorage.removeItem(NEWS_EDITOR_DRAFT_KEY);
+  } catch {}
+}
+
+function hasMeaningfulNewsDraft(payload = {}) {
+  return Boolean(
+    String(payload.title || "").trim() ||
+    String(payload.summary || "").trim() ||
+    String(payload.content || "").trim() ||
+    String(payload.sourceName || "").trim() ||
+    String(payload.metaTitle || "").trim() ||
+    String(payload.metaDescription || "").trim() ||
+    String(payload.slug || "").trim() ||
+    (Array.isArray(payload.tags) && payload.tags.length) ||
+    String(payload.imageUrl || "").trim()
+  );
+}
+
+function saveNewsEditorDraft() {
+  const payload = getEditorPayload();
+  if (!hasMeaningfulNewsDraft(payload)) return;
+  try {
+    localStorage.setItem(NEWS_EDITOR_DRAFT_KEY, JSON.stringify({
+      version: 1,
+      savedAt: new Date().toISOString(),
+      editingNewsId: String(editingNewsId || "").trim(),
+      payload,
+    }));
+  } catch (error) {
+    console.warn("Could not autosave News Studio draft.", error);
+  }
+}
+
+function scheduleNewsEditorAutosave() {
+  if (newsEditorAutosaveTimer) clearTimeout(newsEditorAutosaveTimer);
+  newsEditorAutosaveTimer = setTimeout(() => {
+    newsEditorAutosaveTimer = null;
+    saveNewsEditorDraft();
+  }, 500);
+}
+
+function closeNewsDraftModal() {
+  const modal = document.getElementById("newsDraftModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function discardNewsEditorDraft() {
+  clearNewsEditorDraft();
+  closeNewsDraftModal();
+}
+
+function recoverNewsEditorDraft() {
+  const draft = readNewsEditorDraft();
+  if (!draft) {
+    closeNewsDraftModal();
+    return;
+  }
+  editingNewsId = String(draft.editingNewsId || "").trim();
+  fillEditorFromItem({ ...(draft.payload || {}), id: editingNewsId });
+  closeNewsDraftModal();
+  go("editor");
+}
+
+function offerNewsEditorDraftRecovery() {
+  const draft = readNewsEditorDraft();
+  if (!draft || !hasMeaningfulNewsDraft(draft.payload)) return;
+  const modal = document.getElementById("newsDraftModal");
+  const message = document.getElementById("newsDraftModalMessage");
+  if (!modal) return;
+  const savedAt = new Date(draft.savedAt || "");
+  const when = Number.isNaN(savedAt.getTime()) ? "earlier" : savedAt.toLocaleString();
+  if (message) message.textContent = "An unfinished article draft was saved on this device " + when + ". Recover it or discard it.";
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function resetEditorForm() {
+  const fields = [
+    "newsHeadline",
+    "newsExcerpt",
+    "newsPublishDate",
+    "newsSourceName",
+    "newsAuthor",
+    "newsMetaTitle",
+    "newsMetaDescription",
+    "newsSlug",
+  ];
+  fields.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  const author = document.getElementById("newsAuthor");
+  const category = document.getElementById("newsCategory");
+  const status = document.getElementById("newsStatus");
+  if (author) author.value = NEWS_EDITOR_AUTHOR;
+  if (category) {
+    category.selectedIndex = 0;
+    category.dataset.lastValidValue = "";
+  }
+  if (status) status.value = NEWS_EDITOR_STATUS;
+  setNewsBodyContent("");
+  renderNewsTagChips([]);
+  clearNewsHeroImage();
+  setToggleState("featured", false);
+  setToggleState("breaking", false);
+  setToggleState("comments", true);
+  setToggleState("newsletter", false);
+  refreshNewsCategorySelects("");
+  syncEditorPreview();
+}
+
+function getEditorPayload() {
+  const headline = String(document.getElementById("newsHeadline")?.value || "").trim();
+  const excerpt = String(document.getElementById("newsExcerpt")?.value || "").trim();
+  const body = getNewsBodyContent();
+  const tags = normalizeNewsTagList(getNewsTagValues());
+  const categorySelect = document.getElementById("newsCategory");
+  const publishDate = String(document.getElementById("newsPublishDate")?.value || "").trim();
+  const sourceName = String(document.getElementById("newsSourceName")?.value || "").trim();
+  const author = String(document.getElementById("newsAuthor")?.value || "").trim() || NEWS_EDITOR_AUTHOR;
+  const metaTitle = String(document.getElementById("newsMetaTitle")?.value || "").trim();
+  const metaDescription = String(document.getElementById("newsMetaDescription")?.value || "").trim();
+  const slug = String(document.getElementById("newsSlug")?.value || "").trim();
+  return {
+    title: headline,
+    summary: excerpt,
+    content: body,
+    category: String(categorySelect?.value || "").trim() || "clinical-news",
+    importance: getToggleState("breaking") ? "high" : "medium",
+    featured: getToggleState("featured"),
+    reviewRequired: true,
+    status: NEWS_EDITOR_STATUS,
+    author,
+    tags,
+    sourceName,
+    sourceType: "structured",
+    sourceUrl: "",
+    sourcePublishedAt: publishDate,
+    sourcePublishedLabel: "Manual article",
+    imageUrl: newsHeroImageState.url,
+    heroBackgroundImage: newsHeroImageState.url,
+    imageAlt: newsHeroImageState.alt || headline,
+    reviewNote: metaDescription || excerpt || "Manual article created in the news studio.",
+    canonicalUrl: "",
+    publishedAt: publishDate,
+    metaTitle,
+    metaDescription,
+    slug,
+    allowComments: getToggleState("comments"),
+    comments: getToggleState("comments"),
+  };
+}
+
+function getVisibleNewsItems() {
+  const query = String(newsPipelineState.search || "").trim().toLowerCase();
+  return Array.isArray(newsPipelineState.items)
+    ? newsPipelineState.items.filter((item) => {
+        const status = normalizeNewsStatusValue(item?.status || "");
+        const matchesStatus = newsPipelineState.filter === "all" || status === newsPipelineState.filter;
+        const haystack = [
+          item?.title,
+          item?.summary,
+          item?.content,
+          item?.sourceName,
+          item?.category,
+          item?.author,
+          item?.reviewNote,
+          item?.sourceUrl,
+          item?.tags,
+        ]
+          .flatMap((entry) => (Array.isArray(entry) ? entry : [entry]))
+          .map((entry) => String(entry || "").toLowerCase())
+          .join(" ");
+        const matchesQuery = !query || haystack.includes(query);
+        return matchesStatus && matchesQuery;
+      })
+    : [];
+}
+
+function getSelectedNewsItem() {
+  const visibleItems = getVisibleNewsItems();
+  if (newsPipelineState.selectedId) {
+    const selected = visibleItems.find((item) => String(item?.id || "") === newsPipelineState.selectedId);
+    if (selected) return selected;
+  }
+  return visibleItems[0] || null;
+}
+
+function formatNewsCategoryLabel(category = "") {
+  const entry = getNewsCategoryEntry(category);
+  if (entry?.name) return entry.name;
+  const text = String(category || "").trim();
+  if (!text) return "News";
+  return text.replace(/[-_]+/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function toDateValue(value = "") {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function getCategoryDotColor(category = "") {
+  const entry = getNewsCategoryEntry(category);
+  if (entry?.color) return entry.color;
+  const text = String(category || "").toLowerCase();
+  if (text.includes("medicine")) return "#2563eb";
+  if (text.includes("clinical")) return "#64748b";
+  if (text.includes("wellness")) return "#16a34a";
+  if (text.includes("research")) return "#9333ea";
+  if (text.includes("trending")) return "#dc2626";
+  return "#ea580c";
+}
+
+function normalizeEditorCategory(category = "") {
+  const text = String(category || "").trim();
+  if (!text || text === "__add_category__") return "clinical-news";
+  return slugifyNewsText(text) || "clinical-news";
+}
+
+const NEWS_FALLBACK_CATEGORIES = [
+  {
+    id: "clinical-news",
+    name: "Clinical News",
+    slug: "clinical-news",
+    color: "#64748b",
+    description: "General clinical updates and uncategorized news.",
+    system: true,
+  },
+  {
+    id: "medicine",
+    name: "Medicine",
+    slug: "medicine",
+    color: "#2563eb",
+    description: "General medicine and treatment updates.",
+  },
+  {
+    id: "wellness",
+    name: "Wellness",
+    slug: "wellness",
+    color: "#16a34a",
+    description: "Wellness, prevention, and lifestyle stories.",
+  },
+  {
+    id: "research",
+    name: "Research",
+    slug: "research",
+    color: "#9333ea",
+    description: "Trials, studies, and scientific findings.",
+  },
+  {
+    id: "trending",
+    name: "Trending",
+    slug: "trending",
+    color: "#dc2626",
+    description: "Popular or breaking updates.",
+  },
+];
+
+function normalizeNewsCategoryText(value = "", limit = 80) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  const maxLength = Math.max(0, Number(limit) || 0);
+  return maxLength > 0 ? text.slice(0, maxLength) : text;
+}
+
+function normalizeNewsCategoryEntry(raw = {}) {
+  const slugSeed = String(raw.slug || raw.id || raw.name || "").trim();
+  const fallback = NEWS_FALLBACK_CATEGORIES.find((entry) => entry.slug === slugifyNewsText(slugSeed)) || {};
+  const name = normalizeNewsCategoryText(raw.name || raw.title || raw.label || fallback.name || "Category", 80) || "Category";
+  const slug = slugifyNewsText(raw.slug || raw.id || name || "") || fallback.slug || slugifyNewsText(name) || "category";
+  return {
+    id: String(raw.id || slug || fallback.id || "").trim() || slug,
+    name,
+    slug,
+    color: normalizeNewsCategoryText(raw.color || fallback.color || "#64748b", 32) || "#64748b",
+    description: normalizeNewsCategoryText(raw.description || fallback.description || "", 240),
+    system: raw.system === true || fallback.system === true,
+  };
+}
+
+function getNewsCategoryCatalog() {
+  const bySlug = new Map();
+  [...NEWS_FALLBACK_CATEGORIES, ...(Array.isArray(newsPipelineState.categories) ? newsPipelineState.categories : [])].forEach((entry) => {
+    const normalized = normalizeNewsCategoryEntry(entry);
+    if (normalized.slug) bySlug.set(normalized.slug, normalized);
+  });
+  return Array.from(bySlug.values()).sort((a, b) => {
+    if (a.system !== b.system) return a.system ? -1 : 1;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+}
+
+function getNewsCategoryEntry(category = "") {
+  const slug = normalizeEditorCategory(category);
+  return getNewsCategoryCatalog().find((entry) => entry.slug === slug) || null;
+}
+
+function getNewsCategoryCountMap() {
+  const counts = new Map();
+  (Array.isArray(newsPipelineState.items) ? newsPipelineState.items : []).forEach((item) => {
+    const slug = normalizeEditorCategory(item.category || "");
+    counts.set(slug, (counts.get(slug) || 0) + 1);
+  });
+  return counts;
+}
+
+function renderNewsCategoryOptions(selectedSlug = "", includeAddOption = false) {
+  const categories = getNewsCategoryCatalog();
+  const normalizedSelected = normalizeEditorCategory(selectedSlug || "");
+  const options = [`<option value=\"\"${normalizedSelected ? "" : " selected"} disabled>Select category</option>`];
+  if (normalizedSelected && !categories.some((entry) => entry.slug === normalizedSelected)) {
+    options.push(`<option value=\"${escapeHtml(normalizedSelected)}\" selected>${escapeHtml(formatNewsCategoryLabel(normalizedSelected))}</option>`);
+  }
+  categories.forEach((entry) => {
+    const label = entry.system ? `${entry.name} (Default)` : entry.name;
+    options.push(`<option value=\"${escapeHtml(entry.slug)}\"${entry.slug === normalizedSelected ? " selected" : ""}>${escapeHtml(label)}</option>`);
+  });
+  if (includeAddOption) {
+    options.push(`<option value=\"__add_category__\">+ Add new category</option>`);
+  }
+  return options.join("");
+}
+
+function refreshNewsCategorySelects(preferredValue = "") {
+  const selects = [
+    { el: document.getElementById("newsCategory"), includeAdd: true },
+    { el: document.getElementById("sourceCategoryInput"), includeAdd: false },
+  ];
+
+  selects.forEach(({ el, includeAdd }) => {
+    if (!el) return;
+    const currentValue = normalizeEditorCategory(preferredValue || el.dataset.lastValidValue || el.value || "");
+    el.innerHTML = renderNewsCategoryOptions(currentValue, includeAdd);
+    if (currentValue && Array.from(el.options || []).some((option) => option.value === currentValue)) {
+      el.value = currentValue;
+      el.dataset.lastValidValue = currentValue;
+    } else {
+      el.selectedIndex = 0;
+      el.dataset.lastValidValue = "";
+    }
+  });
+}
+
+function fillNewsCategoryForm(category = null) {
+  const categoryId = document.getElementById("newsCategoryId");
+  const categoryName = document.getElementById("newsCategoryName");
+  const categorySlug = document.getElementById("newsCategorySlug");
+  const categoryColor = document.getElementById("newsCategoryColor");
+  const categoryDescription = document.getElementById("newsCategoryDescription");
+  const entry = category ? normalizeNewsCategoryEntry(category) : null;
+  if (categoryId) categoryId.value = entry?.id || "";
+  if (categoryName) categoryName.value = entry?.name || "";
+  if (categorySlug) {
+    categorySlug.value = entry?.slug || "";
+    categorySlug.dataset.manualSlug = "false";
+  }
+  if (categoryColor) categoryColor.value = entry?.color || "#2563eb";
+  if (categoryDescription) categoryDescription.value = entry?.description || "";
+}
+
+function resetNewsCategoryForm() {
+  fillNewsCategoryForm(null);
+  const categoryName = document.getElementById("newsCategoryName");
+  if (categoryName) categoryName.focus();
+}
+
+function getNewsCategoryFormPayload() {
+  const categoryId = String(document.getElementById("newsCategoryId")?.value || "").trim();
+  const name = normalizeNewsCategoryText(document.getElementById("newsCategoryName")?.value || "", 80);
+  const slugInput = document.getElementById("newsCategorySlug");
+  const slug = slugifyNewsText(String(slugInput?.value || "").trim() || name) || "category";
+  const color = normalizeNewsCategoryText(document.getElementById("newsCategoryColor")?.value || "", 32) || "#64748b";
+  const description = normalizeNewsCategoryText(document.getElementById("newsCategoryDescription")?.value || "", 240);
+  return {
+    id: categoryId,
+    name,
+    slug,
+    color,
+    description,
+  };
+}
+
+function openNewsCategoryForm(category = null) {
+  const entry = typeof category === "string"
+    ? getNewsCategoryCatalog().find((item) => item.id === category || item.slug === category) || null
+    : category;
+  fillNewsCategoryForm(entry);
+  go("categories");
+  setTimeout(() => {
+    document.getElementById("newsCategoryName")?.focus();
+  }, 0);
+}
+
+async function saveNewsCategory() {
+  const payload = getNewsCategoryFormPayload();
+  if (!payload.name) {
+    showNotice("Category name is required.", "error");
+    return false;
+  }
+
+  const categoryId = String(payload.id || "").trim();
+  const endpoint = categoryId ? `/admin/news/categories/${encodeURIComponent(categoryId)}` : "/admin/news/categories";
+  const method = categoryId ? "PATCH" : "POST";
+
+  try {
+    await ensureApiBase();
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method,
+      headers: getHeaders(),
+      cache: "no-store",
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to save category");
+    }
+    showNotice(categoryId ? "Category updated." : "Category added.", "info");
+    await loadNewsPipeline();
+    go("categories");
+    return true;
+  } catch (error) {
+    showNotice(`Could not save category: ${error.message}`, "error");
+    return false;
+  }
+}
+
+async function removeNewsCategory(categoryId = "") {
+  const safeId = String(categoryId || "").trim();
+  if (!safeId) return false;
+  const category = getNewsCategoryCatalog().find((entry) => entry.id === safeId || entry.slug === safeId) || null;
+  const label = category?.name || safeId;
+  if (!window.confirm(`Remove ${label}? Articles using this category will move to Clinical News.`)) {
+    return false;
+  }
+
+  try {
+    await ensureApiBase();
+    const res = await fetch(`${API_BASE}/admin/news/categories/${encodeURIComponent(safeId)}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to remove category");
+    }
+    showNotice("Category removed.", "info");
+    await loadNewsPipeline();
+    go("categories");
+    return true;
+  } catch (error) {
+    showNotice(`Could not remove category: ${error.message}`, "error");
+    return false;
+  }
+}
+
+function handleCategoryAction(event) {
+  const actionButton = event.target.closest("[data-category-action]");
+  if (!actionButton) return;
+  const action = String(actionButton.dataset.categoryAction || "").trim();
+  const categoryId = String(actionButton.dataset.categoryId || "").trim();
+  if (!action || !categoryId) return;
+  const category = getNewsCategoryCatalog().find((entry) => entry.id === categoryId || entry.slug === categoryId) || null;
+  if (action === "edit") {
+    openNewsCategoryForm(category);
+  }
+  if (action === "remove") {
+    void removeNewsCategory(categoryId);
+  }
+}
+
+function formatQueueViews(value) {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    if (numeric >= 1000000) return `${Math.round((numeric / 1000000) * 10) / 10}M`;
+    if (numeric >= 1000) return `${Math.round((numeric / 1000) * 10) / 10}K`;
+    return String(Math.round(numeric));
+  }
+  return String(value || "—");
+}
+
+function sortQueueItems(items = []) {
+  const sortMode = String(document.getElementById("queueSort")?.value || "newest").trim().toLowerCase();
+  const orderMap = { pending_review: 0, approved: 1, published: 2, rejected: 3 };
+  return [...items].sort((a, b) => {
+    const aTime = new Date(a.updatedAt || a.createdAt || a.collectedAt || 0).getTime() || 0;
+    const bTime = new Date(b.updatedAt || b.createdAt || b.collectedAt || 0).getTime() || 0;
+    if (sortMode === "oldest") {
+      return aTime - bTime || String(a.title || "").localeCompare(String(b.title || ""));
+    }
+    if (sortMode === "status") {
+      const aStatus = orderMap[String(a.status || "").trim().toLowerCase()] ?? 99;
+      const bStatus = orderMap[String(b.status || "").trim().toLowerCase()] ?? 99;
+      return aStatus - bStatus || bTime - aTime || String(a.title || "").localeCompare(String(b.title || ""));
+    }
+    return bTime - aTime || String(a.title || "").localeCompare(String(b.title || ""));
+  });
+}
+
+function getEditorFromItem(item = {}) {
+  return {
+    title: String(item.title || "").trim(),
+    summary: String(item.summary || "").trim(),
+    content: String(item.content || "").trim(),
+    tags: normalizeNewsTagList(Array.isArray(item.tags) ? item.tags : String(item.tags || "").split(",")),
+    publishDate: toDateValue(item.sourcePublishedAt || item.publishedAt || item.updatedAt || item.createdAt || ""),
+    sourceName: String(item.sourceName || item.publishedByName || "").trim(),
+    author: String(item.author || NEWS_EDITOR_AUTHOR).trim(),
+    category: normalizeEditorCategory(item.category),
+    status: NEWS_EDITOR_STATUS,
+    metaTitle: String(item.metaTitle || item.title || "").trim(),
+    metaDescription: String(item.metaDescription || item.summary || "").trim(),
+    slug: String(item.slug || "").trim() || slugifyNewsText(item.title || ""),
+    featured: item.featured === true,
+    breaking: String(item.importance || "").toLowerCase() === "high",
+    allowComments: item.allowComments === true || item.comments === true || item.commentsEnabled === true,
+    imageUrl: String(item.imageUrl || item.heroBackgroundImage || "").trim(),
+    imageAlt: String(item.imageAlt || item.heroLabel || item.title || "").trim(),
+  };
+}
+
+function fillEditorFromItem(item = {}) {
+  const fields = getEditorFromItem(item);
+  editingNewsId = String(item.id || "").trim();
+  const titleEl = document.getElementById("newsHeadline");
+  const excerptEl = document.getElementById("newsExcerpt");
+  const bodyEl = document.getElementById("newsBody");
+  const publishDateEl = document.getElementById("newsPublishDate");
+  const sourceNameEl = document.getElementById("newsSourceName");
+  const authorEl = document.getElementById("newsAuthor");
+  const categoryEl = document.getElementById("newsCategory");
+  const statusEl = document.getElementById("newsStatus");
+  const metaTitleEl = document.getElementById("newsMetaTitle");
+  const metaDescriptionEl = document.getElementById("newsMetaDescription");
+  const slugEl = document.getElementById("newsSlug");
+
+  if (titleEl) titleEl.value = fields.title;
+  if (excerptEl) excerptEl.value = fields.summary;
+  if (bodyEl) setNewsBodyContent(fields.content);
+  renderNewsTagChips(fields.tags);
+  setNewsHeroImage(fields.imageUrl, fields.imageAlt, fields.imageUrl ? "Loaded hero image" : "");
+  if (publishDateEl) publishDateEl.value = fields.publishDate;
+  if (sourceNameEl) sourceNameEl.value = fields.sourceName;
+  if (authorEl) authorEl.value = fields.author;
+  if (categoryEl) {
+    refreshNewsCategorySelects(fields.category);
+    categoryEl.value = fields.category;
+    categoryEl.dataset.lastValidValue = fields.category;
+  }
+  if (statusEl) statusEl.value = NEWS_EDITOR_STATUS;
+  if (metaTitleEl) metaTitleEl.value = fields.metaTitle;
+  if (metaDescriptionEl) metaDescriptionEl.value = fields.metaDescription;
+  if (slugEl) slugEl.value = fields.slug;
+  setToggleState("featured", fields.featured);
+  setToggleState("breaking", fields.breaking);
+  setToggleState("comments", fields.allowComments);
+  setToggleState("newsletter", false);
+  syncEditorPreview();
+}
+
+function startNewArticle() {
+  if (newsEditorAutosaveTimer) {
+    clearTimeout(newsEditorAutosaveTimer);
+    newsEditorAutosaveTimer = null;
+  }
+  saveNewsEditorDraft();
+  if (readNewsEditorDraft()) {
+    go("editor");
+    offerNewsEditorDraftRecovery();
+    return;
+  }
+  editingNewsId = "";
+  resetEditorForm();
+  go("editor");
+}
+
+function openNewsEditor(newsId = "") {
+  const safeId = String(newsId || "").trim();
+  const item = newsPipelineState.items.find((entry) => String(entry?.id || "") === safeId) || null;
+  if (!item) {
+    showNotice("Could not open that article for editing.", "error");
+    return;
+  }
+  fillEditorFromItem(item);
+  go("editor");
+}
+
+function openNewsStoryReview(newsId = "") {
+  const safeId = String(newsId || "").trim();
+  if (!safeId) return;
+  const storyUrl = `./news-story.html?newsId=${encodeURIComponent(safeId)}&review=1`;
+  window.location.href = storyUrl;
+}
+
+function renderNewsPipeline() {
+  const host = document.getElementById("newsPipelineMount");
+  if (!host) return;
+
+  const counts = {
+    pending_review: 0,
+    approved: 0,
+    published: 0,
+    rejected: 0,
+  };
+  newsPipelineState.items.forEach((item) => {
+    const status = normalizeNewsStatusValue(item?.status || "");
+    if (counts[status] !== undefined) counts[status] += 1;
+  });
+  const selected = getSelectedNewsItem();
+  if (!newsPipelineState.selectedId && selected) {
+    newsPipelineState.selectedId = String(selected.id || "");
+  }
+  const visibleItems = getVisibleNewsItems();
+
+  const statValues = document.querySelectorAll("#view-dashboard .stats .stat-value");
+  if (statValues[0]) statValues[0].textContent = String(newsPipelineState.items.length);
+  if (statValues[1]) statValues[1].textContent = String(counts.published);
+  if (statValues[2]) statValues[2].textContent = String(counts.pending_review);
+  if (statValues[3]) statValues[3].textContent = String(newsPipelineState.sources.length || 0);
+
+  const filterButtons = [
+    ["all", `All (${newsPipelineState.items.length})`],
+    ["pending_review", `In review (${counts.pending_review})`],
+    ["approved", `Approved (${counts.approved})`],
+    ["published", `Published (${counts.published})`],
+    ["rejected", `Rejected (${counts.rejected})`],
+  ];
+
+  const itemsHtml = visibleItems.length
+    ? visibleItems
+        .map((item) => {
+          const active = String(item.id || "") === newsPipelineState.selectedId ? " active" : "";
+          return `
+            <button type="button" class="news-pipeline-item${active}" data-news-item-id="${escapeHtml(item.id || "")}">
+              <div class="news-pipeline-item-head">
+                <div>
+                  <div class="news-pipeline-item-title">${escapeHtml(item.title || "Untitled article")}</div>
+                  <div class="news-pipeline-item-meta">
+                    <span>${escapeHtml(item.sourceName || "")}</span>
+                    <span>${escapeHtml(item.category || "clinical-news")}</span>
+                    <span>${escapeHtml(formatNewsDateTime(item.updatedAt || item.collectedAt || item.createdAt || ""))}</span>
+                  </div>
+                </div>
+                <span class="status ${getNewsStatusClass(item.status || "")}">${escapeHtml(getNewsStatusLabel(item.status || ""))}</span>
+              </div>
+              <div class="news-pipeline-item-summary">${escapeHtml(item.summary || item.content || "No summary provided.")}</div>
+            </button>
+          `;
+        })
+        .join("")
+    : '<div class="news-empty">No articles match the current filter.</div>';
+
+  const detailHtml = selected
+    ? `
+      <div class="news-pipeline-detail">
+        <div>
+          <div class="news-pipeline-detail-title">${escapeHtml(selected.title || "Untitled article")}</div>
+          <div class="news-pipeline-detail-meta">
+            <span class="status ${getNewsStatusClass(selected.status || "")}">${escapeHtml(getNewsStatusLabel(selected.status || ""))}</span>
+            <span>${escapeHtml(selected.sourceName || "")}</span>
+            <span>${escapeHtml(selected.category || "clinical-news")}</span>
+            <span>${escapeHtml(formatNewsDateTime(selected.publishedAt || selected.updatedAt || selected.createdAt || ""))}</span>
+          </div>
+        </div>
+        <div class="news-pipeline-detail-panel">
+          <div><strong>Source:</strong> ${escapeHtml(selected.sourceName || "")}</div>
+          <div><strong>Author:</strong> ${escapeHtml(selected.author || "Not set")}</div>
+          <div><strong>Link:</strong> ${
+            selected.sourceUrl
+              ? `<a href="${escapeHtml(selected.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(selected.sourceUrl)}</a>`
+              : "No source link"
+          }</div>
+        </div>
+        <div class="news-pipeline-detail-panel">
+          <div class="news-pipeline-detail-summary">${escapeHtml(selected.summary || "No summary provided.")}</div>
+        </div>
+        <div class="news-pipeline-detail-panel">
+          <div class="news-pipeline-detail-body">${escapeHtml(selected.content || "No body content captured yet.")}</div>
+        </div>
+        <div class="news-pipeline-note">
+          <label class="fl" for="newsReviewNote">Review note</label>
+          <textarea class="ft" id="newsReviewNote" rows="4" placeholder="Add an internal review note...">${escapeHtml(selected.reviewNote || "")}</textarea>
+        </div>
+        <div class="news-pipeline-detail-actions">
+          ${normalizeNewsStatusValue(selected.status || "") === "published"
+            ? `<button type="button" class="btn btn-d btn-sm" data-news-action="unpublish">Unpublish</button>`
+            : `<button type="button" class="btn btn-s btn-sm" data-news-action="approve">Approve</button>
+          <button type="button" class="btn btn-p btn-sm" data-news-action="publish">Publish</button>
+          <button type="button" class="btn btn-d btn-sm" data-news-action="reject">Reject</button>`}
+        </div>
+      </div>
+    `
+    : '<div class="news-empty">Select an article to preview the content and decide whether to approve, publish, or reject it.</div>';
+
+  const sourcesHtml = Array.isArray(newsPipelineState.sources) && newsPipelineState.sources.length
+    ? newsPipelineState.sources
+        .map((source) => `
+          <div class="news-source-item">
+            <div class="news-source-name">${escapeHtml(source.name || source.id || "Source")}</div>
+            <div class="news-source-meta">${escapeHtml(source.enabled === false ? "Disabled" : "Enabled")} · ${escapeHtml(source.extractMode || "structured")} · ${escapeHtml(source.category || "clinical-news")}</div>
+            <div class="news-source-url">${escapeHtml(source.url || "")}</div>
+            <div class="news-source-meta">Last run: ${escapeHtml(source.lastCollectedAt ? formatNewsDateTime(source.lastCollectedAt) : "Never")}</div>
+          </div>
+        `)
+        .join("")
+    : '<div class="news-empty">No trusted sources are configured yet.</div>';
+
+  const runsHtml = Array.isArray(newsPipelineState.runs) && newsPipelineState.runs.length
+    ? newsPipelineState.runs
+        .slice(0, 5)
+        .map((run) => `
+          <div class="news-run-item">
+            <div class="news-run-name">${escapeHtml(formatNewsDateTime(run.startedAt || run.createdAt || ""))}</div>
+            <div class="news-run-meta">${escapeHtml(String(run.status || "success").toUpperCase())} · ${escapeHtml(run.triggeredBy || "system")} · ${escapeHtml(run.addedCount || 0)} added, ${escapeHtml(run.updatedCount || 0)} updated, ${escapeHtml(run.errorCount || 0)} errors</div>
+          </div>
+        `)
+        .join("")
+    : '<div class="news-empty">No collection runs recorded yet.</div>';
+
+  host.innerHTML = `
+    <div class="sec-hd">
+      <h2 class="sec-title">News pipeline</h2>
+      <div class="news-pipeline-actions">
+        <button class="btn btn-s btn-sm" type="button" id="newsRefreshBtn">Refresh queue</button>
+        <button class="btn btn-p btn-sm" type="button" id="newsCollectBtn">Collect latest</button>
+      </div>
+    </div>
+    <div class="news-pipeline-stats">
+      <div class="news-pipeline-stat"><div class="news-pipeline-stat-label">Total</div><div class="news-pipeline-stat-value">${escapeHtml(newsPipelineState.items.length)}</div></div>
+      <div class="news-pipeline-stat"><div class="news-pipeline-stat-label">In review</div><div class="news-pipeline-stat-value">${escapeHtml(counts.pending_review)}</div></div>
+      <div class="news-pipeline-stat"><div class="news-pipeline-stat-label">Approved</div><div class="news-pipeline-stat-value">${escapeHtml(counts.approved)}</div></div>
+      <div class="news-pipeline-stat"><div class="news-pipeline-stat-label">Published</div><div class="news-pipeline-stat-value">${escapeHtml(counts.published)}</div></div>
+    </div>
+    <div class="news-pipeline-grid">
+      <div class="news-pipeline-card">
+        <div class="news-pipeline-card-head">
+          <div>
+            <div class="news-pipeline-card-title">Review queue</div>
+            <div class="news-pipeline-card-sub">Trusted source items and manual drafts waiting for approval.</div>
+          </div>
+        </div>
+        <div class="filters" style="margin-bottom:12px">
+          ${filterButtons
+            .map(
+              ([filter, label]) =>
+                `<button type="button" class="chip${newsPipelineState.filter === filter ? " on" : ""}" data-news-filter="${filter}">${escapeHtml(label)}</button>`,
+            )
+            .join("")}
+        </div>
+        <div class="news-pipeline-list" id="newsPipelineList">${itemsHtml}</div>
+      </div>
+      <div class="news-pipeline-card">
+        <div class="news-pipeline-card-head">
+          <div>
+            <div class="news-pipeline-card-title">Preview and sources</div>
+            <div class="news-pipeline-card-sub">Review the selected item before publishing.</div>
+          </div>
+        </div>
+        <div class="news-pipeline-detail" id="newsPipelineDetail">${detailHtml}</div>
+        <div class="news-mini-head" style="margin-top:16px">
+          <div class="news-mini-title">Trusted sources</div>
+          <div class="news-pipeline-card-sub">${escapeHtml(newsPipelineState.sources.length)} active</div>
+        </div>
+        <div class="news-source-list">${sourcesHtml}</div>
+        <div class="news-mini-head" style="margin-top:16px">
+          <div class="news-mini-title">Recent collection runs</div>
+        </div>
+        <div class="news-run-list">${runsHtml}</div>
+      </div>
+    </div>
+  `;
+}
+
+function syncQueueFilterButtons() {
+  document.querySelectorAll('#view-articles .chip[data-filter]').forEach((button) => {
+    button.classList.toggle('on', String(button.dataset.filter || '').trim().toLowerCase() === newsPipelineState.filter);
+  });
+}
+
+function getQueueItems() {
+  const query = String(newsPipelineState.search || '').trim().toLowerCase();
+  const items = Array.isArray(newsPipelineState.items) ? newsPipelineState.items : [];
+  return sortQueueItems(items.filter((item) => {
+    const status = normalizeNewsStatusValue(item?.status || '');
+    const matchesStatus = newsPipelineState.filter === 'all' || status === newsPipelineState.filter;
+    const haystack = [
+      item?.title,
+      item?.summary,
+      item?.content,
+      item?.sourceName,
+      item?.category,
+      item?.author,
+      item?.reviewNote,
+      item?.sourceUrl,
+      item?.tags,
+    ]
+      .flatMap((entry) => (Array.isArray(entry) ? entry : [entry]))
+      .map((entry) => String(entry || '').toLowerCase())
+      .join(' ');
+    return matchesStatus && (!query || haystack.includes(query));
+  }));
+}
+
+function getQueuePageState(items = []) {
+  const pageSize = 8;
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  newsQueuePage = Math.min(Math.max(1, Math.round(Number(newsQueuePage) || 1)), totalPages);
+  const start = (newsQueuePage - 1) * pageSize;
+  return {
+    pageSize,
+    total,
+    totalPages,
+    start,
+    end: Math.min(start + pageSize, total),
+    items: items.slice(start, start + pageSize),
+  };
+}
+
+function renderNewsQueue() {
+  renderDashboardView();
+  renderActivityView();
+  renderSourcesView();
+  renderNewsCategoriesView();
+
+  const counts = (Array.isArray(newsPipelineState.items) ? newsPipelineState.items : []).reduce((accumulator, item) => {
+    const status = normalizeNewsStatusValue(item?.status || "");
+    if (accumulator[status] !== undefined) accumulator[status] += 1;
+    return accumulator;
+  }, {
+    pending_review: 0,
+    approved: 0,
+    published: 0,
+    rejected: 0,
+  });
+
+  const filterButtons = [
+    ["all", `All (${newsPipelineState.items.length})`],
+    ["pending_review", `In review (${counts.pending_review})`],
+    ["approved", `Approved (${counts.approved})`],
+    ["published", `Published (${counts.published})`],
+    ["rejected", `Rejected (${counts.rejected})`],
+  ];
+
+  const items = getQueueItems();
+  const pageState = getQueuePageState(items);
+  const tableBody = document.getElementById("articleRows");
+  if (tableBody) {
+    tableBody.innerHTML = pageState.items.length
+      ? pageState.items.map((item) => {
+          const category = formatNewsCategoryLabel(item.category || "");
+          const statusLabel = getNewsStatusLabel(item.status || "");
+          const statusClass = getNewsStatusClass(item.status || "");
+          const modifiedAt = formatNewsDateTime(item.updatedAt || item.publishedAt || item.createdAt || "");
+          const viewsValue = formatQueueViews(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views ?? "—");
+          return `
+            <tr data-news-id="${escapeHtml(item.id || "")}" data-status="${escapeHtml(String(item.status || "").trim().toLowerCase())}">
+              <td>
+                <div class="title-cell" title="${escapeHtml(item.title || "Untitled article")}">${escapeHtml(item.title || "Untitled article")}</div>
+                <div style="font-size:12px;color:var(--t3);margin-top:3px;max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.summary || item.content || "No summary provided.")}</div>
+              </td>
+              <td>${escapeHtml(item.sourceName || item.sourceId || "Not set")}</td><td>${escapeHtml(item.author || "Not set")}</td>
+              <td><span class="dot" style="background:${escapeHtml(getCategoryDotColor(item.category || ""))}"></span>${escapeHtml(category)}</td>
+              <td><span class="status ${statusClass}">${escapeHtml(statusLabel)}</span></td>
+              <td>${escapeHtml(viewsValue)}</td>
+              <td>${escapeHtml(modifiedAt)}</td>
+              <td>
+                <div class="tactions">
+                  <button type="button" class="tact" data-queue-action="edit" data-news-id="${escapeHtml(item.id || "")}" aria-label="Edit article">&#9998;</button>
+                  <button type="button" class="tact" data-queue-action="view" data-news-id="${escapeHtml(item.id || "")}" aria-label="View article">&#128065;</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("")
+      : `<tr><td colspan="8"><div class="news-empty" style="margin:0">No articles match the current filter.</div></td></tr>`;
+  }
+
+  const queueInfo = document.getElementById("queueInfo");
+  if (queueInfo) {
+    const search = String(newsPipelineState.search || "").trim();
+    const filterLabel = filterButtons.find(([key]) => key === newsPipelineState.filter)?.[1] || "All";
+    queueInfo.textContent = pageState.total
+      ? `Showing ${pageState.start + 1}-${pageState.end} of ${pageState.total} article${pageState.total === 1 ? "" : "s"} · ${filterLabel}${search ? ` · Search: "${search}"` : ""} · Page ${newsQueuePage} of ${pageState.totalPages}`
+      : `No articles match ${search ? `the search "${search}"` : "this filter"}.`;
+  }
+
+  const prevBtn = document.getElementById("queuePrevBtn");
+  const nextBtn = document.getElementById("queueNextBtn");
+  const pageBtn = document.getElementById("queuePageBtn");
+  if (prevBtn) prevBtn.disabled = newsQueuePage <= 1 || pageState.total === 0;
+  if (nextBtn) nextBtn.disabled = newsQueuePage >= pageState.totalPages || pageState.total === 0;
+  if (pageBtn) pageBtn.textContent = String(newsQueuePage);
+  syncQueueFilterButtons();
+}
+
+function renderNewsCategoriesView() {
+  refreshNewsCategorySelects();
+
+  const categories = getNewsCategoryCatalog();
+  const counts = getNewsCategoryCountMap();
+  const rows = document.getElementById("categoryRows");
+  if (rows) {
+    rows.innerHTML = categories.length
+      ? categories
+          .map((entry) => {
+            const count = counts.get(entry.slug) || 0;
+            const canRemove = !entry.system;
+            const description = entry.description ? `<div style="font-size:12px;color:var(--t3);margin-top:3px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(entry.description)}</div>` : "";
+            return `
+              <tr data-category-id="${escapeHtml(entry.id || entry.slug || "")}">
+                <td>
+                  <div class="title-cell">${escapeHtml(entry.name || entry.slug || "Category")}</div>
+                  ${description}
+                </td>
+                <td>${escapeHtml(entry.slug || "")}${entry.system ? ' <span class="status st-draft">System</span>' : ""}</td>
+                <td>${escapeHtml(count)}</td>
+                <td><span class="dot" style="background:${escapeHtml(entry.color || "#64748b")}"></span>${escapeHtml(entry.color || "")}</td>
+                <td>
+                  <div class="tactions">
+                    <button type="button" class="tact" data-category-action="edit" data-category-id="${escapeHtml(entry.id || entry.slug || "")}">Edit</button>
+                    <button type="button" class="tact del" data-category-action="remove" data-category-id="${escapeHtml(entry.id || entry.slug || "")}"${canRemove ? "" : " disabled"}>${canRemove ? "Remove" : "Locked"}</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          })
+          .join("")
+      : `<tr><td colspan="5"><div class="news-empty" style="margin:0">No categories available.</div></td></tr>`;
+  }
+
+  const totalValue = document.getElementById("categoryTotalValue");
+  const systemValue = document.getElementById("categorySystemValue");
+  const customValue = document.getElementById("categoryCustomValue");
+  const articleValue = document.getElementById("categoryArticleValue");
+  const systemCount = categories.filter((entry) => entry.system).length;
+  const customCount = categories.length - systemCount;
+  const taggedCount = (Array.isArray(newsPipelineState.items) ? newsPipelineState.items : []).reduce((total, item) => total + (normalizeEditorCategory(item.category || "") ? 1 : 0), 0);
+  if (totalValue) totalValue.textContent = String(categories.length);
+  if (systemValue) systemValue.textContent = String(systemCount);
+  if (customValue) customValue.textContent = String(Math.max(0, customCount));
+  if (articleValue) articleValue.textContent = String(taggedCount);
+}
+
+async function loadNewsPipeline() {
+  const cachedFeed = loadCachedPublishedNewsFeed();
+  try {
+    await ensureApiBase();
+    const res = await fetch(`${API_BASE}/admin/news?limit=200&status=all`, {
+      headers: getHeaders(),
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to load the review queue");
+    }
+    newsPipelineState.items = Array.isArray(data.items) ? data.items : [];
+    newsPipelineState.categories = Array.isArray(data.categories) ? data.categories : [];
+    newsPipelineState.sources = Array.isArray(data.sources) ? data.sources : [];
+    newsPipelineState.runs = Array.isArray(data.runs) ? data.runs : [];
+    if (!newsPipelineState.items.length && cachedFeed && Array.isArray(cachedFeed.items) && cachedFeed.items.length) {
+      newsPipelineState.items = cachedFeed.items;
+      newsPipelineState.categories = Array.isArray(cachedFeed.categories) ? cachedFeed.categories : newsPipelineState.categories;
+      newsPipelineState.sources = Array.isArray(cachedFeed.sources) ? cachedFeed.sources : newsPipelineState.sources;
+      newsPipelineState.runs = Array.isArray(cachedFeed.runs) ? cachedFeed.runs : newsPipelineState.runs;
+    }
+    await syncPublicNewsFeedCache(newsPipelineState.items);
+    newsStudioLoaded = true;
+    renderNewsQueue();
+    return true;
+  } catch (error) {
+    if (cachedFeed && Array.isArray(cachedFeed.items)) {
+      newsPipelineState.items = cachedFeed.items;
+      newsPipelineState.categories = Array.isArray(cachedFeed.categories) ? cachedFeed.categories : newsPipelineState.categories;
+      newsPipelineState.sources = Array.isArray(cachedFeed.sources) ? cachedFeed.sources : newsPipelineState.sources;
+      newsPipelineState.runs = Array.isArray(cachedFeed.runs) ? cachedFeed.runs : newsPipelineState.runs;
+      showNotice("Loaded the last published feed from cache while the backend was unavailable.", "info");
+      await syncPublicNewsFeedCache(newsPipelineState.items);
+      newsStudioLoaded = true;
+      renderNewsQueue();
+      return false;
+    }
+    newsStudioLoaded = true;
+    showNotice(`Could not load news queue: ${error.message}`, "error");
+    renderNewsQueue();
+    return false;
+  }
+}
+
+async function collectLatestNews() {
+  try {
+    await ensureApiBase();
+    const res = await fetch(`${API_BASE}/admin/news/collect`, {
+      method: "POST",
+      headers: getHeaders(),
+      cache: "no-store",
+      body: JSON.stringify({}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to collect news");
+    }
+    showNotice("Collection started. Fresh source items will appear in the review queue shortly.", "info");
+    await loadNewsPipeline();
+  } catch (error) {
+    showNotice(`Could not collect news: ${error.message}`, "error");
+  }
+}
+
+async function saveManualArticle() {
+  const payload = getEditorPayload();
+  if (!payload.title) {
+    showNotice("Please add a headline before saving the article.", "error");
+    return false;
+  }
+  if (!payload.content) {
+    showNotice("Please add body content before saving the article.", "error");
+    return false;
+  }
+
+  try {
+    await ensureApiBase();
+    const isEditing = Boolean(String(editingNewsId || "").trim());
+    const endpoint = isEditing
+      ? `${API_BASE}/admin/news/${encodeURIComponent(String(editingNewsId).trim())}`
+      : `${API_BASE}/admin/news`;
+    const res = await fetch(endpoint, {
+      method: isEditing ? "PATCH" : "POST",
+      headers: getHeaders(),
+      cache: "no-store",
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to save article");
+    }
+    showNotice(isEditing ? "Article updated." : "Manual article saved to the review queue.", "info");
+    clearNewsEditorDraft();
+    resetEditorForm();
+    await loadNewsPipeline();
+    editingNewsId = "";
+    newsQueuePage = 1;
+    go("articles");
+    return true;
+  } catch (error) {
+    showNotice(`Could not save article: ${error.message}`, "error");
+    return false;
+  }
+}
+
+async function runNewsAction(action, newsId) {
+  const safeId = String(newsId || "").trim();
+  if (!safeId) return false;
+  const reviewNote = String(document.getElementById("newsReviewNote")?.value || "").trim();
+  const endpointMap = {
+    approve: `/admin/news/${encodeURIComponent(safeId)}/approve`,
+    publish: `/admin/news/${encodeURIComponent(safeId)}/publish`,
+    reject: `/admin/news/${encodeURIComponent(safeId)}/reject`,
+    unpublish: `/admin/news/${encodeURIComponent(safeId)}/reject`,
+  };
+  const endpoint = endpointMap[action];
+  if (!endpoint) return false;
+
+  try {
+    await ensureApiBase();
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: getHeaders(),
+      cache: "no-store",
+      body: JSON.stringify({ reviewNote }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to update the news item");
+    }
+    showNotice(`Article ${action === "reject" ? "rejected" : action === "unpublish" ? "unpublished" : action === "approve" ? "approved" : "published"} successfully.`, "info");
+    newsPipelineState.selectedId = safeId;
+    await loadNewsPipeline();
+    return true;
+  } catch (error) {
+    showNotice(`Could not update article: ${error.message}`, "error");
+    return false;
+  }
+}
+
+function selectPipelineItem(newsId = "") {
+  const safeId = String(newsId || "").trim();
+  if (!safeId) return;
+  newsPipelineState.selectedId = safeId;
+  renderNewsQueue();
+}
+
+function go(view) {
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  const target = document.getElementById(`view-${view}`);
+  if (target) target.classList.add("active");
+  const navItem = document.querySelector(`.nav-item[data-view="${view}"]`);
+  if (navItem) navItem.classList.add("active");
+  const titles = {
+    dashboard: "Dashboard",
+    articles: "Review queue",
+    sources: "Sources",
+    activity: "Activity",
+    editor: editingNewsId ? "Edit article" : "Add article",
+    media: "Media Library",
+    categories: "Categories",
+    users: "Users",
+    analytics: "Analytics",
+    settings: "Site Settings",
+  };
+  const titleEl = document.getElementById("pageTitle");
+  if (titleEl) titleEl.textContent = titles[view] || view;
+  const backBtn = document.getElementById("backBtn");
+  const newsNavBtn = document.getElementById("newsNavBtn");
+  const newArticleBtn = document.getElementById("newArticleBtn");
+  if (backBtn) {
+    backBtn.style.display = view === "editor" ? "inline-flex" : "none";
+  }
+  if (newsNavBtn) {
+    const showNewsNav = view === "dashboard" || view === "articles";
+    newsNavBtn.style.display = showNewsNav ? "inline-flex" : "none";
+    if (showNewsNav) {
+      const nextView = view === "dashboard" ? "articles" : "dashboard";
+      newsNavBtn.onclick = () => go(nextView);
+      newsNavBtn.title = nextView === "articles" ? "Open review queue" : "Back to dashboard";
+      newsNavBtn.setAttribute("aria-label", nextView === "articles" ? "Open review queue" : "Back to dashboard");
+      newsNavBtn.innerHTML = nextView === "articles" ? NEWS_STUDIO_ARTICLES_ICON : NEWS_STUDIO_DASHBOARD_ICON;
+    }
+  }
+  if (newArticleBtn) {
+    newArticleBtn.style.display = view === "editor" ? "none" : "inline-flex";
+  }
+  if (newsStudioLoaded) {
+    renderNewsQueue();
+  }
+  if (view === "editor") {
+    syncEditorPreview();
+    const titleEl = document.getElementById("pageTitle");
+    if (titleEl) titleEl.textContent = editingNewsId ? "Edit article" : "Add article";
+  } else if (view === "articles" && !newsStudioLoaded) {
+    void loadNewsPipeline();
+  }
+}
+
+function filter(el, status) {
+  document.querySelectorAll("#view-articles .chip").forEach((c) => c.classList.remove("on"));
+  if (el) el.classList.add("on");
+  newsPipelineState.filter = String(status || "all").trim().toLowerCase() || "all";
+  newsQueuePage = 1;
+  renderNewsQueue();
+}
+
+function openModal() {
+  document.getElementById("deleteModal")?.classList.add("show");
+}
+
+function closeModal() {
+  document.getElementById("deleteModal")?.classList.remove("show");
+}
+
+function confirmDelete() {
+  closeModal();
+  alert("Article deleted");
+}
+
+function toggleNav(open) {
+  const drawer = document.getElementById("navDrawer");
+  const backdrop = document.getElementById("navBackdrop");
+  if (!drawer || !backdrop) return;
+  drawer.classList.toggle("show", !!open);
+  backdrop.classList.toggle("show", !!open);
+}
+
+function closeNewsActionModal() {
+  pendingNewsAction = null;
+  const modal = document.getElementById("newsActionModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function openNewsActionModal(action, newsId) {
+  const safeAction = String(action || "").trim().toLowerCase();
+  const safeId = String(newsId || "").trim();
+  const item = newsPipelineState.items.find((entry) => String(entry?.id || "") === safeId);
+  if (!item || (safeAction !== "publish" && safeAction !== "reject" && safeAction !== "unpublish")) return;
+  pendingNewsAction = { action: safeAction, newsId: safeId };
+  const isReject = safeAction === "reject" || safeAction === "unpublish";
+  const title = document.getElementById("newsActionModalTitle");
+  const message = document.getElementById("newsActionModalMessage");
+  const confirm = document.getElementById("newsActionModalConfirm");
+  if (title) title.textContent = safeAction === "unpublish" ? "Unpublish article?" : isReject ? "Reject article?" : "Publish article?";
+  if (message) message.textContent = isReject
+    ? "This will unpublish \"" + (item.title || "this article") + "\" immediately and move it to the Rejected table."
+    : "This will make \"" + (item.title || "this article") + "\" visible on the public news page.";
+  if (confirm) {
+    confirm.textContent = safeAction === "unpublish" ? "Unpublish article" : isReject ? "Reject article" : "Publish article";
+    confirm.classList.toggle("btn-d", isReject);
+    confirm.classList.toggle("btn-p", !isReject);
+  }
+  const modal = document.getElementById("newsActionModal");
+  if (!modal) return;
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  confirm?.focus();
+}
+
+async function confirmNewsAction() {
+  const pending = pendingNewsAction;
+  closeNewsActionModal();
+  if (!pending) return;
+  await runNewsAction(pending.action, pending.newsId);
+}
+
+function initNewsStudio() {
+  resetEditorForm();
+  const pipelineMount = document.getElementById("newsPipelineMount");
+  pipelineMount?.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-news-action]");
+    if (!(button instanceof HTMLElement)) return;
+    const action = String(button.dataset.newsAction || "").trim().toLowerCase();
+    const selectedId = String(newsPipelineState.selectedId || "").trim();
+    if (action === "publish" || action === "reject" || action === "unpublish") {
+      openNewsActionModal(action, selectedId);
+    } else if (action === "approve") {
+      void runNewsAction(action, selectedId);
+    }
+  });
+  document.getElementById("newsActionModalClose")?.addEventListener("click", closeNewsActionModal);
+  document.getElementById("newsActionModalCancel")?.addEventListener("click", closeNewsActionModal);
+  document.getElementById("newsActionModalConfirm")?.addEventListener("click", () => void confirmNewsAction());
+  document.getElementById("newsActionModal")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeNewsActionModal();
+  });
+  document.getElementById("newsDraftModalClose")?.addEventListener("click", discardNewsEditorDraft);
+  document.getElementById("newsDraftDiscardBtn")?.addEventListener("click", discardNewsEditorDraft);
+  document.getElementById("newsDraftRecoverBtn")?.addEventListener("click", recoverNewsEditorDraft);
+  document.getElementById("newsDraftModal")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeNewsDraftModal();
+  });
+  resetSourceForm();
+  document.querySelectorAll("[data-news-toggle]").forEach((toggleEl) => {
+    toggleEl.addEventListener("click", () => {
+      toggleEl.classList.toggle("on");
+      syncEditorPreview();
+    });
+  });
+  document.querySelectorAll("[data-source-toggle]").forEach((toggleEl) => {
+    toggleEl.addEventListener("click", () => {
+      toggleEl.classList.toggle("on");
+    });
+  });
+  const heroDropzone = getNewsHeroDropzone();
+  const heroInput = getNewsHeroInput();
+  if (heroDropzone) {
+    heroDropzone.addEventListener("click", (event) => {
+      const action = event.target?.closest?.("[data-hero-action]")?.dataset?.heroAction || "";
+      if (action === "clear") {
+        event.preventDefault();
+        clearNewsHeroImage();
+        syncEditorPreview();
+        return;
+      }
+      event.preventDefault();
+      openNewsHeroPicker();
+    });
+    heroDropzone.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openNewsHeroPicker();
+      }
+    });
+    heroDropzone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      heroDropzone.classList.add("dragging");
+    });
+    heroDropzone.addEventListener("dragleave", () => {
+      heroDropzone.classList.remove("dragging");
+    });
+    heroDropzone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      heroDropzone.classList.remove("dragging");
+      const file = event.dataTransfer?.files?.[0] || null;
+      if (file) loadNewsHeroFile(file);
+    });
+  }
+  if (heroInput) {
+    heroInput.addEventListener("change", () => {
+      const file = heroInput.files && heroInput.files[0] ? heroInput.files[0] : null;
+      if (file) loadNewsHeroFile(file);
+    });
+  }
+  document.querySelectorAll("#newsBodyToolbar [data-command]").forEach((button) => {
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("click", () => {
+      applyNewsEditorCommand(button.dataset.command || "", button.dataset.value || "");
+    });
+  });
+  document.getElementById("newsHeadline")?.addEventListener("input", syncEditorPreview);
+  document.getElementById("newsExcerpt")?.addEventListener("input", syncEditorPreview);
+  document.getElementById("newsMetaTitle")?.addEventListener("input", syncEditorPreview);
+  document.getElementById("newsMetaDescription")?.addEventListener("input", syncEditorPreview);
+  document.getElementById("newsSlug")?.addEventListener("input", syncEditorPreview);
+  ["newsPublishDate", "newsSourceName", "newsAuthor", "newsStatus"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", scheduleNewsEditorAutosave);
+    document.getElementById(id)?.addEventListener("change", scheduleNewsEditorAutosave);
+  });
+  document.getElementById("newsBody")?.addEventListener("input", syncEditorPreview);
+  document.getElementById("newsBody")?.addEventListener("blur", syncEditorPreview);
+  document.getElementById("newsBody")?.addEventListener("paste", (event) => {
+    event.preventDefault();
+    const html = String(event.clipboardData?.getData("text/html") || "").trim();
+    const text = String(event.clipboardData?.getData("text/plain") || "").trim();
+    const content = normalizeNewsEditorHtml(html || text);
+    document.execCommand("insertHTML", false, content);
+    syncEditorPreview();
+  });
+  document.getElementById("newsTagInput")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault();
+      commitNewsTagInput();
+      syncEditorPreview();
+      return;
+    }
+    if (event.key === "Backspace" && !String(event.target?.value || "").trim()) {
+      removeLastNewsTag();
+      syncEditorPreview();
+    }
+  });
+  document.getElementById("newsTagInput")?.addEventListener("blur", () => {
+    commitNewsTagInput();
+    syncEditorPreview();
+  });
+  document.getElementById("newsTagInput")?.addEventListener("paste", (event) => {
+    event.preventDefault();
+    const text = String(event.clipboardData?.getData("text/plain") || "").trim();
+    if (!text) return;
+    const current = getNewsTagValues().concat(text.split(/[\n,]+/));
+    renderNewsTagChips(current);
+    const input = getNewsTagInput();
+    if (input) input.value = "";
+    syncEditorPreview();
+  });
+  document.getElementById("newsCategory")?.addEventListener("change", (event) => {
+    const select = event.target;
+    const nextValue = String(select?.value || "").trim();
+    const previousValue = String(select?.dataset.lastValidValue || "").trim();
+    if (nextValue === "__add_category__") {
+      if (select) select.value = previousValue || "";
+      openNewsCategoryForm();
+      return;
+    }
+    if (select) select.dataset.lastValidValue = nextValue;
+    syncEditorPreview();
+  });
+  document.getElementById("newsCategoryName")?.addEventListener("input", () => {
+    const nameEl = document.getElementById("newsCategoryName");
+    const slugEl = document.getElementById("newsCategorySlug");
+    if (!nameEl || !slugEl) return;
+    if (slugEl.dataset.manualSlug === "true") return;
+    slugEl.value = slugifyNewsText(String(nameEl.value || "")) || "";
+  });
+  document.getElementById("newsCategorySlug")?.addEventListener("input", () => {
+    const slugEl = document.getElementById("newsCategorySlug");
+    if (slugEl) slugEl.dataset.manualSlug = "true";
+  });
+  document.getElementById("addCategoryBtn")?.addEventListener("click", () => {
+    openNewsCategoryForm();
+  });
+  document.getElementById("refreshCategoriesBtn")?.addEventListener("click", () => {
+    void loadNewsPipeline();
+  });
+  document.getElementById("newsCategoryResetBtn")?.addEventListener("click", () => {
+    resetNewsCategoryForm();
+  });
+  document.getElementById("newsCategorySaveBtn")?.addEventListener("click", () => {
+    void saveNewsCategory();
+  });
+  document.getElementById("categoryRows")?.addEventListener("click", handleCategoryAction);
+  document.getElementById("newsSaveDraftBtn")?.addEventListener("click", () => {
+    void saveManualArticle();
+  });
+  document.getElementById("newsSubmitReviewBtn")?.addEventListener("click", () => {
+    void saveManualArticle();
+  });
+  document.getElementById("queueSort")?.addEventListener("change", () => {
+    newsQueuePage = 1;
+    renderNewsQueue();
+  });
+  document.getElementById("queuePrevBtn")?.addEventListener("click", () => {
+    newsQueuePage = Math.max(1, newsQueuePage - 1);
+    renderNewsQueue();
+  });
+  document.getElementById("queueNextBtn")?.addEventListener("click", () => {
+    newsQueuePage += 1;
+    renderNewsQueue();
+  });
+  document.getElementById("sourceAddBtn")?.addEventListener("click", () => {
+    resetSourceForm();
+    go("sources");
+    document.getElementById("sourceNameInput")?.focus();
+  });
+  document.getElementById("sourceResetBtn")?.addEventListener("click", () => {
+    resetSourceForm();
+  });
+  document.getElementById("sourceCreateBtn")?.addEventListener("click", () => {
+    void saveNewsSource();
+  });
+  document.getElementById("sourceRefreshBtn")?.addEventListener("click", () => {
+    void loadNewsPipeline();
+  });
+  document.getElementById("activityRefreshBtn")?.addEventListener("click", () => {
+    void loadNewsPipeline();
+  });
+  document.getElementById("sourceRows")?.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const actionButton = target.closest("[data-source-action]");
+    if (actionButton instanceof HTMLElement) {
+      const sourceId = String(actionButton.dataset.sourceId || "").trim();
+      const action = String(actionButton.dataset.sourceAction || "").trim().toLowerCase();
+      const source = newsPipelineState.sources.find((entry) => String(entry?.id || "") === sourceId) || null;
+      if (action === "edit" && source) {
+        resetSourceForm(source);
+        go("sources");
+        document.getElementById("sourceNameInput")?.focus();
+      } else if (action === "remove") {
+        void removeNewsSource(sourceId);
+      }
+    }
+  });
+  const handleActivityView = (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const actionButton = target.closest("[data-activity-view-id]");
+    if (actionButton instanceof HTMLElement) {
+      const newsId = String(actionButton.dataset.activityViewId || "").trim();
+      if (newsId) {
+        openNewsStoryReview(newsId);
+      }
+    }
+  };
+  document.getElementById("recentActivityList")?.addEventListener("click", handleActivityView);
+  document.getElementById("activityList")?.addEventListener("click", handleActivityView);
+  document.getElementById("recentArticleRows")?.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const row = target.closest("[data-news-id]");
+    if (row instanceof HTMLElement) {
+      const newsId = String(row.dataset.newsId || "").trim();
+      if (newsId) openNewsStoryReview(newsId);
+    }
+  });
+  document.getElementById("articleRows")?.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target) return;
+    const actionButton = target.closest("[data-queue-action]");
+    if (actionButton instanceof HTMLElement) {
+      const newsId = String(actionButton.dataset.newsId || "").trim();
+      const action = String(actionButton.dataset.queueAction || "").trim().toLowerCase();
+      if (action === "edit") {
+        openNewsEditor(newsId);
+      } else if (action === "view") {
+        openNewsStoryReview(newsId);
+      }
+      return;
+    }
+    const row = target.closest("tr[data-news-id]");
+    if (row instanceof HTMLElement) {
+      const newsId = String(row.dataset.newsId || "").trim();
+      if (newsId) openNewsStoryReview(newsId);
+    }
+  });
+  document.querySelector(".search input")?.addEventListener("input", (event) => {
+    newsPipelineState.search = String(event.target?.value || "");
+    newsQueuePage = 1;
+    renderNewsQueue();
+  });
+  const launchParams = new URLSearchParams(window.location.search);
+  const requestedView = String(launchParams.get("view") || "").trim().toLowerCase();
+  const requestedFilter = String(launchParams.get("filter") || "").trim().toLowerCase();
+  const launchView = ["dashboard", "articles", "sources", "activity", "editor", "media", "categories", "users", "analytics", "settings"].includes(requestedView)
+    ? requestedView
+    : "dashboard";
+  if (requestedFilter && ["all", "pending_review", "approved", "published", "rejected"].includes(requestedFilter)) {
+    newsPipelineState.filter = requestedFilter;
+    newsQueuePage = 1;
+  }
+  document.querySelector(".nav-item[data-view='dashboard']")?.classList.add("active");
+  window.addEventListener("storage", (event) => {
+    void handleNewsPipelineRefresh(event);
+  });
+  void loadNewsPipeline();
+  go(launchView);
+  window.setTimeout(offerNewsEditorDraftRecovery, 0);
+}
+
+initNewsStudio();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

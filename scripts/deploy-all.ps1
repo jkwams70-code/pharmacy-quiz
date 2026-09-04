@@ -6,7 +6,10 @@ param(
   [string]$Server = "root@139.84.233.243",
 
   [Parameter(Mandatory = $false)]
-  [string]$Branch = "deploy-baseline"
+  [string]$Branch = "deploy-baseline",
+
+  [Parameter(Mandatory = $false)]
+  [switch]$Yes
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,7 +17,7 @@ $ErrorActionPreference = "Stop"
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host "Step 1/2: Push to GitHub"
-powershell -ExecutionPolicy Bypass -File "$scriptRoot\deploy-push.ps1" -Message "$Message" -Branch "$Branch"
+powershell -ExecutionPolicy Bypass -File "$scriptRoot\deploy-push.ps1" -Message "$Message" -Branch "$Branch" -Yes:$Yes
 
 Write-Host "Step 2/2: Deploy on VPS ($Server)"
 ssh $Server "cd /opt/pharmacy-quiz && git fetch origin && git checkout $Branch && git pull --ff-only origin $Branch && chmod +x scripts/vps-deploy.sh && ./scripts/vps-deploy.sh $Branch"

@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+﻿import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import agoraAccessTokenPackage from "agora-access-token";
 import {
+  AUTH_COOKIE_NAME,
   createToken,
   hashPassword,
   optionalAuth,
@@ -25,7 +26,7 @@ import {
   ensureQuestionsSeeded,
   normalizeStoredQuestionCategories,
 } from "./services/questions.js";
-import { generateAiExplanation } from "./services/ai.js";
+import { generateAiExplanation, generateNewsDraft } from "./services/ai.js";
 import {
   ensureStore,
   readCollection,
@@ -37,6 +38,10 @@ import {
   normalizeMajorCategory,
 } from "./categoryTaxonomy.js";
 import { inferQuestionRotation } from "../../rotationTaxonomy.js";
+import { createMedLensRouter } from "./services/medlensQueue.js";
+import { createMedLensDiseaseRouter } from "./services/medlensDiseaseQueue.js";
+import { createMedLensInteractionRouter } from "./services/medlensInteractionQueue.js";
+import { createGuidelineRouter } from "./services/guidelineQueue.js";
 
 const app = express();
 const execFileAsync = promisify(execFile);
@@ -55,7 +60,7 @@ const ALLOWED_ROTATIONS = new Set([
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendPath = path.join(__dirname, "..", "..");
+const frontendPath = path.join(__dirname, "..", "..", "www");
 const logPath = path.join(__dirname, "..", config.logDir);
 fs.mkdirSync(logPath, { recursive: true });
 const accessLogStream = fs.createWriteStream(path.join(logPath, "access.log"), {
@@ -73,6 +78,58 @@ let cachedFfprobePath = "";
 const COMMUNITY_REALTIME_GLOBAL_TOPIC = "community:global";
 const COMMUNITY_REALTIME_PRESENCE_TOPIC = "community:presence";
 const communityCallSessionsByConversation = new Map();
+
+const AUTH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isSecureRequest(req) {
+  if (req?.secure) {
+    return true;
+  }
+
+  const forwardedProto = String(req?.headers?.["x-forwarded-proto"] || "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  return forwardedProto === "https";
+}
+
+function getAuthCookieOptions(req) {
+  return {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: isSecureRequest(req),
+    maxAge: AUTH_COOKIE_MAX_AGE_MS,
+  };
+}
+
+function isProtectedHtmlRequest(req) {
+  const method = String(req?.method || "").toUpperCase();
+  if (method !== "GET" && method !== "HEAD") {
+    return false;
+  }
+
+  const requestPath = String(req?.path || req?.originalUrl || "");
+  if (!requestPath || requestPath.startsWith("/api/") || requestPath.startsWith("/backend")) {
+    return false;
+  }
+  if (requestPath === "/" || requestPath === "/index.html") {
+    return false;
+  }
+
+  const ext = path.extname(requestPath).toLowerCase();
+  if (ext === ".html") {
+    return true;
+  }
+
+  const accept = String(req?.headers?.accept || "");
+  return accept.includes("text/html");
+}
+
+function buildLoginRedirectUrl(req) {
+  const originalUrl = String(req?.originalUrl || req?.url || "/").trim() || "/";
+  return "/index.html?next=" + encodeURIComponent(originalUrl);
+}
 
 function resolveWingetFfmpegBinary(binaryName = "ffmpeg.exe") {
   const localAppData = String(process.env.LOCALAPPDATA || "").trim();
@@ -213,13 +270,63 @@ const USERNAME_REGEX = /^[a-z0-9][a-z0-9_.-]{2,29}$/;
 const PHONE_CONTACT_REGEX = /^\+?[0-9][0-9()\-\s]{5,19}$/;
 const USER_ROLE_VALUES = new Set(["student", "worker"]);
 const SUBSCRIPTION_TIER_VALUES = new Set(["free", "premium"]);
+const SUBSCRIPTION_PLAN_VALUES = new Set(["trial", "weekly", "monthly", "yearly"]);
+const SUBSCRIPTION_STATUS_VALUES = new Set([
+  "none",
+  "trial",
+  "pending",
+  "active",
+  "expired",
+  "rejected",
+]);
+const SUBSCRIPTION_TRIAL_DAYS = 7;
+const SUBSCRIPTION_APPROVAL_WINDOW_HOURS = 24;
+const SUBSCRIPTION_PLAN_CATALOG = {
+  trial: {
+    key: "trial",
+    label: "Free Trial",
+    shortLabel: "Trial",
+    priceGhs: 0,
+    durationDays: 7,
+    description: "Try the app free for 7 days after signup.",
+    ctaLabel: "Current free access",
+  },
+  weekly: {
+    key: "weekly",
+    label: "Weekly Access",
+    shortLabel: "Week Pass",
+    priceGhs: 5,
+    durationDays: 7,
+    description: "Unlock drills, exams, library, and community for 7 days.",
+    ctaLabel: "Buy weekly access",
+  },
+  monthly: {
+    key: "monthly",
+    label: "Monthly Access",
+    shortLabel: "Month Pass",
+    priceGhs: 15,
+    durationDays: 30,
+    description: "Unlock everything for 30 days.",
+    ctaLabel: "Buy monthly access",
+  },
+  yearly: {
+    key: "yearly",
+    label: "Annual Access",
+    shortLabel: "Annual Pass",
+    priceGhs: 120,
+    durationDays: 365,
+    description: "Unlock everything for a full year.",
+    ctaLabel: "Buy annual access",
+  },
+};
+const SUBSCRIPTION_LOCKED_FEATURES = ["drills", "exams", "topic library", "community"];
 const PROFESSIONAL_TYPE_VALUES = new Set([
   "Doctor of Pharmacy",
   "Pharmacy Technician",
   "MCA",
   "Other",
 ]);
-const RESET_CODE_TTL_MINUTES = 15;
+const RESET_CODE_TTL_HOURS = 24;
 const DEACTIVATE_MAX_DAYS = 30;
 const DELETE_ACCOUNT_CONFIRM_TOKEN = "DELETE_MY_ACCOUNT_CONFIRMED";
 const DAILY_QUIZ_SEASON = {
@@ -1445,6 +1552,1166 @@ function removeStatusActor(entries = [], userId = "", at = new Date().toISOStrin
     normalizeStatusActorEntries(entries, at).filter((entry) => String(entry?.userId || "").trim() !== targetId),
     at,
   );
+}
+
+const NEWS_DEFAULT_SOURCES = [
+  {
+    id: "fda-medwatch",
+    name: "FDA MedWatch Safety Alerts",
+    url: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/medwatch/rss.xml",
+    category: "health-concern",
+    extractMode: "rss",
+    priority: 100,
+    enabled: true,
+    reviewRequired: true,
+    description: "Clinically important medical product safety alerts from the FDA.",
+  },
+  {
+    id: "who-newsroom",
+    name: "WHO Newsroom",
+    url: "https://www.who.int/news-room",
+    category: "clinical-news",
+    extractMode: "structured",
+    priority: 92,
+    enabled: true,
+    reviewRequired: true,
+    description: "Global health news and medical product updates from WHO.",
+  },
+  {
+    id: "nice-news",
+    name: "NICE News",
+    url: "https://www.nice.org.uk/news",
+    category: "guideline-update",
+    extractMode: "structured",
+    priority: 96,
+    enabled: true,
+    reviewRequired: true,
+    description: "Guideline and evidence updates from NICE.",
+  },
+];
+
+const NEWS_DEFAULT_CATEGORIES = [
+  {
+    id: "clinical-news",
+    name: "Clinical News",
+    slug: "clinical-news",
+    color: "#64748b",
+    description: "General clinical updates and uncategorized news.",
+    system: true,
+  },
+  {
+    id: "medicine",
+    name: "Medicine",
+    slug: "medicine",
+    color: "#2563eb",
+    description: "General medicine and treatment updates.",
+  },
+  {
+    id: "wellness",
+    name: "Wellness",
+    slug: "wellness",
+    color: "#16a34a",
+    description: "Wellness, prevention, and lifestyle stories.",
+  },
+  {
+    id: "research",
+    name: "Research",
+    slug: "research",
+    color: "#9333ea",
+    description: "Trials, studies, and scientific findings.",
+  },
+  {
+    id: "trending",
+    name: "Trending",
+    slug: "trending",
+    color: "#dc2626",
+    description: "Popular or breaking updates.",
+  },
+];
+
+const NEWS_ITEM_STATUS_ORDER = new Map([
+  ["pending_review", 0],
+  ["approved", 1],
+  ["published", 2],
+  ["rejected", 3],
+  ["archived", 4],
+]);
+
+function normalizeNewsCategory(rawCategory = "", fallback = "clinical-news") {
+  const text = normalizeWhitespace(rawCategory).toLowerCase();
+  if (!text) return fallback || "clinical-news";
+  return slugifyNewsText(text) || fallback || "clinical-news";
+}
+
+function normalizeNewsCategoryEntry(raw = {}) {
+  const now = new Date().toISOString();
+  const fallback = NEWS_DEFAULT_CATEGORIES.find((entry) => entry.slug === normalizeNewsCategory(raw.slug || raw.id || raw.name || "", "")) || {};
+  const name = cleanNewsText(raw.name || raw.title || raw.label || fallback.name || "Category", 80) || "Category";
+  const slug = normalizeNewsCategory(raw.slug || raw.id || name || "", slugifyNewsText(name) || fallback.slug || "category");
+  return {
+    id: String(raw.id || slug || crypto.randomUUID()).trim() || slug || crypto.randomUUID(),
+    name,
+    slug,
+    color: String(raw.color || fallback.color || "#64748b").trim() || fallback.color || "#64748b",
+    description: cleanNewsText(raw.description || fallback.description || "", 240),
+    system: raw.system === true || fallback.system === true,
+    createdAt: String(raw.createdAt || now).trim(),
+    updatedAt: String(raw.updatedAt || now).trim(),
+  };
+}
+
+async function seedDefaultNewsCategories() {
+  const stored = (await readCollection("newsCategories")).map(normalizeNewsCategoryEntry);
+  const bySlug = new Map(stored.map((entry) => [entry.slug, entry]));
+  let changed = false;
+
+  for (const category of NEWS_DEFAULT_CATEGORIES) {
+    const normalized = normalizeNewsCategoryEntry(category);
+    if (!bySlug.has(normalized.slug)) {
+      stored.push(normalized);
+      bySlug.set(normalized.slug, normalized);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    await writeCollection("newsCategories", stored);
+  }
+
+  return stored;
+}
+
+async function updateNewsCategoryReferences(previousSlug = "", nextSlug = "") {
+  const oldSlug = normalizeNewsCategory(previousSlug || "", "");
+  const newSlug = normalizeNewsCategory(nextSlug || "", oldSlug);
+  if (!oldSlug || !newSlug || oldSlug === newSlug) return { itemsChanged: 0, sourcesChanged: 0 };
+
+  const [items, sources] = await Promise.all([
+    readCollection("newsItems"),
+    readCollection("newsSources"),
+  ]);
+
+  let itemsChanged = 0;
+  const nextItems = items.map((raw) => {
+    const item = normalizeNewsItem(raw);
+    if (normalizeNewsCategory(item.category || "", "") !== oldSlug) return item;
+    itemsChanged += 1;
+    return normalizeNewsItem({ ...item, category: newSlug, updatedAt: new Date().toISOString() });
+  });
+
+  let sourcesChanged = 0;
+  const nextSources = sources.map((raw) => {
+    const source = normalizeNewsSource(raw);
+    if (normalizeNewsCategory(source.category || "", "") !== oldSlug) return source;
+    sourcesChanged += 1;
+    return normalizeNewsSource({ ...source, category: newSlug, updatedAt: new Date().toISOString() });
+  });
+
+  if (itemsChanged > 0) {
+    await writeCollection("newsItems", sortNewsItemsForAdmin(nextItems));
+  }
+  if (sourcesChanged > 0) {
+    await writeCollection("newsSources", nextSources);
+  }
+
+  return { itemsChanged, sourcesChanged };
+}
+
+function buildNewsFallbackContent({
+  title = "",
+  summary = "",
+  sourceName = "",
+  sourceUrl = "",
+  sourceCategory = "",
+  sourcePublishedAt = "",
+} = {}) {
+  const lead = cleanNewsText(summary || title || "News update", 500) || "News update";
+  const sourceLabel = cleanNewsText(sourceName || "the source", 120) || "the source";
+  const categoryLabel = cleanNewsText(sourceCategory || "clinical-news", 80) || "clinical-news";
+  const publishedLabel = cleanNewsText(sourcePublishedAt || "", 80);
+  const storyBody = [
+    lead,
+    `According to ${sourceLabel}, the update is being tracked under the ${categoryLabel} category for editorial review and publishing.`,
+    `The item remains grounded in the source material and is being prepared as a fuller newsroom-style brief so the preview has enough detail for admin review.`,
+    `Reviewers should confirm the final wording, check the source link${sourceUrl ? ` (${sourceUrl})` : ""}, and make sure the article is published only after the editorial pass is complete.`,
+    publishedLabel
+      ? `Original source timing: ${publishedLabel}.`
+      : "The original source timing was not supplied, so the story should be reviewed against the live source page before publishing.",
+  ];
+  return storyBody.map((part) => cleanNewsText(part, 1600)).filter(Boolean).join("\n\n");
+}
+
+function normalizeNewsRichContent(value = "", limit = 12000) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const rawLimit = Math.max(0, Math.round(Number(limit) || 0) || 0);
+  const clipped = rawLimit > 0 && raw.length > rawLimit * 2 ? raw.slice(0, rawLimit * 2) : raw;
+  if (!/<[a-z][\s\S]*>/i.test(clipped)) {
+    const text = normalizeWhitespace(decodeHtmlEntities(clipped));
+    if (!text) return "";
+    return text
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeNewsHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+      .join("")
+      .slice(0, rawLimit || clipped.length);
+  }
+
+  let html = clipped
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<\/?(?:iframe|object|embed|form|input|button|textarea|select|option|noscript|svg|math)[^>]*>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(href|src)\s*=\s*("|')?\s*javascript:[^"'\s>]*\2?/gi, "");
+
+  if (rawLimit > 0 && html.length > rawLimit * 2) {
+    html = html.slice(0, rawLimit * 2);
+  }
+  return html.trim();
+}
+
+function resolveNewsCategoryChoice({
+  categoryCatalog = [],
+  sourceCategory = "",
+  aiCategory = "",
+  fallback = "clinical-news",
+} = {}) {
+  const normalizedCatalog = Array.isArray(categoryCatalog)
+    ? categoryCatalog.map((entry) => normalizeNewsCategoryEntry(entry))
+    : [];
+  const catalogBySlug = new Map(normalizedCatalog.map((entry) => [entry.slug, entry]));
+  const choices = [
+    aiCategory,
+    sourceCategory,
+    fallback,
+    "clinical-news",
+  ]
+    .map((entry) => normalizeNewsCategory(entry || "", ""))
+    .filter(Boolean);
+
+  for (const choice of choices) {
+    if (catalogBySlug.has(choice)) {
+      return choice;
+    }
+  }
+
+  return catalogBySlug.has("clinical-news") ? "clinical-news" : normalizedCatalog[0]?.slug || "clinical-news";
+}
+
+function getNewsDraftProviderConfig() {
+  const premium = resolveAiProviderConfig("premium");
+  if (premium?.apiKey) return premium;
+  const free = resolveAiProviderConfig("free");
+  if (free?.apiKey) return free;
+  return null;
+}
+
+function normalizeNewsDraftValue(value = "", limit = 12000) {
+  return cleanNewsText(value || "", limit);
+}
+
+function escapeNewsHtml(value = "") {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeNewsStatus(rawStatus = "") {
+  const text = normalizeWhitespace(rawStatus).toLowerCase().replace(/\s+/g, "_");
+  if (!text) return "pending_review";
+  if (text === "draft" || text === "queued" || text === "pending") return "pending_review";
+  if (text === "approved" || text === "reviewed") return "approved";
+  if (text === "published" || text === "live" || text.startsWith("publish") || text.startsWith("live_")) return "published";
+  if (text === "rejected" || text === "rejected_by_admin") return "rejected";
+  if (text === "archived" || text === "hidden") return "archived";
+  return NEWS_ITEM_STATUS_ORDER.has(text) ? text : "pending_review";
+}
+
+function normalizeNewsSourceType(rawType = "", fallback = "structured") {
+  const text = normalizeWhitespace(rawType).toLowerCase();
+  if (text === "rss" || text === "atom") return "rss";
+  if (text === "html" || text === "structured" || text === "page" || text === "web") return "structured";
+  if (!text && fallback) return fallback;
+  return "structured";
+}
+
+function normalizeNewsImportance(rawImportance = "", fallback = "medium") {
+  const text = normalizeWhitespace(rawImportance).toLowerCase();
+  if (text === "high" || text === "urgent" || text === "critical") return "high";
+  if (text === "low" || text === "minor") return "low";
+  if (text === "medium" || text === "normal") return "medium";
+  return fallback || "medium";
+}
+
+function decodeHtmlEntities(value = "") {
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code) || 32))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(Number.parseInt(code, 16) || 32));
+}
+
+function stripHtmlTags(value = "") {
+  return String(value || "")
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/p\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+}
+
+function cleanNewsText(value = "", limit = 280) {
+  const maxLength = Math.max(0, Math.round(Number(limit) || 0) || 0);
+  const text = normalizeWhitespace(decodeHtmlEntities(stripHtmlTags(value)));
+  return maxLength > 0 ? text.slice(0, maxLength) : text;
+}
+
+function normalizeNewsUrl(value = "", fallbackBase = "") {
+  const text = normalizeWhitespace(value);
+  if (!text) return "";
+  try {
+    return new URL(text, fallbackBase || undefined).toString();
+  } catch {
+    return text;
+  }
+}
+
+function slugifyNewsText(value = "") {
+  return normalizeWhitespace(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+function buildNewsItemKey(item = {}) {
+  const canonicalUrl = normalizeNewsUrl(item.canonicalUrl || item.sourceUrl || item.url || "");
+  if (canonicalUrl) return canonicalUrl.toLowerCase();
+  const sourceId = normalizeWhitespace(item.sourceId || "").toLowerCase();
+  const title = slugifyNewsText(item.title || item.headline || item.summary || "");
+  return `${sourceId || "news"}:${title || "item"}`;
+}
+
+function normalizeNewsSource(raw = {}) {
+  const createdAt = String(raw.createdAt || new Date().toISOString());
+  const updatedAt = String(raw.updatedAt || createdAt);
+  const url = normalizeNewsUrl(raw.url || raw.feedUrl || raw.sourceUrl || "");
+  const sourceType = normalizeNewsSourceType(raw.extractMode || raw.sourceType || raw.type || "", url.endsWith(".xml") ? "rss" : "structured");
+  return {
+    id: String(raw.id || raw.slug || crypto.randomUUID()).trim(),
+    name: cleanNewsText(raw.name || raw.title || "News Source", 120) || "News Source",
+    url,
+    category: normalizeNewsCategory(raw.category || "", "clinical-news"),
+    extractMode: sourceType,
+    priority: Math.max(0, Math.min(100, Math.round(Number(raw.priority) || 50))),
+    enabled: raw.enabled !== false,
+    reviewRequired: raw.reviewRequired !== false,
+    description: cleanNewsText(raw.description || "", 220),
+    lastCollectedAt: String(raw.lastCollectedAt || "").trim(),
+    lastStatus: String(raw.lastStatus || "").trim(),
+    lastError: cleanNewsText(raw.lastError || "", 240),
+    createdAt,
+    updatedAt,
+  };
+}
+
+function normalizeNewsItem(raw = {}) {
+  const createdAt = String(raw.createdAt || raw.collectedAt || new Date().toISOString());
+  const updatedAt = String(raw.updatedAt || createdAt);
+  const sourceCategory = normalizeNewsCategory(raw.sourceCategory || raw.category || "", "clinical-news");
+  const title = cleanNewsText(raw.title || raw.headline || raw.name || "", 180);
+  const summary = cleanNewsText(raw.summary || raw.excerpt || raw.description || "", 420);
+  const content = normalizeNewsRichContent(raw.content || raw.body || raw.articleBody || "", 12000);
+  const canonicalUrl = normalizeNewsUrl(raw.canonicalUrl || raw.sourceUrl || raw.url || raw.link || "");
+  const sourceUrl = normalizeNewsUrl(raw.sourceUrl || raw.url || raw.link || canonicalUrl);
+  const sourceId = String(raw.sourceId || raw.sourceSlug || "").trim();
+  const isManualSource = sourceId.toLowerCase().startsWith("manual-");
+  const sourceName = cleanNewsText(
+    raw.sourceName || raw.sourcePublishedLabel || raw.publishedByName || raw.sourceLabel || raw.source || "",
+    120
+  ) || "News Source";
+  const status = (() => {
+    const normalizedStatus = normalizeNewsStatus(raw.status || "");
+    if (String(raw.status || "").trim()) return normalizedStatus;
+    if (String(raw.publishedById || "").trim() || String(raw.publishedByName || "").trim()) return "published";
+    if (String(raw.approvedAt || "").trim()) return "approved";
+    if (String(raw.reviewedAt || "").trim() && raw.reviewRequired === false) return "rejected";
+    return normalizedStatus;
+  })();
+  const tags = Array.isArray(raw.tags)
+    ? [...new Set(raw.tags.map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+    : [];
+  const publishedAt = String(raw.publishedAt || raw.sourcePublishedAt || createdAt).trim();
+  const collectedAt = String(raw.collectedAt || createdAt).trim();
+  const reviewedAt = String(raw.reviewedAt || "").trim();
+  const approvedAt = String(raw.approvedAt || "").trim();
+  const publishedById = String(raw.publishedById || "").trim();
+  const publishedByName = cleanNewsText(raw.publishedByName || "", 80);
+  const reviewedById = String(raw.reviewedById || "").trim();
+  const reviewedByName = cleanNewsText(raw.reviewedByName || "", 80);
+  const reviewNote = cleanNewsText(raw.reviewNote || "", 240);
+  const allowComments = raw.allowComments === true || raw.comments === true || String(raw.allowComments || raw.comments || "").trim().toLowerCase() === "true";
+  const aiGenerated = raw.aiGenerated === true || String(raw.aiGenerated || "").trim().toLowerCase() === "true";
+  const aiProvider = cleanNewsText(raw.aiProvider || "", 40);
+  const aiModel = cleanNewsText(raw.aiModel || "", 80);
+  const aiGeneratedAt = String(raw.aiGeneratedAt || "").trim();
+  const aiCategory = normalizeNewsCategory(raw.aiCategory || "", "");
+  const views = Math.max(0, Math.round(Number(raw.views ?? raw.viewCount ?? raw.readCount ?? raw.metrics?.views) || 0));
+  const likes = Math.max(0, Math.round(Number(raw.likes ?? raw.likesCount ?? raw.likeCount ?? raw.metrics?.likes) || 0));
+  return {
+    id: String(raw.id || crypto.randomUUID()).trim(),
+    sourceId,
+    sourceName,
+    status,
+    sourceType: isManualSource ? "manual" : normalizeNewsSourceType(raw.sourceType || raw.extractMode || "", "structured"),
+    sourceUrl,
+    canonicalUrl,
+    title: title || "Untitled update",
+    summary,
+    content,
+    category: sourceCategory,
+    importance: normalizeNewsImportance(raw.importance || "", raw.priority >= 85 ? "high" : "medium"),
+    featured: raw.featured === true || String(raw.featured || "").trim().toLowerCase() === "true",
+    reviewRequired: raw.reviewRequired !== false,
+    allowComments,
+    commentsEnabled: allowComments,
+    comments: allowComments,
+    reviewNote,
+    sourcePublishedAt: String(raw.sourcePublishedAt || "").trim(),
+    sourcePublishedLabel: cleanNewsText(raw.sourcePublishedLabel || "", 80),
+    publishedAt,
+    collectedAt,
+    reviewedAt,
+    reviewedById,
+    reviewedByName,
+    approvedAt,
+    publishedById,
+    publishedByName,
+    sourceRank: Math.max(0, Math.round(Number(raw.sourceRank) || 0)),
+    sourceCategory,
+    aiGenerated,
+    aiProvider,
+    aiModel,
+    aiGeneratedAt,
+    aiCategory,
+    imageUrl: normalizeNewsUrl(raw.imageUrl || raw.image_url || raw.thumbnailUrl || raw.thumbnail_url || raw.thumbnail || raw.image?.url || raw.enclosure?.url || raw.image || ""),
+    imageAlt: cleanNewsText(raw.imageAlt || "", 120),
+    author: cleanNewsText(raw.author || "", 120),
+    tags,
+    views,
+    viewCount: views,
+    readCount: views,
+    likes,
+    likesCount: likes,
+    likeCount: likes,
+    metrics: {
+      views,
+      likes,
+    },
+    createdAt,
+    updatedAt,
+  };
+}
+
+function normalizeNewsCollectRun(raw = {}) {
+  const createdAt = String(raw.createdAt || new Date().toISOString());
+  const updatedAt = String(raw.updatedAt || createdAt);
+  return {
+    id: String(raw.id || crypto.randomUUID()).trim(),
+    startedAt: String(raw.startedAt || createdAt).trim(),
+    finishedAt: String(raw.finishedAt || "").trim(),
+    triggeredBy: cleanNewsText(raw.triggeredBy || "", 80) || "system",
+    sourceCount: Math.max(0, Math.round(Number(raw.sourceCount) || 0)),
+    addedCount: Math.max(0, Math.round(Number(raw.addedCount) || 0)),
+    updatedCount: Math.max(0, Math.round(Number(raw.updatedCount) || 0)),
+    skippedCount: Math.max(0, Math.round(Number(raw.skippedCount) || 0)),
+    errorCount: Math.max(0, Math.round(Number(raw.errorCount) || 0)),
+    status: normalizeWhitespace(raw.status || "success").toLowerCase() || "success",
+    errors: Array.isArray(raw.errors)
+      ? raw.errors.map((entry) => cleanNewsText(entry, 240)).filter(Boolean).slice(0, 12)
+      : [],
+    createdAt,
+    updatedAt,
+  };
+}
+
+function extractXmlTagValue(block = "", tagName = "") {
+  const safeTag = String(tagName || "").trim();
+  if (!safeTag) return "";
+  const pattern = new RegExp(`<${safeTag}\\b[^>]*>([\\s\\S]*?)<\\/${safeTag}>`, "i");
+  const match = String(block || "").match(pattern);
+  return match ? String(match[1] || "").trim() : "";
+}
+
+function extractXmlTagAttribute(block = "", tagName = "", attributeName = "") {
+  const safeTag = String(tagName || "").trim();
+  const safeAttribute = String(attributeName || "").trim();
+  if (!safeTag || !safeAttribute) return "";
+  const pattern = new RegExp(`<${safeTag}\\b([^>]*)>`, "i");
+  const match = String(block || "").match(pattern);
+  if (!match) return "";
+  const attributes = String(match[1] || "");
+  const attrMatch = attributes.match(new RegExp(`${safeAttribute}\\s*=\\s*["']([^"']+)["']`, "i"));
+  return attrMatch ? String(attrMatch[1] || "").trim() : "";
+}
+
+function extractStructuredNewsCandidatesFromJson(value, source, results, seenKeys, depth = 0) {
+  if (!value || depth > 7) return;
+  if (Array.isArray(value)) {
+    value.forEach((entry) => extractStructuredNewsCandidatesFromJson(entry, source, results, seenKeys, depth + 1));
+    return;
+  }
+  if (typeof value !== "object") return;
+
+  const types = []
+    .concat(value["@type"] || [])
+    .flat()
+    .map((entry) => String(entry || "").toLowerCase())
+    .filter(Boolean);
+  const candidateUrl = normalizeNewsUrl(
+    value.url || value.link || value.mainEntityOfPage?.["@id"] || value.mainEntityOfPage?.url || "",
+    source.url,
+  );
+  const candidateTitle = cleanNewsText(value.headline || value.name || value.title || "", 180);
+  const candidateSummary = cleanNewsText(value.description || value.abstract || value.text || value.articleBody || "", 420);
+  const candidatePublishedAt = String(value.datePublished || value.dateCreated || value.dateModified || "").trim();
+
+  if (types.some((type) => type.includes("itemlist")) && Array.isArray(value.itemListElement)) {
+    value.itemListElement.forEach((entry) => {
+      const item = entry?.item && typeof entry.item === "object" ? entry.item : entry;
+      extractStructuredNewsCandidatesFromJson(item, source, results, seenKeys, depth + 1);
+    });
+  }
+
+  if (candidateTitle && candidateUrl) {
+    const key = `${candidateUrl.toLowerCase()}|${candidateTitle.toLowerCase()}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      results.push({
+        title: candidateTitle,
+        summary: candidateSummary,
+        canonicalUrl: candidateUrl,
+        sourcePublishedAt: candidatePublishedAt,
+      });
+    }
+  }
+
+  if (value["@graph"]) {
+    extractStructuredNewsCandidatesFromJson(value["@graph"], source, results, seenKeys, depth + 1);
+  }
+  if (value.mainEntity) {
+    extractStructuredNewsCandidatesFromJson(value.mainEntity, source, results, seenKeys, depth + 1);
+  }
+  if (value.itemListElement && !Array.isArray(value.itemListElement)) {
+    extractStructuredNewsCandidatesFromJson(value.itemListElement, source, results, seenKeys, depth + 1);
+  }
+
+  Object.values(value).forEach((entry) => {
+    if (!entry || typeof entry !== "object") return;
+    extractStructuredNewsCandidatesFromJson(entry, source, results, seenKeys, depth + 1);
+  });
+}
+
+function extractStructuredNewsCandidates(html = "", source = {}) {
+  const text = String(html || "");
+  const results = [];
+  const seenKeys = new Set();
+  const scriptRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match = null;
+  while ((match = scriptRegex.exec(text))) {
+    const raw = decodeHtmlEntities(String(match[1] || "").trim());
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      extractStructuredNewsCandidatesFromJson(parsed, source, results, seenKeys);
+    } catch {
+      // Ignore malformed structured data and fall back to other extraction modes.
+    }
+  }
+
+  const nextDataMatch = text.match(/<script\b[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (nextDataMatch) {
+    try {
+      const parsed = JSON.parse(String(nextDataMatch[1] || "").trim());
+      extractStructuredNewsCandidatesFromJson(parsed, source, results, seenKeys);
+    } catch {
+      // Ignore malformed Next.js data.
+    }
+  }
+
+  return results;
+}
+
+function extractAnchoredNewsCandidates(html = "", source = {}) {
+  const text = String(html || "");
+  const results = [];
+  const seen = new Set();
+  const anchorRegex = /<a\b([^>]*)href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match = null;
+  while ((match = anchorRegex.exec(text))) {
+    const href = String(match[2] || "").trim();
+    const title = cleanNewsText(match[3] || "", 180);
+    if (!href || !title) continue;
+    if (title.length < 20 || title.length > 180) continue;
+    if (/^(read more|learn more|view all|home|menu|search|skip to|download|submit|sign in)$/i.test(title)) continue;
+    const absoluteUrl = normalizeNewsUrl(href, source.url);
+    if (!absoluteUrl) continue;
+    const key = `${absoluteUrl.toLowerCase()}|${title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const after = text.slice(match.index + match[0].length, match.index + match[0].length + 360);
+    const summaryMatch = after.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i);
+    const summary = cleanNewsText(summaryMatch?.[1] || "", 280);
+    results.push({
+      title,
+      summary,
+      canonicalUrl: absoluteUrl,
+      sourcePublishedAt: "",
+    });
+    if (results.length >= 20) break;
+  }
+  return results;
+}
+
+function extractRssNewsCandidates(xml = "", source = {}) {
+  const text = String(xml || "");
+  const blocks = [
+    ...text.matchAll(/<item\b[\s\S]*?<\/item>/gi),
+    ...text.matchAll(/<entry\b[\s\S]*?<\/entry>/gi),
+  ].map((match) => String(match[0] || ""));
+  const results = [];
+  const seen = new Set();
+  for (const block of blocks) {
+    const title = cleanNewsText(extractXmlTagValue(block, "title"), 180);
+    const link =
+      cleanNewsText(extractXmlTagValue(block, "link"), 240) ||
+      cleanNewsText(extractXmlTagAttribute(block, "link", "href"), 240) ||
+      cleanNewsText(extractXmlTagValue(block, "guid"), 240);
+    if (!title || !link) continue;
+    const canonicalUrl = normalizeNewsUrl(link, source.url);
+    if (!canonicalUrl) continue;
+    const key = `${canonicalUrl.toLowerCase()}|${title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const summary = cleanNewsText(
+      extractXmlTagValue(block, "description") ||
+        extractXmlTagValue(block, "summary") ||
+        extractXmlTagValue(block, "content:encoded"),
+      420,
+    );
+    const sourcePublishedAt = cleanNewsText(
+      extractXmlTagValue(block, "pubDate") ||
+        extractXmlTagValue(block, "published") ||
+        extractXmlTagValue(block, "updated"),
+      80,
+    );
+    results.push({
+      title,
+      summary,
+      canonicalUrl,
+      sourcePublishedAt,
+    });
+    if (results.length >= 20) break;
+  }
+  return results;
+}
+
+function deriveNewsCandidatesFromText(source, candidates = []) {
+  const results = [];
+  const seen = new Set();
+  candidates.forEach((candidate) => {
+    const title = cleanNewsText(candidate?.title || "", 180);
+    const summary = cleanNewsText(candidate?.summary || "", 420);
+    const canonicalUrl = normalizeNewsUrl(candidate?.canonicalUrl || "", source.url);
+    if (!title || !canonicalUrl) return;
+    const key = `${canonicalUrl.toLowerCase()}|${title.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({
+      title,
+      summary,
+      canonicalUrl,
+      sourcePublishedAt: cleanNewsText(candidate?.sourcePublishedAt || "", 80),
+    });
+  });
+  return results;
+}
+
+async function buildNewsItemForSource(
+  source = {},
+  candidate = {},
+  index = 0,
+  collectedAt = new Date().toISOString(),
+  categoryCatalog = [],
+) {
+  const sourceCategory = normalizeNewsCategory(source.category || "", "clinical-news");
+  const title = cleanNewsText(candidate.title || "", 180);
+  const summary = cleanNewsText(candidate.summary || "", 420) || title;
+  const canonicalUrl = normalizeNewsUrl(candidate.canonicalUrl || "", source.url);
+  const sourcePublishedAt = String(candidate.sourcePublishedAt || "").trim();
+  const aiProviderConfig = getNewsDraftProviderConfig();
+  let draft = null;
+
+  if (config.aiEnabled && aiProviderConfig?.apiKey) {
+    try {
+      const result = await generateNewsDraft({
+        provider: aiProviderConfig.provider,
+        apiKey: aiProviderConfig.apiKey,
+        model: aiProviderConfig.model,
+        maxOutputTokens: config.aiPremiumMaxOutputTokens || config.aiFreeMaxOutputTokens || 1200,
+        timeoutMs: config.aiRequestTimeoutMs,
+        source: {
+          id: source.id,
+          name: source.name,
+          url: source.url,
+          category: sourceCategory,
+          priority: source.priority,
+        },
+        candidate: {
+          title,
+          summary,
+          canonicalUrl,
+          sourcePublishedAt,
+        },
+        categories: categoryCatalog,
+      });
+      draft = result?.draft && typeof result.draft === "object" ? result.draft : null;
+    } catch (error) {
+      console.warn("News draft enrichment failed", error?.message || error);
+    }
+  }
+
+  const aiCategory = normalizeNewsCategory(draft?.category || draft?.categorySlug || "", "");
+  const category = resolveNewsCategoryChoice({
+    categoryCatalog,
+    sourceCategory,
+    aiCategory,
+    fallback: sourceCategory || "clinical-news",
+  });
+  const richSummary = normalizeNewsDraftValue(draft?.summary || summary || title, 600) || title;
+  const richContent = normalizeNewsRichContent(
+    draft?.content || buildNewsFallbackContent({
+      title,
+      summary: richSummary,
+      sourceName: source.name,
+      sourceUrl: source.url,
+      sourceCategory: category,
+      sourcePublishedAt,
+    }),
+    12000,
+  ) || richSummary;
+  const keyPoints = Array.isArray(draft?.keyPoints)
+    ? draft.keyPoints.map((point) => cleanNewsText(point, 160)).filter(Boolean).slice(0, 5)
+    : [];
+  const tags = [
+    sourceCategory,
+    category,
+    aiCategory,
+    source.name,
+    ...keyPoints.slice(0, 3),
+  ]
+    .map((tag) => cleanNewsText(tag, 48))
+    .filter(Boolean);
+
+  return normalizeNewsItem({
+    id: crypto.randomUUID(),
+    sourceId: source.id,
+    sourceName: source.name,
+    sourceType: source.extractMode,
+    sourceUrl: source.url,
+    sourceCategory,
+    canonicalUrl,
+    title: cleanNewsText(draft?.headline || title || candidate.title || "", 180) || title,
+    summary: richSummary,
+    content: richContent,
+    category,
+    aiGenerated: Boolean(draft),
+    aiProvider: draft ? aiProviderConfig.provider : "",
+    aiModel: draft ? aiProviderConfig.model : "",
+    aiGeneratedAt: draft ? collectedAt : "",
+    aiCategory: aiCategory || category,
+    importance: source.priority >= 90 ? "high" : source.priority >= 70 ? "medium" : "low",
+    status: "pending_review",
+    reviewRequired: source.reviewRequired !== false,
+    allowComments: true,
+    sourcePublishedAt,
+    sourcePublishedLabel: sourcePublishedAt,
+    sourceRank: Math.max(0, Math.round(Number(source.priority) || 0)) * 100 - index,
+    tags,
+    collectedAt,
+    updatedAt: collectedAt,
+  });
+}
+
+function mergeNewsItems(existing = [], incoming = []) {
+  const merged = Array.isArray(existing) ? existing.map((item) => normalizeNewsItem(item)) : [];
+  const indexByKey = new Map();
+  merged.forEach((item, index) => {
+    indexByKey.set(buildNewsItemKey(item), index);
+  });
+
+  let addedCount = 0;
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  incoming.forEach((candidate) => {
+    const item = normalizeNewsItem(candidate);
+    const key = buildNewsItemKey(item);
+    const existingIndex = indexByKey.get(key);
+    if (existingIndex === undefined) {
+      merged.push(item);
+      indexByKey.set(key, merged.length - 1);
+      addedCount += 1;
+      return;
+    }
+
+    const previous = merged[existingIndex];
+    const next = {
+      ...previous,
+      sourceId: item.sourceId || previous.sourceId,
+      sourceName: item.sourceName || previous.sourceName,
+      sourceType: item.sourceType || previous.sourceType,
+      sourceUrl: item.sourceUrl || previous.sourceUrl,
+      canonicalUrl: item.canonicalUrl || previous.canonicalUrl,
+      title: item.title || previous.title,
+      summary: item.summary || previous.summary,
+      content: item.content || previous.content,
+      category: item.category || previous.category,
+      importance: item.importance || previous.importance,
+      sourcePublishedAt: item.sourcePublishedAt || previous.sourcePublishedAt,
+      sourcePublishedLabel: item.sourcePublishedLabel || previous.sourcePublishedLabel,
+      sourceRank: Math.max(previous.sourceRank || 0, item.sourceRank || 0),
+      imageUrl: item.imageUrl || previous.imageUrl,
+      imageAlt: item.imageAlt || previous.imageAlt,
+      author: item.author || previous.author,
+      tags: [...new Set([...(Array.isArray(previous.tags) ? previous.tags : []), ...(Array.isArray(item.tags) ? item.tags : [])])].filter(Boolean),
+      reviewRequired: previous.reviewRequired !== false && item.reviewRequired !== false,
+      updatedAt: item.updatedAt || previous.updatedAt,
+      collectedAt: item.collectedAt || previous.collectedAt,
+    };
+    if (previous.status === "published" || previous.status === "approved" || previous.status === "rejected" || previous.status === "archived") {
+      next.status = previous.status;
+      next.reviewNote = previous.reviewNote || item.reviewNote || "";
+      next.reviewedAt = previous.reviewedAt || item.reviewedAt || "";
+      next.reviewedById = previous.reviewedById || item.reviewedById || "";
+      next.reviewedByName = previous.reviewedByName || item.reviewedByName || "";
+      next.publishedAt = previous.publishedAt || item.publishedAt || "";
+      next.publishedById = previous.publishedById || item.publishedById || "";
+      next.publishedByName = previous.publishedByName || item.publishedByName || "";
+      next.approvedAt = previous.approvedAt || item.approvedAt || "";
+    }
+    merged[existingIndex] = normalizeNewsItem(next);
+    updatedCount += 1;
+  });
+
+  return { items: merged, addedCount, updatedCount, skippedCount };
+}
+
+function preserveEditorialNewsState(items = [], sourceItems = []) {
+  const latestByKey = new Map();
+  (Array.isArray(sourceItems) ? sourceItems : []).forEach((item) => {
+    const key = buildNewsItemKey(item);
+    if (key) latestByKey.set(key, normalizeNewsItem(item));
+  });
+
+  return (Array.isArray(items) ? items : []).map((item) => {
+    const key = buildNewsItemKey(item);
+    const latest = latestByKey.get(key);
+    if (!latest) return normalizeNewsItem(item);
+    const hasEditorialState =
+      ["approved", "published", "rejected", "archived"].includes(normalizeNewsStatus(latest.status || "")) ||
+      Boolean(latest.reviewedAt || latest.approvedAt || latest.publishedAt || latest.reviewedById || latest.publishedById || latest.reviewNote);
+    if (!hasEditorialState) {
+      return normalizeNewsItem(item);
+    }
+    return normalizeNewsItem({
+      ...item,
+      status: latest.status || item.status,
+      reviewRequired: latest.reviewRequired !== undefined ? latest.reviewRequired : item.reviewRequired,
+      reviewNote: latest.reviewNote || item.reviewNote || "",
+      reviewedAt: latest.reviewedAt || item.reviewedAt || "",
+      reviewedById: latest.reviewedById || item.reviewedById || "",
+      reviewedByName: latest.reviewedByName || item.reviewedByName || "",
+      approvedAt: latest.approvedAt || item.approvedAt || "",
+      publishedAt: latest.publishedAt || item.publishedAt || "",
+      publishedById: latest.publishedById || item.publishedById || "",
+      publishedByName: latest.publishedByName || item.publishedByName || "",
+      updatedAt: latest.updatedAt || item.updatedAt || "",
+    });
+  });
+}
+
+function sortNewsItemsForPublic(items = []) {
+  return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+    const aTime = String(a?.publishedAt || a?.updatedAt || a?.collectedAt || a?.createdAt || "");
+    const bTime = String(b?.publishedAt || b?.updatedAt || b?.collectedAt || b?.createdAt || "");
+    return bTime.localeCompare(aTime) || Number(b?.sourceRank || 0) - Number(a?.sourceRank || 0);
+  });
+}
+
+function sortNewsItemsForAdmin(items = []) {
+  return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+    const aStatus = NEWS_ITEM_STATUS_ORDER.get(normalizeNewsStatus(a?.status || "")) ?? 99;
+    const bStatus = NEWS_ITEM_STATUS_ORDER.get(normalizeNewsStatus(b?.status || "")) ?? 99;
+    if (aStatus !== bStatus) return aStatus - bStatus;
+    const aTime = String(a?.updatedAt || a?.createdAt || a?.collectedAt || "");
+    const bTime = String(b?.updatedAt || b?.createdAt || b?.collectedAt || "");
+    return bTime.localeCompare(aTime) || Number(b?.sourceRank || 0) - Number(a?.sourceRank || 0);
+  });
+}
+
+function getNewsPopularityScore(item = {}) {
+  const views = Math.max(
+    0,
+    Math.round(Number(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views) || 0),
+  );
+  const likes = Math.max(
+    0,
+    Math.round(Number(item.likes ?? item.likesCount ?? item.likeCount ?? item.metrics?.likes) || 0),
+  );
+  const featuredBoost = item.featured ? 2500 : 0;
+  const importanceBoost = normalizeNewsImportance(item.importance || "", "medium") === "high" ? 1200 : 0;
+  const sourceBoost = Math.max(0, Math.round(Number(item.sourceRank || 0)));
+  const timeBoost = Number(new Date(String(item.publishedAt || item.updatedAt || item.createdAt || "")).getTime()) || 0;
+  return views * 10 + likes * 120 + featuredBoost + importanceBoost + sourceBoost + timeBoost / 1e10;
+}
+
+function pickDistinctNewsItems(candidates = [], count = 0, usedIds = new Set()) {
+  const safeCount = Math.max(0, Math.round(Number(count) || 0));
+  const chosen = [];
+  const seen = new Set();
+  const pick = (item) => {
+    if (!item) return false;
+    const id = String(item.id || "").trim();
+    if (!id || seen.has(id) || usedIds.has(id)) return false;
+    seen.add(id);
+    usedIds.add(id);
+    chosen.push(item);
+    return true;
+  };
+
+  for (const item of Array.isArray(candidates) ? candidates : []) {
+    if (chosen.length >= safeCount) break;
+    pick(item);
+  }
+
+  if (chosen.length < safeCount) {
+    for (const item of Array.isArray(candidates) ? candidates : []) {
+      if (chosen.length >= safeCount) break;
+      const id = String(item?.id || "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      chosen.push(item);
+    }
+  }
+
+  return chosen.slice(0, safeCount);
+}
+
+function buildNewsFeedSections(items = []) {
+  const published = sortNewsItemsForPublic((Array.isArray(items) ? items : []).filter((item) => item.status === "published"));
+  const byPopularity = [...published].sort((a, b) => {
+    const scoreDiff = getNewsPopularityScore(b) - getNewsPopularityScore(a);
+    if (Math.abs(scoreDiff) > 0.0001) return scoreDiff;
+    const aTime = String(a?.publishedAt || a?.updatedAt || a?.collectedAt || a?.createdAt || "");
+    const bTime = String(b?.publishedAt || b?.updatedAt || b?.collectedAt || b?.createdAt || "");
+    return bTime.localeCompare(aTime);
+  });
+
+  const heroCandidates = [
+    ...published.filter((item) => item.featured),
+    ...byPopularity,
+    ...published,
+  ];
+  const popularCandidates = [...byPopularity];
+  const latestCandidates = [...published];
+  const medicineCandidates = [
+    ...published.filter((item) => ["medicine", "clinical-news"].includes(normalizeNewsCategory(item.category || "", ""))),
+    ...published.filter((item) => !["medicine", "clinical-news"].includes(normalizeNewsCategory(item.category || "", ""))),
+  ];
+  const trendingCandidates = [
+    ...published.filter((item) => normalizeNewsCategory(item.category || "", "") === "trending"),
+    ...published.filter((item) => item.featured || normalizeNewsImportance(item.importance || "", "medium") === "high"),
+    ...byPopularity,
+  ];
+  return {
+    hero: pickDistinctNewsItems(heroCandidates, 3),
+    popularStories: pickDistinctNewsItems(popularCandidates, 3),
+    latest: pickDistinctNewsItems(latestCandidates, 4),
+    medicine: medicineCandidates,
+    trendingNow: pickDistinctNewsItems(trendingCandidates, published.length),
+  };
+}
+
+async function seedDefaultNewsSources() {
+  const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+  if (sources.length > 0) return sources;
+  const seededSources = NEWS_DEFAULT_SOURCES.map((source) => normalizeNewsSource({
+    ...source,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
+  await writeCollection("newsSources", seededSources);
+  return seededSources;
+}
+
+async function collectNewsFromSource(
+  source = {},
+  { collectedAt = new Date().toISOString(), categoryCatalog = [] } = {},
+) {
+  const safeSource = normalizeNewsSource(source);
+  if (!safeSource.enabled || !safeSource.url) {
+    return { items: [], error: null };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(safeSource.url, {
+      signal: controller.signal,
+      headers: {
+        accept: "application/rss+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.1",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    const body = await response.text();
+    const extractMode = normalizeNewsSourceType(safeSource.extractMode, "structured");
+    let candidates = [];
+    if (extractMode === "rss" || /xml|rss/i.test(contentType) || /\.xml(\?|$)/i.test(safeSource.url)) {
+      candidates = extractRssNewsCandidates(body, safeSource);
+    } else {
+      const structured = extractStructuredNewsCandidates(body, safeSource);
+      candidates = structured.length > 0 ? structured : extractAnchoredNewsCandidates(body, safeSource);
+    }
+
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      const structuredFallback = extractStructuredNewsCandidates(body, safeSource);
+      candidates = structuredFallback.length > 0 ? structuredFallback : extractAnchoredNewsCandidates(body, safeSource);
+    }
+
+    const drafts = await Promise.all(
+      deriveNewsCandidatesFromText(safeSource, candidates)
+        .slice(0, 8)
+        .map((candidate, index) =>
+          buildNewsItemForSource(safeSource, candidate, index, collectedAt, categoryCatalog),
+        ),
+    );
+    return {
+      items: drafts,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      items: [],
+      error: String(error?.message || error || "Failed to collect source"),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+let newsCollectionLock = null;
+
+async function collectAndStoreNews({ sourceId = "", triggeredBy = "system" } = {}) {
+  if (newsCollectionLock) return newsCollectionLock;
+
+  newsCollectionLock = (async () => {
+    const runStartedAt = new Date().toISOString();
+    const runDayKey = runStartedAt.slice(0, 10);
+    const categoryCatalog = await seedDefaultNewsCategories();
+    const sources = await seedDefaultNewsSources();
+    const selectedSources = sources
+      .filter((source) => source.enabled !== false && (!String(sourceId || "").trim() || source.id === String(sourceId || "").trim()))
+      .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0) || String(a.name || "").localeCompare(String(b.name || "")));
+    const currentItems = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const runErrors = [];
+    let incomingItems = [];
+
+    for (const source of selectedSources) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await collectNewsFromSource(source, { collectedAt: runStartedAt, categoryCatalog });
+      if (result.error) {
+        runErrors.push(`${source.name}: ${result.error}`);
+      }
+      incomingItems = incomingItems.concat(result.items || []);
+    }
+
+    const currentKeys = new Set(currentItems.map((item) => buildNewsItemKey(item)));
+    const currentAutoCount = currentItems.filter((item) => {
+      const collectedDay = String(item.collectedAt || item.createdAt || item.updatedAt || "").slice(0, 10);
+      return item.sourceType !== "manual" && collectedDay === runDayKey;
+    }).length;
+    let remainingDailySlots = Math.max(0, 5 - currentAutoCount);
+    const selectedIncoming = [];
+    const seenIncomingKeys = new Set();
+    const rankedIncoming = [...incomingItems].sort((a, b) => {
+      const rankDiff = Number(b?.sourceRank || 0) - Number(a?.sourceRank || 0);
+      if (Math.abs(rankDiff) > 0.0001) return rankDiff;
+      const aTime = String(a?.sourcePublishedAt || a?.publishedAt || a?.collectedAt || a?.updatedAt || "");
+      const bTime = String(b?.sourcePublishedAt || b?.publishedAt || b?.collectedAt || b?.updatedAt || "");
+      return bTime.localeCompare(aTime) || String(b?.title || "").localeCompare(String(a?.title || ""));
+    });
+
+    for (const item of rankedIncoming) {
+      const key = buildNewsItemKey(item);
+      if (!key || seenIncomingKeys.has(key)) continue;
+      seenIncomingKeys.add(key);
+      if (currentKeys.has(key)) {
+        selectedIncoming.push(item);
+        continue;
+      }
+      if (remainingDailySlots <= 0) continue;
+      selectedIncoming.push(item);
+      remainingDailySlots -= 1;
+    }
+
+    const { items: mergedItems, addedCount, updatedCount, skippedCount } = mergeNewsItems(currentItems, selectedIncoming);
+    const latestItems = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const reconciledItems = preserveEditorialNewsState(mergedItems, latestItems);
+    const nextSources = sources.map((source) =>
+      normalizeNewsSource({
+        ...source,
+        lastCollectedAt: runStartedAt,
+        lastStatus: runErrors.length > 0 ? "partial" : "success",
+        lastError: runErrors[0] || "",
+        updatedAt: runStartedAt,
+      }),
+    );
+    const run = normalizeNewsCollectRun({
+      startedAt: runStartedAt,
+      finishedAt: new Date().toISOString(),
+      triggeredBy,
+      sourceCount: selectedSources.length,
+      addedCount,
+      updatedCount,
+      skippedCount: skippedCount + Math.max(0, incomingItems.length - selectedIncoming.length),
+      errorCount: runErrors.length,
+      status: runErrors.length > 0 ? (addedCount > 0 || updatedCount > 0 ? "partial" : "failed") : "success",
+      errors: runErrors,
+    });
+
+    await writeCollection("newsSources", nextSources);
+    await writeCollection("newsItems", reconciledItems);
+    const priorRuns = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
+    await writeCollection("newsCollectRuns", [run, ...priorRuns].slice(0, 100));
+
+    return run;
+  })();
+
+  try {
+    return await newsCollectionLock;
+  } finally {
+    newsCollectionLock = null;
+  }
 }
 
 function normalizeMessage(raw = {}) {
@@ -3198,6 +4465,58 @@ function detectContactType(contact) {
   return isValidEmail(contact) ? "email" : "phone";
 }
 
+function maskEmailAddress(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  const atIndex = normalized.indexOf("@");
+  if (atIndex <= 0) {
+    return "";
+  }
+
+  const localPart = normalized.slice(0, atIndex);
+  const domainPart = normalized.slice(atIndex + 1);
+  if (!domainPart) {
+    return "";
+  }
+
+  const localPrefix = localPart.slice(0, 1) || "";
+  const localSuffix = localPart.length > 2 ? localPart.slice(-1) : "";
+  const maskedLocal = localPart.length <= 2 ? `${localPrefix}***` : `${localPrefix}***${localSuffix}`;
+  return `${maskedLocal}@${domainPart}`;
+}
+
+function maskPhoneNumber(phone) {
+  const normalized = String(phone || "").trim();
+  const digits = normalizePhoneComparable(normalized);
+  if (!digits) {
+    return "";
+  }
+
+  const visibleDigits = digits.slice(-4);
+  const maskedDigits = digits.length > 4 ? `${"*".repeat(Math.max(3, digits.length - 4))}${visibleDigits}` : digits;
+  return `${normalized.startsWith("+") ? "+" : ""}${maskedDigits}`;
+}
+
+function describeResetDeliveryTarget(user = {}) {
+  const contact = normalizeContactValue(user.contact || user.email);
+  if (!contact) {
+    return null;
+  }
+
+  if (isValidEmail(contact)) {
+    return {
+      method: "email",
+      label: "email address",
+      target: maskEmailAddress(contact),
+    };
+  }
+
+  return {
+    method: "phone",
+    label: "phone number",
+    target: maskPhoneNumber(contact),
+  };
+}
+
 function splitLegacyName(rawName) {
   const clean = normalizeWhitespace(rawName);
   if (!clean) {
@@ -3227,9 +4546,257 @@ function normalizeSubscriptionTierValue(value) {
   return SUBSCRIPTION_TIER_VALUES.has(tier) ? tier : null;
 }
 
+function normalizeSubscriptionPlanValue(value) {
+  const tier = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+  if (!tier) return null;
+  if (["free", "free trial", "trial", "starter", "starter trial"].includes(tier)) return "trial";
+  if (
+    [
+      "weekly",
+      "daily",
+      "day",
+      "day pass",
+      "daily access",
+      "daily plan",
+      "weekly access",
+      "weekly plan",
+      "week pass",
+      "week access",
+    ].includes(tier)
+  ) {
+    return "weekly";
+  }
+  if (
+    [
+      "monthly",
+      "month",
+      "month pass",
+      "monthly access",
+      "monthly plan",
+    ].includes(tier)
+  ) {
+    return "monthly";
+  }
+  if (
+    [
+      "year",
+      "yearly",
+      "annual",
+      "annual access",
+      "annual plan",
+      "year pass",
+      "yearly access",
+    ].includes(tier)
+  ) {
+    return "yearly";
+  }
+  return SUBSCRIPTION_PLAN_VALUES.has(tier) ? tier : null;
+}
+
+function normalizeSubscriptionStatusValue(value) {
+  const status = String(value || "").trim().toLowerCase();
+  if (!status) return null;
+  if (status === "approved" || status === "enabled" || status === "paid") return "active";
+  if (status === "awaiting" || status === "waiting" || status === "review") return "pending";
+  if (status === "locked" || status === "inactive") return "expired";
+  return SUBSCRIPTION_STATUS_VALUES.has(status) ? status : null;
+}
+
+function getSubscriptionPlanMeta(plan = "trial") {
+  const normalized = normalizeSubscriptionPlanValue(plan) || "trial";
+  return SUBSCRIPTION_PLAN_CATALOG[normalized] || SUBSCRIPTION_PLAN_CATALOG.trial;
+}
+
+function addDaysToIsoDate(isoValue, days) {
+  const timestamp = Date.parse(String(isoValue || ""));
+  if (!Number.isFinite(timestamp) || !Number.isFinite(Number(days))) {
+    return null;
+  }
+  return new Date(timestamp + Number(days) * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function getIsoTimeValue(value) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  const timestamp = Date.parse(clean);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
+function getSubscriptionStatusLabel(status = "none") {
+  switch (normalizeSubscriptionStatusValue(status) || "none") {
+    case "trial":
+      return "Free Trial";
+    case "pending":
+      return "Pending Review";
+    case "active":
+      return "Active";
+    case "expired":
+      return "Expired";
+    case "rejected":
+      return "Rejected";
+    default:
+      return "Not Active";
+  }
+}
+
+function getSubscriptionPlanLabel(plan = "trial") {
+  return getSubscriptionPlanMeta(plan).label;
+}
+
+function computeSubscriptionState(rawUser = {}) {
+  const createdAt = getIsoTimeValue(rawUser.createdAt) || new Date().toISOString();
+  const requestedAt = getIsoTimeValue(rawUser.subscriptionRequestedAt);
+  const reviewedAt = getIsoTimeValue(rawUser.subscriptionReviewedAt);
+  const approvedAt = getIsoTimeValue(rawUser.subscriptionApprovedAt);
+  const rejectedAt = getIsoTimeValue(rawUser.subscriptionRejectedAt);
+  const startedAt = getIsoTimeValue(rawUser.subscriptionStartedAt) || approvedAt || requestedAt || createdAt;
+  const plan = normalizeSubscriptionPlanValue(rawUser.subscriptionPlan) || "trial";
+  const rawStatus = normalizeSubscriptionStatusValue(rawUser.subscriptionStatus);
+  const planMeta = getSubscriptionPlanMeta(plan);
+  const trialEndsAt = getIsoTimeValue(rawUser.trialEndsAt) || addDaysToIsoDate(createdAt, SUBSCRIPTION_TRIAL_DAYS);
+  const storedSubscriptionEndsAt = getIsoTimeValue(rawUser.subscriptionEndsAt);
+  const computedSubscriptionEndsAt =
+    plan === "trial"
+      ? trialEndsAt
+      : startedAt && planMeta.durationDays
+        ? addDaysToIsoDate(startedAt, planMeta.durationDays)
+        : null;
+  const subscriptionEndsAt =
+    storedSubscriptionEndsAt &&
+    Number.isFinite(Date.parse(storedSubscriptionEndsAt)) &&
+    (!startedAt || Date.parse(storedSubscriptionEndsAt) >= Date.parse(startedAt))
+      ? storedSubscriptionEndsAt
+      : computedSubscriptionEndsAt;
+  const now = Date.now();
+  let status = rawStatus;
+
+  if (!status) {
+    if (plan === "trial") {
+      status = trialEndsAt && Date.parse(trialEndsAt) > now ? "trial" : "expired";
+    } else if (requestedAt && !approvedAt && !rejectedAt) {
+      status = "pending";
+    } else if (subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now) {
+      status = "active";
+    } else if (approvedAt) {
+      status = "expired";
+    } else if (requestedAt) {
+      status = "pending";
+    } else {
+      status = trialEndsAt && Date.parse(trialEndsAt) > now ? "trial" : "expired";
+    }
+  }
+
+  if (status === "trial" && trialEndsAt && Date.parse(trialEndsAt) <= now) {
+    status = "expired";
+  }
+  if (status === "active" && subscriptionEndsAt && Date.parse(subscriptionEndsAt) <= now) {
+    status = "expired";
+  }
+  if (status === "pending" && (approvedAt || rejectedAt)) {
+    status = approvedAt ? "active" : "rejected";
+  }
+  const trialIsStillValid = trialEndsAt && Date.parse(trialEndsAt) > now;
+  const subscriptionIsStillValid = subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now;
+  if (status === "expired" && (trialIsStillValid || subscriptionIsStillValid)) {
+    status = plan === "trial" && trialIsStillValid ? "trial" : "active";
+  }
+  const isActive = status === "trial" || status === "active";
+  const isLocked = !isActive;
+  const durationDays = planMeta.durationDays || 0;
+  const expirationAt = plan === "trial" ? trialEndsAt : subscriptionEndsAt;
+  const daysRemaining = expirationAt
+    ? Math.max(0, Math.ceil((Date.parse(expirationAt) - now) / (24 * 60 * 60 * 1000)))
+    : null;
+  const approvalDeadlineAt = requestedAt
+    ? new Date(Date.parse(requestedAt) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
+    : null;
+  const lockedReason =
+    status === "pending"
+      ? "Waiting for admin approval."
+      : status === "expired"
+        ? "Your trial or paid access has ended."
+        : status === "rejected"
+          ? String(rawUser.subscriptionRejectedReason || rawUser.subscriptionReviewNote || "").trim() ||
+            "The last payment proof was not approved."
+          : "";
+
+  return {
+    plan,
+    planMeta,
+    requestedAt,
+    reviewedAt,
+    approvedAt,
+    rejectedAt,
+    startedAt,
+    trialEndsAt,
+    subscriptionEndsAt,
+    expirationAt,
+    approvalDeadlineAt,
+    isActive,
+    isLocked,
+    daysRemaining,
+    lockedReason,
+    source: {
+      subscriptionTier: normalizeSubscriptionTierValue(rawUser.subscriptionTier) || "free",
+    },
+  };
+}
+
 function normalizePointsValue(value) {
   const points = Number(value);
   return Number.isFinite(points) && points > 0 ? Math.round(points) : 0;
+}
+
+function createEmptySetupPoints() {
+  return {
+    study: 0,
+    exam: 0,
+    daily: 0,
+    rapid: 0,
+    sudden: 0,
+    clinical: 0,
+    law: 0,
+    gppqeStudy: 0,
+    gppqeExam: 0,
+  };
+}
+
+function normalizeSetupPointsValue(rawPoints = {}) {
+  const next = createEmptySetupPoints();
+  if (!rawPoints || typeof rawPoints !== "object" || Array.isArray(rawPoints)) {
+    return next;
+  }
+
+  for (const key of Object.keys(next)) {
+    next[key] = Math.max(0, Math.round(Number(rawPoints[key]) || 0));
+  }
+
+  return next;
+}
+
+function mergeSetupPointsValue(left = {}, right = {}) {
+  const safeLeft = normalizeSetupPointsValue(left);
+  const safeRight = normalizeSetupPointsValue(right);
+  const next = createEmptySetupPoints();
+  for (const key of Object.keys(next)) {
+    next[key] = Math.max(safeLeft[key], safeRight[key]);
+  }
+  return next;
+}
+
+function normalizeLawDrillSessionValue(rawSession = null) {
+  if (!rawSession || typeof rawSession !== "object" || Array.isArray(rawSession)) {
+    return null;
+  }
+
+  try {
+    return structuredClone(rawSession);
+  } catch {
+    return JSON.parse(JSON.stringify(rawSession));
+  }
 }
 
 function normalizePointEvent(rawEvent = {}) {
@@ -3449,6 +5016,7 @@ function normalizeExistingUser(rawUser = {}) {
     : "student";
   const subscriptionTier =
     normalizeSubscriptionTierValue(rawUser.subscriptionTier) || "free";
+  const subscriptionState = computeSubscriptionState(rawUser);
   const professionalType = PROFESSIONAL_TYPE_VALUES.has(rawUser.professionalType)
     ? rawUser.professionalType
     : "Other";
@@ -3473,6 +5041,18 @@ function normalizeExistingUser(rawUser = {}) {
     email: email || "",
     role,
     subscriptionTier,
+    subscriptionPlan: subscriptionState.plan,
+    subscriptionStatus: subscriptionState.status,
+    subscriptionRequestedAt: subscriptionState.requestedAt,
+    subscriptionReviewedAt: subscriptionState.reviewedAt,
+    subscriptionApprovedAt: subscriptionState.approvedAt,
+    subscriptionRejectedAt: subscriptionState.rejectedAt,
+    subscriptionReviewNote: String(rawUser.subscriptionReviewNote || "").trim(),
+    subscriptionRejectedReason: String(rawUser.subscriptionRejectedReason || "").trim(),
+    subscriptionStartedAt: subscriptionState.startedAt,
+    trialEndsAt: subscriptionState.trialEndsAt,
+    subscriptionEndsAt: subscriptionState.subscriptionEndsAt,
+    subscriptionApprovalDeadlineAt: subscriptionState.approvalDeadlineAt,
     professionalType,
     country: normalizeWhitespace(rawUser.country),
     institution: normalizeWhitespace(rawUser.institution),
@@ -3491,11 +5071,14 @@ function normalizeExistingUser(rawUser = {}) {
     resetCodeExpiresAt: rawUser.resetCodeExpiresAt || null,
     points: normalizePointsValue(rawUser.points),
     dailyQuiz: normalizeDailyQuizState(rawUser.dailyQuiz),
+    setupPoints: normalizeSetupPointsValue(rawUser.setupPoints),
+    lawDrillSession: normalizeLawDrillSessionValue(rawUser.lawDrillSession),
   };
 }
 
 function toPublicUser(user) {
   const normalized = normalizeExistingUser(user);
+  const subscriptionState = computeSubscriptionState(normalized);
   return {
     id: normalized.id,
     title: normalized.title,
@@ -3509,6 +5092,37 @@ function toPublicUser(user) {
     email: normalized.email,
     role: normalized.role,
     subscriptionTier: normalized.subscriptionTier,
+    subscriptionPlan: subscriptionState.plan,
+    subscriptionPlanLabel: subscriptionState.planMeta.label,
+    subscriptionPlanShortLabel: subscriptionState.planMeta.shortLabel,
+    subscriptionPlanPriceGhs: subscriptionState.planMeta.priceGhs,
+    subscriptionStatus: subscriptionState.status,
+    subscriptionStatusLabel: getSubscriptionStatusLabel(subscriptionState.status),
+    subscriptionRequestedAt: subscriptionState.requestedAt,
+    subscriptionReviewedAt: subscriptionState.reviewedAt,
+    subscriptionApprovedAt: subscriptionState.approvedAt,
+    subscriptionRejectedAt: subscriptionState.rejectedAt,
+    subscriptionStartedAt: subscriptionState.startedAt,
+    trialEndsAt: subscriptionState.trialEndsAt,
+    subscriptionEndsAt: subscriptionState.subscriptionEndsAt,
+    subscriptionExpirationAt: subscriptionState.expirationAt,
+    subscriptionApprovalDeadlineAt: subscriptionState.approvalDeadlineAt,
+    subscriptionAccess: {
+      isActive: subscriptionState.isActive,
+      isLocked: subscriptionState.isLocked,
+      lockedReason: subscriptionState.lockedReason,
+      daysRemaining: subscriptionState.daysRemaining,
+      expirationAt: subscriptionState.expirationAt,
+      trialEndsAt: subscriptionState.trialEndsAt,
+      approvalDeadlineAt: subscriptionState.approvalDeadlineAt,
+      plan: subscriptionState.plan,
+      planLabel: subscriptionState.planMeta.label,
+      status: subscriptionState.status,
+      statusLabel: getSubscriptionStatusLabel(subscriptionState.status),
+      reviewNote: String(normalized.subscriptionReviewNote || "").trim(),
+      rejectionReason: String(normalized.subscriptionRejectedReason || "").trim(),
+      lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+    },
     professionalType: normalized.professionalType,
     country: normalized.country,
     institution: normalized.institution,
@@ -3522,7 +5136,403 @@ function toPublicUser(user) {
     deactivatedUntil: normalized.deactivatedUntil,
     points: normalizePointsValue(normalized.points),
     dailyQuiz: summarizeDailyQuizState(normalized.dailyQuiz),
+    setupPoints: normalizeSetupPointsValue(normalized.setupPoints),
+    lawDrillSession: normalizeLawDrillSessionValue(normalized.lawDrillSession),
   };
+}
+
+function normalizeSubscriptionRequest(rawRequest = {}) {
+  const plan = normalizeSubscriptionPlanValue(rawRequest.plan) || "trial";
+  const rawStatus = String(rawRequest.status || "").trim().toLowerCase();
+  const status = ["pending", "approved", "rejected", "active", "expired"].includes(rawStatus)
+    ? rawStatus
+    : "pending";
+  const requestedAt = getIsoTimeValue(rawRequest.requestedAt) || new Date().toISOString();
+  const reviewedAt = getIsoTimeValue(rawRequest.reviewedAt);
+  const approvedAt = getIsoTimeValue(rawRequest.approvedAt);
+  const rejectedAt = getIsoTimeValue(rawRequest.rejectedAt);
+  const planMeta = getSubscriptionPlanMeta(plan);
+  const reviewDeadlineAt =
+    getIsoTimeValue(rawRequest.reviewDeadlineAt) ||
+    new Date(Date.parse(requestedAt) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+
+  return {
+    id: String(rawRequest.id || crypto.randomUUID()),
+    userId: String(rawRequest.userId || "").trim(),
+    userName: String(rawRequest.userName || "").trim(),
+    username: String(rawRequest.username || "").trim(),
+    contact: String(rawRequest.contact || "").trim(),
+    subscriptionCode: String(rawRequest.subscriptionCode || "").trim(),
+    plan,
+    planLabel: planMeta.label,
+    planShortLabel: planMeta.shortLabel,
+    priceGhs: planMeta.priceGhs,
+    durationDays: planMeta.durationDays,
+    requestedAt,
+    reviewedAt,
+    approvedAt,
+    rejectedAt,
+    activatedAt: getIsoTimeValue(rawRequest.activatedAt),
+    expiresAt: getIsoTimeValue(rawRequest.expiresAt),
+    expiredAt: getIsoTimeValue(rawRequest.expiredAt),
+    reviewDeadlineAt,
+    reviewerId: String(rawRequest.reviewerId || "").trim(),
+    reviewerName: String(rawRequest.reviewerName || "").trim(),
+    reviewNote: String(rawRequest.reviewNote || "").trim(),
+    paymentReference: String(rawRequest.paymentReference || rawRequest.transactionId || "").trim(),
+    proofText: String(rawRequest.proofText || "").trim(),
+    proofDataUrl: String(rawRequest.proofDataUrl || "").trim(),
+    proofFileName: String(rawRequest.proofFileName || "").trim(),
+    proofMimeType: String(rawRequest.proofMimeType || "").trim(),
+    proofType: String(rawRequest.proofType || "").trim(),
+    paymentMethod: String(rawRequest.paymentMethod || "").trim(),
+    createdAt: requestedAt,
+    updatedAt: String(rawRequest.updatedAt || requestedAt),
+    status: getSubscriptionRequestStatus({
+      ...rawRequest,
+      plan,
+      requestedAt,
+      reviewedAt,
+      approvedAt,
+      rejectedAt,
+      activatedAt: getIsoTimeValue(rawRequest.activatedAt),
+      expiresAt: getIsoTimeValue(rawRequest.expiresAt),
+      expiredAt: getIsoTimeValue(rawRequest.expiredAt),
+      status: ["pending", "approved", "rejected", "active", "expired"].includes(rawStatus)
+        ? rawStatus
+        : "pending",
+    }),
+  };
+}
+
+function getSubscriptionRequestExpiresAt(request = {}) {
+  const explicitExpiresAt = getIsoTimeValue(request.expiresAt);
+  const activatedAt =
+    getIsoTimeValue(request.activatedAt) ||
+    getIsoTimeValue(request.approvedAt) ||
+    getIsoTimeValue(request.reviewedAt);
+  const planMeta = getSubscriptionPlanMeta(request.plan || "trial");
+  const durationDays = Math.max(
+    1,
+    Math.round(Number(request.durationDays) || planMeta.durationDays || SUBSCRIPTION_TRIAL_DAYS),
+  );
+  const computedExpiresAt = activatedAt ? addDaysToIsoDate(activatedAt, durationDays) : null;
+  if (explicitExpiresAt) {
+    const explicitExpiresTime = Date.parse(explicitExpiresAt);
+    const activatedTime = activatedAt ? Date.parse(activatedAt) : NaN;
+    if (
+      Number.isFinite(explicitExpiresTime) &&
+      (!Number.isFinite(activatedTime) || explicitExpiresTime >= activatedTime)
+    ) {
+      return explicitExpiresAt;
+    }
+  }
+  return computedExpiresAt;
+}
+
+function getSubscriptionRequestStatus(request = {}) {
+  const rawStatus = String(request.status || "pending").trim().toLowerCase();
+  if (rawStatus === "rejected") {
+    return "rejected";
+  }
+  if (rawStatus === "pending") {
+    return "pending";
+  }
+
+  const expiresAt = getSubscriptionRequestExpiresAt(request);
+  const expiresMs = Date.parse(String(expiresAt || ""));
+  const hasFutureExpiry = Number.isFinite(expiresMs) && expiresMs > Date.now();
+  if (rawStatus === "expired") {
+    return hasFutureExpiry ? "active" : "expired";
+  }
+  if (hasFutureExpiry && ["approved", "active", "trial"].includes(rawStatus)) {
+    return "active";
+  }
+  if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) {
+    return "expired";
+  }
+
+  if (["approved", "active", "trial"].includes(rawStatus)) {
+    return "active";
+  }
+
+  return "pending";
+}
+
+function buildSubscriptionRequestFromUser(user = {}, rawRequest = {}) {
+  const subscriptionState = computeSubscriptionState(user);
+  const plan = normalizeSubscriptionPlanValue(user.subscriptionPlan) || subscriptionState.plan || "trial";
+  const requestedAt =
+    getIsoTimeValue(rawRequest.requestedAt) ||
+    subscriptionState.requestedAt ||
+    getIsoTimeValue(user.subscriptionRequestedAt) ||
+    getIsoTimeValue(user.createdAt) ||
+    new Date().toISOString();
+  const status =
+    subscriptionState.status === "rejected"
+      ? "rejected"
+      : subscriptionState.status === "expired"
+        ? "expired"
+        : subscriptionState.status === "pending"
+          ? "pending"
+          : "active";
+  const reviewedAt = getIsoTimeValue(rawRequest.reviewedAt) || subscriptionState.reviewedAt || null;
+  const approvedAt = getIsoTimeValue(rawRequest.approvedAt) || subscriptionState.approvedAt || null;
+  const activatedAt =
+    getIsoTimeValue(rawRequest.activatedAt) ||
+    subscriptionState.startedAt ||
+    approvedAt ||
+    (status === "active" ? requestedAt : null);
+  const expiresAt =
+    getIsoTimeValue(rawRequest.expiresAt) ||
+    subscriptionState.expirationAt ||
+    (status === "pending" ? null : getSubscriptionRequestExpiresAt({ ...rawRequest, activatedAt, plan }));
+  const expiredAt =
+    getIsoTimeValue(rawRequest.expiredAt) ||
+    (status === "expired" ? expiresAt : null);
+  const reviewDeadlineAt =
+    getIsoTimeValue(rawRequest.reviewDeadlineAt) ||
+    subscriptionState.approvalDeadlineAt ||
+    new Date(Date.parse(requestedAt) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+
+  return normalizeSubscriptionRequest({
+    ...rawRequest,
+    id: String(rawRequest.id || crypto.randomUUID()),
+    userId: String(user.id || rawRequest.userId || "").trim(),
+    userName: String(rawRequest.userName || user.name || "").trim(),
+    username: String(rawRequest.username || user.username || "").trim(),
+    contact: String(rawRequest.contact || user.contact || "").trim(),
+    plan,
+    status,
+    requestedAt,
+    reviewedAt,
+    approvedAt,
+    rejectedAt: getIsoTimeValue(rawRequest.rejectedAt) || subscriptionState.rejectedAt || null,
+    activatedAt,
+    expiresAt,
+    expiredAt,
+    reviewDeadlineAt,
+    reviewerId: String(rawRequest.reviewerId || "").trim(),
+    reviewerName: String(rawRequest.reviewerName || "").trim(),
+    reviewNote: String(rawRequest.reviewNote || user.subscriptionReviewNote || "").trim(),
+    paymentReference:
+      String(rawRequest.paymentReference || rawRequest.transactionId || user.subscriptionPaymentReference || "").trim(),
+    proofText: String(rawRequest.proofText || user.subscriptionPaymentReference || "").trim(),
+    proofDataUrl: String(rawRequest.proofDataUrl || "").trim(),
+    proofFileName: String(rawRequest.proofFileName || "").trim(),
+    proofMimeType: String(rawRequest.proofMimeType || "").trim(),
+    proofType: String(rawRequest.proofType || "").trim() || (rawRequest.proofDataUrl ? "image" : "text"),
+    paymentMethod: String(rawRequest.paymentMethod || "").trim(),
+    updatedAt: String(rawRequest.updatedAt || user.updatedAt || requestedAt),
+  });
+}
+
+function synchronizeSubscriptionRequestsWithUsers(users = [], rawRequests = []) {
+  const normalizedRequests = coerceCollectionArray(rawRequests)
+    .map(normalizeSubscriptionRequest)
+    .filter((request) => {
+      const plan = normalizeSubscriptionPlanValue(request.plan) || "trial";
+      return plan !== "trial" && Boolean(String(request.userId || "").trim());
+    })
+    .sort((a, b) => Date.parse(a.requestedAt || 0) - Date.parse(b.requestedAt || 0));
+
+  const usedCodes = new Set();
+  let nextCode = 1;
+  let changed = normalizedRequests.length !== coerceCollectionArray(rawRequests).length;
+
+  for (const request of normalizedRequests) {
+    const requestCode = String(request.subscriptionCode || "").trim();
+    if (requestCode) {
+      usedCodes.add(requestCode);
+      const numericCode = Number.parseInt(requestCode, 10);
+      if (Number.isFinite(numericCode) && numericCode >= nextCode) {
+        nextCode = numericCode + 1;
+      }
+    }
+  }
+
+  const allocateSubscriptionCode = () => {
+    let code = String(nextCode).padStart(3, "0");
+    while (usedCodes.has(code)) {
+      nextCode += 1;
+      code = String(nextCode).padStart(3, "0");
+    }
+    usedCodes.add(code);
+    nextCode += 1;
+    changed = true;
+    return code;
+  };
+
+  const requestsById = new Map();
+  for (const request of normalizedRequests) {
+    const requestId = String(request.id || "").trim();
+    if (!requestId) {
+      changed = true;
+      continue;
+    }
+    const nextRequest = request.subscriptionCode ? request : { ...request, subscriptionCode: allocateSubscriptionCode() };
+    if (requestsById.has(requestId)) {
+      changed = true;
+    }
+    requestsById.set(requestId, nextRequest);
+  }
+
+  return {
+    changed,
+    requests: [...requestsById.values()].sort((a, b) => Date.parse(b.requestedAt || 0) - Date.parse(a.requestedAt || 0)),
+  };
+}
+
+function toPublicSubscriptionRequest(rawRequest = {}, usersById = new Map()) {
+  const request = normalizeSubscriptionRequest(rawRequest);
+  const status = getSubscriptionRequestStatus(request);
+  const user = usersById.get(request.userId) || null;
+  const expirationAt = getSubscriptionRequestExpiresAt(request);
+  return {
+    ...request,
+    status,
+    expirationAt,
+    isExpired: status === "expired",
+    isActive: status === "active",
+    user: user ? toPublicUser(user) : null,
+  };
+}
+
+function buildSubscriptionAccessFromRequest(request = {}) {
+  const normalizedRequest = normalizeSubscriptionRequest(request);
+  const status = getSubscriptionRequestStatus(normalizedRequest);
+  const plan = normalizeSubscriptionPlanValue(normalizedRequest.plan) || "trial";
+  const planMeta = getSubscriptionPlanMeta(plan);
+  const expirationAt = getSubscriptionRequestExpiresAt(normalizedRequest);
+  const expirationTime = Date.parse(String(expirationAt || ""));
+  const daysRemaining = Number.isFinite(expirationTime)
+    ? Math.max(0, Math.ceil((expirationTime - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null;
+
+  return {
+    requestId: normalizedRequest.id,
+    subscriptionCode: normalizedRequest.subscriptionCode || normalizedRequest.id,
+    plan,
+    planLabel: normalizedRequest.planLabel || planMeta.label,
+    planShortLabel: normalizedRequest.planShortLabel || planMeta.shortLabel,
+    priceGhs: Number.isFinite(Number(normalizedRequest.priceGhs)) ? Number(normalizedRequest.priceGhs) : planMeta.priceGhs,
+    status,
+    statusLabel: getSubscriptionStatusLabel(status),
+    isActive: status === "active" || status === "trial",
+    isLocked: !["active", "trial"].includes(status),
+    lockedReason:
+      status === "pending"
+        ? normalizedRequest.reviewNote || "Your payment proof is in review."
+        : status === "rejected"
+          ? normalizedRequest.reviewNote || "The admin could not verify the last submission."
+          : status === "expired"
+            ? "Your free trial or paid access has ended."
+            : "",
+    daysRemaining,
+    expirationAt,
+    trialEndsAt: plan === "trial" ? expirationAt : null,
+    approvalDeadlineAt: normalizedRequest.reviewDeadlineAt || null,
+    reviewNote: normalizedRequest.reviewNote || "",
+    rejectionReason: normalizedRequest.reviewNote || "",
+    lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+  };
+}
+
+
+function normalizePasswordResetRequest(rawRequest = {}) {
+  const requestedAt = getIsoTimeValue(rawRequest.requestedAt) || new Date().toISOString();
+  const rawStatus = String(rawRequest.status || "").trim().toLowerCase();
+  const status = ["pending", "sent", "resolved", "expired", "cancelled"].includes(rawStatus)
+    ? rawStatus
+    : "pending";
+  const contact = normalizeContactValue(rawRequest.contact) || normalizeWhitespace(rawRequest.contact);
+  const contactType = String(
+    rawRequest.contactType || (contact ? detectContactType(contact) : ""),
+  )
+    .trim()
+    .toLowerCase();
+  const email = isValidEmail(rawRequest.email)
+    ? normalizeContactValue(rawRequest.email)
+    : isValidEmail(contact)
+      ? normalizeContactValue(contact)
+      : "";
+  const deliveryMethod =
+    String(rawRequest.deliveryMethod || contactType || "").trim().toLowerCase() ||
+    (contactType === "email" ? "email" : contactType === "phone" ? "phone" : "");
+
+  return {
+    id: String(rawRequest.id || crypto.randomUUID()),
+    userId: String(rawRequest.userId || "").trim(),
+    username: String(rawRequest.username || "").trim(),
+    name: String(rawRequest.name || "").trim(),
+    contact,
+    contactType,
+    email,
+    deliveryMethod,
+    deliveryLabel:
+      String(rawRequest.deliveryLabel || "").trim() ||
+      (deliveryMethod === "email"
+        ? "email address"
+        : deliveryMethod === "phone"
+          ? "phone number"
+          : "registered contact"),
+    resetCode: String(rawRequest.resetCode || "").trim(),
+    resetCodeHash: String(rawRequest.resetCodeHash || "").trim(),
+    requestedAt,
+    sentAt: rawRequest.sentAt ? String(rawRequest.sentAt) : null,
+    resolvedAt: rawRequest.resolvedAt ? String(rawRequest.resolvedAt) : null,
+    expiresAt: rawRequest.expiresAt ? String(rawRequest.expiresAt) : null,
+    note: String(rawRequest.note || "").trim(),
+    updatedAt: String(rawRequest.updatedAt || requestedAt),
+  };
+}
+
+function getPasswordResetRequestExpiresAt(request = {}) {
+  const explicitExpiresAt = getIsoTimeValue(request.expiresAt);
+  if (explicitExpiresAt) {
+    return explicitExpiresAt;
+  }
+
+  const sentAt = getIsoTimeValue(request.sentAt);
+  if (!sentAt) {
+    return null;
+  }
+
+  return new Date(sentAt + RESET_CODE_TTL_HOURS * 60 * 60 * 1000).toISOString();
+}
+
+function getPasswordResetRequestStatus(request = {}) {
+  const rawStatus = String(request.status || "pending").trim().toLowerCase();
+  if (["resolved", "cancelled"].includes(rawStatus)) {
+    return rawStatus;
+  }
+  if (rawStatus === "sent") {
+    const expiresMs = Date.parse(String(getPasswordResetRequestExpiresAt(request) || ""));
+    if (Number.isFinite(expiresMs) && expiresMs < Date.now()) {
+      return "expired";
+    }
+    return "sent";
+  }
+  return "pending";
+}
+
+function toPublicPasswordResetRequest(rawRequest = {}, usersById = new Map()) {
+  const request = normalizePasswordResetRequest(rawRequest);
+  const status = getPasswordResetRequestStatus(request);
+  const user = usersById.get(request.userId) || null;
+  return {
+    ...request,
+    isExpired: status === "expired",
+    user: user ? toPublicUser(user) : null,
+  };
+}
+
+function coerceCollectionArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") {
+    return Object.values(value).filter((entry) => entry && typeof entry === "object");
+  }
+  return [];
 }
 
 function normalizeLawDrillLevelStatus(levelStatus, index, currentLevelIndex, reviewLevelIndex) {
@@ -3755,10 +5765,7 @@ function buildAdminWarningNoticeBody(report = {}, warningTitle = "") {
   const reportDate = normalizedReport.createdAt ? new Date(normalizedReport.createdAt) : null;
   const formattedDate =
     reportDate && !Number.isNaN(reportDate.getTime())
-      ? reportDate.toLocaleString("en-US", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })
+      ? `${String(reportDate.getDate()).padStart(2, "0")}/${String(reportDate.getMonth() + 1).padStart(2, "0")}/${String(reportDate.getFullYear()).slice(-2)}, ${reportDate.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" })}`
       : "the reported time";
   const reason = normalizeWhitespace(normalizedReport.reason || "a community standards concern").slice(0, 240);
   const closingLineByTitle = {
@@ -4256,6 +6263,17 @@ function findUserByIdentifier(users, identifierRaw) {
   });
 }
 
+function findUserByRegisteredContact(users, contactRaw) {
+  const contact = normalizeContactValue(contactRaw);
+  if (!contact) return null;
+
+  return users.find((rawUser) => {
+    const user = normalizeExistingUser(rawUser);
+    const userContact = normalizeContactValue(user.contact);
+    return Boolean(userContact && userContact === contact);
+  });
+}
+
 function isUserCurrentlyDeactivated(user) {
   const untilMs = Date.parse(String(user?.deactivatedUntil || ""));
   return Number.isFinite(untilMs) && untilMs > Date.now();
@@ -4696,6 +6714,10 @@ function normalizeQuestionForApi(rawQuestion) {
   const text = String(rawQuestion?.text ?? rawQuestion?.question ?? "").trim();
   const topicSlug = normalizeSlugValue(rawQuestion?.topicSlug);
   const sectionId = normalizeSlugValue(rawQuestion?.sectionId);
+  const bank = String(rawQuestion?.bank || "main").trim().toLowerCase() || "main";
+  const comboVariant = String(rawQuestion?.comboVariant || "").trim().toLowerCase();
+  const yearValue = Number(rawQuestion?.year);
+  const displayNumberValue = Number(rawQuestion?.displayNumber);
   const drillTags = Array.isArray(rawQuestion?.drillTags)
     ? rawQuestion.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
     : [];
@@ -4719,8 +6741,13 @@ function normalizeQuestionForApi(rawQuestion) {
     text,
     question: text,
     category: normalizedCategory,
+    bank,
+    comboVariant: comboVariant || undefined,
+    year: Number.isFinite(yearValue) ? yearValue : undefined,
+    displayNumber: Number.isFinite(displayNumberValue) ? displayNumberValue : undefined,
     options: Array.isArray(rawQuestion?.options) ? rawQuestion.options : [],
     correct: rawQuestion?.correct,
+    answer: Number.isFinite(Number(rawQuestion?.answer)) ? Number(rawQuestion.answer) : undefined,
     explanation: String(rawQuestion?.explanation || ""),
     topicSlug: topicSlug || undefined,
     sectionId: sectionId || undefined,
@@ -4958,12 +6985,48 @@ function buildChoiceCatalog(question = {}) {
   });
 
   if (rows.length === 0 && String(question?.type || "").trim().toLowerCase() === "combo") {
-    rows = ["A", "B", "C", "D", "E"].map((letter) => ({
-      letter,
-      text: `Option ${letter}`,
-      normalized: normalizeChoiceText(letter),
-      normalizedNoPrefix: normalizeChoiceText(letter),
-    }));
+    const comboVariant = String(question?.comboVariant || "").trim().toLowerCase();
+    const statementCount = Array.isArray(question?.statements) ? question.statements.length : 0;
+    const fallbackOptions =
+      comboVariant === "assertion-5"
+        ? [
+            "First statement is TRUE, Second statement is TRUE and they are RELATED",
+            "First statement is TRUE, Second statement is TRUE but they are NOT related",
+            "First statement is TRUE but Second statement is FALSE",
+            "First statement is FALSE but Second statement is TRUE",
+            "Both statements are FALSE",
+          ]
+        : comboVariant === "table-4"
+          ? [
+              "I, II and III",
+              "II and III only",
+              "I only",
+              "III only",
+            ]
+          : comboVariant === "pair-relationship" || statementCount === 2
+        ? [
+            "first statement is true, second statement is true and the two are related",
+            "first statement is true, second statement is true but the two are not related",
+            "first statement is false, second statement is true",
+            "both statements are false",
+          ]
+        : [
+            "1, 2 and 3",
+            "1 and 2 only",
+            "2 and 3 only",
+            "1 only",
+            "3 only",
+          ];
+
+    rows = fallbackOptions.map((text, index) => {
+      const letter = String.fromCharCode(65 + index);
+      return {
+        letter,
+        text,
+        normalized: normalizeChoiceText(text),
+        normalizedNoPrefix: normalizeChoiceText(trimLeadingOptionLetter(text)),
+      };
+    });
   }
 
   let correctLetter = extractOptionLetter(question?.correct);
@@ -4991,6 +7054,38 @@ function buildChoiceCatalog(question = {}) {
   }
 
   return { rows, correctLetter };
+}
+
+function getComboOptionTexts(comboVariant = "", statementCount = 0) {
+  const variant = String(comboVariant || "").trim().toLowerCase();
+  if (variant === "assertion-5") {
+    return [
+      "First statement is TRUE, Second statement is TRUE and they are RELATED",
+      "First statement is TRUE, Second statement is TRUE but they are NOT related",
+      "First statement is TRUE but Second statement is FALSE",
+      "First statement is FALSE but Second statement is TRUE",
+      "Both statements are FALSE",
+    ];
+  }
+
+  if (variant === "table-4") {
+    return ["I, II and III", "II and III only", "I only", "III only"];
+  }
+
+  if (variant === "pair-relationship" || statementCount === 2) {
+    return [
+      "first statement is true, second statement is true and the two are related",
+      "first statement is true, second statement is true but the two are not related",
+      "first statement is false, second statement is true",
+      "both statements are false",
+    ];
+  }
+
+  if (variant === "three-statement" || statementCount === 3) {
+    return ["1, 2 and 3", "1 and 2 only", "2 and 3 only", "1 only", "3 only"];
+  }
+
+  return [];
 }
 
 function resolveSelectionLetter(selection, catalog) {
@@ -5177,6 +7272,9 @@ function buildDailyLeaderboardSnapshot({
 }
 
 function createCorsOptions() {
+  if (process.env.NODE_ENV !== "production") {
+    return { origin: true };
+  }
   if (config.corsOrigins.includes("*")) {
     return { origin: true };
   }
@@ -5243,6 +7341,30 @@ if (config.trustProxy) {
 app.use(
   cors(createCorsOptions()),
 );
+app.use((req, res, next) => {
+  if (req.method !== "OPTIONS") {
+    next();
+    return;
+  }
+
+  const origin = String(req.get("origin") || "").trim();
+  const requestHeaders = String(
+    req.get("access-control-request-headers") || "content-type,authorization,x-client-id",
+  ).trim();
+  const allowedOrigins = config.corsOrigins;
+
+  if (origin && (allowedOrigins.includes("*") || allowedOrigins.includes(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  } else if (allowedOrigins.includes("*")) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", requestHeaders);
+  res.setHeader("Access-Control-Max-Age", "86400");
+  res.sendStatus(204);
+});
 app.use(helmet());
 if (config.enableGzip) {
   app.use(compression());
@@ -5259,6 +7381,23 @@ if (config.logLevel !== "silent") {
 // Never expose backend runtime files over static hosting.
 app.use("/backend", (_req, res) => {
   res.status(404).json({ error: "Not found" });
+});
+
+// Lock standalone HTML pages behind the login session.
+app.use((req, res, next) => {
+  if (!isProtectedHtmlRequest(req)) {
+    next();
+    return;
+  }
+
+  optionalAuth(req, res, () => {
+    if (req.user) {
+      next();
+      return;
+    }
+
+    res.redirect(302, buildLoginRedirectUrl(req));
+  });
 });
 
 // Serve static frontend files.
@@ -5296,6 +7435,11 @@ app.use("/api/admin", (req, _res, next) => {
 });
 
 // API routes
+app.use(createMedLensRouter({ config, frontendPath }));
+app.use(createMedLensDiseaseRouter({ config, frontendPath }));
+app.use(createMedLensInteractionRouter({ config, frontendPath }));
+app.use(createGuidelineRouter({ config }));
+
 app.get("/api/health", (_req, res) => {
   const mem = process.memoryUsage();
   res.json({
@@ -5382,6 +7526,7 @@ app.post(
 
     const createdAt = new Date().toISOString();
     const name = buildDisplayName(title, firstName, lastName, username);
+    const trialEndsAt = addDaysToIsoDate(createdAt, SUBSCRIPTION_TRIAL_DAYS);
     const user = {
       id: crypto.randomUUID(),
       title,
@@ -5395,6 +7540,16 @@ app.post(
       email: isValidEmail(contact) ? contact : "",
       role,
       subscriptionTier: "free",
+      subscriptionPlan: "trial",
+      subscriptionStatus: "trial",
+      subscriptionRequestedAt: null,
+      subscriptionReviewedAt: null,
+      subscriptionApprovedAt: null,
+      subscriptionRejectedAt: null,
+      subscriptionStartedAt: createdAt,
+      trialEndsAt,
+      subscriptionEndsAt: trialEndsAt,
+      subscriptionApprovalDeadlineAt: null,
       professionalType,
       country,
       institution,
@@ -5416,6 +7571,7 @@ app.post(
     await writeCollection("users", users);
 
     const token = createToken(user);
+    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
     res.status(201).json({
       token,
       user: toPublicUser(user),
@@ -5466,17 +7622,60 @@ app.post(
       return;
     }
 
-    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
-    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
-    if (changed) {
-      await writeCollection("users", reconciledUsers);
+    const signedInAt = new Date().toISOString();
+    const updatedUsers = users.map((entry) =>
+      entry.id === user.id
+        ? {
+            ...entry,
+            updatedAt: signedInAt,
+            lastSeenAt: signedInAt,
+          }
+        : entry,
+    );
+    const updatedUser = updatedUsers.find((entry) => entry.id === user.id) || user;
+    try {
+      await writeCollection("users", updatedUsers);
+    } catch (writeError) {
+      console.warn("Failed to persist login timestamp", writeError?.message || writeError);
     }
-    const reconciledUser = reconciledUsers.find((entry) => entry.id === user.id) || user;
-    const token = createToken(reconciledUser);
+
+    const token = createToken(updatedUser);
+    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
     res.json({
       token,
-      user: toPublicUser(reconciledUser),
+      user: toPublicUser(updatedUser),
     });
+
+    void (async () => {
+      try {
+        const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+        const reconciliation = reconcileUsersWithPointHistory(users, pointEvents);
+        if (!reconciliation.changed) {
+          return;
+        }
+        try {
+          await writeCollection("users", reconciliation.users);
+        } catch (writeError) {
+          console.warn(
+            "Skipping post-login user reconciliation write",
+            writeError?.message || writeError,
+          );
+        }
+      } catch (reconciliationError) {
+        console.warn(
+          "Skipping post-login user reconciliation",
+          reconciliationError?.message || reconciliationError,
+        );
+      }
+    })();
+  }),
+);
+
+app.post(
+  "/api/auth/logout",
+  asyncHandler(async (req, res) => {
+    res.clearCookie(AUTH_COOKIE_NAME, { path: "/" });
+    res.json({ ok: true });
   }),
 );
 
@@ -5484,6 +7683,9 @@ app.get(
   "/api/auth/me",
   requireAuth,
   asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     await purgeExpiredDeactivatedUsers();
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
@@ -5505,7 +7707,194 @@ app.get(
       return;
     }
 
+    await touchUserLastSeen(user.id);
     res.json(toPublicUser(user));
+  }),
+);
+
+app.get(
+  "/api/subscriptions/plans",
+  asyncHandler(async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.json({
+      ok: true,
+      approvalWindowHours: SUBSCRIPTION_APPROVAL_WINDOW_HOURS,
+      trialDays: SUBSCRIPTION_TRIAL_DAYS,
+      lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+      plans: Object.values(SUBSCRIPTION_PLAN_CATALOG).map((plan) => ({
+        ...plan,
+        currency: "GHS",
+      })),
+    });
+  }),
+);
+
+app.get(
+  "/api/subscriptions/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const rawRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
+    const requests = rawRequests
+      .map(normalizeSubscriptionRequest)
+      .filter((entry) => entry.userId === user.id && normalizeSubscriptionPlanValue(entry.plan) !== "trial")
+      .sort((a, b) => Date.parse(b.requestedAt || 0) - Date.parse(a.requestedAt || 0));
+    const latestRequest = requests[0] || null;
+    const latestSubscription = latestRequest
+      ? buildSubscriptionAccessFromRequest(latestRequest)
+      : toPublicUser(user).subscriptionAccess;
+
+    res.json({
+      ok: true,
+      user: toPublicUser(user),
+      subscription: latestSubscription,
+      request: latestRequest || null,
+      requests,
+      plans: Object.values(SUBSCRIPTION_PLAN_CATALOG).map((plan) => ({
+        ...plan,
+        currency: "GHS",
+      })),
+      lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+      approvalWindowHours: SUBSCRIPTION_APPROVAL_WINDOW_HOURS,
+      trialDays: SUBSCRIPTION_TRIAL_DAYS,
+    });
+  }),
+);
+
+app.post(
+  "/api/subscriptions/requests",
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const requestedPlan = normalizeSubscriptionPlanValue(
+      req.body?.plan || req.body?.subscriptionPlan || req.body?.tier,
+    );
+    if (!requestedPlan || requestedPlan === "trial") {
+      res.status(400).json({ error: "Choose a paid plan before submitting payment proof." });
+      return;
+    }
+
+    const proofText = String(
+      req.body?.proofText || req.body?.transactionId || req.body?.paymentReference || "",
+    ).trim();
+    const proofDataUrl = String(
+      req.body?.proofDataUrl || req.body?.proofImageDataUrl || req.body?.proofScreenshot || "",
+    ).trim();
+    const proofFileName = String(req.body?.proofFileName || "").trim();
+    const proofMimeType = String(req.body?.proofMimeType || "").trim();
+    const paymentMethod = String(req.body?.paymentMethod || "").trim();
+    const reviewNote = String(req.body?.note || req.body?.message || "").trim();
+
+    if (!proofText && !proofDataUrl) {
+      res.status(400).json({
+        error: "Add a transaction ID, screenshot, or payment reference before submitting.",
+      });
+      return;
+    }
+
+    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
+    const actorId = String(req.user?.sub || req.body?.userId || "").trim();
+    if (!actorId) {
+      res.status(400).json({ error: "Could not identify the subscription account." });
+      return;
+    }
+    const userIndex = users.findIndex((entry) => entry.id === actorId);
+    if (userIndex < 0) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+    const actorUser = users[userIndex];
+    const currentState = computeSubscriptionState(actorUser);
+    if (currentState.status === "active" || currentState.status === "pending") {
+      res.status(409).json({
+        error:
+          currentState.status === "pending"
+            ? "A subscription request is already under review."
+            : "Your subscription is already active.",
+      });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const requests = (await readCollection("subscriptionRequests")).map(normalizeSubscriptionRequest);
+    const existingPendingIndex = requests.findIndex(
+      (entry) => entry.userId === actorId && entry.status === "pending",
+    );
+    const existingPending = existingPendingIndex >= 0 ? requests[existingPendingIndex] : null;
+    if (existingPending) {
+      res.status(409).json({ error: "A subscription request is already under review." });
+      return;
+    }
+
+    const request = normalizeSubscriptionRequest({
+      ...(existingPending || {}),
+      id: existingPending?.id || crypto.randomUUID(),
+      userId: actorId,
+      userName: actorUser.name,
+      username: actorUser.username,
+      contact: actorUser.contact,
+      subscriptionCode: String(requests.length + 1).padStart(3, "0"),
+      plan: requestedPlan,
+      status: "pending",
+      requestedAt: existingPending?.requestedAt || now,
+      reviewedAt: null,
+      approvedAt: null,
+      rejectedAt: null,
+      reviewDeadlineAt:
+        existingPending?.reviewDeadlineAt ||
+        new Date(Date.parse(existingPending?.requestedAt || now) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString(),
+      reviewerId: "",
+      reviewerName: "",
+      reviewNote,
+      paymentReference: proofText,
+      proofText,
+      proofDataUrl,
+      proofFileName,
+      proofMimeType,
+      proofType: proofDataUrl ? "image" : "text",
+      paymentMethod,
+      updatedAt: now,
+    });
+
+    if (existingPendingIndex >= 0) {
+      requests[existingPendingIndex] = request;
+    } else {
+      requests.unshift(request);
+    }
+
+    users[userIndex] = {
+      ...actorUser,
+      subscriptionPlan: requestedPlan,
+      subscriptionStatus: "pending",
+      subscriptionRequestedAt: now,
+      subscriptionReviewedAt: null,
+      subscriptionApprovedAt: null,
+      subscriptionRejectedAt: null,
+      subscriptionReviewNote: reviewNote,
+      subscriptionRejectedReason: null,
+      subscriptionPaymentReference: proofText,
+      updatedAt: now,
+    };
+
+    await writeCollection("subscriptionRequests", requests);
+    await writeCollection("users", users);
+
+    res.status(existingPending ? 200 : 201).json({
+      ok: true,
+      request,
+      user: toPublicUser(users[userIndex]),
+      subscription: buildSubscriptionAccessFromRequest(request),
+    });
   }),
 );
 
@@ -5602,57 +7991,86 @@ app.post(
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
     const genericResetMessage =
-      "If the account exists, a reset code has been sent to the registered contact.";
-    const identifier = String(
-      req.body?.identifier ||
-        req.body?.contact ||
-        req.body?.email ||
-        req.body?.username ||
-        "",
-    ).trim();
+      "Your reset request has been queued for admin review. When the code is sent, use Have reset code? to finish resetting your password.";
+    const contact = String(req.body?.contact || "").trim();
 
-    if (!identifier) {
-      res.status(400).json({ error: "identifier is required" });
+    if (!contact) {
+      res.status(400).json({ error: "contact is required" });
+      return;
+    }
+    if (!normalizeContactValue(contact)) {
+      res.status(400).json({ error: "Enter a valid email address or phone number." });
       return;
     }
 
     const users = (await readCollection("users")).map(normalizeExistingUser);
-    const user = findUserByIdentifier(users, identifier);
+    const user = findUserByRegisteredContact(users, contact);
 
     if (!user) {
-      res.json({ ok: true, message: genericResetMessage });
+      res.status(400).json({
+        error: "Wrong contact. Use the registered email or phone number on this account.",
+      });
       return;
     }
 
     const resetCode = createResetCode();
-    const expiresAt = new Date(
-      Date.now() + RESET_CODE_TTL_MINUTES * 60 * 1000,
-    ).toISOString();
+    const deliveryTarget = describeResetDeliveryTarget(user);
+    const deliveryChannel = deliveryTarget?.method === "email" ? "email" : "WhatsApp";
+    const deliverySummary = deliveryTarget?.target
+      ? `${deliveryChannel} (${deliveryTarget.target})`
+      : deliveryChannel;
+    const now = new Date().toISOString();
 
     const nextUsers = users.map((entry) => {
       if (entry.id !== user.id) return entry;
       return {
         ...entry,
         resetCodeHash: hashResetCode(resetCode),
-        resetCodeExpiresAt: expiresAt,
+        resetCodeExpiresAt: null,
         updatedAt: new Date().toISOString(),
       };
     });
     await writeCollection("users", nextUsers);
 
-    errorLogStream.write(
-      `${new Date().toISOString()} password-reset-request userId=${user.id} expiresAt=${expiresAt}\n`,
+    const resetRequests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
     );
+    const nextResetRequest = normalizePasswordResetRequest({
+      id: crypto.randomUUID(),
+      userId: user.id,
+      username: user.username,
+      name: user.name,
+      contact: user.contact || user.email,
+      contactType: user.contactType || (deliveryTarget?.method === "email" ? "email" : "phone"),
+      email: user.email || "",
+      deliveryMethod: deliveryTarget?.method || "",
+      deliveryLabel: deliveryTarget?.label || "",
+      resetCode,
+      resetCodeHash: hashResetCode(resetCode),
+      status: "pending",
+      requestedAt: now,
+      sentAt: null,
+      resolvedAt: null,
+      expiresAt: null,
+      note: "Password reset requested from the app.",
+      updatedAt: now,
+    });
+    const nextResetRequests = [
+      nextResetRequest,
+      ...resetRequests.filter((entry) => entry.userId !== user.id),
+    ];
+    await writeCollection("passwordResetRequests", nextResetRequests);
+
+    errorLogStream.write(`${new Date().toISOString()} password-reset-request userId=${user.id} pending\n`);
 
     const response = {
       ok: true,
-      message: genericResetMessage,
+      message: `Your reset request has been received. Reset code will be sent to you via ${deliverySummary}. Use that to reset your password.`,
+      deliveryMethod: deliveryTarget?.method || "",
+      deliveryTarget: deliveryTarget?.target || "",
+      deliveryLabel: deliveryTarget?.label || "",
+      resetRequestId: nextResetRequest.id,
     };
-
-    if (config.exposeResetCode) {
-      response.devResetCode = resetCode;
-      response.expiresAt = expiresAt;
-    }
 
     res.json(response);
   }),
@@ -5662,20 +8080,18 @@ app.post(
   "/api/auth/reset-password",
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-    const identifier = String(
-      req.body?.identifier ||
-        req.body?.contact ||
-        req.body?.email ||
-        req.body?.username ||
-        "",
-    ).trim();
+    const contact = String(req.body?.contact || "").trim();
     const code = String(req.body?.code || "").trim();
     const newPassword = String(req.body?.newPassword || "");
 
-    if (!identifier || !code || !newPassword) {
+    if (!contact || !code || !newPassword) {
       res.status(400).json({
-        error: "identifier, code and newPassword are required",
+        error: "contact, code and newPassword are required",
       });
+      return;
+    }
+    if (!normalizeContactValue(contact)) {
+      res.status(400).json({ error: "Enter a valid email address or phone number." });
       return;
     }
     if (newPassword.length < 6) {
@@ -5684,18 +8100,33 @@ app.post(
     }
 
     const users = (await readCollection("users")).map(normalizeExistingUser);
-    const user = findUserByIdentifier(users, identifier);
-    if (!user || !user.resetCodeHash || !user.resetCodeExpiresAt) {
+    const user = findUserByRegisteredContact(users, contact);
+    if (!user) {
+      res.status(400).json({
+        error: "Wrong contact. Use the registered email or phone number on this account.",
+      });
+      return;
+    }
+
+    const resetRequests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
+    );
+    const codeHash = hashResetCode(code);
+    const matchingRequest = [...resetRequests]
+      .reverse()
+      .find((entry) => entry.userId === user.id && entry.resetCodeHash === codeHash);
+    if (!matchingRequest) {
+      res.status(400).json({ error: "invalid or expired reset code" });
+      return;
+    }
+    if (getPasswordResetRequestStatus(matchingRequest) !== "sent") {
       res.status(400).json({ error: "invalid or expired reset code" });
       return;
     }
 
-    const expiresMs = Date.parse(String(user.resetCodeExpiresAt));
+    const expiresAt = getPasswordResetRequestExpiresAt(matchingRequest);
+    const expiresMs = Date.parse(String(expiresAt || ""));
     if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) {
-      res.status(400).json({ error: "invalid or expired reset code" });
-      return;
-    }
-    if (hashResetCode(code) !== user.resetCodeHash) {
       res.status(400).json({ error: "invalid or expired reset code" });
       return;
     }
@@ -5713,6 +8144,19 @@ app.post(
       }),
     );
     await writeCollection("users", updatedUsers);
+
+    const nextResetRequests = resetRequests.map((entry) => {
+      if (entry.id !== matchingRequest.id) return entry;
+      return {
+        ...entry,
+        status: "resolved",
+        resetCode: "",
+        resetCodeHash: "",
+        resolvedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    await writeCollection("passwordResetRequests", nextResetRequests);
     res.json({ ok: true, message: "Password reset successful. You can now sign in." });
   }),
 );
@@ -5969,6 +8413,86 @@ app.put(
   }),
 );
 
+app.put(
+  "/api/auth/setup-points",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await purgeExpiredDeactivatedUsers();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
+
+    if (userIndex === -1) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const currentUser = users[userIndex];
+    if (isUserCurrentlyDeactivated(currentUser)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    if (!req.body || typeof req.body.setupPoints !== "object" || Array.isArray(req.body.setupPoints)) {
+      res.status(400).json({ error: "setupPoints must be an object" });
+      return;
+    }
+
+    const nextUser = {
+      ...currentUser,
+      setupPoints: mergeSetupPointsValue(currentUser.setupPoints, req.body.setupPoints),
+      updatedAt: new Date().toISOString(),
+    };
+
+    users[userIndex] = nextUser;
+    await writeCollection("users", users);
+    res.json({
+      ok: true,
+      setupPoints: normalizeSetupPointsValue(nextUser.setupPoints),
+      user: toPublicUser(nextUser),
+    });
+  }),
+);
+
+app.put(
+  "/api/auth/law-drill-session",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await purgeExpiredDeactivatedUsers();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
+
+    if (userIndex === -1) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+
+    const currentUser = users[userIndex];
+    if (isUserCurrentlyDeactivated(currentUser)) {
+      res.status(403).json({ error: "Account is deactivated." });
+      return;
+    }
+
+    if (req.body?.lawDrillSession !== null && typeof req.body?.lawDrillSession !== "object") {
+      res.status(400).json({ error: "lawDrillSession must be an object or null" });
+      return;
+    }
+
+    const nextUser = {
+      ...currentUser,
+      lawDrillSession: normalizeLawDrillSessionValue(req.body?.lawDrillSession),
+      updatedAt: new Date().toISOString(),
+    };
+
+    users[userIndex] = nextUser;
+    await writeCollection("users", users);
+    res.json({
+      ok: true,
+      lawDrillSession: normalizeLawDrillSessionValue(nextUser.lawDrillSession),
+      user: toPublicUser(nextUser),
+    });
+  }),
+);
+
 app.get(
   "/api/community/overview",
   requireAuth,
@@ -5977,28 +8501,45 @@ app.get(
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
     const activeStatuses = await purgeExpiredStatuses();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const conversations = (await readCollection("conversations")).map(normalizeConversation);
-    const messages = (await readCollection("messages")).map(normalizeMessage);
-    const uploads = (await readCollection("uploads")).map(normalizeUpload);
-    const conversationStates = (await readCollection("communityConversationStates")).map(
-      normalizeCommunityConversationState,
-    );
-    const visibleUsers = users.filter(
+    const [
+      users,
+      friendships,
+      friendRequests,
+      blocks,
+      conversations,
+      messages,
+      uploads,
+      conversationStates,
+    ] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+      readCollection("conversations"),
+      readCollection("messages"),
+      readCollection("uploads"),
+      readCollection("communityConversationStates"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const normalizedConversations = conversations.map(normalizeConversation);
+    const normalizedMessages = messages.map(normalizeMessage);
+    const normalizedUploads = uploads.map(normalizeUpload);
+    const normalizedConversationStates = conversationStates.map(normalizeCommunityConversationState);
+    const visibleUsers = normalizedUsers.filter(
       (entry) =>
         entry.id !== viewerId &&
-        !isBlocked(blocks, viewerId, entry.id) &&
-        !isBlocked(blocks, entry.id, viewerId),
+        !isBlocked(normalizedBlocks, viewerId, entry.id) &&
+        !isBlocked(normalizedBlocks, entry.id, viewerId),
     );
 
-    const incoming = friendRequests
+    const incoming = normalizedFriendRequests
       .filter((entry) => entry.toUserId === viewerId && entry.status === "pending")
       .map((entry) => {
-        const actor = users.find((user) => user.id === entry.fromUserId);
-        const blockState = actor ? getCommunityBlockState(blocks, viewerId, actor.id) : {};
+        const actor = normalizedUsers.find((user) => user.id === entry.fromUserId);
+        const blockState = actor ? getCommunityBlockState(normalizedBlocks, viewerId, actor.id) : {};
         return {
           ...entry,
           user: actor ? applyCommunityProfileView(actor, { viewerId, isFriend: false, ...blockState }) : null,
@@ -6006,11 +8547,11 @@ app.get(
       })
       .filter((entry) => entry.user);
 
-    const sent = friendRequests
+    const sent = normalizedFriendRequests
       .filter((entry) => entry.fromUserId === viewerId && entry.status === "pending")
       .map((entry) => {
-        const actor = users.find((user) => user.id === entry.toUserId);
-        const blockState = actor ? getCommunityBlockState(blocks, viewerId, actor.id) : {};
+        const actor = normalizedUsers.find((user) => user.id === entry.toUserId);
+        const blockState = actor ? getCommunityBlockState(normalizedBlocks, viewerId, actor.id) : {};
         return {
           ...entry,
           user: actor ? applyCommunityProfileView(actor, { viewerId, isFriend: false, ...blockState }) : null,
@@ -6018,28 +8559,28 @@ app.get(
       })
       .filter((entry) => entry.user);
 
-    const friends = friendships
+    const friends = normalizedFriendships
       .filter((entry) => entry.userA === viewerId || entry.userB === viewerId)
       .map((entry) => {
         const friendId = entry.userA === viewerId ? entry.userB : entry.userA;
-        const actor = users.find((user) => user.id === friendId);
-        const blockState = actor ? getCommunityBlockState(blocks, viewerId, actor.id) : {};
+        const actor = normalizedUsers.find((user) => user.id === friendId);
+        const blockState = actor ? getCommunityBlockState(normalizedBlocks, viewerId, actor.id) : {};
         return actor ? applyCommunityProfileView(actor, { viewerId, isFriend: true, ...blockState }) : null;
       })
       .filter(Boolean);
 
     const chats = buildCommunityConversationRows({
       viewerId,
-      users,
-      friendships,
-      blocks,
-      uploads,
-      conversations,
-      messages,
-      conversationStates,
+      users: normalizedUsers,
+      friendships: normalizedFriendships,
+      blocks: normalizedBlocks,
+      uploads: normalizedUploads,
+      conversations: normalizedConversations,
+      messages: normalizedMessages,
+      conversationStates: normalizedConversationStates,
     });
 
-    const statuses = users
+    const statuses = normalizedUsers
       .map((owner) => {
         const ownerStatuses = activeStatuses
           .filter((entry) =>
@@ -6047,8 +8588,8 @@ app.get(
             canViewerSeeStatus(entry, {
               viewerId,
               owner,
-              isFriend: areFriends(friendships, viewerId, owner.id),
-              blocks,
+              isFriend: areFriends(normalizedFriendships, viewerId, owner.id),
+              blocks: normalizedBlocks,
             }),
           )
           .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
@@ -6058,15 +8599,15 @@ app.get(
             ? applyCommunityProfileView(owner, { viewerId, isFriend: true })
             : applyCommunityProfileView(owner, {
                 viewerId,
-                isFriend: areFriends(friendships, viewerId, owner.id),
-                ...getCommunityBlockState(blocks, viewerId, owner.id),
+                isFriend: areFriends(normalizedFriendships, viewerId, owner.id),
+                ...getCommunityBlockState(normalizedBlocks, viewerId, owner.id),
               });
         return {
           user: ownerView,
           latestAt: ownerStatuses[0].createdAt,
           hasUnseen: ownerStatuses.some((entry) => !hasStatusActor(entry.viewers, viewerId)),
           items: ownerStatuses.map((entry) => {
-            const upload = uploads.find((candidate) => candidate.id === entry.uploadId);
+            const upload = normalizedUploads.find((candidate) => candidate.id === entry.uploadId);
             return {
               id: entry.id,
               type: entry.type,
@@ -6113,7 +8654,7 @@ app.get(
         latestAt: adminBroadcastStatuses[0].createdAt,
         hasUnseen: adminBroadcastStatuses.some((entry) => !hasStatusActor(entry.viewers, viewerId)),
         items: adminBroadcastStatuses.map((entry) => {
-          const upload = uploads.find((candidate) => candidate.id === entry.uploadId);
+            const upload = normalizedUploads.find((candidate) => candidate.id === entry.uploadId);
           return {
             id: entry.id,
             type: entry.type,
@@ -6184,15 +8725,22 @@ app.get(
     await touchUserLastSeen(viewerId);
     const query = normalizeWhitespace(req.query?.q || req.query?.query || "").toLowerCase();
     const limit = Math.max(1, Math.min(30, Math.round(Number(req.query?.limit) || 20)));
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const results = users
+    const [users, friendships, friendRequests, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const results = normalizedUsers
       .filter((entry) => entry.id !== viewerId)
       .filter(
         (entry) =>
-          !isBlocked(blocks, viewerId, entry.id) && !isBlocked(blocks, entry.id, viewerId),
+          !isBlocked(normalizedBlocks, viewerId, entry.id) &&
+          !isBlocked(normalizedBlocks, entry.id, viewerId),
       )
       .filter((entry) => {
         if (!query) return true;
@@ -6210,12 +8758,12 @@ app.get(
       })
       .slice(0, limit)
       .map((entry) => {
-        const isFriend = areFriends(friendships, viewerId, entry.id);
-        const pendingIncoming = friendRequests.some(
+        const isFriend = areFriends(normalizedFriendships, viewerId, entry.id);
+        const pendingIncoming = normalizedFriendRequests.some(
           (row) =>
             row.fromUserId === entry.id && row.toUserId === viewerId && row.status === "pending",
         );
-        const pendingSent = friendRequests.some(
+        const pendingSent = normalizedFriendRequests.some(
           (row) =>
             row.fromUserId === viewerId && row.toUserId === entry.id && row.status === "pending",
         );
@@ -6243,24 +8791,33 @@ app.get(
     const targetId = String(req.params.userId || "");
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
-    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
+    const [users, pointEvents] = await Promise.all([
+      readCollection("users"),
+      readCollection("pointEvents"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedPointEvents = pointEvents.map(normalizePointEvent);
+    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(normalizedUsers, normalizedPointEvents);
     if (changed) {
       await writeCollection("users", reconciledUsers);
     }
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
+    const [friendships, friendRequests, blocks] = await Promise.all([
+      readCollection("friendships"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+    ]);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
     const target = reconciledUsers.find((entry) => entry.id === targetId);
 
     if (!target) {
       res.status(404).json({ error: "user not found" });
       return;
     }
-    const isFriend = areFriends(friendships, viewerId, targetId);
-    const viewerBlockedTarget = isBlocked(blocks, viewerId, targetId);
-    const targetBlockedViewer = isBlocked(blocks, targetId, viewerId);
+    const isFriend = areFriends(normalizedFriendships, viewerId, targetId);
+    const viewerBlockedTarget = isBlocked(normalizedBlocks, viewerId, targetId);
+    const targetBlockedViewer = isBlocked(normalizedBlocks, targetId, viewerId);
     const leaderboardSnapshot = buildPointsLeaderboardSnapshot({
       users: reconciledUsers,
       pointEvents,
@@ -6277,10 +8834,10 @@ app.get(
         points: normalizePointsValue(target.points),
         rank: null,
       };
-    const incoming = friendRequests.find(
+    const incoming = normalizedFriendRequests.find(
       (row) => row.fromUserId === targetId && row.toUserId === viewerId && row.status === "pending",
     );
-    const sent = friendRequests.find(
+    const sent = normalizedFriendRequests.find(
       (row) => row.fromUserId === viewerId && row.toUserId === targetId && row.status === "pending",
     );
 
@@ -6347,19 +8904,24 @@ app.get(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const rows = friendships
+    const [users, friendships, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const rows = normalizedFriendships
       .filter((entry) => entry.userA === viewerId || entry.userB === viewerId)
       .map((entry) => {
         const friendId = entry.userA === viewerId ? entry.userB : entry.userA;
-        const user = users.find((candidate) => candidate.id === friendId);
+        const user = normalizedUsers.find((candidate) => candidate.id === friendId);
         return user
           ? applyCommunityProfileView(user, {
               viewerId,
               isFriend: true,
-              ...getCommunityBlockState(blocks, viewerId, user.id),
+              ...getCommunityBlockState(normalizedBlocks, viewerId, user.id),
             })
           : null;
       })
@@ -6398,32 +8960,37 @@ app.get(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendRequests = (await readCollection("friendRequests")).map(normalizeFriendRequest);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const incoming = friendRequests
+    const [users, friendRequests, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("friendRequests"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendRequests = friendRequests.map(normalizeFriendRequest);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const incoming = normalizedFriendRequests
       .filter((entry) => entry.toUserId === viewerId && entry.status === "pending")
       .map((entry) => ({
         ...entry,
         user: applyCommunityProfileView(
-          users.find((user) => user.id === entry.fromUserId),
+          normalizedUsers.find((user) => user.id === entry.fromUserId),
           {
             viewerId,
             isFriend: false,
-            ...getCommunityBlockState(blocks, viewerId, entry.fromUserId),
+            ...getCommunityBlockState(normalizedBlocks, viewerId, entry.fromUserId),
           },
         ),
       }));
-    const sent = friendRequests
+    const sent = normalizedFriendRequests
       .filter((entry) => entry.fromUserId === viewerId && entry.status === "pending")
       .map((entry) => ({
         ...entry,
         user: applyCommunityProfileView(
-          users.find((user) => user.id === entry.toUserId),
+          normalizedUsers.find((user) => user.id === entry.toUserId),
           {
             viewerId,
             isFriend: false,
-            ...getCommunityBlockState(blocks, viewerId, entry.toUserId),
+            ...getCommunityBlockState(normalizedBlocks, viewerId, entry.toUserId),
           },
         ),
       }));
@@ -6588,11 +9155,15 @@ app.get(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const blockedUsers = blocks
+    const [users, blocks] = await Promise.all([
+      readCollection("users"),
+      readCollection("blocks"),
+    ]);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const blockedUsers = normalizedBlocks
       .filter((entry) => entry.blockerUserId === viewerId)
-      .map((entry) => users.find((user) => user.id === entry.blockedUserId))
+      .map((entry) => normalizedUsers.find((user) => user.id === entry.blockedUserId))
       .filter(Boolean)
       .map((entry) => applyCommunityProfileView(entry, { viewerId, isFriend: false }));
     res.json({ blocked: blockedUsers });
@@ -8408,13 +10979,21 @@ app.get(
     await touchUserLastSeen(viewerId);
     const conversationId = String(req.params.conversationId || "");
     const markRead = String(req.query?.markRead || "true").trim().toLowerCase() !== "false";
-    const conversations = (await readCollection("conversations")).map(normalizeConversation);
-    const messages = (await readCollection("messages")).map(normalizeMessage);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
-    const friendships = (await readCollection("friendships")).map(normalizeFriendship);
-    const blocks = (await readCollection("blocks")).map(normalizeBlock);
-    const uploads = (await readCollection("uploads")).map(normalizeUpload);
-    const conversation = conversations.find((entry) => entry.id === conversationId);
+    const [conversations, messages, users, friendships, blocks, uploads] = await Promise.all([
+      readCollection("conversations"),
+      readCollection("messages"),
+      readCollection("users"),
+      readCollection("friendships"),
+      readCollection("blocks"),
+      readCollection("uploads"),
+    ]);
+    const normalizedConversations = conversations.map(normalizeConversation);
+    const normalizedMessages = messages.map(normalizeMessage);
+    const normalizedUsers = users.map(normalizeExistingUser);
+    const normalizedFriendships = friendships.map(normalizeFriendship);
+    const normalizedBlocks = blocks.map(normalizeBlock);
+    const normalizedUploads = uploads.map(normalizeUpload);
+    const conversation = normalizedConversations.find((entry) => entry.id === conversationId);
     if (!conversation || !conversation.memberIds.includes(viewerId)) {
       res.status(404).json({ error: "conversation not found" });
       return;
@@ -8422,7 +11001,7 @@ app.get(
     const conversationIds = new Set([conversation.id]);
     if (conversation.type === "notice") {
       const mergeKey = getCommunityConversationMergeKey(conversation);
-      conversations.forEach((entry) => {
+      normalizedConversations.forEach((entry) => {
         if (entry.memberIds.includes(viewerId) && getCommunityConversationMergeKey(entry) === mergeKey) {
           conversationIds.add(entry.id);
         }
@@ -8430,7 +11009,7 @@ app.get(
     }
     const nowIso = new Date().toISOString();
     let changed = false;
-    const nextMessages = messages.map((entry) => {
+    const nextMessages = normalizedMessages.map((entry) => {
       if (
         !conversationIds.has(entry.conversationId) ||
         entry.senderUserId === viewerId ||
@@ -8473,13 +11052,13 @@ app.get(
     res.json({
       partner: getConversationDisplayPayload(conversation, {
         viewerId,
-        users,
-        friendships,
-        blocks,
-        uploads,
+        users: normalizedUsers,
+        friendships: normalizedFriendships,
+        blocks: normalizedBlocks,
+        uploads: normalizedUploads,
       }),
       conversation,
-      messages: (changed ? nextMessages : messages)
+      messages: (changed ? nextMessages : normalizedMessages)
         .filter(
           (entry) =>
             conversationIds.has(entry.conversationId) &&
@@ -8489,7 +11068,7 @@ app.get(
         .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
         .map((entry) => {
           const safeEntry = sanitizeDeletedCommunityMessage(entry);
-          const sender = users.find((candidate) => candidate.id === entry.senderUserId);
+          const sender = normalizedUsers.find((candidate) => candidate.id === entry.senderUserId);
           const fallbackSenderName =
             safeEntry.senderName ||
             sender?.name ||
@@ -8502,7 +11081,7 @@ app.get(
               isDeletedForEveryone: Boolean(safeEntry.deletedAt),
             };
           }
-          const upload = uploads.find((candidate) => candidate.id === safeEntry.attachment.uploadId);
+          const upload = normalizedUploads.find((candidate) => candidate.id === safeEntry.attachment.uploadId);
           return {
             ...safeEntry,
             senderName: fallbackSenderName,
@@ -8515,7 +11094,7 @@ app.get(
         })
         .map((entry) => ({
           ...entry,
-          senderName: entry.senderName || users.find((candidate) => candidate.id === entry.senderUserId)?.name || "",
+          senderName: entry.senderName || normalizedUsers.find((candidate) => candidate.id === entry.senderUserId)?.name || "",
         })),
     });
   }),
@@ -8981,6 +11560,8 @@ app.get(
   "/api/questions",
   asyncHandler(async (req, res) => {
     const category = String(req.query.category || "").trim();
+    const bank = String(req.query.bank || "").trim().toLowerCase();
+    const year = safeNumber(req.query.year);
     const idsRaw = String(req.query.ids || "").trim();
     const start = safeNumber(req.query.start);
     const limit = safeNumber(req.query.limit);
@@ -8988,6 +11569,14 @@ app.get(
       String(req.query.shuffle || "").toLowerCase() === "true";
 
     let questions = (await readCollection("questions")).map(normalizeQuestionForApi);
+
+    if (bank) {
+      questions = questions.filter((q) => String(q.bank || "main").trim().toLowerCase() === bank);
+    }
+
+    if (Number.isFinite(year)) {
+      questions = questions.filter((q) => Number(q.year) === year);
+    }
 
     if (category && category !== "all") {
       questions = questions.filter((q) => q.category === category);
@@ -9173,7 +11762,10 @@ app.get(
       await writeCollection("users", users);
     }
 
-    res.json(buildDailyQuizResponse(dailyState, todayKey));
+    res.json({
+      ...buildDailyQuizResponse(dailyState, todayKey),
+      user: toPublicUser(users[userIndex]),
+    });
   }),
 );
 
@@ -9326,6 +11918,7 @@ app.post(
         wrongQuestionIds,
         rewards,
       },
+      user: toPublicUser(users[userIndex]),
     });
   }),
 );
@@ -9659,9 +12252,7 @@ app.post(
       date: req.body?.date || new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+        year: "2-digit",
       }).format(new Date()),
       createdAt: new Date().toISOString(),
     };
@@ -11009,6 +13600,256 @@ app.put(
   }),
 );
 
+app.get(
+  "/api/admin/subscription-requests",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const rawRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
+    const syncedRequests = synchronizeSubscriptionRequestsWithUsers(users, rawRequests);
+    if (syncedRequests.changed) {
+      await writeCollection("subscriptionRequests", syncedRequests.requests);
+    }
+    const requests = syncedRequests.requests
+      .map((request) => toPublicSubscriptionRequest(request, usersById))
+      .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+
+    res.json({
+      ok: true,
+      pendingCount: requests.filter((entry) => getSubscriptionRequestStatus(entry) === "pending").length,
+      requests,
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/subscription-requests/:requestId/approve",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestId = String(req.params.requestId || "").trim();
+    const reviewNote = String(req.body?.reviewNote || req.body?.note || "").trim();
+    const now = new Date().toISOString();
+
+    const requests = (await readCollection("subscriptionRequests")).map(normalizeSubscriptionRequest);
+    const requestIndex = requests.findIndex((entry) => entry.id === requestId);
+    if (requestIndex < 0) {
+      res.status(404).json({ error: "Subscription request not found" });
+      return;
+    }
+
+    const request = requests[requestIndex];
+    const plan = normalizeSubscriptionPlanValue(request.plan) || "daily";
+    const planMeta = getSubscriptionPlanMeta(plan);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === request.userId);
+    if (userIndex < 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const subscriptionStartedAt = now;
+    const subscriptionEndsAt =
+      plan === "trial"
+        ? addDaysToIsoDate(subscriptionStartedAt, SUBSCRIPTION_TRIAL_DAYS)
+        : addDaysToIsoDate(subscriptionStartedAt, planMeta.durationDays);
+
+    requests[requestIndex] = {
+      ...request,
+      status: "active",
+      reviewedAt: now,
+      approvedAt: now,
+      activatedAt: now,
+      rejectedAt: null,
+      expiresAt: subscriptionEndsAt,
+      expiredAt: null,
+      reviewerId: getActorId(req),
+      reviewerName: "Admin",
+      reviewNote,
+      updatedAt: now,
+    };
+
+    users[userIndex] = {
+      ...users[userIndex],
+      subscriptionPlan: plan,
+      subscriptionStatus: plan === "trial" ? "trial" : "active",
+      subscriptionRequestedAt: request.requestedAt,
+      subscriptionReviewedAt: now,
+      subscriptionApprovedAt: now,
+      subscriptionRejectedAt: null,
+      subscriptionReviewNote: reviewNote,
+      subscriptionRejectedReason: null,
+      subscriptionStartedAt,
+      trialEndsAt: plan === "trial" ? subscriptionEndsAt : users[userIndex].trialEndsAt,
+      subscriptionEndsAt,
+      subscriptionApprovalDeadlineAt: request.reviewDeadlineAt,
+      subscriptionPaymentReference: request.paymentReference,
+      updatedAt: now,
+    };
+
+    await writeCollection("subscriptionRequests", requests);
+    await writeCollection("users", users);
+
+    res.json({
+      ok: true,
+      request: requests[requestIndex],
+      user: toPublicUser(users[userIndex]),
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/password-reset-requests",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const requests = coerceCollectionArray(await readCollection("passwordResetRequests"))
+      .map((request) => toPublicPasswordResetRequest(request, usersById))
+      .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+
+    res.json({
+      ok: true,
+      pendingCount: requests.filter((entry) => entry.status === "pending").length,
+      requests,
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/password-reset-requests/:requestId/mark-sent",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestId = String(req.params.requestId || "").trim();
+    if (!requestId) {
+      res.status(400).json({ error: "requestId is required" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const requests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
+    );
+    const requestIndex = requests.findIndex((entry) => entry.id === requestId);
+    if (requestIndex < 0) {
+      res.status(404).json({ error: "Password reset request not found" });
+      return;
+    }
+
+    const currentRequest = requests[requestIndex];
+    if (getPasswordResetRequestStatus(currentRequest) !== "pending") {
+      res.status(400).json({ error: "Password reset request is no longer pending" });
+      return;
+    }
+
+    const expiresAt = new Date(
+      Date.parse(now) + RESET_CODE_TTL_HOURS * 60 * 60 * 1000,
+    ).toISOString();
+    requests[requestIndex] = {
+      ...currentRequest,
+      status: "sent",
+      sentAt: now,
+      expiresAt,
+      updatedAt: now,
+    };
+    await writeCollection("passwordResetRequests", requests);
+
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const nextUsers = users.map((entry) => {
+      if (entry.id !== currentRequest.userId) return entry;
+      return {
+        ...entry,
+        resetCodeExpiresAt: expiresAt,
+        updatedAt: now,
+      };
+    });
+    await writeCollection("users", nextUsers);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    res.json({
+      ok: true,
+      request: toPublicPasswordResetRequest(requests[requestIndex], usersById),
+    });
+  }),
+);
+
+app.post(
+  "/api/admin/subscription-requests/:requestId/reject",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestId = String(req.params.requestId || "").trim();
+    const reviewNote = String(req.body?.reviewNote || req.body?.note || "").trim();
+    const now = new Date().toISOString();
+
+    const requests = (await readCollection("subscriptionRequests")).map(normalizeSubscriptionRequest);
+    const requestIndex = requests.findIndex((entry) => entry.id === requestId);
+    if (requestIndex < 0) {
+      res.status(404).json({ error: "Subscription request not found" });
+      return;
+    }
+
+    const request = requests[requestIndex];
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const userIndex = users.findIndex((entry) => entry.id === request.userId);
+    if (userIndex < 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    requests[requestIndex] = {
+      ...request,
+      status: "rejected",
+      reviewRequired: false,
+      publishedAt: "",
+      approvedAt: "",
+      publishedById: "",
+      publishedByName: "",
+      reviewedAt: now,
+      approvedAt: null,
+      rejectedAt: now,
+      reviewerId: getActorId(req),
+      reviewerName: "Admin",
+      reviewNote,
+      updatedAt: now,
+    };
+
+    users[userIndex] = {
+      ...users[userIndex],
+      subscriptionReviewNote: reviewNote,
+      subscriptionRejectedReason: reviewNote,
+      updatedAt: now,
+    };
+
+    await writeCollection("subscriptionRequests", requests);
+    await writeCollection("users", users);
+
+    res.json({
+      ok: true,
+      request: requests[requestIndex],
+      user: toPublicUser(users[userIndex]),
+    });
+  }),
+);
+
 // Admin: Get all questions
 app.get(
   "/api/admin/questions",
@@ -11044,6 +13885,10 @@ app.post(
 
     const text = String(req.body?.text || req.body?.question || "").trim();
     const rawCategory = String(req.body?.category || "").trim();
+    const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
+    const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
+    const year = Number(req.body?.year);
+    const displayNumber = Number(req.body?.displayNumber);
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionId = normalizeSlugValue(req.body?.sectionId);
     const rotation = String(req.body?.rotation || "").trim();
@@ -11068,15 +13913,30 @@ app.post(
       : [];
     const correct = req.body?.correct;
 
-    if (!text || !rawCategory || options.length < 2 || correct === undefined) {
+    const isComboVariant = Boolean(comboVariant);
+    let resolvedOptions = options;
+    if (resolvedOptions.length === 0 && isComboVariant) {
+      resolvedOptions = getComboOptionTexts(comboVariant);
+    }
+
+    if (!text || !rawCategory || resolvedOptions.length < 2 || correct === undefined) {
       res.status(400).json({
         error:
-          "Required fields: text, category, options (at least 2), correct (index or exact option text)",
+          "Required fields: text, category, options (at least 2) and correct (index or exact option text)",
       });
       return;
     }
-    if (options.length > 8) {
+    if (resolvedOptions.length > 8) {
       res.status(400).json({ error: "options cannot exceed 8 items" });
+      return;
+    }
+    if (
+      comboVariant &&
+      !new Set(["pair-relationship", "assertion-5", "table-4", "three-statement"]).has(comboVariant)
+    ) {
+      res.status(400).json({
+        error: "comboVariant must be pair-relationship, assertion-5, table-4 or three-statement",
+      });
       return;
     }
     if (topicSlug === null) {
@@ -11097,8 +13957,24 @@ app.post(
       });
       return;
     }
+    if (bank !== "main" && bank !== "gppqe") {
+      res.status(400).json({ error: "bank must be either main or gppqe" });
+      return;
+    }
+    if (req.body?.year !== undefined && req.body?.year !== "" && !Number.isFinite(year)) {
+      res.status(400).json({ error: "year must be a valid number" });
+      return;
+    }
+    if (
+      req.body?.displayNumber !== undefined &&
+      req.body?.displayNumber !== "" &&
+      !Number.isFinite(displayNumber)
+    ) {
+      res.status(400).json({ error: "displayNumber must be a valid number" });
+      return;
+    }
 
-    const resolvedCorrect = resolveCorrectAnswerValue(correct, options);
+    const resolvedCorrect = resolveCorrectAnswerValue(correct, resolvedOptions);
     if (!resolvedCorrect) {
       res.status(400).json({
         error:
@@ -11115,11 +13991,19 @@ app.post(
 
     const newQuestion = {
       id: String(newId),
+      bank,
+      comboVariant: comboVariant || undefined,
+      year: Number.isFinite(year) ? year : undefined,
+      displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
       text,
       question: text,
       category,
-      options,
+      options: resolvedOptions,
       correct: resolvedCorrect,
+      answer:
+        req.body?.answer !== undefined && Number.isFinite(Number(req.body?.answer))
+          ? Number(req.body.answer)
+          : undefined,
       explanation: String(req.body?.explanation || ""),
       topicSlug: topicSlug || undefined,
       sectionId: sectionId || undefined,
@@ -11153,12 +14037,22 @@ app.put(
     const text = String(req.body?.text ?? req.body?.question ?? "").trim();
     const categoryProvided = req.body?.category !== undefined;
     const rawCategory = String(req.body?.category || "").trim();
+    const bankProvided = req.body?.bank !== undefined;
+    const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
+    const comboVariantProvided = req.body?.comboVariant !== undefined;
+    const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
+    const yearProvided = req.body?.year !== undefined;
+    const year = Number(req.body?.year);
+    const displayNumberProvided = req.body?.displayNumber !== undefined;
+    const displayNumber = Number(req.body?.displayNumber);
     const optionsProvided = Array.isArray(req.body?.options);
     const options = optionsProvided
       ? req.body.options.map((opt) => String(opt || "").trim()).filter(Boolean)
       : null;
     const correctProvided = req.body?.correct !== undefined;
     const correct = req.body?.correct;
+    const answerProvided = req.body?.answer !== undefined;
+    const answer = Number(req.body?.answer);
     const explanationProvided = req.body?.explanation !== undefined;
     const explanation = String(req.body?.explanation || "");
     const topicSlugProvided = req.body?.topicSlug !== undefined;
@@ -11193,6 +14087,32 @@ app.put(
       });
       return;
     }
+    if (bankProvided && bank !== "main" && bank !== "gppqe") {
+      res.status(400).json({ error: "bank must be either main or gppqe" });
+      return;
+    }
+    if (
+      comboVariantProvided &&
+      comboVariant &&
+      !new Set(["pair-relationship", "assertion-5", "table-4", "three-statement"]).has(comboVariant)
+    ) {
+      res.status(400).json({
+        error: "comboVariant must be pair-relationship, assertion-5, table-4 or three-statement",
+      });
+      return;
+    }
+    if (yearProvided && req.body?.year !== "" && !Number.isFinite(year)) {
+      res.status(400).json({ error: "year must be a valid number" });
+      return;
+    }
+    if (displayNumberProvided && req.body?.displayNumber !== "" && !Number.isFinite(displayNumber)) {
+      res.status(400).json({ error: "displayNumber must be a valid number" });
+      return;
+    }
+    if (answerProvided && req.body?.answer !== "" && !Number.isFinite(answer)) {
+      res.status(400).json({ error: "answer must be a valid number" });
+      return;
+    }
 
     if (textProvided) {
       if (!text) {
@@ -11223,15 +14143,27 @@ app.put(
       questions[idx].category = normalizeMajorCategory(rawCategory, categoryContext);
     }
     if (optionsProvided) {
-      if (!options || options.length < 2) {
+      if (comboVariant && options.length === 0) {
+        questions[idx].options = getComboOptionTexts(comboVariant, Array.isArray(questions[idx].statements) ? questions[idx].statements.length : 0);
+      } else if (!options || options.length < 2) {
         res.status(400).json({ error: "options must contain at least 2 items" });
         return;
-      }
-      if (options.length > 8) {
+      } else if (options.length > 8) {
         res.status(400).json({ error: "options cannot exceed 8 items" });
         return;
+      } else {
+        questions[idx].options = options;
       }
-      questions[idx].options = options;
+    }
+    if (comboVariantProvided) {
+      questions[idx].comboVariant = comboVariant || undefined;
+      if (
+        comboVariant &&
+        (!Array.isArray(questions[idx].options) || questions[idx].options.length === 0) &&
+        !optionsProvided
+      ) {
+        questions[idx].options = getComboOptionTexts(comboVariant, Array.isArray(questions[idx].statements) ? questions[idx].statements.length : 0);
+      }
     }
     if (correctProvided) {
       const optionPool = Array.isArray(questions[idx].options)
@@ -11249,6 +14181,18 @@ app.put(
     }
     if (explanationProvided) {
       questions[idx].explanation = explanation;
+    }
+    if (bankProvided) {
+      questions[idx].bank = bank || "main";
+    }
+    if (yearProvided) {
+      questions[idx].year = Number.isFinite(year) ? year : undefined;
+    }
+    if (displayNumberProvided) {
+      questions[idx].displayNumber = Number.isFinite(displayNumber) ? displayNumber : undefined;
+    }
+    if (answerProvided) {
+      questions[idx].answer = Number.isFinite(answer) ? answer : undefined;
     }
     if (topicSlugProvided) {
       questions[idx].topicSlug = topicSlug || undefined;
@@ -11289,6 +14233,964 @@ app.delete(
   }),
 );
 
+app.get(
+  "/api/news/feed",
+  asyncHandler(async (req, res) => {
+    const requestedCategory = normalizeNewsCategory(req.query?.category || "", "");
+    const requestedSourceId = String(req.query?.sourceId || "").trim();
+    const limit = Math.max(1, Math.min(200, Math.round(Number(req.query?.limit) || 20)));
+    const allItems = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const items = sortNewsItemsForPublic(allItems)
+      .filter((item) => item.status === "published")
+      .filter((item) => !requestedCategory || normalizeNewsCategory(item.category || "") === requestedCategory)
+      .filter((item) => !requestedSourceId || item.sourceId === requestedSourceId)
+      .slice(0, limit);
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource).filter((source) => source.enabled !== false);
+    const sections = buildNewsFeedSections(allItems);
+    const categoryCounts = items.reduce((accumulator, item) => {
+      const category = normalizeNewsCategory(item.category || "", "clinical-news");
+      accumulator[category] = (accumulator[category] || 0) + 1;
+      return accumulator;
+    }, {});
+    res.json({
+      ok: true,
+      total: items.length,
+      items,
+      sections,
+      categories: categoryCounts,
+      sources: sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        url: source.url,
+        category: source.category,
+        extractMode: source.extractMode,
+        priority: source.priority,
+        lastCollectedAt: source.lastCollectedAt,
+        description: source.description,
+      })),
+    });
+  }),
+);
+
+app.get(
+  "/api/news/:newsId",
+  asyncHandler(async (req, res) => {
+    const newsId = String(req.params.newsId || "").trim();
+    if (!newsId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const item = items.find((entry) => entry.id === newsId);
+    if (!item || item.status !== "published") {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  }),
+);
+
+app.get(
+  "/api/admin/news",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const requestedStatusRaw = String(req.query?.status || "").trim().toLowerCase();
+    const requestedStatus = requestedStatusRaw && requestedStatusRaw !== "all"
+      ? normalizeNewsStatus(requestedStatusRaw)
+      : "";
+    const requestedSourceId = String(req.query?.sourceId || "").trim();
+    const limit = Math.max(1, Math.min(200, Math.round(Number(req.query?.limit) || 100)));
+    const items = sortNewsItemsForAdmin((await readCollection("newsItems")).map(normalizeNewsItem))
+      .filter((item) => !requestedStatus || normalizeNewsStatus(item.status || "") === requestedStatus)
+      .filter((item) => !requestedSourceId || item.sourceId === requestedSourceId)
+      .slice(0, limit);
+    const categories = await seedDefaultNewsCategories();
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const runs = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
+    res.json({
+      ok: true,
+      total: items.length,
+      items,
+      categories,
+      sources,
+      runs,
+      summary: {
+        pendingReview: items.filter((item) => normalizeNewsStatus(item.status || "") === "pending_review").length,
+        approved: items.filter((item) => normalizeNewsStatus(item.status || "") === "approved").length,
+        published: items.filter((item) => normalizeNewsStatus(item.status || "") === "published").length,
+        rejected: items.filter((item) => normalizeNewsStatus(item.status || "") === "rejected").length,
+      },
+    });
+  }),
+);
+
+app.get(
+  "/api/admin/news/sources",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const runs = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
+    res.json({ ok: true, sources, runs });
+  }),
+);
+
+app.get(
+  "/api/admin/news/categories",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const categories = await seedDefaultNewsCategories();
+    res.json({ ok: true, categories });
+  }),
+);
+
+app.post(
+  "/api/admin/news/categories",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const name = cleanNewsText(req.body?.name || req.body?.title || "", 80);
+    if (!name) {
+      res.status(400).json({ error: "name is required" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const candidate = normalizeNewsCategoryEntry({
+      ...req.body,
+      id: String(req.body?.id || req.body?.slug || "").trim(),
+      name,
+      slug: String(req.body?.slug || "").trim(),
+      color: String(req.body?.color || "").trim(),
+      description: cleanNewsText(req.body?.description || "", 240),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const categories = await seedDefaultNewsCategories();
+    const index = categories.findIndex((entry) => entry.id === candidate.id || entry.slug === candidate.slug);
+    if (index === -1) {
+      categories.unshift(candidate);
+    } else {
+      categories[index] = normalizeNewsCategoryEntry({
+        ...categories[index],
+        ...candidate,
+        id: categories[index].id,
+        createdAt: categories[index].createdAt,
+        updatedAt: now,
+      });
+    }
+
+    await writeCollection("newsCategories", categories);
+    res.status(index === -1 ? 201 : 200).json({ ok: true, category: index === -1 ? candidate : categories[index] });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/categories/:categoryId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const categoryId = String(req.params.categoryId || "").trim();
+    if (!categoryId) {
+      res.status(400).json({ error: "categoryId is required" });
+      return;
+    }
+
+    const categories = await seedDefaultNewsCategories();
+    const index = categories.findIndex((entry) => entry.id === categoryId || entry.slug === categoryId);
+    if (index === -1) {
+      res.status(404).json({ error: "Category not found" });
+      return;
+    }
+
+    const current = categories[index];
+    const nextSlug = req.body?.slug !== undefined ? normalizeNewsCategory(req.body.slug || "", current.slug) : current.slug;
+    const next = normalizeNewsCategoryEntry({
+      ...current,
+      ...req.body,
+      id: current.id,
+      slug: nextSlug,
+      name: req.body?.name !== undefined ? cleanNewsText(req.body.name, 80) || current.name : current.name,
+      color: req.body?.color !== undefined ? String(req.body.color || "").trim() : current.color,
+      description: req.body?.description !== undefined ? cleanNewsText(req.body.description, 240) : current.description,
+      system: current.system,
+      createdAt: current.createdAt,
+      updatedAt: new Date().toISOString(),
+    });
+    categories[index] = next;
+    await writeCollection("newsCategories", categories);
+    if (current.slug !== next.slug) {
+      await updateNewsCategoryReferences(current.slug, next.slug);
+    }
+    res.json({ ok: true, category: next });
+  }),
+);
+
+app.delete(
+  "/api/admin/news/categories/:categoryId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const categoryId = String(req.params.categoryId || "").trim();
+    if (!categoryId) {
+      res.status(400).json({ error: "categoryId is required" });
+      return;
+    }
+
+    const categories = await seedDefaultNewsCategories();
+    const index = categories.findIndex((entry) => entry.id === categoryId || entry.slug === categoryId);
+    if (index === -1) {
+      res.status(404).json({ error: "Category not found" });
+      return;
+    }
+
+    const current = categories[index];
+    if (current.system) {
+      res.status(400).json({ error: "System categories cannot be removed" });
+      return;
+    }
+
+    categories.splice(index, 1);
+    await writeCollection("newsCategories", categories);
+    await updateNewsCategoryReferences(current.slug, "clinical-news");
+    res.json({ ok: true, removed: current.id });
+  }),
+);
+
+app.post(
+  "/api/admin/news/sources",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const candidate = normalizeNewsSource({
+      ...req.body,
+      id: String(req.body?.id || req.body?.sourceId || "").trim(),
+      name: cleanNewsText(req.body?.name || req.body?.title || "", 120),
+      url: normalizeNewsUrl(req.body?.url || req.body?.feedUrl || req.body?.sourceUrl || ""),
+      category: normalizeNewsCategory(req.body?.category || "", "clinical-news"),
+      extractMode: normalizeNewsSourceType(req.body?.extractMode || req.body?.sourceType || req.body?.type || "", "structured"),
+      priority: Math.max(0, Math.min(100, Math.round(Number(req.body?.priority) || 50))),
+      enabled: req.body?.enabled !== false,
+      reviewRequired: req.body?.reviewRequired !== false,
+      description: cleanNewsText(req.body?.description || "", 220),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (!candidate.url) {
+      res.status(400).json({ error: "url is required" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const lookup = candidate.id
+      ? sources.findIndex((source) => source.id === candidate.id)
+      : sources.findIndex((source) => source.url === candidate.url || source.name.toLowerCase() === candidate.name.toLowerCase());
+    if (lookup === -1) {
+      sources.unshift(candidate);
+    } else {
+      sources[lookup] = normalizeNewsSource({
+        ...sources[lookup],
+        ...candidate,
+        id: sources[lookup].id,
+        createdAt: sources[lookup].createdAt,
+        updatedAt: now,
+      });
+    }
+
+    await writeCollection("newsSources", sources);
+    res.status(lookup === -1 ? 201 : 200).json({ ok: true, source: lookup === -1 ? candidate : sources[lookup] });
+  }),
+);
+
+app.get(
+  "/api/admin/news/:newsId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    if (!newsId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const item = items.find((entry) => entry.id === newsId);
+    if (!item) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    res.json({ ok: true, item });
+  }),
+);
+
+app.post(
+  "/api/admin/news",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const title = cleanNewsText(req.body?.title || req.body?.headline || "", 180);
+    if (!title) {
+      res.status(400).json({ error: "title is required" });
+      return;
+    }
+
+    const summary = cleanNewsText(req.body?.summary || req.body?.excerpt || "", 420);
+    const content = normalizeNewsRichContent(req.body?.content || req.body?.body || "", 12000);
+    const sourceLabel = cleanNewsText(
+      req.body?.sourceName || req.body?.sourceLabel || req.body?.publishedByName || req.body?.sourcePublishedLabel || "",
+      120
+    ) || "News Source";
+    const sourceId = cleanNewsText(req.body?.sourceId || "", 120) || `manual-${crypto.randomUUID()}`;
+    const sourceType = normalizeNewsSourceType(req.body?.sourceType || "structured", "structured");
+    const sourcePublishedAt = cleanNewsText(req.body?.sourcePublishedAt || "", 80);
+    const sourcePublishedLabel = cleanNewsText(req.body?.sourcePublishedLabel || "", 80);
+    const reviewNote = cleanNewsText(req.body?.reviewNote || "", 240);
+    const tags = Array.isArray(req.body?.tags)
+      ? [...new Set(req.body.tags.map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+      : typeof req.body?.tags === "string"
+        ? [...new Set(req.body.tags.split(",").map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+        : [];
+    const requestedStatus = normalizeNewsStatus(req.body?.status || "");
+    const requestedFeatured = req.body?.featured === true || String(req.body?.featured || "").trim().toLowerCase() === "true";
+    const requestedReviewRequired = req.body?.reviewRequired !== false;
+    const allowComments = req.body?.allowComments === true || req.body?.comments === true || String(req.body?.allowComments || req.body?.comments || "").trim().toLowerCase() === "true";
+    const baseItem = normalizeNewsItem({
+      id: String(req.body?.id || crypto.randomUUID()).trim(),
+      sourceId,
+      sourceName: sourceLabel,
+      sourceType,
+      sourceUrl: normalizeNewsUrl(req.body?.sourceUrl || ""),
+      canonicalUrl: normalizeNewsUrl(req.body?.canonicalUrl || req.body?.sourceUrl || ""),
+      title,
+      summary,
+      content,
+      category: normalizeNewsCategory(req.body?.category || "", "clinical-news"),
+      importance: normalizeNewsImportance(req.body?.importance || "", "medium"),
+      status: "pending_review",
+      featured: requestedFeatured,
+      reviewRequired: true,
+      allowComments,
+      reviewNote,
+      sourcePublishedAt,
+      sourcePublishedLabel,
+      publishedAt: String(req.body?.publishedAt || "").trim(),
+      collectedAt: now,
+      reviewedAt: String(req.body?.reviewedAt || "").trim(),
+      approvedAt: String(req.body?.approvedAt || "").trim(),
+      reviewedById: String(req.body?.reviewedById || "").trim(),
+      reviewedByName: cleanNewsText(req.body?.reviewedByName || "", 80),
+      publishedById: String(req.body?.publishedById || "").trim(),
+      publishedByName: cleanNewsText(req.body?.publishedByName || "", 80),
+      sourceRank: Math.max(0, Math.round(Number(req.body?.sourceRank) || 0)),
+      imageUrl: normalizeNewsUrl(req.body?.imageUrl || ""),
+      imageAlt: cleanNewsText(req.body?.imageAlt || "", 120),
+      author: "Ajixpharmacy Desk",
+      tags,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const item = normalizeNewsItem({
+      ...baseItem,
+      status: "pending_review",
+      reviewNote,
+      updatedAt: now,
+    });
+
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const existingIndex = items.findIndex((entry) => buildNewsItemKey(entry) === buildNewsItemKey(item));
+    if (existingIndex === -1) {
+      items.unshift(item);
+    } else {
+      items[existingIndex] = normalizeNewsItem({
+        ...items[existingIndex],
+        ...item,
+        createdAt: items[existingIndex].createdAt || item.createdAt,
+        updatedAt: now,
+      });
+    }
+    await writeCollection("newsItems", sortNewsItemsForAdmin(items));
+
+    res.status(201).json({ ok: true, item });
+  }),
+);
+
+app.post(
+  "/api/admin/news/collect",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sourceId = String(req.body?.sourceId || "").trim();
+    const run = await collectAndStoreNews({ sourceId, triggeredBy: "admin" });
+    res.json({ ok: true, run });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/sources/:sourceId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sourceId = String(req.params.sourceId || "").trim();
+    if (!sourceId) {
+      res.status(400).json({ error: "sourceId is required" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const index = sources.findIndex((source) => source.id === sourceId);
+    if (index === -1) {
+      res.status(404).json({ error: "News source not found" });
+      return;
+    }
+
+    const next = normalizeNewsSource({
+      ...sources[index],
+      ...req.body,
+      id: sources[index].id,
+      createdAt: sources[index].createdAt,
+      updatedAt: new Date().toISOString(),
+    });
+    sources[index] = next;
+    await writeCollection("newsSources", sources);
+    res.json({ ok: true, source: next });
+  }),
+);
+
+app.delete(
+  "/api/admin/news/sources/:sourceId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const sourceId = String(req.params.sourceId || "").trim();
+    if (!sourceId) {
+      res.status(400).json({ error: "sourceId is required" });
+      return;
+    }
+
+    const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
+    const nextSources = sources.filter((source) => source.id !== sourceId);
+    if (nextSources.length === sources.length) {
+      res.status(404).json({ error: "News source not found" });
+      return;
+    }
+
+    await writeCollection("newsSources", nextSources);
+    res.json({ ok: true, removed: sourceId });
+  }),
+);
+
+app.patch(
+  "/api/admin/news/:newsId",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    if (!newsId) {
+      res.status(400).json({ error: "newsId is required" });
+      return;
+    }
+
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const current = items[index];
+    const currentStatus = normalizeNewsStatus(current.status || "");
+    const wasRejected = currentStatus === "rejected";
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...current,
+      status: wasRejected ? "pending_review" : current.status,
+      reviewRequired: wasRejected ? true : current.reviewRequired,
+      reviewedAt: wasRejected ? "" : current.reviewedAt,
+      approvedAt: wasRejected ? "" : current.approvedAt,
+      reviewedById: wasRejected ? "" : current.reviewedById,
+      reviewedByName: wasRejected ? "" : current.reviewedByName,
+      title: req.body?.title !== undefined ? cleanNewsText(req.body.title, 180) || current.title : current.title,
+      summary: req.body?.summary !== undefined ? cleanNewsText(req.body.summary, 420) : current.summary,
+      content: req.body?.content !== undefined ? normalizeNewsRichContent(req.body.content, 12000) : current.content,
+      category: req.body?.category !== undefined ? normalizeNewsCategory(req.body.category || "", current.category) : current.category,
+      importance: req.body?.importance !== undefined ? normalizeNewsImportance(req.body.importance || "", current.importance) : current.importance,
+      reviewNote: req.body?.reviewNote !== undefined ? cleanNewsText(req.body.reviewNote, 240) : current.reviewNote,
+      featured: req.body?.featured !== undefined ? Boolean(req.body.featured) : current.featured,
+      sourceName: req.body?.sourceName !== undefined ? cleanNewsText(req.body.sourceName, 120) || current.sourceName : current.sourceName,
+      sourceUrl: req.body?.sourceUrl !== undefined ? normalizeNewsUrl(req.body.sourceUrl || current.sourceUrl) : current.sourceUrl,
+      sourceType: req.body?.sourceType !== undefined ? normalizeNewsSourceType(req.body.sourceType || "", current.sourceType) : current.sourceType,
+      sourcePublishedAt: req.body?.sourcePublishedAt !== undefined ? cleanNewsText(req.body.sourcePublishedAt, 80) : current.sourcePublishedAt,
+      sourcePublishedLabel: req.body?.sourcePublishedLabel !== undefined ? cleanNewsText(req.body.sourcePublishedLabel, 80) : current.sourcePublishedLabel,
+      imageUrl: req.body?.imageUrl !== undefined ? normalizeNewsUrl(req.body.imageUrl || "") : current.imageUrl,
+      imageAlt: req.body?.imageAlt !== undefined ? cleanNewsText(req.body.imageAlt, 120) : current.imageAlt,
+      author: req.body?.author !== undefined ? cleanNewsText(req.body.author, 120) : current.author,
+      tags: Array.isArray(req.body?.tags)
+        ? [...new Set(req.body.tags.map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
+        : current.tags,
+      allowComments:
+        req.body?.allowComments !== undefined || req.body?.comments !== undefined
+          ? req.body?.allowComments === true ||
+            req.body?.comments === true ||
+            String(req.body?.allowComments || req.body?.comments || "").trim().toLowerCase() === "true"
+          : current.allowComments,
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/approve",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...items[index],
+      status: "approved",
+      reviewedAt: now,
+      approvedAt: now,
+      reviewedById: "admin",
+      reviewedByName: ADMIN_NOTICE_SENDER_NAME,
+      reviewNote: cleanNewsText(req.body?.reviewNote || items[index].reviewNote || "", 240),
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/publish",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...items[index],
+      status: "published",
+      reviewRequired: false,
+      reviewedAt: items[index].reviewedAt || now,
+      approvedAt: items[index].approvedAt || now,
+      publishedAt: now,
+      reviewedById: items[index].reviewedById || "admin",
+      reviewedByName: items[index].reviewedByName || ADMIN_NOTICE_SENDER_NAME,
+      publishedById: "admin",
+      publishedByName: ADMIN_NOTICE_SENDER_NAME,
+      reviewNote: cleanNewsText(req.body?.reviewNote || items[index].reviewNote || "", 240),
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
+app.post(
+  "/api/admin/news/:newsId/reject",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const newsId = String(req.params.newsId || "").trim();
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((item) => item.id === newsId);
+    if (index === -1) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const next = normalizeNewsItem({
+      ...items[index],
+      status: "rejected",
+      reviewRequired: false,
+      reviewedAt: now,
+      reviewedById: "admin",
+      reviewedByName: ADMIN_NOTICE_SENDER_NAME,
+      reviewNote: cleanNewsText(req.body?.reviewNote || items[index].reviewNote || "", 240),
+      updatedAt: now,
+    });
+    items[index] = next;
+    await writeCollection("newsItems", items);
+    res.json({ ok: true, item: next });
+  }),
+);
+
+function getAnalyticsTimeParts(dateInput = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const lookup = Object.create(null);
+  parts.forEach((part) => {
+    lookup[part.type] = part.value;
+  });
+  return {
+    year: String(lookup.year || "1970"),
+    month: String(lookup.month || "01"),
+    day: String(lookup.day || "01"),
+    hour: String(lookup.hour || "00"),
+  };
+}
+
+function getAnalyticsBucketKey(dateInput = new Date(), period = "week", timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const parts = getAnalyticsTimeParts(dateInput, timeZone);
+  if (period === "day") {
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}`;
+  }
+  if (period === "year") {
+    return `${parts.year}-${parts.month}`;
+  }
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatAnalyticsBucketLabel(dateInput = new Date(), period = "week", timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const parts = getAnalyticsTimeParts(dateInput, timeZone);
+  if (period === "day") {
+    return `${parts.day}/${parts.month} ${parts.hour}:00`;
+  }
+  if (period === "year") {
+    return `${parts.month}/${parts.year.slice(-2)}`;
+  }
+  return `${parts.day}/${parts.month}`;
+}
+
+function shiftAnalyticsDate(dateInput = new Date(), { days = 0, months = 0, hours = 0 } = {}) {
+  const date = dateInput instanceof Date ? new Date(dateInput) : new Date(dateInput);
+  if (Number(days)) date.setDate(date.getDate() - Number(days));
+  if (Number(months)) date.setMonth(date.getMonth() - Number(months));
+  if (Number(hours)) date.setHours(date.getHours() - Number(hours));
+  return date;
+}
+
+function buildAnalyticsBuckets(period = "week", now = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
+  const buckets = [];
+  if (period === "day") {
+    for (let index = 23; index >= 0; index -= 1) {
+      const date = shiftAnalyticsDate(now, { hours: index });
+      buckets.push({
+        key: getAnalyticsBucketKey(date, period, timeZone),
+        label: formatAnalyticsBucketLabel(date, period, timeZone),
+      });
+    }
+    return buckets;
+  }
+
+  if (period === "year") {
+    for (let index = 11; index >= 0; index -= 1) {
+      const date = shiftAnalyticsDate(now, { months: index });
+      buckets.push({
+        key: getAnalyticsBucketKey(date, period, timeZone),
+        label: formatAnalyticsBucketLabel(date, period, timeZone),
+      });
+    }
+    return buckets;
+  }
+
+  const totalDays = period === "month" ? 30 : 7;
+  for (let index = totalDays - 1; index >= 0; index -= 1) {
+    const date = shiftAnalyticsDate(now, { days: index });
+    buckets.push({
+      key: getAnalyticsBucketKey(date, period, timeZone),
+      label: formatAnalyticsBucketLabel(date, period, timeZone),
+    });
+  }
+  return buckets;
+}
+
+function buildAdminActivityAnalytics({
+  users = [],
+  syncSessions = [],
+  passwordResetRequests = [],
+  subscriptionRequests = [],
+  timeZone = DAILY_QUIZ_SEASON.timezone,
+  now = new Date(),
+} = {}) {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const safeSessions = Array.isArray(syncSessions) ? syncSessions : [];
+  const safePasswordResetRequests = Array.isArray(passwordResetRequests) ? passwordResetRequests : [];
+  const safeSubscriptionRequests = Array.isArray(subscriptionRequests) ? subscriptionRequests : [];
+  const usersById = new Map(
+    safeUsers.map((user) => [String(user?.id || "").trim(), normalizeExistingUser(user)]),
+  );
+
+  function buildPeriod(period = "week") {
+    const buckets = buildAnalyticsBuckets(period, now, timeZone).map((bucket) => ({
+      ...bucket,
+      signups: 0,
+      sessions: 0,
+      resets: 0,
+      subscriptions: 0,
+      durationSeconds: 0,
+      activeUsers: new Set(),
+    }));
+    const bucketByKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+
+    const addEntry = (dateInput, kind, extra = {}) => {
+      const bucket = bucketByKey.get(getAnalyticsBucketKey(dateInput, period, timeZone));
+      if (!bucket) return;
+      if (kind === "signup") bucket.signups += 1;
+      if (kind === "session") {
+        bucket.sessions += 1;
+        bucket.durationSeconds += Math.max(0, Number(extra.durationSeconds) || 0);
+        if (extra.actorId) bucket.activeUsers.add(String(extra.actorId));
+      }
+      if (kind === "presence" && extra.actorId) {
+        bucket.activeUsers.add(String(extra.actorId));
+      }
+      if (kind === "reset") bucket.resets += 1;
+      if (kind === "subscription") bucket.subscriptions += 1;
+    };
+
+    safeUsers.forEach((user) => {
+      const createdAt = String(user?.createdAt || "").trim();
+      const parsed = Date.parse(createdAt);
+      if (Number.isFinite(parsed)) addEntry(new Date(parsed), "signup");
+
+      const lastSeenAt = String(user?.lastSeenAt || "").trim();
+      const lastSeenParsed = Date.parse(lastSeenAt);
+      if (Number.isFinite(lastSeenParsed)) {
+        addEntry(new Date(lastSeenParsed), "presence", {
+          actorId: String(user?.id || "").trim(),
+        });
+      }
+    });
+
+    safeSessions.forEach((session) => {
+      const createdAt = String(session?.createdAt || "").trim();
+      const parsed = Date.parse(createdAt);
+      if (!Number.isFinite(parsed)) return;
+      addEntry(new Date(parsed), "session", {
+        actorId: String(session?.actorId || "").trim(),
+        durationSeconds: parseDurationSeconds(session?.duration),
+      });
+    });
+
+    safePasswordResetRequests.forEach((request) => {
+      const requestedAt = String(request?.requestedAt || request?.createdAt || "").trim();
+      const parsed = Date.parse(requestedAt);
+      if (Number.isFinite(parsed)) addEntry(new Date(parsed), "reset");
+    });
+
+    safeSubscriptionRequests.forEach((request) => {
+      const requestedAt = String(request?.requestedAt || request?.createdAt || "").trim();
+      const parsed = Date.parse(requestedAt);
+      if (Number.isFinite(parsed)) addEntry(new Date(parsed), "subscription");
+    });
+
+    const series = buckets.map((bucket) => ({
+      label: bucket.label,
+      signups: bucket.signups,
+      sessions: bucket.sessions,
+      resets: bucket.resets,
+      subscriptions: bucket.subscriptions,
+      activeUsers: bucket.activeUsers.size,
+      avgSessionMinutes:
+        bucket.sessions > 0
+          ? Math.round(((bucket.durationSeconds / bucket.sessions) / 60) * 10) / 10
+          : 0,
+    }));
+
+    const summary = buckets.reduce(
+      (acc, bucket) => {
+        acc.signups += bucket.signups;
+        acc.sessions += bucket.sessions;
+        acc.resets += bucket.resets;
+        acc.subscriptions += bucket.subscriptions;
+        acc.durationSeconds += bucket.durationSeconds;
+        bucket.activeUsers.forEach((id) => acc.activeUsers.add(id));
+        return acc;
+      },
+      {
+        signups: 0,
+        sessions: 0,
+        resets: 0,
+        subscriptions: 0,
+        durationSeconds: 0,
+        activeUsers: new Set(),
+      },
+    );
+
+    return {
+      label:
+        period === "day"
+          ? "Last 24 hours"
+          : period === "month"
+            ? "Last 30 days"
+            : period === "year"
+              ? "Last 12 months"
+              : "Last 7 days",
+      series,
+      summary: {
+        signups: summary.signups,
+        sessions: summary.sessions,
+        resets: summary.resets,
+        subscriptions: summary.subscriptions,
+        activeUsers: summary.activeUsers.size,
+        avgSessionMinutes:
+          summary.sessions > 0
+            ? Math.round(((summary.durationSeconds / summary.sessions) / 60) * 10) / 10
+            : 0,
+      },
+    };
+  }
+
+  function buildRecentActivity(limit = 12) {
+    const feed = [];
+    const push = ({ type, title, subtitle = "", at = "" }) => {
+      const safeAt = String(at || "").trim();
+      if (!safeAt || !Number.isFinite(Date.parse(safeAt))) return;
+      feed.push({ type, title, subtitle, at: safeAt });
+    };
+
+    safeUsers.forEach((user) => {
+      push({
+        type: "signup",
+        title: `New user: ${String(user?.name || user?.username || user?.contact || "User").trim()}`,
+        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" and "),
+        at: user?.createdAt,
+      });
+      push({
+        type: "presence",
+        title: `Active user: ${String(user?.name || user?.username || user?.contact || "User").trim()}`,
+        subtitle: [String(user?.username || "").trim(), String(user?.contact || "").trim()].filter(Boolean).join(" and "),
+        at: user?.lastSeenAt || user?.updatedAt || user?.createdAt,
+      });
+    });
+
+    safeSessions.forEach((session) => {
+      const actorId = String(session?.actorId || "").trim();
+      const actor = actorId ? usersById.get(actorId) : null;
+      const actorLabel = actor
+        ? String(actor.name || actor.username || actor.contact || "User").trim()
+        : actorId || "User";
+      const durationSeconds = parseDurationSeconds(session?.duration);
+      push({
+        type: "session",
+        title: `${String(session?.mode || "Study").trim()} session`,
+        subtitle: `${actorLabel} and ${Number.isFinite(durationSeconds) ? `${Math.max(1, Math.round(durationSeconds / 60))} min` : "Session"}`,
+        at: session?.createdAt,
+      });
+    });
+
+    safePasswordResetRequests.forEach((request) => {
+      push({
+        type: "reset",
+        title: `Reset request: ${String(request?.name || request?.username || "User").trim()}`,
+        subtitle: [String(request?.deliveryLabel || "").trim(), String(request?.contact || "").trim()].filter(Boolean).join(" and "),
+        at: request?.requestedAt || request?.createdAt,
+      });
+    });
+
+    safeSubscriptionRequests.forEach((request) => {
+      push({
+        type: "subscription",
+        title: `Subscription: ${String(request?.name || request?.username || "User").trim()}`,
+        subtitle: [String(request?.planLabel || request?.plan || "").trim(), String(request?.status || "").trim()].filter(Boolean).join(" and "),
+        at: request?.requestedAt || request?.createdAt,
+      });
+    });
+
+    return feed.sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, limit);
+  }
+
+  return {
+    periods: {
+      day: buildPeriod("day"),
+      week: buildPeriod("week"),
+      month: buildPeriod("month"),
+      year: buildPeriod("year"),
+    },
+    recentActivity: buildRecentActivity(),
+    overall: {
+      totalUsers: safeUsers.length,
+      totalSessions: safeSessions.length,
+      totalPasswordResets: safePasswordResetRequests.length,
+      totalSubscriptionRequests: safeSubscriptionRequests.length,
+    },
+  };
+}
+
 // Admin: Get platform statistics
 app.get(
   "/api/admin/stats",
@@ -11298,14 +15200,32 @@ app.get(
       return;
     }
 
-    const users = await readCollection("users");
+    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
     const conversations = await readCollection("conversations");
     const reports = await readCollection("reports");
     const questions = await readCollection("questions");
     const attempts = await readCollection("attempts");
+    const rawSubscriptionRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
+    const syncedSubscriptionRequests = synchronizeSubscriptionRequestsWithUsers(users, rawSubscriptionRequests);
+    if (syncedSubscriptionRequests.changed) {
+      await writeCollection("subscriptionRequests", syncedSubscriptionRequests.requests);
+    }
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const subscriptionRequests = syncedSubscriptionRequests.requests.map((request) =>
+      toPublicSubscriptionRequest(request, usersById),
+    );
+    const passwordResetRequests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
+      normalizePasswordResetRequest,
+    );
     const syncPerformance = await readCollection("syncPerformance");
     const syncSessions = await readCollection("syncSessions");
     const aiUsage = await readCollection("aiUsage");
+    const activityAnalytics = buildAdminActivityAnalytics({
+      users,
+      syncSessions,
+      passwordResetRequests,
+      subscriptionRequests,
+    });
 
     const normalizedQuestions = questions.map(normalizeQuestionForApi);
     const finishedAttempts = attempts.filter((a) => a.finishedAt);
@@ -11341,6 +15261,20 @@ app.get(
         accuracy: row.accuracy,
       };
     });
+    const subscriptionCounts = {
+      request: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "pending").length,
+      activated: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "active").length,
+      rejected: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "rejected").length,
+      expired: subscriptionRequests.filter((entry) => getSubscriptionRequestStatus(entry) === "expired").length,
+      total: subscriptionRequests.length,
+    };
+    const passwordResetCounts = {
+      pending: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "pending").length,
+      sent: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "sent").length,
+      resolved: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "resolved").length,
+      expired: passwordResetRequests.filter((entry) => getPasswordResetRequestStatus(entry) === "expired").length,
+      total: passwordResetRequests.length,
+    };
 
     res.json({
       totalUsers: users.length,
@@ -11357,7 +15291,10 @@ app.get(
         (sum, row) => sum + (Number(row?.requests) || 0),
         0,
       ),
+      subscriptionCounts,
+      passwordResetCounts,
       averageScore: avgScore,
+      activityAnalytics,
       storageUsage: {
         users: users.length,
         groups: conversations.filter((conversation) => String(conversation?.type || "").toLowerCase() === "group").length,
@@ -11533,6 +15470,7 @@ async function start() {
   const purgedDeactivatedUsers = await purgeExpiredDeactivatedUsers();
   const seedInfo = await ensureQuestionsSeeded();
   const categoryNormalizeInfo = await normalizeStoredQuestionCategories();
+  const newsSourceSeedInfo = await seedDefaultNewsSources();
   if (userNormalizeInfo.changed > 0) {
     console.log(
       `[users] normalized ${userNormalizeInfo.changed}/${userNormalizeInfo.total} user records`,
@@ -11552,6 +15490,9 @@ async function start() {
     console.log(
       `[taxonomy] normalized ${categoryNormalizeInfo.changed}/${categoryNormalizeInfo.total} question categories and rotation tags`,
     );
+  }
+  if (Array.isArray(newsSourceSeedInfo) && newsSourceSeedInfo.length > 0) {
+    console.log(`[news] ready with ${newsSourceSeedInfo.length} curated source(s)`);
   }
 
   const purgeTimer = setInterval(async () => {
@@ -11638,3 +15579,7 @@ start().catch((error) => {
   console.error("Failed to start backend:", error);
   process.exitCode = 1;
 });
+
+
+
+

@@ -12,6 +12,8 @@ android/keystore.properties
 android/keystore/
 *.apk
 *.aab
+!www/downloads/
+!www/downloads/*.apk
 
 # Local preview certificates and keys
 certs/local-preview.pfx
@@ -19,7 +21,10 @@ certs/*.pfx
 certs/*.pem
 certs/*.key
 backend/certs/
-backend/backups/
+backend/backups/*
+!backend/backups/data_20260619_183446/
+backend/backups/data_20260619_183446/*
+!backend/backups/data_20260619_183446/questions.json
 backend/data_backup_*/
 backend/.env
 backend/certs/*.pfx
@@ -41,3 +46,5 @@ _pdf_extracted.txt
 # OS noise
 .DS_Store
 Thumbs.db
+.env
+.env.local

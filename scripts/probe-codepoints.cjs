@@ -1,0 +1,15 @@
+﻿const fs = require('fs');
+const path = require('path');
+const file = path.join(process.cwd(), 'www', 'engine.js');
+const raw = fs.readFileSync(file, 'utf8');
+const smileysStart = raw.indexOf('const COMMUNITY_CHAT_EMOJI_CATEGORIES = [');
+const smileysBlock = raw.slice(smileysStart, raw.indexOf('function getCommunityEmojiCategoriesForPanel()', smileysStart));
+const icon = smileysBlock.match(/icon: "([^"]+)"/)[1];
+const emoji = smileysBlock.match(/emojis: \[[\s\S]*?"([^"]+)"/)[1];
+const flagsStart = raw.indexOf('const CONTACT_COUNTRY_VISUALS = {');
+const flagsBlock = raw.slice(flagsStart, raw.indexOf('const CONTACT_COUNTRY_OPTIONS', flagsStart));
+const flag = flagsBlock.match(/flag: "([^"]+)"/)[1];
+const show = (label, value) => console.log(label, Array.from(value).map((ch) => ch.codePointAt(0).toString(16)).join(' '), value);
+show('icon', icon);
+show('emoji', emoji);
+show('flag', flag);

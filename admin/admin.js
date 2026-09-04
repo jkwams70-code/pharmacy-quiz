@@ -1,6 +1,4 @@
-const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
-<<<<<<< HEAD
-<<<<<<< HEAD
+﻿const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const currentHost = String(window.location.hostname || "").trim();
 const currentOrigin = String(window.location.origin || "").trim();
 const isLocalHost = ["localhost", "127.0.0.1"].includes(currentHost);
@@ -26,6 +24,7 @@ function getAdminApiBaseCandidates() {
   const candidates = [
     storedApiBase,
     `${currentOrigin}/api`,
+    "https://api.ajixpharmacy.online/api",
     inferredApiBase,
     !isLocalHost && currentHost ? `http://${currentHost}:4000/api` : "",
     "http://localhost:4000/api",
@@ -63,36 +62,35 @@ async function ensureAdminApiBase({ force = false } = {}) {
   try {
     return await apiBaseResolvedPromise;
   } finally {
-    apiBaseResolvedPromise = null;
+      apiBaseResolvedPromise = null;
   }
 }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-const inferredApiBase = isLocalHost
-  ? "http://localhost:4000/api"
-  : `${window.location.origin}/api`;
-const API_BASE = storedApiBase || inferredApiBase;
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       const ADMIN_KEY_STORAGE = "adminKey";
       let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
+      const adminKeyInput = document.getElementById("admin-key");
+      if (adminKeyInput && !adminKey) {
+        adminKeyInput.value = "";
+        window.setTimeout(() => {
+          if (!localStorage.getItem(ADMIN_KEY_STORAGE)) {
+            adminKeyInput.value = "";
+          }
+        }, 0);
+      }
       let editingQuestionId = null;
       let cachedQuestions = [];
-<<<<<<< HEAD
-<<<<<<< HEAD
       let cachedUsers = [];
       let cachedGroups = [];
       let cachedDeletedGroups = [];
       let cachedReports = [];
+      let cachedSubscriptionRequests = [];
+      let cachedPasswordResetRequests = [];
+      let cachedAdminStats = null;
       let cachedDeletedUsers = [];
       let deletedUsersLoaded = false;
       let groupsLoaded = false;
       let deletedGroupsLoaded = false;
       let reportsLoaded = false;
+      let subscriptionRequestsLoaded = false;
       let questionSearchQuery = "";
       let selectedUserId = null;
       let selectedGroupId = null;
@@ -100,6 +98,8 @@ const API_BASE = storedApiBase || inferredApiBase;
       let selectedReportSnapshot = null;
       let selectedReportWarningDraft = "";
       let broadcastChatAttachment = null;
+      let broadcastChatSending = false;
+      let broadcastChatClientRequestId = "";
       let broadcastChatEmojiPickerOpen = false;
       let broadcastChatAttachmentViewerMode = "sent";
       let broadcastChatAttachmentViewerAttachment = null;
@@ -112,6 +112,8 @@ const API_BASE = storedApiBase || inferredApiBase;
       let broadcastThreadOpen = false;
       let selectedBroadcastStatusId = "";
       let broadcastOverviewLoaded = false;
+      let adminActiveTab = "stats";
+      let adminBroadcastReturnTab = "stats";
       const ADMIN_NOTIFICATION_BANNER_STORAGE_KEY = "adminReportsNotificationSignature";
       let adminNotificationBannerHideTimer = null;
       let pendingDeleteUserId = null;
@@ -119,8 +121,24 @@ const API_BASE = storedApiBase || inferredApiBase;
       let groupsSearchQuery = "";
       let deletedGroupsSearchQuery = "";
       let reportsSearchQuery = "";
+      let passwordResetSearchQuery = "";
       let reportsViewType = "group";
       let deletedUsersSearchQuery = "";
+      let monetizationSearchQuery = "";
+      let selectedMonetizationBucket = "request";
+      let monetizationSortDirection = "desc";
+      let selectedSubscriptionRequestId = "";
+      let selectedSubscriptionProofDataUrl = "";
+      let passwordResetRequestsLoaded = false;
+      let selectedAnalyticsPeriod = "week";
+      let pendingSubscriptionApproveRequestId = "";
+      let pendingSubscriptionRejectRequestId = "";
+      const SUBSCRIPTION_REJECT_REASONS = [
+        "Payment not received",
+        "Invalid or unclear screenshot",
+        "Amount does not match",
+        "Other reason",
+      ];
       const COMBO_OPTIONS = [
         { letter: "A", text: "1, 2 and 3" },
         { letter: "B", text: "1 and 2 only" },
@@ -128,10 +146,6 @@ const API_BASE = storedApiBase || inferredApiBase;
         { letter: "D", text: "1 only" },
         { letter: "E", text: "3 only" },
       ];
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 
       function escapeHtml(value) {
         return String(value ?? "")
@@ -142,8 +156,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           .replaceAll("'", "&#39;");
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       function getEffectiveOptions(question) {
         const options = Array.isArray(question?.options)
           ? question.options
@@ -173,17 +185,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           if (comboIndex >= 0) return comboIndex;
         }
 
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-      function toCorrectOptionIndex(question) {
-        const options = Array.isArray(question?.options) ? question.options : [];
-        const rawCorrect = question?.correct;
-
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         if (Number.isInteger(rawCorrect) && rawCorrect >= 0 && rawCorrect < options.length) {
           return rawCorrect;
         }
@@ -212,11 +213,141 @@ const API_BASE = storedApiBase || inferredApiBase;
         return next;
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       function displayValue(value) {
         const next = String(value ?? "").trim();
         return next || "--";
+      }
+
+      const TABLE_TOUCH_CLICK_SUPPRESSION_MS = 450;
+      const tableTouchActivationTimes = new Map();
+
+      function markTableTouchActivation(tableKey) {
+        tableTouchActivationTimes.set(tableKey, Date.now());
+      }
+
+      function hasRecentTableTouchActivation(tableKey) {
+        const lastTouch = tableTouchActivationTimes.get(tableKey) || 0;
+        return Date.now() - lastTouch < TABLE_TOUCH_CLICK_SUPPRESSION_MS;
+      }
+
+      function bindTouchFriendlyTableRows({
+        tableKey,
+        root,
+        scrollContainer,
+        rowSelector,
+        onActivate,
+        enableClickBinding = true,
+      }) {
+        if (!(root instanceof HTMLElement) || !(scrollContainer instanceof HTMLElement)) return;
+
+        const interactiveSelector =
+          "button, a, input, textarea, select, option, label, summary, [contenteditable='true'], [data-no-table-drag]";
+        const dragThreshold = 8;
+        const shouldUseNativeTouchScroll =
+          window.matchMedia?.("(pointer: coarse)")?.matches || window.matchMedia?.("(hover: none)")?.matches;
+        let activePointerId = null;
+        let activePointerType = "";
+        let startX = 0;
+        let startY = 0;
+        let startScrollLeft = 0;
+        let startScrollTop = 0;
+        let isDragging = false;
+
+        const clearPointerState = () => {
+          activePointerId = null;
+          activePointerType = "";
+          isDragging = false;
+        };
+
+        const getRowTarget = (event) => {
+          const target = event.target instanceof Element ? event.target : null;
+          if (!target) return null;
+          if (target.closest(interactiveSelector)) return null;
+          const row = target.closest(rowSelector);
+          return row instanceof HTMLElement ? row : null;
+        };
+
+        const onPointerDown = (event) => {
+          if (event.button != null && event.button !== 0) return;
+          const row = getRowTarget(event);
+          if (!row) return;
+
+          activePointerId = event.pointerId;
+          activePointerType = String(event.pointerType || "");
+          startX = event.clientX;
+          startY = event.clientY;
+          startScrollLeft = scrollContainer.scrollLeft;
+          startScrollTop = scrollContainer.scrollTop;
+          isDragging = false;
+        };
+
+        const onPointerMove = (event) => {
+          if (activePointerId === null || event.pointerId !== activePointerId) return;
+
+          const deltaX = event.clientX - startX;
+          const deltaY = event.clientY - startY;
+          if (!isDragging && Math.abs(deltaX) < dragThreshold && Math.abs(deltaY) < dragThreshold) {
+            return;
+          }
+
+          isDragging = true;
+          markTableTouchActivation(tableKey);
+
+          if (activePointerType === "mouse" || activePointerType === "pen") {
+            const canScrollX = scrollContainer.scrollWidth > scrollContainer.clientWidth;
+            const canScrollY = scrollContainer.scrollHeight > scrollContainer.clientHeight;
+            if (canScrollX) {
+              scrollContainer.scrollLeft = startScrollLeft - deltaX;
+            }
+            if (canScrollY) {
+              scrollContainer.scrollTop = startScrollTop - deltaY;
+            }
+            event.preventDefault();
+          }
+        };
+
+        const onPointerUp = () => {
+          if (isDragging) {
+            markTableTouchActivation(tableKey);
+          }
+          clearPointerState();
+        };
+
+        const onPointerCancel = () => {
+          clearPointerState();
+        };
+
+        if (!shouldUseNativeTouchScroll) {
+          root.addEventListener("pointerdown", onPointerDown);
+          root.addEventListener("pointermove", onPointerMove);
+          root.addEventListener("pointerup", onPointerUp);
+          root.addEventListener("pointercancel", onPointerCancel);
+        }
+
+        if (enableClickBinding && typeof onActivate === "function") {
+          root.addEventListener("click", (event) => {
+            if (hasRecentTableTouchActivation(tableKey)) {
+              const target = event.target instanceof Element ? event.target : null;
+              if (target?.closest(rowSelector)) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+              }
+            }
+
+            const row = getRowTarget(event);
+            if (!row) return;
+            onActivate(row);
+          });
+
+          root.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            const row = getRowTarget(event);
+            if (!row) return;
+            event.preventDefault();
+            onActivate(row);
+          });
+        }
       }
 
       function readFileAsDataUrl(file) {
@@ -369,7 +500,1217 @@ const API_BASE = storedApiBase || inferredApiBase;
         if (!value) return "--";
         const parsed = new Date(value);
         if (Number.isNaN(parsed.getTime())) return "--";
-        return parsed.toLocaleString();
+        const day = String(parsed.getDate()).padStart(2, "0");
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const year = String(parsed.getFullYear()).slice(-2);
+        const time = parsed.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        return `${day}/${month}/${year}, ${time}`;
+      }
+
+      async function copyTextToClipboard(text) {
+        const value = String(text || "").trim();
+        if (!value) return false;
+        try {
+          await navigator.clipboard.writeText(value);
+          return true;
+        } catch {
+          const textarea = document.createElement("textarea");
+          textarea.value = value;
+          textarea.setAttribute("readonly", "readonly");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            return document.execCommand("copy");
+          } catch {
+            return false;
+          } finally {
+            document.body.removeChild(textarea);
+          }
+        }
+      }
+
+      function getMonetizationBucket(request = {}) {
+  const requestStatus = String(request?.status || "").trim().toLowerCase();
+  const expirationAt = String(request?.expirationAt || request?.expiresAt || request?.expiredAt || "").trim();
+  const expirationTime = expirationAt ? Date.parse(expirationAt) : NaN;
+  const hasFutureExpiry = Number.isFinite(expirationTime) && expirationTime > Date.now();
+  const isExpired =
+    requestStatus === "expired" ||
+    Boolean(request?.isExpired) ||
+    (Number.isFinite(expirationTime) && expirationTime <= Date.now());
+  const isActive =
+    requestStatus === "active" ||
+    requestStatus === "approved" ||
+    requestStatus === "trial" ||
+    Boolean(request?.isActive) ||
+    hasFutureExpiry;
+
+  if (requestStatus === "rejected") {
+    return "rejected";
+  }
+  if (requestStatus === "pending") {
+    return "request";
+  }
+  if (isExpired) {
+    return "expired";
+  }
+  if (isActive) {
+    return "activated";
+  }
+  return "request";
+}
+
+function getMonetizationBucketMeta(bucket = "request") {
+        const safeBucket = String(bucket || "request").trim().toLowerCase();
+        const meta = {
+          request: {
+            title: "Incoming payment proofs",
+            empty: "No pending subscription requests yet.",
+            rowColumns: "minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(0, 1fr) auto",
+            rowLabels: ["Name", "Subscription Type", "Amount", "Contact", "Requested", "View"],
+          },
+          activated: {
+            title: "Activated subscriptions",
+            empty: "No activated subscriptions yet.",
+            rowColumns: "minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto",
+            rowLabels: ["Name", "Subscription Type", "Amount", "Contact", "Activated", "Expires", "View"],
+          },
+          rejected: {
+            title: "Rejected requests",
+            empty: "No rejected subscription requests yet.",
+            rowColumns: "minmax(180px, 1.25fr) minmax(170px, 1.1fr) minmax(120px, 0.9fr) minmax(180px, 1.1fr) minmax(180px, 1fr) minmax(220px, 1.2fr) auto",
+            rowLabels: ["Name", "Subscription Type", "Amount", "Contact", "Rejected", "Reason", "View"],
+          },
+          expired: {
+            title: "Expired access",
+            empty: "No expired subscriptions yet.",
+            rowColumns: "minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) auto",
+            rowLabels: ["Name", "Subscription Type", "Amount", "Contact", "Activated", "Expired", "View"],
+          },
+        };
+        return meta[safeBucket] || meta.request;
+      }
+
+      function getMonetizationRequestModalTitle(bucket = "request") {
+        const safeBucket = String(bucket || "request").trim().toLowerCase();
+        const titles = {
+          request: "Request Details",
+          activated: "Activated Subscription",
+          rejected: "Rejected Request",
+          expired: "Expired Access",
+        };
+        return titles[safeBucket] || titles.request;
+      }
+
+      function getMonetizationRequestTitle(request = {}) {
+        const name = String(request?.user?.name || request?.userName || request?.username || request?.contact || "").trim();
+        return name || "Subscription request";
+      }
+
+      function getMonetizationRequestContact(request = {}) {
+        return String(request?.user?.contact || request?.contact || "--").trim() || "--";
+      }
+
+      function getMonetizationRequestDate(request = {}, bucket = "request") {
+        const metaBucket = String(bucket || "request").trim().toLowerCase();
+        if (metaBucket === "activated") {
+          return formatDate(request?.approvedAt || request?.reviewedAt || request?.user?.subscriptionApprovedAt || request?.user?.subscriptionReviewedAt);
+        }
+        if (metaBucket === "rejected") {
+          return formatDate(request?.rejectedAt || request?.reviewedAt || request?.user?.subscriptionRejectedAt || request?.user?.subscriptionReviewedAt);
+        }
+        if (metaBucket === "expired") {
+          return formatDate(
+            request?.expirationAt ||
+            request?.user?.subscriptionAccess?.expirationAt ||
+              request?.user?.subscriptionExpirationAt ||
+              request?.user?.subscriptionEndsAt,
+          );
+        }
+        return formatDate(request?.requestedAt);
+      }
+
+      function getMonetizationRequestActivatedAt(request = {}) {
+        return formatDate(
+          request?.activatedAt ||
+            request?.approvedAt ||
+            request?.reviewedAt ||
+            request?.user?.subscriptionAccess?.activatedAt ||
+            request?.user?.subscriptionAccess?.activationAt ||
+            request?.user?.subscriptionActivatedAt ||
+            request?.user?.subscriptionApprovedAt ||
+            request?.user?.subscriptionReviewedAt,
+        );
+      }
+
+      function getMonetizationRequestExpiry(request = {}) {
+        return formatDate(
+          request?.expirationAt ||
+          request?.user?.subscriptionAccess?.expirationAt ||
+            request?.user?.subscriptionExpirationAt ||
+            request?.user?.subscriptionEndsAt,
+        );
+      }
+
+      function getMonetizationRequestAmount(request = {}) {
+        const amount = Number(
+          request?.priceGhs ??
+            request?.user?.subscriptionPlanPriceGhs ??
+            request?.amountGhs ??
+            0,
+        );
+        return Number.isFinite(amount) && amount > 0 ? amount : null;
+      }
+
+      function formatGhsAmount(amount) {
+        const numeric = Number(amount);
+        if (!Number.isFinite(numeric) || numeric <= 0) return "GHS 0";
+        const display = Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(2).replace(/\.00$/, "");
+        return `GHS ${display}`;
+      }
+
+      function getMonetizationBucketTotalAmount(bucket) {
+        return cachedSubscriptionRequests
+          .filter((entry) => getMonetizationBucket(entry) === bucket)
+          .reduce((sum, entry) => sum + (getMonetizationRequestAmount(entry) || 0), 0);
+      }
+
+      function getMonetizationRequestProofLabel(request = {}) {
+        return String(
+          request?.paymentReference ||
+            request?.proofText ||
+            request?.reviewNote ||
+            "Payment proof",
+        ).trim();
+      }
+
+      function getMonetizationRequestReason(request = {}) {
+        return String(
+          request?.rejectedReason ||
+            request?.subscriptionRejectedReason ||
+            request?.subscriptionReviewNote ||
+            request?.reviewNote ||
+            "--",
+        ).trim() || "--";
+      }
+
+      function getMonetizationDateLabel(bucket = "request") {
+        const safeBucket = String(bucket || "request").trim().toLowerCase();
+        if (safeBucket === "activated") return "Activated";
+        if (safeBucket === "rejected") return "Rejected";
+        if (safeBucket === "expired") return "Expired";
+        return "Requested";
+      }
+
+      function getMonetizationRequestSortTimestamp(request = {}, bucket = "request") {
+        const safeBucket = String(bucket || "request").trim().toLowerCase();
+        if (safeBucket === "activated") {
+          return Date.parse(
+            request?.approvedAt ||
+              request?.reviewedAt ||
+              request?.user?.subscriptionApprovedAt ||
+              request?.user?.subscriptionReviewedAt ||
+              request?.requestedAt ||
+              0,
+          );
+        }
+        if (safeBucket === "rejected") {
+          return Date.parse(
+            request?.rejectedAt ||
+              request?.reviewedAt ||
+              request?.user?.subscriptionRejectedAt ||
+              request?.user?.subscriptionReviewedAt ||
+              request?.requestedAt ||
+              0,
+          );
+        }
+        if (safeBucket === "expired") {
+          return Date.parse(
+            request?.expirationAt ||
+            request?.user?.subscriptionAccess?.expirationAt ||
+              request?.user?.subscriptionExpirationAt ||
+              request?.user?.subscriptionEndsAt ||
+              request?.requestedAt ||
+              0,
+          );
+        }
+        return Date.parse(request?.requestedAt || 0);
+      }
+
+      function toggleMonetizationSortDirection() {
+        monetizationSortDirection = monetizationSortDirection === "desc" ? "asc" : "desc";
+        renderMonetizationPanel();
+      }
+
+      function buildMonetizationHeader(bucket, count) {
+        const meta = getMonetizationBucketMeta(bucket);
+        const labels = meta.rowLabels || [];
+        const dateLabel = getMonetizationDateLabel(bucket);
+        return `
+          <thead>
+            <tr>
+              ${labels
+                .map((label) => {
+                  if (label !== dateLabel) {
+                    return `<th>${escapeHtml(label)}</th>`;
+                  }
+                  return `
+                    <th>
+                      <span class="monetization-header-date">
+                        <span>${escapeHtml(label)}</span>
+                        <button
+                          type="button"
+                          class="monetization-sort-toggle"
+                          data-action="toggle-monetization-sort"
+                          aria-label="Toggle date sort"
+                          title="${monetizationSortDirection === "desc" ? "Newest first" : "Oldest first"}"
+                        >↕</button>
+                      </span>
+                    </th>
+                  `;
+                })
+                .join("")}
+            </tr>
+          </thead>
+        `;
+      }
+
+      function buildMonetizationRequestRow(request, bucket) {
+        const safeId = escapeHtml(request?.id || "");
+        const title = escapeHtml(getMonetizationRequestTitle(request));
+        const subscriptionType = escapeHtml(
+          request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "--",
+        );
+        const amount = getMonetizationRequestAmount(request);
+        const amountLabel = amount ? formatGhsAmount(amount) : "None";
+        const contact = escapeHtml(getMonetizationRequestContact(request));
+        const mainDate =
+          bucket === "expired"
+            ? escapeHtml(getMonetizationRequestActivatedAt(request))
+            : escapeHtml(getMonetizationRequestDate(request, bucket));
+        const dateLabel = escapeHtml(bucket === "expired" ? "Activated" : getMonetizationDateLabel(bucket));
+        const reasonLabel = escapeHtml(getMonetizationRequestReason(request));
+        const proofLabel = escapeHtml(getMonetizationRequestProofLabel(request));
+        const proofPreview = request?.proofDataUrl
+          ? `<button type="button" class="monetization-proof-chip" data-action="open-proof-image" data-request-id="${safeId}" data-proof-url="${escapeHtml(request.proofDataUrl)}" data-proof-title="${title}">
+              <img src="${escapeHtml(request.proofDataUrl)}" alt="${title} proof preview" />
+              <span>${proofLabel || "Screenshot available"}</span>
+            </button>`
+          : `<div class="monetization-cell-value is-muted">No screenshot uploaded</div>`;
+        const statusLabel =
+          bucket === "activated"
+            ? "Activated"
+            : bucket === "rejected"
+              ? "Rejected"
+              : bucket === "expired"
+                ? "Expired"
+                : "Requested";
+        const expiryCell =
+          bucket === "activated"
+            ? `<td>${escapeHtml(getMonetizationRequestExpiry(request))}</td>`
+            : "";
+        const expiredCell =
+          bucket === "expired"
+            ? `<td data-label="Expired"><div class="monetization-cell-value">${escapeHtml(getMonetizationRequestDate(request, bucket))}</div></td>`
+            : "";
+
+        return `
+          <tr
+            class="monetization-table-row"
+            data-request-id="${safeId}"
+            data-action="open-subscription-request"
+          >
+            <td class="cell-wrap" data-label="Name">
+              <div class="monetization-cell-value">${title}</div>
+            </td>
+            <td class="cell-wrap" data-label="Subscription Type">
+              <div class="monetization-cell-value">${subscriptionType}</div>
+            </td>
+            <td class="cell-wrap" data-label="Amount">
+              <div class="monetization-cell-value">${escapeHtml(amountLabel)}</div>
+            </td>
+            <td class="cell-wrap" data-label="Contact">
+              <div class="monetization-cell-value">${contact}</div>
+            </td>
+            <td data-label="${dateLabel}">
+              <div class="monetization-cell-value">${escapeHtml(mainDate)}</div>
+            </td>
+            ${
+              bucket === "rejected"
+                ? `<td class="cell-wrap" data-label="Reason"><div class="monetization-cell-value">${reasonLabel}</div></td>`
+                : ""
+            }
+            ${expiryCell ? expiryCell.replace("<td>", '<td data-label="Expires">') : ""}
+            ${expiredCell}
+            <td data-label="View">
+              <button
+                type="button"
+                class="btn-small"
+                data-action="view-subscription-request"
+                data-request-id="${safeId}"
+              >View</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      function buildMonetizationEmptyState(bucket) {
+        const meta = getMonetizationBucketMeta(bucket);
+        return `<div class="monetization-empty-state">${escapeHtml(meta.empty)}</div>`;
+      }
+
+      function matchesMonetizationSearch(request, query) {
+        const normalizedQuery = normalizeSearchText(query);
+        if (!normalizedQuery) return true;
+
+        const haystack = normalizeSearchText(
+          [
+            request?.id,
+            getMonetizationRequestTitle(request),
+            request?.planLabel,
+            request?.user?.subscriptionPlanLabel,
+            request?.plan,
+            getMonetizationRequestContact(request),
+            getMonetizationRequestDate(request, getMonetizationBucket(request)),
+            getMonetizationRequestAmount(request),
+            getMonetizationRequestProofLabel(request),
+            request?.paymentReference,
+            request?.proofText,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        );
+        return haystack.includes(normalizedQuery);
+      }
+
+      function buildMonetizationRequestDetailHtml(request = {}) {
+        const bucket = getMonetizationBucket(request);
+        const title = escapeHtml(getMonetizationRequestTitle(request));
+        const contact = escapeHtml(getMonetizationRequestContact(request));
+        const planLabel = escapeHtml(request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "--");
+        const amount = getMonetizationRequestAmount(request);
+        const amountText = amount ? `GHS ${amount}` : "GHS --";
+        const paymentMethod = String(request?.paymentMethod || request?.user?.subscriptionAccess?.paymentMethod || "").trim() || "--";
+        const proofReference = escapeHtml(request?.paymentReference || request?.proofText || "--");
+        const reviewDeadline = escapeHtml(formatDate(request?.reviewDeadlineAt || request?.user?.subscriptionApprovalDeadlineAt));
+        const requestedAt = escapeHtml(formatDate(request?.requestedAt));
+        const reviewedAt = escapeHtml(formatDate(request?.reviewedAt));
+        const approvedAt = escapeHtml(formatDate(request?.approvedAt));
+        const rejectedAt = escapeHtml(formatDate(request?.rejectedAt));
+        const expiryAt = escapeHtml(getMonetizationRequestExpiry(request));
+        const proofUrl = String(request?.proofDataUrl || "").trim();
+        const proofFileName = escapeHtml(request?.proofFileName || "Payment screenshot");
+        const proofMimeType = escapeHtml(request?.proofMimeType || "image");
+        const proofBlock = proofUrl
+          ? `
+            <div class="subscription-detail-card">
+              <div class="subscription-detail-pill" style="margin-bottom: 12px;">Transaction screenshot</div>
+              <button
+                type="button"
+                class="monetization-proof-chip"
+                data-action="open-proof-image"
+                data-proof-url="${escapeHtml(proofUrl)}"
+                data-proof-title="${title}"
+                style="width: 100%; justify-content: center; border-radius: 18px; padding: 12px 14px;"
+              >
+                <img src="${escapeHtml(proofUrl)}" alt="${title} proof preview" />
+                <span>${proofFileName} · ${proofMimeType}</span>
+              </button>
+            </div>
+          `
+          : `
+            <div class="subscription-detail-card">
+              <div class="subscription-proof-placeholder">No payment screenshot was uploaded for this request.</div>
+            </div>
+          `;
+
+        const reviewActionButtons =
+          bucket === "request"
+            ? `
+              <div class="modal-actions" style="margin-top: 6px;">
+                <button type="button" class="approve" data-action="approve-subscription-request" data-request-id="${escapeHtml(request?.id || "")}">Activate</button>
+                <button type="button" class="reject" data-action="reject-subscription-request" data-request-id="${escapeHtml(request?.id || "")}">Reject</button>
+              </div>
+            `
+            : "";
+
+        return `
+          <div class="subscription-detail-card">
+            <div class="subscription-detail-hero">
+              <div>
+                <div class="subscription-detail-amount-label">Amount due</div>
+                <div class="subscription-detail-amount">${amountText}</div>
+              </div>
+              <div class="subscription-detail-pill">Status: <strong>${escapeHtml(bucket)}</strong></div>
+            </div>
+          </div>
+
+            <div class="subscription-detail-card">
+              <div class="subscription-detail-pill" style="margin-bottom: 14px;">${planLabel}</div>
+              <div class="subscription-approval-row" style="margin-top: 6px;">
+                <div class="subscription-approval-label">Amount:</div>
+                <div class="subscription-approval-value">${escapeHtml(amountText)}</div>
+              </div>
+              <div class="subscription-payment-box">
+              <div class="subscription-payment-row">
+                <div class="subscription-payment-left">
+                  <div class="subscription-payment-method">MTN Mobile Money</div>
+                  <div class="subscription-payment-name">NAME: ISRAEL JOHN ASKENT</div>
+                </div>
+                <div class="subscription-payment-value">0595597218</div>
+              </div>
+              <div class="subscription-payment-row">
+                <div class="subscription-payment-left">
+                  <div class="subscription-payment-method">Fidelity Bank</div>
+                  <div class="subscription-payment-name">NAME: ISRAEL JOHN ASKENT</div>
+                </div>
+                <div class="subscription-payment-value">2100316766815</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="subscription-detail-card">
+            <div class="subscription-detail-pill" style="margin-bottom: 14px;">Steps</div>
+            <div class="subscription-proof-placeholder" style="border-style: solid; border-color: #e2e8f0; background: #ffffff;">
+              1. Send the exact amount via MTN Mobile Money or Fidelity Bank.<br />
+              2. Take a screenshot of the transaction confirmation or type the transaction ID.<br />
+              3. Return to this app and upload the proof.<br />
+              4. The subscription unlocks after admin approval within 24 hours.
+            </div>
+          </div>
+
+          ${proofBlock}
+
+          <div class="subscription-detail-card">
+            <div class="subscription-detail-pill" style="margin-bottom: 14px;">Request details</div>
+            <div style="display: grid; gap: 10px;">
+              <div><strong>Name:</strong> ${title}</div>
+              <div><strong>Contact:</strong> ${contact}</div>
+              <div><strong>Requested:</strong> ${requestedAt}</div>
+              <div><strong>Reviewed:</strong> ${reviewedAt}</div>
+              <div><strong>Approved:</strong> ${approvedAt}</div>
+              <div><strong>Rejected:</strong> ${rejectedAt}</div>
+              <div><strong>Review window:</strong> Up to 24 hours</div>
+              <div><strong>Review deadline:</strong> ${reviewDeadline}</div>
+              <div><strong>Expected expire:</strong> ${expiryAt}</div>
+              <div><strong>Payment reference:</strong> ${proofReference}</div>
+            </div>
+          </div>
+
+          ${reviewActionButtons}
+        `;
+      }
+
+      function buildCompactMonetizationRequestDetailHtmlLegacy(request = {}) {
+        const bucket = getMonetizationBucket(request);
+        const title = escapeHtml(getMonetizationRequestTitle(request));
+        const contact = escapeHtml(getMonetizationRequestContact(request));
+        const planLabel = escapeHtml(request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "--");
+        const amount = getMonetizationRequestAmount(request);
+        const amountText = amount ? `GHS ${amount}` : "GHS --";
+        const proofReference = escapeHtml(request?.paymentReference || request?.proofText || "--");
+        const reviewDeadline = escapeHtml(formatDate(request?.reviewDeadlineAt || request?.user?.subscriptionApprovalDeadlineAt));
+        const requestedAt = escapeHtml(formatDate(request?.requestedAt));
+        const expiryAt = escapeHtml(getMonetizationRequestExpiry(request));
+        const proofUrl = String(request?.proofDataUrl || "").trim();
+        const proofBlock = proofUrl
+          ? `
+            <button
+              type="button"
+              class="monetization-proof-chip subscription-proof-thumb"
+              data-action="open-proof-image"
+              data-proof-url="${escapeHtml(proofUrl)}"
+              data-proof-title="${title}"
+            >
+              <img src="${escapeHtml(proofUrl)}" alt="${title} proof preview" />
+              <span>Tap to expand screenshot</span>
+            </button>
+          `
+          : `
+            <div class="subscription-proof-placeholder">No payment screenshot was uploaded for this request.</div>
+          `;
+
+        const reviewActionButtons =
+          bucket === "request"
+            ? `
+              <div class="subscription-detail-actions">
+                <button type="button" class="approve" data-action="approve-subscription-request" data-request-id="${escapeHtml(request?.id || "")}">Activate</button>
+                <button type="button" class="reject" data-action="reject-subscription-request" data-request-id="${escapeHtml(request?.id || "")}">Reject</button>
+              </div>
+            `
+            : "";
+
+        return `
+          <div class="subscription-detail-grid subscription-detail-grid--compact">
+            <div class="subscription-detail-card subscription-detail-card--hero">
+              <div class="subscription-detail-hero">
+                <div>
+                  <div class="subscription-detail-amount-label">Amount due</div>
+                  <div class="subscription-detail-amount">${amountText}</div>
+                </div>
+                <div class="subscription-detail-pill">Status: <strong>${escapeHtml(bucket)}</strong></div>
+              </div>
+            </div>
+
+            <div class="subscription-detail-card">
+              <div class="subscription-detail-mini-label">Plan</div>
+              <div class="subscription-detail-value">${planLabel}</div>
+              <div class="subscription-detail-meta">${title} · ${contact}</div>
+            </div>
+
+            <div class="subscription-detail-card">
+              <div class="subscription-detail-mini-label">Transaction ID</div>
+              <div class="subscription-detail-value">${proofReference}</div>
+              <div class="subscription-proof-thumb-wrap">${proofBlock}</div>
+            </div>
+
+            <div class="subscription-detail-card">
+              <div class="subscription-detail-mini-label">Request details</div>
+              <div class="subscription-detail-meta" style="display: grid; gap: 8px;">
+                <div><strong>Requested:</strong> ${requestedAt}</div>
+                <div><strong>Review window:</strong> Up to 24 hours</div>
+                <div><strong>Review deadline:</strong> ${reviewDeadline}</div>
+                <div><strong>Expected expire:</strong> ${expiryAt}</div>
+              </div>
+            </div>
+
+            ${reviewActionButtons}
+          </div>
+        `;
+      }
+
+      function setMonetizationBucket(bucket) {
+        const nextBucket = String(bucket || "request").trim().toLowerCase();
+        selectedMonetizationBucket = ["request", "activated", "rejected", "expired"].includes(nextBucket)
+          ? nextBucket
+          : "request";
+        document.querySelectorAll("[data-monetization-bucket]").forEach((el) => {
+          const isActive = el.dataset.monetizationBucket === selectedMonetizationBucket;
+          el.classList.toggle("is-active", isActive);
+          el.setAttribute("aria-pressed", isActive ? "true" : "false");
+        });
+        renderMonetizationPanel();
+      }
+
+      function renderMonetizationPanel() {
+        const root = document.getElementById("monetization-list-root");
+        if (!root) return;
+
+        const counts = {
+          request: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "request").length,
+          activated: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "activated").length,
+          rejected: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "rejected").length,
+          expired: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "expired").length,
+        };
+
+        const updateCount = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = String(value);
+        };
+        updateCount("monetization-request-count", counts.request);
+        updateCount("monetization-activated-count", counts.activated);
+        updateCount("monetization-rejected-count", counts.rejected);
+        updateCount("monetization-expired-count", counts.expired);
+
+        const bucket = selectedMonetizationBucket;
+        const meta = getMonetizationBucketMeta(bucket);
+        const sortMultiplier = monetizationSortDirection === "asc" ? 1 : -1;
+        const items = cachedSubscriptionRequests
+          .filter((entry) => getMonetizationBucket(entry) === bucket)
+          .sort((a, b) => {
+            const aValue = getMonetizationRequestSortTimestamp(a, bucket);
+            const bValue = getMonetizationRequestSortTimestamp(b, bucket);
+            if (aValue !== bValue) return (aValue - bValue) * sortMultiplier;
+            return getMonetizationRequestTitle(a).localeCompare(getMonetizationRequestTitle(b));
+          });
+        const filteredItems = items.filter((entry) => matchesMonetizationSearch(entry, monetizationSearchQuery));
+        const bucketTotal = getMonetizationBucketTotalAmount(bucket);
+
+        const panelTitle = document.getElementById("monetization-panel-title");
+        const panelKicker = document.getElementById("monetization-panel-kicker");
+        const summaryCount = document.getElementById("monetization-summary-count");
+        const summaryTotal = document.getElementById("monetization-summary-total");
+        if (panelTitle) {
+          panelTitle.textContent = bucket === "rejected" ? "" : meta.title;
+          panelTitle.style.display = bucket === "rejected" ? "none" : "";
+        }
+        if (panelKicker) panelKicker.textContent = bucket;
+        if (summaryCount) {
+          const summaryLabel =
+            bucket === "request"
+              ? "requests"
+              : bucket === "activated"
+                ? "activated subscriptions"
+                : bucket === "rejected"
+                  ? "rejected requests"
+                  : "expired subscriptions";
+          summaryCount.innerHTML = `Showing <strong>${filteredItems.length}</strong> ${summaryLabel}`;
+        }
+        if (summaryTotal) {
+          summaryTotal.textContent = `Total: ${formatGhsAmount(bucketTotal)}`;
+        }
+
+        if (!items.length) {
+          root.innerHTML = buildMonetizationEmptyState(bucket);
+          return;
+        }
+
+        const headerHtml = buildMonetizationHeader(bucket, filteredItems.length);
+        const rowsHtml = filteredItems.map((request) => buildMonetizationRequestRow(request, bucket)).join("");
+        const columnCount = bucket === "activated" || bucket === "rejected" || bucket === "expired" ? 7 : 6;
+        root.innerHTML = `
+          <div class="table-container monetization-table-container">
+            <table class="user-table monetization-table">
+              ${headerHtml}
+              <tbody>
+                ${
+                  rowsHtml ||
+                  `<tr><td colspan="${columnCount}" style="text-align:center;color:#64748b;">${
+                    normalizeSearchText(monetizationSearchQuery)
+                      ? "No subscription requests match this search"
+                      : "No subscription requests yet."
+                  }</td></tr>`
+                }
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      async function loadMonetizationRequests() {
+        try {
+          const res = await fetch(withNoCache(`${API_BASE}/admin/subscription-requests`), {
+            headers: getHeaders(),
+            cache: "no-store",
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !Array.isArray(data.requests)) {
+            throw new Error(data.error || "Failed to load subscription requests");
+          }
+
+          cachedSubscriptionRequests = data.requests.filter(
+            (entry) => String(entry?.plan || "").trim().toLowerCase() !== "trial",
+          );
+          subscriptionRequestsLoaded = true;
+          renderMonetizationPanel();
+          return true;
+        } catch (err) {
+          console.error("Failed to load subscription requests:", err);
+          showAlert("monetization-alerts", "Failed to load subscription requests", "error");
+          return false;
+        }
+      }
+
+      function getPasswordResetRequestName(request = {}) {
+        return String(request?.name || request?.user?.name || request?.username || request?.contact || "Password reset request").trim() || "Password reset request";
+      }
+
+      function getPasswordResetRequestContact(request = {}) {
+        return String(request?.contact || request?.user?.contact || request?.email || request?.user?.email || "--").trim() || "--";
+      }
+
+      function getPasswordResetRequestMethod(request = {}) {
+        const method = String(request?.deliveryMethod || request?.contactType || "").trim().toLowerCase();
+        if (method === "email") return "email";
+        if (method === "phone") return "whatsapp";
+        const contact = getPasswordResetRequestContact(request);
+        if (contact.includes("@")) return "email";
+        if (/^\+?[0-9()\-\s]{6,}$/.test(contact)) return "whatsapp";
+        return "";
+      }
+
+      function getPasswordResetRequestStatus(request = {}) {
+        const status = String(request?.status || "pending").trim().toLowerCase();
+        if (["pending", "sent", "resolved", "expired", "cancelled"].includes(status)) {
+          return status;
+        }
+        return "pending";
+      }
+
+      function getPasswordResetRequestStatusLabel(request = {}) {
+        switch (getPasswordResetRequestStatus(request)) {
+          case "sent":
+            return "Sent";
+          case "resolved":
+            return "Resolved";
+          case "expired":
+            return "Expired";
+          case "cancelled":
+            return "Cancelled";
+          default:
+            return "Pending";
+        }
+      }
+
+      function getPasswordResetRequestStatusClass(request = {}) {
+        switch (getPasswordResetRequestStatus(request)) {
+          case "sent":
+            return "is-sent";
+          case "resolved":
+            return "is-good";
+          case "expired":
+            return "is-muted";
+          case "cancelled":
+            return "is-bad";
+          default:
+            return "is-pending";
+        }
+      }
+
+      function getPasswordResetRequestCode(request = {}) {
+        return String(request?.resetCode || "").trim();
+      }
+
+      function getPasswordResetRequestSortTimestamp(request = {}) {
+        return Date.parse(request?.requestedAt || 0) || 0;
+      }
+
+      function getPasswordResetComposeMessage(request = {}) {
+        const name = getPasswordResetRequestName(request);
+        const code = getPasswordResetRequestCode(request);
+        return [
+          `Hi ${name},`,
+          "",
+          `You requested a password reset for AjixPharmacy.`,
+          `Your password reset code is ${code}.`,
+          "Open https://ajixpharmacy.online, tap Have reset code?, and enter this code to set a new password.",
+          "",
+          "Keep this code safe and do not share it.",
+          "If you did not request this, please ignore this message.",
+        ].join("\n");
+      }
+
+      function getPasswordResetComposeUrl(request = {}) {
+        const contact = getPasswordResetRequestContact(request);
+        const code = getPasswordResetRequestCode(request);
+        if (!contact || !code) return "";
+
+        const message = getPasswordResetComposeMessage(request);
+        const method = getPasswordResetRequestMethod(request);
+        if (method === "email") {
+          const subject = encodeURIComponent("AjixPharmacy password reset code");
+          const body = encodeURIComponent(message);
+          return `mailto:${contact}?subject=${subject}&body=${body}`;
+        }
+
+        if (method === "whatsapp") {
+          const digits = contact.replace(/\D/g, "");
+          if (!digits) return "";
+          return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+        }
+
+        return "";
+      }
+
+      function matchesPasswordResetSearch(request = {}, query = "") {
+        const normalizedQuery = normalizeSearchText(query);
+        if (!normalizedQuery) return true;
+        const haystack = normalizeSearchText(
+          [
+            request?.id,
+            getPasswordResetRequestName(request),
+            request?.username,
+            getPasswordResetRequestContact(request),
+            getPasswordResetRequestCode(request),
+            request?.deliveryMethod,
+            request?.deliveryLabel,
+            request?.note,
+            request?.status,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        );
+        return normalizedQuery
+          .split(" ")
+          .filter(Boolean)
+          .every((term) => haystack.includes(term));
+      }
+
+      function buildPasswordResetRequestRow(request = {}) {
+        const requestId = String(request?.id || "").trim();
+        const contact = getPasswordResetRequestContact(request);
+        const code = getPasswordResetRequestCode(request);
+        const composeUrl = getPasswordResetComposeUrl(request);
+        const method = getPasswordResetRequestMethod(request);
+        const status = getPasswordResetRequestStatus(request);
+        const statusLabel = getPasswordResetRequestStatusLabel(request);
+        const isPending = status === "pending";
+        const codeMarkup = code && isPending
+          ? `<code class="password-reset-code password-reset-copyable" data-action="copy-password-reset-code" data-request-id="${escapeHtml(requestId)}" role="button" tabindex="0" title="Click to copy the reset code">${escapeHtml(code)}</code>`
+          : `<span class="password-reset-code is-muted">--</span>`;
+        const contactMarkup = status === "sent"
+          ? `<span class="password-reset-contact-link is-muted">${escapeHtml(contact)}</span>`
+          : composeUrl
+          ? `<a class="password-reset-contact-link" href="${escapeHtml(composeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(contact)}</a>`
+          : `<span class="password-reset-contact-link is-muted">${escapeHtml(contact)}</span>`;
+        const methodLabel = method === "email" ? "Email" : method === "whatsapp" ? "WhatsApp" : "Contact";
+        const expiresMarkup = isPending
+          ? `<span class="password-reset-code is-muted">--</span>`
+          : `<span>${escapeHtml(formatDate(request?.expiresAt))}</span>`;
+        const statusMarkup = isPending
+          ? `<button type="button" class="password-reset-status password-reset-status-action ${escapeHtml(getPasswordResetRequestStatusClass(request))}" data-action="mark-password-reset-sent" data-request-id="${escapeHtml(requestId)}" aria-label="Mark sent">${escapeHtml(statusLabel)}</button>`
+          : `<span class="password-reset-status ${escapeHtml(getPasswordResetRequestStatusClass(request))}">${escapeHtml(statusLabel)}</span>`;
+        return `
+          <tr data-password-reset-request-id="${escapeHtml(requestId)}">
+            <td>
+              <div class="cell-wrap">
+                <strong>${escapeHtml(getPasswordResetRequestName(request))}</strong>
+                <div class="cell-subtle">${escapeHtml(request?.username || "--")}</div>
+              </div>
+            </td>
+            <td>
+              <div class="cell-wrap">
+                ${contactMarkup}
+                <div class="cell-subtle">${escapeHtml(methodLabel)}</div>
+              </div>
+            </td>
+            <td>
+              <div class="password-reset-code-cell">
+                ${codeMarkup}
+              </div>
+            </td>
+            <td>${escapeHtml(formatDate(request?.requestedAt))}</td>
+            <td>${expiresMarkup}</td>
+            <td>${statusMarkup}</td>
+          </tr>
+        `;
+      }
+
+      function renderPasswordResetRequests() {
+        const root = document.getElementById("password-reset-list-root");
+        if (!root) return;
+
+        const items = [...cachedPasswordResetRequests]
+          .sort((a, b) => getPasswordResetRequestSortTimestamp(b) - getPasswordResetRequestSortTimestamp(a))
+          .filter((entry) => matchesPasswordResetSearch(entry, passwordResetSearchQuery));
+        const pendingCount = cachedPasswordResetRequests.filter((entry) =>
+          getPasswordResetRequestStatus(entry) === "pending",
+        ).length;
+
+        const summaryCount = document.getElementById("password-reset-summary-count");
+        const summaryTotal = document.getElementById("password-reset-summary-total");
+        const badge = document.getElementById("password-reset-tab-badge");
+        if (summaryCount) {
+          summaryCount.innerHTML = `Showing <strong>${items.length}</strong> reset request${items.length === 1 ? "" : "s"}`;
+        }
+        if (summaryTotal) {
+          summaryTotal.textContent = `Pending: ${pendingCount}`;
+        }
+        if (badge) {
+          badge.textContent = String(pendingCount);
+          badge.classList.toggle("hidden", pendingCount === 0);
+        }
+
+        if (!cachedPasswordResetRequests.length) {
+          root.innerHTML = `
+            <div class="monetization-empty-state">
+              No password reset requests yet.
+            </div>
+          `;
+          return;
+        }
+
+        const tableRows = items.map((request) => buildPasswordResetRequestRow(request)).join("");
+        root.innerHTML = `
+          <div class="table-container password-reset-table-container">
+            <table class="user-table password-reset-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Contact</th>
+                  <th>Code</th>
+                  <th>Requested</th>
+                  <th>Expires</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${
+                  tableRows ||
+                  `<tr><td colspan="6" style="text-align:center;color:#64748b;">${
+                    normalizeSearchText(passwordResetSearchQuery)
+                      ? "No password reset requests match this search"
+                      : "No password reset requests yet."
+                  }</td></tr>`
+                }
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      async function loadPasswordResetRequests() {
+        try {
+          const res = await fetch(withNoCache(`${API_BASE}/admin/password-reset-requests`), {
+            headers: getHeaders(),
+            cache: "no-store",
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !Array.isArray(data.requests)) {
+            throw new Error(data.error || "Failed to load password reset requests");
+          }
+
+          cachedPasswordResetRequests = data.requests;
+          passwordResetRequestsLoaded = true;
+          renderPasswordResetRequests();
+          return true;
+        } catch (err) {
+          console.error("Failed to load password reset requests:", err);
+          showAlert("password-reset-alerts", "Failed to load password reset requests", "error");
+          return false;
+        }
+      }
+
+      async function markPasswordResetRequestSent(requestId = "") {
+        const safeRequestId = String(requestId || "").trim();
+        if (!safeRequestId) return;
+        try {
+          const res = await fetch(`${API_BASE}/admin/password-reset-requests/${encodeURIComponent(safeRequestId)}/mark-sent`, {
+            method: "POST",
+            headers: getHeaders(),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data?.request) {
+            throw new Error(data.error || "Failed to update password reset request");
+          }
+          showAlert("password-reset-alerts", "Password reset request marked as sent", "success");
+          await loadPasswordResetRequests();
+          await loadStats();
+        } catch (err) {
+          showAlert("password-reset-alerts", "Error: " + err.message, "error");
+        }
+      }
+
+      async function copyPasswordResetCode(requestId = "") {
+        const request = cachedPasswordResetRequests.find((entry) => entry.id === String(requestId || "").trim());
+        if (!request) return;
+        const code = getPasswordResetRequestCode(request);
+        if (!code) return;
+        const copied = await copyTextToClipboard(code);
+        showAlert("password-reset-alerts", copied ? "Reset code copied" : "Unable to copy reset code", copied ? "success" : "error");
+      }
+
+      function openSubscriptionRequestModalLegacy(requestId) {
+        const request = cachedSubscriptionRequests.find((entry) => entry.id === requestId);
+        if (!request) return;
+        selectedSubscriptionRequestId = request.id;
+        selectedSubscriptionProofDataUrl = String(request?.proofDataUrl || "").trim();
+        const modal = document.getElementById("subscription-request-modal");
+        const body = document.getElementById("subscription-request-body");
+        const title = document.getElementById("subscription-request-title");
+        const subtitle = document.getElementById("subscription-request-subtitle");
+        if (body) body.innerHTML = buildCompactMonetizationRequestDetailHtml(request);
+        if (title) title.textContent = `${getMonetizationRequestTitle(request)} • ${request.planLabel || request.plan || "Subscription"}`;
+        if (subtitle) subtitle.textContent = `${getMonetizationRequestContact(request)} • ${formatDate(request.requestedAt)}`;
+        if (title) title.textContent = getMonetizationRequestModalTitle(getMonetizationBucket(request));
+        modal?.classList.add("active");
+      }
+
+      function closeSubscriptionRequestModal() {
+        selectedSubscriptionRequestId = "";
+        document.getElementById("subscription-request-modal")?.classList.remove("active");
+      }
+
+      function openSubscriptionProofModal({ proofUrl = "", title: proofTitle = "Payment proof" } = {}) {
+        const safeUrl = String(proofUrl || "").trim();
+        const modal = document.getElementById("subscription-proof-modal");
+        const img = document.getElementById("subscription-proof-image");
+        const placeholder = document.getElementById("subscription-proof-placeholder");
+        const modalTitle = document.getElementById("subscription-proof-title");
+        const modalSubtitle = document.getElementById("subscription-proof-subtitle");
+        if (modalTitle) modalTitle.textContent = proofTitle || "Payment Proof";
+        if (modalSubtitle) modalSubtitle.textContent = safeUrl ? "Expanded transaction screenshot." : "No screenshot available.";
+        if (safeUrl) {
+          if (img) {
+            img.src = safeUrl;
+            img.classList.remove("hidden");
+          }
+          if (placeholder) placeholder.classList.add("hidden");
+        } else {
+          if (img) {
+            img.removeAttribute("src");
+            img.classList.add("hidden");
+          }
+          if (placeholder) placeholder.classList.remove("hidden");
+        }
+        modal?.classList.add("active");
+      }
+
+      function closeSubscriptionProofModal() {
+        document.getElementById("subscription-proof-modal")?.classList.remove("active");
+      }
+
+      function buildCompactMonetizationRequestDetailHtml(request = {}) {
+        const title = escapeHtml(getMonetizationRequestTitle(request));
+        const contact = escapeHtml(getMonetizationRequestContact(request));
+        const planLabel = escapeHtml(request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "None");
+        const amount = getMonetizationRequestAmount(request);
+        const amountText = amount ? `GHS ${amount}` : "GHS --";
+        const transactionId = escapeHtml(request?.transactionId || request?.paymentReference || request?.proofText || "None");
+        const proofUrl = String(request?.proofDataUrl || "").trim();
+        const proofBlock = proofUrl
+          ? `
+            <button
+              type="button"
+              class="subscription-proof-link"
+              data-action="open-proof-image"
+              data-proof-url="${escapeHtml(proofUrl)}"
+              data-proof-title="${title}"
+            >
+              View payment proof
+            </button>
+          `
+          : `<div class="subscription-proof-empty">No payment proof uploaded.</div>`;
+
+        const reviewActionButtons =
+          getMonetizationBucket(request) === "request"
+            ? `
+              <div class="subscription-detail-actions">
+                <button type="button" class="approve" data-action="approve-subscription-request" data-request-id="${escapeHtml(request?.id || "")}">Activate</button>
+                <button type="button" class="reject" data-action="reject-subscription-request" data-request-id="${escapeHtml(request?.id || "")}">Reject</button>
+              </div>
+            `
+            : "";
+
+        return `
+          <div class="subscription-detail-card subscription-approval-card">
+            <div class="subscription-approval-row">
+              <div class="subscription-approval-label">Student:</div>
+              <div class="subscription-approval-value">${title}</div>
+            </div>
+            <div class="subscription-approval-row">
+              <div class="subscription-approval-label">Contact:</div>
+              <div class="subscription-approval-value">${contact}</div>
+            </div>
+            <div class="subscription-approval-row">
+              <div class="subscription-approval-label">Plan:</div>
+              <div class="subscription-approval-value">${planLabel}</div>
+            </div>
+            <div class="subscription-approval-row">
+              <div class="subscription-approval-label">Amount:</div>
+              <div class="subscription-approval-value">${escapeHtml(amountText)}</div>
+            </div>
+            <div class="subscription-approval-row">
+              <div class="subscription-approval-label">Transaction ID:</div>
+              <div class="subscription-approval-value">${transactionId}</div>
+            </div>
+            <div class="subscription-approval-proof">${proofBlock}</div>
+          </div>
+
+          ${reviewActionButtons}
+        `;
+      }
+
+      function openSubscriptionRequestModal(requestId) {
+        const request = cachedSubscriptionRequests.find((entry) => entry.id === requestId);
+        if (!request) return;
+        selectedSubscriptionRequestId = request.id;
+        selectedSubscriptionProofDataUrl = String(request?.proofDataUrl || "").trim();
+        const modal = document.getElementById("subscription-request-modal");
+        const body = document.getElementById("subscription-request-body");
+        const title = document.getElementById("subscription-request-title");
+        if (body) body.innerHTML = buildCompactMonetizationRequestDetailHtml(request);
+        if (title) title.textContent = getMonetizationRequestModalTitle(getMonetizationBucket(request));
+        modal?.classList.add("active");
+      }
+
+      window.openSubscriptionRequestModal = openSubscriptionRequestModal;
+
+      function openSubscriptionRejectModal(requestId) {
+        const request = cachedSubscriptionRequests.find((entry) => entry.id === requestId);
+        if (!request) return;
+        pendingSubscriptionRejectRequestId = request.id;
+        const modal = document.getElementById("subscription-reject-modal");
+        const title = document.getElementById("subscription-reject-title");
+        const subtitle = document.getElementById("subscription-reject-subtitle");
+        const summary = document.getElementById("subscription-reject-summary");
+        const select = document.getElementById("subscription-reject-reason");
+        const amount = getMonetizationRequestAmount(request);
+        if (title) title.textContent = "Reject with Reason";
+        if (subtitle) subtitle.textContent = `${getMonetizationRequestTitle(request)} · ${request.planLabel || request.plan || "Subscription"}`;
+        if (summary) {
+          summary.innerHTML = `
+            <div><strong>Student:</strong> ${escapeHtml(getMonetizationRequestTitle(request))}</div>
+            <div><strong>Contact:</strong> ${escapeHtml(getMonetizationRequestContact(request))}</div>
+            <div><strong>Plan:</strong> ${escapeHtml(request?.planLabel || request?.user?.subscriptionPlanLabel || request?.plan || "--")}</div>
+            <div><strong>Amount:</strong> ${escapeHtml(amount ? formatGhsAmount(amount) : "GHS --")}</div>
+          `;
+        }
+        if (select) {
+          select.value = SUBSCRIPTION_REJECT_REASONS[0];
+        }
+        modal?.classList.add("active");
+      }
+
+      window.openSubscriptionRejectModal = openSubscriptionRejectModal;
+
+      function buildSubscriptionDecisionSummaryHtml(request = {}) {
+        const student = getMonetizationRequestTitle(request);
+        const contact = getMonetizationRequestContact(request);
+        const plan = String(request.planLabel || request.plan || "Subscription").trim();
+        const amount = getMonetizationRequestAmount(request);
+        const amountText = amount ? `GHS ${amount}` : "GHS --";
+        const requestedAt = formatDate(request.requestedAt);
+        return `
+          <div><strong>Student:</strong> ${escapeHtml(student)}</div>
+          <div><strong>Contact:</strong> ${escapeHtml(contact)}</div>
+          <div><strong>Plan:</strong> ${escapeHtml(plan)}</div>
+          <div><strong>Amount:</strong> ${escapeHtml(amountText)}</div>
+          <div><strong>Requested:</strong> ${escapeHtml(requestedAt || "Unknown")}</div>
+        `;
+      }
+
+      function openSubscriptionApproveModal(requestId) {
+        const request = cachedSubscriptionRequests.find((entry) => entry.id === requestId);
+        if (!request) return;
+        pendingSubscriptionApproveRequestId = request.id;
+        const modal = document.getElementById("subscription-approve-modal");
+        const summary = document.getElementById("subscription-approve-summary");
+        const title = document.getElementById("subscription-approve-title");
+        const subtitle = document.getElementById("subscription-approve-subtitle");
+        if (summary) summary.innerHTML = buildSubscriptionDecisionSummaryHtml(request);
+        if (title) title.textContent = "Activate Subscription";
+        if (subtitle) subtitle.textContent = "Confirm to unlock this member's access immediately.";
+        modal?.classList.add("active");
+      }
+
+      window.openSubscriptionApproveModal = openSubscriptionApproveModal;
+
+      function closeSubscriptionApproveModal() {
+        pendingSubscriptionApproveRequestId = "";
+        document.getElementById("subscription-approve-modal")?.classList.remove("active");
+      }
+
+      function closeSubscriptionRejectModal() {
+        pendingSubscriptionRejectRequestId = "";
+        document.getElementById("subscription-reject-modal")?.classList.remove("active");
+      }
+
+      async function reviewSubscriptionRequest(requestId, action, reviewNote = "") {
+        const safeRequestId = String(requestId || "").trim();
+        const safeAction = String(action || "").trim().toLowerCase();
+        if (!safeRequestId || !["approve", "reject"].includes(safeAction)) return false;
+        const promptLabel = safeAction === "approve" ? "activate" : "reject";
+        try {
+          const res = await fetch(`${API_BASE}/admin/subscription-requests/${encodeURIComponent(safeRequestId)}/${safeAction === "approve" ? "approve" : "reject"}`, {
+            method: "POST",
+            headers: getHeaders(),
+            body: JSON.stringify(reviewNote ? { reviewNote } : {}),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || `Failed to ${promptLabel} subscription request`);
+          }
+          showAlert("monetization-alerts", `Subscription request ${promptLabel}d successfully`, "success");
+          await loadMonetizationRequests();
+          await loadStats();
+          return true;
+        } catch (err) {
+          showAlert("monetization-alerts", `Error: ${err.message}`, "error");
+          return false;
+        }
       }
 
       function normalizeReportWarningTitle(value = "") {
@@ -553,6 +1894,27 @@ const API_BASE = storedApiBase || inferredApiBase;
         `;
       }
 
+      function renderIdentityStack(primary = "", secondary = "", fallback = "--") {
+        const safePrimary = String(primary || "").trim() || String(fallback || "--").trim() || "--";
+        const safeSecondary = String(secondary || "").trim();
+        if (!safeSecondary || safeSecondary.toLowerCase() === safePrimary.toLowerCase()) {
+          return escapeHtml(safePrimary);
+        }
+        return `
+          <div style="color:#0f172a;font-weight:600;line-height:1.2;">${escapeHtml(safePrimary)}</div>
+          <div style="font-size:12px;color:#64748b;line-height:1.2;">${escapeHtml(safeSecondary)}</div>
+        `;
+      }
+
+      function renderDetailIdentityItem(label, primary, secondary, fallback) {
+        return `
+          <div class="detail-item">
+            <span class="detail-label">${escapeHtml(label)}</span>
+            <div class="detail-value">${renderIdentityStack(primary, secondary, fallback)}</div>
+          </div>
+        `;
+      }
+
       function buildUserDetailsHtml(user) {
         const profileImage = String(user?.profileImage || "").trim();
         const initials = String(user?.name || user?.username || "U")
@@ -653,6 +2015,8 @@ const API_BASE = storedApiBase || inferredApiBase;
             : `<span class="user-avatar-fallback">${initials}</span>`;
           tr.classList.add("user-row");
           tr.dataset.userId = userId;
+          tr.tabIndex = 0;
+          tr.setAttribute("role", "button");
           tr.innerHTML = `
             <td class="user-avatar-cell">${avatarMarkup}</td>
             <td>${safeUsername}</td>
@@ -959,16 +2323,17 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       function buildReportDetailsHtml(report) {
+        const reporterUsername = displayValue(report?.reporter?.username || report?.reporterUsername || report?.reporterName);
         const reporterName = displayValue(report?.reporter?.name || report?.reporterName);
-        const targetName = displayValue(report?.target?.name || report?.targetName || report?.target?.username);
-        const targetUsername = displayValue(report?.target?.username || report?.targetUsername);
+        const targetUsername = displayValue(report?.target?.username || report?.targetUsername || report?.targetName);
+        const targetName = displayValue(report?.target?.name || report?.targetName);
         const targetType = String(report?.type || "").trim().toLowerCase() === "group" ? "Group" : "User";
         const status = String(report?.status || "open").trim();
         return `
           <div class="report-details-grid">
             ${renderDetailItem("Type", targetType)}
-            ${renderDetailItem("Reporter", reporterName)}
-            ${renderDetailItem("Target", targetName)}
+            ${renderDetailIdentityItem("Reporter", reporterUsername, reporterName, "Unknown reporter")}
+            ${renderDetailIdentityItem("Target", targetUsername, targetName, "Unknown target")}
             ${renderDetailItem("Target username", targetUsername)}
             ${renderDetailItem("Reason", report?.reason)}
             ${renderDetailItem("Reported at", formatDate(report?.createdAt))}
@@ -1051,6 +2416,8 @@ const API_BASE = storedApiBase || inferredApiBase;
           const row = document.createElement("tr");
           row.classList.add("group-row");
           row.dataset.groupId = String(group.id || "");
+          row.tabIndex = 0;
+          row.setAttribute("role", "button");
           const safeName = escapeHtml(displayValue(group.name));
           const safeOwner = escapeHtml(displayValue(group.ownerName || group.ownerUsername));
           const safeCreatedAt = escapeHtml(formatDate(group.createdAt));
@@ -1118,6 +2485,8 @@ const API_BASE = storedApiBase || inferredApiBase;
           const row = document.createElement("tr");
           row.classList.add("report-row");
           row.dataset.reportId = String(report.id || "");
+          row.tabIndex = 0;
+          row.setAttribute("role", "button");
           const targetLabel = String(report?.type || "").toLowerCase() === "group" ? "Group" : "User";
           const safeType = escapeHtml(targetLabel);
           const safeReporter = escapeHtml(displayValue(report.reporterName || report.reporter?.name));
@@ -1194,10 +2563,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           .every((term) => haystack.includes(term));
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       function getHeaders() {
         return {
           "Content-Type": "application/json",
@@ -1205,23 +2570,14 @@ const API_BASE = storedApiBase || inferredApiBase;
         };
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       function withNoCache(url) {
         const sep = url.includes("?") ? "&" : "?";
         return `${url}${sep}_ts=${Date.now()}`;
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       function showAlert(containerId, message, type = "info") {
         const container = document.getElementById(containerId);
-        if (!container) {
-          console.warn(`Missing alert container: ${containerId}`);
-          return;
-        }
+        if (!container) return;
         const alert = document.createElement("div");
         alert.className = `alert ${type}`;
         alert.textContent = message;
@@ -1229,9 +2585,15 @@ const API_BASE = storedApiBase || inferredApiBase;
         container.appendChild(alert);
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-      function getAdminNotificationBannerEl() {
+function getAdminLoginScreen() {
+        return document.getElementById("login-screen") || document.querySelector(".login-screen");
+      }
+
+      function getAdminDashboard() {
+        return document.getElementById("dashboard") || document.querySelector(".dashboard");
+      }
+
+            function getAdminNotificationBannerEl() {
         return document.getElementById("admin-notification-banner");
       }
 
@@ -1298,10 +2660,6 @@ const API_BASE = storedApiBase || inferredApiBase;
         );
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       function setAdminKeyVisibility(visible) {
         const passwordInput = document.getElementById("admin-key");
         const toggleBtn = document.querySelector(".password-toggle");
@@ -1332,29 +2690,19 @@ const API_BASE = storedApiBase || inferredApiBase;
         }
 
         try {
-<<<<<<< HEAD
-<<<<<<< HEAD
           await ensureAdminApiBase();
           // Validate the key against a protected admin endpoint.
           const res = await fetch(`${API_BASE}/admin/stats`, {
             headers: getHeaders(),
             cache: "no-store",
-=======
-          // Validate the key against a protected admin endpoint.
-          const res = await fetch(`${API_BASE}/admin/stats`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          // Validate the key against a protected admin endpoint.
-          const res = await fetch(`${API_BASE}/admin/stats`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           });
 
           if (res.ok) {
             localStorage.setItem(ADMIN_KEY_STORAGE, adminKey);
-            document.getElementById("login-screen").style.display = "none";
-            document.getElementById("dashboard").classList.add("active");
+            const loginScreen = getAdminLoginScreen();
+            if (loginScreen) loginScreen.style.display = "none";
+            const dashboard = getAdminDashboard();
+            if (dashboard) dashboard.classList.add("active");
             refreshData();
           } else {
             alert("Invalid admin key");
@@ -1367,8 +2715,6 @@ const API_BASE = storedApiBase || inferredApiBase;
       function logout() {
         localStorage.removeItem(ADMIN_KEY_STORAGE);
         adminKey = null;
-<<<<<<< HEAD
-<<<<<<< HEAD
         hideAdminNotificationBanner();
         broadcastChatAttachment = null;
         broadcastChatEmojiPickerOpen = false;
@@ -1380,19 +2726,15 @@ const API_BASE = storedApiBase || inferredApiBase;
         broadcastThreadOpen = false;
         selectedBroadcastStatusId = "";
         broadcastOverviewLoaded = false;
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        document.getElementById("login-screen").style.display = "block";
-        document.getElementById("dashboard").classList.remove("active");
+        const loginScreen = getAdminLoginScreen();
+        if (loginScreen) loginScreen.style.display = "block";
+        const dashboard = getAdminDashboard();
+        if (dashboard) dashboard.classList.remove("active");
         document.getElementById("admin-key").value = "";
         setAdminKeyVisibility(false);
       }
 
       async function refreshData() {
-<<<<<<< HEAD
-<<<<<<< HEAD
         const refreshBtn = document.getElementById("refresh-data-btn");
         const originalText = refreshBtn?.textContent || "Refresh";
 
@@ -1403,7 +2745,7 @@ const API_BASE = storedApiBase || inferredApiBase;
 
         await ensureAdminApiBase();
 
-        const [statsOk, usersOk, deletedUsersOk, deletedGroupsOk, groupsOk, reportsOk, questionsOk, exportOk, broadcastOk] = await Promise.all([
+        const [statsOk, usersOk, deletedUsersOk, deletedGroupsOk, groupsOk, reportsOk, questionsOk, exportOk, broadcastOk, monetizationOk, passwordResetOk] = await Promise.all([
           loadStats(),
           loadUsers(),
           loadDeletedUsers(),
@@ -1413,9 +2755,11 @@ const API_BASE = storedApiBase || inferredApiBase;
           loadQuestions(),
           loadExportData(),
           loadBroadcastOverview(),
+          loadMonetizationRequests(),
+          loadPasswordResetRequests(),
         ]);
 
-        if (statsOk && usersOk && deletedUsersOk && deletedGroupsOk && groupsOk && reportsOk && questionsOk && exportOk && broadcastOk) {
+        if (statsOk && usersOk && deletedUsersOk && deletedGroupsOk && groupsOk && reportsOk && questionsOk && exportOk && broadcastOk && monetizationOk && passwordResetOk) {
           showAlert("stats-alerts", "Dashboard refreshed successfully", "success");
         } else {
           showAlert(
@@ -1429,23 +2773,199 @@ const API_BASE = storedApiBase || inferredApiBase;
           refreshBtn.disabled = false;
           refreshBtn.textContent = originalText;
         }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        await loadStats();
-        await loadUsers();
-        await loadQuestions();
-        await loadExportData();
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+      }
+
+      function getAnalyticsPeriodData(period = selectedAnalyticsPeriod) {
+        const analytics = cachedAdminStats?.activityAnalytics || null;
+        return analytics?.periods?.[period] || analytics?.periods?.week || null;
+      }
+
+      function formatAnalyticsDuration(minutes = 0) {
+        const value = Math.max(0, Number(minutes) || 0);
+        if (value < 1) return `${value.toFixed(1)}m`;
+        if (value < 60) return `${Math.round(value * 10) / 10}m`;
+        const hours = Math.floor(value / 60);
+        const remaining = Math.round((value - hours * 60) * 10) / 10;
+        return remaining > 0 ? `${hours}h ${remaining}m` : `${hours}h`;
+      }
+
+      function buildAnalyticsChartSvg({
+        labels = [],
+        primary = [],
+        secondary = [],
+        primaryLabel = "Series A",
+        secondaryLabel = "Series B",
+        primaryColor = "#0f3f7f",
+        secondaryColor = "#0f766e",
+      } = {}) {
+        const width = 980;
+        const height = 260;
+        const paddingX = 36;
+        const paddingTop = 18;
+        const paddingBottom = 42;
+        const chartHeight = height - paddingTop - paddingBottom;
+        const values = [...primary, ...secondary].map((value) => Math.max(0, Number(value) || 0));
+        const maxValue = Math.max(1, ...values);
+        if (!labels.length) {
+          return '<div class="analytics-empty">No activity data yet.</div>';
+        }
+
+        const xStep = labels.length > 1 ? (width - paddingX * 2) / (labels.length - 1) : 0;
+        const yFor = (value) => paddingTop + chartHeight - ((Math.max(0, Number(value) || 0) / maxValue) * chartHeight);
+        const buildPath = (series = []) =>
+          series
+            .map((value, index) => `${index === 0 ? "M" : "L"}${(paddingX + index * xStep).toFixed(1)},${yFor(value).toFixed(1)}`)
+            .join(" ");
+        const primaryPath = buildPath(primary);
+        const secondaryPath = buildPath(secondary);
+        const baselineY = paddingTop + chartHeight;
+        const tickStep = Math.max(1, Math.ceil(labels.length / 6));
+        const ticks = labels
+          .map((label, index) => {
+            if (index !== 0 && index !== labels.length - 1 && index % tickStep !== 0) return "";
+            const x = paddingX + index * xStep;
+            return `
+              <text x="${x.toFixed(1)}" y="${height - 12}" text-anchor="middle" fill="#64748b" font-size="11" font-weight="700">${escapeHtml(label)}</text>
+            `;
+          })
+          .join("");
+
+        return `
+          <svg viewBox="0 0 ${width} ${height}" class="analytics-chart-svg" role="img" aria-label="${escapeHtml(primaryLabel)} and ${escapeHtml(secondaryLabel)} chart">
+            ${[0, 0.25, 0.5, 0.75, 1]
+              .map((ratio) => {
+                const y = paddingTop + chartHeight - chartHeight * ratio;
+                const label = `${Math.round(maxValue * ratio)}`;
+                return `
+                  <line x1="${paddingX}" y1="${y.toFixed(1)}" x2="${width - paddingX}" y2="${y.toFixed(1)}" stroke="#e2e8f0" stroke-width="1" />
+                  <text x="10" y="${(y + 4).toFixed(1)}" fill="#94a3b8" font-size="11" font-weight="700">${escapeHtml(label)}</text>
+                `;
+              })
+              .join("")}
+            <line x1="${paddingX}" y1="${baselineY}" x2="${width - paddingX}" y2="${baselineY}" stroke="#cbd5e1" stroke-width="1.4" />
+            <path d="${primaryPath}" fill="none" stroke="${primaryColor}" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="${secondaryPath}" fill="none" stroke="${secondaryColor}" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round" />
+            ${primary.map((value, index) => {
+              const cx = paddingX + index * xStep;
+              const cy = yFor(value);
+              return `
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#ffffff" opacity="0.9" />
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.25" fill="#ffffff" stroke="${primaryColor}" stroke-width="2.6" vector-effect="non-scaling-stroke" />
+              `;
+            }).join("")}
+            ${secondary.map((value, index) => {
+              const cx = paddingX + index * xStep;
+              const cy = yFor(value);
+              return `
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#ffffff" opacity="0.9" />
+                <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.25" fill="#ffffff" stroke="${secondaryColor}" stroke-width="2.6" vector-effect="non-scaling-stroke" />
+              `;
+            }).join("")}
+            ${ticks}
+            <text x="${width - paddingX}" y="${paddingTop + 12}" text-anchor="end" fill="${primaryColor}" font-size="11" font-weight="800">${escapeHtml(primaryLabel)}</text>
+            <text x="${width - paddingX}" y="${paddingTop + 28}" text-anchor="end" fill="${secondaryColor}" font-size="11" font-weight="800">${escapeHtml(secondaryLabel)}</text>
+          </svg>
+        `;
+      }
+
+      function renderAdminAnalyticsPanel() {
+        const analytics = cachedAdminStats?.activityAnalytics || null;
+        const period = selectedAnalyticsPeriod || "week";
+        const periodData = getAnalyticsPeriodData(period);
+
+        document.querySelectorAll("[data-analytics-period]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.analyticsPeriod === period);
+        });
+
+        const summary = periodData?.summary || {};
+        const series = Array.isArray(periodData?.series) ? periodData.series : [];
+        const labels = series.map((row) => String(row?.label || "").trim());
+        const signups = series.map((row) => Number(row?.signups) || 0);
+        const sessions = series.map((row) => Number(row?.sessions) || 0);
+        const resets = series.map((row) => Number(row?.resets) || 0);
+        const subscriptions = series.map((row) => Number(row?.subscriptions) || 0);
+
+        const setText = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = String(value);
+        };
+
+        setText("analytics-new-users", summary.signups ?? 0);
+        setText("analytics-active-users", summary.activeUsers ?? 0);
+        setText("analytics-sessions", summary.sessions ?? 0);
+        setText("analytics-avg-time", formatAnalyticsDuration(summary.avgSessionMinutes ?? 0));
+        setText("analytics-resets", summary.resets ?? 0);
+        setText("analytics-subscriptions", summary.subscriptions ?? 0);
+
+        const periodLabel = document.getElementById("analytics-period-label");
+        if (periodLabel) periodLabel.textContent = periodData?.label || "Last 7 days";
+
+        const activityNote = document.getElementById("analytics-activity-note");
+        if (activityNote) {
+          activityNote.textContent = `${String(analytics?.overall?.totalUsers ?? 0)} total users tracked`;
+        }
+
+        const mainChart = document.getElementById("analytics-main-chart");
+        if (mainChart) {
+          mainChart.innerHTML = buildAnalyticsChartSvg({
+            labels,
+            primary: signups,
+            secondary: sessions,
+            primaryLabel: "New users",
+            secondaryLabel: "Sessions",
+            primaryColor: "#0f3f7f",
+            secondaryColor: "#0f766e",
+          });
+        }
+
+        const secondaryChart = document.getElementById("analytics-secondary-chart");
+        if (secondaryChart) {
+          secondaryChart.innerHTML = buildAnalyticsChartSvg({
+            labels,
+            primary: resets,
+            secondary: subscriptions,
+            primaryLabel: "Reset requests",
+            secondaryLabel: "Subscription requests",
+            primaryColor: "#b45309",
+            secondaryColor: "#7c3aed",
+          });
+        }
+
+        const feed = Array.isArray(analytics?.recentActivity) ? analytics.recentActivity : [];
+        const feedEl = document.getElementById("analytics-feed");
+        const feedCountEl = document.getElementById("analytics-feed-count");
+        if (feedCountEl) {
+          feedCountEl.textContent = `${feed.length} recent items`;
+        }
+        if (feedEl) {
+          if (feed.length === 0) {
+            feedEl.innerHTML = '<div class="analytics-empty">No recent activity yet.</div>';
+          } else {
+            feedEl.innerHTML = feed
+              .map((entry) => {
+                const type = String(entry?.type || "activity").trim();
+                const title = escapeHtml(String(entry?.title || "Activity").trim());
+                const subtitle = escapeHtml(String(entry?.subtitle || "").trim());
+                const time = escapeHtml(formatDate(entry?.at));
+                const typeLabel = escapeHtml(type.replace(/_/g, " "));
+                return `
+                  <div class="analytics-feed-item">
+                    <div class="analytics-feed-type">${typeLabel}</div>
+                    <div>
+                      <div class="analytics-feed-title">${title}</div>
+                      <div class="analytics-feed-subtitle">${subtitle || "&nbsp;"}</div>
+                    </div>
+                    <div class="analytics-feed-time">${time}</div>
+                  </div>
+                `;
+              })
+              .join("");
+          }
+        }
       }
 
       async function loadStats() {
         try {
-<<<<<<< HEAD
-<<<<<<< HEAD
           const res = await fetch(withNoCache(`${API_BASE}/admin/stats`), {
             headers: getHeaders(),
             cache: "no-store",
@@ -1454,31 +2974,21 @@ const API_BASE = storedApiBase || inferredApiBase;
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error || `Failed to load stats (${res.status})`);
           }
-=======
-          const res = await fetch(`${API_BASE}/admin/stats`, {
-            headers: getHeaders(),
-          });
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          const res = await fetch(`${API_BASE}/admin/stats`, {
-            headers: getHeaders(),
-          });
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           const data = await res.json();
+          cachedAdminStats = data;
 
-          document.getElementById("stat-users").textContent = data.totalUsers;
-          document.getElementById("stat-questions").textContent =
-            data.totalQuestions;
-          document.getElementById("stat-attempts").textContent =
-            data.totalAttempts;
-          document.getElementById("stat-categories").textContent =
-            data.totalCategories;
-          document.getElementById("stat-avg-score").textContent =
-            data.averageScore + "%";
-          document.getElementById("stat-sync-events").textContent =
-            data.totalSyncEvents;
-<<<<<<< HEAD
-<<<<<<< HEAD
+          const statUsers = document.getElementById("stat-users");
+          if (statUsers) statUsers.textContent = String(data.totalUsers ?? 0);
+          const statQuestions = document.getElementById("stat-questions");
+          if (statQuestions) statQuestions.textContent = String(data.totalQuestions ?? 0);
+          const statAttempts = document.getElementById("stat-attempts");
+          if (statAttempts) statAttempts.textContent = String(data.totalAttempts ?? 0);
+          const statCategories = document.getElementById("stat-categories");
+          if (statCategories) statCategories.textContent = String(data.totalCategories ?? 0);
+          const statAvgScore = document.getElementById("stat-avg-score");
+          if (statAvgScore) statAvgScore.textContent = String(data.averageScore ?? 0) + "%";
+          const statSyncEvents = document.getElementById("stat-sync-events");
+          if (statSyncEvents) statSyncEvents.textContent = String(data.totalSyncEvents ?? 0);
           const statGroups = document.getElementById("stat-groups");
           if (statGroups) {
             statGroups.textContent = String(data.totalGroups ?? 0);
@@ -1493,12 +3003,30 @@ const API_BASE = storedApiBase || inferredApiBase;
             reportsTabBadge.textContent = String(reportCount);
             reportsTabBadge.classList.add("hidden");
           }
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
+
+          const monetizationCounts = data.subscriptionCounts || {};
+          const monetizationRequestCount = document.getElementById("monetization-request-count");
+          if (monetizationRequestCount) {
+            monetizationRequestCount.textContent = String(monetizationCounts.request ?? 0);
+          }
+          const monetizationActivatedCount = document.getElementById("monetization-activated-count");
+          if (monetizationActivatedCount) {
+            monetizationActivatedCount.textContent = String(monetizationCounts.activated ?? 0);
+          }
+          const monetizationRejectedCount = document.getElementById("monetization-rejected-count");
+          if (monetizationRejectedCount) {
+            monetizationRejectedCount.textContent = String(monetizationCounts.rejected ?? 0);
+          }
+          const monetizationExpiredCount = document.getElementById("monetization-expired-count");
+          if (monetizationExpiredCount) {
+            monetizationExpiredCount.textContent = String(monetizationCounts.expired ?? 0);
+          }
 
           const catPerf = document.getElementById("category-performance");
+          if (!catPerf) {
+            renderAdminAnalyticsPanel();
+            return true;
+          }
           catPerf.innerHTML = "";
           const categoryRows = Array.isArray(data.categories)
             ? data.categories
@@ -1556,49 +3084,27 @@ const API_BASE = storedApiBase || inferredApiBase;
               catPerf.appendChild(div);
             });
           }
-<<<<<<< HEAD
-<<<<<<< HEAD
+
+          renderAdminAnalyticsPanel();
           return true;
         } catch (err) {
           console.error("Failed to load stats:", err);
           showAlert("stats-alerts", "Failed to load statistics", "error");
           return false;
-=======
-        } catch (err) {
-          console.error("Failed to load stats:", err);
-          showAlert("stats-alerts", "Failed to load statistics", "error");
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-        } catch (err) {
-          console.error("Failed to load stats:", err);
-          showAlert("stats-alerts", "Failed to load statistics", "error");
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         }
       }
 
       async function loadUsers() {
         try {
-<<<<<<< HEAD
-<<<<<<< HEAD
           const res = await fetch(withNoCache(`${API_BASE}/admin/users`), {
             headers: getHeaders(),
             cache: "no-store",
-=======
-          const res = await fetch(`${API_BASE}/admin/users`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          const res = await fetch(`${API_BASE}/admin/users`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data.users)) {
             throw new Error(data.error || "Failed to load users");
           }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
           cachedUsers = data.users;
           renderUsersTable();
           return true;
@@ -1695,70 +3201,19 @@ const API_BASE = storedApiBase || inferredApiBase;
           console.error("Failed to load reports:", err);
           showAlert("reports-alerts", "Failed to load reports", "error");
           return false;
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-          const tbody = document.getElementById("users-table");
-          tbody.innerHTML = "";
-
-          if (data.users.length === 0) {
-            tbody.innerHTML =
-              '<tr><td colspan="5" style="text-align: center; color: #ccc;">No users yet</td></tr>';
-            return;
-          }
-
-          data.users.forEach((user) => {
-            const tr = document.createElement("tr");
-            const createdDate = new Date(user.createdAt).toLocaleDateString();
-            const safeId = escapeHtml(user.id);
-            const safeName = escapeHtml(user.name);
-            const safeContact = escapeHtml(user.contact || user.email || "");
-            const safeCreatedDate = escapeHtml(createdDate);
-            tr.innerHTML = `
-                        <td>${safeId.substring(0, 8)}...</td>
-                        <td>${safeName}</td>
-                        <td>${safeContact}</td>
-                        <td>${safeCreatedDate}</td>
-                        <td>
-                            <div class="actions">
-                                <button class="btn-small danger" data-action="delete-user" data-user-id="${safeId}">Delete</button>
-                            </div>
-                        </td>
-                    `;
-            tbody.appendChild(tr);
-          });
-        } catch (err) {
-          console.error("Failed to load users:", err);
-          showAlert("users-alerts", "Failed to load users", "error");
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         }
       }
 
       async function loadQuestions() {
         try {
-<<<<<<< HEAD
-<<<<<<< HEAD
           const res = await fetch(withNoCache(`${API_BASE}/admin/questions`), {
             headers: getHeaders(),
             cache: "no-store",
-=======
-          const res = await fetch(`${API_BASE}/admin/questions`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          const res = await fetch(`${API_BASE}/admin/questions`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data.questions)) {
             throw new Error(data.error || "Failed to load questions");
           }
-<<<<<<< HEAD
-<<<<<<< HEAD
           const sortedQuestions = [...data.questions].sort((a, b) => {
             const aOrder = questionOrderValue(a);
             const bOrder = questionOrderValue(b);
@@ -1844,71 +3299,6 @@ const API_BASE = storedApiBase || inferredApiBase;
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error || `Failed to load export stats (${res.status})`);
           }
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-          cachedQuestions = data.questions;
-
-          const tbody = document.getElementById("questions-table");
-          tbody.innerHTML = "";
-
-          if (data.questions.length === 0) {
-            tbody.innerHTML =
-              '<tr><td colspan="5" style="text-align: center; color: #ccc;">No questions yet</td></tr>';
-            return;
-          }
-
-          data.questions.slice(0, 20).forEach((q) => {
-            const tr = document.createElement("tr");
-            const textValue = String(q.text || "");
-            const text =
-              textValue.length > 50
-                ? `${textValue.substring(0, 50)}...`
-                : textValue;
-            const options = Array.isArray(q.options) ? q.options.length : 0;
-            const safeId = escapeHtml(q.id);
-            const safeText = escapeHtml(text);
-            const safeCategory = escapeHtml(q.category);
-            const safeTopic = escapeHtml(q.topicSlug || "");
-            const safeSection = escapeHtml(q.sectionId || "");
-            tr.innerHTML = `
-                        <td>${safeId}</td>
-                        <td>${safeText}</td>
-                        <td>
-                          <span class="category-chip">${safeCategory}</span>
-                          ${safeTopic ? `<div style="font-size:12px;color:#64748b;margin-top:6px;">topic: ${safeTopic}${safeSection ? `#${safeSection}` : ""}</div>` : ""}
-                        </td>
-                        <td>${options} options</td>
-                        <td>
-                            <div class="actions">
-                                <button class="btn-small" data-action="edit-question" data-question-id="${safeId}">Edit</button>
-                                <button class="btn-small danger" data-action="delete-question" data-question-id="${safeId}">Delete</button>
-                            </div>
-                        </td>
-                    `;
-            tbody.appendChild(tr);
-          });
-
-          if (data.questions.length > 20) {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `<td colspan="5" style="text-align: center; color: #999;">... and ${data.questions.length - 20} more</td>`;
-            tbody.appendChild(tr);
-          }
-        } catch (err) {
-          console.error("Failed to load questions:", err);
-          showAlert("questions-alerts", "Failed to load questions", "error");
-        }
-      }
-
-      async function loadExportData() {
-        try {
-          const res = await fetch(`${API_BASE}/admin/stats`, {
-            headers: getHeaders(),
-          });
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           const data = await res.json();
 
           document.getElementById("export-users").textContent = data.totalUsers;
@@ -1918,8 +3308,6 @@ const API_BASE = storedApiBase || inferredApiBase;
             data.totalAttempts;
           document.getElementById("export-sync").textContent =
             data.totalSyncEvents;
-<<<<<<< HEAD
-<<<<<<< HEAD
           return true;
         } catch (err) {
           console.error("Failed to load export data:", err);
@@ -2204,10 +3592,11 @@ const API_BASE = storedApiBase || inferredApiBase;
         if (!value) return "--";
         const parsed = new Date(value);
         if (Number.isNaN(parsed.getTime())) return "--";
-        return parsed.toLocaleString([], {
-          dateStyle: "medium",
-          timeStyle: "short",
-        });
+        const day = String(parsed.getDate()).padStart(2, "0");
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const year = String(parsed.getFullYear()).slice(-2);
+        const time = parsed.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        return `${day}/${month}/${year}, ${time}`;
       }
 
       function formatBroadcastTime(value) {
@@ -2224,9 +3613,10 @@ const API_BASE = storedApiBase || inferredApiBase;
         if (!value) return "";
         const parsed = new Date(value);
         if (Number.isNaN(parsed.getTime())) return "";
-        return parsed.toLocaleDateString([], {
-          dateStyle: "medium",
-        });
+        const day = String(parsed.getDate()).padStart(2, "0");
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const year = String(parsed.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
       }
 
       function isSameBroadcastCalendarDay(left = "", right = "") {
@@ -2253,15 +3643,20 @@ const API_BASE = storedApiBase || inferredApiBase;
 
       function syncBroadcastThreadUi() {
         const mainEl = document.getElementById("broadcast-main");
+        const listPanelEl = document.querySelector(".broadcast-thread-list-panel");
         const panelEl = document.getElementById("broadcast-thread-panel");
         const hasSelectedThread = Boolean(selectedBroadcastThreadKey && getBroadcastThreadSummary(selectedBroadcastThreadKey));
+        const isDesktop = window.matchMedia("(min-width: 769px)").matches;
+        const shouldShowThreadPanel = isDesktop || (broadcastThreadOpen && hasSelectedThread);
+        const shouldShowListPanel = isDesktop || !shouldShowThreadPanel;
         if (mainEl) {
-          mainEl.classList.toggle("thread-open", broadcastThreadOpen && hasSelectedThread);
+          mainEl.classList.toggle("thread-open", isDesktop ? true : (broadcastThreadOpen && hasSelectedThread));
         }
+        listPanelEl?.classList.toggle("hidden", !shouldShowListPanel);
         if (panelEl) {
-          panelEl.classList.toggle("hidden", !(broadcastThreadOpen && hasSelectedThread));
+          panelEl.classList.toggle("hidden", !shouldShowThreadPanel);
         }
-        syncBroadcastMobileComposerDock(broadcastThreadOpen && hasSelectedThread);
+        syncBroadcastMobileComposerDock(!isDesktop && broadcastThreadOpen && hasSelectedThread);
       }
 
       function buildBroadcastAttachmentMarkup(attachment = {}, { compact = false } = {}) {
@@ -2345,26 +3740,29 @@ const API_BASE = storedApiBase || inferredApiBase;
         const subtitleEl = document.getElementById("broadcast-attachment-viewer-subtitle");
         const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
         if (!titleEl || !subtitleEl || !bodyEl) return;
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
         const safeDataUrl = escapeHtml(dataUrl);
         const safeFileName = escapeHtml(fileName);
         const safeMimeType = escapeHtml(mimeType || "application/octet-stream");
-        titleEl.textContent = fileName || "Attachment";
-        subtitleEl.textContent = mimeType || "Broadcast attachment";
+        const isMedia = mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/");
+        titleEl.textContent = isMedia ? "" : (fileName || "Attachment");
+        subtitleEl.textContent = isMedia ? "" : (mimeType || "Broadcast attachment");
+        modalEl?.classList.toggle("is-simple-view", isMedia);
         if (mimeType.startsWith("image/")) {
           bodyEl.innerHTML = `
-            <div class="broadcast-attachment-viewer-stage">
+            <div class="broadcast-attachment-viewer-stage is-media-only">
               <img src="${safeDataUrl}" alt="${safeFileName}" loading="lazy" />
             </div>
           `;
         } else if (mimeType.startsWith("video/")) {
           bodyEl.innerHTML = `
-            <div class="broadcast-attachment-viewer-stage">
+            <div class="broadcast-attachment-viewer-stage is-media-only">
               <video controls playsinline src="${safeDataUrl}"></video>
             </div>
           `;
         } else if (mimeType.startsWith("audio/")) {
           bodyEl.innerHTML = `
-            <div class="broadcast-attachment-viewer-stage">
+            <div class="broadcast-attachment-viewer-stage is-media-only">
               <audio controls src="${safeDataUrl}"></audio>
             </div>
           `;
@@ -2385,11 +3783,12 @@ const API_BASE = storedApiBase || inferredApiBase;
           `;
         }
         document.getElementById("broadcast-attachment-viewer-actions")?.replaceChildren();
-        document.getElementById("broadcast-attachment-viewer-modal")?.classList.add("active");
+        modalEl?.classList.add("active");
       }
 
       function closeBroadcastAttachmentViewer() {
-        document.getElementById("broadcast-attachment-viewer-modal")?.classList.remove("active");
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
+        modalEl?.classList.remove("active", "is-simple-view");
         broadcastChatAttachmentViewerMode = "sent";
         broadcastChatAttachmentViewerAttachment = null;
       }
@@ -2471,6 +3870,8 @@ const API_BASE = storedApiBase || inferredApiBase;
         const subtitleEl = document.getElementById("broadcast-attachment-viewer-subtitle");
         const bodyEl = document.getElementById("broadcast-attachment-viewer-body");
         if (!titleEl || !subtitleEl || !bodyEl) return;
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
+        modalEl?.classList.remove("is-simple-view");
         titleEl.textContent = fileName || "Attachment";
         subtitleEl.textContent = String(mode || "sent").toLowerCase() === "composer"
           ? "Preview and edit the selected attachment"
@@ -2486,7 +3887,8 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       function closeBroadcastComposerAttachmentViewer() {
-        document.getElementById("broadcast-attachment-viewer-modal")?.classList.remove("active");
+        const modalEl = document.getElementById("broadcast-attachment-viewer-modal");
+        modalEl?.classList.remove("active", "is-simple-view");
         broadcastChatAttachmentViewerMode = "sent";
         broadcastChatAttachmentViewerAttachment = null;
       }
@@ -2514,6 +3916,13 @@ const API_BASE = storedApiBase || inferredApiBase;
           } else {
             previewEl.innerHTML = "";
             previewEl.classList.add("hidden");
+          }
+        }
+        if (safeKind === "chat") {
+          const sendBtn = document.getElementById("broadcast-chat-send-btn");
+          if (sendBtn instanceof HTMLElement) {
+            sendBtn.disabled = broadcastChatSending;
+            sendBtn.classList.toggle("is-disabled", broadcastChatSending);
           }
         }
       }
@@ -2848,6 +4257,7 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       async function sendAdminBroadcastMessage() {
+        if (broadcastChatSending) return;
         const threadKey = getActiveBroadcastThreadKey();
         const messageEl = document.getElementById("broadcast-chat-message");
         const message = String(messageEl?.value || "").trim();
@@ -2859,6 +4269,11 @@ const API_BASE = storedApiBase || inferredApiBase;
           showAlert("broadcast-alerts", "Write a message or attach a file first", "error");
           return;
         }
+        broadcastChatSending = true;
+        if (!broadcastChatClientRequestId) {
+          broadcastChatClientRequestId = `broadcast-chat-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+        }
+        syncBroadcastAttachmentUi("chat");
         try {
           const res = await fetch(`${API_BASE}/admin/broadcast/threads/${encodeURIComponent(threadKey)}/message`, {
             method: "POST",
@@ -2867,6 +4282,7 @@ const API_BASE = storedApiBase || inferredApiBase;
               message,
               attachmentDataUrl: broadcastChatAttachment?.dataUrl || "",
               attachmentFileName: broadcastChatAttachment?.fileName || "",
+              clientRequestId: broadcastChatClientRequestId,
             }),
           });
           const data = await res.json().catch(() => ({}));
@@ -2878,6 +4294,7 @@ const API_BASE = storedApiBase || inferredApiBase;
             autoSizeBroadcastChatMessage();
           }
           broadcastChatAttachment = null;
+          broadcastChatClientRequestId = "";
           const fileInput = document.getElementById("broadcast-chat-file");
           if (fileInput) fileInput.value = "";
           syncBroadcastAttachmentUi("chat");
@@ -2889,6 +4306,9 @@ const API_BASE = storedApiBase || inferredApiBase;
           showAlert("broadcast-alerts", `Notice sent to ${Number(data.deliveredTo || 0)} recipients.`, "success");
         } catch (err) {
           showAlert("broadcast-alerts", "Error: " + err.message, "error");
+        } finally {
+          broadcastChatSending = false;
+          syncBroadcastAttachmentUi("chat");
         }
       }
 
@@ -2959,21 +4379,6 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       async function deleteUser(userId) {
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        } catch (err) {
-          console.error("Failed to load export data:", err);
-        }
-      }
-
-      async function deleteUser(userId) {
-        if (!confirm("Delete this user? This action cannot be undone.")) return;
-
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         try {
           const safeUserId = encodeURIComponent(userId);
           const res = await fetch(`${API_BASE}/admin/users/${safeUserId}`, {
@@ -2982,8 +4387,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           });
 
           if (res.ok) {
-<<<<<<< HEAD
-<<<<<<< HEAD
             closeDeleteUserConfirmModal();
             closeUserDetailsModal();
             showAlert("users-alerts", "User moved to archive successfully", "success");
@@ -2996,25 +4399,12 @@ const API_BASE = storedApiBase || inferredApiBase;
           } else {
             const data = await res.json().catch(() => ({}));
             showAlert("users-alerts", data.error || "Failed to archive user", "error");
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-            showAlert("users-alerts", "User deleted successfully", "success");
-            loadUsers();
-          } else {
-            showAlert("users-alerts", "Failed to delete user", "error");
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           }
         } catch (err) {
           showAlert("users-alerts", "Error: " + err.message, "error");
         }
       }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       async function confirmDeleteSelectedUser() {
         if (!pendingDeleteUserId) return;
         const userId = pendingDeleteUserId;
@@ -3047,10 +4437,6 @@ const API_BASE = storedApiBase || inferredApiBase;
         }
       }
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       async function deleteQuestion(questionId) {
         if (!confirm("Delete this question? This action cannot be undone."))
           return;
@@ -3081,6 +4467,13 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       function switchTab(tabName, btnEl = null) {
+        const requestedTab = String(tabName || "stats").trim().toLowerCase();
+        const previousTab = adminActiveTab || "stats";
+        adminActiveTab = requestedTab;
+        if (requestedTab === "broadcast") {
+          adminBroadcastReturnTab = previousTab && previousTab !== "broadcast" ? previousTab : adminBroadcastReturnTab || "stats";
+        }
+
         // Hide all content
         document
           .querySelectorAll(".content")
@@ -3090,39 +4483,54 @@ const API_BASE = storedApiBase || inferredApiBase;
           .forEach((el) => el.classList.remove("active"));
 
         // Show selected content
-        document.getElementById(tabName).classList.add("active");
+        document.getElementById(requestedTab)?.classList.add("active");
         if (btnEl) {
           btnEl.classList.add("active");
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-          return;
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          return;
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         }
         const activeBtn = document.querySelector(
-          `.tab-btn[data-tab="${tabName}"]`,
+          `.tab-btn[data-tab="${requestedTab}"]`,
         );
         if (activeBtn) activeBtn.classList.add("active");
-<<<<<<< HEAD
-<<<<<<< HEAD
+
+        const dashboardEl = document.getElementById("dashboard");
+        document.body.classList.toggle("admin-broadcast-active", requestedTab === "broadcast");
+        dashboardEl?.classList.toggle("broadcast-mode", requestedTab === "broadcast");
 
         const reportsTabBadge = document.getElementById("reports-tab-badge");
-        if (tabName === "groups" && groupsLoaded) {
+        if (requestedTab === "groups" && groupsLoaded) {
           renderGroupsTable();
         }
-        if (tabName === "reports" && reportsLoaded) {
+        if (requestedTab === "reports" && reportsLoaded) {
           hideAdminNotificationBanner();
           reportsTabBadge?.classList.add("hidden");
           renderReportsTable();
         }
-        if (tabName === "broadcast") {
+        if (requestedTab === "broadcast") {
           if (broadcastOverviewLoaded) {
             renderBroadcastOverview();
           } else {
             void loadBroadcastOverview();
+          }
+        }
+        if (requestedTab === "monetization") {
+          if (subscriptionRequestsLoaded) {
+            renderMonetizationPanel();
+          } else {
+            void loadMonetizationRequests();
+          }
+        }
+        if (requestedTab === "analytics") {
+          if (cachedAdminStats) {
+            renderAdminAnalyticsPanel();
+          } else {
+            void loadStats();
+          }
+        }
+        if (requestedTab === "password-resets") {
+          if (passwordResetRequestsLoaded) {
+            renderPasswordResetRequests();
+          } else {
+            void loadPasswordResetRequests();
           }
         }
       }
@@ -3150,10 +4558,6 @@ const API_BASE = storedApiBase || inferredApiBase;
         } else {
           void loadGroups();
         }
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       }
 
       function openUserModal() {
@@ -3219,13 +4623,7 @@ const API_BASE = storedApiBase || inferredApiBase;
         document.getElementById("question-modal").classList.remove("active");
         document.getElementById("q-text").value = "";
         document.getElementById("q-category").value = "";
-<<<<<<< HEAD
-<<<<<<< HEAD
         document.getElementById("q-rotation").value = "";
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         document.getElementById("q-topic-slug").value = "";
         document.getElementById("q-section-id").value = "";
         document.getElementById("q-correct").value = "";
@@ -3236,39 +4634,21 @@ const API_BASE = storedApiBase || inferredApiBase;
         let question = cachedQuestions.find((q) => String(q.id) === String(questionId));
 
         if (!question) {
-<<<<<<< HEAD
-<<<<<<< HEAD
           const res = await fetch(withNoCache(`${API_BASE}/admin/questions`), {
             headers: getHeaders(),
             cache: "no-store",
-=======
-          const res = await fetch(`${API_BASE}/admin/questions`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          const res = await fetch(`${API_BASE}/admin/questions`, {
-            headers: getHeaders(),
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           });
           const data = await res.json();
           if (!res.ok || !Array.isArray(data.questions)) {
             alert(data.error || "Failed to load questions");
             return;
           }
-<<<<<<< HEAD
-<<<<<<< HEAD
           cachedQuestions = [...data.questions].sort((a, b) => {
             const aOrder = questionOrderValue(a);
             const bOrder = questionOrderValue(b);
             if (aOrder !== bOrder) return aOrder - bOrder;
             return (Number(a?.id) || 0) - (Number(b?.id) || 0);
           });
-=======
-          cachedQuestions = data.questions;
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          cachedQuestions = data.questions;
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           question = cachedQuestions.find((q) => String(q.id) === String(questionId));
         }
 
@@ -3286,46 +4666,22 @@ const API_BASE = storedApiBase || inferredApiBase;
 
         document.getElementById("q-text").value = question.text || "";
         document.getElementById("q-category").value = question.category || "";
-<<<<<<< HEAD
-<<<<<<< HEAD
         document.getElementById("q-rotation").value = question.rotation || question.rotations?.[0] || "";
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         document.getElementById("q-topic-slug").value = question.topicSlug || "";
         document.getElementById("q-section-id").value = question.sectionId || "";
         document.getElementById("q-correct").value = toCorrectOptionIndex(question);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         const effectiveOptions = getEffectiveOptions(question);
         const optionEls = document.querySelectorAll(".q-option");
         optionEls.forEach((el, index) => {
           el.value = effectiveOptions[index] || "";
-=======
-        const optionEls = document.querySelectorAll(".q-option");
-        optionEls.forEach((el, index) => {
-          el.value = Array.isArray(question.options) ? question.options[index] || "" : "";
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-        const optionEls = document.querySelectorAll(".q-option");
-        optionEls.forEach((el, index) => {
-          el.value = Array.isArray(question.options) ? question.options[index] || "" : "";
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         });
       }
 
       async function saveQuestion() {
         const text = document.getElementById("q-text").value;
         const category = document.getElementById("q-category").value;
-<<<<<<< HEAD
-<<<<<<< HEAD
         const rotation = document.getElementById("q-rotation").value;
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         const topicSlug = normalizeOptionalSlug(
           document.getElementById("q-topic-slug").value,
         );
@@ -3355,15 +4711,9 @@ const API_BASE = storedApiBase || inferredApiBase;
             : `${API_BASE}/admin/questions`;
           const method = isEdit ? "PUT" : "POST";
           const payload = { text, category, options, correct };
-<<<<<<< HEAD
-<<<<<<< HEAD
           if (rotation) {
             payload.rotation = rotation;
           }
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           if (topicSlug) {
             payload.topicSlug = topicSlug;
           }
@@ -3425,76 +4775,35 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       async function seedQuestions() {
-<<<<<<< HEAD
-<<<<<<< HEAD
         const force = confirm(
           "Use FORCE reseed?\nOK = replace all existing questions from Quiz/data.js\nCancel = seed only if questions table is empty",
         );
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-        if (
-          !confirm(
-            "Reload questions from frontend data? This will replace existing questions.",
-          )
-        )
-          return;
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
 
         try {
           const res = await fetch(`${API_BASE}/admin/seed-questions`, {
             method: "POST",
             headers: getHeaders(),
-<<<<<<< HEAD
-<<<<<<< HEAD
             body: JSON.stringify({ force }),
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           });
 
           const data = await res.json();
           if (data.seeded) {
-<<<<<<< HEAD
-<<<<<<< HEAD
             const detail = data.replaced
               ? `Replaced ${data.previousCount || 0} existing questions with ${data.count} fresh questions`
               : `Seeded ${data.count} questions`;
             showAlert(
               "settings-alerts",
               detail,
-=======
-            showAlert(
-              "settings-alerts",
-              `Seeded ${data.count} questions`,
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-            showAlert(
-              "settings-alerts",
-              `Seeded ${data.count} questions`,
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
               "success",
             );
             loadQuestions();
             loadStats();
           } else {
-<<<<<<< HEAD
-<<<<<<< HEAD
             showAlert(
               "settings-alerts",
               "Questions already exist. Run force reseed to replace them.",
               "info",
             );
-=======
-            showAlert("settings-alerts", "Questions already seeded", "info");
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-            showAlert("settings-alerts", "Questions already seeded", "info");
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           }
         } catch (err) {
           showAlert("settings-alerts", "Error: " + err.message, "error");
@@ -3502,18 +4811,12 @@ const API_BASE = storedApiBase || inferredApiBase;
       }
 
       async function resetSystem() {
-<<<<<<< HEAD
-<<<<<<< HEAD
         showAlert(
           "settings-alerts",
           "System reset is disabled in this build.",
           "info",
         );
         return;
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         if (
           !confirm(
             "⚠️ This will DELETE all users and attempts. Questions will be re-seeded.",
@@ -3547,6 +4850,10 @@ const API_BASE = storedApiBase || inferredApiBase;
         }
       }
 
+      function enableTableDragScroll() {
+        // Native overflow scrolling now handles touch drag reliably on mobile.
+      }
+
       function setupEventBindings() {
         document
           .getElementById("admin-key-toggle")
@@ -3560,8 +4867,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           .getElementById("add-user-btn")
           ?.addEventListener("click", openUserModal);
         document
-<<<<<<< HEAD
-<<<<<<< HEAD
           .getElementById("open-deleted-users-btn")
           ?.addEventListener("click", () => {
             void openDeletedUsersModal();
@@ -3590,6 +4895,14 @@ const API_BASE = storedApiBase || inferredApiBase;
           questionSearchQuery = event.target.value || "";
           renderQuestionsTable();
         });
+        document.getElementById("monetization-search")?.addEventListener("input", (event) => {
+          monetizationSearchQuery = event.target.value || "";
+          renderMonetizationPanel();
+        });
+        document.getElementById("password-reset-search")?.addEventListener("input", (event) => {
+          passwordResetSearchQuery = event.target.value || "";
+          renderPasswordResetRequests();
+        });
         document.getElementById("deleted-users-search")?.addEventListener("input", (event) => {
           deletedUsersSearchQuery = event.target.value || "";
           renderDeletedUsersTable();
@@ -3598,14 +4911,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           deletedGroupsSearchQuery = event.target.value || "";
           renderDeletedGroupsTable();
         });
-=======
-          .getElementById("add-question-btn")
-          ?.addEventListener("click", openQuestionModal);
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-          .getElementById("add-question-btn")
-          ?.addEventListener("click", openQuestionModal);
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         document
           .getElementById("export-json-btn")
           ?.addEventListener("click", () => exportData("json"));
@@ -3619,8 +4924,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           .getElementById("reset-system-btn")
           ?.addEventListener("click", resetSystem);
         document
-<<<<<<< HEAD
-<<<<<<< HEAD
           .getElementById("reports-group-btn")
           ?.addEventListener("click", () => {
             openReportsTab("group");
@@ -3636,16 +4939,10 @@ const API_BASE = storedApiBase || inferredApiBase;
           resetButton.title = "System reset is disabled";
         }
         document
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           .getElementById("user-cancel-btn")
           ?.addEventListener("click", closeUserModal);
         document.getElementById("user-save-btn")?.addEventListener("click", saveUser);
         document
-<<<<<<< HEAD
-<<<<<<< HEAD
           .getElementById("user-details-close-btn")
           ?.addEventListener("click", closeUserDetailsModal);
         document
@@ -3695,6 +4992,7 @@ const API_BASE = storedApiBase || inferredApiBase;
         document
           .getElementById("broadcast-chat-message")
           ?.addEventListener("input", () => {
+            broadcastChatClientRequestId = "";
             requestAnimationFrame(() => {
               autoSizeBroadcastChatMessage();
             });
@@ -3736,12 +5034,14 @@ const API_BASE = storedApiBase || inferredApiBase;
           ?.addEventListener("change", async (event) => {
             const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
             if (file instanceof File) {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = {
                 dataUrl: await readFileAsDataUrl(file),
                 fileName: file.name || "attachment",
                 mimeType: String(file.type || "").trim().toLowerCase(),
               };
             } else {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = null;
             }
             syncBroadcastAttachmentUi("chat");
@@ -3754,6 +5054,7 @@ const API_BASE = storedApiBase || inferredApiBase;
           ?.addEventListener("click", (event) => {
             const removeBtn = event.target instanceof HTMLElement ? event.target.closest("[data-broadcast-chat-remove-attachment]") : null;
             if (removeBtn instanceof HTMLElement) {
+              broadcastChatClientRequestId = "";
               broadcastChatAttachment = null;
               syncBroadcastAttachmentUi("chat");
               return;
@@ -3765,6 +5066,7 @@ const API_BASE = storedApiBase || inferredApiBase;
         document
           .getElementById("broadcast-chat-clear-btn")
           ?.addEventListener("click", () => {
+            broadcastChatClientRequestId = "";
             broadcastChatAttachment = null;
             syncBroadcastAttachmentUi("chat");
           });
@@ -3823,6 +5125,12 @@ const API_BASE = storedApiBase || inferredApiBase;
         document
           .getElementById("broadcast-thread-back-btn")
           ?.addEventListener("click", closeBroadcastThread);
+        document
+          .getElementById("broadcast-page-back-btn")
+          ?.addEventListener("click", () => {
+            const returnTab = adminBroadcastReturnTab || "stats";
+            switchTab(returnTab === "broadcast" ? "stats" : returnTab);
+          });
         document.addEventListener("pointerdown", (event) => {
           if (!broadcastChatEmojiPickerOpen) return;
           const target = event.target instanceof HTMLElement ? event.target : null;
@@ -3869,10 +5177,6 @@ const API_BASE = storedApiBase || inferredApiBase;
             // Intentionally keep the selected title unchanged while the message draft is edited.
           });
         document
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
           .getElementById("question-cancel-btn")
           ?.addEventListener("click", closeQuestionModal);
         document
@@ -3884,25 +5188,78 @@ const API_BASE = storedApiBase || inferredApiBase;
             switchTab(button.dataset.tab, button);
           });
         });
-
-        document.getElementById("users-table")?.addEventListener("click", (event) => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-          const row = event.target.closest("tr[data-user-id]");
-          if (!row) return;
-          openUserDetailsModal(row.dataset.userId || "");
+        document.querySelectorAll("[data-analytics-period]").forEach((button) => {
+          button.addEventListener("click", () => {
+            selectedAnalyticsPeriod = String(button.dataset.analyticsPeriod || "week").trim().toLowerCase();
+            renderAdminAnalyticsPanel();
+          });
         });
 
-        document.getElementById("groups-table")?.addEventListener("click", (event) => {
-          const row = event.target.closest("tr[data-group-id]");
-          if (!row) return;
-          void openGroupDetailsModal(row.dataset.groupId || "");
+        bindTouchFriendlyTableRows({
+          tableKey: "users-table",
+          root: document.getElementById("users-table"),
+          scrollContainer: document.querySelector("#users .table-container"),
+          rowSelector: "tr[data-user-id]",
+          onActivate: (row) => {
+            openUserDetailsModal(row.dataset.userId || "");
+          },
         });
 
-        document.getElementById("reports-table")?.addEventListener("click", (event) => {
-          const row = event.target.closest("tr[data-report-id]");
-          if (!row) return;
-          void openReportDetailsModal(row.dataset.reportId || "");
+        bindTouchFriendlyTableRows({
+          tableKey: "groups-table",
+          root: document.getElementById("groups-table"),
+          scrollContainer: document.querySelector("#groups .table-container"),
+          rowSelector: "tr[data-group-id]",
+          onActivate: (row) => {
+            void openGroupDetailsModal(row.dataset.groupId || "");
+          },
+        });
+
+        bindTouchFriendlyTableRows({
+          tableKey: "reports-table",
+          root: document.getElementById("reports-table"),
+          scrollContainer: document.querySelector("#reports .table-container"),
+          rowSelector: "tr[data-report-id]",
+          onActivate: (row) => {
+            void openReportDetailsModal(row.dataset.reportId || "");
+          },
+        });
+
+        bindTouchFriendlyTableRows({
+          tableKey: "questions-table",
+          root: document.getElementById("questions-table"),
+          scrollContainer: document.querySelector("#questions .table-container"),
+          rowSelector: "tr",
+          enableClickBinding: false,
+        });
+
+        bindTouchFriendlyTableRows({
+          tableKey: "monetization-list-root",
+          root: document.getElementById("monetization-list-root"),
+          scrollContainer: document.querySelector("#monetization .monetization-table-container, #monetization .table-container"),
+          rowSelector: "tr[data-action='open-subscription-request'][data-request-id]",
+          enableClickBinding: false,
+          onActivate: (row) => {
+            openSubscriptionRequestModal(row.dataset.requestId || "");
+          },
+        });
+
+        document.querySelectorAll("[data-monetization-bucket]").forEach((button) => {
+          button.addEventListener("click", () => {
+            setMonetizationBucket(button.dataset.monetizationBucket || "request");
+            if (adminActiveTab !== "monetization") {
+              switchTab("monetization");
+            }
+          });
+          button.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setMonetizationBucket(button.dataset.monetizationBucket || "request");
+              if (adminActiveTab !== "monetization") {
+                switchTab("monetization");
+              }
+            }
+          });
         });
 
         document.getElementById("deleted-users-table")?.addEventListener("click", (event) => {
@@ -3916,6 +5273,134 @@ const API_BASE = storedApiBase || inferredApiBase;
           if (!button) return;
           restoreArchivedGroup(button.dataset.archiveId || "");
         });
+
+        document.getElementById("monetization-list-root")?.addEventListener("click", (event) => {
+          const viewBtn = event.target.closest("button[data-action='view-subscription-request']");
+          if (viewBtn?.dataset.requestId) {
+            openSubscriptionRequestModal(viewBtn.dataset.requestId || "");
+            return;
+          }
+
+          const approveBtn = event.target.closest("button[data-action='approve-subscription-request']");
+          if (approveBtn?.dataset.requestId) {
+            openSubscriptionApproveModal(approveBtn.dataset.requestId || "");
+            return;
+          }
+
+          const rejectBtn = event.target.closest("button[data-action='reject-subscription-request']");
+          if (rejectBtn?.dataset.requestId) {
+            openSubscriptionRejectModal(rejectBtn.dataset.requestId || "");
+            return;
+          }
+
+          if (hasRecentTableTouchActivation("monetization-list-root")) return;
+
+          const row = event.target.closest("tr[data-action='open-subscription-request'][data-request-id]");
+          if (row?.dataset.requestId && event.target.closest("button") === null) {
+            openSubscriptionRequestModal(row.dataset.requestId || "");
+          }
+        });
+
+        document.getElementById("password-reset-list-root")?.addEventListener("click", async (event) => {
+          const target = event.target instanceof HTMLElement ? event.target : null;
+          if (!target) return;
+          const copyCodeTarget = target.closest("[data-action='copy-password-reset-code']");
+          if (copyCodeTarget?.dataset.requestId) {
+            await copyPasswordResetCode(copyCodeTarget.dataset.requestId || "");
+            return;
+          }
+
+          const markSentBtn = target.closest("button[data-action='mark-password-reset-sent']");
+          if (markSentBtn?.dataset.requestId) {
+            await markPasswordResetRequestSent(markSentBtn.dataset.requestId || "");
+          }
+        });
+
+        document.addEventListener("click", (event) => {
+          const sortToggle = event.target.closest("button[data-action='toggle-monetization-sort']");
+          if (sortToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleMonetizationSortDirection();
+            return;
+          }
+
+          const viewBtn = event.target.closest("button[data-action='view-subscription-request']");
+          if (viewBtn?.dataset.requestId) {
+            openSubscriptionRequestModal(viewBtn.dataset.requestId || "");
+            return;
+          }
+
+          if (hasRecentTableTouchActivation("monetization-list-root")) return;
+
+          const row = event.target.closest("tr[data-action='open-subscription-request'][data-request-id]");
+          if (row?.dataset.requestId && !event.target.closest("button")) {
+            openSubscriptionRequestModal(row.dataset.requestId || "");
+          }
+        });
+
+        document.getElementById("subscription-request-body")?.addEventListener("click", (event) => {
+          const approveBtn = event.target.closest("button[data-action='approve-subscription-request']");
+          if (approveBtn?.dataset.requestId) {
+            openSubscriptionApproveModal(approveBtn.dataset.requestId || "");
+            return;
+          }
+
+          const rejectBtn = event.target.closest("button[data-action='reject-subscription-request']");
+          if (rejectBtn?.dataset.requestId) {
+            openSubscriptionRejectModal(rejectBtn.dataset.requestId || "");
+            return;
+          }
+
+          const proofBtn = event.target.closest("button[data-action='open-proof-image']");
+          if (!(proofBtn instanceof HTMLElement)) return;
+          openSubscriptionProofModal({
+            proofUrl: proofBtn.dataset.proofUrl || "",
+            title: proofBtn.dataset.proofTitle || "Payment Proof",
+          });
+        });
+
+        document
+          .getElementById("subscription-request-close-btn")
+          ?.addEventListener("click", closeSubscriptionRequestModal);
+        document
+          .getElementById("subscription-approve-close-btn")
+          ?.addEventListener("click", closeSubscriptionApproveModal);
+        document
+          .getElementById("subscription-proof-close-btn")
+          ?.addEventListener("click", closeSubscriptionProofModal);
+        document
+          .getElementById("subscription-reject-close-btn")
+          ?.addEventListener("click", closeSubscriptionRejectModal);
+        document
+          .getElementById("subscription-reject-cancel-btn")
+          ?.addEventListener("click", closeSubscriptionRejectModal);
+        document
+          .getElementById("subscription-reject-confirm-btn")
+          ?.addEventListener("click", async () => {
+            const select = document.getElementById("subscription-reject-reason");
+            const reviewNote = String(select?.value || "").trim() || SUBSCRIPTION_REJECT_REASONS[0];
+            const requestId = pendingSubscriptionRejectRequestId;
+            if (!requestId) return;
+            closeSubscriptionRejectModal();
+            closeSubscriptionRequestModal();
+            void reviewSubscriptionRequest(requestId, "reject", reviewNote);
+          });
+
+        document
+          .getElementById("subscription-approve-cancel-btn")
+          ?.addEventListener("click", () => {
+            closeSubscriptionApproveModal();
+          });
+        document
+          .getElementById("subscription-approve-confirm-btn")
+          ?.addEventListener("click", () => {
+            const requestId = pendingSubscriptionApproveRequestId;
+            if (!requestId) return;
+            closeSubscriptionApproveModal();
+            closeSubscriptionRequestModal();
+            void reviewSubscriptionRequest(requestId, "approve");
+          });
 
         document.querySelectorAll(".modal").forEach((modal) => {
           modal.addEventListener("click", (event) => {
@@ -3942,21 +5427,16 @@ const API_BASE = storedApiBase || inferredApiBase;
               closeBroadcastStatusViewer();
             } else if (modal.id === "broadcast-attachment-viewer-modal") {
               closeBroadcastAttachmentViewer();
+            } else if (modal.id === "subscription-request-modal") {
+              closeSubscriptionRequestModal();
+            } else if (modal.id === "subscription-approve-modal") {
+              closeSubscriptionApproveModal();
+            } else if (modal.id === "subscription-proof-modal") {
+              closeSubscriptionProofModal();
+            } else if (modal.id === "subscription-reject-modal") {
+              closeSubscriptionRejectModal();
             }
           });
-=======
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-          const btn = event.target.closest("button[data-action='delete-user']");
-          if (!btn) return;
-          const userId = btn.dataset.userId;
-          if (userId) {
-            deleteUser(userId);
-          }
-<<<<<<< HEAD
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         });
 
         document
@@ -3984,8 +5464,6 @@ const API_BASE = storedApiBase || inferredApiBase;
           }
         });
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         document.addEventListener("keydown", (event) => {
           if (event.key !== "Escape") return;
           closeDeleteUserConfirmModal();
@@ -3998,34 +5476,25 @@ const API_BASE = storedApiBase || inferredApiBase;
           closeQuestionModal();
           closeBroadcastStatusComposer();
           closeBroadcastStatusViewer();
+          closeSubscriptionRequestModal();
+          closeSubscriptionProofModal();
         });
 
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
         setAdminKeyVisibility(false);
       }
 
       // Initialize
       setupEventBindings();
+      enableTableDragScroll();
       if (adminKey) {
-<<<<<<< HEAD
-<<<<<<< HEAD
         (async () => {
           await ensureAdminApiBase();
-          document.getElementById("login-screen").style.display = "none";
-          document.getElementById("dashboard").classList.add("active");
+          const loginScreen = getAdminLoginScreen();
+            if (loginScreen) loginScreen.style.display = "none";
+          const dashboard = getAdminDashboard();
+            if (dashboard) dashboard.classList.add("active");
           refreshData();
         })();
-=======
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("dashboard").classList.add("active");
-        refreshData();
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
-=======
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("dashboard").classList.add("active");
-        refreshData();
->>>>>>> 6072f75 (Initial production-ready baseline + topic library updates)
       }
+
+

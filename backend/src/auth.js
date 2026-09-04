@@ -3,13 +3,23 @@ import jwt from "jsonwebtoken";
 import { config } from "./config.js";
 
 const TOKEN_PREFIX = "Bearer ";
+export const AUTH_COOKIE_NAME = "quizAuthToken";
 
 export async function hashPassword(password) {
   return bcrypt.hash(password, 10);
 }
 
 export async function verifyPassword(password, hash) {
-  return bcrypt.compare(password, hash);
+  const safePassword = String(password || "");
+  const safeHash = String(hash || "");
+  if (!safePassword || !safeHash) {
+    return false;
+  }
+  try {
+    return await bcrypt.compare(safePassword, safeHash);
+  } catch {
+    return false;
+  }
 }
 
 export function createToken(user) {
@@ -33,8 +43,45 @@ export function parseBearerToken(authHeader = "") {
   return authHeader.slice(TOKEN_PREFIX.length).trim();
 }
 
+export function parseCookieToken(cookieHeader = "") {
+  const rawHeader = String(cookieHeader || "").trim();
+  if (!rawHeader) {
+    return null;
+  }
+
+  for (const part of rawHeader.split(";")) {
+    const [rawName, ...rawValueParts] = part.split("=");
+    const name = String(rawName || "").trim();
+    if (name !== AUTH_COOKIE_NAME) {
+      continue;
+    }
+
+    const value = rawValueParts.join("=").trim();
+    if (!value) {
+      return null;
+    }
+
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+export function getAuthTokenFromRequest(req) {
+  const bearerToken = parseBearerToken(req?.headers?.authorization || "");
+  if (bearerToken) {
+    return bearerToken;
+  }
+
+  return parseCookieToken(req?.headers?.cookie || "");
+}
+
 export function optionalAuth(req, _res, next) {
-  const token = parseBearerToken(req.headers.authorization);
+  const token = getAuthTokenFromRequest(req);
   if (!token) {
     req.user = null;
     next();

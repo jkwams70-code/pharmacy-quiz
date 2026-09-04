@@ -2,9 +2,9 @@
 
 ## Backend not starting
 - Verify Node 18+: `node -v`
-- Check env file: `Quiz/backend/.env`
+- Check env file: `backend/.env`
 - Check port conflicts on `4000`.
-- Start manually: `cd Quiz/backend && npm run dev`
+- Start manually: `cd backend && npm run dev`
 
 ## Frontend cannot reach API
 - Verify API health: `http://localhost:4000/api/health`
@@ -13,9 +13,9 @@
 - Reload page.
 
 ## Admin login fails
-- Confirm `ADMIN_KEY` value in `Quiz/backend/.env`
+- Confirm `ADMIN_KEY` value in `backend/.env`
 - Restart backend after key changes.
-- Check `Quiz/backend/logs/admin-access.log`.
+- Check `backend/logs/admin-access.log`.
 
 ## Export not downloading
 - Re-authenticate in admin page.
@@ -23,5 +23,5 @@
 
 ## Data recovery
 1. Stop backend.
-2. Copy latest backup from `Quiz/backend/backups/` into `Quiz/backend/data/`.
+2. Copy latest backup from `backend/backups/` into `backend/data/`.
 3. Restart backend and recheck `/api/health`.

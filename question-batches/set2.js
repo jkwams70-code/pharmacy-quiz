@@ -514,6 +514,8 @@ export const secondBatchQuestions = [
     id: 942,
     type: "single",
     category: "Gastrointestinal Disorders",
+    caseId: "blacko-cirrhosis-ascites",
+    caseBlock: "Blacko has cirrhosis complicated by ascites and anemia, and is being assessed for paracentesis, transfusion, SAAG interpretation, and pleural effusion. Use this case for the related questions.",
     question:
       "Q90. If Blacko should undergo paracentesis, how much albumin should be given after a 1 litre ascitic tap?",
     options: ["3-4 g", "6-8 g", "12-16 g", "10-14 g"],
@@ -527,6 +529,8 @@ export const secondBatchQuestions = [
     id: 943,
     type: "single",
     category: "Hematology",
+    caseId: "blacko-cirrhosis-ascites",
+    caseBlock: "Blacko has cirrhosis complicated by ascites and anemia, and is being assessed for paracentesis, transfusion, SAAG interpretation, and pleural effusion. Use this case for the related questions.",
     question: "Q91. He was also scheduled to receive 1 unit of packed cells. How long should the blood transfusion of 1 unit take?",
     options: ["Up to 8 hrs", "Over 24 hrs", "Over 15-30 mins", "Up to 4 hrs"],
     correct: "Up to 4 hrs",
@@ -539,6 +543,8 @@ export const secondBatchQuestions = [
     id: 944,
     type: "single",
     category: "Hematology",
+    caseId: "blacko-cirrhosis-ascites",
+    caseBlock: "Blacko has cirrhosis complicated by ascites and anemia, and is being assessed for paracentesis, transfusion, SAAG interpretation, and pleural effusion. Use this case for the related questions.",
     question: "Q92. What is the expected increase in Blacko's Hb after 1 unit of packed cells?",
     options: ["3 g/dl", "2 g/dl", "1 g/dl", "4 g/dl"],
     correct: "1 g/dl",
@@ -551,6 +557,8 @@ export const secondBatchQuestions = [
     id: 945,
     type: "single",
     category: "Gastrointestinal Disorders",
+    caseId: "blacko-cirrhosis-ascites",
+    caseBlock: "Blacko has cirrhosis complicated by ascites and anemia, and is being assessed for paracentesis, transfusion, SAAG interpretation, and pleural effusion. Use this case for the related questions.",
     question:
       "Q93. If the serum albumin is 16 g/dl and the ascitic albumin is 14.5 g/dl, calculate the serum ascites albumin gradient for Blacko?",
     options: ["1.5 g/dl", "0.9 g/dl", "1.1 g/dl", "2.5 g/dl"],
@@ -564,8 +572,10 @@ export const secondBatchQuestions = [
     id: 946,
     type: "single",
     category: "Gastrointestinal Disorders",
+    caseId: "blacko-cirrhosis-ascites",
+    caseBlock: "Blacko has cirrhosis complicated by ascites and anemia, and is being assessed for paracentesis, transfusion, SAAG interpretation, and pleural effusion. Use this case for the related questions.",
     question:
-      "Q94. Based on your answer in question 43, indicate the most likely cause of the ascites?",
+      "Q94. Based on the serum-ascites albumin gradient result above, indicate the most likely cause of the ascites?",
     options: ["Peritonitis", "Portal hypertension", "Sarcoidosis", "Intestinal amoebiasis"],
     correct: "Portal hypertension",
     explanation:
@@ -577,6 +587,8 @@ export const secondBatchQuestions = [
     id: 947,
     type: "single",
     category: "Gastrointestinal Disorders",
+    caseId: "blacko-cirrhosis-ascites",
+    caseBlock: "Blacko has cirrhosis complicated by ascites and anemia, and is being assessed for paracentesis, transfusion, SAAG interpretation, and pleural effusion. Use this case for the related questions.",
     question:
       "Q95. What type of pleural effusion does he have, if the Light's criteria of his pleural fluid protein to serum protein is less than 0.5?",
     options: [

@@ -3,6 +3,7 @@ module.exports = {
     {
       name: "quiz-api",
       script: "src/server.js",
+      env_file: ".env",
       instances: 1,
       exec_mode: "fork",
       autorestart: true,

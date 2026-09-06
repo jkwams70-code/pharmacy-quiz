@@ -1,7 +1,6 @@
-﻿import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
+import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
 import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
-
 const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
 
 const MAJOR_CATEGORIES = [
@@ -106,6 +105,7 @@ const NEGATIVE_ANSWER_FEEDBACK = [
 const QUESTION_BANK_SCHEMA_STORAGE_KEY = "quizQuestionBankSchemaVersion";
 const QUESTION_BANK_SCHEMA_VERSION = "20260613-manufacturing-set2";
 const QUESTION_BANK_REMOTE_META_STORAGE_KEY = "quizQuestionBankRemoteMeta";
+const QUESTION_BANK_CACHE_KEY = "quizQuestionBankCacheV1";
 let questionBankReady = false;
 let questionBankBootstrapPromise = null;
 const LAW_DRILL_STORAGE_KEY = "lawDrillSessionV2";
@@ -131,32 +131,67 @@ const QUESTION_CATEGORY_OVERRIDES = {
 };
 
 const MOJIBAKE_REPLACEMENTS = [
-  ["â€¢", "•"],
-  ["â€¦", "…"],
-  ["â€™", "’"],
-  ["â€œ", "“"],
-  ["â€", "”"],
-  ["â€˜", "‘"],
-  ["â€”", "—"],
-  ["â€“", "–"],
-  ["Ã—", "×"],
+  ['Ã—', '×'],
+  ['Ã·', '÷'],
+  ['âˆ’', '−'],
+  ['âˆš', '√'],
+  ['â†’', '→'],
+  ['â†', '←'],
+  ['â€¦', '…'],
+  ['â€”', '—'],
+  ['â€“', '–'],
+  ['âœ“', '✓'],
+  ['âœ•', '×'],
+  ['Â', ''],
 ];
+
+const MOJIBAKE_SUSPECT_RE = /[ÃÂâðŸ�]/;
+
+function repairMojibakePass(value = "") {
+  const text = String(value ?? "");
+  let repaired = text;
+  try {
+    repaired = decodeURIComponent(escape(repaired));
+  } catch {
+    repaired = text;
+  }
+  if (typeof TextDecoder !== "undefined") {
+    try {
+      const bytes = Uint8Array.from(repaired, (char) => char.charCodeAt(0) & 0xff);
+      const decoded = new TextDecoder("utf-8").decode(bytes);
+      if (decoded) repaired = decoded;
+    } catch {
+      // Leave the best result we already have.
+    }
+  }
+  return repaired;
+}
+
+function scoreMojibakeCandidate(value = "") {
+  const text = String(value ?? "");
+  const suspicious = (text.match(/[\uFFFDÃƒÆ’Ã†â€™ÃƒÆ’Ã¢â‚¬Å¡ÃƒÆ’Ã‚¢ÃƒÆ’Ã‚°Ãƒ…Ã‚¸]/g) || []).length;
+  const control = (text.match(/[\u0000-\u001F\u007F]/g) || []).length;
+  return suspicious * 100 + control * 25 + text.length;
+}
 
 function normalizeMojibake(value = "") {
   let text = String(value ?? "");
-  try {
-    const decoded = decodeURIComponent(escape(text));
-    if (decoded && decoded !== text) text = decoded;
-  } catch {
-    // Ignore strings that are already valid Unicode or not UTF-8 mojibake.
-  }
-  for (const [bad, good] of MOJIBAKE_REPLACEMENTS) {
-    text = text.split(bad).join(good);
+  for (let i = 0; i < 4; i += 1) {
+    let decoded = text;
+    try {
+      const next = decodeURIComponent(escape(decoded));
+      if (next && next !== decoded) decoded = next;
+    } catch {
+      // Ignore strings that are already valid Unicode or not UTF-8 mojibake.
+    }
+    for (const [bad, good] of MOJIBAKE_REPLACEMENTS) {
+      decoded = decoded.split(bad).join(good);
+    }
+    if (decoded === text) break;
+    text = decoded;
   }
   return text;
-}
-
-function sanitizeMojibakeNode(node) {
+}function sanitizeMojibakeNode(node) {
   if (!(node instanceof Text)) return;
   const next = normalizeMojibake(node.nodeValue || "");
   if (next !== node.nodeValue) node.nodeValue = next;
@@ -1950,6 +1985,7 @@ function recordLawDrillAnswer(question, selectedAnswer, isCorrect) {
 }
 
 async function startLawDrillSession({ resumeState = null } = {}) {
+  await ensureQuestionBankLoaded();
   studySessionEnded = false;
   clearAiExplainStateSession();
   examVariant = "law";
@@ -2294,6 +2330,10 @@ function parseImportedCaseQuestionLabel(questionText = "") {
   };
 }
 
+function normalizeQuestionIdKey(value = "") {
+  return String(value ?? "").trim();
+}
+
 function escapeRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -2318,10 +2358,109 @@ let backendAttemptId = null;
 let currentUser = null;
 let authMode = "login";
 let authForgotRequestLocked = false;
+let authPostSuccessScreenId = "quiz-menu";
 let topicCatalog = { topics: [], categories: [] };
 let topicCatalogLoaded = false;
 let subscriptionPlansCache = [];
 let subscriptionStatusSnapshot = null;
+const SUBSCRIPTION_ENTITLEMENT_CACHE_KEY =
+  "subscriptionEntitlementCacheV1";
+const OFFLINE_SUBSCRIPTION_GRACE_MS =
+  72 * 60 * 60 * 1000;
+let subscriptionEntitlement = null;
+let subscriptionEntitlementHydrated = false;
+let subscriptionEntitlementHydrationPromise = null;
+
+function getSubscriptionEntitlementValue(entry) {
+  return entry?.value && typeof entry.value === "object"
+    ? entry.value
+    : entry && typeof entry === "object"
+      ? entry
+      : null;
+}
+
+async function hydrateSubscriptionEntitlement() {
+  if (subscriptionEntitlementHydrated) return subscriptionEntitlement;
+  if (subscriptionEntitlementHydrationPromise) {
+    return subscriptionEntitlementHydrationPromise;
+  }
+
+  subscriptionEntitlementHydrationPromise = (async () => {
+    try {
+      const entry = await getOfflineEntry(SUBSCRIPTION_ENTITLEMENT_CACHE_KEY);
+      const cached = getSubscriptionEntitlementValue(entry);
+
+      if (cached && typeof cached === "object") {
+        subscriptionEntitlement = cached;
+      }
+    } catch (error) {
+      console.warn("Failed to hydrate subscription entitlement:", error);
+    } finally {
+      subscriptionEntitlementHydrated = true;
+      subscriptionEntitlementHydrationPromise = null;
+    }
+
+    return subscriptionEntitlement;
+  })();
+
+  return subscriptionEntitlementHydrationPromise;
+}
+
+void hydrateSubscriptionEntitlement();
+
+async function cacheSubscriptionEntitlement(access = null) {
+  if (!access || typeof access !== "object") return false;
+
+  const validatedAt = Date.now();
+  const expirationAt = String(access.expirationAt || "").trim();
+  const expirationTime = Date.parse(expirationAt);
+
+  const offlineAccessUntil = Number.isFinite(expirationTime)
+    ? Math.min(
+        expirationTime,
+        validatedAt + OFFLINE_SUBSCRIPTION_GRACE_MS,
+      )
+    : validatedAt + OFFLINE_SUBSCRIPTION_GRACE_MS;
+
+  subscriptionEntitlement = {
+    status: String(access.status || "").trim().toLowerCase(),
+    plan: String(access.plan || "").trim().toLowerCase(),
+    expirationAt,
+    validatedAt,
+    offlineAccessUntil,
+  };
+
+  subscriptionEntitlementHydrated = true;
+
+  try {
+    await setOfflineEntry(
+      SUBSCRIPTION_ENTITLEMENT_CACHE_KEY,
+      subscriptionEntitlement,
+    );
+    return true;
+  } catch (error) {
+    console.warn("Failed to cache subscription entitlement:", error);
+    return false;
+  }
+}
+
+function hasUsableOfflineSubscriptionEntitlement() {
+  const entitlement = subscriptionEntitlement;
+  if (!entitlement) return false;
+
+  const status = String(entitlement.status || "").trim().toLowerCase();
+  if (status !== "active" && status !== "trial") return false;
+
+  const now = Date.now();
+  const expirationTime = Date.parse(String(entitlement.expirationAt || ""));
+  const offlineAccessUntil = Number(entitlement.offlineAccessUntil || 0);
+
+  if (Number.isFinite(expirationTime) && now >= expirationTime) {
+    return false;
+  }
+
+  return Number.isFinite(offlineAccessUntil) && now < offlineAccessUntil;
+}  
 let subscriptionScreenState = {
   intent: "general",
   returnScreen: "quiz-menu",
@@ -2459,7 +2598,11 @@ async function loadBundledQuestionSource() {
 }
 
 async function ensureQuestionBankLoaded() {
-  if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+  if (
+    questionBankReady &&
+    Array.isArray(questionBank) &&
+    questionBank.length > 0
+  ) {
     return questionBank;
   }
 
@@ -2468,10 +2611,49 @@ async function ensureQuestionBankLoaded() {
   }
 
   questionBankBootstrapPromise = (async () => {
-    const sourceQuestions = await loadBundledQuestionSource();
-    if (questionBankReady && Array.isArray(questionBank) && questionBank.length > 0) {
+    const cached = await getOfflineEntry(QUESTION_BANK_CACHE_KEY);
+
+    if (Array.isArray(cached?.value) && cached.value.length > 0) {
+      questionBank = [...cached.value];
+      localTopicQuestionBank = [...questionBank];
+      normalizedLocalQuestions = [...questionBank];
+
+      localQuestionFallbackById = new Map(
+        normalizedLocalQuestions
+          .map((q) => [Number(q?.id), q])
+          .filter(([id]) => Number.isFinite(id)),
+      );
+
+      questionBankReady = true;
+      rebuildCaseMap();
+      reconcileLocalQuestionStats();
+      refreshQuestionDependentUi();
+
+      void loadQuestionsFromBackend({ preferCache: false });
+
       return questionBank;
     }
+
+    await loadQuestionsFromBackend({ preferCache: false });
+
+    if (
+      questionBankReady &&
+      Array.isArray(questionBank) &&
+      questionBank.length > 0
+    ) {
+      return questionBank;
+    }
+
+    const sourceQuestions = await loadBundledQuestionSource();
+
+    if (
+      questionBankReady &&
+      Array.isArray(questionBank) &&
+      questionBank.length > 0
+    ) {
+      return questionBank;
+    }
+
     normalizedLocalQuestions = enrichImportedCaseQuestions(
       (Array.isArray(sourceQuestions) ? sourceQuestions : [])
         .filter((question) => !isRetiredLawCategoryQuestion(question))
@@ -2483,15 +2665,20 @@ async function ensureQuestionBankLoaded() {
         .map((q) => [Number(q?.id), q])
         .filter(([id]) => Number.isFinite(id)),
     );
+
     localTopicQuestionBank = [...normalizedLocalQuestions];
     questionBank = [...localTopicQuestionBank];
     questionBankReady = true;
+
+    await setOfflineEntry(QUESTION_BANK_CACHE_KEY, questionBank);
+
     rebuildCaseMap();
     reconcileLocalQuestionStats();
     refreshQuestionDependentUi();
+
     return questionBank;
   })().catch((error) => {
-    console.warn("Failed to load bundled question bank:", error);
+    console.warn("Failed to load question bank:", error);
     questionBankBootstrapPromise = null;
     return [];
   });
@@ -2503,6 +2690,12 @@ function mapBackendQuestionToLocal(q = {}) {
   const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
   return {
     id: q.id,
+    bank: String(q.bank || fallback.bank || "main").trim().toLowerCase() || "main",
+    comboVariant: String(q.comboVariant || fallback.comboVariant || "").trim().toLowerCase() || "",
+    year: Number.isFinite(Number(q.year)) ? Number(q.year) : Number(fallback.year) || undefined,
+    displayNumber: Number.isFinite(Number(q.displayNumber))
+      ? Number(q.displayNumber)
+      : Number(fallback.displayNumber) || undefined,
     text: q.text || q.question || fallback.text || fallback.question || "",
     question: q.question || q.text || fallback.question || fallback.text || "",
     category: normalizeQuestionCategory({
@@ -2523,6 +2716,7 @@ function mapBackendQuestionToLocal(q = {}) {
     caseId: q.caseId || fallback.caseId || "",
     caseBlock: q.caseBlock || fallback.caseBlock || "",
     correct: q.correct || fallback.correct,
+    answer: Number.isFinite(Number(q.answer)) ? Number(q.answer) : Number(fallback.answer) || undefined,
     explanation: q.explanation || fallback.explanation || "",
     explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
     wrongOptionExplanations:
@@ -2546,16 +2740,93 @@ function mapBackendQuestionToLocal(q = {}) {
   };
 }
 
+const COMBO_THREE_STATEMENT_CHOICES = [
+  { letter: "A", text: "A: 1, 2 and 3" },
+  { letter: "B", text: "B: 1 and 2 only" },
+  { letter: "C", text: "C: 2 and 3 only" },
+  { letter: "D", text: "D: 1 only" },
+  { letter: "E", text: "E: 3 only" },
+];
+
+const COMBO_PAIR_RELATION_CHOICES = [
+  {
+    letter: "A",
+    text: "A: first statement is true, second statement is true and the two are related",
+  },
+  {
+    letter: "B",
+    text: "B: first statement is true, second statement is true but the two are not related",
+  },
+  {
+    letter: "C",
+    text: "C: first statement is false, second statement is true",
+  },
+  {
+    letter: "D",
+    text: "D: both statements are false",
+  },
+];
+
+const COMBO_TABLE_CHOICES = [
+  { letter: "A", text: "A: I, II and III" },
+  { letter: "B", text: "B: II and III only" },
+  { letter: "C", text: "C: I only" },
+  { letter: "D", text: "D: III only" },
+];
+
+const COMBO_ASSERTION_CHOICES = [
+  { letter: "A", text: "A: First statement is TRUE, Second statement is TRUE and they are RELATED" },
+  { letter: "B", text: "B: First statement is TRUE, Second statement is TRUE but they are NOT related" },
+  { letter: "C", text: "C: First statement is TRUE but Second statement is FALSE" },
+  { letter: "D", text: "D: First statement is FALSE but Second statement is TRUE" },
+  { letter: "E", text: "E: Both statements are FALSE" },
+];
+
+function getComboChoiceRows(question = {}) {
+  const explicitOptions = Array.isArray(question?.options)
+    ? question.options.map((option) => String(option || "").trim()).filter(Boolean)
+    : [];
+
+  if (explicitOptions.length > 0) {
+    return explicitOptions.map((text, index) => {
+      const letter = String.fromCharCode(65 + index);
+      const renderedText = /^[A-E][\s:.)-]/i.test(text) ? text : `${letter}: ${text}`;
+      return { letter, text: renderedText };
+    });
+  }
+
+  const comboVariant = String(question?.comboVariant || "").trim().toLowerCase();
+  const statementCount = Array.isArray(question?.statements) ? question.statements.length : 0;
+  if (comboVariant === "assertion-5") {
+    return COMBO_ASSERTION_CHOICES;
+  }
+
+  if (comboVariant === "table-4") {
+    return COMBO_TABLE_CHOICES;
+  }
+
+  if (comboVariant === "pair-relationship" || statementCount === 2) {
+    return COMBO_PAIR_RELATION_CHOICES;
+  }
+
+  if (statementCount === 3) {
+    return COMBO_THREE_STATEMENT_CHOICES;
+  }
+
+  return [];
+}
+
 // Load questions from backend if available
-async function loadQuestionsFromBackend() {
+async function loadQuestionsFromBackend({ preferCache = false } = {}) {
   try {
-    const questions = await backendClient.fetchQuestions();
+    const questions = await backendClient.fetchQuestions({ preferCache });
     if (Array.isArray(questions) && questions.length > 0) {
       const backendQuestions = questions
         .filter((question) => !isRetiredLawCategoryQuestion(question))
         .map(mapBackendQuestionToLocal)
         .sort(byQuestionIdAscending);
       questionBank = enrichImportedCaseQuestions(backendQuestions);
+      await setOfflineEntry(QUESTION_BANK_CACHE_KEY, questionBank);
       localTopicQuestionBank = [...questionBank];
       normalizedLocalQuestions = [...questionBank];
       localQuestionFallbackById = new Map(
@@ -2571,8 +2842,7 @@ async function loadQuestionsFromBackend() {
       console.info(`Loaded ${questionBank.length} questions from backend`);
     }
   } catch (error) {
-    console.warn("Backend unavailable, using local questions:", error);
-    // Keep using local questions from data.js
+    console.warn("Backend unavailable, falling back to bundled questions:", error);
   }
 }
 
@@ -2705,6 +2975,28 @@ function mergePerformanceStatsMap(left = {}, right = {}) {
   return Object.fromEntries(merged.entries());
 }
 
+function reconcileLocalQuestionStats() {
+  const questionIdSet = new Set(
+    (Array.isArray(questionBank) ? questionBank : [])
+      .map((question) => normalizeQuestionIdKey(question?.id))
+      .filter(Boolean),
+  );
+
+  const nextPerformanceData = {};
+  Object.entries(normalizePerformanceStatsMap(performanceData || {})).forEach(([questionId, row]) => {
+    if (!questionIdSet.has(String(questionId))) return;
+    const attempts = Math.max(0, Math.round(Number(row?.attempts) || 0));
+    const correct = Math.max(0, Math.min(attempts, Math.round(Number(row?.correct) || 0)));
+    nextPerformanceData[questionId] = { attempts, correct };
+  });
+
+  performanceData = nextPerformanceData;
+  rebuildCategoryPerformanceFromQuestionStats();
+  rebuildRotationPerformanceFromQuestionStats();
+  savePerformance();
+  renderPoints();
+}
+
 function normalizeWeakTrackerMap(raw = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return Object.fromEntries(
@@ -2813,11 +3105,8 @@ function captureCurrentPerformanceState() {
 function schedulePerformanceStateSync(delayMs = 800) {
   if (performanceStateSyncHandle) {
     clearTimeout(performanceStateSyncHandle);
-  }
-  performanceStateSyncHandle = setTimeout(() => {
     performanceStateSyncHandle = null;
-    void flushPendingPerformanceStateSync();
-  }, Math.max(250, Number(delayMs) || 800));
+  }
 }
 
 async function flushPendingPerformanceStateSync() {
@@ -2825,24 +3114,17 @@ async function flushPendingPerformanceStateSync() {
     clearTimeout(performanceStateSyncHandle);
     performanceStateSyncHandle = null;
   }
-  if (!currentUser || !backendClient.isAuthenticated()) return;
-  if (performanceStateSyncInFlight) {
-    performanceStateSyncQueued = true;
-    return;
-  }
+  performanceStateSyncInFlight = false;
+  performanceStateSyncQueued = false;
+  return true;
+}
 
-  performanceStateSyncInFlight = true;
-  try {
-    await backendClient.syncPerformanceState(captureCurrentPerformanceState());
-  } catch {
-    // Keep local progress even if the backend sync is briefly unavailable.
-  } finally {
-    performanceStateSyncInFlight = false;
-    if (performanceStateSyncQueued) {
-      performanceStateSyncQueued = false;
-      schedulePerformanceStateSync(400);
-    }
-  }
+async function loadSyncedPerformanceState({ force = false } = {}) {
+  const localState = captureCurrentPerformanceState();
+  syncedPerformanceStateCache = localState;
+  syncedPerformanceStateLoadedFromSync = true;
+  applySyncedPerformanceState(localState);
+  return localState;
 }
 
 function applySyncedPerformanceState(state = {}) {
@@ -2861,102 +3143,6 @@ function applySyncedPerformanceState(state = {}) {
   localStorage.setItem("quizRotationPerformance", JSON.stringify(rotationPerformance));
   renderPoints();
 }
-
-async function loadSyncedPerformanceState({ force = false } = {}) {
-  if (!force && syncedPerformanceStateLoadedFromSync && syncedPerformanceStateCache) {
-    applySyncedPerformanceState(syncedPerformanceStateCache);
-    return syncedPerformanceStateCache;
-  }
-
-  if (!force) {
-    const cachedState = await getOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY);
-    if (cachedState?.value) {
-      const nextState = cachedState.value;
-      syncedPerformanceStateCache = nextState;
-      syncedPerformanceStateLoadedFromSync = true;
-      applySyncedPerformanceState(nextState);
-      void (async () => {
-        try {
-          const response = await backendClient.fetchSyncedPerformanceState(5000);
-          const events = Array.isArray(response?.events) ? response.events : [];
-          const built = buildPerformanceStateFromEvents(events);
-          const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || {});
-          const freshState = {
-            performanceData: built.performanceData,
-            categoryPerformance: built.categoryPerformance,
-            rotationPerformance: built.rotationPerformance,
-            weakTracker: remoteWeakTracker,
-          };
-          syncedPerformanceStateCache = freshState;
-          syncedPerformanceStateLoadedFromSync = true;
-          applySyncedPerformanceState(freshState);
-          void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, freshState);
-        } catch {
-          // Keep cached performance state if the backend cannot be reached.
-        }
-      })();
-      return nextState;
-    }
-  }
-
-  try {
-    const response = await backendClient.fetchSyncedPerformanceState(5000);
-    const events = Array.isArray(response?.events) ? response.events : [];
-    const built = buildPerformanceStateFromEvents(events);
-    const remoteWeakTracker = normalizeWeakTrackerMap(response?.weakTracker || {});
-    const nextState = {
-      performanceData: built.performanceData,
-      categoryPerformance: built.categoryPerformance,
-      rotationPerformance: built.rotationPerformance,
-      weakTracker: remoteWeakTracker,
-    };
-    syncedPerformanceStateCache = nextState;
-    syncedPerformanceStateLoadedFromSync = true;
-    applySyncedPerformanceState(nextState);
-    void setOfflineEntry(DASHBOARD_SYNC_STATE_CACHE_KEY, nextState);
-  } catch {
-    // Keep local performance data if the backend cannot be reached.
-  }
-
-  return syncedPerformanceStateCache;
-}
-
-function normalizeQuestionIdKey(value) {
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? String(id) : "";
-}
-
-function reconcileLocalQuestionStats() {
-  if (!questionBankReady) {
-    return;
-  }
-
-  const validIds = new Set(
-    (Array.isArray(questionBank) ? questionBank : [])
-      .map((q) => normalizeQuestionIdKey(q?.id))
-      .filter(Boolean),
-  );
-
-  let weakChanged = false;
-  const nextWeak = {};
-  Object.entries(weakTracker || {}).forEach(([rawId, row]) => {
-    const key = normalizeQuestionIdKey(rawId);
-    if (!key || !validIds.has(key)) {
-      weakChanged = true;
-      return;
-    }
-    nextWeak[key] = row;
-  });
-  if (weakChanged) {
-    weakTracker = nextWeak;
-    saveWeakTracker();
-  }
-
-  // Keep historical performance data intact even when question bank changes.
-  // Dashboard should remain cumulative and never shrink from ID filtering.
-}
-
-reconcileLocalQuestionStats();
 
 function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (!performanceData[questionId]) {
@@ -2978,18 +3164,11 @@ function updatePerformance(questionId, isCorrect, selectedAnswer = "") {
   if (question && question.category) {
     updateCategoryPerformance(question.category, isCorrect);
   }
-  if (question && (question.rotation || Array.isArray(question.rotations))) {
-    updateRotationPerformance(question.rotation || question.rotations?.[0] || "", isCorrect);
+  if (question) {
+    getQuestionRotationValues(question).forEach((rotation) => {
+      updateRotationPerformance(rotation, isCorrect);
+    });
   }
-
-  backendClient.syncPerformance({
-    questionId,
-    isCorrect,
-    category: question?.category || "General",
-    rotation: question?.rotation || question?.rotations?.[0] || "",
-    selectedAnswer: String(selectedAnswer || "").trim(),
-  });
-  schedulePerformanceStateSync();
 
   savePerformance();
 }
@@ -3076,18 +3255,19 @@ function rebuildRotationPerformanceFromQuestionStats() {
 
   Object.entries(performanceData || {}).forEach(([questionId, row]) => {
     const question = findQuestionById(questionId);
-    const rotation = normalizeRotationValue(
-      question?.rotation || question?.rotations?.[0] || "",
-    );
-    if (!rotation || rotation === "all") return;
+    const rotations = getQuestionRotationValues(question);
+    if (!rotations.length) return;
 
     const attempts = Math.max(0, Number(row?.attempts) || 0);
     const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
-    if (!rebuilt[rotation]) {
-      rebuilt[rotation] = { attempts: 0, correct: 0 };
-    }
-    rebuilt[rotation].attempts += attempts;
-    rebuilt[rotation].correct += correct;
+    rotations.forEach((rotation) => {
+      if (!rotation || rotation === "all") return;
+      if (!rebuilt[rotation]) {
+        rebuilt[rotation] = { attempts: 0, correct: 0 };
+      }
+      rebuilt[rotation].attempts += attempts;
+      rebuilt[rotation].correct += correct;
+    });
   });
 
   rotationPerformance = rebuilt;
@@ -3134,11 +3314,11 @@ rebuildCategoryPerformanceFromQuestionStats();
 
 const studyBtn = document.querySelector(".study-mode");
 const examBtn = document.querySelector(".exam-mode");
-const dashboardBtns = Array.from(document.querySelectorAll('[data-open-dashboard="true"], .dashboard-mode'));
 const dailyQuizBtn = document.getElementById("daily-quiz-btn");
 const dailyQuizMetaEl = document.getElementById("daily-quiz-meta");
 const topicLibraryBtns = Array.from(document.querySelectorAll('[data-open-topic-library="true"]'));
 const menuCommunityBtn = document.getElementById("menu-community-btn");
+const communityBackBtn = document.getElementById("community-back-btn");
 const menuDrillsTab = document.getElementById("menu-drills-tab");
 const menuLawTab = document.getElementById("menu-law-tab");
 const menuGppqeTab = document.getElementById("menu-gppqe-tab");
@@ -3154,10 +3334,11 @@ const gppqeBackBtn = document.getElementById("gppqe-back-btn");
 const gppqeMenuBtn = document.getElementById("gppqe-menu-btn");
 const extraScreen = document.getElementById("extra-screen");
 const extraBackBtn = document.getElementById("extra-back-btn");
-const extraViewToggleBtn = document.getElementById("extra-view-toggle-btn");
+const extraViewToggleBtn = null;
 const extraMenuBtn = document.getElementById("extra-menu-btn");
 const menuExtraGrid = document.getElementById("menu-extra-grid");
 const menuNewsBtn = document.getElementById("menu-news-btn");
+const menuGuidelinesBtn = document.getElementById("menu-guidelines-btn");
 const comingSoonModal = document.getElementById("coming-soon-modal");
 const comingSoonOkBtn = document.getElementById("coming-soon-ok-btn");
 const rapidDrillBtn = document.getElementById("rapid-drill-btn");
@@ -3280,36 +3461,1569 @@ function openDrillsScreen(variant = "rapid") {
   setDrillLobbyVariant(variant);
 }
 
-function openGppqeScreen() {
-  if (!requireSubscriptionAccess("gppqe")) {
+async function openGppqeScreen() {
+  showScreen("gppqe-screen");
+  gppqeState.view = "hub";
+  gppqeState.historyModalOpen = false;
+  renderGppqeScreen();
+
+  await ensureQuestionBankLoaded().catch(() => []);
+
+  // Render immediately from the local question cache.
+  renderGppqeScreen();
+
+  // Refresh account and subscription state without blocking the screen.
+  void Promise.all([
+    refreshSharedAccountState({
+      force: true,
+      silent: true,
+      deferHydration: true,
+    }).catch(() => false),
+
+    loadSubscriptionScreenData({
+      force: true,
+    }).catch(() => false),
+  ]).then(() => {
+    if (!gppqeScreen || gppqeScreen.classList.contains("hidden")) {
+      return;
+    }
+
+    if (!requireSubscriptionAccess("gppqe")) {
+      return;
+    }
+
+    renderGppqeScreen();
+
+    gppqePromptResumeForStudyStart(() => {
+      gppqeState.view = "hub";
+      gppqeState.notice = "";
+      gppqeState.historyModalOpen = false;
+      renderGppqeScreen();
+    });
+  });
+}
+
+const GPPQE_SESSION_SAMPLE_SIZE = 20;
+const GPPQE_PROGRESS_STORAGE_KEY = "ajix_gppqe_progress_v1";
+const GPPQE_STORAGE_KEY = "ajix_gppqe_state_v1";
+function gppqeCreateEmptyAnswers() {
+  return Object.create(null);
+}
+
+function gppqeGetModeLabel(mode = "study") {
+  return String(mode || "").trim().toLowerCase() === "exam" ? "GPPQE Exam" : "GPPQE Study";
+}
+
+function gppqeIsValidAnswer(answer, question) {
+  return (
+    Number.isInteger(answer) &&
+    answer >= 0 &&
+    question &&
+    Array.isArray(question.options) &&
+    answer < question.options.length
+  );
+}
+
+function gppqeResetRuntimeState() {
+  gppqeStopTimer();
+  gppqeState.questions = [];
+  gppqeState.currentIndex = 0;
+  gppqeState.answers = gppqeCreateEmptyAnswers();
+  gppqeState.studyScore = 0;
+  gppqeState.examTimeLeft = 0;
+  gppqeState.examTotalTime = 0;
+  gppqeState.examStartedAt = null;
+  gppqeState.sessionSampled = false;
+  gppqeState.notice = "";
+  gppqeState.historyModalOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  gppqeState.reviewQuestionOpen = false;
+  committedSessionPointsId = "";
+  gppqeSessionCommitKey = "";
+  document.body.style.overflow = "";
+}
+
+const gppqeState = {
+  view: "hub",
+  selectedYear: [],
+  selectedCategories: [],
+  selectedMode: "study",
+  questions: [],
+  currentIndex: 0,
+  answers: {},
+  studyScore: 0,
+  examTimeLeft: 0,
+  examTotalTime: 0,
+  examStartedAt: null,
+  examTimerId: null,
+  sessionSampled: false,
+  notice: "",
+  historyModalOpen: false,
+  reviewQuestionIndex: 0,
+  reviewQuestionOpen: false,
+  pickerField: "",
+};
+
+let gppqeBindingsReady = false;
+let gppqeSessionCommitKey = "";
+
+function gppqeGetSelectedYears(value = gppqeState.selectedYear) {
+  const values = Array.isArray(value) ? value : value === "" || value == null ? [] : [value];
+  return [...new Set(values.map((item) => String(item).trim()).filter(Boolean).map((item) => item === "all" ? "all" : Number(item)).filter((item) => item === "all" || Number.isFinite(item)))];
+}
+
+function gppqeGetSelectedCategoryLabel() {
+  return gppqeState.selectedCategories.length ? gppqeState.selectedCategories.length + " selected" : "All categories";
+}
+function gppqeEnhancePickerFields(root) {
+  const selects = root.querySelectorAll('select[data-gppqe-field]');
+  selects.forEach((select) => {
+    const field = String(select.dataset.gppqeField || '').trim();
+    if (field !== 'year' && field !== 'category') return;
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = select.className + ' gppqe-setup-picker-trigger';
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (select.disabled) {
+      trigger.disabled = true;
+      trigger.setAttribute('aria-disabled', 'true');
+    }
+    const label = document.createElement('span');
+    label.textContent = field === 'year' ? gppqeGetYearLabel(gppqeState.selectedYear) : select.disabled ? '-----' : gppqeGetSelectedCategoryLabel();
+    const chevron = document.createElement('span');
+    chevron.className = 'gppqe-picker-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    trigger.append(label, chevron);
+    const modal = document.createElement('div');
+    modal.className = 'gppqe-picker-modal hidden';
+    modal.setAttribute('aria-hidden', 'true');
+    const card = document.createElement('div');
+    card.className = 'gppqe-picker-card';
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    const head = document.createElement('div');
+    head.className = 'gppqe-picker-head';
+    const title = document.createElement('h3');
+    title.className = 'gppqe-picker-title';
+    title.textContent = field === 'year' ? 'Select year' : 'Select category';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'gppqe-picker-close';
+    close.textContent = 'Close';
+    head.append(title, close);
+    const list = document.createElement('div');
+    list.className = 'gppqe-picker-list';
+    list.setAttribute('role', 'listbox');
+    Array.from(select.options).forEach((option) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'gppqe-picker-option';
+      item.dataset.value = option.value;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', option.selected ? 'true' : 'false');
+      item.textContent = option.textContent;
+      if (option.selected) item.classList.add('is-selected');
+      list.appendChild(item);
+    });
+    card.append(head, list);
+    modal.appendChild(card);
+    const openModal = (focusSelected = true) => {
+      gppqeState.pickerField = field;
+      modal.classList.remove('hidden');
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+      trigger.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+      if (focusSelected) list.querySelector('.is-selected')?.focus();
+    };
+    const closeModal = () => {
+      gppqeState.pickerField = '';
+      modal.classList.add('hidden');
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+      trigger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    };
+    trigger.addEventListener('click', (event) => {
+      event.preventDefault();
+      openModal();
+    });
+    close.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) { closeModal(); return; }
+      const item = event.target.closest('.gppqe-picker-option');
+      if (!item) return;
+      gppqeState.pickerField = field;
+      if (field === 'year') gppqeSelectYear(item.dataset.value || '');
+      else gppqeSelectCategory(item.dataset.value || '');
+    });
+    select.replaceWith(trigger);
+    root.appendChild(modal);
+    if (gppqeState.pickerField === field) openModal(false);
+  });
+}
+function gppqeGetRoot() {
+  return gppqeScreen ? gppqeScreen.querySelector(".study-scroll-content") : null;
+}
+
+function gppqeFormatTime(seconds = 0) {
+  const total = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${minutes}:${String(secs).padStart(2, "0")}`;
+}
+
+function gppqeShuffle(items = []) {
+  const list = [...items];
+  for (let index = list.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [list[index], list[swapIndex]] = [list[swapIndex], list[index]];
+  }
+  return list;
+}
+
+function gppqeGetPausedSessionKey() {
+  return GPPQE_PROGRESS_STORAGE_KEY;
+}
+
+function gppqeBuildProgressPayload() {
+  return {
+    selectedMode: gppqeState.selectedMode,
+    selectedYear: gppqeState.selectedYear,
+    selectedCategories: [...gppqeState.selectedCategories],
+    questions: gppqeState.questions.map((question) => ({ ...question })),
+    currentIndex: gppqeState.currentIndex,
+    answers: { ...gppqeState.answers },
+    studyScore: gppqeState.studyScore,
+    examTimeLeft: gppqeState.examTimeLeft,
+    examTotalTime: gppqeState.examTotalTime,
+    examStartedAt: gppqeState.examStartedAt,
+    sessionSampled: gppqeState.sessionSampled,
+    timestamp: Date.now(),
+  };
+}
+
+function gppqeSaveProgress() {
+  if (gppqeState.view !== "session" || !gppqeState.questions.length) return;
+  try {
+    localStorage.setItem(gppqeGetPausedSessionKey(), JSON.stringify(gppqeBuildProgressPayload()));
+  } catch {}
+}
+
+function gppqeClearProgress() {
+  try {
+    localStorage.removeItem(gppqeGetPausedSessionKey());
+  } catch {}
+}
+
+function gppqeReadProgress() {
+  try {
+    const raw = localStorage.getItem(gppqeGetPausedSessionKey());
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    if (!Array.isArray(saved.questions) || saved.questions.length === 0) return null;
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
+function gppqeRestoreProgress(saved) {
+  if (!saved || typeof saved !== "object") return false;
+  gppqeResetRuntimeState();
+  gppqeSessionCommitKey =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  gppqeState.selectedMode = String(saved.selectedMode || "study").toLowerCase() === "exam" ? "exam" : "study";
+  gppqeState.selectedYear = gppqeGetSelectedYears(saved.selectedYear);
+  gppqeState.selectedCategories = Array.isArray(saved.selectedCategories)
+    ? saved.selectedCategories.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  gppqeState.questions = Array.isArray(saved.questions) ? saved.questions.map((question) => ({ ...question })) : [];
+  gppqeState.currentIndex = Math.max(0, Math.min(Number(saved.currentIndex) || 0, Math.max(0, gppqeState.questions.length - 1)));
+  gppqeState.answers = saved.answers && typeof saved.answers === "object" ? { ...saved.answers } : gppqeCreateEmptyAnswers();
+  gppqeState.studyScore = Math.max(0, Number(saved.studyScore) || 0);
+  gppqeState.examTimeLeft = Math.max(0, Number(saved.examTimeLeft) || 0);
+  gppqeState.examTotalTime = Math.max(0, Number(saved.examTotalTime) || 0);
+  gppqeState.examStartedAt = Number(saved.examStartedAt) || null;
+  gppqeState.sessionSampled = Boolean(saved.sessionSampled);
+  gppqeState.notice = "";
+  gppqeState.view = "session";
+  gppqeState.historyModalOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  gppqeState.reviewQuestionOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+  if (gppqeState.selectedMode === "exam") {
+    gppqeStartTimer();
+  }
+  return true;
+}
+
+function gppqeGetPausedSessionSummary(saved = null) {
+  const mode = String(saved?.selectedMode || "study").toLowerCase() === "exam" ? "Exam" : "Study";
+  const yearLabel = gppqeGetYearLabel(saved?.selectedYear || "");
+  const answered = Object.keys(saved?.answers || {}).length;
+  const total = Array.isArray(saved?.questions) ? saved.questions.length : 0;
+  return {
+    title: `Resume ${mode} Session?`,
+    text: `You have a paused ${mode.toLowerCase()} session for ${yearLabel}. ${answered}/${Math.max(1, total)} questions were answered. Resume where you stopped or start new.`,
+    cancelLabel: `Continue ${mode}`,
+    confirmLabel: `Resume ${mode}`,
+    startNewLabel: `Start New ${mode}`,
+  };
+}
+
+function gppqePromptResumeForStudyStart(onStartNew = null) {
+  const saved = gppqeReadProgress();
+  if (!saved || typeof saved !== "object") return false;
+  if (!Array.isArray(saved.questions) || !saved.questions.length) return false;
+  const summary = gppqeGetPausedSessionSummary(saved);
+  openSessionResumeModal({
+    title: summary.title,
+    text: summary.text,
+    onResume: () => {
+      void gppqeRestoreProgress(saved);
+    },
+    onStartNew: () => {
+      gppqeClearProgress();
+      if (typeof onStartNew === "function") {
+        onStartNew();
+      }
+    },
+  });
+  return true;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    gppqeSaveProgress();
+  }
+});
+
+window.addEventListener("beforeunload", () => {
+  gppqeSaveProgress();
+});
+function getDashboardSessionEntries() {
+  const entries = [];
+
+  const storageKeys = [
+    "studySession",
+    "practiceSession",
+    "quizExamSession",
+    "examAbandoned",
+    "quizPerformance",
+    "quizCategoryPerformance",
+  ];
+
+  storageKeys.forEach((key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        entries.push(...parsed);
+      } else if (parsed && typeof parsed === "object") {
+        entries.push(parsed);
+      }
+    } catch {
+      // Ignore malformed legacy dashboard data.
+    }
+  });
+
+  return entries
+    .filter((entry) => entry && typeof entry === "object")
+    .sort((a, b) => {
+      const aTime = Date.parse(a.completedAt || a.createdAt || a.timestamp || "") || 0;
+      const bTime = Date.parse(b.completedAt || b.createdAt || b.timestamp || "") || 0;
+      return bTime - aTime;
+    });
+}
+
+function gppqeGetRecentResults(limit = 20) {
+  const entries = getDashboardSessionEntries()
+    .filter((entry) => String(entry?.mode || "").toLowerCase().includes("gppqe"))
+    .sort((a, b) => {
+      const aTime = new Date(a?.timestamp || a?.createdAt || a?.date || 0).getTime();
+      const bTime = new Date(b?.timestamp || b?.createdAt || b?.date || 0).getTime();
+      return bTime - aTime;
+    });
+  return entries.slice(0, Math.max(1, Number(limit) || 20));
+}
+
+function gppqeFormatResultEntry(entry = {}) {
+  const mode = String(entry?.mode || "GPPQE").trim() || "GPPQE";
+  const score = Math.max(0, Number(entry?.score) || 0);
+  const total = Math.max(0, Number(entry?.total) || 0);
+  const percent = Math.max(0, Math.round(Number(entry?.percent) || 0));
+  const createdAt = new Date(entry?.timestamp || entry?.createdAt || entry?.date || Date.now());
+  const dateLabel = Number.isNaN(createdAt.getTime())
+    ? ""
+    : createdAt.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+  return `
+    <article class="gppqe-history-item">
+      <div class="gppqe-history-item-main">
+        <div class="gppqe-history-item-mode">${escapeHtml(mode)}</div>
+        <div class="gppqe-history-item-meta">${escapeHtml(dateLabel)}</div>
+      </div>
+      <div class="gppqe-history-item-score">${score}/${total}</div>
+      <div class="gppqe-history-item-percent">${percent}%</div>
+    </article>
+  `;
+}
+
+function gppqeOpenHistoryModal() {
+  gppqeState.historyModalOpen = true;
+  document.body.style.overflow = "hidden";
+  renderGppqeScreen();
+}
+
+function gppqeCloseHistoryModal() {
+  gppqeState.historyModalOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeGetYearLabel(year = []) {
+  const years = gppqeGetSelectedYears(year);
+  if (!years.length) return "Select year";
+  if (years.includes("all")) return "All years";
+  if (years.length === 1) return String(years[0]);
+  return years.length + " years selected";
+}
+
+function gppqeGetBankQuestions() {
+  const source = Array.isArray(questionBank) ? questionBank : [];
+  return source.filter((question) => {
+    if (String(question?.bank || "main").trim().toLowerCase() !== "gppqe") return false;
+    if (String(question?.type || "").trim().toLowerCase() === "note") return false;
+    return Array.isArray(question?.options) && question.options.length >= 2;
+  });
+}
+
+function gppqeGetYears() {
+  return [...new Set(gppqeGetBankQuestions().map((question) => Number(question.year)).filter((year) => Number.isFinite(year)))].sort((a, b) => b - a);
+}
+
+function gppqeGetCategoriesForYear(year = []) {
+  const pool = gppqeGetBankQuestions();
+  const years = gppqeGetSelectedYears(year);
+  const filtered = !years.length || years.includes("all")
+    ? pool
+    : pool.filter((question) => years.includes(Number(question.year)));
+  return [...new Set(filtered.map((question) => String(question.category || "").trim()).filter(Boolean))].sort();
+}
+
+function gppqeFormatQuestionMarkup(question = {}) {
+  const raw = stripBankQuestionLabel(question.question || question.text || "");
+  if (!raw) return "";
+
+  let prompt = raw;
+  let caseText = "";
+  const caseMarker = /\s+Use the above to answer questions?\s+\d+\s*-\s*\d+\.?\s*/i;
+  const caseMatch = prompt.match(caseMarker);
+  if (caseMatch && Number.isFinite(caseMatch.index)) {
+    caseText = prompt.slice(0, caseMatch.index).trim();
+    prompt = prompt.slice(caseMatch.index + caseMatch[0].length).trim();
+  }
+
+  if (!caseText) {
+    const derivedCase = deriveCaseNarrativeFromStem(prompt);
+    if (derivedCase.caseBlock && !/(?:\s|^)(?:I|1)[.:)]?$/i.test(derivedCase.caseBlock)) {
+      caseText = derivedCase.caseBlock;
+      prompt = derivedCase.prompt;
+    }
+  }
+
+  const storedStatements = Array.isArray(question.statements)
+    ? question.statements.map((statement) => String(statement || "").trim()).filter(Boolean)
+    : [];
+  const statementMatch = prompt.match(/\s+(?=(?:1|I)[.)]\s)/i);
+  const parsedStatements = statementMatch
+    ? prompt.slice(statementMatch.index + 1).split(/\s+(?=(?:[2-5]|II|III|IV|V)[.)]\s)/i).map((part) => part.trim()).filter(Boolean)
+    : [];
+  const statementParts = storedStatements.length >= 2 ? storedStatements : parsedStatements;
+  const questionPrompt = storedStatements.length >= 2
+    ? prompt
+    : statementParts.length >= 2
+      ? prompt.slice(0, statementMatch.index).trim()
+      : prompt;
+
+  const caseMarkup = caseText ? "<div class=\"gppqe-case-context\"><strong>Case</strong><span>" + escapeHtml(caseText) + "</span></div>" : "";
+  const promptMarkup = "<div class=\"gppqe-prompt\">" + escapeHtml(questionPrompt) + "</div>";
+  const statementsMarkup = statementParts.length >= 2
+    ? "<div class=\"gppqe-statements\"><strong>Statements</strong>" + statementParts.map((statement) => "<div>" + escapeHtml(statement) + "</div>").join("") + "</div>"
+    : "";
+  return caseMarkup + promptMarkup + statementsMarkup;
+}
+function gppqeGetDisplayNumber(question, fallbackIndex = 0) {
+  return Number(fallbackIndex) + 1;
+}
+
+function gppqeGetPool() {
+  let pool = gppqeGetBankQuestions();
+  const years = gppqeGetSelectedYears();
+  if (years.length > 0 && !years.includes("all")) {
+    pool = pool.filter((question) => years.includes(Number(question.year)));
+  }
+  if (gppqeState.selectedCategories.length > 0) {
+    pool = pool.filter((question) => gppqeState.selectedCategories.includes(question.category));
+  }
+  return pool;
+}
+
+function gppqeGetSamplePool(limit = GPPQE_SESSION_SAMPLE_SIZE) {
+  const pool = gppqeGetPool();
+  const count = Math.max(1, Number(limit) || GPPQE_SESSION_SAMPLE_SIZE);
+  if (pool.length <= count) return gppqeShuffle(pool);
+  return gppqeShuffle(pool).slice(0, count);
+}
+
+function gppqeStopTimer() {
+  if (gppqeState.examTimerId) {
+    clearInterval(gppqeState.examTimerId);
+    gppqeState.examTimerId = null;
+  }
+}
+
+function gppqeStartTimer() {
+  gppqeStopTimer();
+  if (gppqeState.selectedMode !== "exam" || gppqeState.examTimeLeft <= 0) return;
+  gppqeState.examTimerId = setInterval(() => {
+    gppqeState.examTimeLeft = Math.max(0, gppqeState.examTimeLeft - 1);
+    const timerEl = document.getElementById("gppqe-timer");
+    if (timerEl) {
+      timerEl.textContent = gppqeFormatTime(gppqeState.examTimeLeft);
+      timerEl.classList.toggle("is-danger", gppqeState.examTimeLeft < 60);
+      timerEl.classList.toggle("is-warning", gppqeState.examTimeLeft >= 60 && gppqeState.examTimeLeft < 180);
+    }
+    if (gppqeState.examTimeLeft <= 0) {
+      gppqeSubmitSession();
+    }
+  }, 1000);
+}
+
+function gppqeSaveQuestionResult(question, selectedIndex) {
+  if (gppqeState.answers[question.id] !== undefined) return;
+  gppqeState.answers[question.id] = selectedIndex;
+  if (gppqeState.selectedMode === "study" && selectedIndex === question.answer) {
+    gppqeState.studyScore += 1;
+  }
+}
+
+function gppqeSelectYear(year) {
+  const value = String(year || "").trim();
+  const currentYears = gppqeGetSelectedYears();
+  if (gppqeState.selectedMode === "exam") {
+    gppqeState.selectedYear = value ? [value === "all" ? "all" : Number(value)] : [];
+  } else if (!value) {
+    gppqeState.selectedYear = [];
+  } else if (value === "all") {
+    gppqeState.selectedYear = ["all"];
+  } else {
+    const numericYear = Number(value);
+    gppqeState.selectedYear = currentYears.includes(numericYear)
+      ? currentYears.filter((item) => item !== numericYear)
+      : [...currentYears.filter((item) => item !== "all"), numericYear];
+  }
+  const availableCategories = new Set(gppqeGetCategoriesForYear(gppqeState.selectedYear));
+  gppqeState.selectedCategories = gppqeState.selectedCategories.filter((category) => availableCategories.has(category));
+  gppqeState.notice = "";
+  gppqeState.view = "hub";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeSelectCategory(category) {
+  if (gppqeState.selectedMode === "exam") return;
+  const value = String(category || "").trim();
+  if (!value) {
+    gppqeState.selectedCategories = [];
+  } else if (gppqeState.selectedCategories.includes(value)) {
+    gppqeState.selectedCategories = gppqeState.selectedCategories.filter((item) => item !== value);
+  } else {
+    gppqeState.selectedCategories = [...gppqeState.selectedCategories, value];
+  }
+  gppqeState.notice = "";
+  gppqeState.view = "hub";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeHandleChange(event) {
+  const target = event.target instanceof HTMLElement ? event.target.closest("[data-gppqe-field]") : null;
+  if (!target) return;
+  const field = String(target.dataset.gppqeField || "").trim();
+  if (field === "year") {
+    gppqeSelectYear(target.value || "");
     return;
   }
-  showScreen("gppqe-screen");
+  if (field === "category") {
+    gppqeSelectCategory(target.value || "");
+  }
+}
+
+function gppqeSetMode(mode = "study") {
+  gppqeState.selectedMode = String(mode || "").toLowerCase() === "exam" ? "exam" : "study";
+  if (gppqeState.selectedMode === "exam") {
+    gppqeState.selectedCategories = [];
+  }
+  gppqeState.notice = "";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeToggleCategory(category) {
+  const value = String(category || "").trim();
+  if (!value) return;
+  if (gppqeState.selectedCategories.includes(value)) {
+    gppqeState.selectedCategories = gppqeState.selectedCategories.filter((item) => item !== value);
+  } else {
+    gppqeState.selectedCategories = [...gppqeState.selectedCategories, value];
+  }
+  gppqeState.notice = "";
+  gppqeState.reviewQuestionOpen = false;
+  gppqeState.reviewQuestionIndex = 0;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeStartSession(mode = "study", { sample = false } = {}) {
+  const normalizedMode = String(mode || "").toLowerCase() === "exam" ? "exam" : "study";
+  const selectedYears = gppqeGetSelectedYears();
+  if (!selectedYears.length) {
+    gppqeState.notice = "Select a year to begin.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+  if (normalizedMode === "exam" && (selectedYears.length !== 1 || selectedYears.includes("all"))) {
+    gppqeState.notice = "Exam mode requires one full year. Select one year only.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+  const pool = sample ? gppqeGetSamplePool() : gppqeGetPool();
+  if (!pool.length) {
+    gppqeState.notice = "No questions match the current year or category filters. Try a different combination.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+
+  gppqeResetRuntimeState();
+  lastSavedSessionFingerprint = "";
+  lastSavedSessionAt = 0;
+  gppqeSessionCommitKey =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  gppqeState.selectedMode = normalizedMode;
+  gppqeState.questions = gppqeShuffle(pool.map((question) => ({ ...question })));
+  gppqeState.currentIndex = 0;
+  gppqeState.notice = "";
+  gppqeState.examStartedAt = Date.now();
+  gppqeState.examTotalTime = normalizedMode === "exam" ? Math.max(gppqeState.questions.length * 40, 40) : 0;
+  gppqeState.examTimeLeft = gppqeState.examTotalTime;
+  gppqeState.sessionSampled = Boolean(sample);
+  gppqeState.view = "session";
+  gppqeClearProgress();
+  renderGppqeScreen();
+  gppqeSaveProgress();
+  if (normalizedMode === "exam") {
+    gppqeStartTimer();
+  }
+}
+
+function gppqeFinishSession({ persistResult = true } = {}) {
+  gppqeStopTimer();
+  if (persistResult && gppqeState.questions.length) {
+    const correct = gppqeGetCorrectCount();
+    const total = gppqeState.questions.length;
+    const setupPointsBucket = gppqeState.selectedMode === "exam" ? "gppqeExam" : "gppqeStudy";
+    saveSession(gppqeGetModeLabel(gppqeState.selectedMode), correct, total);
+    if (setupPointsBucket) {
+      const currentSetupPoints = readCurrentSetupPoints({ scope: "gppqe" });
+      const nextBucketValue = Math.max(
+        0,
+        Math.round(Number(currentSetupPoints[setupPointsBucket]) || 0) + Math.max(0, Math.round(Number(correct) || 0)),
+      );
+      currentSetupPoints[setupPointsBucket] = nextBucketValue;
+      writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true, scope: "gppqe" });
+      if (currentUser) {
+        currentUser = {
+          ...(currentUser || {}),
+          setupPoints: mergeSetupPoints(currentUser?.setupPoints || {}, currentSetupPoints),
+        };
+      }
+      scheduleSetupPointsSync(0);
+    }
+
+    if (gppqeState.selectedMode === "exam") {
+      const nextStoredPoints = writeStoredPoints(readStoredPoints() + Math.max(0, Math.round(Number(correct) || 0)));
+      writePendingPoints(readPendingPoints() + Math.max(0, Math.round(Number(correct) || 0)));
+      if (currentUser) {
+        currentUser = { ...(currentUser || {}), points: nextStoredPoints };
+      }
+      if (currentUser && backendClient.isAuthenticated()) {
+        schedulePendingPointsSync(0);
+      }
+    }
+
+    renderPoints();
+    if (gppqeScreen) {
+      renderGppqeScreen();
+    }
+  }
+  gppqeClearProgress();
+  gppqeState.view = "review";
+  gppqeState.reviewQuestionIndex = 0;
+  gppqeState.reviewQuestionOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeRequestExit() {
+  const isExam = gppqeState.selectedMode === "exam";
+  const total = Math.max(1, gppqeState.questions.length || 0);
+  openQuizExitModal({
+    title: isExam ? "End GPPQE Exam?" : "End GPPQE Study?",
+    text: isExam
+      ? `Ending now will submit this paper, score the answered questions against the full ${total}-question set, and show your result.`
+      : `Ending now will calculate your study score from the questions answered so far and close this session.`,
+    cancelLabel: isExam ? "Continue Exam" : "Continue Study",
+    confirmLabel: isExam ? "End Exam" : "End Study",
+    onConfirm: () => gppqeFinishSession({ persistResult: true }),
+  });
+}
+
+function gppqeSubmitSession() {
+  if (gppqeState.view !== "session") return;
+  gppqeFinishSession();
+}
+
+function gppqeAnswerQuestion(questionId, optionIndex) {
+  const question = gppqeState.questions.find((item) => item.id === questionId);
+  if (!question) return;
+  if (gppqeState.selectedMode === "study" && gppqeState.answers[questionId] !== undefined) return;
+  const previousAnswer = gppqeState.answers[questionId];
+  gppqeState.answers[questionId] = optionIndex;
+  if (gppqeState.selectedMode === "study") {
+    if (previousAnswer === undefined && optionIndex === question.answer) {
+      gppqeState.studyScore += 1;
+    }
+  }
+  renderGppqeScreen();
+  gppqeSaveProgress();
+}
+
+function gppqeGoToQuestion(direction = 1) {
+  const nextIndex = gppqeState.currentIndex + direction;
+  if (nextIndex < 0 || nextIndex >= gppqeState.questions.length) return;
+  gppqeState.currentIndex = nextIndex;
+  renderGppqeScreen();
+  gppqeSaveProgress();
+}
+
+function gppqeJumpToQuestion(index = 0) {
+  const nextIndex = Number(index) || 0;
+  if (nextIndex < 0 || nextIndex >= gppqeState.questions.length) return;
+  gppqeState.currentIndex = nextIndex;
+  renderGppqeScreen();
+  gppqeSaveProgress();
+}
+
+function gppqeRestartSession() {
+  if (!gppqeState.questions.length) {
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+  const currentMode = gppqeState.selectedMode;
+  const currentYear = [...gppqeGetSelectedYears()];
+  const currentCategories = [...gppqeState.selectedCategories];
+  gppqeState.selectedYear = currentYear;
+  gppqeState.selectedCategories = currentCategories;
+  gppqeStartSession(currentMode, { sample: gppqeState.sessionSampled });
+}
+
+function gppqeGetCurrentQuestion() {
+  return gppqeState.questions[gppqeState.currentIndex] || null;
+}
+
+function gppqeGetCorrectCount() {
+  return gppqeState.questions.reduce((count, question) => {
+    const hasAnswer = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+    const answer = hasAnswer ? gppqeState.answers[question.id] : undefined;
+    return count + (gppqeIsValidAnswer(answer, question) && answer === question.answer ? 1 : 0);
+  }, 0);
+}
+
+function gppqeGetQuestionViewText(question) {
+  const hasAnswer = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+  if (!hasAnswer) return "Not answered";
+  const answer = gppqeState.answers[question.id];
+  return gppqeIsValidAnswer(answer, question) ? question.options[answer] || "Not answered" : "Not answered";
+}
+
+function gppqeGetReviewQuestionState(question) {
+  const hasAnswer = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+  const answer = hasAnswer ? gppqeState.answers[question.id] : undefined;
+  const isAnswered = gppqeIsValidAnswer(answer, question);
+  const isCorrect = Boolean(isAnswered && answer === question.answer);
+  return {
+    hasAnswer,
+    answer,
+    isAnswered,
+    isCorrect,
+    statusLabel: isCorrect ? "Correct" : hasAnswer ? "Wrong" : "Not answered",
+  };
+}
+
+function gppqeOpenReviewQuestion(index = 0) {
+  if (!gppqeState.questions.length) return;
+  const nextIndex = Math.max(0, Math.min(Number(index) || 0, gppqeState.questions.length - 1));
+  gppqeState.reviewQuestionIndex = nextIndex;
+  gppqeState.reviewQuestionOpen = true;
+  document.body.style.overflow = "hidden";
+  renderGppqeScreen();
+}
+
+function gppqeCloseReviewQuestion() {
+  if (!gppqeState.reviewQuestionOpen) return;
+  gppqeState.reviewQuestionOpen = false;
+  document.body.style.overflow = "";
+  renderGppqeScreen();
+}
+
+function gppqeMoveReviewQuestion(direction = 1) {
+  if (!gppqeState.questions.length) return;
+  const nextIndex = gppqeState.reviewQuestionIndex + (direction < 0 ? -1 : 1);
+  if (nextIndex < 0 || nextIndex >= gppqeState.questions.length) return;
+  gppqeState.reviewQuestionIndex = nextIndex;
+  gppqeState.reviewQuestionOpen = true;
+  renderGppqeScreen();
+}
+
+function gppqeHandleBack() {
+  gppqeStopTimer();
+  if (gppqeState.view === "session" || gppqeState.view === "review") {
+    if (gppqeState.view === "session") {
+      if (gppqeState.selectedMode === "exam") {
+        gppqeRequestExit();
+        return;
+      }
+      gppqeSaveProgress();
+      gppqeState.view = "hub";
+      gppqeState.notice = "";
+      gppqeState.historyModalOpen = false;
+      renderGppqeScreen();
+      return;
+    }
+    if (gppqeState.reviewQuestionOpen) {
+      gppqeCloseReviewQuestion();
+      return;
+    }
+    gppqeState.view = "hub";
+    gppqeState.historyModalOpen = false;
+    renderGppqeScreen();
+    return;
+  }
+  showScreen("quiz-menu");
+}
+
+function gppqeHandleAction(event) {
+  const target = event.target instanceof HTMLElement ? event.target.closest("[data-gppqe-action]") : null;
+  if (!target) return;
+  const action = String(target.dataset.gppqeAction || "").trim();
+  if (!action) return;
+  event.preventDefault();
+
+  if (action === "back") {
+    gppqeHandleBack();
+    return;
+  }
+
+  if (action === "cancel") {
+    gppqeRequestExit();
+    return;
+  }
+
+  if (action === "hub") {
+    if (gppqeState.view === "session") {
+      gppqeSaveProgress();
+    }
+    gppqeState.view = "hub";
+    gppqeState.notice = "";
+    gppqeState.historyModalOpen = false;
+    gppqeState.reviewQuestionOpen = false;
+    gppqeState.reviewQuestionIndex = 0;
+    document.body.style.overflow = "";
+    renderGppqeScreen();
+    return;
+  }
+
+  if (action === "open-history") {
+    gppqeOpenHistoryModal();
+    return;
+  }
+
+  if (action === "close-history") {
+    gppqeCloseHistoryModal();
+    return;
+  }
+
+  if (action === "select-year") {
+    gppqeSelectYear(target.dataset.gppqeYear || "all");
+    return;
+  }
+
+  if (action === "select-category") {
+    gppqeSelectCategory(target.dataset.gppqeCategory || "");
+    return;
+  }
+
+  if (action === "set-mode") {
+    gppqeSetMode(target.dataset.gppqeMode || "study");
+    return;
+  }
+
+  if (action === "toggle-category") {
+    gppqeToggleCategory(target.dataset.gppqeCategory || "");
+    return;
+  }
+
+  if (action === "quick-study") {
+    const startNewQuickStudy = () => {
+      gppqeState.selectedYear = ["all"];
+      gppqeState.selectedCategories = [];
+      gppqeStartSession("study", { sample: true });
+    };
+    if (gppqePromptResumeForStudyStart(startNewQuickStudy)) return;
+    startNewQuickStudy();
+    return;
+  }
+
+  if (action === "quick-exam") {
+    gppqeState.selectedYear = [];
+    gppqeState.selectedCategories = [];
+    gppqeState.selectedMode = "exam";
+    gppqeState.notice = "Select one full year before starting Exam mode.";
+    gppqeState.view = "hub";
+    renderGppqeScreen();
+    return;
+  }
+
+  if (action === "start-study" || action === "start-exam") {
+    if (action === "start-study" && gppqePromptResumeForStudyStart(() => gppqeStartSession("study"))) {
+      return;
+    }
+    gppqeStartSession(action === "start-exam" ? "exam" : "study");
+    return;
+  }
+
+  if (action === "start-session") {
+    if (gppqeState.selectedMode === "study" && gppqePromptResumeForStudyStart(() => gppqeStartSession("study"))) {
+      return;
+    }
+    gppqeStartSession(gppqeState.selectedMode || "study");
+    return;
+  }
+
+  if (action === "answer") {
+    const questionId = Number(target.dataset.gppqeQuestionId || 0);
+    const optionIndex = Number(target.dataset.gppqeOptionIndex || 0);
+    gppqeAnswerQuestion(questionId, optionIndex);
+    return;
+  }
+
+  if (action === "prev") {
+    gppqeGoToQuestion(-1);
+    return;
+  }
+
+  if (action === "next") {
+    if (gppqeState.currentIndex >= gppqeState.questions.length - 1) {
+      gppqeFinishSession();
+      return;
+    }
+    if (gppqeState.selectedMode === "study") {
+      const currentQuestion = gppqeGetCurrentQuestion();
+      if (currentQuestion && gppqeState.answers[currentQuestion.id] === undefined) {
+        return;
+      }
+    }
+    gppqeGoToQuestion(1);
+    return;
+  }
+
+  if (action === "submit") {
+    gppqeSubmitSession();
+    return;
+  }
+
+  if (action === "retake") {
+    gppqeRestartSession();
+    return;
+  }
+
+  if (action === "review-year") {
+    gppqeState.view = "year";
+    gppqeState.reviewQuestionOpen = false;
+    gppqeState.reviewQuestionIndex = 0;
+    document.body.style.overflow = "";
+    renderGppqeScreen();
+    return;
+  }
+
+  if (action === "review-question") {
+    gppqeOpenReviewQuestion(Number(target.dataset.gppqeQuestionIndex || 0));
+    return;
+  }
+
+  if (action === "review-prev") {
+    gppqeMoveReviewQuestion(-1);
+    return;
+  }
+
+  if (action === "review-next") {
+    gppqeMoveReviewQuestion(1);
+    return;
+  }
+
+  if (action === "review-close") {
+    gppqeCloseReviewQuestion();
+    return;
+  }
+}
+
+function gppqeBuildHubMarkup() {
+  const selectedYears = gppqeGetSelectedYears();
+  const totalCategories = gppqeGetCategoriesForYear(selectedYears).length;
+  const canStart = gppqeState.selectedMode === "exam"
+    ? selectedYears.length === 1 && !selectedYears.includes("all")
+    : selectedYears.length > 0;
+  const selectedCategory = gppqeState.selectedCategories[0] || "";
+  const selectedCategoryCount = gppqeState.selectedCategories.length;
+  const startLabel = canStart ? "Start Quiz" : "Select year to begin";
+  const availableQuestions = gppqeGetPool().length;
+  const availabilityLabel =
+    availableQuestions === 1
+      ? "1 question ready"
+      : `${availableQuestions} questions ready`;
+  const setupPoints = readCurrentSetupPoints({ scope: "gppqe" });
+  const studyPoints = Math.max(0, Math.round(Number(setupPoints.gppqeStudy) || 0));
+  const examPoints = Math.max(0, Math.round(Number(setupPoints.gppqeExam) || 0));
+  const recentResults = gppqeGetRecentResults(20);
+
+  return `
+    <div class="gppqe-shell gppqe-setup-shell">
+      <div class="gppqe-setup-main">
+        <section class="gppqe-panel gppqe-setup-card">
+          <div class="gppqe-setup-head"></div>
+
+          <div class="gppqe-setup-grid">
+            <label class="gppqe-setup-field">
+              <span class="gppqe-setup-label-row">
+                <span class="gppqe-setup-label">Year</span>
+                ${gppqeState.selectedMode === "exam" ? '<span class="gppqe-exam-year-note">Exam uses the full year</span>' : ""}
+              </span>
+              <select multiple class="gppqe-setup-select" data-gppqe-field="year" aria-label="Years">
+                  <option value="" ${selectedYears.length ? "" : "selected"}>Select year</option>
+                  <option value="all" ${selectedYears.includes("all") ? "selected" : ""}>All years</option>
+                  ${gppqeGetYears().map((year) => `<option value="${year}" ${selectedYears.includes(year) ? "selected" : ""}>${year}</option>`).join("")}
+              </select>
+            </label>
+
+            <label class="gppqe-setup-field">
+              <span class="gppqe-setup-label">Category</span>
+              <select multiple class="gppqe-setup-select" data-gppqe-field="category" aria-label="Categories" ${gppqeState.selectedMode === "exam" ? "disabled" : ""}>
+                  <option value="" selected>${gppqeState.selectedMode === "exam" ? "-----" : `All (${totalCategories})`}</option>
+                  ${gppqeGetCategoriesForYear(selectedYears).map((category) => `<option value="${escapeHtml(category)}" ${gppqeState.selectedCategories.includes(category) ? "selected" : ""}>${escapeHtml(category)}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+
+          <div class="gppqe-setup-mode-row">
+            <div class="gppqe-setup-mode-title">Practice mode</div>
+            <div
+              class="gppqe-setup-count-pill"
+              aria-live="polite"
+              title="Filtered questions available for this year and category selection"
+            >
+              ${escapeHtml(availabilityLabel)}
+            </div>
+          </div>
+          <div class="gppqe-mode-grid gppqe-setup-mode-grid">
+            <button
+              type="button"
+              class="gppqe-mode-card ${gppqeState.selectedMode === "study" ? "is-active is-study" : "is-study"}"
+              data-gppqe-action="set-mode"
+              data-gppqe-mode="study"
+              aria-pressed="${gppqeState.selectedMode === "study" ? "true" : "false"}"
+            >
+              <span class="gppqe-mode-topline">
+                <span class="gppqe-mode-icon">Study Mode</span>
+                <span class="gppqe-mode-points">${studyPoints} pts</span>
+              </span>
+              <span class="gppqe-mode-title">Instant feedback</span>
+              <span class="gppqe-mode-text">Review answers as you go and learn from every question.</span>
+            </button>
+            <button
+              type="button"
+              class="gppqe-mode-card ${gppqeState.selectedMode === "exam" ? "is-active is-exam" : "is-exam"}"
+              data-gppqe-action="set-mode"
+              data-gppqe-mode="exam"
+              aria-pressed="${gppqeState.selectedMode === "exam" ? "true" : "false"}"
+            >
+              <span class="gppqe-mode-topline">
+                <span class="gppqe-mode-icon">Exam Mode</span>
+                <span class="gppqe-mode-points">${examPoints} pts</span>
+              </span>
+              <span class="gppqe-mode-title">Timed scoring</span>
+              <span class="gppqe-mode-text">Work under pressure and see your score at the end.</span>
+            </button>
+          </div>
+
+          <p class="gppqe-study-points-notice" role="note">
+            <span class="gppqe-study-points-notice-icon" aria-hidden="true">i</span>
+            Study quiz points are for practice only and do not count toward leaderboard points.
+          </p>
+
+          <div class="gppqe-setup-actions">
+            <button
+              type="button"
+              class="gppqe-start-btn"
+              data-gppqe-action="start-session"
+              ${canStart ? "" : "disabled"}
+            >
+              ${escapeHtml(startLabel)}
+            </button>
+            <button type="button" class="gppqe-history-btn" data-gppqe-action="open-history">
+              History
+            </button>
+          </div>
+
+          ${gppqeState.notice ? `<div class="gppqe-alert gppqe-setup-alert">${escapeHtml(gppqeState.notice)}</div>` : ""}
+        </section>
+      </div>
+
+      <footer class="gppqe-setup-footer" aria-label="GPPQE footer">
+        <div class="gppqe-setup-footer-left">
+          &copy; 2026 <strong>AjixPharmacy \u00B7 GPPQE Exam Preparation</strong>
+        </div>
+        <div class="gppqe-setup-footer-right">
+          For educational use only.
+        </div>
+      </footer>
+      <div
+        class="gppqe-history-modal ${gppqeState.historyModalOpen ? "is-open" : "hidden"}"
+        data-gppqe-action="close-history"
+        aria-hidden="${gppqeState.historyModalOpen ? "false" : "true"}"
+      >
+        <div class="gppqe-history-modal-card" role="dialog" aria-modal="true" aria-label="GPPQE recent results">
+          <div class="gppqe-history-modal-head">
+            <div>
+              <div class="gppqe-panel-kicker">History</div>
+              <h3 class="gppqe-panel-title">Last 20 results</h3>
+            </div>
+            <button type="button" class="gppqe-history-close-btn" data-gppqe-action="close-history">Close</button>
+          </div>
+          <div class="gppqe-history-modal-list">
+            ${
+              recentResults.length
+                ? recentResults.map((entry) => gppqeFormatResultEntry(entry)).join("")
+                : `<div class="gppqe-empty-state"><div class="gppqe-empty-title">No results yet</div><div class="gppqe-empty-text">Your past study and exam results will show up here after you complete a session.</div></div>`
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function gppqeBuildYearMarkup() {
+  const year = gppqeState.selectedYear;
+  const yearLabel = gppqeGetYearLabel(year);
+  const pool = gppqeGetPool();
+  const availableYears = gppqeGetYears();
+  const activeYearYears = year === "all" ? `${availableYears.length} written years` : `Written paper ${year}`;
+  const categories = gppqeGetCategoriesForYear(year);
+
+  return `
+    <div class="gppqe-shell">
+      <section class="gppqe-hero is-compact">
+        <div class="gppqe-hero-copy">
+          <div class="gppqe-kicker">Selected year</div>
+          <h2 class="gppqe-title">${escapeHtml(yearLabel)}</h2>
+          <p class="gppqe-subtitle">
+            ${pool.length} questions are available in this lane. Filter by subject, then start study or exam mode.
+          </p>
+          <div class="gppqe-hero-actions">
+            <button type="button" class="gppqe-action-btn primary" data-gppqe-action="start-study">Study this set</button>
+            <button type="button" class="gppqe-action-btn secondary" data-gppqe-action="start-exam">Exam this set</button>
+          </div>
+        </div>
+        <div class="gppqe-hero-metrics">
+          <article class="gppqe-metric-card">
+            <div class="gppqe-metric-value">${pool.length}</div>
+            <div class="gppqe-metric-label">Questions</div>
+          </article>
+          <article class="gppqe-metric-card">
+            <div class="gppqe-metric-value">${categories.length}</div>
+            <div class="gppqe-metric-label">Categories</div>
+          </article>
+          <article class="gppqe-metric-card">
+            <div class="gppqe-metric-value">${year === "all" ? availableYears.length : 1}</div>
+            <div class="gppqe-metric-label">Written year${year === "all" ? "s" : ""}</div>
+          </article>
+        </div>
+      </section>
+
+      ${gppqeState.notice ? `<section class="gppqe-alert">${escapeHtml(gppqeState.notice)}</section>` : ""}
+
+      <section class="gppqe-panel">
+        <div class="gppqe-panel-head">
+          <div>
+            <div class="gppqe-panel-kicker">Filter</div>
+            <h3 class="gppqe-panel-title">Narrow by category</h3>
+          </div>
+          <button type="button" class="gppqe-link-btn" data-gppqe-action="hub">Switch year</button>
+        </div>
+        <div class="gppqe-chip-row">
+          ${categories
+            .map((category) => {
+              const active = gppqeState.selectedCategories.includes(category);
+              return `
+                <button
+                  type="button"
+                  class="gppqe-chip-btn ${active ? "is-active" : ""}"
+                  data-gppqe-action="toggle-category"
+                  data-gppqe-category="${escapeHtml(category)}"
+                >
+                  ${escapeHtml(category)}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+        <div class="gppqe-panel-foot">Leave all categories unselected to keep the full set for ${escapeHtml(yearLabel.toLowerCase())}.</div>
+      </section>
+
+      <section class="gppqe-panel">
+        <div class="gppqe-panel-head">
+          <div>
+            <div class="gppqe-panel-kicker">Quick start</div>
+            <h3 class="gppqe-panel-title">Choose a mode</h3>
+          </div>
+          <div class="gppqe-panel-note">${escapeHtml(activeYearYears)}</div>
+        </div>
+        <div class="gppqe-mode-grid">
+          <button type="button" class="gppqe-mode-card" data-gppqe-action="start-study">
+            <span class="gppqe-mode-icon">Study</span>
+            <span class="gppqe-mode-title">Learn with feedback</span>
+            <span class="gppqe-mode-text">Answer each item, see the explanation, and move at your own pace.</span>
+          </button>
+          <button type="button" class="gppqe-mode-card" data-gppqe-action="start-exam">
+            <span class="gppqe-mode-icon">Exam</span>
+            <span class="gppqe-mode-title">Timed assessment</span>
+            <span class="gppqe-mode-text">Sit the paper under time pressure, then review your score and misses.</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function gppqeBuildSessionMarkup() {
+  const question = gppqeGetCurrentQuestion();
+  if (!question) {
+    return `
+      <div class="gppqe-shell">
+        <section class="gppqe-panel">
+          <div class="gppqe-empty-state">
+            <div class="gppqe-empty-title">No question loaded</div>
+            <div class="gppqe-empty-text">Go back and pick a year or start a new session.</div>
+            <button type="button" class="gppqe-action-btn primary" data-gppqe-action="back">Back</button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  const total = gppqeState.questions.length;
+  const current = gppqeState.currentIndex + 1;
+  const progress = total ? Math.min(100, (gppqeState.currentIndex / total) * 100) : 0;
+  const hasAnswered = Object.prototype.hasOwnProperty.call(gppqeState.answers, question.id);
+  const answered = hasAnswered ? gppqeState.answers[question.id] : undefined;
+  const isStudy = gppqeState.selectedMode === "study";
+  const isAnswered = gppqeIsValidAnswer(answered, question);
+  const canMoveNext = !isStudy || isAnswered;
+  const revealAnswer = isStudy ? isAnswered || gppqeState.view === "review" : gppqeState.view === "review";
+  const scoreChip = isStudy
+    ? `<span class="gppqe-session-pill gppqe-session-score">Score ${gppqeState.studyScore}</span>`
+    : "";
+  const explanation = isStudy && isAnswered
+    ? `
+      <div class="gppqe-explanation ${answered === question.answer ? "is-correct" : "is-wrong"}">
+        <strong>${answered === question.answer ? "Correct" : "Incorrect"}</strong>
+        <span>${escapeHtml(question.explanation)}</span>
+      </div>
+    `
+    : "";
+
+  return `
+    <div class="gppqe-shell">
+      <section class="gppqe-session-top">
+        <div class="gppqe-session-meta">
+          <span class="gppqe-session-pill">${escapeHtml(gppqeGetYearLabel(gppqeState.selectedYear))}</span>
+          <span class="gppqe-session-pill">${escapeHtml(gppqeState.selectedMode === "exam" ? "Timed exam" : "Study")}</span>
+          <span class="gppqe-session-pill">${current} / ${total}</span>
+          ${scoreChip}
+        </div>
+        <div class="gppqe-session-time ${gppqeState.selectedMode === "exam" && gppqeState.examTimeLeft < 180 ? "is-warning" : ""} ${gppqeState.selectedMode === "exam" && gppqeState.examTimeLeft < 60 ? "is-danger" : ""}" id="gppqe-timer">
+          ${gppqeState.selectedMode === "exam" ? gppqeFormatTime(gppqeState.examTimeLeft) : "Untimed"}
+        </div>
+      </section>
+
+      <div class="gppqe-progress">
+        <span style="width:${progress}%"></span>
+      </div>
+
+      <section class="gppqe-question-card">
+        <div class="gppqe-question-head">
+          <span class="gppqe-question-year">${escapeHtml(String(question.year))}</span>
+          <span class="gppqe-question-category">${escapeHtml(question.category)}</span>
+          ${revealAnswer ? `<span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + question.answer)}</span>` : ""}
+        </div>
+        <div class="gppqe-question-text">${gppqeFormatQuestionMarkup(question)}</div>
+        <div class="gppqe-options">
+          ${question.options
+            .map((option, index) => {
+              const selected = answered === index;
+              const correct = revealAnswer && index === question.answer;
+              const wrong = isStudy && isAnswered && selected && !correct;
+              const canPick = !(isStudy && isAnswered);
+              return `
+                <button
+                  type="button"
+                  class="gppqe-option ${correct ? "is-correct" : ""} ${wrong ? "is-wrong" : ""} ${selected ? "is-selected" : ""}"
+                  data-gppqe-action="answer"
+                  data-gppqe-question-id="${question.id}"
+                  data-gppqe-option-index="${index}"
+                  ${canPick ? "" : "disabled"}
+                >
+                  <span class="gppqe-option-letter">${String.fromCharCode(65 + index)}</span>
+                  <span class="gppqe-option-text">${escapeHtml(option)}</span>
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+        ${explanation}
+      </section>
+
+      <section class="gppqe-session-nav">
+        <button type="button" class="gppqe-nav-btn" data-gppqe-action="prev" ${gppqeState.currentIndex === 0 ? "disabled" : ""}>
+          Previous
+        </button>
+        <button type="button" class="gppqe-nav-btn is-cancel" data-gppqe-action="cancel">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="gppqe-nav-btn primary"
+          data-gppqe-action="${gppqeState.currentIndex === total - 1 ? "submit" : "next"}"
+          ${isStudy && !isAnswered ? "disabled" : ""}
+        >
+          ${gppqeState.currentIndex === total - 1 ? (isStudy ? "Finish session" : "Submit exam") : "Next"}
+        </button>
+      </section>
+    </div>
+  `;
+}
+
+function gppqeBuildReviewMarkup() {
+  const total = gppqeState.questions.length;
+  const correct = gppqeGetCorrectCount();
+  const accuracy = total ? Math.round((correct / total) * 100) : 0;
+  const timeUsed = gppqeState.selectedMode === "exam" ? Math.max(0, gppqeState.examTotalTime - gppqeState.examTimeLeft) : 0;
+  const grade = accuracy >= 80 ? "Excellent" : accuracy >= 60 ? "Good work" : accuracy >= 40 ? "Keep pushing" : "Needs more study";
+  const colorClass = accuracy >= 60 ? "is-good" : "is-bad";
+  const selectedCategoryLabel = gppqeState.selectedCategories.length
+    ? gppqeState.selectedCategories.join(", ")
+    : "All categories";
+  const activeReviewQuestion = gppqeState.questions[gppqeState.reviewQuestionIndex] || null;
+  const activeReviewState = activeReviewQuestion ? gppqeGetReviewQuestionState(activeReviewQuestion) : null;
+
+  return `
+    <div class="gppqe-shell gppqe-review-shell">
+      <section class="gppqe-review-card">
+        <div class="gppqe-review-summary">
+          <div class="gppqe-review-score ${colorClass}">
+            <div class="gppqe-review-score-value">${accuracy}%</div>
+            <div class="gppqe-review-score-label">${grade}</div>
+          </div>
+          <div class="gppqe-review-overview">
+            <div class="gppqe-kicker">Session complete</div>
+            <div class="gppqe-review-category">${escapeHtml(selectedCategoryLabel)}</div>
+            <h2 class="gppqe-title">${escapeHtml(gppqeGetYearLabel(gppqeState.selectedYear))}</h2>
+            <div class="gppqe-review-mark" aria-label="${correct} out of ${total} correct">
+              <span>Mark</span>
+              <strong>${correct}/${total}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="gppqe-review-section">
+          <div class="gppqe-panel-kicker">Review</div>
+          <h3 class="gppqe-panel-title">Question by question</h3>
+          <div class="gppqe-review-palette" role="list" aria-label="GPPQE question review palette">
+            ${gppqeState.questions.map((question, index) => {
+                const questionState = gppqeGetReviewQuestionState(question);
+                const displayNumber = gppqeGetDisplayNumber(question, index);
+                return `
+                  <button
+                    type="button"
+                    class="gppqe-review-tile ${questionState.isCorrect ? "is-correct" : "is-wrong"}"
+                    data-gppqe-action="review-question"
+                    data-gppqe-question-index="${index}"
+                    role="listitem"
+                    aria-label="Question ${displayNumber}: ${questionState.statusLabel}"
+                  >
+                    ${displayNumber}
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+
+        <div class="gppqe-hero-actions gppqe-review-actions">
+          <button type="button" class="gppqe-action-btn primary" data-gppqe-action="retake">Retake set</button>
+          <button type="button" class="gppqe-action-btn secondary" data-gppqe-action="review-year">Back to year</button>
+        </div>
+      </section>      ${
+        gppqeState.reviewQuestionOpen && activeReviewQuestion
+          ? `
+            <div class="gppqe-review-modal" aria-hidden="false">
+              <div class="gppqe-review-modal-card" role="dialog" aria-modal="true" aria-label="Detailed question review">
+                <div class="gppqe-review-modal-head">
+                  <div>
+                    <div class="gppqe-panel-kicker">Detailed review</div>
+                    <h3 class="gppqe-panel-title">Question ${gppqeGetDisplayNumber(activeReviewQuestion, gppqeState.reviewQuestionIndex)} of ${total}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    class="gppqe-review-modal-close"
+                    data-gppqe-action="review-close"
+                    aria-label="Close detailed review"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.3-6.3z" />
+                    </svg>
+                  </button>
+                </div>
+                <section class="gppqe-question-card gppqe-review-detail-card ${activeReviewState?.isCorrect ? "is-correct" : "is-wrong"}">
+                  <div class="gppqe-question-head">
+                    <span class="gppqe-question-year">${escapeHtml(String(activeReviewQuestion.year))}</span>
+                    <span class="gppqe-question-category">${escapeHtml(activeReviewQuestion.category)}</span>
+                    <span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + activeReviewQuestion.answer)}</span>
+                  </div>
+                  <div class="gppqe-question-text">${gppqeFormatQuestionMarkup(activeReviewQuestion)}</div>
+                  <div class="gppqe-review-answer">
+                    <span>Your answer:</span>
+                    <strong class="gppqe-review-answer-value ${activeReviewState?.isCorrect ? "is-correct" : "is-wrong"}">${escapeHtml(gppqeGetQuestionViewText(activeReviewQuestion))}</strong>
+                  </div>
+                  <div class="gppqe-review-answer">
+                    <span>Correct answer:</span>
+                    <strong class="gppqe-review-answer-value is-correct">${escapeHtml(activeReviewQuestion.options[activeReviewQuestion.answer])}</strong>
+                  </div>
+                  <div class="gppqe-review-explanation">${escapeHtml(activeReviewQuestion.explanation)}</div>
+                </section>
+                <section class="gppqe-session-nav gppqe-review-modal-nav">
+                  <button
+                    type="button"
+                    class="gppqe-nav-btn"
+                    data-gppqe-action="review-prev"
+                    ${gppqeState.reviewQuestionIndex === 0 ? "disabled" : ""}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    class="gppqe-nav-btn primary"
+                    data-gppqe-action="review-next"
+                    ${gppqeState.reviewQuestionIndex >= total - 1 ? "disabled" : ""}
+                  >
+                    Next
+                  </button>
+                </section>
+              </div>
+            </div>
+          `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function gppqeRenderMarkup() {
+  if (gppqeState.view === "session") return gppqeBuildSessionMarkup();
+  if (gppqeState.view === "review") return gppqeBuildReviewMarkup();
+  return gppqeBuildHubMarkup();
+}
+
+function renderGppqeScreen() {
+  if (!gppqeScreen) return;
+  if (!gppqeBindingsReady) {
+    gppqeScreen.addEventListener("click", gppqeHandleAction);
+    gppqeScreen.addEventListener("change", gppqeHandleChange);
+    gppqeBindingsReady = true;
+  }
+  const root = gppqeGetRoot();
+  if (!root) return;
+  root.innerHTML = gppqeRenderMarkup();
+  if (gppqeState.view === 'hub') gppqeEnhancePickerFields(root);
+  if (gppqeState.view === "session" && gppqeState.selectedMode === "exam" && !gppqeState.examTimerId) {
+    gppqeStartTimer();
+  }
   window.requestAnimationFrame(() => {
-    openComingSoonModal();
+    gppqeScreen?.scrollTo?.({ top: 0, behavior: "auto" });
+    root.scrollTop = 0;
   });
 }
 
 function setExtraViewMode(mode = "cards", { persist = true } = {}) {
-  const nextMode = String(mode || "").toLowerCase() === "list" ? "list" : "cards";
-  extraViewMode = nextMode;
+  extraViewMode = "cards";
   if (menuExtraGrid) {
-    menuExtraGrid.classList.toggle("is-list", nextMode === "list");
-    menuExtraGrid.classList.toggle("is-cards", nextMode === "cards");
-  }
-  if (extraViewToggleBtn) {
-    extraViewToggleBtn.setAttribute("aria-pressed", nextMode === "list" ? "true" : "false");
-    extraViewToggleBtn.setAttribute("title", nextMode === "list" ? "Switch to card view" : "Switch to list view");
-    extraViewToggleBtn.setAttribute("aria-label", nextMode === "list" ? "Switch to card view" : "Switch to list view");
+    menuExtraGrid.classList.add("is-cards");
+    menuExtraGrid.classList.remove("is-list");
   }
   if (persist) {
     try {
-      localStorage.setItem(EXTRA_VIEW_STORAGE_KEY, nextMode);
-    } catch {}
+      localStorage.setItem(EXTRA_VIEW_STORAGE_KEY, "cards");
+    } catch {
+      // Ignore storage failures.
+    }
   }
 }
-
 function openExtraScreen() {
+  setMenuHubActiveTab("extra");
   showScreen("extra-screen");
   setExtraViewMode(extraViewMode, { persist: false });
 }
@@ -3327,7 +5041,7 @@ function closeComingSoonModal() {
 }
 
 try {
-  extraViewMode = String(localStorage.getItem(EXTRA_VIEW_STORAGE_KEY) || "cards").trim().toLowerCase() === "list" ? "list" : "cards";
+  extraViewMode = "cards";
 } catch {
   extraViewMode = "cards";
 }
@@ -3445,6 +5159,7 @@ const authContactEmailWrap = document.getElementById("auth-contact-email-wrap");
 const authContactEmailInput = document.getElementById("auth-contact-email");
 const authContactPhoneWrap = document.getElementById("auth-contact-phone-wrap");
 const authContactCountryCodeInput = document.getElementById("auth-contact-country-code");
+const authContactPrefixInput = document.getElementById("auth-contact-prefix");
 const authContactPhoneInput = document.getElementById("auth-contact-phone");
 const authResetCodeWrap = document.getElementById("auth-reset-code-wrap");
 const authResetCodeInput = document.getElementById("auth-reset-code");
@@ -3531,6 +5246,7 @@ const profileContactEmailWrap = document.getElementById("profile-contact-email-w
 const profileContactEmailInput = document.getElementById("profile-contact-email");
 const profileContactPhoneWrap = document.getElementById("profile-contact-phone-wrap");
 const profileContactCountryCodeInput = document.getElementById("profile-contact-country-code");
+const profileContactPrefixInput = document.getElementById("profile-contact-prefix");
 const profileContactPhoneInput = document.getElementById("profile-contact-phone");
 const profileProfessionalTypeInput = document.getElementById("profile-professional-type");
 const profileCountryInput = document.getElementById("profile-country");
@@ -3595,7 +5311,6 @@ const appFontSelect = document.getElementById("app-font-select");
 const appReduceMotionCheckbox = document.getElementById("app-reduce-motion");
 const appClearLocalBtn = document.getElementById("app-clear-local-btn");
 const settingsFeedbackEl = document.getElementById("settings-feedback");
-const dashboardMenuBtn = document.getElementById("dashboard-menu-btn");
 const dailyBackBtn = document.getElementById("daily-back-btn");
 const startDailyBtn = document.getElementById("start-daily-btn");
 const refreshDailyBtn = document.getElementById("refresh-daily-btn");
@@ -4047,8 +5762,7 @@ const COMMUNITY_LOCK_PIN_MAX_LENGTH = 8;
 const COMMUNITY_BIOMETRIC_REGISTRATION_TIMEOUT_MS = 90000;
 const COMMUNITY_BIOMETRIC_UNLOCK_TIMEOUT_MS = 60000;
 const COMMUNITY_EMOJI_RECENT_LIMIT = 40;
-const COMMUNITY_EMOJI_SKIN_TONES = ["", "ðŸ»", "ðŸ¼", "ðŸ½", "ðŸ¾", "ðŸ¿"];
-
+const COMMUNITY_EMOJI_SKIN_TONES = ["", "🏻", "🏼", "🏽", "🏾", "🏿"];
 function isQuotaExceededStorageError(error) {
   return Boolean(
     error &&
@@ -4108,7 +5822,6 @@ function applyStoragePressureCleanup() {
   } catch {
     // Ignore cleanup failures.
   }
-
   try {
     if (Array.isArray(sessionHistory) && sessionHistory.length > MAX_SESSION_HISTORY_ENTRIES) {
       sessionHistory.length = MAX_SESSION_HISTORY_ENTRIES;
@@ -4117,7 +5830,6 @@ function applyStoragePressureCleanup() {
   } catch {
     // Ignore cleanup failures.
   }
-
   try {
     if (Array.isArray(recentSessionResults) && recentSessionResults.length > DASHBOARD_RECENT_RESULTS_MAX) {
       recentSessionResults.length = DASHBOARD_RECENT_RESULTS_MAX;
@@ -4126,7 +5838,6 @@ function applyStoragePressureCleanup() {
   } catch {
     // Ignore cleanup failures.
   }
-
   try {
     localStorage.removeItem(COMMUNITY_DOWNLOAD_HISTORY_STORAGE_KEY);
   } catch {
@@ -4169,78 +5880,77 @@ if (
 const COMMUNITY_CHAT_EMOJI_CATEGORIES = [
   {
     id: "smileys",
-    icon: "ðŸ˜€",
+    icon: "😀",
     title: "Smileys",
     emojis: [
-      "ðŸ˜€","ðŸ˜ƒ","ðŸ˜„","ðŸ˜","ðŸ˜†","ðŸ˜…","ðŸ˜‚","ðŸ¤£","ðŸ¥¹","ðŸ˜Š","ðŸ˜‡","ðŸ™‚","ðŸ™ƒ","ðŸ˜‰","ðŸ˜Œ","ðŸ˜","ðŸ¥°","ðŸ˜˜","ðŸ˜—","ðŸ˜™","ðŸ˜š","ðŸ˜‹","ðŸ˜›","ðŸ˜","ðŸ˜œ","ðŸ¤ª","ðŸ¤¨","ðŸ§","ðŸ¤“","ðŸ˜Ž","ðŸ¥³","ðŸ˜¤","ðŸ˜”","ðŸ˜•","ðŸ™","â˜¹ï¸","ðŸ˜£","ðŸ˜–","ðŸ˜«","ðŸ˜©","ðŸ¥º","ðŸ˜¢","ðŸ˜­","ðŸ˜ ","ðŸ˜¡","ðŸ˜±","ðŸ˜´","ðŸ¤’","ðŸ¤•","ðŸ¤¯",
+      "😀","😃","😄","😁","😆","😅","😂","🤣","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","😋","😛","😜","🤪","🤗","🤭","🤔","🤨","😐","😑","😶","😏","😣","😥","😮","😯","😪","😫","😴","😌","😔","😕","🙁","☹️","😬","😎","🤯","🥳","😡","😱",
     ],
   },
   {
     id: "people",
-    icon: "ðŸ§‘",
+    icon: "🧑",
     title: "People",
     emojis: [
-      "ðŸ‘¶","ðŸ§’","ðŸ‘¦","ðŸ‘§","ðŸ§‘","ðŸ‘¨","ðŸ‘©","ðŸ§”","ðŸ‘±","ðŸ‘´","ðŸ‘µ","ðŸ™","ðŸ™Ž","ðŸ™…","ðŸ™†","ðŸ’","ðŸ™‹","ðŸ§","ðŸ¤·","ðŸ¤¦","ðŸ™‡","ðŸ§˜","ðŸ’†","ðŸ’‡","ðŸš¶","ðŸ§","ðŸ§Ž","ðŸƒ","ðŸ’ƒ","ðŸ•º","ðŸ«ƒ","ðŸ¤°","ðŸ¤±","ðŸ‘¨â€ðŸ‘©â€ðŸ‘§","ðŸ‘¨â€ðŸ‘©â€ðŸ‘§â€ðŸ‘¦","ðŸ‘©â€ðŸ‘©â€ðŸ‘§","ðŸ‘¨â€ðŸ‘¨â€ðŸ‘¦","ðŸ«‚","ðŸ‘¥","ðŸ‘¤","ðŸ«¶","â¤ï¸","ðŸ’”",
+      "🧑","👶","🧒","👦","👧","👨","👩","🧔","👵","👴","👱","👲","👳","👮","👷","💂","🕵️","👩‍⚕️","👨‍⚕️","🧑‍⚕️","👩‍🎓","👨‍🎓","🧑‍🎓","👩‍🏫","👨‍🏫","🧑‍🏫","👩‍⚖️","👨‍⚖️","🧑‍⚖️","👩‍🌾","👨‍🌾","🧑‍🌾","👩‍🍳","👨‍🍳","🧑‍🍳","👩‍🔧","👨‍🔧","🧑‍🔧","👩‍🏭","👨‍🏭","🧑‍🏭","👩‍💼","👨‍💼","🧑‍💼","👩‍🔬","👨‍🔬","🧑‍🔬","👩‍💻","👨‍💻","🧑‍💻",
     ],
   },
   {
     id: "professions",
-    icon: "ðŸ§‘â€âš•ï¸",
+    icon: "💼",
     title: "Professions",
     emojis: [
-      "ðŸ§‘â€âš•ï¸","ðŸ‘¨â€âš•ï¸","ðŸ‘©â€âš•ï¸","ðŸ§‘â€ðŸŽ“","ðŸ‘¨â€ðŸŽ“","ðŸ‘©â€ðŸŽ“","ðŸ§‘â€ðŸ«","ðŸ‘¨â€ðŸ«","ðŸ‘©â€ðŸ«","ðŸ§‘â€âš–ï¸","ðŸ‘¨â€âš–ï¸","ðŸ‘©â€âš–ï¸","ðŸ§‘â€ðŸŒ¾","ðŸ‘¨â€ðŸŒ¾","ðŸ‘©â€ðŸŒ¾","ðŸ§‘â€ðŸ³","ðŸ‘¨â€ðŸ³","ðŸ‘©â€ðŸ³","ðŸ§‘â€ðŸ”§","ðŸ‘¨â€ðŸ”§","ðŸ‘©â€ðŸ”§","ðŸ§‘â€ðŸ­","ðŸ‘¨â€ðŸ­","ðŸ‘©â€ðŸ­","ðŸ§‘â€ðŸ’¼","ðŸ‘¨â€ðŸ’¼","ðŸ‘©â€ðŸ’¼","ðŸ§‘â€ðŸ”¬","ðŸ‘¨â€ðŸ”¬","ðŸ‘©â€ðŸ”¬","ðŸ§‘â€ðŸ’»","ðŸ‘¨â€ðŸ’»","ðŸ‘©â€ðŸ’»","ðŸ§‘â€ðŸŽ¤","ðŸ‘¨â€ðŸŽ¤","ðŸ‘©â€ðŸŽ¤","ðŸ§‘â€ðŸŽ¨","ðŸ‘¨â€ðŸŽ¨","ðŸ‘©â€ðŸŽ¨","ðŸ§‘â€âœˆï¸","ðŸ‘¨â€âœˆï¸","ðŸ‘©â€âœˆï¸","ðŸ§‘â€ðŸš€","ðŸ‘¨â€ðŸš€","ðŸ‘©â€ðŸš€","ðŸ§‘â€ðŸš’","ðŸ‘¨â€ðŸš’","ðŸ‘©â€ðŸš’","ðŸ‘®","ðŸ•µï¸",
+      "🧑‍⚕️","👩‍⚕️","👨‍⚕️","🧑‍🎓","👩‍🎓","👨‍🎓","🧑‍🏫","👩‍🏫","👨‍🏫","🧑‍⚖️","👩‍⚖️","👨‍⚖️","🧑‍🌾","👩‍🌾","👨‍🌾","🧑‍🍳","👩‍🍳","👨‍🍳","🧑‍🔧","👩‍🔧","👨‍🔧","🧑‍🏭","👩‍🏭","👨‍🏭","🧑‍💼","👩‍💼","👨‍💼","🧑‍🔬","👩‍🔬","👨‍🔬","🧑‍💻","👩‍💻","👨‍💻","🧑‍🎤","👩‍🎤","👨‍🎤","🧑‍🎨","👩‍🎨","👨‍🎨","🧑‍✈️","👩‍✈️","👨‍✈️","🧑‍🚀","👩‍🚀","👨‍🚀","🧑‍🚒","👩‍🚒","👨‍🚒",
     ],
   },
   {
     id: "gestures",
-    icon: "ðŸ‘",
+    icon: "🤝",
     title: "Gestures",
     emojis: [
-      "ðŸ‘","ðŸ‘Ž","ðŸ‘Œ","ðŸ¤Œ","ðŸ¤","âœŒï¸","ðŸ¤ž","ðŸ¤Ÿ","ðŸ¤˜","ðŸ¤™","ðŸ‘ˆ","ðŸ‘‰","ðŸ‘†","ðŸ‘‡","â˜ï¸","âœ‹","ðŸ¤š","ðŸ–ï¸","ðŸ––","ðŸ‘‹","ðŸ¤","ðŸ‘","ðŸ™Œ","ðŸ‘","ðŸ¤²","ðŸ™","âœï¸","ðŸ’ª","ðŸ¦¾","ðŸ¦¿","ðŸ¦µ","ðŸ¦¶","ðŸ‘‚","ðŸ¦»","ðŸ‘ƒ","ðŸ§ ","ðŸ«€","ðŸ«","ðŸ¦·","ðŸ¦´",
+      "👋","🤚","🖐️","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🙏","💪","🫶","🫰","✍️","💅","🤳","💁","🙅","🙆","🙋","🧏",
     ],
   },
   {
     id: "animals",
-    icon: "ðŸ¶",
+    icon: "🐶",
     title: "Animals",
     emojis: [
-      "ðŸ¶","ðŸ±","ðŸ­","ðŸ¹","ðŸ°","ðŸ¦Š","ðŸ»","ðŸ¼","ðŸ¨","ðŸ¯","ðŸ¦","ðŸ®","ðŸ·","ðŸ¸","ðŸµ","ðŸ”","ðŸ§","ðŸ¦","ðŸ¤","ðŸ¦†","ðŸ¦…","ðŸ¦‰","ðŸ¦‡","ðŸº","ðŸ—","ðŸ´","ðŸ¦„","ðŸ","ðŸª²","ðŸž","ðŸ¦‹","ðŸŒ","ðŸ¢","ðŸ","ðŸ¦Ž","ðŸ¦‚","ðŸ¦€","ðŸ™","ðŸ¦‘","ðŸ¬","ðŸ³","ðŸ¦ˆ",
+      "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄️","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🦆","🦉","🦄","🐝","🐛","🦋","🐌","🐢","🐍","🦎","🐙","🦑","🦞","🦀","🐠","🐟","🐬","🦈","🐘","🦒","🦓","🦍",
     ],
   },
   {
     id: "food",
-    icon: "ðŸ”",
+    icon: "🍔",
     title: "Food",
     emojis: [
-      "ðŸ","ðŸŽ","ðŸ","ðŸŠ","ðŸ‹","ðŸŒ","ðŸ‰","ðŸ‡","ðŸ“","ðŸ«","ðŸˆ","ðŸ’","ðŸ‘","ðŸ¥­","ðŸ","ðŸ¥¥","ðŸ¥","ðŸ…","ðŸ†","ðŸ¥‘","ðŸ¥¦","ðŸ¥¬","ðŸŒ¶ï¸","ðŸŒ½","ðŸ¥•","ðŸ«’","ðŸž","ðŸ¥","ðŸ¥–","ðŸ§€","ðŸ¥š","ðŸ—","ðŸ–","ðŸŒ­","ðŸ”","ðŸŸ","ðŸ•","ðŸŒ®","ðŸŒ¯","ðŸ¥—","ðŸœ","ðŸ£","ðŸ¤","ðŸ©","ðŸª","ðŸŽ‚","ðŸ«","ðŸ¿","â˜•","ðŸ§ƒ",
+      "🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍒","🍑","🥭","🍍","🥥","🥑","🍅","🥦","🥕","🌽","🥔","🍞","🥐","🧀","🍗","🍖","🥩","🍔","🍟","🍕","🌭","🌮","🥗","🍜","🍝","🍲","🍱","🍣","🍤","🍰","🍪","🍩","☕","🍵","🧃","🥛","🍺","🍷",
     ],
   },
   {
     id: "travel",
-    icon: "ðŸš—",
+    icon: "✈️",
     title: "Travel",
     emojis: [
-      "ðŸš—","ðŸš•","ðŸš™","ðŸšŒ","ðŸšŽ","ðŸŽï¸","ðŸš“","ðŸš‘","ðŸš’","ðŸš","ðŸ›»","ðŸšš","ðŸšœ","ðŸï¸","ðŸ›µ","ðŸš²","âœˆï¸","ðŸ›«","ðŸ›¬","ðŸš","ðŸš€","ðŸ›¸","â›µ","ðŸš¤","ðŸ›³ï¸","ðŸš¢","â›½","ðŸ—ºï¸","ðŸ§­","ðŸ–ï¸","ðŸï¸","ðŸ”ï¸","â›°ï¸","ðŸŒ‹","ðŸ•ï¸","ðŸ ","ðŸ¥","ðŸ«","ðŸ¢","ðŸ¦","ðŸ—½","ðŸ—¼","ðŸŒ‰",
+      "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚚","🚲","🛴","🛵","🏍️","✈️","🚀","🛸","🚁","🚢","⛵","🚂","🚆","🚇","🚉","🚊","🚥","🚦","🗺️","🧭","🏝️","🏖️","🗽","🗼","🏰","⛰️","🌋","🏔️","🏕️","🏟️","🏛️",
     ],
   },
   {
     id: "objects",
-    icon: "ðŸ’¡",
+    icon: "💡",
     title: "Objects",
     emojis: [
-      "ðŸ“±","ðŸ’»","âŒ¨ï¸","ðŸ–¥ï¸","ðŸ–¨ï¸","ðŸ–±ï¸","ðŸ’½","ðŸ“·","ðŸ“¹","ðŸŽ¥","ðŸŽ¬","ðŸ“ž","â˜Žï¸","ðŸ“º","ðŸ“»","ðŸŽ§","ðŸŽ¤","ðŸŽµ","ðŸŽ¶","ðŸ”‹","ðŸ”Œ","ðŸ’¡","ðŸ”¦","ðŸ•¯ï¸","ðŸª”","ðŸ§¯","ðŸ›’","ðŸŽ","ðŸŽˆ","ðŸŽ€","ðŸ†","ðŸ¥‡","ðŸ¥ˆ","ðŸ¥‰","ðŸ…","âš½","ðŸ€","ðŸˆ","ðŸŽ¾","ðŸŽ¯","ðŸŽ²","ðŸ§©","ðŸ§¸","ðŸ“š","ðŸ“–","ðŸ“","ðŸ“Œ","ðŸ“Ž","âœ‚ï¸","ðŸ”",
+      "⌚","📱","💻","⌨️","🖱️","🖨️","🕹️","📷","📸","🎥","📞","📟","💡","🔦","🕯️","🔋","💸","💳","🔑","🧰","🧲","🛠️","⚙️","🔧","🧪","🧫","💊","💉","🩺","🩹","🔨","🪓","🪚","🔫","🎧","🎤","🎼","📚","📝","📌","📎","✂️",
     ],
   },
   {
     id: "symbols",
-    icon: "â¤ï¸",
+    icon: "❤️",
     title: "Symbols",
     emojis: [
-      "â¤ï¸","ðŸ©·","ðŸ§¡","ðŸ’›","ðŸ’š","ðŸ©µ","ðŸ’™","ðŸ’œ","ðŸ–¤","ðŸ©¶","ðŸ¤","ðŸ¤Ž","ðŸ’”","â£ï¸","ðŸ’•","ðŸ’ž","ðŸ’“","ðŸ’—","ðŸ’–","ðŸ’˜","ðŸ’","ðŸ’Ÿ","âœ…","â˜‘ï¸","âœ”ï¸","âŒ","âŽ","âš ï¸","ðŸš«","â—","â“","â€¼ï¸","â‰ï¸","ðŸ’¯","âœ¨","â­","ðŸŒŸ","ðŸ”¥","ðŸ’¥","ðŸŽ‰","ðŸŽŠ","ðŸ™","ðŸ“","â°","ðŸ“…","ðŸ””","ðŸ”•","â™»ï¸","Â©ï¸","Â®ï¸",
+      "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","✨","⭐","🌟","💯","🔥","💥","💫","💢","💬","💭","❗","❓","⁉️","✅","☑️","✔️","❌","⛔","⚠️","🚫","♻️","©️","®️","™️","🔞","🔒","🔓","🔔","🔕","⏰","⌛","⏳","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓",
     ],
   },
-];
-const COMMUNITY_SCREEN_IDS = ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen"];
+];const COMMUNITY_SCREEN_IDS = ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen"];
 const COMMUNITY_DESKTOP_SPLIT_BREAKPOINT = 1040;
 const COMMUNITY_DESKTOP_SPLIT_MIN_LEFT = 300;
 const COMMUNITY_DESKTOP_SPLIT_MAX_LEFT = 620;
@@ -5104,15 +6814,45 @@ let communityEmojiToneSuppressClickUntil = 0;
 let communityEmojiTonePressState = null;
 
 const COMMUNITY_EMOJI_TONE_COMPATIBLE = new Set([
-  "ðŸ‘","ðŸ‘Ž","ðŸ‘Œ","ðŸ¤Œ","ðŸ¤","âœŒï¸","ðŸ¤ž","ðŸ¤Ÿ","ðŸ¤˜","ðŸ¤™","ðŸ‘ˆ","ðŸ‘‰","ðŸ‘†","ðŸ‘‡","â˜ï¸","âœ‹","ðŸ¤š","ðŸ–ï¸","ðŸ––","ðŸ‘‹","ðŸ‘","ðŸ™Œ","ðŸ‘","ðŸ¤²","ðŸ™","âœï¸","ðŸ’ª",
-]);
-
-function loadCommunityEmojiRecent() {
+  "👍",
+  "👎",
+  "👋",
+  "🤚",
+  "🖐",
+  "✋",
+  "👌",
+  "🤌",
+  "🤏",
+  "✌️",
+  "🤞",
+  "🤟",
+  "🤘",
+  "🤙",
+  "👈",
+  "👉",
+  "👆",
+  "👇",
+  "☝️",
+  "✊",
+  "👊",
+  "🤛",
+  "🤜",
+  "👏",
+  "🙌",
+  "👐",
+  "🙏",
+  "💪",
+  "🫶",
+  "🫰",
+  "🤝",
+  "🖖",
+]);function loadCommunityEmojiRecent() {
   try {
     const parsed = JSON.parse(localStorage.getItem(COMMUNITY_EMOJI_RECENT_STORAGE_KEY) || "[]");
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((value) => String(value || "").trim())
+      .map((emoji) => normalizeMojibake(emoji))
+      .map((emoji) => normalizeCommunityEmojiValue(emoji))
       .filter(Boolean)
       .slice(0, COMMUNITY_EMOJI_RECENT_LIMIT);
   } catch {
@@ -5121,14 +6861,19 @@ function loadCommunityEmojiRecent() {
 }
 
 function saveCommunityEmojiRecent() {
-  localStorage.setItem(
-    COMMUNITY_EMOJI_RECENT_STORAGE_KEY,
-    JSON.stringify(Array.isArray(communityEmojiRecent) ? communityEmojiRecent.slice(0, COMMUNITY_EMOJI_RECENT_LIMIT) : []),
-  );
+  const cleaned = Array.isArray(communityEmojiRecent)
+    ? communityEmojiRecent
+        .map((emoji) => normalizeMojibake(emoji))
+        .map((emoji) => normalizeCommunityEmojiValue(emoji))
+        .filter(Boolean)
+        .slice(0, COMMUNITY_EMOJI_RECENT_LIMIT)
+    : [];
+  localStorage.setItem(COMMUNITY_EMOJI_RECENT_STORAGE_KEY, JSON.stringify(cleaned));
+  communityEmojiRecent = cleaned;
 }
 
 function trackCommunityRecentEmoji(emoji = "") {
-  const safeEmoji = String(emoji || "").trim();
+  const safeEmoji = normalizeCommunityEmojiValue(emoji);
   if (!safeEmoji) return;
   communityEmojiRecent = [safeEmoji, ...communityEmojiRecent.filter((entry) => entry !== safeEmoji)]
     .slice(0, COMMUNITY_EMOJI_RECENT_LIMIT);
@@ -5139,13 +6884,41 @@ function getCommunityEmojiCategoriesForPanel() {
   return [
     {
       id: "recent",
-      icon: "ðŸ•˜",
+      icon: "🕘",
       title: "Recent",
       keywords: "recent last used",
       emojis: Array.isArray(communityEmojiRecent) ? communityEmojiRecent : [],
     },
     ...COMMUNITY_CHAT_EMOJI_CATEGORIES,
   ];
+}
+
+let communityEmojiAllowedSet = null;
+
+function getCommunityEmojiAllowedSet() {
+  if (communityEmojiAllowedSet) return communityEmojiAllowedSet;
+  const allowed = new Set();
+  (Array.isArray(COMMUNITY_CHAT_EMOJI_CATEGORIES) ? COMMUNITY_CHAT_EMOJI_CATEGORIES : []).forEach((category) => {
+    (Array.isArray(category.emojis) ? category.emojis : []).forEach((emoji) => {
+      const baseEmoji = String(normalizeMojibake(emoji) || "").trim();
+      if (!baseEmoji) return;
+      allowed.add(baseEmoji);
+      if (COMMUNITY_EMOJI_TONE_COMPATIBLE.has(baseEmoji)) {
+        COMMUNITY_EMOJI_SKIN_TONES.forEach((tone) => {
+          const tonedEmoji = getCommunityEmojiToneCompatibleValue(baseEmoji, tone);
+          if (tonedEmoji) allowed.add(tonedEmoji);
+        });
+      }
+    });
+  });
+  communityEmojiAllowedSet = allowed;
+  return allowed;
+}
+
+function normalizeCommunityEmojiValue(emoji = "") {
+  const safeEmoji = String(normalizeMojibake(emoji) || "").trim();
+  if (!safeEmoji) return "";
+  return getCommunityEmojiAllowedSet().has(safeEmoji) ? safeEmoji : "";
 }
 
 function getCommunityEmojiCategoryById(categoryId = "") {
@@ -5161,7 +6934,6 @@ function getCommunityEmojiToneCompatibleValue(emoji = "", tone = "") {
   if (!COMMUNITY_EMOJI_TONE_COMPATIBLE.has(safeEmoji)) return safeEmoji;
   return `${safeEmoji}${safeTone}`;
 }
-
 function getCommunityEmojiSearchMatches(searchQuery = "", categories = []) {
   const query = String(searchQuery || "").trim().toLowerCase();
   if (!query) return [];
@@ -5402,6 +7174,7 @@ function populateCommunityEmojiSheet(panelEl = null, datasetKey = "communityEmoj
 
 function populateCommunityEmojiSheets() {
   communityEmojiRecent = loadCommunityEmojiRecent();
+  saveCommunityEmojiRecent();
   populateCommunityEmojiSheet(communityChatEmojiPanelEl, "communityEmoji");
   populateCommunityEmojiSheet(communityStatusEmojiPanelEl, "communityStatusEmoji");
 }
@@ -6071,34 +7844,123 @@ function setSettingsFeedback(message = "", isError = false) {
   }
 }
 
-function readStoredPoints() {
-  const raw = Number(localStorage.getItem(POINTS_STORAGE_KEY));
-  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+function getPointsOwnerKey(user = currentUser) {
+  const userId = String(user?.id || "").trim();
+  return userId ? `user:${userId}` : "guest";
 }
 
-function writeStoredPoints(value = 0) {
+function readPointsState() {
+  try {
+    const raw = localStorage.getItem(POINTS_STORAGE_KEY);
+    if (!raw) {
+      return { owners: { guest: 0 } };
+    }
+
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.owners && typeof parsed.owners === "object") {
+      return {
+        owners: Object.fromEntries(
+          Object.entries(parsed.owners).map(([ownerKey, value]) => [
+            String(ownerKey || "").trim() || "guest",
+            Math.max(0, Math.round(Number(value) || 0)),
+          ]),
+        ),
+      };
+    }
+
+    return {
+      owners: {
+        guest: Math.max(0, Math.round(Number(parsed) || 0)),
+      },
+    };
+  } catch {
+    return { owners: { guest: 0 } };
+  }
+}
+
+function writePointsState(state = {}) {
+  const safeOwners = Object.fromEntries(
+    Object.entries(state?.owners || {}).map(([ownerKey, value]) => [
+      String(ownerKey || "").trim() || "guest",
+      Math.max(0, Math.round(Number(value) || 0)),
+    ]),
+  );
+  localStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify({ owners: safeOwners }));
+  return { owners: safeOwners };
+}
+
+function readStoredPoints(ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
+  const state = readPointsState();
+  return Math.max(0, Math.round(Number(state.owners?.[safeOwnerKey]) || 0));
+}
+
+function writeStoredPoints(value = 0, ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
   const safe = Math.max(0, Math.round(Number(value) || 0));
-  localStorage.setItem(POINTS_STORAGE_KEY, String(safe));
+  const state = readPointsState();
+  state.owners[safeOwnerKey] = safe;
+  writePointsState(state);
   return safe;
 }
 
-function readPendingPoints() {
-  const raw = Number(localStorage.getItem(POINTS_PENDING_STORAGE_KEY));
-  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+function readPendingPointsState() {
+  try {
+    const raw = localStorage.getItem(POINTS_PENDING_STORAGE_KEY);
+    if (!raw) {
+      return { owners: { guest: 0 } };
+    }
+
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.owners && typeof parsed.owners === "object") {
+      return {
+        owners: Object.fromEntries(
+          Object.entries(parsed.owners).map(([ownerKey, value]) => [
+            String(ownerKey || "").trim() || "guest",
+            Math.max(0, Math.round(Number(value) || 0)),
+          ]),
+        ),
+      };
+    }
+
+    return {
+      owners: {
+        guest: Math.max(0, Math.round(Number(parsed) || 0)),
+      },
+    };
+  } catch {
+    return { owners: { guest: 0 } };
+  }
 }
 
-function writePendingPoints(value = 0) {
+function readPendingPoints(ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
+  const state = readPendingPointsState();
+  return Math.max(0, Math.round(Number(state.owners?.[safeOwnerKey]) || 0));
+}
+
+function writePendingPoints(value = 0, ownerKey = getPointsOwnerKey()) {
+  const safeOwnerKey = String(ownerKey || "").trim() || "guest";
   const safe = Math.max(0, Math.round(Number(value) || 0));
+  const state = readPendingPointsState();
   if (safe <= 0) {
-    localStorage.removeItem(POINTS_PENDING_STORAGE_KEY);
+    delete state.owners[safeOwnerKey];
+    if (!Object.keys(state.owners).length) {
+      localStorage.removeItem(POINTS_PENDING_STORAGE_KEY);
+      return 0;
+    }
+    localStorage.setItem(POINTS_PENDING_STORAGE_KEY, JSON.stringify({ owners: state.owners }));
     return 0;
   }
-  localStorage.setItem(POINTS_PENDING_STORAGE_KEY, String(safe));
+
+  state.owners[safeOwnerKey] = safe;
+  localStorage.setItem(POINTS_PENDING_STORAGE_KEY, JSON.stringify({ owners: state.owners }));
   return safe;
 }
 
 function getCumulativePoints() {
-  const localPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
+  const ownerKey = getPointsOwnerKey();
+  const localPoints = Math.max(0, Math.round(Number(readStoredPoints(ownerKey)) || 0));
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
   return Math.max(localPoints, remotePoints);
 }
@@ -6112,7 +7974,16 @@ function createEmptySetupPoints() {
     sudden: 0,
     clinical: 0,
     law: 0,
+    gppqeStudy: 0,
+    gppqeExam: 0,
   };
+}
+
+const NORMAL_SETUP_POINT_KEYS = ["study", "exam", "daily", "rapid", "sudden", "clinical", "law"];
+const GPPQE_SETUP_POINT_KEYS = ["gppqeStudy", "gppqeExam"];
+
+function getSetupPointKeys(scope = "normal") {
+  return String(scope || "normal").trim().toLowerCase() === "gppqe" ? GPPQE_SETUP_POINT_KEYS : NORMAL_SETUP_POINT_KEYS;
 }
 
 function sanitizeSetupPoints(raw = {}) {
@@ -6178,8 +8049,10 @@ function getSetupPointsBucketFromDashboardSessionMode(mode = "") {
   if (!normalized) return "";
   if (normalized.startsWith("daily")) return "daily";
   if (normalized.startsWith("study")) return "study";
+  if (normalized.includes("gppqe") && normalized.includes("study")) return "gppqeStudy";
   if (normalized.startsWith("smart")) return "exam";
   if (normalized.startsWith("exam")) return "exam";
+  if (normalized.includes("gppqe") && normalized.includes("exam")) return "gppqeExam";
   if (normalized.includes("rapid fire")) return "rapid";
   if (normalized.includes("sudden death")) return "sudden";
   if (normalized.includes("clinical judgement")) return "clinical";
@@ -6198,25 +8071,29 @@ function deriveSetupPointsFromDashboardSessions(entries = []) {
   return totals;
 }
 
-function readCurrentSetupPoints() {
+function readCurrentSetupPoints({ scope = "normal" } = {}) {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
-  const primary = mergeSetupPoints(local, remote);
-  const historyDerived = deriveSetupPointsFromDashboardSessions(getDashboardSessionEntries());
-  const merged = mergeSetupPoints(primary, historyDerived);
-  if (ownerKey === "guest" || hasAnySetupPoints(merged)) {
-    return merged;
-  }
-  const guest = sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints());
-  return mergeSetupPoints(merged, guest);
+  const merged = mergeSetupPoints(local, remote);
+  const filtered = createEmptySetupPoints();
+  const keys = getSetupPointKeys(scope);
+  keys.forEach((key) => {
+    filtered[key] = Math.max(0, Math.round(Number(merged[key]) || 0));
+  });
+  return filtered;
 }
 
-function writeCurrentSetupPoints(nextValue = {}, { scheduleSync = true } = {}) {
+function writeCurrentSetupPoints(nextValue = {}, { scheduleSync = true, scope = "normal" } = {}) {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
-  state.owners[ownerKey] = sanitizeSetupPoints(nextValue);
+  const current = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
+  const next = sanitizeSetupPoints(nextValue);
+  getSetupPointKeys(scope).forEach((key) => {
+    current[key] = Math.max(0, Math.round(Number(next[key]) || 0));
+  });
+  state.owners[ownerKey] = current;
   writeSetupPointsState(state);
   if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
     scheduleSetupPointsSync();
@@ -6258,10 +8135,7 @@ async function flushSetupPointsSync() {
   const state = readSetupPointsState();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
   const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
-  const primary = mergeSetupPoints(local, remote);
-  const merged = ownerKey !== "guest" && !hasAnySetupPoints(primary)
-    ? mergeSetupPoints(primary, sanitizeSetupPoints(state.owners?.guest || createEmptySetupPoints()))
-    : primary;
+  const merged = mergeSetupPoints(local, remote);
   const changed = JSON.stringify(merged) !== JSON.stringify(remote);
 
   if (!changed) {
@@ -6508,14 +8382,15 @@ function renderSessionPointsDisplay() {
 }
 
 function resetPointsState() {
+  clearMenuSnapshotCache();
   renderPoints();
 }
 
 function syncPointsFromCurrentUser() {
   const remotePoints = Math.max(0, Math.round(Number(currentUser?.points) || 0));
-  const previousPoints = Math.max(0, Math.round(Number(readStoredPoints()) || 0));
+  const previousPoints = Math.max(0, Math.round(Number(readStoredPoints(getPointsOwnerKey())) || 0));
   const nextPoints = Math.max(previousPoints, remotePoints);
-  writeStoredPoints(nextPoints);
+  writeStoredPoints(nextPoints, getPointsOwnerKey());
   if (currentUser) {
     currentUser = { ...(currentUser || {}), points: nextPoints };
   }
@@ -6564,13 +8439,19 @@ function schedulePendingPointsSync(delayMs = 420) {
 
 let committedSessionPointsId = "";
 
-function commitFinishedSessionPoints({ score = 0, setupPointsBucket = "" } = {}) {
+function commitFinishedSessionPoints({
+  score = 0,
+  setupPointsBucket = "",
+  awardTotal = true,
+  sessionKey = "",
+} = {}) {
   const safeScore = Math.max(0, Math.round(Number(score) || 0));
-  const sessionId = String(latestSavedSession?.sessionId || "").trim();
+  const sessionId = String(sessionKey || latestSavedSession?.sessionId || "").trim();
+  const scope = String(setupPointsBucket || "").startsWith("gppqe") ? "gppqe" : "normal";
 
   if (!sessionId || safeScore <= 0) {
     if (setupPointsBucket) {
-      writeCurrentSetupPoints(readCurrentSetupPoints(), { scheduleSync: true });
+      writeCurrentSetupPoints(readCurrentSetupPoints({ scope }), { scheduleSync: true, scope });
     }
     renderPoints();
     return false;
@@ -6583,24 +8464,30 @@ function commitFinishedSessionPoints({ score = 0, setupPointsBucket = "" } = {})
   committedSessionPointsId = sessionId;
 
   if (setupPointsBucket) {
-    const currentSetupPoints = readCurrentSetupPoints();
+    const currentSetupPoints = readCurrentSetupPoints({ scope });
     currentSetupPoints[setupPointsBucket] = Math.max(
       0,
       Math.round(Number(currentSetupPoints[setupPointsBucket]) || 0) + safeScore,
     );
-    writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true });
+    writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true, scope });
   }
 
-  const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
-  writePendingPoints(readPendingPoints() + safeScore);
+  if (awardTotal) {
+    const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
+    writePendingPoints(readPendingPoints() + safeScore);
 
-  if (currentUser) {
-    currentUser = { ...(currentUser || {}), points: nextStoredPoints };
+    if (currentUser) {
+      currentUser = { ...(currentUser || {}), points: nextStoredPoints };
+    }
+
+    if (currentUser && backendClient.isAuthenticated()) {
+      schedulePendingPointsSync(0);
+    }
   }
 
   renderPoints();
-  if (currentUser && backendClient.isAuthenticated()) {
-    schedulePendingPointsSync(0);
+  if (scope === "gppqe" && gppqeScreen) {
+    renderGppqeScreen();
   }
   return true;
 }
@@ -6861,7 +8748,6 @@ async function loadLeaderboard(scope = "daily", { force = false } = {}) {
     setLeaderboardLoading(true);
     setLeaderboardEmptyState(false);
   }
-
   try {
     if (currentUser && backendClient.isAuthenticated() && readPendingPoints() > 0) {
       void flushPendingPoints();
@@ -7004,6 +8890,19 @@ let communityFeedbackTimer = null;
 function setCommunityFeedback(message = "", isError = false) {
   if (!communityFeedbackEl) return;
   const text = String(message || "").trim();
+  if (
+  navigator.onLine === false &&
+  /failed to fetch|networkerror|load failed/i.test(text)
+) {
+  communityFeedbackEl.textContent = "";
+  communityFeedbackEl.classList.add("hidden");
+  communityFeedbackEl.classList.remove(
+    "auth-error",
+    "auth-info",
+    "profile-toast",
+  );
+  return;
+}
   if (communityFeedbackTimer) {
     clearTimeout(communityFeedbackTimer);
     communityFeedbackTimer = null;
@@ -8736,7 +10635,7 @@ async function syncCommunityRealtimePresenceTracking() {
 }
 
 async function pingCommunityPresence() {
-  if (!currentUser?.id || document.visibilityState === "hidden") return;
+  if (!currentUser?.id || !backendClient.isAuthenticated() || document.visibilityState === "hidden") return;
   try {
     await backendClient.pingCommunityPresence();
   } catch {
@@ -18080,7 +19979,15 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
         } finally {
           communityOverviewRefreshPromise = null;
         }
-      })();
+      })().catch((error) => {
+        if (Number(error?.status) === 401) {
+          communityState.overview = null;
+          communityState.statuses = [];
+          communityState.searchResults = null;
+          return null;
+        }
+        throw error;
+      });
       return communityOverviewRefreshPromise;
     };
     if (preferCache && communityState.overview) {
@@ -21576,9 +23483,9 @@ async function executeCommunityAction(action = "", payload = {}) {
 }
 
 async function openCommunityScreen() {
-  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
-  const ok = await ensureAuthenticated();
+  const ok = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!ok) return;
+  await refreshSubscriptionAccessForAction();
   if (!requireSubscriptionAccess("community")) {
     return;
   }
@@ -21599,7 +23506,7 @@ async function openCommunityScreen() {
   renderCommunityHeaderProfile();
   setCommunitySearchOpen(false);
   updateCommunityTabState();
-  showScreen("community-screen");
+  showScreen("community-screen", { skipSubscriptionGate: true });
   if (getActiveScreenId() !== "community-screen") {
     return;
   }
@@ -21768,7 +23675,7 @@ function buildClinicalLivesMarkup(lives = 3, maxLives = 3) {
   let html = '<span class="clinical-hearts" aria-label="Lives">';
   for (let i = 0; i < total; i++) {
     const isAlive = i < currentLives;
-    html += `<span class="clinical-heart ${isAlive ? "is-on" : "is-off"}">â¤</span>`;
+    html += `<span class="clinical-heart ${isAlive ? "is-on" : "is-off"}">\u2764\uFE0F</span>`;
   }
   html += "</span>";
   return html;
@@ -22492,6 +24399,10 @@ async function handleGlobalQuickNavDestination(destination) {
     openNewsScreen();
     return;
   }
+  if (destination === "extra") {
+    showScreen("home-screen");
+    return;
+  }
 
   if (destination === "menu") {
     showScreen("quiz-menu");
@@ -22508,10 +24419,7 @@ function getActiveScreenId() {
 }
 
 function updateMenuBottomNavState(screenId = "") {
-  const targetKey =
-    screenId === "dashboard"
-      ? "performance"
-      : screenId === "community-screen" || screenId === "community-profile-screen" || screenId === "community-chat-screen"
+  const targetKey =screenId === "community-screen" || screenId === "community-profile-screen" || screenId === "community-chat-screen"
         ? "community"
         : screenId === "topic-library" || screenId === "topic-viewer"
           ? "library"
@@ -23042,7 +24950,13 @@ async function ensureNewsFeedLoaded({ force = false, silent = false } = {}) {
   newsFeedState.errorTone = "info";
   if (!silent) renderNewsScreen();
 
-  try {
+const hasCachedNews = await hydrateNewsFeedFromCache();
+if (hasCachedNews) {
+  newsFeedState.loaded = true;
+  renderNewsScreen();
+}
+
+try {
     const payload = await backendClient.fetchNewsFeed({ limit: 50 });
     newsFeedState.items = Array.isArray(payload?.items) ? payload.items : [];
     newsFeedState.categories = payload?.categories && typeof payload.categories === "object" ? payload.categories : {};
@@ -23843,7 +25757,6 @@ async function refreshDailyQuizState({ force = false, silent = false } = {}) {
   if (!silent && dailyStatusLineEl) {
     dailyStatusLineEl.textContent = "Checking today's challenge...";
   }
-
   try {
     const fetchToday =
       backendClient.fetchDailyQuizToday ||
@@ -24213,9 +26126,8 @@ if (menuSettingsBtn) {
 
 if (menuCommunityBtn) {
   menuCommunityBtn.addEventListener("click", async () => {
-    await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
     closeMenuUserHub();
-    void openCommunityScreen();
+    await openCommunityScreen();
   });
 }
 
@@ -24859,6 +26771,12 @@ document.querySelectorAll("[data-community-group-storage-tab]").forEach((button)
     setCommunityGroupStorageTab(String(button.dataset.communityGroupStorageTab || "media"));
   });
 });
+
+if (communityBackBtn) {
+  communityBackBtn.addEventListener("click", () => {
+    goBackByHistory("community-screen", "quiz-menu");
+  });
+}
 
 if (communityChatBackBtn) {
   communityChatBackBtn.addEventListener("click", () => {
@@ -28665,7 +30583,9 @@ if (globalQuickNavPanel) {
 }
 
 globalQuickNavLinks.forEach((link) => {
-  link.addEventListener("click", async () => {
+  link.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     const destination = String(link.dataset.quickNavDestination || "").trim();
     if (!destination) return;
     await handleGlobalQuickNavDestination(destination);
@@ -29827,13 +31747,21 @@ function enhanceTopicViewerSectionNavigation() {
   }
 }
 
-function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
-  try {
+async function startTopicQuizSession(topicSlug = "", topicTitle = "Topic", options = {}) {  try {
     const slug = normalizeTopicPathToken(topicSlug);
     if (!slug) {
       alert("Topic quiz could not start because no topic slug was found.");
       return;
     }
+    const normalizedTitle = String(topicTitle || "Topic").trim() || "Topic";
+    if (!options?.forceNew) {
+      const modalState = buildResumeTopicQuizSessionModalState(slug, normalizedTitle);
+      if (modalState) {
+        openSessionResumeModal(modalState);
+        return;
+      }
+    }
+await ensureQuestionBankLoaded();
 
     const sourceBank = Array.isArray(questionBank) && questionBank.length
       ? questionBank
@@ -29844,7 +31772,7 @@ function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
     const normalizedTopicQuestions = enrichImportedCaseQuestions(topicQuestions);
 
     if (normalizedTopicQuestions.length === 0) {
-      alert(`No topic quiz questions are available for ${topicTitle} yet.`);
+      alert(`No topic quiz questions are available for ${normalizedTitle} yet.`);
       return;
     }
 
@@ -29862,7 +31790,7 @@ function startTopicQuizSession(topicSlug = "", topicTitle = "Topic") {
     mode = "topic";
     topicQuizSessionMeta = {
       slug,
-      title: String(topicTitle || "Topic").trim() || "Topic",
+      title: normalizedTitle,
       returnScreen: "topic-viewer",
     };
     current = 0;
@@ -29925,6 +31853,21 @@ function consumePendingScreenLaunch() {
     const params = new URLSearchParams(window.location.search || "");
     const screenId = String(params.get("screen") || "").trim();
     if (!screenId) return false;
+    if (["news-screen", "news-feed", "news-story", "news"].includes(screenId)) {
+      void openNewsScreen();
+      return true;
+    }
+    if (screenId === "extra-screen") {
+      openExtraScreen();
+      params.delete("screen");
+      const nextQuery = params.toString();
+      const nextUrl =
+        window.location.pathname +
+        (nextQuery ? `?${nextQuery}` : "") +
+        (window.location.hash || "");
+      window.history.replaceState(window.history.state, "", nextUrl);
+      return true;
+    }
     showScreen(screenId, { recordHistory: false });
     setMenuHubActiveTab(
       screenId === "drills-screen"
@@ -30147,8 +32090,35 @@ function getContactRule(country) {
   return CONTACT_RULES_BY_COUNTRY[String(country || "").trim()] || null;
 }
 
+const CONTACT_RULES_BY_CODE = (() => {
+  const byCode = new Map();
+  Object.values(CONTACT_RULES_BY_COUNTRY).forEach((rule) => {
+    const code = String(rule?.code || "").trim();
+    if (code && !byCode.has(code)) byCode.set(code, rule);
+  });
+  return byCode;
+})();
+
+function getContactRuleByCode(code) {
+  return CONTACT_RULES_BY_CODE.get(String(code || "").trim()) || null;
+}
+
 const CONTACT_FORMAT_EMAIL = "email";
 const CONTACT_FORMAT_PHONE = "phone";
+const CONTACT_COUNTRY_VISUALS = {
+  "United States": { shortCode: "USA", flag: "🇺🇸" },
+  Canada: { shortCode: "CAN", flag: "🇨🇦" },
+  "United Kingdom": { shortCode: "GBR", flag: "🇬🇧" },
+  Nigeria: { shortCode: "NGA", flag: "🇳🇬" },
+  Ghana: { shortCode: "GHA", flag: "🇬🇭" },
+  Kenya: { shortCode: "KEN", flag: "🇰🇪" },
+  India: { shortCode: "IND", flag: "🇮🇳" },
+  Pakistan: { shortCode: "PAK", flag: "🇵🇰" },
+  Philippines: { shortCode: "PHL", flag: "🇵🇭" },
+  Australia: { shortCode: "AUS", flag: "🇦🇺" },
+  "South Africa": { shortCode: "ZAF", flag: "🇿🇦" },
+  Other: { shortCode: "INTL", flag: "🌍" }
+};
 const CONTACT_COUNTRY_OPTIONS = (() => {
   const byCode = new Map();
 
@@ -30161,10 +32131,15 @@ const CONTACT_COUNTRY_OPTIONS = (() => {
     byCode.set(code, entry);
   });
 
-  return Array.from(byCode.values()).map((entry) => ({
-    code: entry.code,
-    label: `${entry.countries.join(" / ")} (${entry.code})`,
-  }));
+  return Array.from(byCode.values()).map((entry) => {
+    const primaryCountry = entry.countries[0] || "";
+    const visual = CONTACT_COUNTRY_VISUALS[primaryCountry] || CONTACT_COUNTRY_VISUALS.Other;
+    return {
+      code: entry.code,
+      label: `${visual.shortCode}`,
+      title: `${primaryCountry || "International"} ${entry.code}`,
+    };
+  });
 })();
 const CONTACT_CODE_PRIORITY = Array.from(
   new Set(CONTACT_COUNTRY_OPTIONS.map((option) => option.code)),
@@ -30184,6 +32159,7 @@ function populateContactCountrySelect(selectEl) {
     const opt = document.createElement("option");
     opt.value = option.code;
     opt.textContent = option.label;
+    opt.title = option.title || option.label;
     selectEl.appendChild(opt);
   });
 
@@ -30203,6 +32179,35 @@ function setContactFormatValue(selectEl, value) {
   selectEl.value = String(value || "").trim().toLowerCase() === CONTACT_FORMAT_EMAIL
     ? CONTACT_FORMAT_EMAIL
     : CONTACT_FORMAT_PHONE;
+}
+
+function updateContactPhonePrefix(prefixEl, countryCodeInput) {
+  if (!prefixEl) return "";
+  const code = String(countryCodeInput?.value || DEFAULT_CONTACT_CODE).trim() || DEFAULT_CONTACT_CODE;
+  prefixEl.textContent = code;
+  prefixEl.title = `Country code ${code}`;
+  return code;
+}
+
+function normalizeContactPhoneField(phoneInput, countryCodeInput) {
+  if (!phoneInput) return "";
+  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+  const maxDigits = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+  const digits = normalizeDigits(phoneInput.value).slice(0, maxDigits);
+  if (phoneInput.value !== digits) phoneInput.value = digits;
+  return digits;
+}
+
+function getPhoneContactError(phoneValue, countryCodeInput) {
+  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+  const digits = normalizeDigits(phoneValue);
+  if (!digits) return "Contact number is required.";
+  if (digits.length < rule.min || digits.length > rule.max) {
+    const range = rule.min === rule.max ? `${rule.min}-digit` : `${rule.min}-${rule.max}-digit`;
+    const code = String(countryCodeInput?.value || DEFAULT_CONTACT_CODE).trim();
+    return `Enter a ${range} mobile number for ${code}.`;
+  }
+  return "";
 }
 
 function splitStoredContactValue(value) {
@@ -30247,12 +32252,14 @@ function buildContactValueFromFields({
   phoneInput,
 } = {}) {
   const format = getContactFormatValue(formatSelect);
+  const contactInput = phoneInput || emailInput;
+
   if (format === CONTACT_FORMAT_EMAIL) {
-    return String(emailInput?.value || "").trim().toLowerCase();
+    return String(contactInput?.value || "").trim().toLowerCase();
   }
 
   const countryCode = String(countryCodeInput?.value || "").trim() || DEFAULT_CONTACT_CODE;
-  const phone = normalizeDigits(phoneInput?.value || "");
+  const phone = normalizeDigits(contactInput?.value || "");
   return phone ? `${countryCode}${phone}` : "";
 }
 
@@ -30261,13 +32268,15 @@ function applyContactValueToFields({
   emailInput,
   countryCodeInput,
   phoneInput,
+  prefixEl,
   value = "",
 } = {}) {
   const parsed = splitStoredContactValue(value);
+  const contactInput = phoneInput || emailInput;
   setContactFormatValue(formatSelect, parsed.format);
 
-  if (emailInput) {
-    emailInput.value = parsed.format === CONTACT_FORMAT_EMAIL ? parsed.email : "";
+  if (contactInput) {
+    contactInput.value = parsed.format === CONTACT_FORMAT_EMAIL ? parsed.email : parsed.phone;
   }
 
   if (countryCodeInput) {
@@ -30275,10 +32284,7 @@ function applyContactValueToFields({
     countryCodeInput.value = parsed.countryCode || DEFAULT_CONTACT_CODE;
   }
 
-  if (phoneInput) {
-    phoneInput.value = parsed.format === CONTACT_FORMAT_PHONE ? parsed.phone : "";
-  }
-
+  updateContactPhonePrefix(prefixEl, countryCodeInput);
   return parsed.format;
 }
 
@@ -30290,9 +32296,11 @@ function syncContactFieldMode({
   phoneWrap,
   countryCodeInput,
   phoneInput,
+  prefixEl,
   locked = false,
 } = {}) {
   const mode = getContactFormatValue(formatSelect);
+  const contactInput = phoneInput || emailInput;
 
   if (wrap) {
     wrap.dataset.contactMode = mode;
@@ -30307,25 +32315,32 @@ function syncContactFieldMode({
     formatSelect.disabled = locked;
   }
 
-  if (emailInput) {
-    emailInput.disabled = locked || mode !== CONTACT_FORMAT_EMAIL;
-    emailInput.autocomplete = "email";
+  if (contactInput) {
+    contactInput.disabled = locked;
+    contactInput.type = mode === CONTACT_FORMAT_EMAIL ? "email" : "tel";
+    contactInput.placeholder =
+      mode === CONTACT_FORMAT_EMAIL ? "name@example.com" : "Enter mobile number";
+    contactInput.autocomplete = mode === CONTACT_FORMAT_EMAIL ? "email" : "tel-national";
+    contactInput.inputMode = mode === CONTACT_FORMAT_EMAIL ? "email" : "numeric";
+    if (mode === CONTACT_FORMAT_PHONE) {
+      const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+      contactInput.maxLength = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+      normalizeContactPhoneField(contactInput, countryCodeInput);
+    } else {
+      contactInput.removeAttribute("maxlength");
+    }
   }
+
+  updateContactPhonePrefix(prefixEl, countryCodeInput);
 
   if (countryCodeInput) {
     populateContactCountrySelect(countryCodeInput);
+    countryCodeInput.parentElement?.classList.toggle("hidden", mode !== CONTACT_FORMAT_PHONE);
     countryCodeInput.disabled = locked || mode !== CONTACT_FORMAT_PHONE;
-  }
-
-  if (phoneInput) {
-    phoneInput.disabled = locked || mode !== CONTACT_FORMAT_PHONE;
-    phoneInput.inputMode = "numeric";
-    phoneInput.autocomplete = "tel-national";
   }
 
   return mode;
 }
-
 function clearFieldValidation(fieldWrap) {
   if (!fieldWrap) return;
   fieldWrap.classList.remove("field-invalid");
@@ -30470,7 +32485,9 @@ function buildMenuSnapshotFromUser(user = null) {
     user.leaderboardStats && typeof user.leaderboardStats === "object"
       ? user.leaderboardStats
       : null;
-  const points = Math.max(0, Math.round(Number(getCumulativePoints()) || Number(user.points) || 0));
+  const ownerKey = getPointsOwnerKey(user);
+  const localPoints = Math.max(0, Math.round(Number(readStoredPoints(ownerKey)) || 0));
+  const points = Math.max(localPoints, Math.max(0, Math.round(Number(user.points) || 0)));
   const dailyStreak = Math.max(
     0,
     Math.round(Number(dailyQuiz.streak ?? dailyQuiz.dailyStreak ?? 0) || 0),
@@ -30581,6 +32598,7 @@ function fillProfileForm() {
     emailInput: profileContactEmailInput,
     countryCodeInput: profileContactCountryCodeInput,
     phoneInput: profileContactPhoneInput,
+    prefixEl: profileContactPrefixInput,
     value: String(currentUser.contact || currentUser.email || "").trim(),
   });
   syncContactFieldMode({
@@ -30591,6 +32609,7 @@ function fillProfileForm() {
     phoneWrap: profileContactPhoneWrap,
     countryCodeInput: profileContactCountryCodeInput,
     phoneInput: profileContactPhoneInput,
+    prefixEl: profileContactPrefixInput,
   });
   if (profileProfessionalTypeInput) {
     profileProfessionalTypeInput.value = currentUser.professionalType || "Other";
@@ -30841,6 +32860,7 @@ function setAuthMode(nextMode = "login") {
     phoneWrap: authContactPhoneWrap,
     countryCodeInput: authContactCountryCodeInput,
     phoneInput: authContactPhoneInput,
+    prefixEl: authContactPrefixInput,
     locked: isForgot && authForgotRequestLocked,
   });
 
@@ -30849,8 +32869,9 @@ function setAuthMode(nextMode = "login") {
   }
 }
 
-function openAuthModal(nextMode = "login") {
+function openAuthModal(nextMode = "login", nextScreenId = "quiz-menu") {
   if (!authModal) return;
+  authPostSuccessScreenId = String(nextScreenId || "quiz-menu").trim() || "quiz-menu";
   setAuthMode(nextMode);
   setAuthError("");
   setAuthInfo("");
@@ -30862,17 +32883,10 @@ function openAuthModal(nextMode = "login") {
     return;
   }
   if (authMode === "forgot" || authMode === "reset") {
-    const contactMode = getContactFormatValue(authContactFormatInput);
-    const contactEmail = String(authContactEmailInput?.value || "").trim();
-    const contactPhone = String(authContactPhoneInput?.value || "").trim();
-    const hasContactValue =
-      contactMode === CONTACT_FORMAT_EMAIL ? Boolean(contactEmail) : Boolean(contactPhone);
-    if (!hasContactValue) {
-      if (contactMode === CONTACT_FORMAT_EMAIL && authContactEmailInput) {
-        authContactEmailInput.focus();
-      } else if (authContactPhoneInput) {
-        authContactPhoneInput.focus();
-      }
+    const contactInput = authContactPhoneInput || authContactEmailInput;
+    const contactValue = String(contactInput?.value || "").trim();
+    if (!contactValue) {
+      contactInput?.focus();
       return;
     }
   }
@@ -31258,7 +33272,6 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
     renderAuthState();
     return false;
   }
-
   try {
     currentUser = await backendClient.fetchMe({ preferCache: true });
     renderAuthState();
@@ -31385,11 +33398,22 @@ async function refreshSharedAccountState({
   return sharedAccountStateRefreshInFlight;
 }
 
-async function ensureAuthenticated() {
+async function refreshSubscriptionAccessForAction() {
+  if (!backendClient.isAuthenticated() || !currentUser) {
+    return false;
+  }
+  await Promise.allSettled([
+    refreshSharedAccountState({ force: true, silent: true, deferHydration: true }),
+    loadSubscriptionScreenData({ force: true }),
+  ]);
+  return true;
+}
+
+async function ensureAuthenticated({ nextScreen = "quiz-menu" } = {}) {
   if (currentUser) return true;
   const restored = await restoreAuthSession();
   if (restored) return true;
-  openAuthModal("login");
+  openAuthModal("login", nextScreen);
   return false;
 }
 
@@ -31425,7 +33449,7 @@ async function handlePortalEntry() {
     startBackendBootstrap();
     return;
   }
-  const allowed = await ensureAuthenticated();
+  const allowed = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!allowed) return;
   showScreen("quiz-menu");
   startQuestionBankBootstrap();
@@ -31440,8 +33464,8 @@ async function handleAuthSubmit(event) {
   const lastName = String(authLastNameInput?.value || "").trim();
   const username = String(authUsernameInput?.value || "").trim().toLowerCase();
   const contactMode = getContactFormatValue(authContactFormatInput);
-  const contactEmail = String(authContactEmailInput?.value || "").trim().toLowerCase();
-  const contactPhone = String(authContactPhoneInput?.value || "").trim();
+  const contactInput = authContactPhoneInput || authContactEmailInput;
+  const contactValue = String(contactInput?.value || "").trim();
   const contact = buildContactValueFromFields({
     formatSelect: authContactFormatInput,
     emailInput: authContactEmailInput,
@@ -31486,19 +33510,19 @@ async function handleAuthSubmit(event) {
       hasInvalidRequired = true;
     }
     if (contactMode === CONTACT_FORMAT_EMAIL) {
-      if (!contactEmail) {
+      if (!contactValue) {
         setFieldValidation(authContactWrap, "Email address is required.");
         hasInvalidRequired = true;
-      } else if (!EMAIL_INPUT_REGEX.test(contactEmail)) {
+      } else if (!EMAIL_INPUT_REGEX.test(contactValue.toLowerCase())) {
         setFieldValidation(authContactWrap, "Enter a valid email address.");
         hasInvalidRequired = true;
       }
-    } else if (!contactPhone) {
-      setFieldValidation(authContactWrap, "Contact number is required.");
-      hasInvalidRequired = true;
-    } else if (normalizeDigits(contactPhone).length < 6) {
-      setFieldValidation(authContactWrap, "Enter a valid mobile number.");
-      hasInvalidRequired = true;
+    } else {
+      const phoneError = getPhoneContactError(contactValue, authContactCountryCodeInput);
+      if (phoneError) {
+        setFieldValidation(authContactWrap, phoneError);
+        hasInvalidRequired = true;
+      }
     }
     if (!password || password.length < 6) {
       setFieldValidation(authPasswordWrap, "Minimum 6 characters");
@@ -31561,19 +33585,24 @@ async function handleAuthSubmit(event) {
     if (authMode === "login") {
       const response = await backendClient.login({ identifier, password });
       currentUser = response?.user || (await backendClient.fetchMe());
-      renderAuthState();
-      syncPointsFromCurrentUser();
-      writeCurrentSetupPoints(readCurrentSetupPoints(), {
-        scheduleSync: false,
-      });
-      writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-        scheduleSync: false,
-      });
-      renderPoints();
-      scheduleSharedAccountHydration({ silent: true, deferHydration: true });
-      void loadDashboardTrendData({ force: false });
       closeAuthModal();
-      showScreen("quiz-menu");
+      showScreen(authPostSuccessScreenId || "quiz-menu");
+      authPostSuccessScreenId = "quiz-menu";
+      try {
+        renderAuthState();
+        syncPointsFromCurrentUser();
+        writeCurrentSetupPoints(readCurrentSetupPoints(), {
+          scheduleSync: false,
+        });
+        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+          scheduleSync: false,
+        });
+        renderPoints();
+        scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+        void loadDashboardTrendData({ force: false });
+      } catch (postAuthHydrationError) {
+        console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
+      }
       return;
     }
 
@@ -31586,19 +33615,24 @@ async function handleAuthSubmit(event) {
         password,
       });
       currentUser = response?.user || (await backendClient.fetchMe());
-      renderAuthState();
-      syncPointsFromCurrentUser();
-      writeCurrentSetupPoints(readCurrentSetupPoints(), {
-        scheduleSync: false,
-      });
-      writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-        scheduleSync: false,
-      });
-      renderPoints();
-      scheduleSharedAccountHydration({ silent: true, deferHydration: true });
-      void loadDashboardTrendData({ force: false });
       closeAuthModal();
-      showScreen("quiz-menu");
+      showScreen(authPostSuccessScreenId || "quiz-menu");
+      authPostSuccessScreenId = "quiz-menu";
+      try {
+        renderAuthState();
+        syncPointsFromCurrentUser();
+        writeCurrentSetupPoints(readCurrentSetupPoints(), {
+          scheduleSync: false,
+        });
+        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
+          scheduleSync: false,
+        });
+        renderPoints();
+        scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+        void loadDashboardTrendData({ force: false });
+      } catch (postAuthHydrationError) {
+        console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
+      }
       return;
     }
 
@@ -31651,7 +33685,8 @@ async function handleAuthSubmit(event) {
       phoneWrap: authContactPhoneWrap,
       countryCodeInput: authContactCountryCodeInput,
       phoneInput: authContactPhoneInput,
-      locked: authMode === "forgot" && authForgotRequestLocked,
+    prefixEl: authContactPrefixInput,
+    locked: authMode === "forgot" && authForgotRequestLocked,
     });
   }
 }
@@ -31704,12 +33739,17 @@ if (authContactFormatInput) {
       phoneWrap: authContactPhoneWrap,
       countryCodeInput: authContactCountryCodeInput,
       phoneInput: authContactPhoneInput,
-      locked: authMode === "forgot" && authForgotRequestLocked,
+    prefixEl: authContactPrefixInput,
+    locked: authMode === "forgot" && authForgotRequestLocked,
     });
 }
 
 if (authContactCountryCodeInput) {
-  authContactCountryCodeInput.onchange = () => clearFieldValidation(authContactWrap);
+  authContactCountryCodeInput.onchange = () => {
+    updateContactPhonePrefix(authContactPrefixInput, authContactCountryCodeInput);
+    normalizeContactPhoneField(authContactPhoneInput, authContactCountryCodeInput);
+    clearFieldValidation(authContactWrap);
+  };
 }
 
 if (profileContactFormatInput) {
@@ -31722,11 +33762,14 @@ if (profileContactFormatInput) {
       phoneWrap: profileContactPhoneWrap,
       countryCodeInput: profileContactCountryCodeInput,
       phoneInput: profileContactPhoneInput,
-    });
+    prefixEl: profileContactPrefixInput,
+  });
 }
 
 if (profileContactCountryCodeInput) {
   profileContactCountryCodeInput.onchange = () => {
+    updateContactPhonePrefix(profileContactPrefixInput, profileContactCountryCodeInput);
+    normalizeContactPhoneField(profileContactPhoneInput, profileContactCountryCodeInput);
     if (profileContactWrap) clearFieldValidation(profileContactWrap);
   };
 }
@@ -32015,16 +34058,18 @@ async function saveProfile() {
     );
     return;
   }
-  if (!isValidContactValue(payload.contact)) {
-    setProfileFeedback(
-      profileContactMode === CONTACT_FORMAT_EMAIL
-        ? "Contact must be a valid email address."
-        : "Contact must be a valid mobile number in international format.",
-      true,
-    );
-    return;
+  if (profileContactMode === CONTACT_FORMAT_EMAIL) {
+    if (!EMAIL_INPUT_REGEX.test(payload.contact.toLowerCase())) {
+      setProfileFeedback("Contact must be a valid email address.", true);
+      return;
+    }
+  } else {
+    const phoneError = getPhoneContactError(profileContactValue, profileContactCountryCodeInput);
+    if (phoneError) {
+      setProfileFeedback(phoneError, true);
+      return;
+    }
   }
-
   try {
     const response = await backendClient.updateProfile(payload);
     currentUser = response?.user || (await backendClient.fetchMe());
@@ -32073,6 +34118,7 @@ async function deactivateProfileAccount() {
     setProfileFeedback("Deactivate days must be between 1 and 30.", true);
     return;
   }
+
   if (
     !confirm(
       `Deactivate this account for ${days} day(s)? It will be auto-deleted after that window.`,
@@ -32080,7 +34126,6 @@ async function deactivateProfileAccount() {
   ) {
     return;
   }
-
   try {
     await backendClient.deactivateAccount(days);
     backendClient.clearToken();
@@ -32122,7 +34167,7 @@ async function deleteProfileAccount() {
 }
 
 async function openProfileScreen() {
-  const ok = await ensureAuthenticated();
+  const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
   if (!ok || !currentUser) return;
   setProfileFeedback("");
   fillProfileForm();
@@ -32145,7 +34190,7 @@ async function openProfileScreen() {
 
 if (profileBtn) {
   profileBtn.onclick = async () => {
-    const ok = await ensureAuthenticated();
+    const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
     if (!ok) return;
     closeMenuUserHub();
     openProfileScreen();
@@ -32398,6 +34443,7 @@ function openQuizExitModal({
 }
 
 function openExamExitModal() {
+  if (!examExitModal) return;
   openQuizExitModal({
     title: "End Exam?",
     text: "Ending now will submit your exam with current answers.",
@@ -32440,6 +34486,7 @@ const studyExitTitleEl = studyExitModal?.querySelector(".modal-title") || null;
 const studyExitTextEl = studyExitModal?.querySelector(".modal-text") || null;
 
 function openStudyExitModal() {
+  if (!studyExitModal) return;
   if (studyExitTitleEl) {
     studyExitTitleEl.textContent = isTopicQuizMode() ? "End Topic Quiz?" : "End Study Session?";
   }
@@ -32649,6 +34696,111 @@ function getSavedStudySession() {
   }
 
   return latestSession ? { key: latestSession.key, state: latestSession.state } : null;
+}
+
+function getTopicQuizSessionStorageKey(topicSlug = "") {
+  const slug = normalizeTopicPathToken(topicSlug);
+  return slug ? `topicQuizSession:${slug}` : "";
+}
+
+function getSavedTopicQuizSession(topicSlug = "") {
+  const key = getTopicQuizSessionStorageKey(topicSlug);
+  if (!key) return null;
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+    if (!Array.isArray(saved.active) || saved.active.length === 0) return null;
+    if (saved.completed || saved.sessionEnded || saved.view === "result") return null;
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
+function clearTopicQuizProgress(topicSlug = "") {
+  const key = getTopicQuizSessionStorageKey(topicSlug || topicQuizSessionMeta?.slug || "");
+  if (!key) return;
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
+
+function saveTopicQuizProgress() {
+  if (mode !== "topic" || studySessionEnded) return;
+  const topicSlug = String(topicQuizSessionMeta?.slug || "").trim();
+  if (!topicSlug) return;
+  try {
+    localStorage.setItem(
+      getTopicQuizSessionStorageKey(topicSlug),
+      JSON.stringify({
+        current,
+        userAnswers,
+        active,
+        currentStreak,
+        topicSlug,
+        topicTitle: String(topicQuizSessionMeta?.title || "Topic").trim() || "Topic",
+        timestamp: Date.now(),
+      }),
+    );
+  } catch {}
+}
+
+function restoreTopicQuizSession(saved = null) {
+  if (!saved || typeof saved !== "object") return false;
+
+  studySessionEnded = false;
+  inReview = false;
+  inStudyReview = false;
+  inDetailedReview = false;
+  answeredCurrent = false;
+  clearAiExplainStateSession();
+  examVariant = "normal";
+  examTimeBudget = 0;
+  clearInterval(examTimer);
+  examTimer = null;
+  activeCase = "";
+  mode = "topic";
+  topicQuizSessionMeta = {
+    slug: String(saved.topicSlug || "").trim() || "",
+    title: String(saved.topicTitle || "Topic").trim() || "Topic",
+    returnScreen: "topic-viewer",
+  };
+  current = Math.max(0, Number(saved.current) || 0);
+  score = 0;
+  userAnswers = saved.userAnswers && typeof saved.userAnswers === "object" ? saved.userAnswers : {};
+  currentStreak = Math.max(0, Number(saved.currentStreak) || 0);
+  active = Array.isArray(saved.active) ? JSON.parse(JSON.stringify(saved.active)) : [];
+  nextBtn.onclick = nextQuestion;
+  prevBtn.onclick = previousQuestion;
+  updateModeIndicator("normal");
+  const topicModeIndicator = document.getElementById("mode-indicator");
+  if (topicModeIndicator) {
+    topicModeIndicator.innerText = `${getTopicQuizSessionTitle()} Quiz`;
+  }
+  showScreen("quiz-area");
+  showQuestion();
+  restoreStreakUI();
+  return true;
+}
+
+function buildResumeTopicQuizSessionModalState(topicSlug = "", topicTitle = "Topic") {
+  const saved = getSavedTopicQuizSession(topicSlug);
+  if (!saved) return null;
+  const title = String(topicTitle || saved.topicTitle || "Topic").trim() || "Topic";
+  return {
+    title: `Resume ${title} Quiz?`,
+    text: `You have a paused quiz for ${title}. Resume where you stopped or start a new one.`,
+    onResume: () => {
+      void restoreTopicQuizSession(saved);
+    },
+    onStartNew: () => {
+      clearTopicQuizProgress(topicSlug || saved.topicSlug || "");
+      void startTopicQuizSession(topicSlug || saved.topicSlug || "", title, { forceNew: true });
+    },
+  };
 }
 
 function buildResumeStudySessionModalState() {
@@ -32937,13 +35089,20 @@ if (subscriptionProofPreview) {
 if (subscriptionForm) {
   subscriptionForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!currentUser && !(await ensureAuthenticated())) {
+    if (!currentUser && backendClient.isAuthenticated()) {
+      currentUser = await backendClient.fetchMe({ preferCache: true }).catch(() => null);
+    }
+    if (!currentUser) {
+      if (subscriptionFormFeedback) {
+        subscriptionFormFeedback.dataset.persist = "1";
+        subscriptionFormFeedback.textContent = "We couldn't load your profile yet. Please try again.";
+      }
       return;
     }
     const latestRequest =
       subscriptionStatusSnapshot?.request ||
       (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
-    const currentSubscriptionAccess = subscriptionStatusSnapshot?.subscription || currentUser?.subscriptionAccess || null;
+    const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
     const currentSubscriptionStatus = String(
       currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
     )
@@ -32992,6 +35151,9 @@ if (subscriptionForm) {
 
       const response = await backendClient.submitSubscriptionRequest({
         plan: subscriptionPlanInput?.value || "weekly",
+        userId: String(currentUser?.id || "").trim(),
+        username: String(currentUser?.username || "").trim(),
+        contact: String(currentUser?.contact || "").trim(),
         paymentReference: String(subscriptionTransactionInput?.value || "").trim(),
         proofText: String(subscriptionTransactionInput?.value || "").trim(),
         proofDataUrl,
@@ -33018,7 +35180,7 @@ if (subscriptionForm) {
       if (subscriptionFormFeedback) {
         subscriptionFormFeedback.dataset.persist = "1";
         subscriptionFormFeedback.textContent = isUnauthorized
-          ? "Your session expired. Please sign in again and resubmit your payment proof."
+          ? "We couldn't submit your proof just now. Please try again."
           : generalApiErrorMessage(
               error,
               "Unable to submit your payment proof. Please try again.",
@@ -33064,8 +35226,15 @@ if (startExamBtn) {
 }
 
 async function startMenuDrill(variant = "rapid") {
-  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
+  await hydrateSubscriptionEntitlement();
+
   const drill = String(variant || "").toLowerCase();
+
+  if (!requireSubscriptionAccess(drill)) {
+    return;
+  }
+
+  void refreshSubscriptionAccessForAction();
   if (!requireSubscriptionAccess(drill)) {
     return;
   }
@@ -33132,7 +35301,13 @@ async function startMenuDrill(variant = "rapid") {
 }
 
 if (rapidDrillBtn) {
-  rapidDrillBtn.onclick = () => void startMenuDrill("rapid");
+  rapidDrillBtn.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("rapid")) {
+      return;
+    }
+    void startMenuDrill("rapid");
+  };
 }
 
 if (suddenDrillBtn) {
@@ -33164,7 +35339,8 @@ if (clinicalDrillBtn) {
 }
 
 if (lawDrillBtn) {
-  lawDrillBtn.onclick = () => {
+  lawDrillBtn.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("law")) {
       return;
     }
@@ -33180,7 +35356,8 @@ if (menuDrillsTab) {
 }
 
 if (menuLawTab) {
-  menuLawTab.onclick = () => {
+  menuLawTab.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("law")) {
       return;
     }
@@ -33191,18 +35368,16 @@ if (menuLawTab) {
 }
 
 if (menuGppqeTab) {
-  menuGppqeTab.onclick = () => {
-    if (!requireSubscriptionAccess("gppqe")) {
-      return;
-    }
+  menuGppqeTab.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
     setMenuHubActiveTab("gppqe");
-    openGppqeScreen();
+    void openGppqeScreen();
   };
 }
 
 if (menuExtraTab) {
-  menuExtraTab.onclick = () => {
-    setMenuHubActiveTab("extra");
+  menuExtraTab.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
     openExtraScreen();
   };
 }
@@ -33212,10 +35387,7 @@ if (drillsBackBtn) {
 }
 
 if (gppqeBackBtn) {
-  gppqeBackBtn.onclick = () => {
-    closeComingSoonModal();
-    showScreen("quiz-menu");
-  };
+  gppqeBackBtn.onclick = () => gppqeHandleBack();
 }
 
 if (extraBackBtn) {
@@ -33231,8 +35403,9 @@ if (drillsMenuBtn || gppqeMenuBtn || extraMenuBtn) {
 
 if (drillsLobbyTabs.length) {
   drillsLobbyTabs.forEach((tab) => {
-    tab.onclick = () => {
+    tab.onclick = async () => {
       const variant = String(tab.dataset.drillVariant || "rapid").toLowerCase();
+      await refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess(variant)) {
         return;
       }
@@ -33250,12 +35423,6 @@ if (drillsPlayBtns.length) {
   });
 }
 
-if (extraViewToggleBtn) {
-  extraViewToggleBtn.onclick = () => {
-    setExtraViewMode(extraViewMode === "cards" ? "list" : "cards");
-  };
-}
-
 if (menuNewsBtn) {
   menuNewsBtn.onclick = async () => {
     closeMenuUserHub();
@@ -33263,10 +35430,40 @@ if (menuNewsBtn) {
   };
 }
 
+if (menuGuidelinesBtn) {
+  menuGuidelinesBtn.onclick = async () => {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("extra-content")) {
+      return;
+    }
+    window.location.href = "guidelines.html";
+  };
+}
+
 if (extraScreen) {
-  extraScreen.addEventListener("click", (event) => {
-    const target = event.target instanceof HTMLElement ? event.target.closest("[data-coming-soon='true']") : null;
-    if (target instanceof HTMLElement) {
+  extraScreen.addEventListener("click", async (event) => {
+    const target =
+      event.target instanceof HTMLElement
+        ? event.target.closest("[data-coming-soon='true'], [data-medlens='true'], [data-calculator='true']")
+        : null;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.hasAttribute("data-medlens")) {
+      await refreshSubscriptionAccessForAction();
+      if (!requireSubscriptionAccess("extra-content")) {
+        return;
+      }
+      window.location.href = "/medlens.html";
+      return;
+    }
+    if (target.hasAttribute("data-calculator")) {
+      await refreshSubscriptionAccessForAction();
+      if (!requireSubscriptionAccess("extra-content")) {
+        return;
+      }
+      window.location.href = "./calculator.html";
+      return;
+    }
+    if (target.hasAttribute("data-coming-soon")) {
       if (!requireSubscriptionAccess("extra-content")) {
         return;
       }
@@ -33313,7 +35510,7 @@ function showCountTooltip() {
 }
 
 backReviewBtn.onclick = function () {
-  inReview = false; // ðŸ”¥ reset properly
+inReview = false; // reset properly
   showScreen("review-screen");
   buildReviewPalette();
   backReviewBtn.classList.add("hidden");
@@ -33325,6 +35522,10 @@ if (studyBtn) {
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
     showScreen("study-setup");
+    const modalState = buildResumeStudySessionModalState();
+    if (modalState) {
+      openSessionResumeModal(modalState);
+    }
 
     nextBtn.onclick = nextQuestion;
     prevBtn.onclick = previousQuestion;
@@ -33446,30 +35647,6 @@ if (startDailyBtn) {
                      DASHBOARD
                   ================================= */
 
-const dashboardDiv = document.getElementById("dashboard");
-
-if (dashboardBtns.length) {
-  dashboardBtns.forEach((btn) => {
-    btn.onclick = () => {
-      closeMenuUserHub();
-      showDashboard();
-    };
-  });
-}
-
-const dashboardTrendTabs = document.querySelectorAll("[data-dashboard-trend-scope]");
-if (dashboardTrendTabs.length) {
-  dashboardTrendTabs.forEach((button) => {
-    button.addEventListener("click", () => {
-      const nextScope = String(button.dataset.dashboardTrendScope || "session").trim().toLowerCase();
-      dashboardTrendScope = nextScope || "session";
-      localStorage.setItem(DASHBOARD_TREND_SCOPE_STORAGE_KEY, dashboardTrendScope);
-      renderDashboardTrend(dashboardTrendScope);
-      void loadDashboardTrendData({ force: false });
-    });
-  });
-}
-
 if (menuHomeBtn) {
   menuHomeBtn.addEventListener("click", () => {
     closeMenuUserHub();
@@ -33492,307 +35669,6 @@ if (menuHomeBtn) {
   });
 }
 
-function renderDashboardValues({
-  totalAttempts = 0,
-  overallAccuracy = 0,
-  weakCount = 0,
-  sessionCount = 0,
-  categories = [],
-  rotations = [],
-}) {
-  document.getElementById("dash-total").innerText = totalAttempts;
-  document.getElementById("dash-accuracy").innerText = overallAccuracy + "%";
-  document.getElementById("dash-weak").innerText = weakCount;
-  const sessionsEl = document.getElementById("dash-sessions");
-  if (sessionsEl) sessionsEl.innerText = sessionCount;
-
-  const container = document.getElementById("dash-categories");
-  container.innerHTML = "";
-
-  if (!Array.isArray(categories) || categories.length === 0) {
-    container.innerHTML = '<div class="no-data">No category data yet.</div>';
-  } else {
-    categories.forEach((rowData) => {
-      const category = rowData.category || "General";
-      const attempts = Number(rowData.attempts) || 0;
-      const accuracy = Number(rowData.accuracy) || 0;
-
-      const row = document.createElement("div");
-      row.className = "category-row";
-
-      row.innerHTML = `
-        <div class="category-info">
-          <div class="category-name">${category}</div>
-          <div class="category-meta">${attempts} attempts</div>
-        </div>
-        <div class="category-bar">
-          <div class="category-fill" style="width:${accuracy}%"></div>
-        </div>
-        <div class="category-percent">${accuracy}%</div>
-      `;
-
-      container.appendChild(row);
-    });
-  }
-
-  renderDashboardTopSubjects(categories);
-  renderDashboardRotations(rotations);
-  renderDashboardRecentResults();
-  renderDashboardTrend();
-}
-
-function getLocalDashboardSnapshot() {
-  let totalAttempts = 0;
-  let totalCorrect = 0;
-  let weakCount = 0;
-
-  Object.values(performanceData || {}).forEach((row) => {
-    const attempts = Math.max(0, Number(row?.attempts) || 0);
-    const correct = Math.max(0, Math.min(attempts, Number(row?.correct) || 0));
-    if (attempts <= 0) return;
-    totalAttempts += attempts;
-    totalCorrect += correct;
-    const accuracy = Math.round((correct / attempts) * 100);
-    if (accuracy < 60) weakCount += 1;
-  });
-
-  const overallAccuracy =
-    totalAttempts === 0 ? 0 : Math.round((totalCorrect / totalAttempts) * 100);
-
-  const sessionEntries = getDashboardSessionEntries();
-  const sessionTotals = sessionEntries.reduce(
-    (acc, entry) => {
-      const score = Math.max(0, Math.round(Number(entry?.score) || 0));
-      const total = Math.max(0, Math.round(Number(entry?.total) || 0));
-      if (total <= 0) return acc;
-      acc.attempts += total;
-      acc.correct += Math.min(score, total);
-      if (Math.round((score / total) * 100) < 60) {
-        acc.weakCount += 1;
-      }
-      return acc;
-    },
-    { attempts: 0, correct: 0, weakCount: 0 },
-  );
-
-  const sessionFallbackAccuracy =
-    sessionTotals.attempts === 0
-      ? 0
-      : Math.round((sessionTotals.correct / sessionTotals.attempts) * 100);
-
-  const categories = Object.keys(categoryPerformance || {})
-    .map((cat) => ({
-      category: cat,
-      attempts: Math.max(0, Number(categoryPerformance?.[cat]?.attempts) || 0),
-      accuracy: getCategoryAccuracy(cat),
-    }))
-    .sort((a, b) => String(a.category).localeCompare(String(b.category)));
-
-  const rotations = Object.keys(rotationPerformance || {})
-    .map((rotation) => ({
-      rotation,
-      attempts: Math.max(0, Number(rotationPerformance?.[rotation]?.attempts) || 0),
-      accuracy: getRotationAccuracy(rotation),
-    }))
-    .sort((a, b) => String(a.rotation).localeCompare(String(b.rotation)));
-
-  return {
-    totalAttempts: totalAttempts > 0 ? totalAttempts : sessionTotals.attempts,
-    overallAccuracy: totalAttempts > 0 ? overallAccuracy : sessionFallbackAccuracy,
-    weakCount: weakCount > 0 ? weakCount : sessionTotals.weakCount,
-    sessionCount: sessionEntries.length,
-    categories,
-    rotations,
-  };
-}
-
-function mergeDashboardSnapshots(localSnapshot, remoteSnapshot) {
-  const local = localSnapshot || {
-    totalAttempts: 0,
-    overallAccuracy: 0,
-    weakCount: 0,
-    sessionCount: 0,
-    categories: [],
-    rotations: [],
-  };
-  const remote = remoteSnapshot && typeof remoteSnapshot === "object" ? remoteSnapshot : {};
-  const remoteAttempts = Math.max(
-    0,
-    Number(remote.totalAttempts ?? remote.totalQuestionAttempts) || 0,
-  );
-  const remoteAccuracy = Math.max(0, Number(remote.overallAccuracy) || 0);
-  const remoteWeakCount = Math.max(0, Number(remote.weakQuestions) || 0);
-  const localAttempts = Math.max(0, Number(local.totalAttempts) || 0);
-  const localAccuracy = Math.max(0, Number(local.overallAccuracy) || 0);
-
-  const mergedTotalAttempts = Math.max(localAttempts, remoteAttempts);
-  const mergedWeakCount = Math.max(Math.max(0, Number(local.weakCount) || 0), remoteWeakCount);
-  const mergedOverallAccuracy =
-    remoteAccuracy > localAccuracy
-      ? remoteAccuracy
-      : localAccuracy;
-
-  const chooseBetterRow = (localRow, remoteRow, keyField) => {
-    const localAttemptsValue = Math.max(0, Number(localRow?.attempts) || 0);
-    const localAccuracyValue = Math.max(0, Number(localRow?.accuracy) || 0);
-    const remoteAttemptsValue = Math.max(0, Number(remoteRow?.attempts) || 0);
-    const remoteAccuracyValue = Math.max(0, Number(remoteRow?.accuracy) || 0);
-    const keyName = keyField === "rotation" ? "rotation" : "category";
-
-    if (!localRow && remoteRow) {
-      return {
-        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
-        attempts: remoteAttemptsValue,
-        accuracy: remoteAccuracyValue,
-      };
-    }
-    if (localRow && !remoteRow) {
-      return {
-        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
-        attempts: localAttemptsValue,
-        accuracy: localAccuracyValue,
-      };
-    }
-
-    if (remoteAccuracyValue > localAccuracyValue) {
-      return {
-        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
-        attempts: remoteAttemptsValue,
-        accuracy: remoteAccuracyValue,
-      };
-    }
-    if (localAccuracyValue > remoteAccuracyValue) {
-      return {
-        [keyName]: String(localRow?.[keyName] || "").trim() || "General",
-        attempts: localAttemptsValue,
-        accuracy: localAccuracyValue,
-      };
-    }
-
-    if (remoteAttemptsValue > localAttemptsValue) {
-      return {
-        [keyName]: String(remoteRow?.[keyName] || "").trim() || "General",
-        attempts: remoteAttemptsValue,
-        accuracy: remoteAccuracyValue,
-      };
-    }
-
-    return {
-      [keyName]: String(localRow?.[keyName] || "").trim() || "General",
-      attempts: localAttemptsValue,
-      accuracy: localAccuracyValue,
-    };
-  };
-
-  const mergedCategoryMap = new Map();
-  const localCategoryMap = new Map();
-  (Array.isArray(local.categories) ? local.categories : []).forEach((row) => {
-    const name = String(row?.category || "").trim() || "General";
-    localCategoryMap.set(name, {
-      category: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  const remoteCategoryMap = new Map();
-  (Array.isArray(remote.categories) ? remote.categories : []).forEach((row) => {
-    const name = String(row?.category || "").trim() || "General";
-    remoteCategoryMap.set(name, {
-      category: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  for (const key of new Set([...localCategoryMap.keys(), ...remoteCategoryMap.keys()])) {
-    const chosen = chooseBetterRow(localCategoryMap.get(key), remoteCategoryMap.get(key), "category");
-    if (chosen) {
-      mergedCategoryMap.set(String(chosen.category || key).trim() || "General", chosen);
-    }
-  }
-
-  const mergedRotationMap = new Map();
-  const localRotationMap = new Map();
-  (Array.isArray(local.rotations) ? local.rotations : []).forEach((row) => {
-    const name = String(row?.rotation || "").trim() || "General";
-    localRotationMap.set(name, {
-      rotation: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  const remoteRotationMap = new Map();
-  (Array.isArray(remote.rotations) ? remote.rotations : []).forEach((row) => {
-    const name = String(row?.rotation || "").trim() || "General";
-    remoteRotationMap.set(name, {
-      rotation: name,
-      attempts: Math.max(0, Number(row?.attempts) || 0),
-      accuracy: Math.max(0, Number(row?.accuracy) || 0),
-    });
-  });
-
-  for (const key of new Set([...localRotationMap.keys(), ...remoteRotationMap.keys()])) {
-    const chosen = chooseBetterRow(localRotationMap.get(key), remoteRotationMap.get(key), "rotation");
-    if (chosen) {
-      mergedRotationMap.set(String(chosen.rotation || key).trim() || "General", chosen);
-    }
-  }
-
-  return {
-    totalAttempts: mergedTotalAttempts,
-    overallAccuracy: mergedOverallAccuracy,
-    weakCount: mergedWeakCount,
-    sessionCount: Math.max(0, Number(local.sessionCount) || 0),
-    categories: [...mergedCategoryMap.values()].sort((a, b) =>
-      String(a.category).localeCompare(String(b.category)),
-    ),
-    rotations: [...mergedRotationMap.values()].sort((a, b) =>
-      String(a.rotation).localeCompare(String(b.rotation)),
-    ),
-  };
-}
-
-function normalizeDashboardTrendEntry(entry = {}) {
-  const score = Math.max(0, Math.round(Number(entry?.score) || 0));
-  const total = Math.max(0, Math.round(Number(entry?.total) || 0));
-  const percent = Math.max(
-    0,
-    Math.min(
-      100,
-      Number.isFinite(Number(entry?.percent))
-        ? Math.round(Number(entry?.percent) || 0)
-      : total > 0
-          ? Math.round((score / total) * 100)
-          : 0,
-    ),
-  );
-  const durationKey = String(entry?.duration || "").trim();
-  const mode = normalizeDashboardSessionMode(entry?.mode || "Session");
-  const createdAtRaw = String(entry?.createdAt || entry?.timestamp || entry?.date || "").trim();
-  const createdAt = createdAtRaw && !Number.isNaN(Date.parse(createdAtRaw))
-    ? new Date(createdAtRaw)
-    : entry?.timestamp
-      ? new Date(Number(entry.timestamp))
-      : new Date();
-  const sessionKey = String(entry?.sessionId || entry?.clientSessionId || entry?.id || "").trim();
-  const signature = [mode, score, total, percent, durationKey].join("|");
-  const timeBucket = Math.floor(createdAt.getTime() / (5 * 60 * 1000));
-  return {
-    id: sessionKey || `${signature}|${timeBucket}`,
-    sessionKey,
-    signature,
-    timeBucket,
-    mode,
-    score,
-    total,
-    percent,
-    createdAt,
-    durationKey,
-    timestamp: createdAt.getTime(),
-  };
-}
 
 function normalizeDashboardSessionMode(mode = "Session") {
   const raw = String(mode || "").trim();
@@ -33809,413 +35685,7 @@ function normalizeDashboardSessionMode(mode = "Session") {
   return raw;
 }
 
-function mergeDashboardTrendEntries(entries = []) {
-  const merged = new Map();
-  const seenFingerprints = new Map();
-  const recentFingerprintWindowMs = 10 * 1000;
-  [...(Array.isArray(entries) ? entries : [])].forEach((entry) => {
-    const normalized = normalizeDashboardTrendEntry(entry);
-    if (!normalized.id) return;
-    const sessionKey = String(normalized.sessionKey || "").trim();
-    const fingerprint = [
-      normalized.signature,
-      Math.floor(normalized.timestamp / recentFingerprintWindowMs),
-    ].join("|");
-    const existingByFingerprint = seenFingerprints.get(fingerprint);
-    if (existingByFingerprint) {
-      if (normalized.timestamp > existingByFingerprint.timestamp) {
-        seenFingerprints.set(fingerprint, normalized);
-        if (existingByFingerprint.sessionKey) {
-          merged.set(`sid:${existingByFingerprint.sessionKey}`, normalized);
-        } else {
-          merged.set(`fp:${fingerprint}`, normalized);
-        }
-      }
-      return;
-    }
-    seenFingerprints.set(fingerprint, normalized);
-    const key = sessionKey ? `sid:${sessionKey}` : `fp:${fingerprint}`;
-    merged.set(key, normalized);
-    return;
-  });
-  return [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
-}
-
-function getLocalDashboardSessionEntries() {
-  return mergeDashboardTrendEntries([
-    ...(Array.isArray(sessionHistory) ? sessionHistory : []),
-    ...(Array.isArray(recentSessionResults) ? recentSessionResults : []),
-    latestSavedSession,
-  ]);
-}
-
-function getDashboardSessionEntries() {
-  const localEntries = getLocalDashboardSessionEntries();
-  if (dashboardTrendSessionsLoadedFromSync) {
-    return mergeDashboardTrendEntries([
-      ...(Array.isArray(dashboardTrendSessionsCache) ? dashboardTrendSessionsCache : []),
-      ...localEntries,
-    ]);
-  }
-  return localEntries;
-}
-
-function getDashboardTrendScopeLabel(scope = "session") {
-  const safeScope = String(scope || "session").trim().toLowerCase();
-  if (safeScope === "daily") return "Past 12 days";
-  if (safeScope === "weekly") return "Past 12 weeks";
-  if (safeScope === "monthly") return "Past 12 months";
-  if (safeScope === "yearly") return "Past 12 years";
-  return "Recent 12 sessions";
-}
-
-function getDashboardTrendCopy(scope = "session") {
-  const safeScope = String(scope || "session").trim().toLowerCase();
-  if (safeScope === "daily") return "Daily trend";
-  if (safeScope === "weekly") return "Weekly trend";
-  if (safeScope === "monthly") return "Monthly trend";
-  if (safeScope === "yearly") return "Yearly trend";
-  return "Session trend";
-}
-
-function startOfLocalDay(date = new Date()) {
-  const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next;
-}
-
-function endOfLocalDay(date = new Date()) {
-  const next = new Date(date);
-  next.setHours(23, 59, 59, 999);
-  return next;
-}
-
-function startOfLocalWeek(date = new Date()) {
-  const next = startOfLocalDay(date);
-  const dayIndex = (next.getDay() + 6) % 7;
-  next.setDate(next.getDate() - dayIndex);
-  return next;
-}
-
-function endOfLocalWeek(date = new Date()) {
-  const next = startOfLocalWeek(date);
-  next.setDate(next.getDate() + 6);
-  return endOfLocalDay(next);
-}
-
-function formatTrendLabel(date = new Date(), scope = "session", index = 0) {
-  const safeScope = String(scope || "session").trim().toLowerCase();
-  if (safeScope === "session") {
-    const fullTime = date.toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    return fullTime
-      .replace(/\s?AM$/i, "a")
-      .replace(/\s?PM$/i, "p")
-      .replace(/\s+/g, "");
-  }
-  if (safeScope === "daily") {
-    return formatAppDate(date);
-  }
-  if (safeScope === "weekly") {
-    return formatAppDate(date);
-  }
-  if (safeScope === "monthly") {
-    return date.toLocaleDateString(undefined, { month: "short" });
-  }
-  if (safeScope === "yearly") {
-    return String(date.getFullYear());
-  }
-  return String(index + 1);
-}
-
-function buildDashboardTrendSeries(entries = [], scope = "session") {
-  const safeScope = String(scope || "session").trim().toLowerCase();
-  const normalized = [...(Array.isArray(entries) ? entries : [])]
-    .map(normalizeDashboardTrendEntry)
-    .sort((a, b) => a.timestamp - b.timestamp);
-
-  if (safeScope === "session") {
-    const recent = normalized.slice(-DASHBOARD_TREND_MAX_POINTS);
-    const padded = [];
-    const offset = Math.max(0, DASHBOARD_TREND_MAX_POINTS - recent.length);
-    for (let index = 0; index < DASHBOARD_TREND_MAX_POINTS; index += 1) {
-      const session = recent[index - offset];
-      const labelDate = session ? session.createdAt : new Date();
-      padded.push({
-        label: session ? formatTrendLabel(labelDate, safeScope, index) : "",
-        fullLabel: session
-          ? labelDate.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-          : "",
-        percent: session ? session.percent : 0,
-        score: session ? session.score : 0,
-        total: session ? session.total : 0,
-        count: session ? 1 : 0,
-      });
-    }
-    return padded;
-  }
-
-  const now = new Date();
-  const buckets = [];
-  for (let index = DASHBOARD_TREND_MAX_POINTS - 1; index >= 0; index -= 1) {
-    let start;
-    let end;
-    let labelDate;
-
-    if (safeScope === "daily") {
-      labelDate = new Date(now);
-      labelDate.setDate(labelDate.getDate() - index);
-      start = startOfLocalDay(labelDate);
-      end = endOfLocalDay(labelDate);
-    } else if (safeScope === "weekly") {
-      labelDate = new Date(now);
-      labelDate.setDate(labelDate.getDate() - index * 7);
-      start = startOfLocalWeek(labelDate);
-      end = endOfLocalWeek(labelDate);
-    } else if (safeScope === "monthly") {
-      labelDate = new Date(now.getFullYear(), now.getMonth() - index, 1);
-      start = new Date(labelDate.getFullYear(), labelDate.getMonth(), 1, 0, 0, 0, 0);
-      end = new Date(labelDate.getFullYear(), labelDate.getMonth() + 1, 0, 23, 59, 59, 999);
-    } else if (safeScope === "yearly") {
-      labelDate = new Date(now.getFullYear() - index, 0, 1);
-      start = new Date(labelDate.getFullYear(), 0, 1, 0, 0, 0, 0);
-      end = new Date(labelDate.getFullYear(), 11, 31, 23, 59, 59, 999);
-    } else {
-      labelDate = new Date(now);
-      labelDate.setDate(labelDate.getDate() - index);
-      start = startOfLocalDay(labelDate);
-      end = endOfLocalDay(labelDate);
-    }
-
-    const windowEntries = normalized.filter((entry) => entry.timestamp >= start.getTime() && entry.timestamp <= end.getTime());
-    const score = windowEntries.reduce((sum, entry) => sum + entry.score, 0);
-    const total = windowEntries.reduce((sum, entry) => sum + entry.total, 0);
-    const percent =
-      total > 0
-        ? Math.round((score / total) * 100)
-        : windowEntries.length > 0
-          ? Math.round(windowEntries.reduce((sum, entry) => sum + entry.percent, 0) / windowEntries.length)
-          : 0;
-
-    buckets.push({
-      label: formatTrendLabel(labelDate, safeScope, DASHBOARD_TREND_MAX_POINTS - 1 - index),
-      percent: Math.max(0, Math.min(100, percent)),
-      score,
-      total,
-      count: windowEntries.length,
-    });
-  }
-
-  return buckets;
-}
-
-function getDashboardTrendSourceEntries() {
-  return getDashboardSessionEntries();
-}
-
-function renderDashboardTrend(scope = dashboardTrendScope) {
-  const chartEl = document.getElementById("dash-trend-chart");
-  const rateEl = document.getElementById("dash-trend-rate");
-  const copyEl = document.getElementById("dash-trend-copy");
-  const tabsEl = document.getElementById("dash-trend-tabs");
-  if (!chartEl || !rateEl || !copyEl) return;
-
-  const safeScope = String(scope || "session").trim().toLowerCase() || "session";
-  dashboardTrendScope = safeScope;
-  localStorage.setItem(DASHBOARD_TREND_SCOPE_STORAGE_KEY, safeScope);
-
-  const entries = buildDashboardTrendSeries(getDashboardTrendSourceEntries(), safeScope);
-  const latest = entries[entries.length - 1] || { percent: 0 };
-  rateEl.textContent = `${Math.max(0, Math.round(Number(latest.percent) || 0))}%`;
-  copyEl.textContent = getDashboardTrendCopy(safeScope);
-
-  if (tabsEl) {
-    tabsEl.querySelectorAll("[data-dashboard-trend-scope]").forEach((button) => {
-      const isActive = String(button.dataset.dashboardTrendScope || "").trim().toLowerCase() === safeScope;
-      button.classList.toggle("is-active", isActive);
-      button.setAttribute("aria-pressed", String(isActive));
-    });
-  }
-
-  const maxVal = 100;
-  const width = 540;
-  const height = 230;
-  const left = 18;
-  const right = 14;
-  const top = 16;
-  const bottom = 30;
-  const innerWidth = width - left - right;
-  const innerHeight = height - top - bottom;
-  const stepX = innerWidth / Math.max(1, entries.length - 1);
-  const points = entries.map((entry, index) => {
-    const x = left + index * stepX;
-    const y = top + innerHeight - (Math.max(0, Math.min(100, Number(entry.percent) || 0)) / maxVal) * innerHeight;
-    return {
-      x,
-      y,
-      label: String(entry.label || index + 1),
-      fullLabel: String(entry.fullLabel || entry.label || index + 1),
-      percent: Math.max(0, Math.min(100, Number(entry.percent) || 0)),
-    };
-  });
-  const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const area = `${left},${top + innerHeight} ${polyline} ${left + innerWidth},${top + innerHeight}`;
-  const circles = points
-    .map(
-      (point) =>
-        `<circle cx="${point.x}" cy="${point.y}" r="4.8"><title>${escapeHtml(
-          point.fullLabel,
-        )}</title></circle>`,
-    )
-    .join("");
-  const labels = points
-    .map((point, index) => {
-      const labelY = safeScope === "session"
-        ? height - (index % 2 === 0 ? 10 : 2)
-        : height - 8;
-      return `<text x="${point.x}" y="${labelY}" text-anchor="middle" class="${
-        safeScope === "session" ? "dashboard-trend-session-label" : ""
-      }">${escapeHtml(point.label)}<title>${escapeHtml(point.fullLabel)}</title></text>`;
-    })
-    .join("");
-  const ariaLabel = `${getDashboardTrendScopeLabel(safeScope)}. Latest value ${latest.percent}%`;
-
-  chartEl.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(ariaLabel)}">
-      <defs>
-        <linearGradient id="dashboardTrendFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgba(79, 133, 196, 0.34)"></stop>
-          <stop offset="100%" stop-color="rgba(79, 133, 196, 0.05)"></stop>
-        </linearGradient>
-      </defs>
-      <line x1="${left}" y1="${top + innerHeight}" x2="${left + innerWidth}" y2="${top + innerHeight}" class="dashboard-trend-axis"></line>
-      <polygon points="${area}" class="dashboard-trend-area"></polygon>
-      <polyline points="${polyline}" class="dashboard-trend-line"></polyline>
-      <g class="dashboard-trend-points">${circles}</g>
-      <g class="dashboard-trend-labels">${labels}</g>
-    </svg>
-  `;
-}
-
-async function loadDashboardTrendData({ force = false } = {}) {
-  const cacheKey = DASHBOARD_TREND_HISTORY_CACHE_KEY;
-  if (!force && dashboardTrendSessionsLoadedFromSync) {
-    renderDashboardTrend(dashboardTrendScope);
-    return dashboardTrendSessionsCache;
-  }
-
-  const localEntries = getLocalDashboardSessionEntries();
-  if (!currentUser) {
-    dashboardTrendSessionsLoadedFromSync = false;
-    dashboardTrendSessionsCache = localEntries;
-    renderDashboardTrend(dashboardTrendScope);
-    return dashboardTrendSessionsCache;
-  }
-
-  if (!force) {
-    const cachedTrend = await getOfflineEntry(cacheKey);
-    if (cachedTrend?.value) {
-      const cachedSessions = Array.isArray(cachedTrend.value?.sessions)
-        ? cachedTrend.value.sessions
-        : Array.isArray(cachedTrend.value)
-          ? cachedTrend.value
-          : [];
-      dashboardTrendSessionsCache = mergeDashboardTrendEntries([
-        ...localEntries,
-        ...cachedSessions,
-      ]);
-      dashboardTrendSessionsLoadedFromSync = true;
-      renderPoints();
-      renderDashboardTrend(dashboardTrendScope);
-      if (dashboardDiv?.classList.contains("screen-active")) {
-        renderDashboardRecentResults();
-      }
-      void (async () => {
-        try {
-          const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
-          const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-          dashboardTrendSessionsCache = mergeDashboardTrendEntries([
-            ...localEntries,
-            ...remoteSessions,
-          ]);
-          dashboardTrendSessionsLoadedFromSync = true;
-          renderPoints();
-          renderDashboardTrend(dashboardTrendScope);
-          if (dashboardDiv?.classList.contains("screen-active")) {
-            renderDashboardRecentResults();
-          }
-          void setOfflineEntry(cacheKey, { sessions: remoteSessions });
-        } catch {
-          // Keep cached dashboard trend when sync is unavailable.
-        }
-      })();
-      return dashboardTrendSessionsCache;
-    }
-  }
-
-  try {
-    const response = await backendClient.fetchSyncedHistory("", DASHBOARD_TREND_REMOTE_HISTORY_LIMIT);
-    const remoteSessions = Array.isArray(response?.sessions) ? response.sessions : [];
-    dashboardTrendSessionsCache = mergeDashboardTrendEntries([
-      ...localEntries,
-      ...remoteSessions,
-    ]);
-    dashboardTrendSessionsLoadedFromSync = true;
-    void setOfflineEntry(cacheKey, { sessions: remoteSessions });
-    renderPoints();
-    renderDashboardTrend(dashboardTrendScope);
-    if (dashboardDiv?.classList.contains("screen-active")) {
-      renderDashboardRecentResults();
-    }
-  } catch {
-    dashboardTrendSessionsLoadedFromSync = false;
-    dashboardTrendSessionsCache = localEntries;
-    // Keep local data if syncing is unavailable.
-  }
-
-  return dashboardTrendSessionsCache;
-}
-
-function renderDashboardTopSubjects(categories = []) {
-  const container = document.getElementById("dash-top-subjects");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const rows = [...(Array.isArray(categories) ? categories : [])]
-    .sort((a, b) => {
-      const accuracyDiff = (Number(b?.accuracy) || 0) - (Number(a?.accuracy) || 0);
-      if (accuracyDiff !== 0) return accuracyDiff;
-      return (Number(b?.attempts) || 0) - (Number(a?.attempts) || 0);
-    })
-    .slice(0, 3);
-
-  if (!rows.length) {
-    container.innerHTML = '<div class="dashboard-empty-state">No subject data yet.</div>';
-    return;
-  }
-
-  rows.forEach((row) => {
-    const accuracy = Number(row?.accuracy) || 0;
-    const item = document.createElement("div");
-    item.className = "dashboard-topsubject-row";
-    item.innerHTML = `
-      <div class="dashboard-topsubject-copy">
-        <div class="dashboard-topsubject-name">${row.category || "General"}</div>
-        <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
-      </div>
-      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
-    `;
-    container.appendChild(item);
-  });
-}
-
 function refreshQuestionDependentUi() {
-  if (!questionBankReady) {
-    return;
-  }
-
   populateStudyCategories();
   populateStudyRotations();
   populateExamCategories();
@@ -34223,132 +35693,10 @@ function refreshQuestionDependentUi() {
   populateTopicLibraryCategories();
   syncAllSetupPickerButtons();
 
+  if (!questionBankReady) return;
   const homeTotalQuestions = document.getElementById("home-total-questions");
-  if (homeTotalQuestions) {
-    homeTotalQuestions.innerText = String(questionBank.length || 0);
-  }
+  if (homeTotalQuestions) homeTotalQuestions.innerText = String(questionBank.length || 0);
 }
-
-function renderDashboardRotations(rotations = []) {
-  const container = document.getElementById("dash-rotations");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const rows = [...(Array.isArray(rotations) ? rotations : [])]
-    .sort((a, b) => {
-      const accuracyDiff = (Number(b?.accuracy) || 0) - (Number(a?.accuracy) || 0);
-      if (accuracyDiff !== 0) return accuracyDiff;
-      return (Number(b?.attempts) || 0) - (Number(a?.attempts) || 0);
-    })
-    .slice(0, 3);
-
-  if (!rows.length) {
-    container.innerHTML = '<div class="dashboard-empty-state">No rotation data yet.</div>';
-    return;
-  }
-
-  rows.forEach((row) => {
-    const accuracy = Number(row?.accuracy) || 0;
-    const item = document.createElement("div");
-    item.className = "dashboard-topsubject-row";
-    item.innerHTML = `
-      <div class="dashboard-topsubject-copy">
-        <div class="dashboard-topsubject-name">${row.rotation || "General"}</div>
-        <div class="dashboard-topsubject-meta">${Number(row.attempts) || 0} attempts</div>
-      </div>
-      <div class="dashboard-topsubject-score">${accuracy.toFixed(1)}%</div>
-    `;
-    container.appendChild(item);
-  });
-}
-
-function renderDashboardRecentResults() {
-  const container = document.getElementById("dash-recent-results");
-  if (!container) return;
-  container.innerHTML = "";
-
-  const entries = getDashboardSessionEntries()
-    .slice()
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, DASHBOARD_RECENT_RESULTS_MAX);
-  if (!entries.length) {
-    container.innerHTML = '<div class="dashboard-empty-state">No recent results yet.</div>';
-    return;
-  }
-
-  entries.forEach((entry) => {
-    const item = document.createElement("div");
-    item.className = "dashboard-recent-row";
-    const percent = Math.max(0, Number(entry?.percent) || 0);
-    const createdAt = entry?.createdAt instanceof Date ? entry.createdAt : new Date(Number(entry?.timestamp) || Date.now());
-    const dateLabel = Number.isNaN(createdAt.getTime())
-      ? ""
-      : `${formatAppDate(createdAt)} on ${createdAt.toLocaleTimeString(undefined, {
-          hour: "numeric",
-          minute: "2-digit",
-        })}`;
-    item.innerHTML = `
-      <div class="dashboard-recent-grid">
-        <div class="dashboard-recent-mode">${String(entry?.mode || "Session")}</div>
-        <div class="dashboard-recent-date">${dateLabel}</div>
-        <div class="dashboard-recent-meta">${Number(entry?.score) || 0}/${Number(entry?.total) || 0}</div>
-        <div class="dashboard-recent-percent">${percent}%</div>
-      </div>
-    `;
-    container.appendChild(item);
-  });
-}
-
-async function showDashboard() {
-  showScreen("dashboard");
-  void ensureQuestionBankLoaded();
-
-  rebuildCategoryPerformanceFromQuestionStats();
-  rebuildRotationPerformanceFromQuestionStats();
-  const localSnapshot = getLocalDashboardSnapshot();
-  const cachedSnapshot = await getOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY);
-  const initialSnapshot = cachedSnapshot?.value
-    ? mergeDashboardSnapshots(localSnapshot, cachedSnapshot.value)
-    : localSnapshot;
-  renderDashboardValues(initialSnapshot);
-
-  void Promise.allSettled([
-    loadSyncedPerformanceState({ force: false }),
-    loadDashboardTrendData({ force: false }),
-    backendClient.fetchSyncedDashboard(),
-  ]).then(([performanceResult, trendResult, remoteSnapshotResult]) => {
-    void performanceResult;
-    void trendResult;
-    if (!dashboardDiv?.classList.contains("screen-active")) {
-      return;
-    }
-    const remoteSnapshot =
-      remoteSnapshotResult.status === "fulfilled" ? remoteSnapshotResult.value : null;
-    const mergedSnapshot = {
-      totalAttempts: Number(remoteSnapshot?.totalAttempts ?? localSnapshot.totalAttempts) || 0,
-      overallAccuracy: Number(remoteSnapshot?.overallAccuracy ?? localSnapshot.overallAccuracy) || 0,
-      weakCount: Number(remoteSnapshot?.weakQuestions ?? localSnapshot.weakCount) || 0,
-      sessionCount: Number(remoteSnapshot?.totalSessions ?? localSnapshot.sessionCount) || 0,
-      categories:
-        Array.isArray(remoteSnapshot?.categories) && remoteSnapshot.categories.length > 0
-          ? remoteSnapshot.categories
-          : localSnapshot.categories,
-      rotations: localSnapshot.rotations,
-    };
-    void setOfflineEntry(DASHBOARD_SNAPSHOT_CACHE_KEY, remoteSnapshot || {});
-    renderDashboardValues(mergedSnapshot);
-  });
-
-  const dashboardCloseBtn = document.getElementById("dashboard-close-btn");
-  if (dashboardCloseBtn) {
-    dashboardCloseBtn.onclick = hideDashboard;
-  }
-}
-
-function hideDashboard() {
-  goToPreviousScreen("quiz-menu");
-}
-
 function saveSession(mode, score, total, duration = null) {
   const now = Date.now();
   const normalizedMode = normalizeDashboardSessionMode(mode);
@@ -34397,18 +35745,6 @@ function saveSession(mode, score, total, duration = null) {
 
   localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
   localStorage.setItem(RECENT_RESULTS_STORAGE_KEY, JSON.stringify(recentSessionResults));
-
-  dashboardTrendSessionsCache = mergeDashboardTrendEntries([
-    ...dashboardTrendSessionsCache,
-    entry,
-  ]);
-  backendClient.syncSession(entry);
-
-  if (dashboardDiv?.classList.contains("screen-active")) {
-    renderDashboardRecentResults();
-    renderDashboardTrend(dashboardTrendScope);
-  }
-
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
 }
@@ -34546,28 +35882,6 @@ async function renderModeHistory(modeName, containerId) {
   }
 
   backendClient
-    .fetchSyncedHistory("", 200)
-    .then((data) => {
-      if (!Array.isArray(data?.sessions) || data.sessions.length === 0) return;
-
-      const remoteEntries = data.sessions.map((s) => ({
-        mode: s.mode || modeName,
-        score: Number(s.score) || 0,
-        total: Number(s.total) || 0,
-        percent: Number(s.percent) || 0,
-        date: s.date || "",
-        createdAt: s.createdAt || s.date || "",
-        timestamp: new Date(s.createdAt || s.date || Date.now()).getTime(),
-        duration: s.duration || null,
-      }));
-
-      const mergedEntries = mergeHistoryEntries([...localEntries, ...remoteEntries]);
-      void setOfflineEntry(cacheKey, { sessions: remoteEntries });
-      renderEntries(mergedEntries);
-    })
-    .catch(() => {
-      // Keep local history when backend is offline.
-    });
 }
 
 function toggleHistory() {
@@ -34605,7 +35919,7 @@ function buildCategorySummary() {
     const accuracy = getCategoryAccuracy(cat);
     summary += `
                         <p>
-                          <strong>${cat}</strong> â€” ${accuracy}%
+                          <strong>${cat}</strong> - ${accuracy}%
                         </p>
                       `;
   });
@@ -35007,8 +36321,12 @@ function updateModeIndicator(studyType = null) {
     if (!compactHeaderMode) headerInlineMeta.innerHTML = "";
   }
 }
+function resolveSubscriptionAccess(user = currentUser, snapshot = subscriptionStatusSnapshot) {
+  return snapshot?.subscription || user?.subscriptionAccess || null;
+}
+
 function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptionStatusSnapshot) {
-  const access = snapshot?.subscription || user?.subscriptionAccess || null;
+  const access = resolveSubscriptionAccess(user, snapshot);
   const latestRequest =
     snapshot?.request ||
     (Array.isArray(snapshot?.requests) ? snapshot.requests[0] : null) ||
@@ -35103,6 +36421,17 @@ function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptio
   };
 }
 
+function formatSubscriptionExpiryLabel(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+  const parsed = Date.parse(rawValue);
+  if (!Number.isFinite(parsed)) return "";
+  return new Date(parsed).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 function getSubscriptionPlanList() {
   const defaultPlans = [
         { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock everything for 7 days." },
@@ -35156,19 +36485,14 @@ function normalizeSubscriptionPlans(plans = []) {
 
 function getSubscriptionFeatureList(intent = "general") {
   const normalized = String(intent || "").toLowerCase();
-  if (normalized.includes("community")) return ["Community", "Drills", "Exams", "Library"];
-  if (normalized.includes("library")) return ["Library", "Drills", "Exams", "Community"];
-  return ["Drills", "Exams", "Library", "Community"];
+  if (normalized.includes("community")) return ["Chat", "Drills", "Exams", "Library"];
+  if (normalized.includes("library")) return ["Library", "Drills", "Exams", "Chat"];
+  return ["Drills", "Exams", "Library", "Chat"];
 }
 
 function getSubscriptionProofReference(planKey = "weekly") {
-  const normalized = String(planKey || "").trim().toLowerCase();
-  const references = {
-    weekly: "AJIX-PHARMACY-WEEK-1786277702691",
-    monthly: "AJIX-PHARMACY-MONTH-1786277702691",
-    yearly: "AJIX-PHARMACY-YEAR-1786277702691",
-  };
-  return references[normalized] || references.weekly;
+  void planKey;
+  return "";
 }
 
 function renderSubscriptionPaymentBrand(kind = "mtn", label = "") {
@@ -35240,7 +36564,7 @@ function isSubscriptionPurchaseBlocked(user = currentUser, snapshot = subscripti
     (Array.isArray(snapshot?.requests) ? snapshot.requests[0] : null) ||
     user?.subscriptionRequest ||
     null;
-  const currentAccess = snapshot?.subscription || user?.subscriptionAccess || null;
+  const currentAccess = resolveSubscriptionAccess(user, snapshot);
   const currentStatus = String(currentAccess?.status || user?.subscriptionStatus || "").trim().toLowerCase();
   const currentPlan = String(currentAccess?.plan || user?.subscriptionPlan || "").trim().toLowerCase();
   const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
@@ -35381,13 +36705,19 @@ function renderSubscriptionScreen() {
   const latestRequest =
     subscriptionStatusSnapshot?.request ||
     (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
-  const currentSubscriptionAccess = subscriptionStatusSnapshot?.subscription || currentUser?.subscriptionAccess || null;
+  const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
   const currentSubscriptionStatus = String(
     currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
   )
     .trim()
     .toLowerCase();
   const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || currentUser?.subscriptionPlan || "").trim().toLowerCase();
+  const currentSubscriptionExpiryLabel = formatSubscriptionExpiryLabel(
+    currentSubscriptionAccess?.expirationAt ||
+      currentUser?.subscriptionExpirationAt ||
+      currentUser?.subscriptionEndsAt ||
+      "",
+  );
   const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
   const subscriptionReviewing =
     latestRequestStatus === "pending" ||
@@ -35459,15 +36789,15 @@ function renderSubscriptionScreen() {
     subscriptionProofPlanTitleEl.textContent = proofPlanName;
   }
   if (subscriptionProofPlanReferenceEl) {
-    subscriptionProofPlanReferenceEl.textContent = `ID: ${proofReference}`;
+    subscriptionProofPlanReferenceEl.textContent = proofReference ? `ID: ${proofReference}` : "";
+    subscriptionProofPlanReferenceEl.hidden = !proofReference;
   }
   if (sectionTitleEl) {
     sectionTitleEl.textContent = "Plans";
   }
   if (sectionNoteEl) {
-    sectionNoteEl.textContent = subscriptionActionDisabled
-      ? "Your subscription is active or under review, so new plans stay locked for now."
-      : "Select the subscription that works best for you.";
+    sectionNoteEl.hidden = true;
+    sectionNoteEl.textContent = "";
   }
   if (statusBadgesEl) {
     const currentBadgeState = subscriptionReviewing
@@ -35506,9 +36836,12 @@ function renderSubscriptionScreen() {
               : "year";
         const bullets = featureSets[plan.key] || featureSets.monthly;
         return `
-          <article class="subscription-plan-tile ${active ? "is-active" : ""} ${planMeta.featured ? "is-popular" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}">
+          <article class="subscription-plan-tile ${active ? "is-active" : ""} ${planMeta.featured ? "is-popular" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""} ${plan.key === currentSubscriptionPlan ? "is-current-subscription" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}">
             ${planMeta.featured ? '<div class="subscription-plan-popular-badge">POPULAR</div>' : ""}
-            <div class="subscription-plan-name">${escapeHtml(planMeta.title)}</div>
+            <div class="subscription-plan-name-row">
+              <div class="subscription-plan-name">${escapeHtml(planMeta.title)}</div>
+              ${plan.key === currentSubscriptionPlan && currentSubscriptionExpiryLabel ? `<div class="subscription-plan-expiry">Expires ${escapeHtml(currentSubscriptionExpiryLabel)}</div>` : ""}
+            </div>
             <div class="subscription-plan-desc">${escapeHtml(plan.description || planMeta.subtitle)}</div>
             <div class="subscription-plan-price">
               <span class="subscription-plan-price-amount">${escapeHtml(priceLabel)}</span>
@@ -35597,20 +36930,25 @@ function renderSubscriptionScreen() {
 
 async function loadSubscriptionScreenData({ force = false } = {}) {
   if (!backendClient.isAuthenticated() || !currentUser) {
-    return false;
-  }
-  if (subscriptionPlansCache.length && !force) {
+    subscriptionStatusSnapshot = null;
     renderSubscriptionScreen();
     return true;
   }
-
   try {
+    const plansPromise = subscriptionPlansCache.length && !force
+      ? Promise.resolve({ plans: subscriptionPlansCache })
+      : backendClient.fetchSubscriptionPlans({ preferCache: !force });
     const [plansResponse, meResponse] = await Promise.all([
-      backendClient.fetchSubscriptionPlans({ preferCache: !force }),
+      plansPromise,
       backendClient.fetchMySubscription({ preferCache: !force }),
     ]);
-    subscriptionPlansCache = normalizeSubscriptionPlans(plansResponse?.plans);
+    if (plansResponse?.plans) {
+      subscriptionPlansCache = normalizeSubscriptionPlans(plansResponse.plans);
+    }
     subscriptionStatusSnapshot = meResponse || null;
+    await cacheSubscriptionEntitlement(
+  meResponse?.subscription || currentUser?.subscriptionAccess || null,
+);
     renderSubscriptionScreen();
     return true;
   } catch (error) {
@@ -35651,11 +36989,89 @@ function getSubscriptionGateFeature(feature = "") {
 }
 
 function isSubscriptionLockedForFeature(feature = "") {
-  const access = currentUser?.subscriptionAccess;
-  if (!currentUser || !access) return false;
-  if (!access.isLocked) return false;
-  return SUBSCRIPTION_LOCKED_FEATURES.has(getSubscriptionGateFeature(feature));
+  const gateFeature = getSubscriptionGateFeature(feature);
+
+  if (!SUBSCRIPTION_LOCKED_FEATURES.has(gateFeature)) {
+    return false;
+  }
+
+  const access = resolveSubscriptionAccess(
+    currentUser,
+    subscriptionStatusSnapshot,
+  );
+
+  const currentStatus = String(
+    access?.status ||
+      subscriptionStatusSnapshot?.user?.subscriptionStatus ||
+      currentUser?.subscriptionStatus ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  const isOnline = navigator.onLine !== false;
+
+  if (isOnline) {
+    if (
+      currentStatus === "active" ||
+      currentStatus === "trial"
+    ) {
+      return false;
+    }
+
+    if (
+      currentStatus === "pending" ||
+      currentStatus === "expired" ||
+      currentStatus === "rejected"
+    ) {
+      return true;
+    }
+
+    return Boolean(access?.isLocked);
+  }
+
+  // Offline premium access is limited by the cached 72-hour entitlement.
+  if (hasUsableOfflineSubscriptionEntitlement()) {
+    return false;
+  }
+
+  return true;
 }
+
+let subscriptionRevalidationInFlight = false;
+
+async function revalidateSubscriptionEntitlement() {
+  if (
+    navigator.onLine === false ||
+    !backendClient.isAuthenticated() ||
+    !currentUser ||
+    subscriptionRevalidationInFlight
+  ) {
+    return false;
+  }
+
+  subscriptionRevalidationInFlight = true;
+
+  try {
+    await loadSubscriptionScreenData({ force: true });
+    return true;
+  } catch (error) {
+    console.warn("Subscription entitlement revalidation failed:", error);
+    return false;
+  } finally {
+    subscriptionRevalidationInFlight = false;
+  }
+}
+
+window.addEventListener("online", () => {
+  void revalidateSubscriptionEntitlement();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    void revalidateSubscriptionEntitlement();
+  }
+});
 
 function requireSubscriptionAccess(feature = "feature", returnScreen = getActiveScreenId() || "quiz-menu") {
   const gateFeature = getSubscriptionGateFeature(feature);
@@ -35685,8 +37101,11 @@ async function startStudy() {
   timerEl.innerText = "";
 
   const studyType = getCurrentStudyType();
-  if (studyType === "law" && !requireSubscriptionAccess("law")) {
-    return;
+  if (studyType === "law") {
+    await refreshSubscriptionAccessForAction();
+    if (!requireSubscriptionAccess("law")) {
+      return;
+    }
   }
 
   // Check for a paused study session before loading data so the resume modal appears immediately.
@@ -35751,7 +37170,7 @@ async function startStudy() {
           console.warn("Failed to start backend attempt:", err);
         });
     }
-    // ðŸ”¥ Start From Logic (Normal Study Only)
+    //
     const startNumberInput =
       document.getElementById("study-start-number").value;
 
@@ -35810,6 +37229,7 @@ async function startExam(count, requestedVariant = null) {
     .trim()
     .toLowerCase();
   const gateFeature = ["rapid", "sudden", "clinical", "law"].includes(variant) ? variant : "exam";
+  await refreshSubscriptionAccessForAction();
   if (!requireSubscriptionAccess(gateFeature)) {
     return;
   }
@@ -35950,7 +37370,7 @@ function showQuestion() {
     return;
   }
 
-  // ðŸ”¥ HARD RESET NAVIGATION STATE
+  //
   const isLawLadderView = isLawStudyMode() && getLawDrillView() === "ladder";
   prevBtn.classList.toggle("hidden", isLawLadderView);
   nextBtn.classList.toggle("hidden", isLawLadderView);
@@ -36185,6 +37605,7 @@ function showQuestion() {
   }
 
   if (q.type === "combo") {
+    const comboChoices = getComboChoiceRows(q);
     statementList.forEach((s, index) => {
       const p = document.createElement("p");
 
@@ -36198,15 +37619,7 @@ function showQuestion() {
       comboBlock.appendChild(p);
     });
 
-    const comboOptions = [
-      { letter: "A", text: "1, 2 and 3" },
-      { letter: "B", text: "1 and 2 only" },
-      { letter: "C", text: "2 and 3 only" },
-      { letter: "D", text: "1 only" },
-      { letter: "E", text: "3 only" },
-    ];
-
-    comboOptions.forEach((option) => {
+    comboChoices.forEach((option) => {
       const btn = document.createElement("button");
       btn.innerText = option.text;
       btn.dataset.value = option.letter;
@@ -36299,7 +37712,7 @@ function selectAnswer(value, q) {
     if (isCorrect) {
       weakTracker[q.id].roundsPassed++;
 
-      // If 2 consecutive rounds passed â†’ remove permanently
+      // If 2 consecutive rounds passed
       if (weakTracker[q.id].roundsPassed >= 2) {
         delete weakTracker[q.id];
       }
@@ -36310,7 +37723,7 @@ function selectAnswer(value, q) {
 
     saveWeakTracker();
   }
-  // ðŸ”¥ Mastery Engine Refresh
+  //
   if (mode === "study") {
     const studyType = document.getElementById("study-type-select").value;
   }
@@ -36748,7 +38161,7 @@ function goHome() {
                         ================================= */
 
 function startExamTimer() {
-  // ðŸ”¥ IMPORTANT â€” Prevent multiple timers
+  //
   if (examTimer) {
     clearInterval(examTimer);
   }
@@ -36781,7 +38194,7 @@ function updateTimerDisplay() {
   const formatted =
     String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
 
-  timerEl.innerHTML = `<span class="timer-icon">â±</span> ${formatted}`;
+  timerEl.innerHTML = `<span class="timer-icon">\u23F1</span> ${formatted}`;
 
   updateTimerColor();
   renderCompactHeaderMeta();
@@ -37442,7 +38855,7 @@ function finishStudy() {
     backendAttemptId = null;
   }
 
-  // ðŸ”¥ Clear both study and practice sessions
+  //
   localStorage.removeItem("studySession");
   localStorage.removeItem("practiceSession");
 
@@ -37472,6 +38885,7 @@ function finishStudy() {
   commitFinishedSessionPoints({
     score: correctAnswers,
     setupPointsBucket,
+    awardTotal: false,
   });
   markSessionCompleted("study");
   awardXp(8 + Math.round(percent / 25));
@@ -37496,7 +38910,7 @@ function endStudySession() {
       : Math.round((correctAnswers / totalAnswered) * 100);
   const setupPointsBucket = getCurrentSetupPointsBucket();
 
-  // ðŸ”¥ Store result AFTER calculating
+  //
   window.lastStudyResult = {
     correct: correctAnswers,
     total: totalAnswered,
@@ -37507,6 +38921,7 @@ function endStudySession() {
   commitFinishedSessionPoints({
     score: correctAnswers,
     setupPointsBucket,
+    awardTotal: false,
   });
   markSessionCompleted("study");
 
@@ -37546,6 +38961,9 @@ function endStudySession() {
 }
 
 function returnToTopicViewerFromQuiz() {
+  if (!studySessionEnded) {
+    saveStudyProgress();
+  }
   const detailedReview = document.getElementById("detailed-review");
   if (detailedReview) detailedReview.remove();
 
@@ -37609,7 +39027,7 @@ function goToMenu() {
   const detailedReview = document.getElementById("detailed-review");
   if (detailedReview) detailedReview.remove();
 
-  // ðŸ”¥ Reset review states
+  //
   inStudyReview = false;
   answeredCurrent = false;
 
@@ -37878,6 +39296,7 @@ function renderDetailedQuestion() {
   // COMBO TYPE
   // ==============================
   else if (q.type === "combo") {
+    const comboChoices = getComboChoiceRows(q);
     // Show statements
     comboBlock.innerHTML = "";
     answersEl.innerHTML = "";
@@ -37894,15 +39313,7 @@ function renderDetailedQuestion() {
       comboBlock.appendChild(p);
     });
 
-    const comboOptions = [
-      { letter: "A", text: "A: 1, 2 and 3" },
-      { letter: "B", text: "B: 1 and 2 only" },
-      { letter: "C", text: "C: 2 and 3 only" },
-      { letter: "D", text: "D: 1 only" },
-      { letter: "E", text: "E: 3 only" },
-    ];
-
-    comboOptions.forEach((option) => {
+    comboChoices.forEach((option) => {
       const btn = document.createElement("button");
       btn.innerText = option.text;
       btn.dataset.value = option.letter;
@@ -38125,10 +39536,15 @@ function loadExamSession(storageKeyOrVariant = null) {
 }
 
 function saveStudyProgress() {
-  if (mode !== "study" || studySessionEnded) return;
+  if ((mode !== "study" && !isTopicQuizMode()) || studySessionEnded) return;
 
   if (isLawStudyMode()) {
     persistLawDrillSession();
+    return;
+  }
+
+  if (isTopicQuizMode()) {
+    saveTopicQuizProgress();
     return;
   }
 
@@ -38148,8 +39564,7 @@ function saveStudyProgress() {
 }
 
 /* ==============================
-                     PAGE LOAD â€“ STUDY RESUME ONLY
-                  ================================= */
+                     PAGE LOAD */
 
 window.addEventListener("load", function () {
   const pendingTopicQuizLaunch = hasPendingTopicQuizLaunch();
@@ -38238,7 +39653,7 @@ window.addEventListener("load", function () {
       markWelcomeIntroSeen();
       showScreen("welcome-screen", { recordHistory: false });
     } else {
-      showScreen("quiz-menu", { recordHistory: false });
+      showScreen("home-screen", { recordHistory: false });
     }
   }
 
@@ -38356,7 +39771,7 @@ function returnToStudyReviewPalette() {
 
 function showStudyReviewQuestion() {
   document.getElementById("end-study-btn").classList.add("hidden");
-  // ðŸ”¥ Hide quiz header buttons during review
+  //
   document.getElementById("back-btn-quiz").classList.add("hidden");
   if (menuBtnQuiz) menuBtnQuiz.classList.add("hidden");
   renderDetailedQuestion();
@@ -38402,9 +39817,22 @@ function toggleModeHistory(containerId) {
 }
 
 function showScreen(id, options = {}) {
-  const { recordHistory = true } = options;
+  const { recordHistory = true, skipSubscriptionGate = false } = options;
   const normalizedId = String(id || "").trim();
-  if (isSubscriptionLockedForFeature(normalizedId)) {
+  if (!skipSubscriptionGate && isSubscriptionLockedForFeature(normalizedId)) {
+    if (currentUser && backendClient.isAuthenticated()) {
+      void refreshSubscriptionAccessForAction().then(() => {
+        if (isSubscriptionLockedForFeature(normalizedId)) {
+          openSubscriptionScreen({
+            intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
+            returnScreen: getActiveScreenId() || "quiz-menu",
+          });
+          return;
+        }
+        showScreen(normalizedId, { ...options, skipSubscriptionGate: true });
+      });
+      return;
+    }
     openSubscriptionScreen({
       intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
       returnScreen: getActiveScreenId() || "quiz-menu",
@@ -38432,13 +39860,14 @@ function showScreen(id, options = {}) {
     "community-group-storage-screen",
     "community-chat-screen",
     "quiz-area",
-    "review-screen",
-    "dashboard",
-    "study-result-screen",
+    "review-screen",    "study-result-screen",
     "law-drill-result-screen",
   ];
 
   const currentActiveId = getActiveScreenId();
+  if (currentActiveId === "gppqe-screen" && normalizedId !== "gppqe-screen") {
+    gppqeStopTimer();
+  }
   if (currentActiveId === "subscription-screen" && normalizedId !== "subscription-screen") {
     closeSubscriptionPaymentModal({ focusPlanButton: false });
   }
@@ -38465,11 +39894,26 @@ function showScreen(id, options = {}) {
     target.classList.add("screen-active");
     syncViewportBackground(target);
   }
+  if (id === "gppqe-screen") {
+    setMenuHubActiveTab("gppqe");
+    renderGppqeScreen();
+  }
   syncCommunityViewportFrame();
 
   updateMenuBottomNavState(id);
   renderCommunityNotificationBadges();
   syncAppNotificationBannerVisibility();
+  if (id === "home-screen") {
+    void ensureQuestionBankLoaded()
+      .then(() => {
+        if (getActiveScreenId() === "home-screen") {
+          refreshQuestionDependentUi();
+        }
+      })
+      .catch(() => {
+        refreshQuestionDependentUi();
+      });
+  }
 
   if (id === "quiz-menu") {
     closeMenuUserHub();
@@ -38492,7 +39936,7 @@ function showScreen(id, options = {}) {
     closeGlobalQuickNav();
   }
 
-  if (["dashboard", "daily-setup", "study-setup", "exam-setup"].includes(id)) {
+  if (["daily-setup", "study-setup", "exam-setup"].includes(id)) {
     window.setTimeout(() => {
       void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
     }, 0);
@@ -38652,10 +40096,10 @@ document.addEventListener("keydown", function (e) {
     closeMenuUserHub();
     return;
   }
-  if (!examExitModal.classList.contains("hidden") && e.key === "Escape") {
+  if (examExitModal && !examExitModal.classList.contains("hidden") && e.key === "Escape") {
     closeExamExitModal();
   }
-  if (!studyExitModal.classList.contains("hidden") && e.key === "Escape") {
+  if (studyExitModal && !studyExitModal.classList.contains("hidden") && e.key === "Escape") {
     closeStudyExitModal();
   }
   if (sessionResumeModal && !sessionResumeModal.classList.contains("hidden") && e.key === "Escape") {
@@ -38701,21 +40145,37 @@ function registerAppUpdateResumeListeners() {
   window.addEventListener("pageshow", triggerUpdateCheck);
 }
 
+function hasVisibleAppOverlay() {
+  return Boolean(
+    (appUpdateModalEl && !appUpdateModalEl.classList.contains("hidden")) ||
+    (globalQuickNavEl && !globalQuickNavEl.classList.contains("hidden")) ||
+    leaderboardState.open ||
+    (!communityStatusModalEl?.classList.contains("hidden")) ||
+    communityState.mediaViewerOpen ||
+    (!communityStatusComposeModalEl?.classList.contains("hidden")) ||
+    (authModal && !authModal.classList.contains("hidden")) ||
+    (document.getElementById("study-exit-modal") && !document.getElementById("study-exit-modal").classList.contains("hidden")) ||
+    (sessionResumeModal && !sessionResumeModal.classList.contains("hidden"))
+  );
+}
+
+function shouldExitNativeAppOnBack() {
+  const activeId = String(getActiveScreenId() || "").trim();
+  return activeId === "home-screen" && !hasVisibleAppOverlay();
+}
+
 function registerNativeBackButtonHandler() {
   registerAppUpdateResumeListeners();
   const capacitorApp = window?.Capacitor?.Plugins?.App;
   if (!capacitorApp || typeof capacitorApp.addListener !== "function") return;
 
   capacitorApp.addListener("backButton", () => {
-    const hasHistoryEntry = window.history.length > 1;
-    const hasAppState = Boolean(history.state && (history.state.screen || history.state.overlay));
-
-    if (hasHistoryEntry || hasAppState) {
-      window.history.back();
+    if (shouldExitNativeAppOnBack() && typeof capacitorApp.exitApp === "function") {
+      capacitorApp.exitApp();
       return;
     }
 
-    triggerInAppBackNavigation(history.state || {});
+    triggerInAppBackNavigation(history.state || { screen: getActiveScreenId() || "quiz-menu" });
   });
 
   capacitorApp.addListener("appStateChange", ({ isActive }) => {
@@ -38847,7 +40307,7 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  // 1ï¸âƒ£ If Study exit modal is open â†’ close it
+  // 1
   const studyModal = document.getElementById("study-exit-modal");
   if (studyModal && !studyModal.classList.contains("hidden")) {
     studyModal.classList.add("hidden");
@@ -38860,13 +40320,13 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  // 2ï¸âƒ£ If Exam exit modal is open â†’ close it
-  if (!examExitModal.classList.contains("hidden")) {
+  // 2
+  if (examExitModal && !examExitModal.classList.contains("hidden")) {
     closeExamExitModal();
     return;
   }
 
-  // 3ï¸âƒ£ Navigation based on CURRENT SCREEN (not mode)
+  // 3
 
   const stateScreenId = String(state?.screen || "").trim();
   if (
@@ -38887,6 +40347,7 @@ window.addEventListener("popstate", function (event) {
     }
 
     if (isTopicQuizMode()) {
+      saveStudyProgress();
       returnToTopicViewerFromQuiz();
       return;
     }
@@ -38961,7 +40422,4 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 });
-
-
-
 

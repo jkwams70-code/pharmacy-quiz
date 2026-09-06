@@ -1,12 +1,16 @@
-const CACHE_VERSION = "ajix-app-shell-v67";
+﻿const CACHE_VERSION = "ajix-app-shell-v117-offline-shell";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-  "/engine.js?v=20260822-menu-tabs2",
+"/engine.js?v=20260904-rotation-tracking-v1",
   "/backendClient.js?v=20260619-cross-device-sync-fix3",
+  "/auth-lock.js",
+  "/standalone-back.js",
+  "/medlens-interactions-database.js",
+  "/medlens-disease-database.js",
   "/styles.css",
   "/data.js?v=20260613-manufacturing-set2",
   "/rotationTaxonomy.js",
@@ -23,6 +27,13 @@ const SHELL_ASSETS = [
   "/icons/icon-512-f1.png",
   "/images/app-logo.png",
   "/images/ajix-logo.png",
+  "/calculator.html",
+"/guidelines.html",
+"/news.html",
+"/news-story.html",
+"/medlens.html",
+"/gppqe-data.js",
+"/medlens-database.js",
 ];
 
 function isSameOriginRequest(request) {
@@ -78,4 +89,39 @@ self.addEventListener("activate", (event) => {
     })(),
   );
 });
+
+self.addEventListener("fetch", (event) => {
+  if (!isSameOriginRequest(event.request)) return;
+
+  event.respondWith(
+    (async () => {
+      const cached = await caches.match(event.request);
+
+      try {
+        const response = await fetch(event.request);
+
+        if (response && response.ok) {
+          const cache = await caches.open(RUNTIME_CACHE);
+          await cache.put(event.request, response.clone());
+        }
+
+        return response;
+      } catch {
+  if (cached) return cached;
+
+  if (
+    event.request.mode === "navigate" ||
+    event.request.destination === "document"
+  ) {
+    return caches.match("/index.html");
+  }
+
+  return Response.error();
+}
+    })(),
+  );
+});
+
+
+
 

@@ -1,4 +1,4 @@
-function normalizeApiBase(value = "") {
+﻿function normalizeApiBase(value = "") {
   return String(value || "").trim().replace(/\/+$/, "");
 }
 
@@ -339,13 +339,30 @@ async function requestCached(
   {
     cacheKey = path,
     preferCache = false,
-    cacheable = method === "GET",
+   cacheable =
+  method === "GET" &&
+  (path === "/auth/me" ||
+    ![
+      "/auth/",
+      "/subscriptions/",
+      "/points/",
+      "/community/",
+      "/sync/",
+    ].some((prefix) => path.startsWith(prefix))),
   } = {},
 ) {
   const cached = cacheable ? readCachedResponse(cacheKey) : null;
-  if (preferCache && cached?.value !== undefined) {
-    return cached.value;
-  }
+ if (preferCache && cached?.value !== undefined) {
+  void request(method, path, payload)
+    .then((response) => {
+      if (cacheable) {
+        writeCachedResponse(cacheKey, response);
+      }
+    })
+    .catch(() => {});
+
+  return cached.value;
+}
 
   try {
     const response = await request(method, path, payload);
@@ -856,7 +873,7 @@ export const backendClient = {
   },
 
   async fetchQuestions(filters = {}) {
-    const { preferCache = false, ...queryFilters } = filters || {};
+    const { preferCache = true, ...queryFilters } = filters || {};
     const query = toQuery(queryFilters);
     const data = await get(`/questions${query}`, {
       preferCache,
@@ -1002,4 +1019,5 @@ export const backendClient = {
     return post("/ai/explain", payload);
   },
 };
+
 

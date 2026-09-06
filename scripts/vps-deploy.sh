@@ -12,36 +12,15 @@ git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
 
 echo "==> Sync frontend files"
-cp -f index.html "${FRONTEND_DIR}/index.html"
-cp -f engine.js "${FRONTEND_DIR}/engine.js"
-cp -f styles.css "${FRONTEND_DIR}/styles.css"
-cp -f data.js "${FRONTEND_DIR}/data.js"
-cp -f rotationTaxonomy.js "${FRONTEND_DIR}/rotationTaxonomy.js"
-cp -f backendClient.js "${FRONTEND_DIR}/backendClient.js"
-cp -f app-update.json "${FRONTEND_DIR}/app-update.json"
-cp -f status.html "${FRONTEND_DIR}/status.html"
-cp -f manifest.webmanifest "${FRONTEND_DIR}/manifest.webmanifest"
-cp -f admin-manifest.webmanifest "${FRONTEND_DIR}/admin-manifest.webmanifest"
-cp -f sw.js "${FRONTEND_DIR}/sw.js"
-if [ -f pwa-launch.html ]; then
-  cp -f pwa-launch.html "${FRONTEND_DIR}/pwa-launch.html"
-fi
-cp -f robots.txt "${FRONTEND_DIR}/robots.txt"
-cp -f sitemap.xml "${FRONTEND_DIR}/sitemap.xml"
-mkdir -p "${FRONTEND_DIR}/admin" "${FRONTEND_DIR}/topics" "${FRONTEND_DIR}/images" "${FRONTEND_DIR}/icons" "${FRONTEND_DIR}/downloads"
-cp -rf admin/. "${FRONTEND_DIR}/admin/"
-cp -rf topics/. "${FRONTEND_DIR}/topics/"
-cp -rf images/. "${FRONTEND_DIR}/images/"
-cp -rf icons/. "${FRONTEND_DIR}/icons/"
-mkdir -p "${FRONTEND_DIR}/question-batches"
-if [ -d question-batches ]; then
-  cp -rf question-batches/. "${FRONTEND_DIR}/question-batches/"
-fi
-if [ -d downloads ]; then
-  cp -rf downloads/. "${FRONTEND_DIR}/downloads/"
+mkdir -p "${FRONTEND_DIR}"
+
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a --delete "${REPO_DIR}/www/" "${FRONTEND_DIR}/"
+else
+  cp -a "${REPO_DIR}/www/." "${FRONTEND_DIR}/"
 fi
 
-# Copy Google Search Console verification files if present.
+echo "==> Copy Google Search Console verification files"
 shopt -s nullglob
 for verify_file in google*.html; do
   cp -f "${verify_file}" "${FRONTEND_DIR}/${verify_file}"

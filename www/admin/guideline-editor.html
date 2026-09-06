@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <script src="admin-auth-lock.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>AjiX - Guideline Editor</title>
+  <script>
+    (function () {
+      try {
+        var savedTheme = localStorage.getItem('ajix-guidelines-admin-theme') || localStorage.getItem('ajix-guidelines-theme-v1');
+        if (savedTheme === 'dark' || savedTheme === 'light') document.documentElement.setAttribute('data-theme', savedTheme);
+      } catch (error) {}
+    }());
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8f9fb;
+      --surface: #ffffff;
+      --surface-elevated: #ffffff;
+      --border: #e5e7eb;
+      --border-strong: #d1d5db;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-muted: #9ca3af;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-light: #dbeafe;
+      --success: #059669;
+      --success-bg: #d1fae5;
+      --danger: #dc2626;
+      --danger-bg: #fee2e2;
+      --warning: #d97706;
+      --warning-bg: #fef3c7;
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --radius: 8px;
+      --radius-lg: 12px;
+      --editor-bg: #ffffff;
+      --editor-text: #1f2937;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f1117;
+      --surface: #181b23;
+      --surface-elevated: #1f2330;
+      --border: #2d3142;
+      --border-strong: #3f455a;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-light: rgba(59, 130, 246, 0.15);
+      --success: #34d399;
+      --success-bg: rgba(52, 211, 153, 0.12);
+      --danger: #f87171;
+      --danger-bg: rgba(248, 113, 113, 0.12);
+      --warning: #fbbf24;
+      --warning-bg: rgba(251, 191, 36, 0.12);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+      --editor-bg: #111827;
+      --editor-text: #e5e7eb;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 100px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .back-btn:hover { background: var(--bg); color: var(--text-primary); border-color: var(--border-strong); }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .brand-text {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand-text span {
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-left: 6px;
+      font-size: 15px;
+    }
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .theme-toggle:hover { background: var(--bg); color: var(--text-primary); }
+
+    /* Recovery Banner */
+    .recovery-banner {
+      display: none;
+      background: var(--warning-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+    }
+    .recovery-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .recovery-text {
+      font-size: 14px;
+      color: var(--warning);
+      font-weight: 500;
+    }
+    .recovery-actions { display: flex; gap: 8px; }
+
+    /* Layout */
+    .main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Form Grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding: 24px;
+    }
+    @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+    .field input,
+    .field select {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+    .field.full-width { grid-column: 1 / -1; }
+
+    /* Section Card */
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      overflow: hidden;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .section-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+    .section-card.dragging {
+      opacity: 0.5;
+      border: 2px dashed var(--accent);
+    }
+    .section-card.drag-over {
+      border-top: 3px solid var(--accent);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-title-input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      background: transparent;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: inherit;
+      outline: none;
+      padding: 4px 0;
+    }
+    .section-title-input::placeholder { color: var(--text-muted); font-weight: 500; }
+    .section-number {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .btn-icon {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .btn-icon:hover { background: var(--bg); color: var(--text-primary); }
+    .btn-icon.danger:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
+
+    /* Editor Toolbar */
+    .editor-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .toolbar-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      padding: 0;
+    }
+    .toolbar-btn:hover {
+      background: var(--bg);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+    .toolbar-btn.active {
+      background: var(--accent-light);
+      color: var(--accent);
+      border-color: var(--accent-light);
+    }
+    .toolbar-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+
+    /* Editor Surface */
+    .table-edit-control { display:inline-flex; align-items:center; justify-content:center; margin:4px 0; width:26px; height:24px; padding:0; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--accent); cursor:pointer; font-size:13px; }    .editor-table-wrap { max-width:100%; overflow-x:auto; overflow-y:visible; -webkit-overflow-scrolling:touch; }
+    .editor-table-wrap table { min-width:560px; }
+    .editor-table-wrap { position:relative; margin:18px 0; }
+    .editor-table-wrap table { width:100%; margin:0; }
+    .table-local-tools { position:absolute; top:-14px; right:0; z-index:2; }
+    .table-edit-control { width:26px; height:26px; margin:0; border:1px solid var(--border); border-radius:50%; background:var(--surface); color:var(--accent); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
+    .table-edit-menu { position:absolute; right:0; top:31px; display:none; min-width:160px; padding:5px; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); }
+    .table-edit-menu.open { display:grid; gap:2px; }
+    .table-edit-menu button { width:100%; padding:7px 9px; border:0; border-radius:5px; background:transparent; color:var(--text-primary); text-align:left; cursor:pointer; font:inherit; font-size:12px; }
+    .table-edit-menu button:hover { background:var(--accent-light); color:var(--accent); }
+    .table-cell-selected { outline:2px solid var(--accent); outline-offset:-2px; }
+    .editor-surface a.content-link-pill { display:inline-flex; align-items:center; padding:2px 7px; border:1px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius:6px; background:var(--accent); color:#fff; font-family:Georgia, 'Times New Roman', serif; font-size:11px; font-weight:700; letter-spacing:.025em; line-height:1.35; text-decoration:none; vertical-align:baseline; }
+    .editor-surface {
+      min-height: 220px;
+      padding: 20px 24px;
+      background: var(--editor-bg);
+      color: var(--editor-text);
+      font-size: 15px;
+      line-height: 1.75;
+      outline: none;
+      overflow-wrap: break-word;
+    }
+    .editor-surface:focus {
+      box-shadow: inset 0 0 0 2px var(--accent-light);
+    }
+    .editor-surface p { margin-bottom: 12px; }
+    .editor-surface p:last-child { margin-bottom: 0; }
+    .editor-surface ul, .editor-surface ol {
+      margin: 0 0 12px 0;
+      padding-left: 24px;
+    }
+    .editor-surface li { margin-bottom: 6px; }
+    .editor-surface a { color: var(--accent); text-decoration: underline; }
+    .editor-surface strong, .editor-surface b { font-weight: 700; }
+    .editor-surface img { max-width: 100%; height: auto; border-radius: 6px; }
+    .editor-surface table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    .editor-surface th, .editor-surface td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    .editor-surface th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .editor-surface figure {
+      margin: 16px 0;
+    }
+    .editor-surface figcaption {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    /* Add Section */
+    .add-section-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: var(--radius-lg);
+      border: 2px dashed var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s;
+      margin-bottom: 24px;
+    }
+    .add-section-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    /* Action Bar */
+    .action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 14px 24px;
+      z-index: 90;
+      box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
+    }
+    .action-bar-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .action-hint {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .action-group { display: flex; gap: 10px; }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { background: var(--surface); border-color: var(--border-strong); }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+    .btn-success:hover { filter: brightness(1.1); }
+
+    /* Modal Base */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      overflow-y: auto;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .modal-field { margin-bottom: 16px; }
+    .modal-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .modal-field input,
+    .modal-field select {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    /* Preview Modal (Full Page) */
+    .preview-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .preview-overlay.active { display: flex; }
+    .preview-header-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .preview-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px 24px;
+    }
+    .preview-document {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 48px 56px;
+      box-shadow: var(--shadow);
+    }
+    .preview-doc-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+    .preview-meta-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .preview-section { margin-bottom: 32px; }
+    .preview-section-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+    .preview-section-body {
+      font-size: 15px;
+      line-height: 1.75;
+      color: var(--text-secondary);
+    }
+    .preview-section-body p { margin-bottom: 12px; }
+    .preview-section-body p:last-child { margin-bottom: 0; }
+    .preview-section-body ul, .preview-section-body ol {
+      padding-left: 24px;
+      margin-bottom: 12px;
+    }
+    .preview-section-body li { margin-bottom: 6px; }
+    .preview-section-body a { color: var(--accent); text-decoration: underline; }
+    .preview-section-body img { max-width: 100%; border-radius: 6px; }
+    .preview-section-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    .preview-section-body th, .preview-section-body td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    .preview-section-body th { background: var(--bg); font-weight: 600; }
+    .preview-section-body figure { margin: 16px 0; }
+    .preview-section-body figcaption {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text-primary);
+      color: var(--surface);
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 300;
+      white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 768px) {
+      .main { padding: 20px 16px; }
+      .header-inner { padding: 0 16px; }
+      .preview-document { padding: 28px 24px; }
+      .action-bar-inner { flex-direction: column; align-items: stretch; }
+      .action-hint { text-align: center; }
+      .action-group { justify-content: stretch; }
+      .action-group .btn { flex: 1; justify-content: center; }
+    }
+  
+/* Section navigation stays visible while its editor content is reviewed. */
+.section-header {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--surface);
+}
+.section-collapse {
+  flex: 0 0 auto;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.section-collapse:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.section-card .editor-surface {
+  max-height: 300px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.section-card.is-expanded .editor-surface { max-height: none; overflow: visible; }
+.attention-select {
+  width: 34px;
+  min-width: 34px;
+  padding: 0 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+.attention-select:focus {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 1px;
+}
+
+/* Show the final attention-card treatment while editing without changing document typography. */
+.editor-surface blockquote.attention-card {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border: 1px solid #a7ccd8;
+  border-left: 4px solid #2f7f9f;
+  border-radius: 10px;
+  background: #edf5f7;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+.editor-surface blockquote.attention-card::before {
+  display: block;
+  margin-bottom: 5px;
+  color: #2f718c;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+.editor-surface blockquote.attention-key::before { content: 'Key notice'; }
+.editor-surface blockquote.attention-info::before { content: 'Information'; }
+.editor-surface blockquote.attention-warning {
+  border-color: #c9a15a;
+  border-left-color: #a97718;
+  background: #fbf5e8;
+}
+.editor-surface blockquote.attention-warning::before { content: 'Warning'; color: #8b6213; }
+.editor-surface blockquote.attention-caution {
+  border-color: #d69b9b;
+  border-left-color: #b35b5b;
+  background: #fbefef;
+}
+.editor-surface blockquote.attention-caution::before { content: 'Caution'; color: #984747; }
+.attention-select option[value="key"] { background: #edf5f7; color: #2f718c; }
+.attention-select option[value="info"] { background: #edf5f7; color: #2f718c; }
+.attention-select option[value="warning"] { background: #fbf5e8; color: #8b6213; }
+.attention-select option[value="caution"] { background: #fbefef; color: #984747; }
+[data-theme="dark"] .editor-surface blockquote.attention-card {
+  border-color: #4c8793;
+  border-left-color: #79b9c8;
+  background: #1d3942;
+}
+[data-theme="dark"] .editor-surface blockquote.attention-card::before { color: #86c9d5; }
+[data-theme="dark"] .editor-surface blockquote.attention-warning {
+  border-color: #8c6b35;
+  border-left-color: #d3a84f;
+  background: #3b3020;
+}
+[data-theme="dark"] .editor-surface blockquote.attention-warning::before { color: #e0bc69; }
+[data-theme="dark"] .editor-surface blockquote.attention-caution {
+  border-color: #98515b;
+  border-left-color: #d77b83;
+  background: #3a2327;
+}
+[data-theme="dark"] .editor-surface blockquote.attention-caution::before { color: #e29aa0; }
+[data-theme="dark"] .attention-select option[value="key"],
+[data-theme="dark"] .attention-select option[value="info"] { background: #1d3942; color: #86c9d5; }
+[data-theme="dark"] .attention-select option[value="warning"] { background: #3b3020; color: #e0bc69; }
+[data-theme="dark"] .attention-select option[value="caution"] { background: #3a2327; color: #e29aa0; }
+
+.editor-surface blockquote.attention-key {
+  border-color: #9bbcf0;
+  border-left-color: #3c78c9;
+  background: #eef4ff;
+}
+.editor-surface blockquote.attention-key::before { color: #316ab4; }
+.attention-select option[value="key"] { background: #eef4ff; color: #316ab4; }
+[data-theme="dark"] .editor-surface blockquote.attention-key {
+  border-color: #4c70ad;
+  border-left-color: #73a7f4;
+  background: #1d2b43;
+}
+[data-theme="dark"] .editor-surface blockquote.attention-key::before { color: #91bdf7; }
+[data-theme="dark"] .attention-select option[value="key"] { background: #1d2b43; color: #91bdf7; }
+
+/* Live editor preview uses the same card surface without a generated heading. */
+.preview-section-body blockquote.attention-card {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border: 1px solid #a7ccd8;
+  border-left: 4px solid #2f7f9f;
+  border-radius: 10px;
+  background: #edf5f7;
+  color: inherit;
+  font: inherit;
+}
+.preview-section-body blockquote.attention-card::before,
+.editor-surface blockquote.attention-card::before {
+  display: none;
+  content: none;
+}
+.preview-section-body blockquote.attention-key {
+  border-color: #9bbcf0;
+  border-left-color: #3c78c9;
+  background: #eef4ff;
+}
+.preview-section-body blockquote.attention-warning {
+  border-color: #c9a15a;
+  border-left-color: #a97718;
+  background: #fbf5e8;
+}
+.preview-section-body blockquote.attention-caution {
+  border-color: #d69b9b;
+  border-left-color: #b35b5b;
+  background: #fbefef;
+}
+[data-theme="dark"] .preview-section-body blockquote.attention-card {
+  border-color: #4c8793;
+  border-left-color: #79b9c8;
+  background: #1d3942;
+}
+[data-theme="dark"] .preview-section-body blockquote.attention-key {
+  border-color: #4c70ad;
+  border-left-color: #73a7f4;
+  background: #1d2b43;
+}
+[data-theme="dark"] .preview-section-body blockquote.attention-warning {
+  border-color: #8c6b35;
+  border-left-color: #d3a84f;
+  background: #3b3020;
+}
+[data-theme="dark"] .preview-section-body blockquote.attention-caution {
+  border-color: #98515b;
+  border-left-color: #d77b83;
+  background: #3a2327;
+}
+</style>
+<base target="_blank">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <button class="back-btn" title="Back" onclick="location.href='guidelines.html'">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="brand">
+          <img class="brand-icon" src="../images/app-logo.png" alt="AjiX mascot">
+          <div class="brand-text">AjiX<span>Guideline Editor</span></div>
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <svg id="moonIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg id="sunIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Recovery Banner -->
+  <div class="recovery-banner" id="recoveryBanner">
+    <div class="recovery-inner">
+      <span class="recovery-text">Unsaved work found from your previous session.</span>
+      <div class="recovery-actions">
+        <button class="btn btn-secondary recover-btn">Recover Work</button>
+        <button class="btn btn-secondary discard-btn" style="color:var(--danger)">Discard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Editor -->
+  <main class="main">
+
+    <!-- Basic Details -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Basic Details
+      </div>
+      <div class="form-grid">
+        <div class="field full-width">
+          <label for="inputTitle">Guideline Title</label>
+          <input type="text" id="inputTitle" placeholder="e.g., 2024 GINA Global Strategy for Asthma Management">
+        </div>
+        <div class="field">
+          <label for="inputCondition">Condition</label>
+          <input type="text" id="inputCondition" placeholder="e.g., Asthma">
+        </div>
+        <div class="field">
+          <label for="inputSpecialty">Specialty</label>
+          <select id="inputSpecialty">
+            <option value="">Select specialty...</option>
+            <option>Cardiology</option>
+            <option>Endocrinology</option>
+            <option>Gastroenterology</option>
+            <option>Hematology</option>
+            <option>Infectious Disease</option>
+            <option>Nephrology</option>
+            <option>Neurology</option>
+            <option>Oncology</option>
+            <option>Pulmonology</option>
+            <option>Rheumatology</option>
+            <option>Respiratory Medicine</option>
+            <option>Primary Care</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="inputOrganization">Organization</label>
+          <input type="text" id="inputOrganization" placeholder="e.g., GINA">
+        </div>
+        <div class="field">
+          <label for="inputVersion">Version</label>
+          <input type="text" id="inputVersion" placeholder="e.g., 2026.1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Sections -->
+    <div id="sectionsContainer"></div>
+
+    <!-- Add Section -->
+    <button class="add-section-btn" id="addSectionBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      Add New Section
+    </button>
+
+  </main>
+
+  <!-- Action Bar -->
+  <div class="action-bar">
+    <div class="action-bar-inner">
+      <span class="action-hint">All changes are auto-saved locally</span>
+      <div class="action-group">
+        <button class="btn btn-secondary" id="previewBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          Preview
+        </button>
+        <button class="btn btn-success" id="saveDraftBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save to Draft
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Insert Modal -->
+  <div class="modal-overlay" id="tableModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Insert Table</div>
+        <button class="modal-close" onclick="closeModal('tableModal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label>Rows</label>
+          <input type="number" id="tableRows" value="3" min="1" max="20">
+        </div>
+        <div class="modal-field">
+          <label>Columns</label>
+          <input type="number" id="tableCols" value="3" min="1" max="10">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('tableModal')">Cancel</button>
+        <button class="btn btn-primary" id="confirmTableBtn">Insert Table</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Insert Modal -->
+  <div class="modal-overlay" id="imageModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Insert Image</div>
+        <button class="modal-close" onclick="closeModal('imageModal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label>Image File</label>
+          <input type="file" id="imageFile" accept="image/*">
+        </div>
+        <div class="modal-field">
+          <label>Alt Text</label>
+          <input type="text" id="imageAlt" placeholder="Describe the image for accessibility">
+        </div>
+        <div class="modal-field">
+          <label>Caption (optional)</label>
+          <input type="text" id="imageCaption" placeholder="Figure 1: ...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('imageModal')">Cancel</button>
+        <button class="btn btn-primary" id="confirmImageBtn">Insert Image</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Overlay -->
+  <div class="preview-overlay" id="previewOverlay">
+    <div class="preview-header-bar">
+      <div class="brand">
+        <img class="brand-icon" src="../images/app-logo.png" alt="AjiX mascot">
+        <div class="brand-text">AjiX<span>Preview</span></div>
+      </div>
+      <button class="btn btn-secondary" onclick="closePreview()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Back to Editor
+      </button>
+    </div>
+    <div class="preview-scroll">
+      <div class="preview-document" id="previewDocument"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const THEME_KEY = "ajix-guidelines-admin-theme";
+    const SHARED_THEME_KEY = "ajix-guidelines-theme-v1";
+
+    /* ========== STATE ========== */
+    let guideline = {
+      id: null,
+      title: '',
+      condition: '',
+      specialty: '',
+      organization: '',
+      version: '',
+      source: 'Manual Entry',
+      sections: [],
+      status: 'draft',
+      createdAt: null,
+      updatedAt: null
+    };
+
+    let activeTableSurface = null;
+    let activeImageSurface = null;
+    let dragSrcId = null;
+    let autoSaveTimer = null;
+    const AUTOSAVE_KEY_BASE = 'ajix_guideline_editor_autosave';
+    function getAutosaveKey() {
+      const id = new URLSearchParams(location.search).get('id');
+      return AUTOSAVE_KEY_BASE + (id ? ':' + id : ':new');
+    }
+
+    const storage = {
+      get(key) {
+        try { return localStorage.getItem(key); } catch (error) {
+          try { return sessionStorage.getItem(key); } catch (ignored) { return null; }
+        }
+      },
+      set(key, value) {
+        try { localStorage.setItem(key, value); } catch (error) {
+          try { sessionStorage.setItem(key, value); } catch (ignored) {}
+        }
+      },
+      remove(key) {
+        try { localStorage.removeItem(key); } catch (error) {
+          try { sessionStorage.removeItem(key); } catch (ignored) {}
+        }
+      }
+    };
+    const API_BASE = window.GUIDELINES_API_BASE || localStorage.getItem("quizApiBase") || (location.hostname === "localhost" ? "http://localhost:4000/api" : "/api");
+    let ADMIN_KEY = window.ADMIN_API_KEY || localStorage.getItem("adminKey") || "";
+    async function guidelineApi(path, options = {}, allowAuthPrompt = true) {
+      const response = await fetch(API_BASE + path, { ...options, headers: { "Content-Type": "application/json", "x-admin-key": ADMIN_KEY, ...(options.headers || {}) } });
+      const body = await response.json().catch(() => ({}));
+      if (response.status === 403 && allowAuthPrompt) {
+        const entered = prompt("Enter the admin key to access Guideline Studio:");
+        if (entered && entered.trim()) {
+          ADMIN_KEY = entered.trim();
+          localStorage.setItem("adminKey", ADMIN_KEY);
+          return guidelineApi(path, options, false);
+        }
+      }
+      if (!response.ok) throw new Error(body.error || "Guideline request failed");
+      return body;
+    }
+    /* ========== DOM ========== */
+    const sectionsContainer = document.getElementById('sectionsContainer');
+    const inputs = {
+      title: document.getElementById('inputTitle'),
+      condition: document.getElementById('inputCondition'),
+      specialty: document.getElementById('inputSpecialty'),
+      organization: document.getElementById('inputOrganization'),
+      version: document.getElementById('inputVersion')
+    };
+
+    /* ========== UTILITIES ========== */
+    function generateId() {
+      return 'sec-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 5);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showToast(message, duration = 3000) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+      activeTableSurface = null;
+      activeImageSurface = null;
+    }
+
+    /* ========== SECTION MANAGEMENT ========== */
+    function addSection(defaultTitle = '') {
+      const id = generateId();
+      const section = { id, title: defaultTitle, content: '' };
+      guideline.sections.push(section);
+      const el = buildSectionElement(section);
+      sectionsContainer.appendChild(el);
+      updateSectionNumbers();
+      // Scroll new section into view
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      triggerAutosave();
+      return el;
+    }
+
+    function buildSectionElement(section) {
+      const card = document.createElement('div');
+      card.className = 'section-card';
+      card.classList.add('is-collapsed');
+      card.dataset.sectionId = section.id;
+      card.draggable = false;
+
+      card.innerHTML = `
+        <div class="section-header">
+          <span class="section-number">Section</span>
+          <input type="text" class="section-title-input" placeholder="Section title (e.g., Overview, Treatment)" value="${escapeHtml(section.title)}">
+          <button type="button" class="section-collapse" title="Expand section" aria-label="Expand section" aria-expanded="false">v</button>
+          <button class="btn-icon danger delete-section" title="Delete section">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        </div>
+        <div class="editor-toolbar">          <button type="button" class="toolbar-btn section-move-btn" data-action="move-up" title="Move section up" aria-label="Move section up">↑</button>
+          <button type="button" class="toolbar-btn section-move-btn" data-action="move-down" title="Move section down" aria-label="Move section down">↓</button>
+          <div class="toolbar-sep"></div>
+          <button type="button" class="toolbar-btn" data-cmd="undo" title="Undo" aria-label="Undo">↶</button>
+          <button type="button" class="toolbar-btn" data-cmd="redo" title="Redo" aria-label="Redo">↷</button>
+          <div class="toolbar-sep"></div>
+          <button type="button" class="toolbar-btn" data-cmd="bold" title="Bold"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg></button>
+          <button type="button" class="toolbar-btn" data-cmd="italic" title="Italic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg></button>
+          <button type="button" class="toolbar-btn" data-cmd="underline" title="Underline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" x2="20" y1="21" y2="21"/></svg></button>
+          <select class="font-select font-family-select" data-format="font-family" title="Font style" aria-label="Font style"><option value="">Aa</option><option value="Georgia" style="font-family: Georgia;">Georgia</option><option value="Arial" style="font-family: Arial;">Arial</option><option value="Verdana" style="font-family: Verdana;">Verdana</option><option value="Trebuchet MS" style="font-family: Trebuchet MS;">Trebuchet</option></select><select class="font-select font-size-select" data-format="font-size" title="Font size" aria-label="Font size"><option value="">A+</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
+<div class="toolbar-sep"></div>
+          <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" title="Bullet list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg></button>
+          <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" title="Numbered list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="21" y1="6" y2="6"/><line x1="10" x2="21" y1="12" y2="12"/><line x1="10" x2="21" y1="18" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></button>
+          <div class="toolbar-sep"></div>
+          <button type="button" class="toolbar-btn" data-action="link" title="Insert link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+          <button type="button" class="toolbar-btn" data-action="table" title="Insert table"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg></button>
+          <select class="attention-select" data-action="attention" title="Insert attention card" aria-label="Insert attention card"><option value="">Card</option><option value="plain">Plain</option><option value="key">Key notice</option><option value="info">Information</option><option value="warning">Warning</option><option value="caution">Caution</option></select>
+<button type="button" class="toolbar-btn" data-action="image" title="Insert image"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button>
+        </div>
+        <div class="editor-surface" contenteditable="true">${section.content}</div>
+      `;
+
+      card.querySelector('.section-collapse').addEventListener('click', () => {
+        const expanded = card.classList.toggle('is-expanded');
+        card.classList.toggle('is-collapsed', !expanded);
+        const button = card.querySelector('.section-collapse');
+        button.setAttribute('aria-expanded', String(expanded));
+        button.title = expanded ? 'Collapse section' : 'Expand section';
+        button.setAttribute('aria-label', button.title);
+        button.textContent = expanded ? '^' : 'v';
+      });
+
+      /* --- Title Input --- */
+      const titleInput = card.querySelector('.section-title-input');
+      titleInput.addEventListener('input', () => {
+        section.title = titleInput.value;
+        triggerAutosave();
+      });
+
+      /* --- Editor Surface --- */
+      const surface = card.querySelector('.editor-surface');      const undoStack = [];
+      const redoStack = [];
+      let historyValue = surface.innerHTML;
+      let restoringHistory = false;
+      function recordHistory(force = false) {
+        const next = surface.innerHTML;
+        if (restoringHistory || (!force && next === historyValue)) return;
+        undoStack.push(historyValue);
+        if (undoStack.length > 80) undoStack.shift();
+        redoStack.length = 0;
+        historyValue = next;
+      }
+      function restoreHistory(direction) {
+        const stack = direction === 'undo' ? undoStack : redoStack;
+        const target = stack.pop();
+        if (target === undefined) return;
+        const other = direction === 'undo' ? redoStack : undoStack;
+        other.push(surface.innerHTML);
+        restoringHistory = true;
+        surface.innerHTML = target;
+        historyValue = target;
+        restoringHistory = false;
+        section.content = target;
+        decorateTables(surface);
+        triggerAutosave();
+      }
+    function decorateTables(surface) {
+      surface.querySelectorAll('table').forEach(table => {
+        if (table.closest('.editor-table-wrap')) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'editor-table-wrap';
+        const tools = document.createElement('div');
+        tools.className = 'table-local-tools';
+        tools.contentEditable = 'false';
+        tools.innerHTML = '<button type="button" class="table-edit-control" title="Edit table" aria-label="Edit table">&#8942;</button>' +
+          '<div class="table-edit-menu" role="menu">' +
+          '<button type="button" data-table-action="insert-row">Insert row</button>' +
+          '<button type="button" data-table-action="insert-column">Insert column</button>' +
+          '<button type="button" data-table-action="delete-row">Delete row</button>' +
+          '<button type="button" data-table-action="delete-column">Delete column</button>' +
+          '<button type="button" data-table-action="delete-table">Delete table</button></div>';
+        table.parentNode.insertBefore(wrap, table);
+        wrap.appendChild(tools);
+        wrap.appendChild(table);
+      });
+    }
+      decorateTables(surface);
+      surface.addEventListener('input', () => {
+        section.content = surface.innerHTML;
+        triggerAutosave();
+      });
+
+      /* --- Toolbar Formatting --- */
+      card.querySelectorAll('.toolbar-btn[data-cmd]').forEach(btn => {
+        btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in editor
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          surface.focus();
+          document.execCommand(btn.dataset.cmd, false, null);
+          updateToolbarState(card);
+        });
+      });
+
+      /* --- Font style and size --- */
+      let savedFontRange = null;
+      const fontControls = card.querySelectorAll('[data-format="font-family"], [data-format="font-size"]');
+      const saveFontSelection = () => {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount && surface.contains(selection.anchorNode)) {
+          savedFontRange = selection.getRangeAt(0).cloneRange();
+        }
+      };
+      fontControls.forEach((control) => {
+        control.addEventListener('pointerdown', saveFontSelection);
+        control.addEventListener('mousedown', saveFontSelection);
+        control.addEventListener('change', (e) => {
+          const value = e.target.value;
+          const format = e.target.dataset.format;
+          e.target.value = '';
+          if (!value) return;
+          surface.focus();
+          const selection = window.getSelection();
+          if (savedFontRange) {
+            selection.removeAllRanges();
+            selection.addRange(savedFontRange);
+          }
+          if (format === 'font-family') {
+            document.execCommand('fontName', false, value);
+          } else {
+            const range = selection.rangeCount ? selection.getRangeAt(0) : null;
+            if (!range || range.collapsed) return;
+            recordHistory(true);
+            const span = document.createElement('span');
+            span.style.fontSize = (11 + Number(value)) + 'px';
+            span.appendChild(range.extractContents());
+            range.insertNode(span);
+            selection.removeAllRanges();
+            selection.selectAllChildren(span);
+            section.content = surface.innerHTML;
+            triggerAutosave();
+          }
+          updateToolbarState(card);
+        });
+      });
+      /* --- Link --- */
+      card.querySelector('[data-action="link"]').addEventListener('mousedown', (e) => e.preventDefault());
+      card.querySelector('[data-action="link"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = prompt('Enter URL:', 'https://');
+        if (url) {
+          surface.focus();
+          document.execCommand('createLink', false, url);
+        }
+      });
+
+      /* --- Table --- */
+      card.querySelector('[data-action="table"]').addEventListener('mousedown', (e) => e.preventDefault());
+      card.querySelector('[data-action="table"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        activeTableSurface = surface;
+        document.getElementById('tableModal').classList.add('active');
+      });
+
+      /* --- Attention card --- */
+      let savedAttentionRange = null;
+      const attentionSelect = card.querySelector('[data-action="attention"]');
+      const saveAttentionSelection = () => {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount && surface.contains(selection.anchorNode)) {
+          savedAttentionRange = selection.getRangeAt(0).cloneRange();
+        }
+      };
+      attentionSelect.addEventListener('pointerdown', saveAttentionSelection);
+      attentionSelect.addEventListener('mousedown', saveAttentionSelection);
+      attentionSelect.addEventListener('change', (e) => {
+        const type = e.target.value;
+        e.target.value = '';
+        if (!type) return;
+        surface.focus();
+        if (savedAttentionRange) {
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(savedAttentionRange);
+        }
+        const selection = window.getSelection();
+        const range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+        const blocks = range ? [...surface.children].filter((child) => {
+          return child !== surface && !child.closest('.editor-table-wrap') && range.intersectsNode(child);
+        }) : [];
+        const node = range ? range.commonAncestorContainer : null;
+        const fallback = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest('p, div, li, blockquote, h1, h2, h3, h4, h5, h6');
+        if (!blocks.length && fallback && fallback !== surface && surface.contains(fallback) && !fallback.closest('.editor-table-wrap')) {
+          blocks.push(fallback);
+        }
+        if (!blocks.length) {
+          alert('Select or place the cursor inside the content you want to turn into a card.');
+          return;
+        }
+        recordHistory(true);
+        if (type === 'plain') {
+          blocks.forEach((block) => {
+            if (block.tagName.toLowerCase() !== 'blockquote' || !block.classList.contains('attention-card')) return;
+            const fragment = document.createDocumentFragment();
+            while (block.firstChild) fragment.appendChild(block.firstChild);
+            block.replaceWith(fragment);
+          });
+          section.content = surface.innerHTML;
+          triggerAutosave();
+          return;
+        }
+        const cardBlock = document.createElement('blockquote');
+        cardBlock.className = 'attention-card attention-' + type;
+        const first = blocks[0];
+        first.parentNode.insertBefore(cardBlock, first);
+        blocks.forEach((block) => cardBlock.appendChild(block));
+        section.content = surface.innerHTML;
+        triggerAutosave();
+      });
+      /* --- Image --- */
+      card.querySelector('[data-action="image"]').addEventListener('mousedown', (e) => e.preventDefault());
+      card.querySelector('[data-action="image"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        activeImageSurface = surface;
+        document.getElementById('imageModal').classList.add('active');
+      });
+
+      /* --- Selection tracking for toolbar state --- */
+      surface.addEventListener('keyup', () => updateToolbarState(card));
+      surface.addEventListener('mouseup', () => updateToolbarState(card));
+      surface.addEventListener('click', () => updateToolbarState(card));
+
+      /* --- Move section --- */
+      card.querySelector('[data-action="move-up"]').addEventListener('click', () => {
+        const previous = card.previousElementSibling;
+        if (!previous) return;
+        previous.before(card);
+        syncOrderFromDom();
+        updateSectionNumbers();
+        triggerAutosave();
+      });
+      card.querySelector('[data-action="move-down"]').addEventListener('click', () => {
+        const next = card.nextElementSibling;
+        if (!next) return;
+        next.after(card);
+        syncOrderFromDom();
+        updateSectionNumbers();
+        triggerAutosave();
+      });
+      /* --- Delete --- */
+      card.querySelector('.delete-section').addEventListener('click', () => {
+        if (guideline.sections.length <= 1) {
+          alert('A guideline must have at least one section.');
+          return;
+        }
+        if (!confirm('Delete this section? This cannot be undone.')) return;
+        card.remove();
+        guideline.sections = guideline.sections.filter(s => s.id !== section.id);
+        updateSectionNumbers();
+        triggerAutosave();
+      });
+
+      /* --- Drag & Drop --- */
+      card.addEventListener('dragover', handleDragOver);
+      card.addEventListener('drop', handleDrop);
+
+      return card;
+    }
+
+    function updateSectionNumbers() {
+      const cards = sectionsContainer.querySelectorAll('.section-card');
+      cards.forEach((card, idx) => {
+        card.querySelector('.section-number').textContent = 'Section ' + (idx + 1);
+      });
+    }
+
+    function updateToolbarState(card) {
+      card.querySelectorAll('.toolbar-btn[data-cmd]').forEach(btn => {
+        const cmd = btn.dataset.cmd;
+        try {
+          if (document.queryCommandState(cmd)) btn.classList.add('active');
+          else btn.classList.remove('active');
+        } catch (e) { btn.classList.remove('active'); }
+      });
+    }
+
+    /* ========== DRAG & DROP ========== */
+    function handleDragStart(e) {
+      dragSrcId = this.dataset.sectionId;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragSrcId);
+    }
+    function handleDragEnd(e) {
+      this.classList.remove('dragging');
+      dragSrcId = null;
+      sectionsContainer.querySelectorAll('.section-card').forEach(c => c.classList.remove('drag-over'));
+    }
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (this.dataset.sectionId === dragSrcId) return;
+      sectionsContainer.querySelectorAll('.section-card').forEach(c => c.classList.remove('drag-over'));
+      this.classList.add('drag-over');
+    }
+    function handleDrop(e) {
+      e.preventDefault();
+      this.classList.remove('drag-over');
+      const srcId = dragSrcId;
+      const tgtId = this.dataset.sectionId;
+      if (!srcId || srcId === tgtId) return;
+
+      const srcEl = sectionsContainer.querySelector(`[data-section-id="${srcId}"]`);
+      const tgtEl = this;
+      const rect = tgtEl.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+
+      if (after) tgtEl.after(srcEl);
+      else tgtEl.before(srcEl);
+
+      syncOrderFromDom();
+      updateSectionNumbers();
+      triggerAutosave();
+    }
+    function syncOrderFromDom() {
+      const ids = [...sectionsContainer.querySelectorAll('.section-card')].map(el => el.dataset.sectionId);
+      guideline.sections.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    }
+
+    /* ========== TABLE INSERT ========== */
+    document.getElementById('confirmTableBtn').addEventListener('click', () => {
+      if (!activeTableSurface) return;
+      const rows = parseInt(document.getElementById('tableRows').value) || 3;
+      const cols = parseInt(document.getElementById('tableCols').value) || 3;
+
+      let html = '<table><tbody>';
+      for (let r = 0; r < rows; r++) {
+        html += '<tr>';
+        for (let c = 0; c < cols; c++) html += '<td>Cell</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      const tools = '<div class="table-local-tools" contenteditable="false">' +
+        '<button type="button" class="table-edit-control" title="Edit table" aria-label="Edit table">&#8942;</button>' +
+        '<div class="table-edit-menu" role="menu">' +
+        '<button type="button" data-table-action="insert-row">Insert row</button>' +
+        '<button type="button" data-table-action="insert-column">Insert column</button>' +
+        '<button type="button" data-table-action="delete-row">Delete row</button>' +
+        '<button type="button" data-table-action="delete-column">Delete column</button>' +
+        '<button type="button" data-table-action="delete-table">Delete table</button>' +
+        '</div></div><p><br></p>';
+      insertHtmlAtCursor('<div class="editor-table-wrap">' + tools + html + '</div>', activeTableSurface);
+      closeModal('tableModal');
+      triggerAutosave();
+    });
+
+    document.addEventListener('click', (event) => {
+      const actionButton = event.target.closest('[data-table-action]');
+      const control = event.target.closest('.table-edit-control');
+      if (!actionButton && !control) {
+        document.querySelectorAll('.table-edit-menu.open').forEach(menu => menu.classList.remove('open'));
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const wrap = (actionButton || control).closest('.editor-table-wrap');
+      const table = wrap?.querySelector('table');
+      if (!table) return;
+      if (control) {
+        wrap.querySelector('.table-edit-menu').classList.toggle('open');
+        return;
+      }
+      const action = actionButton.dataset.tableAction;
+      const selectedCell = table.querySelector('.table-cell-selected');
+      const selectedRow = selectedCell?.closest('tr') || table.querySelector('tr:last-child');
+      const rowIndex = selectedRow ? [...table.rows].indexOf(selectedRow) : table.rows.length - 1;
+      const colIndex = selectedCell ? [...selectedRow.cells].indexOf(selectedCell) : ((selectedRow?.cells.length || 1) - 1);
+      if (action === 'insert-row') {
+        const row = table.insertRow(rowIndex + 1);
+        const count = table.rows[0]?.cells.length || 1;
+        for (let i = 0; i < count; i++) row.insertCell().textContent = 'Cell';
+      } else if (action === 'insert-column') {
+        [...table.rows].forEach(row => row.insertCell(colIndex + 1).textContent = 'Cell');
+      } else if (action === 'delete-row' && table.rows.length > 1) {
+        table.deleteRow(rowIndex);
+      } else if (action === 'delete-column' && (table.rows[0]?.cells.length || 0) > 1) {
+        [...table.rows].forEach(row => row.deleteCell(colIndex));
+      } else if (action === 'delete-table') {
+        wrap.remove();
+      }
+      wrap.querySelector('.table-edit-menu')?.classList.remove('open');
+      triggerAutosave();
+    });
+    document.addEventListener('click', (event) => {
+      const cell = event.target.closest('.editor-table-wrap td, .editor-table-wrap th');
+      if (!cell) return;
+      const table = cell.closest('table');
+      table.querySelectorAll('.table-cell-selected').forEach(item => item.classList.remove('table-cell-selected'));
+      cell.classList.add('table-cell-selected');
+    }, true);
+    /* ========== IMAGE INSERT ========== */
+    document.getElementById('confirmImageBtn').addEventListener('click', () => {
+      if (!activeImageSurface) return;
+      const file = document.getElementById('imageFile').files[0];
+      if (!file) { alert('Please select an image file.'); return; }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const src = e.target.result;
+        const alt = escapeHtml(document.getElementById('imageAlt').value) || 'Image';
+        const caption = escapeHtml(document.getElementById('imageCaption').value);
+
+        let html = `<figure><img src="${src}" alt="${alt}">`;
+        if (caption) html += `<figcaption>${caption}</figcaption>`;
+        html += `</figure><p><br></p>`;
+
+        insertHtmlAtCursor(html, activeImageSurface);
+        closeModal('imageModal');
+        triggerAutosave();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function insertHtmlAtCursor(html, surface) {
+      surface.focus();
+      const sel = window.getSelection();
+      if (sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        if (!surface.contains(range.commonAncestorContainer)) {
+          const p = document.createElement('p');
+          p.innerHTML = '<br>';
+          surface.appendChild(p);
+          range.selectNodeContents(p);
+          range.collapse(true);
+        }
+        range.deleteContents();
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        const frag = document.createDocumentFragment();
+        while (wrapper.firstChild) frag.appendChild(wrapper.firstChild);
+        range.insertNode(frag);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+
+    /* ========== SAVE & PREVIEW ========== */
+    function collectFormData() {
+      guideline.title = inputs.title.value.trim();
+      guideline.condition = inputs.condition.value.trim();
+      guideline.specialty = inputs.specialty.value;
+      guideline.organization = inputs.organization.value.trim();
+      guideline.version = inputs.version.value.trim();
+      guideline.source = 'Manual Entry';
+      guideline.updatedAt = new Date().toISOString();
+      if (!guideline.id) {
+        guideline.id = 'gl-' + Date.now();
+        guideline.createdAt = guideline.updatedAt;
+      }
+      // Sync sections from DOM
+      guideline.sections.forEach(sec => {
+        const el = sectionsContainer.querySelector(`[data-section-id="${sec.id}"]`);
+        if (el) {
+          sec.title = el.querySelector('.section-title-input').value;
+          const surface = el.querySelector('.editor-surface');
+          const cleanSurface = surface.cloneNode(true);
+          cleanSurface.querySelectorAll('.table-local-tools, .table-edit-control, .table-edit-menu').forEach(control => control.remove());
+          cleanSurface.querySelectorAll('.table-cell-selected').forEach(cell => cell.classList.remove('table-cell-selected'));
+          sec.content = cleanSurface.innerHTML;
+        }
+      });
+    }
+
+    document.getElementById('saveDraftBtn').addEventListener('click', async () => {
+      collectFormData();
+      if (!guideline.title) { alert('Please enter a guideline title.'); inputs.title.focus(); return; }
+      if (guideline.sections.some(s => !s.title.trim())) { alert('Please ensure all sections have titles.'); return; }
+      guideline.sections.forEach(sec => { sec.content = sanitizeHtml(sec.content); });
+      const payload = { title: guideline.title, condition: guideline.condition, specialty: guideline.specialty, org: guideline.organization, organization: guideline.organization,
+        version: guideline.version, source: guideline.source || (guideline.entryType === 'Live Source' ? guideline.organization : 'Manual Entry'), entryType: guideline.entryType || 'Manual Entry', workflowStatus: new URLSearchParams(location.search).get('mode') === 'ai' ? 'in_review' : undefined,
+        sections: guideline.sections.map(sec => ({ id: sec.id, title: sec.title.trim(), content: sec.content })) };
+      const button = document.getElementById('saveDraftBtn'); button.disabled = true;
+      try {
+        const hasExistingId = guideline.id && new URLSearchParams(location.search).get('id');
+        const response = hasExistingId ? await guidelineApi('/admin/guidelines/' + encodeURIComponent(guideline.id), { method: 'PUT', body: JSON.stringify(payload) }) :
+          await guidelineApi('/admin/guidelines/manual', { method: 'POST', body: JSON.stringify(payload) });
+        const saved = response.item || response; guideline = { ...guideline, ...saved, id: String(saved.id), status: saved.status || 'draft' };
+        storage.remove(getAutosaveKey()); storage.remove(AUTOSAVE_KEY_BASE + ':new'); history.replaceState(null, '', 'guideline-editor.html?id=' + encodeURIComponent(guideline.id) + '&v=20260902-editor2');
+        showToast(guideline.status === 'in_review' ? 'Guideline sent to in-review successfully' : 'Guideline saved to drafts successfully');
+      } catch (error) { console.error(error); showToast(error.message || 'Unable to save guideline'); }
+      finally { button.disabled = false; }
+    });
+    document.getElementById('previewBtn').addEventListener('click', () => {
+      collectFormData();
+      const overlay = document.getElementById('previewOverlay');
+      const doc = document.getElementById('previewDocument');
+
+      let html = `
+        <h1 class="preview-doc-title">${escapeHtml(guideline.title) || 'Untitled Guideline'}</h1>
+        <div class="preview-meta-line">
+          <span>${escapeHtml(guideline.organization) || '—'}</span>
+          <span>•</span>
+          <span>${escapeHtml(guideline.specialty) || '—'}</span>
+          <span>•</span>
+          <span>${escapeHtml(guideline.condition) || '—'}</span>
+          <span>•</span>
+          <span>Version ${escapeHtml(guideline.version) || '—'}</span>
+        </div>
+      `;
+
+      guideline.sections.forEach(sec => {
+        html += `
+          <div class="preview-section">
+            <h2 class="preview-section-title">${escapeHtml(sec.title)}</h2>
+            <div class="preview-section-body">${sec.content}</div>
+          </div>
+        `;
+      });
+
+      doc.innerHTML = html;
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    });
+
+    function closePreview() {
+      document.getElementById('previewOverlay').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    /* ========== AUTOSAVE ========== */
+    function triggerAutosave() {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => {
+        collectFormData();
+        storage.set(getAutosaveKey(), JSON.stringify({ ...guideline, autosavedAt: new Date().toISOString() }));
+      }, 2000);
+    }
+
+    function setupAutosaveListeners() {
+      Object.values(inputs).forEach(el => el.addEventListener('input', triggerAutosave));
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') saveAutosaveNow();
+      });
+      window.addEventListener('beforeunload', saveAutosaveNow);
+    }
+
+    function saveAutosaveNow() {
+      try {
+        collectFormData();
+        storage.set(getAutosaveKey(), JSON.stringify({ ...guideline, autosavedAt: new Date().toISOString() }));
+      } catch (error) {
+        console.warn('Autosave failed', error);
+      }
+    }
+
+    function checkRecovery() {
+      const saved = storage.get(getAutosaveKey()) || (!new URLSearchParams(location.search).get('id') ? storage.get('medlens_editor_autosave') : null);
+      if (!saved) return;
+      const banner = document.getElementById('recoveryBanner');
+      banner.style.display = 'block';
+
+      banner.querySelector('.recover-btn').addEventListener('click', () => {
+        try { guideline = JSON.parse(saved); } catch (error) { storage.remove(getAutosaveKey()); banner.style.display = 'none'; return; }
+        inputs.title.value = guideline.title || '';
+        inputs.condition.value = guideline.condition || '';
+        inputs.specialty.value = guideline.specialty || '';
+        inputs.organization.value = guideline.organization || '';
+        inputs.version.value = guideline.version || '';
+
+        sectionsContainer.innerHTML = '';
+        guideline.sections.forEach(sec => {
+          const el = buildSectionElement(sec);
+          el.querySelector('.editor-surface').innerHTML = sec.content || '';
+          sectionsContainer.appendChild(el);
+        });
+        updateSectionNumbers();
+        banner.style.display = 'none';
+        showToast('Recovered unsaved work');
+      });
+
+      banner.querySelector('.discard-btn').addEventListener('click', () => {
+        storage.remove(getAutosaveKey());
+        banner.style.display = 'none';
+      });
+    }
+
+    /* ========== SANITIZER ========== */
+    function sanitizeHtml(html) {
+      const allowedTags = ['p','br','strong','b','em','i','u','ul','ol','li','blockquote','font','a','table','thead','tbody','tr','td','th','img','figure','figcaption','h1','h2','h3','h4','h5','h6','div','span','colgroup','col'];
+      const allowedAttrs = {
+        '*': ['style','class'],
+        'a': ['href','target','rel','class'],
+        'font': ['face','size'],
+        'img': ['src','alt','width','height'],
+        'td': ['colspan','rowspan'],
+        'th': ['colspan','rowspan']
+      };
+      const allowedStyles = ['text-align','font-family','font-size'];
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      function walk(node) {
+        if (node.nodeType === 3) return;
+        if (node.nodeType !== 1) { node.remove(); return; }
+
+        const tag = node.tagName.toLowerCase();
+        if (!allowedTags.includes(tag)) {
+          const parent = node.parentNode;
+          while (node.firstChild) parent.insertBefore(node.firstChild, node);
+          parent.removeChild(node);
+          return;
+        }
+
+        [...node.attributes].forEach(attr => {
+          const name = attr.name.toLowerCase();
+          const tagAllow = allowedAttrs[tag] || [];
+          const globalAllow = allowedAttrs['*'] || [];
+
+          if (name.startsWith('on')) {
+            node.removeAttribute(attr.name);
+          } else if (!tagAllow.includes(name) && !globalAllow.includes(name)) {
+            node.removeAttribute(attr.name);
+          } else if (name === 'style') {
+            const clean = [];
+            node.style.cssText.split(';').forEach(rule => {
+              const prop = rule.split(':')[0].trim();
+              if (allowedStyles.includes(prop)) clean.push(rule);
+            });
+            if (clean.length) node.setAttribute('style', clean.join(';'));
+            else node.removeAttribute('style');
+          } else if (name === 'href') {
+            const val = node.getAttribute('href');
+            if (val && (val.startsWith('javascript:') || val.startsWith('data:'))) {
+              node.removeAttribute('href');
+            }
+          }
+        });
+
+        [...node.childNodes].forEach(walk);
+      }
+
+      [...doc.body.childNodes].forEach(walk);
+      return doc.body.innerHTML;
+    }
+
+    /* ========== THEME ========== */
+    function applyTheme(theme) {
+      const html = document.documentElement; const isDark = theme === 'dark';
+      html.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      document.getElementById('moonIcon').style.display = isDark ? 'block' : 'none';
+      document.getElementById('sunIcon').style.display = isDark ? 'none' : 'block';
+    }
+    applyTheme(storage.get(THEME_KEY) || storage.get(SHARED_THEME_KEY) || 'light');
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; applyTheme(next);
+      storage.set(THEME_KEY, next); storage.set(SHARED_THEME_KEY, next);
+    });
+    async function loadExistingGuideline() {
+      const id = new URLSearchParams(location.search).get('id');
+      if (!id) return;
+      const response = await guidelineApi('/admin/guidelines/' + encodeURIComponent(id));
+      const item = response.item || response;
+      guideline = { ...guideline, ...item, id: String(item.id), organization: item.organization || item.org || item.source || '', source: item.source || 'Manual Entry',
+        sections: Array.isArray(item.sections) ? item.sections.map((section, index) => ({ id: String(section.id || generateId() + '-' + index), title: section.title || '', content: section.content || '' })) :
+          Object.entries(item.sections || {}).map(([title, content], index) => ({ id: 'section-' + index + '-' + Date.now().toString(36), title, content: typeof content === 'string' ? content : '' })) };
+      inputs.title.value = guideline.title || ''; inputs.condition.value = guideline.condition || ''; inputs.specialty.value = guideline.specialty || '';
+      inputs.organization.value = guideline.organization || ''; inputs.version.value = guideline.version || '';
+      sectionsContainer.innerHTML = ''; guideline.sections.forEach(section => sectionsContainer.appendChild(buildSectionElement(section))); updateSectionNumbers();
+      document.title = 'AjiX - Edit Guideline';
+    }
+    /* ========== INIT ========== */
+    function init() {
+      checkRecovery();
+      if (guideline.sections.length === 0) {
+        addSection('Overview');
+      }
+      setupAutosaveListeners();
+    }
+
+    document.getElementById('addSectionBtn').addEventListener('click', () => addSection());
+
+    // Close modals on Escape / overlay click
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal('tableModal');
+        closeModal('imageModal');
+        closePreview();
+      }
+    });
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal(overlay.id);
+      });
+    });
+
+    loadExistingGuideline().then(init).catch(error => { console.error(error); showToast(error.message || 'Unable to load guideline'); init(); });
+  </script>
+</body>
+</html>

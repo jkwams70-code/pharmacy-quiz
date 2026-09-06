@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="auth-lock.js" data-login-url="index.html"></script>
 <script>document.documentElement.setAttribute('data-news-shell', 'pending');</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
 <link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
 <link rel="apple-touch-icon" href="/images/app-logo.png?v=20260617-admin-avatar">
-<title>FDA approves novel oral GLP-1 drug — AjixPharmacy</title>
+<title>FDA approves novel oral GLP-1 drug - Ajix News</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -323,12 +324,82 @@
 
   /* FOOTER */
   .app-footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 32px 24px; background: var(--surface); }
-  .footer-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+  .footer-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
   .footer-brand { font-size: 16px; font-weight: 700; }
-  .footer-links { display: flex; gap: 24px; }
-  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; }
+  .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 24px; }
+  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; white-space: nowrap; }
   .footer-links a:hover { color: var(--text-primary); }
   .footer-copy { font-size: 12px; color: var(--text-muted); }
+  .footer-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 220;
+  }
+  .footer-sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
+  .footer-sheet {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 100%);
+    width: min(92vw, 760px);
+    max-height: min(80vh, 640px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 48px rgba(15, 23, 42, 0.18);
+    z-index: 230;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.28s ease;
+  }
+  .footer-sheet.is-open { transform: translate(-50%, 0); }
+  .footer-sheet-handle { width: 54px; height: 5px; border-radius: 999px; background: rgba(148, 163, 184, 0.6); margin: 10px auto 0; }
+  .footer-sheet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 20px 12px; border-bottom: 1px solid var(--border); }
+  .footer-sheet-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px; }
+  .footer-sheet-title { margin: 0; font-size: 22px; line-height: 1.15; letter-spacing: -0.02em; }
+  .footer-sheet-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 22px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .footer-sheet-body { padding: 18px 20px 22px; overflow: auto; color: var(--text-secondary); line-height: 1.65; max-height: calc(min(80vh, 640px) - 112px); }
+  .footer-sheet-body p { margin: 0 0 14px; }
+  .footer-sheet-body h3 { margin: 18px 0 10px; color: var(--text-primary); font-size: 16px; }
+  .footer-sheet-body ul { margin: 0 0 16px 18px; padding: 0; }
+  .footer-sheet-contact-list { display: grid; gap: 12px; margin-top: 12px; }
+  .footer-sheet-contact-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .footer-sheet-contact-btn:hover { border-color: var(--accent-blue); }
+  body.is-footer-sheet-open { overflow: hidden; }
+  html[data-theme="dark"] .footer-sheet { background: #111; }
+  html[data-theme="dark"] .footer-sheet-backdrop { background: rgba(0, 0, 0, 0.48); }
+  html[data-theme="dark"] .footer-sheet-close { background: #111; border-color: #2a2a2a; }
 
   /* RESPONSIVE */
   html[data-theme="dark"] {
@@ -376,12 +447,25 @@
     .nav-search { display: none; }
     .nav-search-toggle { display: flex; }
     .nav-left { gap: 12px; }
+
     .nav-back-btn { padding: 8px 10px; }
+    .top-nav-inner { padding: 0 12px; gap: 8px; min-height: 58px; }
+    .nav-left { gap: 8px; }
+    .nav-right { gap: 6px; }
+    .nav-logo { font-size: 18px; letter-spacing: -0.2px; }
+    .nav-icon-btn { width: 36px; height: 36px; }
     .mobile-search-panel-inner { padding: 10px 14px 14px; }
     .mobile-panel-rail { display: flex; }
   }
 </style>
 <base target="_blank">
+  <style>
+/* AjiX named header colors */
+  .nav-logo .brand-core { color: #111827; }
+  .nav-logo .brand-news { color: #1d4ed8; }
+  html[data-theme="dark"] .nav-logo .brand-core { color: #f3f4f6; }
+  html[data-theme="dark"] .nav-logo .brand-news { color: #93c5fd; }
+</style>
 </head>
 <body>
 
@@ -396,7 +480,7 @@
         </svg>
         <span>Back</span>
       </button>
-      <div class="nav-logo">Ajix<span>Pharmacy</span></div>
+      <div class="nav-logo"><span class="brand-core">AjiX</span><span class="brand-news">News</span></div>
     </div>
     <div class="nav-right">
       <div class="nav-search">
@@ -542,7 +626,7 @@
       <div class="author-bio-avatar">SC</div>
       <div class="author-bio-content">
         <h4>Dr. Sarah Chen</h4>
-        <p>Board-certified endocrinologist and AjixPharmacy's Medicine Editor. She completed her fellowship at Johns Hopkins and has published over 40 peer-reviewed papers on metabolic therapy. Dr. Chen specializes in translating clinical trial data into patient-centered guidance.</p>
+        <p>Board-certified endocrinologist and Ajix News Medicine Editor. She completed her fellowship at Johns Hopkins and has published over 40 peer-reviewed papers on metabolic therapy. Dr. Chen specializes in translating clinical trial data into patient-centered guidance.</p>
       </div>
     </div>
 
@@ -627,16 +711,28 @@
 
 <footer class="app-footer">
   <div class="footer-inner">
-    <div class="footer-brand">AjixPharmacy</div>
+    <div class="footer-brand">Ajix News</div>
     <div class="footer-links">
-      <a href="#">About</a>
-      <a href="#">Privacy</a>
-      <a href="#">Terms</a>
-      <a href="#">Contact</a>
+      <a href="#" data-footer-topic="about">About</a>
+      <a href="#" data-footer-topic="privacy">Privacy</a>
+      <a href="#" data-footer-topic="terms">Terms</a>
+      <a href="#" data-footer-topic="contact">Contact</a>
     </div>
-    <div class="footer-copy">© 2026 AjixPharmacy. All rights reserved.</div>
+    <div class="footer-copy">2026 Ajix News. All rights reserved.</div>
   </div>
 </footer>
+<div id="footer-sheet-backdrop" class="footer-sheet-backdrop" aria-hidden="true"></div>
+<section id="footer-sheet" class="footer-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="footer-sheet-title">
+  <div class="footer-sheet-handle" aria-hidden="true"></div>
+  <div class="footer-sheet-header">
+    <div>
+      <div class="footer-sheet-kicker">Ajix News</div>
+      <h2 id="footer-sheet-title" class="footer-sheet-title">About</h2>
+    </div>
+    <button id="footer-sheet-close" class="footer-sheet-close" type="button" aria-label="Close footer details">&times;</button>
+  </div>
+  <div id="footer-sheet-body" class="footer-sheet-body"></div>
+</section>
 
 <script>
 (function () {
@@ -685,7 +781,55 @@
   const reviewPublishBtn = document.getElementById('news-review-publish');
   const reviewRejectBtn = document.getElementById('news-review-reject');
   const tocItems = () => document.querySelectorAll('.toc-item');
+
   let storyLockStateEl = null;
+  const footerSheetBackdrop = document.getElementById('footer-sheet-backdrop');
+  const footerSheet = document.getElementById('footer-sheet');
+  const footerSheetCloseBtn = document.getElementById('footer-sheet-close');
+  const footerSheetTitle = document.getElementById('footer-sheet-title');
+  const footerSheetBody = document.getElementById('footer-sheet-body');
+  const footerSheetLinks = Array.from(document.querySelectorAll('[data-footer-topic]'));
+  const footerSheetContent = {
+    about: {
+      title: 'About Ajix News',
+      body: '<p>Ajix News gathers health, pharmacy, and clinical updates in a quick-reading format so the most useful information is easy to scan on any device.</p><p>We keep the focus on practical, trustworthy stories that help readers stay informed without extra clutter.</p>',
+    },
+    privacy: {
+      title: 'Privacy',
+      body: '<p>We keep this experience lightweight. Basic preferences such as theme and reading state may be stored locally on your device so the interface feels consistent when you return.</p><p>We do not use the footer sheets to collect personal information; they simply open the information you request.</p>',
+    },
+    terms: {
+      title: 'Terms',
+      body: '<p>Use Ajix News as a reading and reference experience. Content is provided for general informational purposes and should not replace professional advice.</p><h3>Quick notes</h3><ul><li>Share links responsibly.</li><li>Do not repost content without permission.</li><li>Check critical clinical information against official sources.</li></ul>',
+    },
+    contact: {
+      title: 'Contact',
+      body: '<p>If you need to reach the team, use the same contact details shown on the home page.</p><div class="footer-sheet-contact-list"><a class="footer-sheet-contact-btn" href="mailto:ajixpharmacy@gmail.com"><span>Email</span><span>ajixpharmacy@gmail.com</span></a><a class="footer-sheet-contact-btn" href="https://wa.me/233595597218" target="_blank" rel="noopener noreferrer"><span>WhatsApp</span><span>+233 595 597 218</span></a></div>',
+    },
+  };
+
+  function renderFooterSheet(topic = 'about') {
+    const entry = footerSheetContent[topic] || footerSheetContent.about;
+    if (footerSheetTitle) footerSheetTitle.textContent = entry.title;
+    if (footerSheetBody) footerSheetBody.innerHTML = entry.body;
+  }
+
+  function openFooterSheet(topic = 'about') {
+    renderFooterSheet(topic);
+    footerSheet?.classList.add('is-open');
+    footerSheetBackdrop?.classList.add('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'false');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('is-footer-sheet-open');
+  }
+
+  function closeFooterSheet() {
+    footerSheet?.classList.remove('is-open');
+    footerSheetBackdrop?.classList.remove('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'true');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('is-footer-sheet-open');
+  }
 
   function slugify(value) {
     return String(value || '')
@@ -810,7 +954,7 @@
       window.location.href = '/';
     });
 
-    document.title = 'News locked - AjixPharmacy';
+    document.title = 'News locked - Ajix News';
     setStoryShellReady();
   }
 
@@ -864,7 +1008,8 @@
   }
 
   function isAjixpharmacyDesk(name = '') {
-    return String(name || '').trim().toLowerCase() === 'ajixpharmacy desk';
+    const normalized = String(name || '').trim().toLowerCase();
+    return normalized === 'ajixpharmacy desk' || normalized === 'ajix news desk';
   }
 
   function setAvatarBackground(node, name = '', fallback = 'AJ') {
@@ -1015,30 +1160,58 @@
     return { badge: 'var(--accent-blue)', hero: 'linear-gradient(135deg, #0b3d2e 0%, #145a45 60%, #1a7a5e 100%)' };
   }
 
-  function buildStoryBodyHtml(content = '') {
-    const text = String(content || '').trim();
+  function buildStoryBodyHtml(content = "") {
+    const text = String(content || "").trim();
     if (!text) {
-      return '<p>This article has not been filled out yet.</p>';
+      return "";
     }
     if (/<[a-z][\s\S]*>/i.test(text)) {
       return text;
     }
     return text
       .split(/\n{2,}/)
-      .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
-      .join('');
+      .map((paragraph) => "<p>" + escapeHtml(paragraph).replace(/\n/g, "<br>") + "</p>")
+      .join("");
   }
 
-  function buildStoryToc(content = '') {
-    const text = String(content || '').trim();
+  function buildStoryToc(content = "") {
+    const text = String(content || "").trim();
     if (!text) {
-      return [{ id: 'toc-1', label: 'Overview' }];
+      return [];
     }
     const parts = text.split(/\n{2,}/).filter(Boolean);
     return parts.slice(0, 4).map((_, index) => ({
       id: `toc-${index + 1}`,
-      label: index === 0 ? 'Overview' : `Section ${index + 1}`,
+      label: index === 0 ? "Overview" : `Section ${index + 1}`,
     }));
+  }
+
+  function makeStory(story = {}) {
+    const title = String(story.title || story.headline || '').trim();
+    const summary = String(story.subtitle || story.summary || '').trim();
+    const bodyHtml = String(story.bodyHtml || buildStoryBodyHtml(story.body || story.content || summary)).trim();
+    return {
+      title,
+      category: story.category || 'News',
+      badge: story.badge || story.category || 'News',
+      badgeColor: story.badgeColor || 'var(--accent-blue)',
+      subtitle: summary,
+      author: story.author || { initials: 'AJ', name: 'Ajix News Desk', role: 'Admin review' },
+      meta: story.meta || { date: '', readTime: '3 min read', views: 'Preview mode', source: '', likes: 0 },
+      likes: Number(story.likes || 0),
+      sourceName: String(story.sourceName || '').trim(),
+      heroLabel: String(story.heroLabel || '').trim(),
+      imageUrl: String(story.imageUrl || '').trim(),
+      imageAlt: String(story.imageAlt || title || '').trim(),
+      heroGradient: String(story.heroGradient || '').trim(),
+      tags: Array.isArray(story.tags) ? story.tags : [],
+      toc: Array.isArray(story.toc) ? story.toc : [],
+      bodyHtml,
+      takeaways: Array.isArray(story.takeaways) ? story.takeaways : [],
+      bio: String(story.bio || '').trim(),
+      related: Array.isArray(story.related) ? story.related : [],
+      storyKey: String(story.storyKey || story.id || title).trim(),
+    };
   }
 
   function buildStoryTakeaways(item = {}) {
@@ -1050,12 +1223,12 @@
   }
 
   function buildStoryFromNewsItem(item = {}) {
-    const title = String(item.title || item.headline || 'Story preview').trim();
-    const summary = String(item.summary || item.reviewNote || 'Preview the article exactly as it will appear to readers.').trim();
+    const title = String(item.title || item.headline || '').trim();
+    const summary = String(item.summary || item.reviewNote || '').trim();
     const content = String(item.content || item.body || '').trim();
-    const accent = getStoryAccent(item.category || '');
+    const accent = getStoryAccent(item.category || "");
     const sourceName = String(item.sourceName || item.publishedByName || '').trim();
-    const authorName = String(item.author || 'Ajixpharmacy Desk').trim();
+    const authorName = String(item.author || item.publishedByName || item.sourceName || item.source || 'Ajix News Desk').trim();
     const authorInitials = getAvatarInitials(authorName, 'AJ');
     const likes = getStoryLikeCount(item);
     const publishedLabel = formatStoryDateTime(item.publishedAt || item.sourcePublishedAt || item.updatedAt || item.createdAt || '');
@@ -1079,15 +1252,15 @@
       },
       likes,
       sourceName,
-      heroLabel: item.imageAlt || `HERO IMAGE — ${title}`,
+      heroLabel: item.imageAlt || '',
       imageUrl: String(item.imageUrl || item.heroBackgroundImage || '').trim(),
       imageAlt: String(item.imageAlt || title || '').trim(),
       heroGradient: accent.hero,
-      tags: Array.isArray(item.tags) && item.tags.length ? item.tags.slice(0, 6) : [formatNewsCategoryLabel(item.category || 'News'), 'Review'],
+      tags: Array.isArray(item.tags) && item.tags.length ? item.tags.slice(0, 6) : [],
       toc: buildStoryToc(content || summary),
       bodyHtml: buildStoryBodyHtml(content || summary),
       takeaways: buildStoryTakeaways(item),
-      bio: String(item.reviewNote || 'This preview is pulled directly from the admin review queue.').trim(),
+      bio: String(item.reviewNote || '').trim(),
       related: [],
       storyKey: String(item.id || slugify(title)),
     });
@@ -1323,6 +1496,7 @@
   const mobilePanelHomes = new Map();
   let activeMobilePanelKey = '';
   let relatedExpanded = false;
+  let relatedFeedItems = [];
 
   function storePanelHome(node) {
     if (!node || mobilePanelHomes.has(node)) return;
@@ -1611,646 +1785,9 @@
     }
   }
 
-  function storyKey(title) {
-    return slugify(title);
+  function getStoryByKey(key) {
+    return null;
   }
-
-  function makeStory(data) {
-    return data;
-  }
-
-  const STORY_LIBRARY = {
-    [storyKey('FDA approves novel oral GLP-1 drug for type 2 diabetes in landmark decision')]: makeStory({
-      title: 'FDA approves novel oral GLP-1 drug for type 2 diabetes in landmark decision',
-      category: 'Medicine',
-      badge: 'Breaking',
-      badgeColor: '#dc2626',
-      subtitle: 'The first oral non-peptide GLP-1 approval could widen access for patients who want the benefits of the class without injections.',
-      author: { initials: 'SC', name: 'Dr. Sarah Chen', role: 'Endocrinology Editor' },
-      meta: { date: 'Aug 21, 2026', readTime: '8 min read', views: '1.2M views', source: 'Reuters' },
-      heroLabel: 'HERO IMAGE - GLP-1 Clinical Trial',
-      heroGradient: 'linear-gradient(135deg, #0b3d2e 0%, #145a45 60%, #1a7a5e 100%)',
-      tags: ['Diabetes', 'GLP-1', 'FDA Approval', 'Oral Medication'],
-      toc: [
-        { id: 'toc-1', label: 'What regulators reviewed' },
-        { id: 'toc-2', label: 'Why the oral form matters' },
-        { id: 'toc-3', label: 'What patients can expect next' },
-      ],
-      bodyHtml: `
-        <p>The U.S. Food and Drug Administration has approved an oral GLP-1 treatment for adults with type 2 diabetes, marking a major step forward for people who have delayed injectable therapy because of needle aversion or treatment complexity.</p>
-        <p>The approval matters because it gives clinicians another way to approach the same metabolic pathway that has transformed diabetes care over the past several years, but in a format many patients may find easier to start and sustain.</p>
-        <h2 id="toc-1">What regulators reviewed</h2>
-        <p>The decision was supported by late-stage trial data showing meaningful glucose lowering and weight loss, with safety signals that remained in line with the GLP-1 class. Regulators focused on efficacy, tolerability, and whether an oral delivery method could maintain consistent exposure across a broad patient population.</p>
-        <p>The final label also reflects the usual class warnings and the need for careful selection in patients with specific thyroid histories or prior intolerances.</p>
-        <h2 id="toc-2">Why the oral form matters</h2>
-        <p>For many adults living with diabetes, the barrier has never been the science. It has been the routine: injections, storage, timing, and the psychological weight of starting a therapy that feels more severe than a tablet.</p>
-        <blockquote class="article-blockquote">An oral option can change how early people accept treatment, how quickly they stay on it, and how comfortably clinicians can move from lifestyle care to pharmacologic support.<cite>Dr. Sarah Chen, Stanford Medicine</cite></blockquote>
-        <h2 id="toc-3">What patients can expect next</h2>
-        <p>Pharmacies are expected to receive the first shipments soon, while prescribers begin sorting which patients should start with the new tablet versus remain on established injectables. The biggest near-term impact may be access, not novelty, because simpler dosing often leads to faster adoption.</p>
-      `,
-      takeaways: [
-        'First oral non-peptide GLP-1 approval for type 2 diabetes',
-        'May improve treatment acceptance for injection-averse patients',
-        'Safety profile remains in the known GLP-1 class range',
-        'Could shift early prescribing habits in primary care and endocrinology',
-      ],
-      bio: 'Board-certified endocrinologist and AjixPharmacy medicine editor. She translates clinical trial data into practical care guidance for pharmacists and patients.',
-      related: [
-        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
-        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
-      ],
-    }),
-    [storyKey('WHO updates pandemic preparedness guidance as new variants spread')]: makeStory({
-      title: 'WHO updates pandemic preparedness guidance as new variants spread',
-      category: 'Trending',
-      badge: 'Alert',
-      badgeColor: '#7c3aed',
-      subtitle: 'The revised playbook tightens response timelines, hospital coordination, and reporting standards for regional health systems.',
-      author: { initials: 'WH', name: 'Maya Patel', role: 'Public Health Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '820K views', source: 'BBC Health' },
-      heroLabel: 'HERO IMAGE - Pandemic Response',
-      heroGradient: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #2563eb 100%)',
-      tags: ['Pandemic', 'Public Health', 'WHO', 'Preparedness'],
-      toc: [
-        { id: 'toc-1', label: 'What changed in the guidance' },
-        { id: 'toc-2', label: 'How hospitals are expected to respond' },
-        { id: 'toc-3', label: 'Why timing matters' },
-      ],
-      bodyHtml: `
-        <p>The World Health Organization has refreshed its pandemic preparedness guidance as new variants continue to circulate, with a sharper emphasis on speed, communication, and local coordination.</p>
-        <p>The update is designed to help health systems avoid the delays that made early response so difficult during previous waves. It also gives ministries and hospitals a clearer escalation path when case numbers begin to climb.</p>
-        <h2 id="toc-1">What changed in the guidance</h2>
-        <p>The revision places greater weight on early warning signals, faster data sharing, and public messaging that can be activated before hospitals become overwhelmed. It also encourages regional drills rather than one-off emergency planning.</p>
-        <h2 id="toc-2">How hospitals are expected to respond</h2>
-        <p>Facilities are being asked to review staffing patterns, oxygen reserves, triage protocols, and isolation capacity. The message is simple: preparedness is less about panic and more about a repeatable operating rhythm.</p>
-        <blockquote class="article-blockquote">Prepared systems reduce confusion, and confusion is often the first thing that hurts patients during a fast-moving outbreak.<cite>World Health Desk analysis</cite></blockquote>
-        <h2 id="toc-3">Why timing matters</h2>
-        <p>Variants do not wait for committees. The earlier a response plan is activated, the less likely routine care gets overwhelmed. That is why the update stresses immediate alignment between laboratories, public health teams, and front-line clinicians.</p>
-      `,
-      takeaways: [
-        'WHO guidance now emphasizes faster escalation and clearer reporting',
-        'Hospitals are being pushed toward repeatable preparedness drills',
-        'Early warning and communication now sit at the center of response planning',
-        'The changes aim to reduce confusion before case surges peak',
-      ],
-      bio: 'Public health reporter covering cross-border disease preparedness, hospital operations, and outbreak policy.',
-      related: [
-        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
-        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
-        { key: storyKey('WHO updates pandemic preparedness guidelines for 2026'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidelines for 2026', meta: 'BBC Health · 4 min read' },
-        { key: storyKey('CRISPR therapy achieves sustained remission in sickle cell trial'), tag: 'Research', title: 'CRISPR therapy achieves sustained remission in sickle cell trial', meta: 'Nature Medicine · 8 min read' },
-      ],
-    }),
-    [storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation')]: makeStory({
-      title: 'AI model predicts drug interactions with 94% accuracy in clinical validation',
-      category: 'Research',
-      badge: 'Insight',
-      badgeColor: '#111827',
-      subtitle: 'Researchers say the system could help pharmacists and prescribers flag risky combinations earlier in the prescribing workflow.',
-      author: { initials: 'ML', name: 'Marcus Lee', role: 'Clinical AI Correspondent' },
-      meta: { date: 'Aug 21, 2026', readTime: '7 min read', views: '640K views', source: 'Stanford Medicine' },
-      heroLabel: 'HERO IMAGE - Drug Interaction Model',
-      heroGradient: 'linear-gradient(135deg, #111827 0%, #312e81 55%, #4f46e5 100%)',
-      tags: ['AI in Medicine', 'Drug Safety', 'Clinical Validation', 'Research'],
-      toc: [
-        { id: 'toc-1', label: 'What the model was trained on' },
-        { id: 'toc-2', label: 'Where it may help clinicians' },
-        { id: 'toc-3', label: 'What still needs validation' },
-      ],
-      bodyHtml: `
-        <p>A transformer-based model trained on millions of drug-pair records is showing promise as a safety layer for prescribers who need to assess interactions quickly during a busy clinic day.</p>
-        <p>The result is not about replacing pharmacists. It is about giving them a smarter first pass that can flag combinations worth a second look before a prescription is finalized.</p>
-        <h2 id="toc-1">What the model was trained on</h2>
-        <p>The system learned from large clinical and pharmacovigilance datasets that reflect how medications are actually used together, not just how they look in isolated trials. That context appears to be what gives the model its edge.</p>
-        <h2 id="toc-2">Where it may help clinicians</h2>
-        <p>Researchers envision the tool sitting inside electronic health records, pharmacy platforms, and discharge workflows, where it can alert teams to interactions in seconds rather than after the fact.</p>
-        <h2 id="toc-3">What still needs validation</h2>
-        <p>Before clinical rollout, the model needs broader testing across different health systems and patient populations. The team is also studying how often the alerts are useful versus noisy in real-world practice.</p>
-      `,
-      takeaways: [
-        'Model showed strong validation performance on drug-pair records',
-        'Could act as a safety net in EHR and pharmacy workflows',
-        'Needs broader testing across multiple systems before rollout',
-        'Best used as decision support, not as a replacement for clinical judgment',
-      ],
-      bio: 'Clinical AI correspondent covering applied machine learning, digital medicine, and workflow automation.',
-      related: [
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-        { key: storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans'), tag: 'Research', title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans', meta: 'NEJM · 7 min read' },
-        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
-        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
-      ],
-    }),
-    [storyKey('New antibiotic class shows promise against resistant superbugs')]: makeStory({
-      title: 'New antibiotic class shows promise against resistant superbugs',
-      category: 'Medicine',
-      badge: 'Medicine',
-      badgeColor: '#2563eb',
-      subtitle: 'Early preclinical data suggest a novel compound may help curb bacteria that have become difficult to treat with existing options.',
-      author: { initials: 'PN', name: 'Priya Nair', role: 'Infectious Disease Editor' },
-      meta: { date: 'Aug 21, 2026', readTime: '6 min read', views: '730K views', source: 'The Lancet' },
-      heroLabel: 'HERO IMAGE - Antibiotic Research',
-      heroGradient: 'linear-gradient(135deg, #0f766e 0%, #0f766e 50%, #115e59 100%)',
-      tags: ['Antibiotics', 'Superbugs', 'Research', 'Medicine'],
-      toc: [
-        { id: 'toc-1', label: 'Why the class is different' },
-        { id: 'toc-2', label: 'Where resistance has been strongest' },
-        { id: 'toc-3', label: 'What comes before human use' },
-      ],
-      bodyHtml: `
-        <p>Scientists are reporting encouraging activity from a new antibiotic class aimed at bacterial targets that have become difficult for older drugs to reach.</p>
-        <p>The goal is not simply to create another antibiotic. It is to outmaneuver organisms that have learned to evade the medicines clinicians already rely on.</p>
-        <h2 id="toc-1">Why the class is different</h2>
-        <p>The molecule appears to act on the ribosome in a way that makes bacterial escape harder, which may help preserve activity against strains that have already shrugged off several common therapies.</p>
-        <h2 id="toc-2">Where resistance has been strongest</h2>
-        <p>Researchers are focusing on MRSA and carbapenem-resistant pathogens, two categories where treatment choices can shrink quickly once standard regimens fail.</p>
-        <h2 id="toc-3">What comes before human use</h2>
-        <p>The next milestone is toxicology, manufacturing stability, and human safety studies. Until then, the story is promising but still early.</p>
-      `,
-      takeaways: [
-        'A new mechanism may help address hard-to-treat resistant bacteria',
-        'Preclinical results are encouraging but still early',
-        'Human safety studies are the next major milestone',
-        'Resistance remains the central challenge in antibiotic development',
-      ],
-      bio: 'Infectious disease editor covering antimicrobial resistance, hospital stewardship, and vaccine research.',
-      related: [
-        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
-        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
-        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
-        { key: storyKey('WHO updates pandemic preparedness guidelines for 2026'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidelines for 2026', meta: 'BBC Health · 4 min read' },
-      ],
-    }),
-    [storyKey('Mediterranean diet scores another win for cognitive decline prevention')]: makeStory({
-      title: 'Mediterranean diet scores another win for cognitive decline prevention',
-      category: 'Wellness',
-      badge: 'Wellness',
-      badgeColor: '#16a34a',
-      subtitle: 'A large meta-analysis adds more weight to the idea that eating patterns can meaningfully affect long-term brain health.',
-      author: { initials: 'NB', name: 'Naomi Brooks', role: 'Nutrition Editor' },
-      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '510K views', source: 'Mayo Clinic' },
-      heroLabel: 'HERO IMAGE - Nutrition and Brain Health',
-      heroGradient: 'linear-gradient(135deg, #134e4a 0%, #059669 60%, #22c55e 100%)',
-      tags: ['Nutrition', 'Brain Health', 'Wellness', 'Prevention'],
-      toc: [
-        { id: 'toc-1', label: 'What the analysis found' },
-        { id: 'toc-2', label: 'Why diet matters for cognition' },
-        { id: 'toc-3', label: 'How to make it practical' },
-      ],
-      bodyHtml: `
-        <p>Another large review is strengthening the connection between Mediterranean-style eating and lower risk of cognitive decline over time.</p>
-        <p>The message is familiar, but the evidence keeps getting harder to ignore: consistent dietary patterns appear to matter more than single superfoods.</p>
-        <h2 id="toc-1">What the analysis found</h2>
-        <p>Participants who stuck closest to the pattern had better cognitive outcomes in the long run, especially when the diet was paired with routine physical activity and adequate sleep.</p>
-        <h2 id="toc-2">Why diet matters for cognition</h2>
-        <p>Researchers think the benefit comes from lower inflammation, improved cardiometabolic health, and steadier blood sugar control, all of which may help protect the brain.</p>
-        <h2 id="toc-3">How to make it practical</h2>
-        <p>Swaps like olive oil for butter, beans for processed sides, and fish for red meat are small enough to keep, but meaningful enough to move the needle over time.</p>
-      `,
-      takeaways: [
-        'Mediterranean-style eating continues to show cognitive benefits',
-        'The pattern likely helps through cardiovascular and inflammatory pathways',
-        'Small food swaps are easier to sustain than extreme diet changes',
-        'Sleep and activity still matter alongside nutrition',
-      ],
-      bio: 'Nutrition editor focused on lifestyle medicine, prevention, and practical habit change.',
-      related: [
-        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
-        { key: storyKey('Sleep quality linked to cardiovascular risk in new 10-year study'), tag: 'Wellness', title: 'Sleep quality linked to cardiovascular risk in new 10-year study', meta: 'Harvard Health · 5 min read' },
-        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
-        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
-      ],
-    }),
-    [storyKey('Pharmacists warn of shortages in common blood pressure medications')]: makeStory({
-      title: 'Pharmacists warn of shortages in common blood pressure medications',
-      category: 'Trending',
-      badge: 'Alert',
-      badgeColor: '#dc2626',
-      subtitle: 'Supply issues are affecting lisinopril and amlodipine availability in a growing share of pharmacies.',
-      author: { initials: 'AJ', name: 'Ajixpharmacy Desk', role: 'Pharmacy News Editor' },
-      meta: { date: 'Aug 21, 2026', readTime: '3 min read', views: '860K views', source: 'AJHP' },
-      heroLabel: 'HERO IMAGE - Pharmacy Supply Chain',
-      heroGradient: 'linear-gradient(135deg, #7c2d12 0%, #dc2626 55%, #f97316 100%)',
-      tags: ['Shortage', 'Blood Pressure', 'Pharmacy', 'Alert'],
-      toc: [
-        { id: 'toc-1', label: 'Which medicines are affected' },
-        { id: 'toc-2', label: 'How pharmacists are responding' },
-        { id: 'toc-3', label: 'Why patients should call ahead' },
-      ],
-      bodyHtml: `
-        <p>Pharmacies are reporting tighter supply on several common blood pressure medications, especially lisinopril and amlodipine, which remain among the most frequently dispensed agents in outpatient care.</p>
-        <p>Shortages do not always mean a drug has disappeared. But they do mean more phone calls, more substitutions, and more delays for patients who depend on a steady refill rhythm.</p>
-        <h2 id="toc-1">Which medicines are affected</h2>
-        <p>The latest reports point to disruption in the most routine formulations rather than niche products, which is why the impact is being felt so broadly across community pharmacies.</p>
-        <h2 id="toc-2">How pharmacists are responding</h2>
-        <p>Teams are comparing inventory across strengths, switching manufacturers where possible, and asking prescribers to approve therapeutic alternatives when the exact tablet is not available.</p>
-        <h2 id="toc-3">Why patients should call ahead</h2>
-        <p>Refill timing matters during shortages. A call before the last tablet is gone can buy enough time for a substitution or a transfer to another location with stock.</p>
-      `,
-      takeaways: [
-        'Common blood pressure tablets are showing supply pressure',
-        'Pharmacists may need to substitute strengths or manufacturers',
-        'Patients should call ahead before running out',
-        'Routine medicines can be affected even when headlines focus elsewhere',
-      ],
-      bio: 'Pharmacy editor covering medication access, supply chain issues, and dispensing policy.',
-      related: [
-        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
-        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
-      ],
-    }),
-    [storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine')]: makeStory({
-      title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine',
-      category: 'Medicine',
-      badge: 'Medicine',
-      badgeColor: '#2563eb',
-      subtitle: 'The next-generation pneumococcal shot is designed to widen coverage and simplify the adult vaccine schedule.',
-      author: { initials: 'KM', name: 'Kofi Mensah', role: 'Vaccine Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '430K views', source: 'Reuters' },
-      heroLabel: 'HERO IMAGE - Vaccine Development',
-      heroGradient: 'linear-gradient(135deg, #0f172a 0%, #0f766e 55%, #2563eb 100%)',
-      tags: ['Vaccines', 'Pneumococcal', 'Adults', 'Medicine'],
-      toc: [
-        { id: 'toc-1', label: 'What the trial showed' },
-        { id: 'toc-2', label: 'Why broader coverage matters' },
-        { id: 'toc-3', label: 'Where the schedule could change' },
-      ],
-      bodyHtml: `
-        <p>Pfizer says its Phase II readout supports continued development of a pneumococcal vaccine intended to broaden protection for adults who remain vulnerable to invasive disease.</p>
-        <p>The strategy is to combine broader serotype coverage with a schedule that is easier for clinicians to place alongside other adult immunizations.</p>
-        <h2 id="toc-1">What the trial showed</h2>
-        <p>Early immunogenicity data were encouraging, with antibody responses strong enough to justify moving to the next stage of development.</p>
-        <h2 id="toc-2">Why broader coverage matters</h2>
-        <p>Pneumococcal disease still causes serious illness in older adults and patients with chronic conditions. Better coverage could reduce both hospitalizations and the need for catch-up dosing later in life.</p>
-        <h2 id="toc-3">Where the schedule could change</h2>
-        <p>If later trials hold up, clinicians may have one more streamlined option to pair with flu, RSV, and COVID boosters during routine visits.</p>
-      `,
-      takeaways: [
-        'Phase II results support continued vaccine development',
-        'Broader serotype coverage is the main target',
-        'Future schedules could become easier to co-administer',
-        'Adults with chronic disease remain a key protection group',
-      ],
-      bio: 'Vaccine reporter covering immunization programs, trial readouts, and public health uptake.',
-      related: [
-        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
-        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
-      ],
-    }),
-    [storyKey('High-intensity interval training reduces all-cause mortality by 15%')]: makeStory({
-      title: 'High-intensity interval training reduces all-cause mortality by 15%',
-      category: 'Wellness',
-      badge: 'Wellness',
-      badgeColor: '#16a34a',
-      subtitle: 'The finding adds to the case that short, intense workouts can deliver outsized health returns when done consistently.',
-      author: { initials: 'EC', name: 'Emma Cole', role: 'Lifestyle Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '4 min read', views: '390K views', source: 'BMJ' },
-      heroLabel: 'HERO IMAGE - Exercise and Longevity',
-      heroGradient: 'linear-gradient(135deg, #14532d 0%, #16a34a 55%, #84cc16 100%)',
-      tags: ['Fitness', 'Longevity', 'Exercise', 'Wellness'],
-      toc: [
-        { id: 'toc-1', label: 'How the data was pooled' },
-        { id: 'toc-2', label: 'Why intensity can be efficient' },
-        { id: 'toc-3', label: 'How to start safely' },
-      ],
-      bodyHtml: `
-        <p>High-intensity interval training is once again getting attention after a large review linked regular participation with lower all-cause mortality.</p>
-        <p>The appeal is obvious: short sessions can fit into busy schedules, which makes long-term adherence more realistic for many people.</p>
-        <h2 id="toc-1">How the data was pooled</h2>
-        <p>Researchers combined multiple observational cohorts to compare participants who trained at higher intensity with those who stayed largely sedentary or lightly active.</p>
-        <h2 id="toc-2">Why intensity can be efficient</h2>
-        <p>Brief bursts of hard effort can improve cardiovascular fitness, insulin sensitivity, and muscular endurance without requiring an hour at the gym.</p>
-        <h2 id="toc-3">How to start safely</h2>
-        <p>People new to exercise should scale up gradually and check with a clinician if they have cardiac disease, arthritis, or other limitations.</p>
-      `,
-      takeaways: [
-        'HIIT remains a time-efficient exercise option',
-        'The study links intensity with better longevity outcomes',
-        'Safe progression matters more than maximal effort',
-        'Consistency still beats occasional overtraining',
-      ],
-      bio: 'Lifestyle reporter focused on exercise, sleep, and sustainable behavior change.',
-      related: [
-        { key: storyKey('Sleep quality linked to cardiovascular risk in new 10-year study'), tag: 'Wellness', title: 'Sleep quality linked to cardiovascular risk in new 10-year study', meta: 'Harvard Health · 5 min read' },
-        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
-        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
-        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
-      ],
-    }),
-    [storyKey('Gene therapy restores hearing in children with congenital deafness')]: makeStory({
-      title: 'Gene therapy restores hearing in children with congenital deafness',
-      category: 'Research',
-      badge: 'Research',
-      badgeColor: '#9333ea',
-      subtitle: 'Early follow-up suggests the therapy can meaningfully improve auditory function when delivered at the right developmental window.',
-      author: { initials: 'DO', name: 'Daniel Okoye', role: 'Genetics Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '9 min read', views: '280K views', source: 'NEJM' },
-      heroLabel: 'HERO IMAGE - Gene Therapy',
-      heroGradient: 'linear-gradient(135deg, #312e81 0%, #7c3aed 60%, #a855f7 100%)',
-      tags: ['Gene Therapy', 'Hearing', 'Genetics', 'Research'],
-      toc: [
-        { id: 'toc-1', label: 'What the treatment targets' },
-        { id: 'toc-2', label: 'Why timing matters' },
-        { id: 'toc-3', label: 'What families are watching' },
-      ],
-      bodyHtml: `
-        <p>A gene therapy study is reporting restored hearing in children born with congenital deafness, offering one of the clearest signs yet that precision medicine can change function, not just lab values.</p>
-        <p>The result is early, but it matters because hearing development is tied closely to language acquisition and long-term social outcomes.</p>
-        <h2 id="toc-1">What the treatment targets</h2>
-        <p>The therapy delivers a corrected genetic signal to the cells that help transmit sound, restoring a missing step in the hearing pathway.</p>
-        <h2 id="toc-2">Why timing matters</h2>
-        <p>Researchers say the best responses are seen when treatment is given before the auditory system has fully adapted to silence.</p>
-        <h2 id="toc-3">What families are watching</h2>
-        <p>Parents and clinicians are now following durability, safety, and whether the gains continue to expand as children grow and learn.</p>
-      `,
-      takeaways: [
-        'Gene therapy may restore hearing in selected congenital cases',
-        'Early treatment appears especially important',
-        'Durability and safety are still being studied',
-        'The result could reshape pediatric genetics care',
-      ],
-      bio: 'Genetics reporter covering rare disease, molecular therapies, and translational research.',
-      related: [
-        { key: storyKey('CRISPR therapy achieves sustained remission in sickle cell trial'), tag: 'Research', title: 'CRISPR therapy achieves sustained remission in sickle cell trial', meta: 'Nature Medicine · 8 min read' },
-        { key: storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans'), tag: 'Research', title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans', meta: 'NEJM · 7 min read' },
-        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
-        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
-      ],
-    }),
-    [storyKey('Updated RSV vaccine guidance expands protection for older adults')]: makeStory({
-      title: 'Updated RSV vaccine guidance expands protection for older adults',
-      category: 'Medicine',
-      badge: 'Medicine',
-      badgeColor: '#2563eb',
-      subtitle: 'The updated advice broadens protection for people most likely to land in hospital when RSV surges.',
-      author: { initials: 'SC', name: 'Dr. Sarah Chen', role: 'Immunization Editor' },
-      meta: { date: 'Aug 21, 2026', readTime: '4 min read', views: '460K views', source: 'CDC' },
-      heroLabel: 'HERO IMAGE - RSV Guidance',
-      heroGradient: 'linear-gradient(135deg, #0f172a 0%, #0f766e 60%, #14b8a6 100%)',
-      tags: ['RSV', 'Older Adults', 'Vaccines', 'Guidance'],
-      toc: [
-        { id: 'toc-1', label: 'Who the guidance covers' },
-        { id: 'toc-2', label: 'Why risk is being expanded' },
-        { id: 'toc-3', label: 'What patients should ask' },
-      ],
-      bodyHtml: `
-        <p>Health agencies have broadened RSV vaccine guidance for older adults, reflecting a clearer picture of who is most likely to face severe disease.</p>
-        <p>The move is meant to make prevention more routine in the same way flu and COVID vaccination became part of seasonal planning.</p>
-        <h2 id="toc-1">Who the guidance covers</h2>
-        <p>The update gives clinicians more flexibility to recommend vaccination for older adults with chronic lung, heart, or immune conditions.</p>
-        <h2 id="toc-2">Why risk is being expanded</h2>
-        <p>As RSV has become more visible in adult medicine, agencies have refined who benefits most from prevention rather than waiting for infection to occur.</p>
-        <h2 id="toc-3">What patients should ask</h2>
-        <p>Patients should ask whether the vaccine is appropriate alongside other seasonal immunizations and whether timing should be adjusted around other care.</p>
-      `,
-      takeaways: [
-        'RSV guidance now covers more older adults at risk',
-        'Clinicians can align it with seasonal vaccine planning',
-        'Chronic disease remains a key reason to consider protection',
-        'Prevention is being framed more like routine adult care',
-      ],
-      bio: 'Immunization editor focused on adult vaccines, preventive care, and guideline updates.',
-      related: [
-        { key: storyKey('Pfizer announces Phase II results for next-gen pneumococcal vaccine'), tag: 'Medicine', title: 'Pfizer announces Phase II results for next-gen pneumococcal vaccine', meta: 'Reuters · 5 min read' },
-        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
-        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-      ],
-    }),
-    [storyKey('Digital CBT program shows sustained benefit for adolescent anxiety')]: makeStory({
-      title: 'Digital CBT program shows sustained benefit for adolescent anxiety',
-      category: 'Wellness',
-      badge: 'Wellness',
-      badgeColor: '#16a34a',
-      subtitle: 'A structured online program appears to keep helping teens long after the first intervention window closes.',
-      author: { initials: 'EC', name: 'Emma Cole', role: 'Behavioral Health Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '6 min read', views: '360K views', source: 'JAMA' },
-      heroLabel: 'HERO IMAGE - Digital Mental Health',
-      heroGradient: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 55%, #22c55e 100%)',
-      tags: ['Mental Health', 'CBT', 'Teens', 'Wellness'],
-      toc: [
-        { id: 'toc-1', label: 'What the program includes' },
-        { id: 'toc-2', label: 'Why the benefit lasts' },
-        { id: 'toc-3', label: 'Where digital care fits' },
-      ],
-      bodyHtml: `
-        <p>Digital cognitive behavioral therapy is showing sustained benefit for adolescents with anxiety, strengthening the argument that structured online care can complement in-person support.</p>
-        <p>The key word is structured. The programs that work best are the ones with pacing, guidance, and accountability instead of open-ended self-help content.</p>
-        <h2 id="toc-1">What the program includes</h2>
-        <p>The intervention combines guided exercises, symptom tracking, and skills practice that teens can complete between school and home routines.</p>
-        <h2 id="toc-2">Why the benefit lasts</h2>
-        <p>Researchers think the consistency of the practice helps reinforce coping behavior after the initial program ends.</p>
-        <h2 id="toc-3">Where digital care fits</h2>
-        <p>Clinicians see it as a good option for access gaps, not as a replacement for all therapy. The best results still come from matching care intensity to the patient’s need.</p>
-      `,
-      takeaways: [
-        'Structured digital CBT can deliver lasting benefit for teens',
-        'Consistency and accountability appear to matter most',
-        'The format may help close access gaps',
-        'Digital therapy works best when paired with clinical oversight',
-      ],
-      bio: 'Behavioral health reporter covering anxiety, therapy access, and adolescent mental health.',
-      related: [
-        { key: storyKey('Sleep quality linked to cardiovascular risk in new 10-year study'), tag: 'Wellness', title: 'Sleep quality linked to cardiovascular risk in new 10-year study', meta: 'Harvard Health · 5 min read' },
-        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
-        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
-        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
-      ],
-    }),
-    [storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans')]: makeStory({
-      title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans',
-      category: 'Research',
-      badge: 'Research',
-      badgeColor: '#9333ea',
-      subtitle: 'The test may help clinicians detect relapse earlier by looking for tumor DNA in the blood instead of waiting on imaging.',
-      author: { initials: 'DO', name: 'Daniel Okoye', role: 'Oncology Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '7 min read', views: '420K views', source: 'NEJM' },
-      heroLabel: 'HERO IMAGE - Liquid Biopsy',
-      heroGradient: 'linear-gradient(135deg, #111827 0%, #7c3aed 55%, #ec4899 100%)',
-      tags: ['Cancer', 'Liquid Biopsy', 'Oncology', 'Research'],
-      toc: [
-        { id: 'toc-1', label: 'How the blood test works' },
-        { id: 'toc-2', label: 'Why earlier detection matters' },
-        { id: 'toc-3', label: 'What it could change in follow-up care' },
-      ],
-      bodyHtml: `
-        <p>A liquid biopsy may be able to flag colorectal cancer recurrence before standard scans do, giving oncologists an earlier signal that a patient needs closer follow-up.</p>
-        <p>The appeal is obvious: a simple blood draw is easier to repeat than imaging, and it can reveal molecular changes that are not yet visible on a scan.</p>
-        <h2 id="toc-1">How the blood test works</h2>
-        <p>The test looks for fragments of tumor DNA that circulate in the blood after treatment, offering a molecular snapshot of disease activity.</p>
-        <h2 id="toc-2">Why earlier detection matters</h2>
-        <p>Finding recurrence sooner may give clinicians a better window to adjust therapy before disease burden becomes harder to manage.</p>
-        <h2 id="toc-3">What it could change in follow-up care</h2>
-        <p>If validated widely, the approach could make surveillance more personalized, with scan timing guided by molecular risk rather than a fixed schedule alone.</p>
-      `,
-      takeaways: [
-        'Liquid biopsy may detect colorectal cancer recurrence earlier',
-        'Blood-based surveillance could complement imaging',
-        'Earlier signals may support faster treatment adjustments',
-        'The test still needs broad validation in routine practice',
-      ],
-      bio: 'Oncology reporter covering cancer diagnostics, molecular testing, and follow-up care.',
-      related: [
-        { key: storyKey('Gene therapy restores hearing in children with congenital deafness'), tag: 'Research', title: 'Gene therapy restores hearing in children with congenital deafness', meta: 'NEJM · 9 min read' },
-        { key: storyKey('CRISPR therapy achieves sustained remission in sickle cell trial'), tag: 'Research', title: 'CRISPR therapy achieves sustained remission in sickle cell trial', meta: 'Nature Medicine · 8 min read' },
-        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-      ],
-    }),
-    [storyKey('WHO updates pandemic preparedness guidelines for 2026')]: makeStory({
-      title: 'WHO updates pandemic preparedness guidelines for 2026',
-      category: 'Trending',
-      badge: 'Trending',
-      badgeColor: '#dc2626',
-      subtitle: 'The update gives health systems a cleaner playbook for response, coordination, and communication if a new wave accelerates.',
-      author: { initials: 'WH', name: 'Maya Patel', role: 'Global Health Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '4 min read', views: '690K views', source: 'BBC Health' },
-      heroLabel: 'HERO IMAGE - Pandemic Preparedness',
-      heroGradient: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 55%, #2563eb 100%)',
-      tags: ['WHO', 'Preparedness', 'Variants', 'Public Health'],
-      toc: [
-        { id: 'toc-1', label: 'What the 2026 update emphasizes' },
-        { id: 'toc-2', label: 'How systems are expected to align' },
-        { id: 'toc-3', label: 'Why the change is timely' },
-      ],
-      bodyHtml: `
-        <p>The World Health Organization has updated its 2026 preparedness guidelines to reflect the realities of a world where outbreaks can spread before local systems fully organize a response.</p>
-        <p>The guidance focuses on clearer lines of responsibility, faster escalation, and more consistent communication between public health teams and hospitals.</p>
-        <h2 id="toc-1">What the 2026 update emphasizes</h2>
-        <p>The new playbook prioritizes early detection, command structure, and real-time data sharing so response teams can move before case counts climb sharply.</p>
-        <h2 id="toc-2">How systems are expected to align</h2>
-        <p>Hospitals, labs, and ministries are being encouraged to rehearse the same playbook together rather than improvising separately during a surge.</p>
-        <h2 id="toc-3">Why the change is timely</h2>
-        <p>When variants are moving fast, preparedness is not just a policy goal. It is a capacity issue that affects every clinic, ward, and pharmacy in the chain.</p>
-      `,
-      takeaways: [
-        'WHO wants faster escalation and clearer coordination',
-        'Preparedness now centers on data sharing and command structure',
-        'Hospitals are being pushed toward joint drills and rehearsals',
-        'The update reflects how quickly variants can move',
-      ],
-      bio: 'Global health reporter covering outbreak policy, hospital response, and international guidance.',
-      related: [
-        { key: storyKey('WHO updates pandemic preparedness guidance as new variants spread'), tag: 'Trending', title: 'WHO updates pandemic preparedness guidance as new variants spread', meta: 'BBC Health · 4 min read' },
-        { key: storyKey('Pharmacists warn of shortages in common blood pressure medications'), tag: 'Trending', title: 'Pharmacists warn of shortages in common blood pressure medications', meta: 'AJHP · 3 min read' },
-        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-      ],
-    }),
-    [storyKey('CRISPR therapy achieves sustained remission in sickle cell trial')]: makeStory({
-      title: 'CRISPR therapy achieves sustained remission in sickle cell trial',
-      category: 'Research',
-      badge: 'Research',
-      badgeColor: '#9333ea',
-      subtitle: 'The gene-editing result keeps the focus on whether a one-time treatment can hold up over the long term.',
-      author: { initials: 'DO', name: 'Daniel Okoye', role: 'Genomics Reporter' },
-      meta: { date: 'Aug 21, 2026', readTime: '8 min read', views: '580K views', source: 'Nature Medicine' },
-      heroLabel: 'HERO IMAGE - CRISPR Trial',
-      heroGradient: 'linear-gradient(135deg, #111827 0%, #312e81 55%, #8b5cf6 100%)',
-      tags: ['CRISPR', 'Sickle Cell', 'Gene Editing', 'Research'],
-      toc: [
-        { id: 'toc-1', label: 'What the trial achieved' },
-        { id: 'toc-2', label: 'Why durability matters' },
-        { id: 'toc-3', label: 'What still needs follow-up' },
-      ],
-      bodyHtml: `
-        <p>A CRISPR-based therapy is showing sustained remission in a sickle cell trial, bringing the field closer to treatments that modify disease rather than simply suppress symptoms.</p>
-        <p>The story now is less about whether the edit can work at all and more about how long the benefit can last in real patients.</p>
-        <h2 id="toc-1">What the trial achieved</h2>
-        <p>Participants experienced remission after therapy, a result that suggests the edited cells were able to restore healthier hemoglobin production.</p>
-        <h2 id="toc-2">Why durability matters</h2>
-        <p>For a one-time treatment to matter, the corrected cells need to persist and keep doing the job over time, not just for a brief follow-up window.</p>
-        <h2 id="toc-3">What still needs follow-up</h2>
-        <p>Researchers still need to watch for safety, durability, and access barriers before this becomes anything close to routine care.</p>
-      `,
-      takeaways: [
-        'Sustained remission is a major milestone for gene editing',
-        'Durability and access remain the biggest questions',
-        'Follow-up will determine how close the therapy is to routine use',
-        'The result strengthens interest in one-time curative treatments',
-      ],
-      bio: 'Genomics reporter covering gene editing, inherited blood disorders, and translational trials.',
-      related: [
-        { key: storyKey('Gene therapy restores hearing in children with congenital deafness'), tag: 'Research', title: 'Gene therapy restores hearing in children with congenital deafness', meta: 'NEJM · 9 min read' },
-        { key: storyKey('Liquid biopsy flags colorectal cancer recurrence earlier than scans'), tag: 'Research', title: 'Liquid biopsy flags colorectal cancer recurrence earlier than scans', meta: 'NEJM · 7 min read' },
-        { key: storyKey('AI model predicts drug interactions with 94% accuracy in clinical validation'), tag: 'Research', title: 'AI model predicts drug interactions with 94% accuracy in clinical validation', meta: 'Stanford Medicine · 7 min read' },
-        { key: storyKey('New antibiotic class shows promise against resistant superbugs'), tag: 'Medicine', title: 'New antibiotic class shows promise against resistant superbugs', meta: 'The Lancet · 6 min read' },
-      ],
-    }),
-    [storyKey('Sleep quality linked to cardiovascular risk in new 10-year study')]: makeStory({
-      title: 'Sleep quality linked to cardiovascular risk in new 10-year study',
-      category: 'Wellness',
-      badge: 'Wellness',
-      badgeColor: '#16a34a',
-      subtitle: 'The study adds to evidence that sleep quality may be as important as sleep length when it comes to heart health.',
-      author: { initials: 'NB', name: 'Naomi Brooks', role: 'Sleep and Wellness Editor' },
-      meta: { date: 'Aug 21, 2026', readTime: '5 min read', views: '540K views', source: 'Harvard Health' },
-      heroLabel: 'HERO IMAGE - Sleep and Heart Health',
-      heroGradient: 'linear-gradient(135deg, #1e3a8a 0%, #0891b2 60%, #38bdf8 100%)',
-      tags: ['Sleep', 'Cardiovascular Health', 'Wellness', 'Prevention'],
-      toc: [
-        { id: 'toc-1', label: 'What the 10-year study tracked' },
-        { id: 'toc-2', label: 'Why sleep quality matters' },
-        { id: 'toc-3', label: 'What you can change tonight' },
-      ],
-      bodyHtml: `
-        <p>A decade-long study is linking poor sleep quality with a higher cardiovascular risk, strengthening the case that rest deserves as much attention as diet and exercise.</p>
-        <p>The message is not that sleep alone determines heart health. It is that poor sleep may be one of the more visible signs that the body is under strain.</p>
-        <h2 id="toc-1">What the 10-year study tracked</h2>
-        <p>Researchers followed sleep patterns over time and compared them with later cardiovascular outcomes, looking for patterns that persisted after adjusting for other risk factors.</p>
-        <h2 id="toc-2">Why sleep quality matters</h2>
-        <p>Fragmented rest can affect blood pressure, glucose control, and recovery, all of which may accumulate into higher risk over years.</p>
-        <h2 id="toc-3">What you can change tonight</h2>
-        <p>Consistent sleep timing, less late caffeine, and a quieter wind-down routine are small shifts, but they can make a real difference if they stick.</p>
-      `,
-      takeaways: [
-        'Sleep quality is closely tied to cardiovascular risk',
-        'Long-term patterns matter more than one bad night',
-        'Routine changes can improve sleep consistency',
-        'Heart health benefits may build over years, not days',
-      ],
-      bio: 'Sleep and wellness editor focused on prevention, behavior, and long-term cardiovascular health.',
-      related: [
-        { key: storyKey('Mediterranean diet scores another win for cognitive decline prevention'), tag: 'Wellness', title: 'Mediterranean diet scores another win for cognitive decline prevention', meta: 'Mayo Clinic · 5 min read' },
-        { key: storyKey('High-intensity interval training reduces all-cause mortality by 15%'), tag: 'Wellness', title: 'High-intensity interval training reduces all-cause mortality by 15%', meta: 'BMJ · 4 min read' },
-        { key: storyKey('Digital CBT program shows sustained benefit for adolescent anxiety'), tag: 'Wellness', title: 'Digital CBT program shows sustained benefit for adolescent anxiety', meta: 'JAMA · 6 min read' },
-        { key: storyKey('Updated RSV vaccine guidance expands protection for older adults'), tag: 'Medicine', title: 'Updated RSV vaccine guidance expands protection for older adults', meta: 'CDC · 4 min read' },
-      ],
-    }),
-  };
-
-  function buildEmptyPublishedStory(payload) {
-    const title = String(payload?.title || payload?.storyKey || payload?.id || 'Published article').trim() || 'Published article';
-    const sourceName = String(payload?.sourceName || payload?.source || '').trim();
-    const authorName = String(payload?.author || sourceName || 'Ajixpharmacy Desk').trim();
-    const likes = getStoryLikeCount(payload);
-    return makeStory({
-      title,
-      category: 'Published article',
-      badge: 'Published article',
-      badgeColor: '#2563eb',
-      subtitle: 'This page only renders articles that were published by admin.',
-      author: { initials: getAvatarInitials(authorName, 'AJ'), name: authorName, role: sourceName || 'Not set' },
-      meta: { date: 'Not available', readTime: '0 min read', views: '0 views', source: sourceName, likes },
-      likes,
-      sourceName,
-      heroLabel: `HERO IMAGE - ${title}`,
-      heroGradient: 'linear-gradient(135deg, #1f2937 0%, #374151 55%, #6b7280 100%)',
-      tags: ['Published feed only'],
-      toc: [{ id: 'toc-1', label: 'Published content' }],
-      bodyHtml: '<p>No published article is available for this story yet.</p>',
-      takeaways: [],
-      bio: 'Public story placeholder for unpublished items.',
-      related: [],
-    });
-  }
-
   function readStoredStory() {
     try {
       const raw = window.sessionStorage.getItem(STORAGE_KEY);
@@ -2282,7 +1819,7 @@
   }
 
   function getStoryByKey(key) {
-    return STORY_LIBRARY[key] || null;
+    return null;
   }
 
   function renderMetaDetails(story) {
@@ -2329,7 +1866,7 @@
     if (entry.meta && typeof entry.meta === 'object') {
       return [entry.meta.source, entry.meta.readTime].filter(Boolean).join(' · ');
     }
-    return '';
+    return [entry.sourceName || entry.sourcePublishedLabel, entry.readTime].filter(Boolean).join(' · ');
   }
 
   function scoreRelatedStory(currentStory, candidateStory) {
@@ -2352,86 +1889,89 @@
     return score;
   }
 
+  async function loadRelatedPublishedStories(currentStory) {
+    try {
+      const apiBase = await ensureReviewApiBase();
+      const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Failed to load related articles');
+      const sections = data.sections && typeof data.sections === 'object' ? data.sections : {};
+      const feedItems = Array.isArray(data.items) && data.items.length
+        ? data.items
+        : ['hero', 'latest', 'medicine', 'trendingNow'].flatMap((name) => Array.isArray(sections[name]) ? sections[name] : []);
+      relatedFeedItems = Array.isArray(feedItems) ? feedItems : [];
+      if (story && storyIdentity(story) === storyIdentity(currentStory)) renderRelated(story);
+    } catch (error) {
+      void error;
+    }
+  }
+
   function buildExpandedRelatedEntries(story) {
     const currentKey = storyIdentity(story);
-    const seen = new Set();
+    const seen = new Set([currentKey]);
     const result = [];
-
     const pushEntry = (entry) => {
       const key = storyIdentity(entry);
       if (!key || key === currentKey || seen.has(key)) return;
       seen.add(key);
       result.push({
+        id: String(entry.id || '').trim(),
         key,
         tag: entry.tag || entry.category || 'News',
         title: entry.title || '',
         meta: buildRelatedMeta(entry),
-        __score: typeof entry.__score === 'number' ? entry.__score : 0,
+        __score: typeof entry.__score === 'number' ? entry.__score : scoreRelatedStory(story, entry),
       });
     };
 
-    (Array.isArray(story?.related) ? story.related : []).forEach((entry) => {
-      pushEntry({
-        key: entry?.key,
-        tag: entry?.tag,
-        title: entry?.title,
-        meta: entry?.meta,
-        __score: 1000,
-      });
-    });
-
-    return result;
+    (Array.isArray(story?.related) ? story.related : []).forEach(pushEntry);
+    relatedFeedItems.forEach(pushEntry);
+    return result.sort((a, b) => b.__score - a.__score);
   }
 
   function renderRelated(story) {
     if (!relatedGrid) return;
     const entries = buildExpandedRelatedEntries(story);
     if (relatedToggleBtn) {
-      const hasMore = entries.length > 4;
+      const hasMore = entries.length > 10;
       relatedToggleBtn.hidden = !hasMore;
       relatedToggleBtn.setAttribute('aria-expanded', String(Boolean(relatedExpanded)));
       relatedToggleBtn.textContent = relatedExpanded ? 'View less <-' : 'View all ->';
     }
     if (!entries.length) {
-      relatedGrid.innerHTML = '<div class="related-card">More related stories will appear here soon.</div>';
+      relatedGrid.innerHTML = "";
       return;
     }
-    const visibleEntries = relatedExpanded ? entries : entries.slice(0, 4);
+    const visibleEntries = relatedExpanded ? entries : entries.slice(0, 10);
     relatedGrid.innerHTML = visibleEntries
-      .map((entry) => `
-        <button type="button" class="related-card" data-story-key="${escapeHtml(entry.key || '')}">
-          <div class="related-tag" style="color:var(--accent-blue)">${escapeHtml(entry.tag || 'News')}</div>
-          <div class="related-title">${escapeHtml(entry.title || '')}</div>
-          <div class="related-meta">${escapeHtml(entry.meta || '')}</div>
-        </button>
-      `)
-      .join('');
+      .map((entry) =>
+        "<button type=\"button\" class=\"related-card\" data-story-key=\"" + escapeHtml(entry.key || "") + "\" data-news-id=\"" + escapeHtml(entry.id || "") + "\">" +
+        "<div class=\"related-tag\" style=\"color:var(--accent-blue)\">" + escapeHtml(entry.tag || "News") + "</div>" +
+        "<div class=\"related-title\">" + escapeHtml(entry.title || "") + "</div>" +
+        "<div class=\"related-meta\">" + escapeHtml(entry.meta || "") + "</div>" +
+        "</button>"
+      )
+      .join("");
   }
 
   function renderBody(story) {
     if (!articleBody) return;
-    articleBody.innerHTML = story.bodyHtml;
+    articleBody.innerHTML = story.bodyHtml || "";
   }
 
   function renderAuthorBio(story) {
     if (!authorBioCard) return;
-    authorBioCard.innerHTML = `
-      <div class="author-bio-avatar"></div>
-      <div class="author-bio-content">
-        <h4>${escapeHtml(story.author.name)}</h4>
-        <p>${escapeHtml(story.bio)}</p>
-      </div>
-    `;
+    authorBioCard.innerHTML = [
+      '<div class="author-bio-avatar"></div>',
+      '<div class="author-bio-content">',
+      '<h4>' + escapeHtml(story.author.name) + '</h4>',
+      '<p>' + escapeHtml(story.bio) + '</p>',
+      '</div>',
+    ].join('');
     setAvatarBackground(authorBioCard.querySelector('.author-bio-avatar'), story.author.name, story.author.initials);
   }
 
   function renderStory(story) {
-    if (document.title !== `${story.title} — AjixPharmacy`) {
-      document.title = `${story.title} — AjixPharmacy`;
-    }
-
-    relatedExpanded = false;
-
     if (articleHero) {
       const heroImageUrl = String(story.imageUrl || storedStory.imageUrl || storedStory.heroBackgroundImage || '').trim();
       articleHero.hidden = !heroImageUrl;
@@ -2443,7 +1983,7 @@
         articleHero.setAttribute('aria-label', story.imageAlt || story.title || 'Article image');
         articleHero.textContent = '';
         articleHero.style.background = story.heroGradient;
-        articleHero.style.backgroundImage = `url("${heroImageUrl.replace(/"/g, '\\"')}")`;
+        articleHero.style.backgroundImage = `url("${heroImageUrl.replace(/"/g, '\"')}")`;
         articleHero.style.backgroundSize = 'cover';
         articleHero.style.backgroundPosition = 'center';
         articleHero.style.backgroundRepeat = 'no-repeat';
@@ -2468,6 +2008,7 @@
     renderAuthorBio(story);
     renderTakeaways(story);
     renderRelated(story);
+    void loadRelatedPublishedStories(story);
     renderTags(story);
     renderToc(story);
     updateKeywordWidget(story);
@@ -2479,12 +2020,15 @@
   const requestedKey = getRequestedStoryKey();
   reviewMode = storyReviewEnabled && getRequestedReviewMode();
   const resolvedKey = requestedKey || slugify(storedStory.storyKey || storedStory.title || storedStory.id || '');
-  const initialStory = buildEmptyPublishedStory(storedStory);
+  const initialStory = storedStory && (storedStory.title || storedStory.content || storedStory.body) ? buildStoryFromNewsItem(storedStory) : null;
   storySavedState = loadSavedState();
   applyTheme(loadThemePreference());
 
   const renderResolvedStory = (nextStory) => {
-    story = nextStory;
+    story = nextStory || null;
+    if (!story) {
+      return;
+    }
     activeStoryKey = slugify(story.storyKey || story.title || story.id || resolvedKey || '');
     story.storyKey = story.storyKey || activeStoryKey;
     renderStory(story);
@@ -2626,8 +2170,12 @@
     const card = event.target.closest('[data-story-key]');
     if (!card) return;
     const nextKey = String(card.dataset.storyKey || '').trim();
-    if (!nextKey) return;
-    window.location.href = './news-story.html?story=' + encodeURIComponent(nextKey);
+    const nextId = String(card.dataset.newsId || '').trim();
+    if (!nextKey && !nextId) return;
+    const query = nextId
+      ? '?newsId=' + encodeURIComponent(nextId) + (nextKey ? '&story=' + encodeURIComponent(nextKey) : '')
+      : '?story=' + encodeURIComponent(nextKey);
+    window.location.href = './news-story.html' + query;
   });
 
   relatedToggleBtn?.addEventListener('click', function () {
@@ -2667,10 +2215,23 @@
       closeMobilePanel();
     }
   });
+
+  footerSheetLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      openFooterSheet(link.dataset.footerTopic || 'about');
+    });
+  });
+  footerSheetCloseBtn?.addEventListener('click', closeFooterSheet);
+  footerSheetBackdrop?.addEventListener('click', closeFooterSheet);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeFooterSheet();
+  });
 })();
 </script>
 
 </body>
 </html>
+
 
 

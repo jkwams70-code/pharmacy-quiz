@@ -1,13 +1,15 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="auth-lock.js" data-login-url="index.html"></script>
+<script src="standalone-back.js" data-back-url="index.html?screen=quiz-menu"></script>
 <script>document.documentElement.setAttribute('data-news-shell', 'pending');</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
 <link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
 <link rel="apple-touch-icon" href="/images/app-logo.png?v=20260617-admin-avatar">
-<title>AjixPharmacy â€” Health News (Desktop)</title>
+<title>Ajix News — Health News (Desktop)</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -17,10 +19,10 @@
     --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.04); --shadow-md: 0 2px 8px rgba(0,0,0,0.06); --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
   }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--text-primary); background: var(--bg); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+  body { padding-top: 64px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--text-primary); background: var(--bg); -webkit-font-smoothing: antialiased; line-height: 1.5; }
   button { font: inherit; cursor: pointer; border: none; background: none; padding: 0; }
   a { text-decoration: none; color: inherit; }
-  .top-nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid var(--border); }
+  .top-nav { position: fixed; top: 0; left: 0; right: 0; width: 100%; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid var(--border); }
   .top-nav-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 64px; }
   .nav-left { display: flex; align-items: center; gap: 14px; }
   .nav-logo { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
@@ -169,14 +171,18 @@
   .side-card-meta { font-size: 12px; color: var(--text-tertiary); display: flex; gap: 10px; }
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .section-title { font-size: 20px; font-weight: 700; }
-  .section-actions { display: flex; gap: 8px; }
+  .section-actions { display: flex; gap: 8px; min-width: 0; }
+  .latest-filter-tabs { display: flex; gap: 8px; max-width: min(100%, 620px); overflow-x: auto; overflow-y: hidden; padding: 2px 1px 5px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; -webkit-overflow-scrolling: touch; }
+  .latest-filter-tabs::-webkit-scrollbar { height: 4px; }
+  .latest-filter-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  .latest-filter-tabs .filter-chip { flex: 0 0 auto; white-space: nowrap; }
   .filter-chip { padding: 6px 14px; border-radius: var(--radius-lg); font-size: 13px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); transition: all 0.15s ease; }
   .filter-chip:hover { border-color: var(--text-muted); }
   .filter-chip.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
   .article-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 32px; }
   .article-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: all 0.2s ease; cursor: pointer; box-shadow: var(--shadow-sm); }
   .article-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-  .article-image { height: 180px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text-muted); font-weight: 500; position: relative; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
+  .article-image { width: 100%; height: auto; min-height: 140px; aspect-ratio: 16 / 10; background: var(--card-backdrop, var(--bg)); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text-muted); font-weight: 500; position: relative; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
   .article-image .tag-overlay { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; color: #fff; }
   .image-art { color: transparent; font-size: 0; }
   .image-art::before {
@@ -184,7 +190,7 @@
     position: absolute;
     inset: 0;
     background-image: var(--card-image);
-    background-size: cover;
+    background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
   }
@@ -216,21 +222,34 @@
   }
   .news-filter-hidden { display: none !important; }
   .article-list { display: flex; flex-direction: column; gap: 12px; }
-  .article-list .list-item.is-extra { display: none; }
+  .article-list .list-item.is-extra { display: grid; }
   .article-list.is-expanded .list-item.is-extra { display: grid; }
   .list-item { display: grid; grid-template-columns: 140px 1fr auto; gap: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; transition: all 0.15s ease; cursor: pointer; box-shadow: var(--shadow-sm); }
   .list-item:hover { box-shadow: var(--shadow-md); border-color: var(--text-muted); }
-  .list-thumb { width: 140px; height: 100px; border-radius: var(--radius-md); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-muted); font-weight: 500; flex-shrink: 0; position: relative; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
+  .list-thumb { width: clamp(96px, 22vw, 140px); height: auto; aspect-ratio: 7 / 5; min-height: 70px; border-radius: var(--radius-md); background: var(--card-backdrop, var(--bg)); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-muted); font-weight: 500; flex-shrink: 0; position: relative; overflow: hidden; background-size: cover; background-position: center; background-repeat: no-repeat; }
   .list-thumb.image-art { color: transparent; font-size: 0; }
   .list-thumb.image-art::before {
     content: "";
     position: absolute;
     inset: 0;
     background-image: var(--card-image);
-    background-size: cover;
+    background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
   }
+  .card-source-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; z-index: 0; }
+  .card-source-image { display: block; object-fit: cover; }
+  .list-thumb.has-real-image, .article-image.has-real-image { background-size: cover; }
+  .list-thumb.image-art::before, .article-image.image-art::before { background-size: cover; }
+  @media (max-width: 640px) {
+    .card-source-image { display: block; object-fit: cover; }
+    .list-thumb.has-real-image, .article-image.has-real-image { background-size: cover; }
+    .list-thumb.image-art::before, .article-image.image-art::before { background-size: cover; }
+  }
+
+  .article-image .tag-overlay { position: absolute; z-index: 1; }
+  .list-thumb.has-real-image { background-size: cover; background-position: center; background-repeat: no-repeat; }
+  .list-thumb.has-real-image::before { display: none; }
   .list-body { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
   .list-tag { font-size: 11px; font-weight: 600; }
   .list-title { font-size: 15px; font-weight: 600; line-height: 1.35; }
@@ -262,12 +281,160 @@
   .newsletter-btn { width: 100%; padding: 10px; border-radius: var(--radius-md); background: #fff; color: var(--text-primary); font-size: 13px; font-weight: 600; transition: opacity 0.15s ease; }
   .newsletter-btn:hover { opacity: 0.9; }
   .app-footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 32px 24px; background: var(--surface); }
-  .footer-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+  .footer-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
   .footer-brand { font-size: 16px; font-weight: 700; }
-  .footer-links { display: flex; gap: 24px; }
-  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; }
+  .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 24px; }
+  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; white-space: nowrap; }
   .footer-links a:hover { color: var(--text-primary); }
+
   .footer-copy { font-size: 12px; color: var(--text-muted); }
+  .footer-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 155;
+    background: rgba(8, 10, 15, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s ease;
+  }
+  .footer-sheet-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .footer-sheet {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 0;
+    z-index: 160;
+    max-width: 760px;
+    margin: 0 auto;
+    transform: translateY(110%) scale(0.985);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.28s ease, opacity 0.2s ease;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+  }
+  .footer-sheet.is-open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .footer-sheet-handle {
+    width: 52px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--border);
+    margin: 12px auto 0;
+  }
+  .footer-sheet-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px 10px;
+  }
+  .footer-sheet-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+  }
+  .footer-sheet-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .footer-sheet-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .footer-sheet-close:hover {
+    color: var(--text-primary);
+  }
+  .footer-sheet-body {
+    max-height: min(64vh, 520px);
+    overflow: auto;
+    padding: 0 18px 18px;
+    color: var(--text-secondary);
+    display: grid;
+    gap: 12px;
+  }
+  .footer-sheet-body p {
+    margin: 0;
+    line-height: 1.6;
+  }
+  .footer-sheet-body h3 {
+    margin: 8px 0 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+  .footer-sheet-body ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+  }
+  .footer-sheet-contact-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .footer-sheet-contact-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+  .footer-sheet-contact-btn:hover {
+    border-color: var(--text-muted);
+  }
+  body.is-footer-sheet-open {
+    overflow: hidden;
+  }
+
+  @media (max-width: 900px) {
+    .footer-sheet {
+      left: 8px;
+      right: 8px;
+    }
+    .footer-sheet-header {
+      padding: 12px 14px 8px;
+    }
+    .footer-sheet-title {
+      font-size: 18px;
+    }
+    .footer-sheet-body {
+      padding: 0 14px 16px;
+      max-height: 62vh;
+    }
+  }
+
   .sidebar-left,
   .main-content,
   .sidebar-right,
@@ -316,7 +483,17 @@
     .sidebar-left { display: none; }
     .hero-section { grid-template-columns: 1fr; }
     .article-grid { grid-template-columns: 1fr; }
-    .top-nav-inner { padding: 0 14px; gap: 10px; min-height: 60px; }
+    body { padding-top: 58px; }
+    .top-nav-inner { padding: 0 12px; gap: 8px; min-height: 58px; }
+    .nav-left { gap: 8px; }
+    .nav-right { gap: 6px; }
+    .nav-logo { font-size: 18px; letter-spacing: -0.2px; }
+    .nav-icon-btn { width: 34px; height: 34px; }
+    html, body { overflow-x: hidden; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .section-actions { width: 100%; overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap; gap: 8px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .section-actions::-webkit-scrollbar { display: none; }
+    .filter-chip { flex: 0 0 auto; }
     .nav-search { display: none; }
     .nav-search-toggle { display: flex; }
     .nav-avatar { display: none; }
@@ -371,6 +548,128 @@
     }
   }
 </style>
+<style id="mobile-news-card-layout">
+@media (max-width: 640px) {
+  .article-grid { gap: 12px !important; margin-bottom: 22px !important; }
+  .article-card {
+    display: grid !important;
+    grid-template-columns: 112px minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    min-height: 0 !important;
+    border-radius: 14px !important;
+  }
+  .article-card > .article-image {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 112px !important;
+    aspect-ratio: auto !important;
+  }
+  .article-card > .article-body,
+  .article-card > .article-content {
+    min-width: 0 !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+  .article-card .article-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    min-width: 0 !important;
+    margin-bottom: 6px !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+  .article-card .source-avatar { width: 20px !important; height: 20px !important; font-size: 9px !important; }
+  .article-card .source-name,
+  .article-card .article-time { font-size: 10px !important; line-height: 1.25 !important; }
+  .article-card .article-title {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 3 !important;
+    overflow: hidden !important;
+    margin: 0 0 6px !important;
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+    letter-spacing: -.1px !important;
+  }
+  .article-card .article-excerpt {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    margin: 0 0 7px !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  .article-card .article-footer,
+  .article-card .article-actions { gap: 4px !important; }
+  .article-card .article-footer { padding-top: 7px !important; }
+  .article-card .action-btn { width: 26px !important; height: 26px !important; }
+  .article-card .action-btn svg { width: 16px !important; height: 16px !important; }
+  .article-image .tag-overlay { top: 8px !important; left: 8px !important; padding: 3px 6px !important; font-size: 9px !important; }
+}
+@media (max-width: 380px) {
+  .article-card { grid-template-columns: 92px minmax(0, 1fr) !important; }
+  .article-card > .article-image { min-height: 92px !important; }
+  .article-card > .article-body,
+  .article-card > .article-content { padding: 10px !important; }
+  .article-card .article-title { font-size: 14px !important; }
+}
+</style><style id="mobile-medicine-list-layout">
+@media (max-width: 640px) {
+  .article-list { gap: 8px !important; }
+  .list-item {
+    grid-template-columns: 64px minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    padding: 10px !important;
+    border-radius: 12px !important;
+    min-height: 0 !important;
+  }
+  .list-thumb {
+    width: 64px !important;
+    height: 52px !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    border-radius: 8px !important;
+  }
+  .list-body { min-width: 0 !important; gap: 3px !important; }
+  .list-tag { font-size: 9px !important; line-height: 1.2 !important; }
+  .list-title {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+  }
+  .list-meta {
+    min-width: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+  }
+  .list-actions { gap: 2px !important; }
+  .list-actions .action-btn { width: 25px !important; height: 25px !important; }
+  .list-actions .action-btn svg { width: 15px !important; height: 15px !important; }
+}
+@media (max-width: 380px) {
+  .list-item { grid-template-columns: 56px minmax(0, 1fr) auto !important; gap: 8px !important; padding: 8px !important; }
+  .list-thumb { width: 56px !important; height: 46px !important; }
+  .list-title { font-size: 12px !important; }
+  .list-meta { font-size: 9px !important; }
+}
+</style>  <style>
+/* AjiX named header colors */
+  .nav-logo .brand-core { color: #111827; }
+  .nav-logo .brand-news { color: #1d4ed8; }
+  html[data-theme="dark"] .nav-logo .brand-core { color: #f3f4f6; }
+  html[data-theme="dark"] .nav-logo .brand-news { color: #93c5fd; }
+</style>
 </head>
 <body>
 
@@ -381,7 +680,7 @@
       <button class="nav-icon-btn nav-back-btn" aria-label="Back to previous page" title="Back">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M15.5 5L9 11.5L15.5 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <div class="nav-logo">Ajix<span>Pharmacy</span></div>
+      <div class="nav-logo"><span class="brand-core">AjiX</span><span class="brand-news">News</span></div>
     </div>
     <div class="nav-right">
       <div class="nav-search">
@@ -395,14 +694,9 @@
         <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 13.2A8.6 8.6 0 0 1 10.8 3a9.2 9.2 0 1 0 10.2 10.2Z" fill="currentColor"/></svg>
         <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.2a6.8 6.8 0 1 0 6.8 6.8A6.81 6.81 0 0 0 12 5.2Zm0 11.2A4.4 4.4 0 1 1 16.4 12 4.41 4.41 0 0 1 12 16.4ZM12 2.4a1.1 1.1 0 0 1 1.1 1.1v1a1.1 1.1 0 0 1-2.2 0v-1A1.1 1.1 0 0 1 12 2.4Zm0 17a1.1 1.1 0 0 1 1.1 1.1v1a1.1 1.1 0 0 1-2.2 0v-1A1.1 1.1 0 0 1 12 19.4ZM4.2 11a1.1 1.1 0 0 1 1.1-1.1h1a1.1 1.1 0 0 1 0 2.2h-1A1.1 1.1 0 0 1 4.2 11Zm13.5 0a1.1 1.1 0 0 1 1.1-1.1h1a1.1 1.1 0 0 1 0 2.2h-1A1.1 1.1 0 0 1 17.7 11ZM6.5 5.9a1.1 1.1 0 0 1 1.55 0l.71.71a1.1 1.1 0 1 1-1.56 1.56l-.7-.71a1.1 1.1 0 0 1 0-1.56Zm9.95 9.95a1.1 1.1 0 0 1 1.56 0l.7.71a1.1 1.1 0 0 1-1.55 1.56l-.71-.71a1.1 1.1 0 0 1 0-1.56ZM17.5 5.9a1.1 1.1 0 0 1 0 1.56l-.71.71a1.1 1.1 0 0 1-1.56-1.56l.71-.71a1.1 1.1 0 0 1 1.56 0ZM7.26 16.14a1.1 1.1 0 0 1 0 1.56l-.71.71A1.1 1.1 0 0 1 4.99 16.85l.71-.71a1.1 1.1 0 0 1 1.56 0Z" fill="currentColor"/></svg>
       </button>
-      <button class="nav-icon-btn" id="news-alert-btn" data-news-filter="alert" aria-label="Notifications">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21.06 17.32C21.28 17.59 21.325 17.961 21.175 18.275C21.1003 18.4291 20.9836 18.559 20.8384 18.6497C20.6931 18.7405 20.5253 18.7884 20.354 18.788H15.822C15.6401 19.6667 15.1608 20.4558 14.465 21.0223C13.7692 21.5888 12.8993 21.8982 12.002 21.8982C11.1047 21.8982 10.2348 21.5888 9.53899 21.0223C8.84316 20.4558 8.3639 19.6667 8.182 18.788H3.784C3.63174 18.8138 3.47539 18.8001 3.33 18.748C3.15387 18.6867 3.00114 18.5721 2.89294 18.4202C2.78473 18.2683 2.7264 18.0865 2.726 17.9V17.888C2.7264 17.7648 2.75208 17.6431 2.80145 17.5302C2.85082 17.4174 2.92282 17.3159 3.013 17.232L3.259 16.934L3.26 16.932C4.163 15.828 4.683 14.372 4.683 12.852V9.674C4.723 7.645 5.457 5.729 6.76 4.287C8.071 2.826 9.841 2 11.732 2H12.27C16.27 2 19.33 5.643 19.33 9.861V13.044C19.377 14.498 19.886 15.875 20.743 16.935L20.745 16.937L21.06 17.32ZM8.12 5.483L8.117 5.486C7.124 6.584 6.537 8.077 6.502 9.7V12.85C6.502 14.317 6.12 15.75 5.414 16.987H18.594C17.9177 15.7851 17.5462 14.4357 17.512 13.057V9.86C17.512 6.403 15.046 3.799 12.27 3.799H11.732C10.396 3.799 9.109 4.378 8.12 5.483ZM13.949 18.787H10.055C10.2118 19.1749 10.4809 19.5072 10.8278 19.7412C11.1747 19.9751 11.5836 20.1001 12.002 20.1001C12.4204 20.1001 12.8293 19.9751 13.1762 19.7412C13.5231 19.5072 13.7922 19.1749 13.949 18.787Z" fill="currentColor"/></svg>
-        <span class="nav-badge"></span>
-      </button>
       <button class="nav-icon-btn nav-dashboard-btn" id="mobile-dashboard-toggle" aria-label="Dashboard" title="Dashboard">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 4.8C4 4.35817 4.35817 4 4.8 4H9.2C9.64183 4 10 4.35817 10 4.8V9.2C10 9.64183 9.64183 10 9.2 10H4.8C4.35817 10 4 9.64183 4 9.2V4.8ZM14.8 4C14.3582 4 14 4.35817 14 4.8V9.2C14 9.64183 14.3582 10 14.8 10H19.2C19.6418 10 20 9.64183 20 9.2V4.8C20 4.35817 19.6418 4 19.2 4H14.8ZM4 14.8C4 14.3582 4.35817 14 4.8 14H9.2C9.64183 14 10 14.3582 10 14.8V19.2C10 19.6418 9.64183 20 9.2 20H4.8C4.35817 20 4 19.6418 4 19.2V14.8ZM14.8 14C14.3582 14 14 14.3582 14 14.8V19.2C14 19.6418 14.3582 20 14.8 20H19.2C19.6418 20 20 19.6418 20 19.2V14.8C20 14.3582 19.6418 14 19.2 14H14.8Z" fill="currentColor"/></svg>
       </button>
-      <div class="nav-avatar">JD</div>
     </div>
   </div>
 </nav>
@@ -598,12 +892,9 @@
 
     <!-- SECTION: LATEST NEWS -->
     <div class="section-header">
-      <h2 class="section-title">Latest news</h2>
+      <h2 class="section-title" id="latest-news-title">Latest news</h2>
       <div class="section-actions">
-        <button class="filter-chip active" data-latest-filter="all">All</button>
-        <button class="filter-chip" data-latest-filter="medicine">Medicine</button>
-        <button class="filter-chip" data-latest-filter="wellness">Wellness</button>
-        <button class="filter-chip" data-latest-filter="research">Research</button>
+        <div class="latest-filter-tabs" id="latest-filter-tabs" role="tablist" aria-label="News categories"></div>
       </div>
     </div>
 
@@ -813,8 +1104,8 @@
   <aside class="sidebar-right">
     <div class="widget" data-news-feed-slot="trending-now">
       <div class="widget-header">
-        <span class="widget-title">Trending now</span>
-        <a href="#" class="widget-link">View all</a>
+        <span class="widget-title" id="trending-column-title">Trending now</span>
+        <a href="#" class="widget-link" id="trending-view-all">View all</a>
       </div>
       <div class="trending-item" data-news-feed-slot="trending-now" data-news-filter="trending" data-news-topics="diabetes,medicine">
         <div class="trending-rank top">1</div>
@@ -882,16 +1173,28 @@
 <!-- FOOTER -->
 <footer class="app-footer">
   <div class="footer-inner">
-    <div class="footer-brand">AjixPharmacy</div>
+    <div class="footer-brand">Ajix News</div>
     <div class="footer-links">
-      <a href="#">About</a>
-      <a href="#">Privacy</a>
-      <a href="#">Terms</a>
-      <a href="#">Contact</a>
+      <a href="#" data-footer-topic="about">About</a>
+      <a href="#" data-footer-topic="privacy">Privacy</a>
+      <a href="#" data-footer-topic="terms">Terms</a>
+      <a href="#" data-footer-topic="contact">Contact</a>
     </div>
-    <div class="footer-copy">2026 AjixPharmacy. All rights reserved.</div>
+    <div class="footer-copy">2026 Ajix News. All rights reserved.</div>
   </div>
 </footer>
+<div id="footer-sheet-backdrop" class="footer-sheet-backdrop" aria-hidden="true"></div>
+<section id="footer-sheet" class="footer-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="footer-sheet-title">
+  <div class="footer-sheet-handle" aria-hidden="true"></div>
+  <div class="footer-sheet-header">
+    <div>
+      <div class="footer-sheet-kicker">Ajix News</div>
+      <h2 id="footer-sheet-title" class="footer-sheet-title">About</h2>
+    </div>
+    <button id="footer-sheet-close" class="footer-sheet-close" type="button" aria-label="Close footer details">&times;</button>
+  </div>
+  <div id="footer-sheet-body" class="footer-sheet-body"></div>
+</section>
 
 <script>
 (function(){
@@ -901,6 +1204,12 @@
   const backBtn = document.querySelector('.nav-back-btn');
   const searchToggleBtn = document.querySelector('.nav-search-toggle');
   const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  const footerSheetBackdrop = document.getElementById('footer-sheet-backdrop');
+  const footerSheet = document.getElementById('footer-sheet');
+  const footerSheetCloseBtn = document.getElementById('footer-sheet-close');
+  const footerSheetTitle = document.getElementById('footer-sheet-title');
+  const footerSheetBody = document.getElementById('footer-sheet-body');
+  const footerSheetLinks = Array.from(document.querySelectorAll('[data-footer-topic]'));
   const desktopSearchInput = document.querySelector('.nav-search input');
   const mobileSearchPanel = document.getElementById('mobile-search-panel');
   const mobileSearchInput = document.getElementById('mobile-search-input');
@@ -911,16 +1220,31 @@
   const mobileDashboardCloseBtn = document.getElementById('mobile-dashboard-close');
   const dashboardItems = Array.from(document.querySelectorAll('[data-dashboard-item]'));
   const filterControls = Array.from(document.querySelectorAll('.sidebar-item[data-news-filter], .nav-icon-btn[data-news-filter], .topic-tag[data-news-filter]'));
-  const latestFilterControls = Array.from(document.querySelectorAll('.filter-chip[data-latest-filter]'));
+  let latestFilterControls = Array.from(document.querySelectorAll('.filter-chip[data-latest-filter]'));
   const topicControls = Array.from(document.querySelectorAll('.topic-tag[data-news-filter]'));
   const countTargets = Array.from(document.querySelectorAll('[data-news-count]'));
   const medicineViewToggle = document.getElementById('medicine-view-toggle');
   const medicineList = document.getElementById('medicine-list');
   const mainContent = document.querySelector('.main-content');
   const sidebarRight = document.querySelector('.sidebar-right');
+  const popularStoryPanel = document.querySelector('.hero-side[data-news-feed-slot="popular-stories"]');
   const popularStorySlots = Array.from(document.querySelectorAll('.hero-side .side-card'));
+  const latestGrid = document.querySelector('.article-grid[data-news-feed-slot="latest"]');
+  const trendingWidget = document.querySelector('.widget[data-news-feed-slot="trending-now"]');
+  const trendingViewAll = document.getElementById('trending-view-all');
   const contentSelectors = '.hero-slide, .side-card, .article-card, .list-item, .trending-item';
   const contentItems = Array.from(document.querySelectorAll(contentSelectors));
+  const articleActionsTemplate = document.querySelector('.article-card .article-actions')?.outerHTML || '';
+  const listActionsTemplate = document.querySelector('.list-item .list-actions')?.outerHTML || '';
+  const POPULAR_STORY_LIMIT = 3;
+  const LATEST_STORY_LIMIT = 10;
+  const MEDICINE_PAGE_SIZE = 10;
+  const TRENDING_PREVIEW_LIMIT = 5;
+  let medicineFeedItems = [];
+  let medicineRenderedCount = 0;
+  let defaultHeroFeedItems = [];
+  let defaultLatestFeedItems = [];
+  let trendingFeedItems = [];
   const heroCarousel = document.querySelector('.hero-main');
   const heroSlides = Array.from(document.querySelectorAll('.hero-slide'));
   const heroPrevBtn = document.getElementById('hero-carousel-prev');
@@ -939,6 +1263,85 @@
   let savedState = loadSavedState();
   let readCounts = loadReadCounts();
   let newsLockStateEl = null;
+
+
+  function getRecordsByClass(className) {
+    return itemRecords.filter((item) => item?.element && item.element.classList.contains(className));
+  }
+
+  function resolveRecordElement(record) {
+    if (!record) return null;
+    if (record.element && typeof record.element === 'object') return record.element;
+    return typeof record === 'object' ? record : null;
+  }
+
+  function hideUnusedRecords(records = []) {
+    records.forEach((record) => {
+      const element = resolveRecordElement(record);
+      if (!element) return;
+      element.hidden = true;
+      element.classList.add('news-filter-hidden');
+    });
+  }
+
+  function revealRecord(record) {
+    const element = resolveRecordElement(record);
+    if (!element) return;
+    element.hidden = false;
+    element.classList.remove('news-filter-hidden');
+  }
+
+  let newsEmptyStateEl = null;
+
+  function hideNewsEmptyState() {
+    if (!newsEmptyStateEl) return;
+    newsEmptyStateEl.hidden = true;
+    newsEmptyStateEl.textContent = '';
+  }
+
+  function showNewsEmptyState(message = 'No published stories are available yet.') {
+    const content = document.querySelector('.main-content');
+    if (!content) return;
+    if (!newsEmptyStateEl) {
+      newsEmptyStateEl = document.createElement('section');
+      newsEmptyStateEl.className = 'news-empty-state';
+      newsEmptyStateEl.style.margin = '24px 0 32px';
+      newsEmptyStateEl.style.padding = '24px';
+      newsEmptyStateEl.style.border = '1px solid var(--border)';
+      newsEmptyStateEl.style.borderRadius = '24px';
+      newsEmptyStateEl.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,250,252,0.96))';
+      newsEmptyStateEl.style.boxShadow = '0 10px 30px rgba(15,23,42,0.06)';
+      newsEmptyStateEl.style.color = 'var(--text-primary)';
+      newsEmptyStateEl.style.display = 'grid';
+      newsEmptyStateEl.style.gap = '8px';
+      content.appendChild(newsEmptyStateEl);
+    }
+    newsEmptyStateEl.hidden = false;
+    newsEmptyStateEl.innerHTML = '<h3 style="margin:0;font-size:20px;line-height:1.2;">No published stories yet</h3><p style="margin:0;color:var(--text-secondary);max-width:48rem;">' + message + '</p>';
+  }
+
+  async function hydratePublishedNewsFeed() {
+    const cachedFeed = loadCachedPublishedNewsFeed();
+    if (cachedFeed) applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
+    try {
+      const apiBase = await ensureNewsApiBase();
+      const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Failed to load published news (' + response.status + ')');
+      const feed = normalizePublishedNewsFeed(await response.json());
+      saveCachedPublishedNewsFeed(feed);
+      applyPublishedNewsFeed(feed);
+      setNewsShellReady();
+    } catch (error) {
+      console.warn('Could not load live news feed:', error);
+      if (!cachedFeed) {
+        hideUnusedRecords(contentItems);
+        showNewsEmptyState('The published feed could not be loaded right now.');
+      } else {
+        setNewsShellReady();
+      }
+      setNewsShellReady();
+    }
+  }
 
   hideUnusedRecords(contentItems);
 
@@ -1313,60 +1716,39 @@
       };
     }
   }
-
   function applyPublishedNewsFeed(feed = {}) {
     const normalizedFeed = normalizePublishedNewsFeed(feed);
-    const heroRecords = getRecordsByClass('hero-slide');
-    const latestRecords = getRecordsByClass('article-card');
-    const medicineRecords = getRecordsByClass('list-item');
-    const trendingRecords = getRecordsByClass('trending-item');
     const sections = normalizedFeed.sections || {};
-    const allItems = Array.isArray(normalizedFeed?.items) ? normalizedFeed.items : [];
+    const allItems = sortNewsByDate(Array.isArray(normalizedFeed?.items) ? normalizedFeed.items : []);
+    renderLatestFilterTabs(allItems);
+    const heroRecords = getRecordsByClass('hero-slide');
     const heroItems = Array.isArray(sections.hero) && sections.hero.length ? sections.hero : allItems.slice(0, heroRecords.length);
-    const latestItems = Array.isArray(sections.latest) && sections.latest.length ? sections.latest : allItems.slice(0, latestRecords.length);
-    const medicineItems = Array.isArray(sections.medicine) && sections.medicine.length ? sections.medicine : allItems;
-    const trendingItems = Array.isArray(sections.trendingNow) && sections.trendingNow.length ? sections.trendingNow : allItems;
-
+    const latestItems = sortNewsByDate(Array.isArray(sections.latest) && sections.latest.length ? sections.latest : allItems).slice(0, LATEST_STORY_LIMIT);
+    const medicineItems = sortNewsByDate(Array.isArray(sections.medicine) && sections.medicine.length ? sections.medicine : allItems);
+    const popularItems = sortNewsByPopularity(Array.isArray(sections.popular) && sections.popular.length ? sections.popular : allItems).slice(0, POPULAR_STORY_LIMIT);
+    const importantItems = allItems.filter(isImportantNewsItem);
+    const requestedTrendingItems = Array.isArray(sections.trendingNow) ? sections.trendingNow : [];
+    const trendingSource = requestedTrendingItems.length
+      ? requestedTrendingItems.filter(isImportantNewsItem).length
+        ? requestedTrendingItems.filter(isImportantNewsItem)
+        : requestedTrendingItems
+      : (importantItems.length ? importantItems : allItems);
+    const trendingItems = sortNewsByPopularity(trendingSource);
+    defaultHeroFeedItems = heroItems.slice();
+    defaultLatestFeedItems = latestItems.slice();
+    trendingFeedItems = trendingItems.slice();
     heroRecords.forEach((record, index) => {
       const item = heroItems[index];
-      if (!item) {
-        hideUnusedRecords([record]);
-        return;
-      }
+      if (!item) { hideUnusedRecords([record]); return; }
       revealRecord(record);
       Object.assign(record, updateItemRecordFromFeed(record, item, index));
     });
-
-    latestRecords.forEach((record, index) => {
-      const item = latestItems[index];
-      if (!item) {
-        hideUnusedRecords([record]);
-        return;
-      }
-      revealRecord(record);
-      Object.assign(record, updateItemRecordFromFeed(record, item, index));
-    });
-
-    medicineRecords.forEach((record, index) => {
-      const item = medicineItems[index];
-      if (!item) {
-        hideUnusedRecords([record]);
-        return;
-      }
-      revealRecord(record);
-      Object.assign(record, updateItemRecordFromFeed(record, item, index));
-    });
-
-    trendingRecords.forEach((record, index) => {
-      const item = trendingItems[index];
-      if (!item) {
-        hideUnusedRecords([record]);
-        return;
-      }
-      revealRecord(record);
-      Object.assign(record, updateItemRecordFromFeed(record, item, index));
-    });
-
+    replaceGeneratedSection('side-card', popularStoryPanel, popularItems, makeSideCardElement);
+    replaceGeneratedSection('article-card', latestGrid, latestItems, makeArticleCardElement);
+    replaceGeneratedSection('trending-item', trendingWidget, trendingItems.slice(0, TRENDING_PREVIEW_LIMIT), makeTrendingItemElement);
+    medicineFeedItems = medicineItems;
+    renderNextMedicineChunk(true);
+    renderNewsFilterView(currentFilter);
     applyFilters();
     if (allItems.length) {
       hideNewsEmptyState();
@@ -1400,7 +1782,7 @@
   }
 
   function getStoryLabel(item = {}) {
-    return item.sourceName || item.publishedByName || item.source || 'AjixPharmacy';
+    return item.sourceName || item.publishedByName || item.source || 'Ajix News';
   }
 
   function getStoryTitleCase(value = '') {
@@ -1491,7 +1873,7 @@
     const theme = getNewsTheme(item.category, item.importance);
     element.classList.remove('hero-slide--medicine', 'hero-slide--alert', 'hero-slide--research');
     element.classList.add(theme.heroClass);
-    const heroImageUrl = String(item.imageUrl || item.heroBackgroundImage || '').trim();
+    const heroImageUrl = getNewsImageUrl(item) || String(item.heroBackgroundImage || '').trim();
     if (heroImageUrl) {
       element.style.setProperty('--hero-image', `url("${heroImageUrl.replace(/"/g, '%22')}")`);
     } else {
@@ -1499,18 +1881,42 @@
     }
   }
 
+  function getNewsImageUrl(item = {}) {
+    const candidate = item.imageUrl || item.image_url || item.thumbnailUrl || item.thumbnail_url || item.thumbnail || item.image || item.enclosure?.url || '';
+    return typeof candidate === 'object' ? String(candidate.url || candidate.href || '').trim() : String(candidate || '').trim();
+  }
+
   function setCardImageBackground(node, imageUrl = '') {
     if (!node) return;
-    if (imageUrl) {
-      node.hidden = false;
-      node.style.display = '';
-      node.style.backgroundImage = `url("${imageUrl.replace(/"/g, '%22')}")`;
-      node.classList.remove('image-art');
-    } else {
-      node.hidden = true;
-      node.style.display = 'none';
+    const normalizedUrl = String(imageUrl || '').trim();
+    node.hidden = false;
+    node.style.display = '';
+    node.style.backgroundColor = 'var(--card-backdrop, var(--bg))';
+    let imageElement = node.querySelector('.card-source-image');
+    if (!imageElement) {
+      imageElement = document.createElement('img');
+      imageElement.className = 'card-source-image';
+      imageElement.alt = '';
+      imageElement.setAttribute('aria-hidden', 'true');
+      node.appendChild(imageElement);
+    }
+    if (normalizedUrl) {
+      imageElement.hidden = false;
+      imageElement.src = normalizedUrl;
+      imageElement.onerror = () => {
+        imageElement.hidden = true;
+        node.classList.remove('has-real-image');
+        node.classList.add('image-art');
+      };
       node.style.backgroundImage = '';
       node.classList.remove('image-art');
+      node.classList.add('has-real-image');
+    } else {
+      imageElement.hidden = true;
+      imageElement.removeAttribute('src');
+      node.style.backgroundImage = '';
+      node.classList.remove('has-real-image');
+      node.classList.add('image-art');
     }
   }
 
@@ -1571,7 +1977,7 @@
     if (imageNode) {
       imageNode.classList.remove('art-medicine', 'art-wellness', 'art-research', 'art-alert');
       imageNode.classList.add(theme.cardClass);
-      setCardImageBackground(imageNode, item.imageUrl || item.heroBackgroundImage || '');
+      setCardImageBackground(imageNode, getNewsImageUrl(item) || item.heroBackgroundImage || '');
     }
     if (tagOverlay) {
       tagOverlay.textContent = theme.label;
@@ -1604,7 +2010,7 @@
     if (imageNode) {
       imageNode.classList.remove('art-medicine', 'art-wellness', 'art-research', 'art-alert');
       imageNode.classList.add(theme.cardClass);
-      setCardImageBackground(imageNode, item.imageUrl || item.heroBackgroundImage || '');
+      setCardImageBackground(imageNode, getNewsImageUrl(item) || item.heroBackgroundImage || '');
     }
     if (tagNode) {
       tagNode.textContent = theme.label.toUpperCase();
@@ -1618,6 +2024,27 @@
     }
   }
 
+  function updateSideCardElement(itemRecord, item) {
+    const element = itemRecord.element;
+    const rawCategory = String(item.category || item.filter || itemRecord.filter || '');
+    const category = normalizeFilterValue(rawCategory || 'all');
+    const theme = getNewsTheme(rawCategory || category, item.importance);
+    const tagNode = element.querySelector('.side-card-tag');
+    const titleNode = element.querySelector('.side-card-title');
+    const metaNode = element.querySelector('.side-card-meta');
+    element.dataset.newsFilter = category;
+    element.dataset.newsTopics = Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : category;
+    element.dataset.newsAlert = String(item.featured || normalizeNewsPriority(item.importance) === 'high' || category === 'trending');
+    element.dataset.newsId = item.id;
+    element.dataset.newsStoryKey = item.storyKey || slugify(item.title || item.id);
+    if (tagNode) {
+      tagNode.textContent = 'MOST VIEWED';
+      tagNode.className = 'side-card-tag trending';
+    }
+    if (titleNode) titleNode.textContent = item.title || 'Untitled update';
+    if (metaNode) metaNode.textContent = getStoryLabel(item) + ' · ' + estimateReadTime(item);
+    element.style.setProperty('--side-accent', theme.accent);
+  }
   function updateTrendingElement(itemRecord, item, rank) {
     const element = itemRecord.element;
     const rawCategory = String(item.category || item.filter || itemRecord.filter || '').trim();
@@ -1659,7 +2086,7 @@
     nextItem.readTime = estimateReadTime(item);
     nextItem.metaLabel = `${nextItem.source} · ${nextItem.readTime}`;
     nextItem.searchableText = getNewsFeedText(item);
-    nextItem.isAlert = Boolean(item.featured || normalizeNewsPriority(item.importance) === 'high' || nextItem.filter === 'trending');
+    nextItem.isAlert = isImportantNewsItem(item);
     nextItem.topics = parseTopics(
       Array.isArray(item.tags) && item.tags.length ? item.tags.join(',') : nextItem.filter,
       [nextItem.filter].filter(Boolean),
@@ -1681,7 +2108,7 @@
     nextItem.createdAt = item.createdAt || nextItem.createdAt;
     nextItem.sourceName = item.sourceName || item.publishedByName || item.sourceName || nextItem.source;
     nextItem.author = item.author || item.publishedByName || item.sourceName || nextItem.author || nextItem.source;
-    nextItem.imageUrl = item.imageUrl || item.heroBackgroundImage || '';
+    nextItem.imageUrl = getNewsImageUrl(item) || item.heroBackgroundImage || '';
 
     if (itemRecord.element.classList.contains('hero-slide')) {
       updateHeroElement(nextItem, item);
@@ -1689,6 +2116,8 @@
       updateArticleElement(nextItem, item);
     } else if (itemRecord.element.classList.contains('list-item')) {
       updateListElement(nextItem, item);
+    } else if (itemRecord.element.classList.contains('side-card')) {
+      updateSideCardElement(nextItem, item);
     } else if (itemRecord.element.classList.contains('trending-item')) {
       updateTrendingElement(nextItem, item, index + 1);
     }
@@ -1819,10 +2248,10 @@
     if (articleSource?.textContent.trim()) return articleSource.textContent.trim();
     if (heroSource?.textContent.trim()) return heroSource.textContent.trim();
     if (listMeta?.textContent.trim()) {
-      return listMeta.textContent.split('Â·')[0].trim();
+      return listMeta.textContent.split('·')[0].trim();
     }
     if (sideMeta?.textContent.trim()) {
-      return sideMeta.textContent.split('Â·')[0].trim();
+      return sideMeta.textContent.split('·')[0].trim();
     }
     return 'Ajix';
   }
@@ -1836,15 +2265,15 @@
     if (articleTime?.textContent.trim()) return articleTime.textContent.trim();
     if (heroRead?.textContent.trim()) return heroRead.textContent.trim();
     if (listMeta?.textContent.trim()) {
-      const parts = listMeta.textContent.split('Â·').map((part) => part.trim()).filter(Boolean);
+      const parts = listMeta.textContent.split('·').map((part) => part.trim()).filter(Boolean);
       if (parts[1]) return parts[1];
     }
     if (sideMeta?.textContent.trim()) {
-      const parts = sideMeta.textContent.split('Â·').map((part) => part.trim()).filter(Boolean);
+      const parts = sideMeta.textContent.split('·').map((part) => part.trim()).filter(Boolean);
       if (parts[1]) return parts[1];
     }
     if (trendingMeta?.textContent.trim()) {
-      const parts = trendingMeta.textContent.split('Â·').map((part) => part.trim()).filter(Boolean);
+      const parts = trendingMeta.textContent.split('·').map((part) => part.trim()).filter(Boolean);
       if (parts[1]) return parts[1];
     }
     return '3 min read';
@@ -1855,7 +2284,7 @@
     if (trendingMeta?.textContent.trim()) {
       return trendingMeta.textContent.trim();
     }
-    return `${source} Â· ${readTime}`;
+    return `${source} · ${readTime}`;
   }
 
   function getItemSource(element) {
@@ -1986,10 +2415,32 @@
     }
     return 'other';
   }
+  const itemRecords = contentItems.map((element, index) => createNewsItemRecord(element, index));
 
-  const itemRecords = contentItems.map((element, index) => {
+
+
+  function isImportantNewsItem(item = {}) {
+    const category = normalizeFilterValue(item.category || item.filter || '');
+    const importance = normalizeNewsPriority(item.importance || item.priority || '');
+    const color = String(item.categoryColor || item.accentColor || item.color || '').toLowerCase();
+    return Boolean(item.featured || item.alert || importance === 'high' || category === 'trending' || category === 'alert' || color.includes('red') || color.includes('#dc2626') || color.includes('#ef4444'));
+  }
+
+  function sortNewsByDate(items = []) {
+    return items.slice().sort((a, b) => {
+      const bTime = new Date(b.publishedAt || b.updatedAt || b.createdAt || 0).getTime() || 0;
+      const aTime = new Date(a.publishedAt || a.updatedAt || a.createdAt || 0).getTime() || 0;
+      return bTime - aTime;
+    });
+  }
+
+  function sortNewsByPopularity(items = []) {
+    return items.slice().sort((a, b) => getPopularityScore(b) - getPopularityScore(a));
+  }
+
+  function createNewsItemRecord(element, index) {
     const title = getItemTitle(element);
-    const id = element.dataset.newsId || `${element.className.split(' ')[0]}-${slugify(title) || index}`;
+    const id = element.dataset.newsId || (element.className.split(' ')[0] + '-' + (slugify(title) || index || 0));
     const storyKey = element.dataset.newsStoryKey || slugify(title) || id;
     element.dataset.newsId = id;
     element.dataset.newsStoryKey = storyKey;
@@ -1997,27 +2448,99 @@
     const readLaterBtn = element.querySelector('.like-btn');
     const fallbackTopics = [];
     const explicitFilter = inferItemFilter(element);
-    if (explicitFilter && explicitFilter !== 'all' && !String(explicitFilter).startsWith('topic:')) {
-      fallbackTopics.push(explicitFilter);
+    if (explicitFilter && explicitFilter !== 'all' && !String(explicitFilter).startsWith('topic:')) fallbackTopics.push(explicitFilter);
+    return { id, storyKey, element, title, filter: explicitFilter, feedSlot: getNewsFeedSlot(element), section: element.classList.contains('article-card') ? 'latest' : 'other', topics: parseTopics(element.dataset.newsTopics, fallbackTopics), searchableText: getItemText(element), isAlert: String(element.dataset.newsAlert).toLowerCase() === 'true', source: getItemSource(element), readTime: getItemReadTime(element), metaLabel: getItemMetaLabel(element, getItemSource(element), getItemReadTime(element)), saveBtn, readLaterBtn };
+  }
+
+  function bindNewsItemRecord(item) {
+    if (!item || item.isBound) return item;
+    item.saveBtn?.addEventListener('click', (event) => { event.stopPropagation(); toggleBookmark(item); });
+    item.readLaterBtn?.addEventListener('click', (event) => { event.stopPropagation(); toggleReadLater(item); });
+    item.element.addEventListener('click', (event) => { if (event.target.closest('button, a, input, textarea, select')) return; incrementReadCount(item); openNewsStory(item); });
+    item.isBound = true;
+    return item;
+  }
+
+  function removeRecordsByClass(className) {
+    getRecordsByClass(className).forEach((record) => record.element.remove());
+    for (let index = itemRecords.length - 1; index >= 0; index -= 1) {
+      if (itemRecords[index]?.element?.classList.contains(className)) itemRecords.splice(index, 1);
     }
-    return {
-      id,
-      storyKey,
-      element,
-      title,
-      filter: explicitFilter,
-      feedSlot: getNewsFeedSlot(element),
-      section: element.classList.contains('article-card') ? 'latest' : 'other',
-      topics: parseTopics(element.dataset.newsTopics, fallbackTopics),
-      searchableText: getItemText(element),
-      isAlert: String(element.dataset.newsAlert).toLowerCase() === 'true',
-      source: getItemSource(element),
-      readTime: getItemReadTime(element),
-      metaLabel: getItemMetaLabel(element, getItemSource(element), getItemReadTime(element)),
-      saveBtn,
-      readLaterBtn,
-    };
-  });
+  }
+
+  function makeSideCardElement() {
+    const element = document.createElement('div');
+    element.className = 'side-card';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.popularStories;
+    element.innerHTML = '<div class="side-card-tag trending">MOST VIEWED</div><div class="side-card-title"></div><div class="side-card-meta"></div>';
+    return element;
+  }
+
+  function makeArticleCardElement() {
+    const element = document.createElement('article');
+    element.className = 'article-card';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.latest;
+    const actions = articleActionsTemplate || '<div class="article-actions"></div>';
+    element.innerHTML = '<div class="article-image image-art art-medicine" aria-hidden="true"><span class="tag-overlay">Medicine</span></div><div class="article-content"><div class="article-meta"><div class="source-avatar" aria-hidden="true"></div><span class="source-name"></span><span class="article-time"></span></div><h3 class="article-title"></h3><p class="article-excerpt"></p>' + actions + '</div>';
+    return element;
+  }
+
+  function makeListItemElement() {
+    const element = document.createElement('div');
+    element.className = 'list-item';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.medicine;
+    const actions = listActionsTemplate || '<div class="list-actions"></div>';
+    element.innerHTML = '<div class="list-thumb image-art art-medicine" aria-hidden="true"></div><div class="list-body"><div class="list-tag">MEDICINE</div><div class="list-title"></div><div class="list-meta"></div></div>' + actions;
+    return element;
+  }
+
+  function makeTrendingItemElement() {
+    const element = document.createElement('div');
+    element.className = 'trending-item';
+    element.dataset.newsFeedSlot = NEWS_FEED_SLOTS.trendingNow;
+    element.innerHTML = '<div class="trending-rank top"></div><div class="trending-content"><div class="trending-title"></div><div class="trending-meta"></div></div>';
+    return element;
+  }
+
+  function addGeneratedNewsRecord(container, item, createElement, index) {
+    if (!container) return null;
+    const element = createElement();
+    container.appendChild(element);
+    const record = createNewsItemRecord(element, itemRecords.length + index);
+    Object.assign(record, updateItemRecordFromFeed(record, item, index));
+    bindNewsItemRecord(record);
+    itemRecords.push(record);
+    return record;
+  }
+
+  function replaceGeneratedSection(className, container, items, createElement) {
+    if (!container) return;
+    removeRecordsByClass(className);
+    items.forEach((item, index) => addGeneratedNewsRecord(container, item, createElement, index));
+  }
+
+  function updateMedicineViewButton() {
+    if (!medicineViewToggle) return;
+    const remaining = Math.max(0, medicineFeedItems.length - medicineRenderedCount);
+    const hasMedicineStories = medicineFeedItems.length > 0;
+    medicineViewToggle.hidden = !hasMedicineStories;
+    medicineViewToggle.disabled = remaining <= 0;
+    medicineViewToggle.setAttribute('aria-expanded', String(remaining <= 0));
+    medicineViewToggle.textContent = remaining > 0 ? 'View more (' + Math.min(MEDICINE_PAGE_SIZE, remaining) + ' more) ->' : 'All stories loaded';
+  }
+
+  function renderNextMedicineChunk(reset) {
+    if (!medicineList) return;
+    if (reset) {
+      medicineList.innerHTML = '';
+      removeRecordsByClass('list-item');
+      medicineRenderedCount = 0;
+    }
+    const nextItems = medicineFeedItems.slice(medicineRenderedCount, medicineRenderedCount + MEDICINE_PAGE_SIZE);
+    nextItems.forEach((item, index) => addGeneratedNewsRecord(medicineList, item, makeListItemElement, medicineRenderedCount + index));
+    medicineRenderedCount += nextItems.length;
+    updateMedicineViewButton();
+  }
 
   function getItemState(itemId) {
     const state = savedState[itemId];
@@ -2079,19 +2602,13 @@
       setBodyScrollLock(false);
     }
   }
-
   function syncMedicineViewToggle() {
-    if (!medicineViewToggle || !medicineList) return;
-    const expanded = medicineList.classList.contains('is-expanded');
-    medicineViewToggle.setAttribute('aria-expanded', String(expanded));
-    medicineViewToggle.innerHTML = expanded ? 'Show less &larr;' : 'View all &rarr;';
+    updateMedicineViewButton();
   }
 
-  function toggleMedicineList(forceExpanded) {
-    if (!medicineList) return;
-    const shouldExpand = typeof forceExpanded === 'boolean' ? forceExpanded : !medicineList.classList.contains('is-expanded');
-    medicineList.classList.toggle('is-expanded', shouldExpand);
-    syncMedicineViewToggle();
+  function toggleMedicineList() {
+    renderNextMedicineChunk(false);
+    applyFilters();
   }
 
   function openNewsStory(item) {
@@ -2099,10 +2616,17 @@
     const imageNode = item.element.querySelector('.article-image, .list-thumb, .hero-slide, .side-card');
     const imageStyles = imageNode ? window.getComputedStyle(imageNode) : null;
     const imageClass = imageNode ? Array.from(imageNode.classList || []).find((className) => className.startsWith('art-')) || '' : '';
-    const storyPayload = {
+        const storyPayload = {
       id: item.id,
       storyKey: item.storyKey,
       title: item.title,
+      summary: item.summary || item.excerpt || '',
+      content: item.content || item.body || '',
+      body: item.body || item.content || '',
+      category: item.category,
+      publishedAt: item.publishedAt || item.updatedAt || item.createdAt || '',
+      updatedAt: item.updatedAt || item.createdAt || '',
+      createdAt: item.createdAt || '',
       filter: item.filter,
       feedSlot: item.feedSlot,
       source: item.source,
@@ -2111,7 +2635,9 @@
       readTime: item.readTime,
       metaLabel: item.metaLabel,
       topics: item.topics,
+      tags: item.tags,
       alert: item.isAlert,
+      reviewNote: item.reviewNote,
       likes: getItemLikes(item),
       likesCount: getItemLikes(item),
       likeCount: getItemLikes(item),
@@ -2122,7 +2648,7 @@
       heroBackgroundRepeat: imageStyles?.backgroundRepeat || '',
       heroImageClass: imageClass,
       heroLabel: item.element.querySelector('.tag-overlay, .side-card-tag, .hero-category')?.textContent?.trim() || '',
-      imageUrl: item.imageUrl || item.heroBackgroundImage || '',
+      imageUrl: getNewsImageUrl(item) || item.heroBackgroundImage || '',
       imageAlt: item.imageAlt || item.title || '',
     };
 
@@ -2169,6 +2695,17 @@
 
   mobileDashboardBackdrop?.addEventListener('click', closeMobileDashboard);
   mobileDashboardCloseBtn?.addEventListener('click', closeMobileDashboard);
+  document.getElementById('latest-filter-tabs')?.addEventListener('click', (event) => {
+    const control = event.target.closest('.filter-chip[data-latest-filter]');
+    if (control) setLatestFilter(control.dataset.latestFilter);
+  });
+
+  trendingViewAll?.addEventListener('click', (event) => {
+    event.preventDefault();
+    setFilter(currentFilter === 'trending' ? 'all' : 'trending');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
   medicineViewToggle?.addEventListener('click', () => {
     toggleMedicineList();
   });
@@ -2184,8 +2721,82 @@
     applyFilters();
   }
 
+  const NEWS_CATEGORY_LABELS = {
+    'clinical-news': 'Clinical News',
+    'clinical-updates': 'Clinical Updates',
+    'guidelines-clinical-updates': 'Guidelines & Clinical Updates',
+    'drug-safety-alerts': 'Drug Safety Alerts',
+    'new-drugs-approvals': 'New Drug Approvals',
+    'public-health': 'Public Health',
+    'medicine': 'Medicine',
+    'wellness': 'Wellness',
+    'research': 'Research',
+  };
+
+  function formatNewsCategoryLabel(value) {
+    const key = normalizeFilterValue(value);
+    if (NEWS_CATEGORY_LABELS[key]) return NEWS_CATEGORY_LABELS[key];
+    return key.replace(/[-_]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function renderLatestFilterTabs(items = []) {
+    const tabBar = document.getElementById('latest-filter-tabs');
+    if (!tabBar) return;
+    const categories = Array.from(new Set(items
+      .map((item) => normalizeFilterValue(item?.category || item?.filter || ''))
+      .filter((category) => category && category !== 'all' && category !== 'trending')))
+      .sort((a, b) => formatNewsCategoryLabel(a).localeCompare(formatNewsCategoryLabel(b)));
+    tabBar.innerHTML = "";
+    const createTab = (category) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'filter-chip' + (currentLatestFilter === category ? ' active' : '');
+      button.dataset.latestFilter = category;
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-selected', String(currentLatestFilter === category));
+      button.textContent = category === 'all' ? 'All' : formatNewsCategoryLabel(category);
+      return button;
+    };
+    tabBar.appendChild(createTab('all'));
+    categories.forEach((category) => tabBar.appendChild(createTab(category)));
+    latestFilterControls = Array.from(tabBar.querySelectorAll('.filter-chip[data-latest-filter]'));
+    if (currentLatestFilter !== 'all' && !categories.includes(currentLatestFilter)) {
+      currentLatestFilter = 'all';
+      latestFilterControls.forEach((control) => {
+        const active = control.dataset.latestFilter === 'all';
+        control.classList.toggle('active', active);
+        control.setAttribute('aria-selected', String(active));
+      });
+    }
+  }
+  function renderNewsFilterView(filter) {
+    const isTrendingView = normalizeFilterValue(filter) === 'trending';
+    const latestNewsTitle = document.getElementById('latest-news-title');
+    if (latestNewsTitle) latestNewsTitle.textContent = isTrendingView ? 'Trending news' : 'Latest news';
+    const trendingColumnTitle = document.getElementById('trending-column-title');
+    const trendingColumnLink = document.getElementById('trending-view-all');
+    if (trendingColumnTitle) trendingColumnTitle.textContent = isTrendingView ? 'For you' : 'Trending now';
+    if (trendingColumnLink) trendingColumnLink.textContent = isTrendingView ? 'For you' : 'View all';
+    const heroItems = isTrendingView ? trendingFeedItems : defaultHeroFeedItems;
+    const latestItems = isTrendingView ? trendingFeedItems : defaultLatestFeedItems;
+    const forYouItems = [...defaultLatestFeedItems, ...medicineFeedItems]
+      .filter((item, index, items) => item && items.findIndex((candidate) => candidate?.id === item.id) === index)
+      .slice(0, TRENDING_PREVIEW_LIMIT);
+    const columnItems = isTrendingView ? forYouItems : trendingFeedItems.slice(0, TRENDING_PREVIEW_LIMIT);
+    const heroRecords = getRecordsByClass('hero-slide');
+    heroRecords.forEach((record, index) => {
+      const item = heroItems[index];
+      if (!item) { hideUnusedRecords([record]); return; }
+      revealRecord(record);
+      Object.assign(record, updateItemRecordFromFeed(record, item, index));
+    });
+    replaceGeneratedSection('article-card', latestGrid, latestItems, makeArticleCardElement);
+    replaceGeneratedSection('trending-item', trendingWidget, columnItems, makeTrendingItemElement);
+  }
   function setFilter(nextFilter) {
     currentFilter = normalizeFilterValue(nextFilter);
+    if (currentFilter === 'trending') currentLatestFilter = 'all';
+    renderNewsFilterView(currentFilter);
     syncControlStates();
     applyFilters();
   }
@@ -2234,59 +2845,91 @@
     }
     return item.filter === 'all' ? 'Top story' : item.filter.toUpperCase();
   }
-
   function refreshPopularStoryCards() {
-    if (!popularStorySlots.length) return;
-    const rankedStories = itemRecords
-      .filter((item) => !item.element.classList.contains('side-card') && !item.element.hidden)
-      .slice()
-      .sort((a, b) => getPopularityScore(b) - getPopularityScore(a))
-      .slice(0, popularStorySlots.length);
+    // Most-viewed cards are generated from admin-published records, keeping title and newsId together.
+  }
+  function getVisibleHeroSlides() {
+    return heroSlides.filter((slide) => !slide.classList.contains('news-filter-hidden') && !slide.hidden);
+  }
 
-    popularStorySlots.forEach((slot, index) => {
-      const sourceItem = rankedStories[index];
-      if (!sourceItem) {
-        slot.hidden = true;
-        return;
-      }
+  function setHeroSlide(nextIndex) {
+    if (!heroSlides.length) return;
+    const availableSlides = getVisibleHeroSlides();
+    const slidesToUse = availableSlides.length ? availableSlides : heroSlides;
+    const total = slidesToUse.length;
+    heroSlideIndex = ((nextIndex % total) + total) % total;
+    heroSlides.forEach((slide) => slide.classList.remove('active'));
+    slidesToUse[heroSlideIndex]?.classList.add('active');
+  }
 
-      slot.hidden = false;
-      slot.dataset.newsFilter = sourceItem.filter;
-      slot.dataset.newsTopics = sourceItem.element.dataset.newsTopics || '';
-      slot.dataset.newsAlert = String(sourceItem.isAlert);
-      slot.dataset.sourceId = sourceItem.id;
+  function syncHeroCarouselToVisibleSlides() {
+    if (!heroSlides.length) return;
+    const visibleSlides = getVisibleHeroSlides();
+    if (!visibleSlides.length) return;
+    const activeSlide = heroSlides.find((slide) => slide.classList.contains('active'));
+    const activeVisibleIndex = visibleSlides.indexOf(activeSlide);
+    setHeroSlide(activeVisibleIndex >= 0 ? activeVisibleIndex : 0);
+  }
 
-      const tag = slot.querySelector('.side-card-tag');
-      const title = slot.querySelector('.side-card-title');
-      const meta = slot.querySelector('.side-card-meta');
-      if (tag) {
-        tag.className = `side-card-tag ${getSideCardTagClass(sourceItem)}`;
-        tag.textContent = getSideCardTagLabel(sourceItem);
-      }
-      if (title) {
-        title.textContent = sourceItem.title;
-      }
-      if (meta) {
-        meta.textContent = sourceItem.metaLabel;
-      }
-    });
+  function stopHeroRotation() {
+    if (heroTimer) {
+      window.clearInterval(heroTimer);
+      heroTimer = null;
+    }
+  }
+
+  function startHeroRotation() {
+    if (!heroSlides.length) return;
+    stopHeroRotation();
+    heroTimer = window.setInterval(() => setHeroSlide(heroSlideIndex + 1), 7000);
+  }
+
+  function bumpHeroSlide(delta) {
+    setHeroSlide(heroSlideIndex + delta);
+    startHeroRotation();
+  }
+
+  const footerSheetContent = {
+    about: { title: 'About', body: '<p><strong>Ajix News</strong> gathers health, pharmacy, and clinical updates in a quick-reading format.</p><p>It is built for fast scanning, easy reading on mobile, and a calmer way to keep up with important updates.</p>' },
+    privacy: { title: 'Privacy', body: '<p>This news page may remember lightweight preferences such as theme and reading state on your device.</p><p>If you open an external link, that destination controls its own privacy and cookies policy.</p>' },
+    terms: { title: 'Terms', body: '<p>Use Ajix News for learning, browsing, and general information. It is not a substitute for formal clinical advice.</p><ul><li>Always verify important medical details with trusted sources.</li><li>Stories may link out to third-party sources with their own rules.</li><li>Content is provided for informational use only.</li></ul>' },
+    contact: { title: 'Contact', body: '<p>Reach the Ajix team through the same support channels used on the home page.</p><div class="footer-sheet-contact-list"><a class="footer-sheet-contact-btn" href="mailto:ajixpharmacy@gmail.com"><span>Email</span><span>ajixpharmacy@gmail.com</span></a><a class="footer-sheet-contact-btn" href="https://wa.me/233595597218" target="_blank" rel="noopener noreferrer"><span>WhatsApp</span><span>+233 595 597 218</span></a></div>' },
+  };
+
+  function renderFooterSheet(topic = 'about') {
+    const entry = footerSheetContent[topic] || footerSheetContent.about;
+    if (footerSheetTitle) footerSheetTitle.textContent = entry.title;
+    if (footerSheetBody) footerSheetBody.innerHTML = entry.body;
+  }
+
+  function openFooterSheet(topic = 'about') {
+    renderFooterSheet(topic);
+    footerSheet?.classList.add('is-open');
+    footerSheetBackdrop?.classList.add('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'false');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('is-footer-sheet-open');
+  }
+
+  function closeFooterSheet() {
+    footerSheet?.classList.remove('is-open');
+    footerSheetBackdrop?.classList.remove('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'true');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('is-footer-sheet-open');
   }
 
   function syncControlStates() {
     filterControls.forEach((control) => {
       const filterValue = normalizeFilterValue(control.dataset.newsFilter);
       control.classList.toggle('active', filterValue === currentFilter);
-      if (control.id === 'news-alert-btn') {
-        control.setAttribute('aria-pressed', String(filterValue === currentFilter));
-      }
+      if (control.id === 'news-alert-btn') control.setAttribute('aria-pressed', String(filterValue === currentFilter));
     });
-
     latestFilterControls.forEach((control) => {
       const filterValue = normalizeFilterValue(control.dataset.latestFilter);
       control.classList.toggle('active', filterValue === currentLatestFilter);
       control.setAttribute('aria-pressed', String(filterValue === currentLatestFilter));
     });
-
     dashboardItems.forEach((control) => {
       const filterValue = normalizeFilterValue(control.dataset.dashboardItem);
       control.classList.toggle('active', filterValue === currentFilter);
@@ -2306,60 +2949,43 @@
   function updateSavedCounts() {
     let bookmarks = 0;
     let readLater = 0;
-
     Object.values(savedState).forEach((state) => {
       if (state?.bookmarked) bookmarks += 1;
       if (state?.readLater) readLater += 1;
     });
-
     countTargets.forEach((target) => {
       const key = target.getAttribute('data-news-count');
-      if (key === 'bookmarks') {
-        target.textContent = String(bookmarks);
-      }
-      if (key === 'read-later') {
-        target.textContent = String(readLater);
-      }
+      if (key === 'bookmarks') target.textContent = String(bookmarks);
+      if (key === 'read-later') target.textContent = String(readLater);
     });
   }
 
   function itemMatchesFilter(item) {
-    if (item.element.classList.contains('side-card')) {
-      return true;
+    if (currentFilter === 'trending') {
+      if (item.element.classList.contains('side-card')) return true;
+      return item.element.classList.contains('hero-slide')
+        || item.element.classList.contains('article-card')
+        || item.element.classList.contains('trending-item')
+        || item.feedSlot === NEWS_FEED_SLOTS.medicine;
     }
+    if (item.element.classList.contains('side-card')) return true;
     const matchesGlobalFilter = (() => {
-      if (currentFilter.startsWith('topic:')) {
-        return item.topics.includes(currentFilter.slice(6));
-      }
+      if (currentFilter.startsWith('topic:')) return item.topics.includes(currentFilter.slice(6));
       switch (currentFilter) {
-        case 'all':
-          return true;
-        case 'alert':
-          return item.isAlert;
-        case 'bookmarks':
-          return getItemState(item.id).bookmarked;
-        case 'read-later':
-          return getItemState(item.id).readLater;
-        default:
-          return item.filter === currentFilter;
+        case 'all': return true;
+        case 'alert': return item.isAlert;
+        case 'bookmarks': return getItemState(item.id).bookmarked;
+        case 'read-later': return getItemState(item.id).readLater;
+        default: return item.filter === currentFilter;
       }
     })();
-
-    const matchesLatestFilter =
-      item.feedSlot !== NEWS_FEED_SLOTS.latest ||
-      currentLatestFilter === 'all' ||
-      item.filter === currentLatestFilter;
-
+    const matchesLatestFilter = item.feedSlot !== NEWS_FEED_SLOTS.latest || currentLatestFilter === 'all' || item.filter === currentLatestFilter;
     return matchesGlobalFilter && matchesLatestFilter;
   }
 
   function itemMatchesQuery(item) {
-    if (item.element.classList.contains('side-card')) {
-      return true;
-    }
-    if (!currentQuery.trim()) {
-      return true;
-    }
+    if (item.element.classList.contains('side-card')) return true;
+    if (!currentQuery.trim()) return true;
     return item.searchableText.includes(currentQuery.trim().toLowerCase());
   }
 
@@ -2368,210 +2994,20 @@
       const visible = itemMatchesFilter(item) && itemMatchesQuery(item);
       item.element.classList.toggle('news-filter-hidden', !visible);
     });
-
     updateSavedButtonStates();
     updateSavedCounts();
     refreshPopularStoryCards();
     syncHeroCarouselToVisibleSlides();
   }
 
-  function getRecordsByClass(className) {
-    return itemRecords.filter((item) => item?.element && item.element.classList.contains(className));
-  }
-
-  function resolveRecordElement(record) {
-    if (!record) return null;
-    if (record.element && typeof record.element === 'object') {
-      return record.element;
-    }
-    return typeof record === 'object' ? record : null;
-  }
-
-  function hideUnusedRecords(records = []) {
-    records.forEach((record) => {
-      const element = resolveRecordElement(record);
-      if (!element) return;
-      element.hidden = true;
-      element.classList.add('news-filter-hidden');
-    });
-  }
-
-  let newsEmptyStateEl = null;
-
-  function hideNewsEmptyState() {
-    if (!newsEmptyStateEl) return;
-    newsEmptyStateEl.hidden = true;
-    newsEmptyStateEl.textContent = '';
-  }
-
-  function showNewsEmptyState(message = 'No published stories are available yet.') {
-    const mainContent = document.querySelector('.main-content');
-    if (!mainContent) return;
-    if (!newsEmptyStateEl) {
-      newsEmptyStateEl = document.createElement('section');
-      newsEmptyStateEl.className = 'news-empty-state';
-      newsEmptyStateEl.style.margin = '24px 0 32px';
-      newsEmptyStateEl.style.padding = '24px';
-      newsEmptyStateEl.style.border = '1px solid var(--border)';
-      newsEmptyStateEl.style.borderRadius = '24px';
-      newsEmptyStateEl.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,250,252,0.96))';
-      newsEmptyStateEl.style.boxShadow = '0 10px 30px rgba(15,23,42,0.06)';
-      newsEmptyStateEl.style.color = 'var(--text-primary)';
-      newsEmptyStateEl.style.display = 'grid';
-      newsEmptyStateEl.style.gap = '8px';
-      mainContent.appendChild(newsEmptyStateEl);
-    }
-    newsEmptyStateEl.hidden = false;
-    newsEmptyStateEl.innerHTML = `
-      <h3 style="margin:0;font-size:20px;line-height:1.2;">No published stories yet</h3>
-      <p style="margin:0;color:var(--text-secondary);max-width:48rem;">${message}</p>
-    `;
-  }
-
-  function revealRecord(record) {
-    const element = resolveRecordElement(record);
-    if (!element) return;
-    element.hidden = false;
-    element.classList.remove('news-filter-hidden');
-  }
-
-  async function hydratePublishedNewsFeed() {
-    const cachedFeed = loadCachedPublishedNewsFeed();
-    if (cachedFeed) {
-      applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
-    }
-
-    try {
-      const apiBase = await ensureNewsApiBase();
-      const response = await fetch(`${apiBase}/news/feed?limit=50`, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`Failed to load published news (${response.status})`);
-      }
-      const feed = normalizePublishedNewsFeed(await response.json());
-      saveCachedPublishedNewsFeed(feed);
-      applyPublishedNewsFeed(feed);
-      setNewsShellReady();
-    } catch (error) {
-      console.warn('Could not load live news feed:', error);
-      if (!cachedFeed) {
-        hideUnusedRecords(contentItems);
-        showNewsEmptyState('The published feed could not be loaded right now.');
-      } else {
-        setNewsShellReady();
-      }
-      setNewsShellReady();
-    }
-  }
-
-  function getVisibleHeroSlides() {
-    return heroSlides.filter((slide) => !slide.classList.contains('news-filter-hidden'));
-  }
-
-  function setHeroSlide(nextIndex) {
-    if (!heroSlides.length) return;
-    const availableSlides = getVisibleHeroSlides();
-    const slidesToUse = availableSlides.length ? availableSlides : heroSlides;
-    const total = slidesToUse.length;
-    heroSlideIndex = ((nextIndex % total) + total) % total;
-    heroSlides.forEach((slide, index) => {
-      slide.classList.remove('active');
-    });
-    slidesToUse[heroSlideIndex]?.classList.add('active');
-  }
-
-  function syncHeroCarouselToVisibleSlides() {
-    if (!heroSlides.length) return;
-    const visibleSlides = getVisibleHeroSlides();
-    if (!visibleSlides.length) return;
-    const activeSlide = heroSlides.find((slide) => slide.classList.contains('active'));
-    const activeVisibleIndex = visibleSlides.indexOf(activeSlide);
-    setHeroSlide(activeVisibleIndex >= 0 ? activeVisibleIndex : 0);
-  }
-
-  function startHeroRotation() {
-    if (!heroSlides.length) return;
-    stopHeroRotation();
-    heroTimer = window.setInterval(() => {
-      setHeroSlide(heroSlideIndex + 1);
-    }, 7000);
-  }
-
-  function stopHeroRotation() {
-    if (heroTimer) {
-      window.clearInterval(heroTimer);
-      heroTimer = null;
-    }
-  }
-
-  function bumpHeroSlide(delta) {
-    setHeroSlide(heroSlideIndex + delta);
-    startHeroRotation();
-  }
+  itemRecords.forEach(bindNewsItemRecord);
 
   filterControls.forEach((control) => {
-    control.addEventListener('click', () => {
-      setFilter(control.dataset.newsFilter);
-      if (control.id === 'news-alert-btn') {
-        closeMobileSearch();
-      }
-    });
+    control.addEventListener('click', () => setFilter(control.dataset.newsFilter));
   });
 
   dashboardItems.forEach((control) => {
-    control.addEventListener('click', () => {
-      setFilter(control.dataset.dashboardItem);
-      closeMobileDashboard();
-    });
-  });
-
-  heroPrevBtn?.addEventListener('click', (event) => {
-    event.stopPropagation();
-    bumpHeroSlide(-1);
-  });
-
-  heroNextBtn?.addEventListener('click', (event) => {
-    event.stopPropagation();
-    bumpHeroSlide(1);
-  });
-
-  heroCarousel?.addEventListener('mouseenter', stopHeroRotation);
-  heroCarousel?.addEventListener('mouseleave', startHeroRotation);
-  heroCarousel?.addEventListener('focusin', stopHeroRotation);
-  heroCarousel?.addEventListener('focusout', startHeroRotation);
-
-  topicControls.forEach((control) => {
-    control.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        control.click();
-      }
-    });
-  });
-
-  latestFilterControls.forEach((control) => {
-    control.addEventListener('click', () => {
-      setLatestFilter(control.dataset.latestFilter);
-    });
-  });
-
-  itemRecords.forEach((item) => {
-    item.saveBtn?.addEventListener('click', (event) => {
-      event.stopPropagation();
-      toggleBookmark(item);
-    });
-
-    item.readLaterBtn?.addEventListener('click', (event) => {
-      event.stopPropagation();
-      toggleReadLater(item);
-    });
-
-    item.element.addEventListener('click', (event) => {
-      if (event.target.closest('button, a, input, textarea, select')) {
-        return;
-      }
-      incrementReadCount(item);
-      openNewsStory(item);
-    });
+    control.addEventListener('click', () => setFilter(control.dataset.dashboardItem));
   });
 
   desktopSearchInput?.addEventListener('input', (event) => {
@@ -2633,9 +3069,47 @@
   });
 
   themeToggleBtn?.addEventListener('click', toggleTheme);
+  footerSheetLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      openFooterSheet(link.dataset.footerTopic || 'about');
+    });
+  });
+  footerSheetCloseBtn?.addEventListener('click', closeFooterSheet);
+  footerSheetBackdrop?.addEventListener('click', closeFooterSheet);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeFooterSheet();
+    }
+  });
 })();
 </script>
 
+<style>
+@media (max-width: 900px) {
+  .top-nav-inner {
+    padding-inline: 10px;
+    gap: 8px;
+  }
+
+  .nav-right,
+  .nav-actions {
+    gap: 6px;
+  }
+
+  .nav-logo {
+    font-size: 16px;
+    letter-spacing: -0.25px;
+  }
+
+  .nav-icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+}
+</style>
 </body>
 </html>
+
+
 

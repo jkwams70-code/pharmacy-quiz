@@ -1,0 +1,2880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AjixPharmacy Medical Calculator</title>
+  <meta id="calc-theme-color" name="theme-color" content="#b45309">
+  <script src="auth-lock.js" data-login-url="index.html"></script>
+<script src="standalone-back.js" data-back-url="index.html?screen=extra-screen"></script>
+  <script>
+    (() => {
+      try {
+        const storedTheme = localStorage.getItem('ajix-calc-theme-v1');
+        const isDark = storedTheme === 'dark';
+        document.documentElement.classList.toggle('calc-theme-dark', isDark);
+        const meta = document.getElementById('calc-theme-color');
+        if (meta) meta.setAttribute('content', isDark ? '#1f1308' : '#b45309');
+      } catch (error) {
+        console.debug('Calculator theme boot skipped:', error);
+      }
+    })();
+  </script>
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
+  <link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+  <link rel="apple-touch-icon" href="/images/app-logo.png?v=20260617-admin-avatar">
+  <style>
+    /* Standard named header controls */
+    .calc-header-actions #calc-back-btn { order: -1; }
+
+    :root {
+      --kimi-font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --kimi-color-bg: #fffaf5;
+      --kimi-color-bg-accent: rgba(180, 83, 9, 0.10);
+      --kimi-color-text-primary: #0f172a;
+      --kimi-color-text-secondary: #516275;
+      --kimi-color-text-tertiary: #718399;
+      --kimi-color-text-quaternary: #9aa8b7;
+      --kimi-color-surface: #ffffff;
+      --kimi-color-surface-muted: #fff7ed;
+      --kimi-color-surface-raised: #ffffff;
+      --kimi-color-surface-strong: #ffedd5;
+      --kimi-color-border: #ead8c2;
+      --kimi-color-danger: #dc2626;
+      --kimi-color-positive: #0f8f5d;
+      --kimi-color-warning: #c97a11;
+      --kimi-color-accent: #b45309;
+      --kimi-color-accent-strong: #92400e;
+      --kimi-color-accent-bright: #f59e0b;
+      --t-fast: 150ms;
+      --ease-out: ease-out;
+    }
+    html { color-scheme: light; }
+    html.calc-theme-dark {
+      color-scheme: dark;
+      --kimi-color-bg: #1f1308;
+      --kimi-color-bg-accent: rgba(251, 191, 36, 0.14);
+      --kimi-color-text-primary: #fff7ed;
+      --kimi-color-text-secondary: #e7d5be;
+      --kimi-color-text-tertiary: #bda78b;
+      --kimi-color-text-quaternary: #8f7659;
+      --kimi-color-surface: #2b1a0d;
+      --kimi-color-surface-muted: #34200f;
+      --kimi-color-surface-raised: #301d0d;
+      --kimi-color-surface-strong: #3b2512;
+      --kimi-color-border: #5a3a1e;
+      --kimi-color-danger: #f87171;
+      --kimi-color-positive: #34d399;
+      --kimi-color-warning: #fbbf24;
+      --kimi-color-accent: #f59e0b;
+      --kimi-color-accent-strong: #fbbf24;
+      --kimi-color-accent-bright: #fde68a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--kimi-font-sans);
+      background:
+        radial-gradient(circle at top right, rgba(180, 83, 9, 0.12), transparent 32%),
+        radial-gradient(circle at 0% 100%, rgba(217, 119, 6, 0.10), transparent 28%),
+        linear-gradient(180deg, #fffaf5 0%, var(--kimi-color-bg) 100%);
+      color: var(--kimi-color-text-primary);
+      margin: 0;
+      padding: 24px 16px 28px;
+    }
+    html.calc-theme-dark body {
+      background:
+        radial-gradient(circle at top right, rgba(251, 191, 36, 0.18), transparent 30%),
+        radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.16), transparent 28%),
+        linear-gradient(180deg, #1f1308 0%, #27170a 100%);
+    }
+    #ajix-calc {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 18px 16px 20px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(180, 83, 9, 0.10);
+      box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(20px);
+    }
+    html.calc-theme-dark #ajix-calc {
+      background: rgba(43, 26, 13, 0.92);
+      border-color: rgba(251, 191, 36, 0.18);
+      box-shadow: 0 22px 50px rgba(2, 8, 23, 0.56);
+    }
+    .calc-header {
+      padding: 2px 2px 14px;
+    }
+    .calc-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .calc-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .calc-logo-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, rgba(180, 83, 9, 0.16), rgba(180, 83, 9, 0.06));
+      border: 1px solid rgba(180, 83, 9, 0.14);
+      box-shadow: 0 10px 24px rgba(180, 83, 9, 0.10);
+    }
+    .calc-logo-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .calc-brand-copy {
+      min-width: 0;
+    }
+    .calc-header .header-title {
+      margin-bottom: 2px;
+    }
+    .calc-header .header-sub {
+      margin-bottom: 0;
+    }
+    .calc-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(180, 83, 9, 0.14);
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--kimi-color-accent-strong);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 22px rgba(180, 83, 9, 0.08);
+      cursor: pointer;
+      transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
+    }
+    .icon-btn:hover {
+      background: rgba(180, 83, 9, 0.08);
+      color: var(--kimi-color-accent);
+      box-shadow: 0 12px 24px rgba(180, 83, 9, 0.12);
+      transform: translateY(-1px);
+    }
+    html.calc-theme-dark .icon-btn {
+      background: rgba(43, 26, 13, 0.96);
+      border-color: rgba(251, 191, 36, 0.16);
+      box-shadow: 0 10px 22px rgba(2, 8, 23, 0.34);
+    }
+    html.calc-theme-dark .icon-btn:hover {
+      background: rgba(251, 191, 36, 0.12);
+      color: var(--kimi-color-accent-bright);
+      box-shadow: 0 12px 24px rgba(2, 8, 23, 0.42);
+    }
+    .icon-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .theme-toggle-btn .theme-icon {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: none;
+    }
+    .theme-toggle-btn .theme-icon.is-light {
+      display: block;
+    }
+    html.calc-theme-dark .theme-toggle-btn .theme-icon.is-light {
+      display: none;
+    }
+    html.calc-theme-dark .theme-toggle-btn .theme-icon.is-dark {
+      display: block;
+    }
+    .calc-search-bar {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(208, 227, 240, 0.95);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 10px 24px rgba(180, 83, 9, 0.08);
+    }
+    html.calc-theme-dark .calc-search-bar {
+      background: rgba(43, 26, 13, 0.96);
+      border-color: rgba(251, 191, 36, 0.14);
+      box-shadow: 0 10px 24px rgba(2, 8, 23, 0.34);
+    }
+    .calc-search-bar svg {
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+      flex-shrink: 0;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .calc-search-input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--kimi-color-text-primary);
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 0;
+    }
+    .calc-search-input::placeholder { color: #94a3b8; }
+    .calc-search-clear {
+      width: 24px;
+      height: 24px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(180, 83, 9, 0.08);
+      color: var(--kimi-color-accent-strong);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    html.calc-theme-dark .calc-search-clear {
+      background: rgba(251, 191, 36, 0.12);
+      color: var(--kimi-color-accent-bright);
+    }
+    .calc-search-clear[hidden] { display: none; }
+    .calc-workspace-head {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(180, 83, 9, 0.05));
+      border: 1px solid rgba(245, 158, 11, 0.18);
+      box-shadow: 0 12px 24px rgba(245, 158, 11, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    html.calc-theme-dark .calc-workspace-head {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(251, 191, 36, 0.04));
+      border-color: rgba(251, 191, 36, 0.18);
+      box-shadow: 0 12px 24px rgba(2, 8, 23, 0.34);
+    }
+    .calc-workspace-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--kimi-color-text-tertiary);
+      white-space: nowrap;
+    }
+    .calc-workspace-label {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--kimi-color-text-primary);
+      text-align: right;
+      line-height: 1.2;
+    }
+    .calc-sidebar-card {
+      display: none;
+    }
+    html.calc-theme-dark .calc-sidebar-card {
+      background: linear-gradient(180deg, rgba(43, 26, 13, 0.96), rgba(43, 26, 13, 0.92));
+      border-color: rgba(251, 191, 36, 0.12);
+      box-shadow: 0 14px 28px rgba(2, 8, 23, 0.26);
+    }
+    .calc-note {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(180, 83, 9, 0.06);
+      border: 1px solid rgba(180, 83, 9, 0.10);
+      color: var(--kimi-color-text-secondary);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    html.calc-theme-dark .calc-note {
+      background: rgba(251, 191, 36, 0.08);
+      border-color: rgba(251, 191, 36, 0.12);
+    }
+    .calc-note strong {
+      color: var(--kimi-color-text-primary);
+      font-weight: 700;
+    }
+    .check-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 10px;
+      margin: 4px 0 12px;
+    }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--kimi-color-border);
+      border-radius: 12px;
+      background: var(--kimi-color-surface-raised);
+      color: var(--kimi-color-text-primary);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .check-item input {
+      width: 16px;
+      height: 16px;
+      margin-top: 1px;
+      flex-shrink: 0;
+      accent-color: var(--kimi-color-accent);
+    }
+    .check-item span {
+      min-width: 0;
+    }
+    button, input, select { font: inherit; }
+    input, select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--kimi-color-border);
+      border-radius: 12px; background: var(--kimi-color-surface-raised);
+      color: var(--kimi-color-text-primary); font-size: 15px; outline: none;
+      transition: border-color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+    }
+    input:focus, select:focus {
+      border-color: var(--kimi-color-accent);
+      box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.14);
+      background: #fff;
+    }
+    label {
+      display: block; font-size: 13px; color: var(--kimi-color-text-secondary);
+      margin-bottom: 4px; font-weight: 500;
+    }
+    .tabbar {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--kimi-color-border);
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+    }
+    html.calc-theme-dark .tabbar {
+      border-bottom-color: rgba(251, 191, 36, 0.16);
+      border-left-color: rgba(251, 191, 36, 0.16);
+    }
+    .tab {
+      flex-shrink: 0;
+      padding: 8px 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: var(--kimi-color-text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+      white-space: nowrap;
+      box-shadow: none;
+      text-align: left;
+    }
+    .tab.active {
+      color: var(--kimi-color-accent-bright);
+      font-weight: 800;
+      background: transparent;
+      padding-left: 0;
+      position: relative;
+    }
+    .tab.active::before {
+      display: none;
+    }
+    .tab:hover:not(.active) {
+      transform: translateX(2px);
+      color: var(--kimi-color-accent-bright);
+    }
+    html.calc-theme-dark .tab {
+      color: var(--kimi-color-text-secondary);
+    }
+    html.calc-theme-dark .tab.active {
+      color: var(--kimi-color-accent-bright);
+      background: transparent;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .field { margin-bottom: 12px; }
+    .btn {
+      width: 100%; padding: 12px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, var(--kimi-color-accent), var(--kimi-color-accent-strong));
+      color: var(--kimi-color-surface);
+      font-size: 15px; font-weight: 500; cursor: pointer;
+      transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out); margin-top: 8px;
+      box-shadow: 0 10px 24px rgba(180, 83, 9, 0.16);
+    }
+    .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .result-box {
+      margin-top: 16px; padding: 16px; border-radius: 12px;
+      background: linear-gradient(180deg, rgba(180,83,9,0.06), rgba(180,83,9,0.02));
+      border: 1px solid rgba(180,83,9,0.12);
+    }
+    .result-value { font-size: 32px; font-weight: 600; color: var(--kimi-color-text-primary); line-height: 1.1; }
+    .result-label { font-size: 13px; color: var(--kimi-color-text-secondary); margin-top: 4px; }
+    .result-detail { font-size: 12px; color: var(--kimi-color-text-tertiary); margin-top: 6px; line-height: 1.5; }
+    .risk-low { color: var(--kimi-color-positive); }
+    .risk-borderline { color: var(--kimi-color-warning); }
+    .risk-high { color: var(--kimi-color-danger); }
+    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+    .calc-btn {
+      padding: 14px 4px; border-radius: 10px; border: 1px solid var(--kimi-color-border);
+      background: var(--kimi-color-surface-raised); color: var(--kimi-color-text-primary);
+      font-size: 16px; font-weight: 500; cursor: pointer;
+      transition: all var(--t-fast) var(--ease-out);
+    }
+    .calc-btn:hover { background: var(--kimi-color-surface-muted); border-color: rgba(180, 83, 9, 0.25); }
+    .calc-btn.op { background: var(--kimi-color-surface-strong); }
+    .calc-display {
+      padding: 16px; border-radius: 10px; background: var(--kimi-color-surface-strong);
+      color: var(--kimi-color-text-primary); font-size: 28px; font-weight: 500;
+      text-align: right; margin-bottom: 12px; overflow-x: auto;
+      font-variant-numeric: tabular-nums;
+    }
+    .header-title { font-size: 22px; font-weight: 750; margin-bottom: 4px; letter-spacing: -0.02em; }
+    .header-sub { font-size: 13px; color: var(--kimi-color-text-secondary); margin-bottom: 16px; }
+    .disclaimer {
+      margin-top: 24px; padding: 12px; border-radius: 12px;
+      background: linear-gradient(180deg, #ffffff, rgba(180,83,9,0.04)); border: 1px solid var(--kimi-color-border);
+      font-size: 12px; color: var(--kimi-color-text-tertiary); line-height: 1.5;
+      box-shadow: 0 8px 24px rgba(16, 33, 47, 0.04);
+    }
+    html.calc-theme-dark .result-box {
+      background: linear-gradient(180deg, rgba(251, 191, 36, 0.10), rgba(251, 191, 36, 0.03));
+      border-color: rgba(251, 191, 36, 0.12);
+    }
+    html.calc-theme-dark .disclaimer {
+      background: linear-gradient(180deg, rgba(43, 26, 13, 0.98), rgba(43, 26, 13, 0.88));
+      border-color: rgba(251, 191, 36, 0.12);
+      box-shadow: 0 8px 24px rgba(2, 8, 23, 0.26);
+    }
+    html.calc-theme-dark input,
+    html.calc-theme-dark select {
+      background: #301d0d;
+      border-color: #5a3a1e;
+      color: var(--kimi-color-text-primary);
+    }
+    html.calc-theme-dark input:focus,
+    html.calc-theme-dark select:focus {
+      background: #1f1308;
+      border-color: rgba(251, 191, 36, 0.42);
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.16);
+    }
+    html.calc-theme-dark .calc-logo-icon {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(251, 191, 36, 0.06));
+      border-color: rgba(251, 191, 36, 0.16);
+      box-shadow: 0 10px 24px rgba(2, 8, 23, 0.24);
+    }
+    html.calc-theme-dark .calc-header .header-title,
+    html.calc-theme-dark .calc-workspace-label,
+    html.calc-theme-dark .calc-note strong {
+      color: var(--kimi-color-text-primary);
+    }
+    html.calc-theme-dark .header-sub,
+    html.calc-theme-dark label,
+    html.calc-theme-dark .calc-sidebar-card p {
+      color: var(--kimi-color-text-secondary);
+    }
+    .tab.is-hidden { display: none; }
+    @media (min-width: 980px) {
+      body {
+        padding: 28px 20px 32px;
+      }
+      #ajix-calc {
+        max-width: 1160px;
+        display: grid;
+        grid-template-columns: 292px minmax(0, 1fr);
+        grid-template-areas:
+          "header header"
+          "tabs panel"
+          "sidebar panel"
+          "sidebar disclaimer";
+        gap: 18px 18px;
+        align-items: start;
+        padding: 22px;
+      }
+      .calc-header {
+        grid-area: header;
+      }
+      .tabbar {
+        grid-area: tabs;
+        flex-direction: column;
+        gap: 12px;
+        padding: 4px 0 0 6px;
+        margin-bottom: 0;
+        border-bottom: 0;
+        border-left: 1px solid rgba(245, 158, 11, 0.16);
+        align-self: start;
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        scrollbar-gutter: stable;
+      }
+      .tab {
+        width: 100%;
+        text-align: left;
+        padding: 6px 10px 6px 12px;
+      }
+      .tab.active {
+        position: relative;
+        padding-left: 12px;
+        color: var(--kimi-color-accent-bright);
+        background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.03));
+        box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.14);
+      }
+      .tab.active::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 3px;
+        height: 1.05em;
+        border-radius: 999px;
+        background: linear-gradient(180deg, var(--kimi-color-accent-bright), var(--kimi-color-accent-strong));
+        transform: translateY(-50%);
+        display: block;
+      }
+      .calc-sidebar-card {
+        display: block;
+        grid-area: sidebar;
+        padding: 16px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(180, 83, 9, 0.08), rgba(255, 255, 255, 0.96));
+        border: 1px solid rgba(180, 83, 9, 0.10);
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+      }
+      .calc-sidebar-card h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        line-height: 1.2;
+      }
+      .calc-sidebar-card p {
+        margin: 0;
+        color: var(--kimi-color-text-secondary);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .panel,
+      .disclaimer {
+        grid-column: auto;
+      }
+      .panel {
+        grid-area: panel;
+        margin-top: 0;
+      }
+      .disclaimer {
+        grid-area: disclaimer;
+        margin-top: 0;
+      }
+      .calc-header-top {
+        align-items: center;
+      }
+      .calc-brand {
+        align-items: center;
+      }
+    }
+    @media (max-width: 480px) {
+      .grid2, .grid3 { grid-template-columns: 1fr; }
+      #ajix-calc {
+        max-width: none;
+        padding: 14px 12px 16px;
+        border-radius: 24px;
+      }
+      .calc-header-top {
+        align-items: flex-start;
+      }
+      .calc-brand {
+        align-items: flex-start;
+      }
+      .calc-logo-icon {
+        width: 40px;
+        height: 40px;
+      }
+    }</style>
+    <style>
+
+/* AjiX named header colors */
+    .header-title .brand-core { color: #111827; }
+    .header-title .brand-calx { color: #b45309; }
+    html.calc-theme-dark .header-title .brand-core { color: #f3f4f6; }
+    html.calc-theme-dark .header-title .brand-calx { color: #fbbf24; }</style>
+</head>
+<body>
+
+<div id="ajix-calc">
+  <div class="calc-header">
+    <div class="calc-header-top">
+      <div class="calc-brand">
+        <div class="calc-logo-icon">
+          <img src="/images/app-logo.png?v=20260617-admin-avatar" alt="" aria-hidden="true">
+        </div>
+        <div class="calc-brand-copy">
+          <div class="header-title"><span class="brand-core">AjiX</span> <span class="brand-calx">Calx</span></div>
+          <div class="header-sub">Clinical decision support tools</div>
+        </div>
+      </div>
+      <div class="calc-header-actions">
+        <button id="calc-theme-btn" class="icon-btn theme-toggle-btn" type="button" aria-label="Switch to dark theme" title="Switch theme">
+          <svg class="theme-icon is-light" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2.5"></path>
+            <path d="M12 19.5V22"></path>
+            <path d="M4.93 4.93l1.77 1.77"></path>
+            <path d="M17.3 17.3l1.77 1.77"></path>
+            <path d="M2 12h2.5"></path>
+            <path d="M19.5 12H22"></path>
+            <path d="M4.93 19.07l1.77-1.77"></path>
+            <path d="M17.3 6.7l1.77-1.77"></path>
+          </svg>
+          <svg class="theme-icon is-dark" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+          </svg>
+        </button>
+        <button id="calc-back-btn" class="icon-btn" type="button" aria-label="Back" title="Back">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5"></path></svg>
+        </button>
+      </div>
+    </div>
+    <div class="calc-search-bar" role="search" aria-label="Search calculator tools">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-4.3-4.3"></path><circle cx="10.5" cy="10.5" r="6.5"></circle></svg>
+      <input id="calc-search-input" class="calc-search-input" type="search" placeholder="Search calculator tools..." autocomplete="off">
+      <button id="calc-search-clear" class="calc-search-clear" type="button" aria-label="Clear search" hidden>&times;</button>
+    </div>
+    <div class="calc-workspace-head" aria-live="polite">
+      <div class="calc-workspace-kicker">Open calculator</div>
+      <div class="calc-workspace-label" id="calc-active-label">ASCVD risk</div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <button class="tab" data-tab="scientific">Normal</button>
+    <button class="tab" data-tab="dosage">Dosage</button>
+    <button class="tab" data-tab="tts">4Ts</button>
+    <button class="tab" data-tab="aagrad">A-a grad</button>
+    <button class="tab" data-tab="abcd2">ABCD2</button>
+    <button class="tab" data-tab="anc">ANC</button>
+    <button class="tab" data-tab="aniongap">Anion gap</button>
+    <button class="tab" data-tab="apache">APACHE II</button>
+    <button class="tab" data-tab="apgar">APGAR</button>
+    <button class="tab active" data-tab="ascvd">ASCVD risk</button>
+    <button class="tab" data-tab="bode">BODE</button>
+    <button class="tab" data-tab="bmi">BMI</button>
+    <button class="tab" data-tab="bsa">BSA</button>
+    <button class="tab" data-tab="calcium">Ca corr</button>
+    <button class="tab" data-tab="centor">Centor</button>
+    <button class="tab" data-tab="cha">CHA2DS2-VASc</button>
+    <button class="tab" data-tab="child">Child-Pugh</button>
+    <button class="tab" data-tab="crcl">CrCl</button>
+    <button class="tab" data-tab="curb">CURB-65</button>
+    <button class="tab" data-tab="egfr">eGFR</button>
+    <button class="tab" data-tab="fena">FENa</button>
+    <button class="tab" data-tab="fib4">FIB-4</button>
+    <button class="tab" data-tab="gad7">GAD-7</button>
+    <button class="tab" data-tab="gbs">GBS</button>
+    <button class="tab" data-tab="gcs">GCS</button>
+    <button class="tab" data-tab="has">HAS-BLED</button>
+    <button class="tab" data-tab="heart">HEART</button>
+    <button class="tab" data-tab="lights">Light's</button>
+    <button class="tab" data-tab="mascc">MASCC</button>
+    <button class="tab" data-tab="mdrd">MDRD</button>
+    <button class="tab" data-tab="meldna">MELD-Na</button>
+    <button class="tab" data-tab="sodium">Na corr</button>
+    <button class="tab" data-tab="nihss">NIHSS</button>
+    <button class="tab" data-tab="osmo">Osmolality</button>
+    <button class="tab" data-tab="perc">PERC</button>
+    <button class="tab" data-tab="pgcs">Ped GCS</button>
+    <button class="tab" data-tab="phq9">PHQ-9</button>
+    <button class="tab" data-tab="qsofa">qSOFA</button>
+    <button class="tab" data-tab="qtc">QTc</button>
+    <button class="tab" data-tab="qtici">qTICI</button>
+    <button class="tab" data-tab="rockall">Rockall</button>
+    <button class="tab" data-tab="sofa">SOFA</button>
+    <button class="tab" data-tab="timi">TIMI</button>
+    <button class="tab" data-tab="waterdef">Water deficit</button>
+    <button class="tab" data-tab="welldvt">Wells DVT</button>
+    <button class="tab" data-tab="wellspe">Wells PE</button>
+  </div>
+  <div class="calc-sidebar-card">
+    <h3>Quick notes</h3>
+    <p>Use the list to switch tools in the same view. Most values here are estimates, so clinical judgment still comes first.</p>
+  </div>
+
+  <!-- ASCVD Panel -->
+  <div class="panel active" id="panel-ascvd">
+    <div class="grid2">
+      <div class="field"><label>Age (years)</label><input type="number" id="ascvd-age" min="40" max="79" value="55"></div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="ascvd-sex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+      <div class="field"><label>Total cholesterol (mg/dL)</label><input type="number" id="ascvd-tc" value="200"></div>
+      <div class="field"><label>HDL cholesterol (mg/dL)</label><input type="number" id="ascvd-hdl" value="50"></div>
+      <div class="field"><label>Systolic BP (mmHg)</label><input type="number" id="ascvd-sbp" value="120"></div>
+      <div class="field">
+        <label>On hypertension Rx?</label>
+        <select id="ascvd-htn"><option value="no">No</option><option value="yes">Yes</option></select>
+      </div>
+      <div class="field">
+        <label>Smoker?</label>
+        <select id="ascvd-smoke"><option value="no">No</option><option value="yes">Yes</option></select>
+      </div>
+      <div class="field">
+        <label>Diabetic?</label>
+        <select id="ascvd-dm"><option value="no">No</option><option value="yes">Yes</option></select>
+      </div>
+      <div class="field">
+        <label>Race</label>
+        <select id="ascvd-race"><option value="white">White / other</option><option value="aa">African American</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcASCVD()">Calculate 10-year ASCVD risk</button>
+    <div class="result-box" id="ascvd-result" style="display:none;">
+      <div class="result-value" id="ascvd-value">--</div>
+      <div class="result-label" id="ascvd-label">--</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--kimi-color-text-tertiary);">Based on 2013 ACC/AHA Pooled Cohort Equations. For ages 40-79.</div>
+    </div>
+  </div>
+
+  <!-- BMI Panel -->
+  <div class="panel" id="panel-bmi">
+    <div class="grid2">
+      <div class="field"><label>Weight (kg)</label><input type="number" id="bmi-wt" value="70"></div>
+      <div class="field"><label>Height (cm)</label><input type="number" id="bmi-ht" value="175"></div>
+    </div>
+    <button class="btn" onclick="calcBMI()">Calculate BMI</button>
+    <div class="calc-note"><strong>BMI ranges:</strong> Underweight: &lt; 18.5 | Normal: 18.5-24.9 | Overweight: 25-29.9 | Obesity: &ge; 30</div>
+    <div class="result-box" id="bmi-result" style="display:none;">
+      <div class="result-value" id="bmi-value">--</div>
+      <div class="result-label" id="bmi-label">--</div>
+    </div>
+  </div>
+
+  <!-- BSA Panel -->
+  <div class="panel" id="panel-bsa">
+    <div class="grid2">
+      <div class="field"><label>Weight (kg)</label><input type="number" id="bsa-wt" value="70"></div>
+      <div class="field"><label>Height (cm)</label><input type="number" id="bsa-ht" value="175"></div>
+    </div>
+    <button class="btn" onclick="calcBSA()">Calculate BSA</button>
+    <div class="calc-note"><strong>BSA note:</strong> this uses the Du Bois formula, so treat it as an estimate for dosing and review when exact body size matters.</div>
+    <div class="result-box" id="bsa-result" style="display:none;">
+      <div class="result-value" id="bsa-value">--</div>
+      <div class="result-label">Body surface area (Du Bois formula)</div>
+    </div>
+  </div>
+
+  <!-- CrCl Panel -->
+  <div class="panel" id="panel-crcl">
+    <div class="grid2">
+      <div class="field"><label>Age (years)</label><input type="number" id="crcl-age" value="60"></div>
+      <div class="field"><label>Weight (kg)</label><input type="number" id="crcl-wt" value="70"></div>
+      <div class="field"><label>Serum creatinine (mg/dL)</label><input type="number" id="crcl-scr" step="0.1" value="1.0"></div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="crcl-sex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcCrCl()">Calculate creatinine clearance</button>
+    <div class="calc-note"><strong>CrCl note:</strong> Cockcroft-Gault gives an estimate, so use extra caution in unstable renal function and unusual body weight.</div>
+    <div class="result-box" id="crcl-result" style="display:none;">
+      <div class="result-value" id="crcl-value">--</div>
+      <div class="result-label">Cockcroft-Gault (mL/min)</div>
+    </div>
+  </div>
+
+  <!-- eGFR Panel -->
+  <div class="panel" id="panel-egfr">
+    <div class="grid2">
+      <div class="field"><label>Age (years)</label><input type="number" id="egfr-age" value="60"></div>
+      <div class="field"><label>Serum creatinine (mg/dL)</label><input type="number" id="egfr-scr" step="0.1" value="1.0"></div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="egfr-sex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcEGFR()">Calculate eGFR</button>
+    <div class="calc-note"><strong>eGFR note:</strong> CKD-EPI 2021 is race-free and reports mL/min/1.73 m&sup2;. Not for AKI, dialysis, or pregnancy.</div>
+    <div class="result-box" id="egfr-result" style="display:none;">
+      <div class="result-value" id="egfr-value">--</div>
+      <div class="result-label" id="egfr-label">--</div>
+      <div class="result-detail" id="egfr-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Corrected Sodium Panel -->
+  <div class="panel" id="panel-sodium">
+    <div class="grid2">
+      <div class="field"><label>Measured sodium (mEq/L)</label><input type="number" id="sodium-na" step="0.1" value="130"></div>
+      <div class="field"><label>Glucose (mg/dL)</label><input type="number" id="sodium-glu" step="1" value="400"></div>
+    </div>
+    <button class="btn" onclick="calcCorrectedSodium()">Calculate corrected sodium</button>
+    <div class="calc-note"><strong>Na note:</strong> Katz correction adds 1.6 mEq/L per 100 mg/dL glucose > 100.</div>
+    <div class="result-box" id="sodium-result" style="display:none;">
+      <div class="result-value" id="sodium-value">--</div>
+      <div class="result-label" id="sodium-label">--</div>
+      <div class="result-detail" id="sodium-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Anion Gap Panel -->
+  <div class="panel" id="panel-aniongap">
+    <div class="grid2">
+      <div class="field"><label>Sodium (mEq/L)</label><input type="number" id="ag-na" step="0.1" value="140"></div>
+      <div class="field"><label>Chloride (mEq/L)</label><input type="number" id="ag-cl" step="0.1" value="102"></div>
+      <div class="field"><label>Bicarbonate (mEq/L)</label><input type="number" id="ag-hco3" step="0.1" value="24"></div>
+      <div class="field"><label>Albumin (g/dL, optional)</label><input type="number" id="ag-alb" step="0.1" placeholder="4.0"></div>
+    </div>
+    <button class="btn" onclick="calcAnionGap()">Calculate anion gap</button>
+    <div class="calc-note"><strong>Anion gap note:</strong> Normal AG is ~8-12 mEq/L without K. Albumin can lower the AG.</div>
+    <div class="result-box" id="aniongap-result" style="display:none;">
+      <div class="result-value" id="aniongap-value">--</div>
+      <div class="result-label" id="aniongap-label">--</div>
+      <div class="result-detail" id="aniongap-detail">--</div>
+    </div>
+  </div>
+
+  <!-- QTc Panel -->
+  <div class="panel" id="panel-qtc">
+    <div class="grid2">
+      <div class="field"><label>QT interval (ms)</label><input type="number" id="qtc-qt" value="400"></div>
+      <div class="field"><label>Heart rate (bpm)</label><input type="number" id="qtc-hr" value="75"></div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="qtc-sex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcQTc()">Calculate QTc</button>
+    <div class="calc-note"><strong>QTc note:</strong> Bazett can overestimate at fast HR. QTc &gt; 500 ms is higher torsades risk.</div>
+    <div class="result-box" id="qtc-result" style="display:none;">
+      <div class="result-value" id="qtc-value">--</div>
+      <div class="result-label" id="qtc-label">--</div>
+      <div class="result-detail" id="qtc-detail">--</div>
+    </div>
+  </div>
+
+  <!-- CHA2DS2-VASc Panel -->
+  <div class="panel" id="panel-cha">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="cha-hf"><span>HF / LV dysfunction</span></label>
+      <label class="check-item"><input type="checkbox" id="cha-htn"><span>Hypertension</span></label>
+      <label class="check-item"><input type="checkbox" id="cha-age75"><span>Age &gt;= 75</span></label>
+      <label class="check-item"><input type="checkbox" id="cha-dm"><span>Diabetes</span></label>
+      <label class="check-item"><input type="checkbox" id="cha-stroke"><span>Stroke / TIA / TE</span></label>
+      <label class="check-item"><input type="checkbox" id="cha-vascular"><span>Vascular disease</span></label>
+      <label class="check-item"><input type="checkbox" id="cha-age65"><span>Age 65-74</span></label>
+      <label class="check-item"><input type="checkbox" id="cha-female"><span>Female sex</span></label>
+    </div>
+    <button class="btn" onclick="calcCHA()">Calculate CHA2DS2-VASc</button>
+    <div class="calc-note"><strong>CHA2DS2-VASc note:</strong> Use for nonvalvular AF. Female sex counts with other risk factors, not alone.</div>
+    <div class="result-box" id="cha-result" style="display:none;">
+      <div class="result-value" id="cha-value">--</div>
+      <div class="result-label" id="cha-label">--</div>
+      <div class="result-detail" id="cha-detail">--</div>
+    </div>
+  </div>
+
+  <!-- HAS-BLED Panel -->
+  <div class="panel" id="panel-has">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="has-htn"><span>SBP &gt; 160 mmHg</span></label>
+      <label class="check-item"><input type="checkbox" id="has-renal"><span>Abnormal renal function</span></label>
+      <label class="check-item"><input type="checkbox" id="has-liver"><span>Abnormal liver function</span></label>
+      <label class="check-item"><input type="checkbox" id="has-stroke"><span>Stroke history</span></label>
+      <label class="check-item"><input type="checkbox" id="has-bleed"><span>Bleeding history</span></label>
+      <label class="check-item"><input type="checkbox" id="has-inr"><span>Labile INR</span></label>
+      <label class="check-item"><input type="checkbox" id="has-elderly"><span>Age &gt; 65</span></label>
+      <label class="check-item"><input type="checkbox" id="has-drugs"><span>Drugs predisposing to bleed</span></label>
+      <label class="check-item"><input type="checkbox" id="has-alcohol"><span>Alcohol use</span></label>
+    </div>
+    <button class="btn" onclick="calcHASBLED()">Calculate HAS-BLED</button>
+    <div class="calc-note"><strong>HAS-BLED note:</strong> Score &gt;= 3 flags bleed risk; fix modifiable factors first and do not use it alone to withhold OAC.</div>
+    <div class="result-box" id="has-result" style="display:none;">
+      <div class="result-value" id="has-value">--</div>
+      <div class="result-label" id="has-label">--</div>
+      <div class="result-detail" id="has-detail">--</div>
+    </div>
+  </div>
+
+  <!-- TIMI Panel -->
+  <div class="panel" id="panel-timi">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="timi-age"><span>Age &gt;= 65</span></label>
+      <label class="check-item"><input type="checkbox" id="timi-rf"><span>&ge; 3 CAD risk factors</span></label>
+      <label class="check-item"><input type="checkbox" id="timi-cad"><span>Known CAD &gt;50%</span></label>
+      <label class="check-item"><input type="checkbox" id="timi-aspirin"><span>Aspirin use in 7 d</span></label>
+      <label class="check-item"><input type="checkbox" id="timi-angina"><span>&ge; 2 angina episodes in 24 h</span></label>
+      <label class="check-item"><input type="checkbox" id="timi-stdepr"><span>ST deviation</span></label>
+      <label class="check-item"><input type="checkbox" id="timi-biomark"><span>Positive biomarkers</span></label>
+    </div>
+    <button class="btn" onclick="calcTIMI()">Calculate TIMI</button>
+    <div class="calc-note"><strong>Meaning:</strong> predicts short-term risk in UA/NSTEMI. Range: 0-2 low | 3-4 moderate | 5-7 high.</div>
+    <div class="result-box" id="timi-result" style="display:none;">
+      <div class="result-value" id="timi-value">--</div>
+      <div class="result-label" id="timi-label">--</div>
+      <div class="result-detail" id="timi-detail">--</div>
+    </div>
+  </div>
+
+  <!-- HEART Panel -->
+  <div class="panel" id="panel-heart">
+    <div class="grid2">
+      <div class="field">
+        <label>History</label>
+        <select id="heart-history">
+          <option value="0">0 - Slightly suspicious</option>
+          <option value="1">1 - Moderately suspicious</option>
+          <option value="2">2 - Highly suspicious</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ECG</label>
+        <select id="heart-ecg">
+          <option value="0">0 - Normal</option>
+          <option value="1">1 - Non-specific repolarization</option>
+          <option value="2">2 - Significant ST changes</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Age</label>
+        <select id="heart-age">
+          <option value="0">0 - &lt;45</option>
+          <option value="1">1 - 45-64</option>
+          <option value="2">2 - >=65</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Risk factors</label>
+        <select id="heart-risk">
+          <option value="0">0 - None</option>
+          <option value="1">1 - 1-2 risk factors</option>
+          <option value="2">2 - >=3 risk factors / known atherosclerosis</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Troponin</label>
+        <select id="heart-trop">
+          <option value="0">0 - Normal</option>
+          <option value="1">1 - 1-3x normal</option>
+          <option value="2">2 - &gt;3x normal</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcHEART()">Calculate HEART score</button>
+    <div class="calc-note"><strong>Meaning:</strong> chest pain risk tool in ED. Range: 0-3 low | 4-6 moderate | 7-10 high.</div>
+    <div class="result-box" id="heart-result" style="display:none;">
+      <div class="result-value" id="heart-value">--</div>
+      <div class="result-label" id="heart-label">--</div>
+      <div class="result-detail" id="heart-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Wells DVT Panel -->
+  <div class="panel" id="panel-welldvt">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="dvt-cancer"><span>Active cancer</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-paralysis"><span>Paralysis / cast</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-bed"><span>Bedridden / major surgery</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-tender"><span>Localized tenderness</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-swollen"><span>Entire leg swollen</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-calf"><span>Calf &gt;3 cm bigger</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-pitting"><span>Pitting edema only in symptomatic leg</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-collateral"><span>Collateral superficial veins</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-prev"><span>Previous DVT</span></label>
+      <label class="check-item"><input type="checkbox" id="dvt-alt"><span>Alternative diagnosis more likely</span></label>
+    </div>
+    <button class="btn" onclick="calcWellsDVT()">Calculate Wells DVT</button>
+    <div class="calc-note"><strong>Meaning:</strong> pre-test probability for DVT. Range: &le;0 unlikely | 1-2 moderate | >=3 likely.</div>
+    <div class="result-box" id="welldvt-result" style="display:none;">
+      <div class="result-value" id="welldvt-value">--</div>
+      <div class="result-label" id="welldvt-label">--</div>
+      <div class="result-detail" id="welldvt-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Wells PE Panel -->
+  <div class="panel" id="panel-wellspe">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="pe-dvt"><span>Signs of DVT</span></label>
+      <label class="check-item"><input type="checkbox" id="pe-alt"><span>PE more likely than alt dx</span></label>
+      <label class="check-item"><input type="checkbox" id="pe-hr"><span>HR &gt; 100</span></label>
+      <label class="check-item"><input type="checkbox" id="pe-surg"><span>Immobilization / surgery</span></label>
+      <label class="check-item"><input type="checkbox" id="pe-prev"><span>Previous DVT / PE</span></label>
+      <label class="check-item"><input type="checkbox" id="pe-hemop"><span>Hemoptysis</span></label>
+      <label class="check-item"><input type="checkbox" id="pe-cancer"><span>Active malignancy</span></label>
+    </div>
+    <button class="btn" onclick="calcWellsPE()">Calculate Wells PE</button>
+    <div class="calc-note"><strong>Meaning:</strong> estimates PE probability. Range: &le;4 unlikely | &gt;4 likely.</div>
+    <div class="result-box" id="wellspe-result" style="display:none;">
+      <div class="result-value" id="wellspe-value">--</div>
+      <div class="result-label" id="wellspe-label">--</div>
+      <div class="result-detail" id="wellspe-detail">--</div>
+    </div>
+  </div>
+
+  <!-- PERC Panel -->
+  <div class="panel" id="panel-perc">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="perc-age"><span>Age &gt; 49</span></label>
+      <label class="check-item"><input type="checkbox" id="perc-pulse"><span>Pulse &gt; 99</span></label>
+      <label class="check-item"><input type="checkbox" id="perc-spo2"><span>SpO2 &lt; 95%</span></label>
+      <label class="check-item"><input type="checkbox" id="perc-leg"><span>Unilateral leg swelling</span></label>
+      <label class="check-item"><input type="checkbox" id="perc-hx"><span>Hemoptysis</span></label>
+      <label class="check-item"><input type="checkbox" id="perc-estrogen"><span>Estrogen use</span></label>
+      <label class="check-item"><input type="checkbox" id="perc-surg"><span>Recent surgery / trauma</span></label>
+      <label class="check-item"><input type="checkbox" id="perc-vte"><span>Prior VTE</span></label>
+    </div>
+    <button class="btn" onclick="calcPERC()">Check PERC</button>
+    <div class="calc-note"><strong>Meaning:</strong> rules out PE in low-risk patients. Cutoff: 0 positive items = PERC negative.</div>
+    <div class="result-box" id="perc-result" style="display:none;">
+      <div class="result-value" id="perc-value">--</div>
+      <div class="result-label" id="perc-label">--</div>
+      <div class="result-detail" id="perc-detail">--</div>
+    </div>
+  </div>
+
+  <!-- MDRD Panel -->
+  <div class="panel" id="panel-mdrd">
+    <div class="grid2">
+      <div class="field"><label>Age (years)</label><input type="number" id="mdrd-age" value="60"></div>
+      <div class="field"><label>Serum creatinine (mg/dL)</label><input type="number" id="mdrd-scr" step="0.1" value="1.0"></div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="mdrd-sex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+      <div class="field">
+        <label>Race</label>
+        <select id="mdrd-race"><option value="nonblack">Non-Black</option><option value="black">Black</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcMDRD()">Calculate MDRD eGFR</button>
+    <div class="calc-note"><strong>Meaning:</strong> older eGFR equation for CKD staging. Uses mL/min/1.73 m&sup2;; CKD-EPI is preferred now.</div>
+    <div class="result-box" id="mdrd-result" style="display:none;">
+      <div class="result-value" id="mdrd-value">--</div>
+      <div class="result-label" id="mdrd-label">--</div>
+      <div class="result-detail" id="mdrd-detail">--</div>
+    </div>
+  </div>
+
+  <!-- FENa Panel -->
+  <div class="panel" id="panel-fena">
+    <div class="grid2">
+      <div class="field"><label>Serum Na (mEq/L)</label><input type="number" id="fena-sna" step="0.1" value="140"></div>
+      <div class="field"><label>Urine Na (mEq/L)</label><input type="number" id="fena-una" step="0.1" value="10"></div>
+      <div class="field"><label>Serum Cr (mg/dL)</label><input type="number" id="fena-scr" step="0.1" value="1.5"></div>
+      <div class="field"><label>Urine Cr (mg/dL)</label><input type="number" id="fena-ucr" step="0.1" value="100"></div>
+    </div>
+    <button class="btn" onclick="calcFENa()">Calculate FENa</button>
+    <div class="calc-note"><strong>Meaning:</strong> helps separate pre-renal from intrinsic AKI. Cutoff: &lt;1% pre-renal | &gt;2% intrinsic.</div>
+    <div class="result-box" id="fena-result" style="display:none;">
+      <div class="result-value" id="fena-value">--</div>
+      <div class="result-label" id="fena-label">--</div>
+      <div class="result-detail" id="fena-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Osmolality Panel -->
+  <div class="panel" id="panel-osmo">
+    <div class="grid2">
+      <div class="field"><label>Sodium (mEq/L)</label><input type="number" id="osmo-na" step="0.1" value="140"></div>
+      <div class="field"><label>Glucose (mg/dL)</label><input type="number" id="osmo-glu" step="1" value="90"></div>
+      <div class="field"><label>BUN (mg/dL)</label><input type="number" id="osmo-bun" step="1" value="14"></div>
+      <div class="field"><label>Ethanol (mg/dL, optional)</label><input type="number" id="osmo-etoh" step="1" placeholder="0"></div>
+    </div>
+    <button class="btn" onclick="calcOsmolality()">Calculate serum osmolality</button>
+    <div class="calc-note"><strong>Meaning:</strong> estimates plasma tonicity. Normal ~275-295 mOsm/kg.</div>
+    <div class="result-box" id="osmo-result" style="display:none;">
+      <div class="result-value" id="osmo-value">--</div>
+      <div class="result-label" id="osmo-label">--</div>
+      <div class="result-detail" id="osmo-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Free Water Deficit Panel -->
+  <div class="panel" id="panel-waterdef">
+    <div class="grid2">
+      <div class="field"><label>Weight (kg)</label><input type="number" id="wdef-wt" value="70"></div>
+      <div class="field"><label>Age (years)</label><input type="number" id="wdef-age" value="60"></div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="wdef-sex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+      <div class="field"><label>Current Na (mEq/L)</label><input type="number" id="wdef-na" step="0.1" value="155"></div>
+    </div>
+    <button class="btn" onclick="calcWaterDeficit()">Calculate free water deficit</button>
+    <div class="calc-note"><strong>Meaning:</strong> estimates water needed to correct hypernatremia. Use with the patient's TBW factor and recheck Na often.</div>
+    <div class="result-box" id="wdef-result" style="display:none;">
+      <div class="result-value" id="wdef-value">--</div>
+      <div class="result-label" id="wdef-label">--</div>
+      <div class="result-detail" id="wdef-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Corrected Calcium Panel -->
+  <div class="panel" id="panel-calcium">
+    <div class="grid2">
+      <div class="field"><label>Measured calcium (mg/dL)</label><input type="number" id="cca-ca" step="0.1" value="8.0"></div>
+      <div class="field"><label>Albumin (g/dL)</label><input type="number" id="cca-alb" step="0.1" value="3.0"></div>
+    </div>
+    <button class="btn" onclick="calcCorrectedCalcium()">Calculate corrected calcium</button>
+    <div class="calc-note"><strong>Meaning:</strong> adjusts total calcium for hypoalbuminaemia. Normal ~8.5-10.5 mg/dL.</div>
+    <div class="result-box" id="cca-result" style="display:none;">
+      <div class="result-value" id="cca-value">--</div>
+      <div class="result-label" id="cca-label">--</div>
+      <div class="result-detail" id="cca-detail">--</div>
+    </div>
+  </div>
+
+  <!-- GCS Panel -->
+  <div class="panel" id="panel-gcs">
+    <div class="grid2">
+      <div class="field">
+        <label>Eye opening</label>
+        <select id="gcs-eye">
+          <option value="4">4 - Spontaneous</option>
+          <option value="3">3 - To speech</option>
+          <option value="2">2 - To pain</option>
+          <option value="1">1 - None</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Verbal response</label>
+        <select id="gcs-verbal">
+          <option value="5">5 - Oriented</option>
+          <option value="4">4 - Confused</option>
+          <option value="3">3 - Inappropriate words</option>
+          <option value="2">2 - Incomprehensible sounds</option>
+          <option value="1">1 - None</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Motor response</label>
+        <select id="gcs-motor">
+          <option value="6">6 - Obeys commands</option>
+          <option value="5">5 - Localizes pain</option>
+          <option value="4">4 - Withdraws from pain</option>
+          <option value="3">3 - Abnormal flexion</option>
+          <option value="2">2 - Extension</option>
+          <option value="1">1 - None</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcGCS()">Calculate GCS</button>
+    <div class="calc-note"><strong>Meaning:</strong> rates consciousness. Range: 3-15. 13-15 mild | 9-12 moderate | <=8 severe.</div>
+    <div class="result-box" id="gcs-result" style="display:none;">
+      <div class="result-value" id="gcs-value">--</div>
+      <div class="result-label" id="gcs-label">--</div>
+      <div class="result-detail" id="gcs-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Pediatric GCS Panel -->
+  <div class="panel" id="panel-pgcs">
+    <div class="grid2">
+      <div class="field">
+        <label>Eye opening</label>
+        <select id="pgcs-eye">
+          <option value="4">4 - Spontaneous</option>
+          <option value="3">3 - To voice</option>
+          <option value="2">2 - To pain</option>
+          <option value="1">1 - None</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Verbal response</label>
+        <select id="pgcs-verbal">
+          <option value="5">5 - Coos / babbles / appropriate words</option>
+          <option value="4">4 - Irritable cry / confused speech</option>
+          <option value="3">3 - Cries to pain</option>
+          <option value="2">2 - Grunts to pain</option>
+          <option value="1">1 - None</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Motor response</label>
+        <select id="pgcs-motor">
+          <option value="6">6 - Obeys / normal movement</option>
+          <option value="5">5 - Localizes pain</option>
+          <option value="4">4 - Withdraws from pain</option>
+          <option value="3">3 - Abnormal flexion</option>
+          <option value="2">2 - Extension</option>
+          <option value="1">1 - None</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcPedGCS()">Calculate Pediatric GCS</button>
+    <div class="calc-note"><strong>Meaning:</strong> pediatric coma score for pre-verbal children. Range: 3-15.</div>
+    <div class="result-box" id="pgcs-result" style="display:none;">
+      <div class="result-value" id="pgcs-value">--</div>
+      <div class="result-label" id="pgcs-label">--</div>
+      <div class="result-detail" id="pgcs-detail">--</div>
+    </div>
+  </div>
+
+  <!-- qSOFA Panel -->
+  <div class="panel" id="panel-qsofa">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="qsofa-rr"><span>RR &gt;= 22</span></label>
+      <label class="check-item"><input type="checkbox" id="qsofa-sbp"><span>SBP &lt;= 100</span></label>
+      <label class="check-item"><input type="checkbox" id="qsofa-ment"><span>Altered mentation</span></label>
+    </div>
+    <button class="btn" onclick="calcQSOFA()">Calculate qSOFA</button>
+    <div class="calc-note"><strong>Meaning:</strong> quick bedside sepsis screen. Range: 0-3; >=2 is higher risk.</div>
+    <div class="result-box" id="qsofa-result" style="display:none;">
+      <div class="result-value" id="qsofa-value">--</div>
+      <div class="result-label" id="qsofa-label">--</div>
+      <div class="result-detail" id="qsofa-detail">--</div>
+    </div>
+  </div>
+
+  <!-- SOFA Panel -->
+  <div class="panel" id="panel-sofa">
+    <div class="grid2">
+      <div class="field">
+        <label>Respiration: PaO2/FiO2</label>
+        <select id="sofa-resp">
+          <option value="0">>=400</option>
+          <option value="1">300-399</option>
+          <option value="2">200-299</option>
+          <option value="3">100-199 (with resp support)</option>
+          <option value="4"><100 (with resp support)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Coagulation: platelets</label>
+        <select id="sofa-coag">
+          <option value="0">>=150</option>
+          <option value="1"><150</option>
+          <option value="2"><100</option>
+          <option value="3"><50</option>
+          <option value="4"><20</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Liver: bilirubin</label>
+        <select id="sofa-liver">
+          <option value="0"><1.2</option>
+          <option value="1">1.2-1.9</option>
+          <option value="2">2.0-5.9</option>
+          <option value="3">6.0-11.9</option>
+          <option value="4">>=12</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Cardiovascular</label>
+        <select id="sofa-cv">
+          <option value="0">No hypotension</option>
+          <option value="1">MAP <70</option>
+          <option value="2">Dopamine <=5 or dobutamine</option>
+          <option value="3">Dopamine >5 / epi <=0.1 / norepi <=0.1</option>
+          <option value="4">Dopamine >15 / epi >0.1 / norepi >0.1</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>CNS: GCS</label>
+        <select id="sofa-cns">
+          <option value="0">15</option>
+          <option value="1">13-14</option>
+          <option value="2">10-12</option>
+          <option value="3">6-9</option>
+          <option value="4"><6</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Renal: creatinine / urine</label>
+        <select id="sofa-renal">
+          <option value="0"><1.2</option>
+          <option value="1">1.2-1.9</option>
+          <option value="2">2.0-3.4</option>
+          <option value="3">3.5-4.9 or UO <500</option>
+          <option value="4">>=5.0 or UO <200</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcSOFA()">Calculate SOFA</button>
+    <div class="calc-note"><strong>Meaning:</strong> tracks organ dysfunction in sepsis/ICU. Range: 0-24; higher = worse.</div>
+    <div class="result-box" id="sofa-result" style="display:none;">
+      <div class="result-value" id="sofa-value">--</div>
+      <div class="result-label" id="sofa-label">--</div>
+      <div class="result-detail" id="sofa-detail">--</div>
+    </div>
+  </div>
+
+  <!-- APACHE II Panel -->
+  <div class="panel" id="panel-apache">
+    <div class="grid2">
+      <div class="field">
+        <label>Temperature (C)</label>
+        <input type="number" id="apache-temp" step="0.1" value="37">
+      </div>
+      <div class="field">
+        <label>MAP (mmHg)</label>
+        <input type="number" id="apache-map" step="1" value="90">
+      </div>
+      <div class="field">
+        <label>Heart rate</label>
+        <input type="number" id="apache-hr" step="1" value="90">
+      </div>
+      <div class="field">
+        <label>Respiratory rate</label>
+        <input type="number" id="apache-rr" step="1" value="18">
+      </div>
+      <div class="field">
+        <label>PaO2 (mmHg)</label>
+        <input type="number" id="apache-pao2" step="0.1" value="80">
+      </div>
+      <div class="field">
+        <label>pH</label>
+        <input type="number" id="apache-ph" step="0.01" value="7.40">
+      </div>
+      <div class="field">
+        <label>Sodium (mEq/L)</label>
+        <input type="number" id="apache-na" step="0.1" value="140">
+      </div>
+      <div class="field">
+        <label>Potassium (mEq/L)</label>
+        <input type="number" id="apache-k" step="0.1" value="4.0">
+      </div>
+      <div class="field">
+        <label>Creatinine (mg/dL)</label>
+        <input type="number" id="apache-cr" step="0.1" value="1.0">
+      </div>
+      <div class="field">
+        <label>Hematocrit (%)</label>
+        <input type="number" id="apache-hct" step="0.1" value="40">
+      </div>
+      <div class="field">
+        <label>WBC (10^3/ÂµL)</label>
+        <input type="number" id="apache-wbc" step="0.1" value="10">
+      </div>
+      <div class="field">
+        <label>GCS</label>
+        <input type="number" id="apache-gcs" step="1" min="3" max="15" value="15">
+      </div>
+      <div class="field">
+        <label>Age group</label>
+        <select id="apache-age">
+          <option value="0">&lt;45</option>
+          <option value="2">45-54</option>
+          <option value="3">55-64</option>
+          <option value="5">65-74</option>
+          <option value="6">&gt;=75</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Chronic health</label>
+        <select id="apache-chronic">
+          <option value="0">None</option>
+          <option value="2">Elective postop</option>
+          <option value="5">Non-op / emergency postop</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcAPACHEII()">Calculate APACHE II</button>
+    <div class="calc-note"><strong>Meaning:</strong> ICU severity score. Range: 0-71; higher = worse prognosis.</div>
+    <div class="result-box" id="apache-result" style="display:none;">
+      <div class="result-value" id="apache-value">--</div>
+      <div class="result-label" id="apache-label">--</div>
+      <div class="result-detail" id="apache-detail">--</div>
+    </div>
+  </div>
+
+  <!-- CURB-65 Panel -->
+  <div class="panel" id="panel-curb">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="curb-conf"><span>Confusion</span></label>
+      <label class="check-item"><input type="checkbox" id="curb-urea"><span>Urea &gt; 7 mmol/L</span></label>
+      <label class="check-item"><input type="checkbox" id="curb-rr"><span>RR &gt;= 30</span></label>
+      <label class="check-item"><input type="checkbox" id="curb-bp"><span>SBP &lt; 90 or DBP &le; 60</span></label>
+      <label class="check-item"><input type="checkbox" id="curb-age"><span>Age &gt;= 65</span></label>
+    </div>
+    <button class="btn" onclick="calcCURB65()">Calculate CURB-65</button>
+    <div class="calc-note"><strong>Meaning:</strong> CAP mortality tool. Range: 0-5; >=2 usually needs inpatient review.</div>
+    <div class="result-box" id="curb-result" style="display:none;">
+      <div class="result-value" id="curb-value">--</div>
+      <div class="result-label" id="curb-label">--</div>
+      <div class="result-detail" id="curb-detail">--</div>
+    </div>
+  </div>
+
+  <!-- qTICI Panel -->
+  <div class="panel" id="panel-qtici">
+    <div class="field">
+      <label>Reperfusion grade</label>
+      <select id="qtici-grade">
+        <option value="0">0 - No perfusion</option>
+        <option value="1">1 - Penetration with minimal perfusion</option>
+        <option value="2">2a - &lt;50% territory reperfused</option>
+        <option value="3">2b - >=50% territory reperfused</option>
+        <option value="4">2c - Near complete perfusion except slow flow / distal emboli</option>
+        <option value="5">3 - Complete perfusion</option>
+      </select>
+    </div>
+    <button class="btn" onclick="calcQTICI()">Show qTICI grade</button>
+    <div class="calc-note"><strong>Meaning:</strong> grades reperfusion after thrombectomy. Higher = better angiographic recovery.</div>
+    <div class="result-box" id="qtici-result" style="display:none;">
+      <div class="result-value" id="qtici-value">--</div>
+      <div class="result-label" id="qtici-label">--</div>
+      <div class="result-detail" id="qtici-detail">--</div>
+    </div>
+  </div>
+
+  <!-- ANC Panel -->
+  <div class="panel" id="panel-anc">
+    <div class="grid2">
+      <div class="field"><label>WBC (x10^9/L)</label><input type="number" id="anc-wbc" step="0.1" value="5.0"></div>
+      <div class="field"><label>Neutrophils (%)</label><input type="number" id="anc-neut" step="0.1" value="60"></div>
+      <div class="field"><label>Bands (%)</label><input type="number" id="anc-bands" step="0.1" value="0"></div>
+    </div>
+    <button class="btn" onclick="calcANC()">Calculate ANC</button>
+    <div class="calc-note"><strong>Meaning:</strong> infection-fighting neutrophils. ANC = WBC Ã— (neutrophils + bands) / 100.</div>
+    <div class="result-box" id="anc-result" style="display:none;">
+      <div class="result-value" id="anc-value">--</div>
+      <div class="result-label" id="anc-label">--</div>
+      <div class="result-detail" id="anc-detail">--</div>
+    </div>
+  </div>
+
+  <!-- 4Ts Panel -->
+  <div class="panel" id="panel-tts">
+    <div class="grid2">
+      <div class="field">
+        <label>Thrombocytopenia</label>
+        <select id="tts-plt">
+          <option value="0">&lt;30% fall or nadir &lt;10</option>
+          <option value="1">30-50% fall or nadir 10-19</option>
+          <option value="2">&gt;50% fall or nadir >=20</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Timing</label>
+        <select id="tts-time">
+          <option value="0">&lt;4 d without recent exposure</option>
+          <option value="1">5-10 d / unclear</option>
+          <option value="2">5-10 d with prior exposure / &gt;10 d</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Thrombosis</label>
+        <select id="tts-thromb">
+          <option value="0">None</option>
+          <option value="1">Suspected</option>
+          <option value="2">New thrombosis / skin necrosis</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Other cause</label>
+        <select id="tts-other">
+          <option value="2">Definite other cause</option>
+          <option value="1">Possible other cause</option>
+          <option value="0">No other cause</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calc4Ts()">Calculate 4Ts</button>
+    <div class="calc-note"><strong>Meaning:</strong> pretest score for HIT. Range: 0-8; 0-3 low | 4-5 intermediate | 6-8 high.</div>
+    <div class="result-box" id="tts-result" style="display:none;">
+      <div class="result-value" id="tts-value">--</div>
+      <div class="result-label" id="tts-label">--</div>
+      <div class="result-detail" id="tts-detail">--</div>
+    </div>
+  </div>
+
+  <!-- MASCC Panel -->
+  <div class="panel" id="panel-mascc">
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="mascc-burden"><span>Burden of illness mild / none</span></label>
+      <label class="check-item"><input type="checkbox" id="mascc-bp"><span>No hypotension</span></label>
+      <label class="check-item"><input type="checkbox" id="mascc-copd"><span>No COPD</span></label>
+      <label class="check-item"><input type="checkbox" id="mascc-fungal"><span>Solid tumor or no prior fungal infection</span></label>
+      <label class="check-item"><input type="checkbox" id="mascc-dehyd"><span>No dehydration</span></label>
+      <label class="check-item"><input type="checkbox" id="mascc-out"><span>Outpatient at fever onset</span></label>
+      <label class="check-item"><input type="checkbox" id="mascc-age"><span>Age &lt; 60</span></label>
+    </div>
+    <button class="btn" onclick="calcMASCC()">Calculate MASCC</button>
+    <div class="calc-note"><strong>Meaning:</strong> identifies low-risk febrile neutropenia. Range: 0-26; >=21 low risk.</div>
+    <div class="result-box" id="mascc-result" style="display:none;">
+      <div class="result-value" id="mascc-value">--</div>
+      <div class="result-label" id="mascc-label">--</div>
+      <div class="result-detail" id="mascc-detail">--</div>
+    </div>
+  </div>
+
+  <!-- MELD-Na Panel -->
+  <div class="panel" id="panel-meldna">
+    <div class="grid2">
+      <div class="field"><label>Bilirubin (mg/dL)</label><input type="number" id="meld-bili" step="0.1" value="2.0"></div>
+      <div class="field"><label>INR</label><input type="number" id="meld-inr" step="0.1" value="1.5"></div>
+      <div class="field"><label>Creatinine (mg/dL)</label><input type="number" id="meld-cr" step="0.1" value="1.0"></div>
+      <div class="field"><label>Sodium (mEq/L)</label><input type="number" id="meld-na" step="0.1" value="135"></div>
+      <div class="field">
+        <label>On dialysis?</label>
+        <select id="meld-dial"><option value="no">No</option><option value="yes">Yes</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcMELDNa()">Calculate MELD-Na</button>
+    <div class="calc-note"><strong>Meaning:</strong> predicts 3-month mortality in cirrhosis. Higher score = higher urgency. Range: 6-40.</div>
+    <div class="result-box" id="meld-result" style="display:none;">
+      <div class="result-value" id="meld-value">--</div>
+      <div class="result-label" id="meld-label">--</div>
+      <div class="result-detail" id="meld-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Child-Pugh Panel -->
+  <div class="panel" id="panel-child">
+    <div class="grid2">
+      <div class="field">
+        <label>Bilirubin</label>
+        <select id="child-bili">
+          <option value="1">&lt;2 mg/dL</option>
+          <option value="2">2-3 mg/dL</option>
+          <option value="3">&gt;3 mg/dL</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Albumin</label>
+        <select id="child-alb">
+          <option value="1">&gt;3.5 g/dL</option>
+          <option value="2">2.8-3.5 g/dL</option>
+          <option value="3">&lt;2.8 g/dL</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>INR / PT</label>
+        <select id="child-inr">
+          <option value="1">Normal</option>
+          <option value="2">1.7-2.3x / mild</option>
+          <option value="3">&gt;2.3x / marked</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Ascites</label>
+        <select id="child-ascites">
+          <option value="1">None</option>
+          <option value="2">Mild / controlled</option>
+          <option value="3">Moderate / severe</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Encephalopathy</label>
+        <select id="child-enceph">
+          <option value="1">None</option>
+          <option value="2">Grade 1-2</option>
+          <option value="3">Grade 3-4</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcChildPugh()">Calculate Child-Pugh</button>
+    <div class="calc-note"><strong>Meaning:</strong> grades cirrhosis severity. Range: 5-15; A=5-6, B=7-9, C=10-15.</div>
+    <div class="result-box" id="child-result" style="display:none;">
+      <div class="result-value" id="child-value">--</div>
+      <div class="result-label" id="child-label">--</div>
+      <div class="result-detail" id="child-detail">--</div>
+    </div>
+  </div>
+
+  <!-- FIB-4 Panel -->
+  <div class="panel" id="panel-fib4">
+    <div class="grid2">
+      <div class="field"><label>Age (years)</label><input type="number" id="fib-age" value="50"></div>
+      <div class="field"><label>AST (U/L)</label><input type="number" id="fib-ast" step="0.1" value="40"></div>
+      <div class="field"><label>ALT (U/L)</label><input type="number" id="fib-alt" step="0.1" value="30"></div>
+      <div class="field"><label>Platelets (10^9/L)</label><input type="number" id="fib-plt" step="0.1" value="250"></div>
+    </div>
+    <button class="btn" onclick="calcFIB4()">Calculate FIB-4</button>
+    <div class="calc-note"><strong>Meaning:</strong> non-invasive fibrosis screen. Cutoff: &lt;1.3 low | 1.3-2.67 indeterminate | &gt;2.67 high.</div>
+    <div class="result-box" id="fib-result" style="display:none;">
+      <div class="result-value" id="fib-value">--</div>
+      <div class="result-label" id="fib-label">--</div>
+      <div class="result-detail" id="fib-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Glasgow-Blatchford Panel -->
+  <div class="panel" id="panel-gbs">
+    <div class="grid2">
+      <div class="field">
+        <label>Sex</label>
+        <select id="gbs-sex"><option value="male">Male</option><option value="female">Female</option></select>
+      </div>
+      <div class="field"><label>BUN (mg/dL)</label><input type="number" id="gbs-bun" step="0.1" value="20"></div>
+      <div class="field"><label>Hemoglobin (g/dL)</label><input type="number" id="gbs-hb" step="0.1" value="12"></div>
+      <div class="field"><label>Systolic BP (mmHg)</label><input type="number" id="gbs-sbp" step="1" value="110"></div>
+      <div class="field"><label>Pulse (bpm)</label><input type="number" id="gbs-pulse" step="1" value="95"></div>
+    </div>
+    <div class="check-list">
+      <label class="check-item"><input type="checkbox" id="gbs-melena"><span>Melena</span></label>
+      <label class="check-item"><input type="checkbox" id="gbs-syncope"><span>Syncope</span></label>
+      <label class="check-item"><input type="checkbox" id="gbs-liver"><span>Hepatic disease</span></label>
+      <label class="check-item"><input type="checkbox" id="gbs-heart"><span>Heart failure</span></label>
+    </div>
+    <button class="btn" onclick="calcGBS()">Calculate GBS</button>
+    <div class="calc-note"><strong>Meaning:</strong> upper GI bleed triage score. Range increases with risk; 0 is usually lowest risk.</div>
+    <div class="result-box" id="gbs-result" style="display:none;">
+      <div class="result-value" id="gbs-value">--</div>
+      <div class="result-label" id="gbs-label">--</div>
+      <div class="result-detail" id="gbs-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Rockall Panel -->
+  <div class="panel" id="panel-rockall">
+    <div class="grid2">
+      <div class="field">
+        <label>Age</label>
+        <select id="rock-age">
+          <option value="0">&lt;60</option>
+          <option value="1">60-79</option>
+          <option value="2">&gt;=80</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Shock</label>
+        <select id="rock-shock">
+          <option value="0">No shock</option>
+          <option value="1">Pulse &gt;=100</option>
+          <option value="2">SBP &lt;100</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Comorbidity</label>
+        <select id="rock-comorb">
+          <option value="0">None / minor</option>
+          <option value="2">Cardiac failure / IHD / major comorb.</option>
+          <option value="3">Renal failure / liver failure / malignancy</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcRockall()">Calculate Rockall</button>
+    <div class="calc-note"><strong>Meaning:</strong> pre-endoscopic upper GI bleed risk score. Range: 0-7; higher = worse.</div>
+    <div class="result-box" id="rock-result" style="display:none;">
+      <div class="result-value" id="rock-value">--</div>
+      <div class="result-label" id="rock-label">--</div>
+      <div class="result-detail" id="rock-detail">--</div>
+    </div>
+  </div>
+
+  <!-- NIHSS Panel -->
+  <div class="panel" id="panel-nihss">
+    <div class="grid2">
+      <div class="field">
+        <label>LOC</label>
+        <select id="nihss-loc"><option value="0">Alert</option><option value="1">Drowsy</option><option value="2">Unresponsive</option></select>
+      </div>
+      <div class="field">
+        <label>Questions</label>
+        <select id="nihss-q"><option value="0">Answers both</option><option value="1">Answers one</option><option value="2">Answers none</option></select>
+      </div>
+      <div class="field">
+        <label>Commands</label>
+        <select id="nihss-cmd"><option value="0">Obeys both</option><option value="1">Obeys one</option><option value="2">Obeys none</option></select>
+      </div>
+      <div class="field">
+        <label>Gaze</label>
+        <select id="nihss-gaze"><option value="0">Normal</option><option value="1">Partial palsy</option><option value="2">Forced deviation</option></select>
+      </div>
+      <div class="field">
+        <label>Visual fields</label>
+        <select id="nihss-vis"><option value="0">Normal</option><option value="1">Partial hemianopia</option><option value="2">Complete hemianopia</option></select>
+      </div>
+      <div class="field">
+        <label>Facial palsy</label>
+        <select id="nihss-face"><option value="0">Normal</option><option value="1">Minor</option><option value="2">Partial</option><option value="3">Complete</option></select>
+      </div>
+      <div class="field">
+        <label>L arm</label>
+        <select id="nihss-larm"><option value="0">Normal</option><option value="1">Drift</option><option value="2">Some effort</option><option value="3">No effort</option></select>
+      </div>
+      <div class="field">
+        <label>R arm</label>
+        <select id="nihss-rarm"><option value="0">Normal</option><option value="1">Drift</option><option value="2">Some effort</option><option value="3">No effort</option></select>
+      </div>
+      <div class="field">
+        <label>L leg</label>
+        <select id="nihss-lleg"><option value="0">Normal</option><option value="1">Drift</option><option value="2">Some effort</option><option value="3">No effort</option></select>
+      </div>
+      <div class="field">
+        <label>R leg</label>
+        <select id="nihss-rleg"><option value="0">Normal</option><option value="1">Drift</option><option value="2">Some effort</option><option value="3">No effort</option></select>
+      </div>
+      <div class="field">
+        <label>Ataxia</label>
+        <select id="nihss-ataxia"><option value="0">None</option><option value="1">One limb</option><option value="2">Two limbs</option></select>
+      </div>
+      <div class="field">
+        <label>Sensation</label>
+        <select id="nihss-sens"><option value="0">Normal</option><option value="1">Mild loss</option><option value="2">Severe loss</option></select>
+      </div>
+      <div class="field">
+        <label>Language</label>
+        <select id="nihss-lang"><option value="0">Normal</option><option value="1">Mild aphasia</option><option value="2">Severe aphasia</option><option value="3">Mute/global</option></select>
+      </div>
+      <div class="field">
+        <label>Dysarthria</label>
+        <select id="nihss-dys"><option value="0">Normal</option><option value="1">Mild</option><option value="2">Severe</option></select>
+      </div>
+      <div class="field">
+        <label>Neglect</label>
+        <select id="nihss-neg"><option value="0">None</option><option value="1">Mild</option><option value="2">Severe</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcNIHSS()">Calculate NIHSS</button>
+    <div class="calc-note"><strong>Meaning:</strong> quantifies acute stroke deficit. Range: 0-42; higher = worse neurologic injury.</div>
+    <div class="result-box" id="nihss-result" style="display:none;">
+      <div class="result-value" id="nihss-value">--</div>
+      <div class="result-label" id="nihss-label">--</div>
+      <div class="result-detail" id="nihss-detail">--</div>
+    </div>
+  </div>
+
+  <!-- ABCD2 Panel -->
+  <div class="panel" id="panel-abcd2">
+    <div class="grid2">
+      <div class="field">
+        <label>Age</label>
+        <select id="abcd-age"><option value="0">&lt;60</option><option value="1">&gt;=60</option></select>
+      </div>
+      <div class="field">
+        <label>BP</label>
+        <select id="abcd-bp"><option value="0">Normal</option><option value="1">&gt;=140/90</option></select>
+      </div>
+      <div class="field">
+        <label>Clinical</label>
+        <select id="abcd-clin"><option value="0">Other</option><option value="1">Speech only</option><option value="2">Weakness</option></select>
+      </div>
+      <div class="field">
+        <label>Duration</label>
+        <select id="abcd-dur"><option value="0">&lt;10 min</option><option value="1">10-59 min</option><option value="2">&gt;=60 min</option></select>
+      </div>
+      <div class="field">
+        <label>Diabetes</label>
+        <select id="abcd-dm"><option value="0">No</option><option value="1">Yes</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcABCD2()">Calculate ABCD2</button>
+    <div class="calc-note"><strong>Meaning:</strong> estimates early stroke risk after TIA. Range: 0-7; higher = higher risk.</div>
+    <div class="result-box" id="abcd-result" style="display:none;">
+      <div class="result-value" id="abcd-value">--</div>
+      <div class="result-label" id="abcd-label">--</div>
+      <div class="result-detail" id="abcd-detail">--</div>
+    </div>
+  </div>
+
+  <!-- PHQ-9 Panel -->
+  <div class="panel" id="panel-phq9">
+    <div class="grid2">
+      <div class="field"><label>1. Little interest</label><select id="phq1"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>2. Feeling down</label><select id="phq2"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>3. Sleep</label><select id="phq3"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>4. Energy</label><select id="phq4"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>5. Appetite</label><select id="phq5"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>6. Self-worth</label><select id="phq6"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>7. Concentration</label><select id="phq7"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>8. Psychomotor</label><select id="phq8"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>9. Suicidality</label><select id="phq9q"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+    </div>
+    <button class="btn" onclick="calcPHQ9()">Calculate PHQ-9</button>
+    <div class="calc-note"><strong>Meaning:</strong> depression screen / severity. Range: 0-27; 5, 10, 15, 20 = mild, mod, mod-severe, severe.</div>
+    <div class="result-box" id="phq-result" style="display:none;">
+      <div class="result-value" id="phq-value">--</div>
+      <div class="result-label" id="phq-label">--</div>
+      <div class="result-detail" id="phq-detail">--</div>
+    </div>
+  </div>
+
+  <!-- GAD-7 Panel -->
+  <div class="panel" id="panel-gad7">
+    <div class="grid2">
+      <div class="field"><label>1. Nervous</label><select id="gad1"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>2. Control worry</label><select id="gad2"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>3. Worry too much</label><select id="gad3"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>4. Relax</label><select id="gad4"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>5. Restless</label><select id="gad5"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>6. Irritable</label><select id="gad6"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div class="field"><label>7. Afraid</label><select id="gad7"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+    </div>
+    <button class="btn" onclick="calcGAD7()">Calculate GAD-7</button>
+    <div class="calc-note"><strong>Meaning:</strong> anxiety severity screen. Range: 0-21; 5, 10, 15 = mild, moderate, severe.</div>
+    <div class="result-box" id="gad-result" style="display:none;">
+      <div class="result-value" id="gad-value">--</div>
+      <div class="result-label" id="gad-label">--</div>
+      <div class="result-detail" id="gad-detail">--</div>
+    </div>
+  </div>
+
+  <!-- A-a Gradient Panel -->
+  <div class="panel" id="panel-aagrad">
+    <div class="grid2">
+      <div class="field"><label>Age (years)</label><input type="number" id="aa-age" step="1" value="60"></div>
+      <div class="field"><label>PaO2 (mmHg)</label><input type="number" id="aa-pao2" step="0.1" value="80"></div>
+      <div class="field"><label>FiO2 (e.g. 0.21)</label><input type="number" id="aa-fio2" step="0.01" value="0.21"></div>
+      <div class="field"><label>PaCO2 (mmHg)</label><input type="number" id="aa-paco2" step="0.1" value="40"></div>
+    </div>
+    <button class="btn" onclick="calcAAGradient()">Calculate A-a gradient</button>
+    <div class="calc-note"><strong>Meaning:</strong> compares alveolar vs arterial O2. Normal is age-based; larger gap suggests V/Q or shunt problems.</div>
+    <div class="result-box" id="aa-result" style="display:none;">
+      <div class="result-value" id="aa-value">--</div>
+      <div class="result-label" id="aa-label">--</div>
+      <div class="result-detail" id="aa-detail">--</div>
+    </div>
+  </div>
+
+  <!-- BODE Panel -->
+  <div class="panel" id="panel-bode">
+    <div class="grid2">
+      <div class="field"><label>BMI</label><input type="number" id="bode-bmi" step="0.1" value="22"></div>
+      <div class="field"><label>FEV1 % predicted</label><input type="number" id="bode-fev1" step="0.1" value="55"></div>
+      <div class="field">
+        <label>mMRC dyspnea</label>
+        <select id="bode-dyspnea">
+          <option value="0">0-1</option><option value="1">2</option><option value="2">3</option><option value="3">4</option>
+        </select>
+      </div>
+      <div class="field"><label>6-minute walk (m)</label><input type="number" id="bode-walk" step="1" value="350"></div>
+    </div>
+    <button class="btn" onclick="calcBODE()">Calculate BODE</button>
+    <div class="calc-note"><strong>Meaning:</strong> COPD mortality index. Range: 0-10; higher = worse prognosis.</div>
+    <div class="result-box" id="bode-result" style="display:none;">
+      <div class="result-value" id="bode-value">--</div>
+      <div class="result-label" id="bode-label">--</div>
+      <div class="result-detail" id="bode-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Light's Panel -->
+  <div class="panel" id="panel-lights">
+    <div class="grid2">
+      <div class="field"><label>Serum protein (g/dL)</label><input type="number" id="light-sp" step="0.1" value="7.0"></div>
+      <div class="field"><label>Pleural protein (g/dL)</label><input type="number" id="light-pp" step="0.1" value="4.0"></div>
+      <div class="field"><label>Serum LDH (U/L)</label><input type="number" id="light-sldh" step="1" value="200"></div>
+      <div class="field"><label>Pleural LDH (U/L)</label><input type="number" id="light-pldh" step="1" value="150"></div>
+    </div>
+    <button class="btn" onclick="calcLights()">Apply Light's criteria</button>
+    <div class="calc-note"><strong>Meaning:</strong> classifies pleural effusion. Exudate if any criterion is positive.</div>
+    <div class="result-box" id="light-result" style="display:none;">
+      <div class="result-value" id="light-value">--</div>
+      <div class="result-label" id="light-label">--</div>
+      <div class="result-detail" id="light-detail">--</div>
+    </div>
+  </div>
+
+  <!-- APGAR Panel -->
+  <div class="panel" id="panel-apgar">
+    <div class="grid2">
+      <div class="field">
+        <label>Appearance</label>
+        <select id="apgar-appear"><option value="0">Blue / pale</option><option value="1">Pink body, blue extremities</option><option value="2">Pink</option></select>
+      </div>
+      <div class="field">
+        <label>Pulse</label>
+        <select id="apgar-pulse"><option value="0">Absent</option><option value="1">&lt;100</option><option value="2">&gt;=100</option></select>
+      </div>
+      <div class="field">
+        <label>Grimace</label>
+        <select id="apgar-grim"><option value="0">No response</option><option value="1">Grimace</option><option value="2">Cough / sneeze / pulls away</option></select>
+      </div>
+      <div class="field">
+        <label>Activity</label>
+        <select id="apgar-act"><option value="0">Flaccid</option><option value="1">Some flexion</option><option value="2">Active motion</option></select>
+      </div>
+      <div class="field">
+        <label>Respiration</label>
+        <select id="apgar-resp"><option value="0">Absent</option><option value="1">Slow / irregular</option><option value="2">Good cry</option></select>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:12px;">
+      <div class="field">
+        <label>5 min Appearance</label>
+        <select id="apgar5-appear"><option value="0">Blue / pale</option><option value="1">Pink body, blue extremities</option><option value="2">Pink</option></select>
+      </div>
+      <div class="field">
+        <label>5 min Pulse</label>
+        <select id="apgar5-pulse"><option value="0">Absent</option><option value="1">&lt;100</option><option value="2">&gt;=100</option></select>
+      </div>
+      <div class="field">
+        <label>5 min Grimace</label>
+        <select id="apgar5-grim"><option value="0">No response</option><option value="1">Grimace</option><option value="2">Cough / sneeze / pulls away</option></select>
+      </div>
+      <div class="field">
+        <label>5 min Activity</label>
+        <select id="apgar5-act"><option value="0">Flaccid</option><option value="1">Some flexion</option><option value="2">Active motion</option></select>
+      </div>
+      <div class="field">
+        <label>5 min Respiration</label>
+        <select id="apgar5-resp"><option value="0">Absent</option><option value="1">Slow / irregular</option><option value="2">Good cry</option></select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcAPGAR()">Calculate APGAR</button>
+    <div class="calc-note"><strong>Meaning:</strong> newborn condition at 1 and 5 min. Range: 0-10; 7-10 reassuring.</div>
+    <div class="result-box" id="apgar-result" style="display:none;">
+      <div class="result-value" id="apgar-value">--</div>
+      <div class="result-label" id="apgar-label">--</div>
+      <div class="result-detail" id="apgar-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Centor Panel -->
+  <div class="panel" id="panel-centor">
+    <div class="grid2">
+      <div class="field"><label>Fever &gt;38Â°C</label><select id="centor-fever"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="field"><label>Tonsillar exudate</label><select id="centor-exudate"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="field"><label>Tender anterior nodes</label><select id="centor-nodes"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="field"><label>Cough</label><select id="centor-cough"><option value="1">Absent</option><option value="0">Present</option></select></div>
+      <div class="field">
+        <label>Age</label>
+        <select id="centor-age">
+          <option value="1">3-14</option>
+          <option value="0">15-44</option>
+          <option value="-1">&gt;=45</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn" onclick="calcCentor()">Calculate Centor</button>
+    <div class="calc-note"><strong>Meaning:</strong> strep throat probability. This uses the McIsaac age adjustment. Higher = more likely GAS.</div>
+    <div class="result-box" id="centor-result" style="display:none;">
+      <div class="result-value" id="centor-value">--</div>
+      <div class="result-label" id="centor-label">--</div>
+      <div class="result-detail" id="centor-detail">--</div>
+    </div>
+  </div>
+
+  <!-- Dosage Panel -->
+  <div class="panel" id="panel-dosage">
+    <div class="field">
+      <label>Select drug</label>
+      <select id="dosage-drug" onchange="updateDosage()">
+        <option value="custom">Custom / Manual entry</option>
+        <option value="amoxicillin">Amoxicillin (20-40 mg/kg/day divided q8h)</option>
+        <option value="azithromycin">Azithromycin (10 mg/kg day 1, then 5 mg/kg days 2-5)</option>
+        <option value="paracetamol">Paracetamol / Acetaminophen (10-15 mg/kg q4-6h)</option>
+        <option value="ibuprofen">Ibuprofen (5-10 mg/kg q6-8h)</option>
+        <option value="metformin">Metformin (500-2000 mg/day divided)</option>
+        <option value="amlodipine">Amlodipine (2.5-10 mg once daily)</option>
+        <option value="atorvastatin">Atorvastatin (10-80 mg once daily)</option>
+        <option value="lisinopril">Lisinopril (5-40 mg once daily)</option>
+      </select>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Patient weight (kg)</label><input type="number" id="dosage-wt" value="70"></div>
+      <div class="field"><label>Patient age (years)</label><input type="number" id="dosage-age" value="35"></div>
+    </div>
+    <div class="field" id="dosage-custom-row" style="display:none;">
+      <label>Dose per kg (mg/kg)</label><input type="number" id="dosage-custom" step="0.1" value="10">
+    </div>
+    <div class="field">
+      <label>Frequency</label>
+      <select id="dosage-freq">
+        <option value="1">Once daily</option>
+        <option value="2">Twice daily (BID)</option>
+        <option value="3" selected>Three times daily (TID)</option>
+        <option value="4">Four times daily (QID)</option>
+      </select>
+    </div>
+    <button class="btn" onclick="calcDosage()">Calculate dose</button>
+    <div class="calc-note"><strong>Dosage note:</strong> always check renal, hepatic, and pediatric adjustments before using the calculated dose.</div>
+    <div class="result-box" id="dosage-result" style="display:none;">
+      <div class="result-value" id="dosage-value">--</div>
+      <div class="result-label" id="dosage-label">--</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--kimi-color-text-tertiary);" id="dosage-note">--</div>
+    </div>
+  </div>
+
+  <!-- Scientific Panel -->
+  <div class="panel" id="panel-scientific">
+    <div class="calc-display" id="sci-display">0</div>
+    <div class="calc-grid">
+      <button class="calc-btn op" onclick="sciClear()">AC</button>
+      <button class="calc-btn op" onclick="sciOp('(')">(</button>
+      <button class="calc-btn op" onclick="sciOp(')')">)</button>
+      <button class="calc-btn op" onclick="sciOp('/')">Ã·</button>
+      <button class="calc-btn" onclick="sciNum('7')">7</button>
+      <button class="calc-btn" onclick="sciNum('8')">8</button>
+      <button class="calc-btn" onclick="sciNum('9')">9</button>
+      <button class="calc-btn op" onclick="sciOp('*')">Ã—</button>
+      <button class="calc-btn" onclick="sciNum('4')">4</button>
+      <button class="calc-btn" onclick="sciNum('5')">5</button>
+      <button class="calc-btn" onclick="sciNum('6')">6</button>
+      <button class="calc-btn op" onclick="sciOp('-')">âˆ’</button>
+      <button class="calc-btn" onclick="sciNum('1')">1</button>
+      <button class="calc-btn" onclick="sciNum('2')">2</button>
+      <button class="calc-btn" onclick="sciNum('3')">3</button>
+      <button class="calc-btn op" onclick="sciOp('+')">+</button>
+      <button class="calc-btn" onclick="sciNum('0')">0</button>
+      <button class="calc-btn" onclick="sciNum('.')">.</button>
+      <button class="calc-btn op" onclick="sciOp('^')">xÊ¸</button>
+      <button class="calc-btn op" onclick="sciEval()">=</button>
+    </div>
+    <div class="calc-grid" style="margin-top:8px;">
+      <button class="calc-btn op" onclick="sciFunc('sqrt')">âˆš</button>
+      <button class="calc-btn op" onclick="sciFunc('log')">log</button>
+      <button class="calc-btn op" onclick="sciFunc('ln')">ln</button>
+      <button class="calc-btn op" onclick="sciFunc('sin')">sin</button>
+      <button class="calc-btn op" onclick="sciFunc('cos')">cos</button>
+      <button class="calc-btn op" onclick="sciFunc('tan')">tan</button>
+      <button class="calc-btn op" onclick="sciFunc('inv')">1/x</button>
+      <button class="calc-btn op" onclick="sciFunc('abs')">|x|</button>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Disclaimer:</strong> These calculators are provided for educational and reference purposes only. 
+    They do not replace clinical judgment. Always verify calculations and consult appropriate guidelines 
+    (ACC/AHA, WHO, etc.) before making clinical decisions. AjixPharmacy assumes no liability for 
+    decisions made using these tools.
+  </div>
+</div>
+
+<script>
+  function goBackFromCalculator() {
+    window.location.href = 'index.html?screen=extra-screen';
+  }
+
+  const calcSearchInput = document.getElementById('calc-search-input');
+  const calcSearchClear = document.getElementById('calc-search-clear');
+  const calcTabs = Array.from(document.querySelectorAll('#ajix-calc .tab'));
+  const calcActiveLabel = document.getElementById('calc-active-label');
+  const calcThemeBtn = document.getElementById('calc-theme-btn');
+  const calcThemeColorMeta = document.getElementById('calc-theme-color');
+  const CALC_THEME_STORAGE_KEY = 'ajix-calc-theme-v1';
+
+  function syncCalcActiveLabel(tab) {
+    if (!calcActiveLabel) return;
+    calcActiveLabel.textContent = tab?.textContent?.trim() || '';
+  }
+
+  function readCalcTheme() {
+    try {
+      const stored = localStorage.getItem(CALC_THEME_STORAGE_KEY);
+      return stored === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  }
+
+  function syncCalcTheme(theme, persist = true) {
+    const nextTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.classList.toggle('calc-theme-dark', nextTheme === 'dark');
+    if (calcThemeColorMeta) {
+      calcThemeColorMeta.setAttribute('content', nextTheme === 'dark' ? '#1f1308' : '#b45309');
+    }
+    if (calcThemeBtn) {
+      const label = nextTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+      calcThemeBtn.setAttribute('aria-label', label);
+      calcThemeBtn.setAttribute('title', label);
+    }
+    if (persist) {
+      try {
+        localStorage.setItem(CALC_THEME_STORAGE_KEY, nextTheme);
+      } catch {}
+    }
+  }
+
+  function applyCalcTabFilter() {
+    const query = String(calcSearchInput?.value || '').trim().toLowerCase();
+    let firstVisible = null;
+
+    calcTabs.forEach(tab => {
+      const matches = !query || tab.textContent.toLowerCase().includes(query);
+      tab.classList.toggle('is-hidden', !matches);
+      if (matches && !firstVisible) firstVisible = tab;
+    });
+
+    const active = calcTabs.find(tab => tab.classList.contains('active'));
+    if (query && active && active.classList.contains('is-hidden') && firstVisible) {
+      firstVisible.click();
+    }
+
+    if (!query && !active && calcTabs[0]) {
+      calcTabs[0].click();
+    }
+
+    if (calcSearchClear) calcSearchClear.hidden = !query;
+  }
+
+  document.getElementById('calc-back-btn')?.addEventListener('click', goBackFromCalculator);
+  calcThemeBtn?.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.contains('calc-theme-dark');
+    syncCalcTheme(isDark ? 'light' : 'dark');
+  });
+  calcSearchInput?.addEventListener('input', applyCalcTabFilter);
+  calcSearchClear?.addEventListener('click', () => {
+    if (!calcSearchInput) return;
+    calcSearchInput.value = '';
+    calcSearchInput.focus();
+    applyCalcTabFilter();
+  });
+
+  // Tab switching
+  document.querySelectorAll('#ajix-calc .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#ajix-calc .tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('#ajix-calc .panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      syncCalcActiveLabel(tab);
+    });
+  });
+  syncCalcActiveLabel(document.querySelector('#ajix-calc .tab.active') || calcTabs[0]);
+  syncCalcTheme(readCalcTheme(), false);
+  applyCalcTabFilter();
+
+  // ASCVD Risk (Pooled Cohort Equations)
+  function calcASCVD() {
+    const age = parseFloat(document.getElementById('ascvd-age').value);
+    const sex = document.getElementById('ascvd-sex').value;
+    const tc = parseFloat(document.getElementById('ascvd-tc').value);
+    const hdl = parseFloat(document.getElementById('ascvd-hdl').value);
+    const sbp = parseFloat(document.getElementById('ascvd-sbp').value);
+    const htn = document.getElementById('ascvd-htn').value === 'yes';
+    const smoke = document.getElementById('ascvd-smoke').value === 'yes';
+    const dm = document.getElementById('ascvd-dm').value === 'yes';
+    const race = document.getElementById('ascvd-race').value;
+
+    if (!age || age < 40 || age > 79) { alert('Age must be 40-79'); return; }
+
+    let risk = 0;
+    if (race === 'aa') {
+      if (sex === 'female') {
+        risk = 1 - Math.pow(0.9533, Math.exp(
+          17.114 * Math.log(age) + 0.94 * Math.log(tc) - 18.92 * Math.log(hdl) +
+          4.475 * Math.log(age) * Math.log(hdl) + 27.82 * Math.log(sbp) +
+          (htn ? -6.087 * Math.log(age) * Math.log(sbp) : 0) +
+          (smoke ? 0.691 : 0) + (dm ? 0.874 : 0) - 86.61
+        ));
+      } else {
+        risk = 1 - Math.pow(0.8954, Math.exp(
+          2.469 * Math.log(age) + 0.302 * Math.log(tc) - 0.307 * Math.log(hdl) +
+          1.916 * Math.log(sbp) + (smoke ? 0.549 : 0) + (dm ? 0.645 : 0) - 19.54
+        ));
+      }
+    } else {
+      if (sex === 'female') {
+        risk = 1 - Math.pow(0.9665, Math.exp(
+          -29.799 * Math.log(age) + 4.884 * Math.log(age) * Math.log(age) +
+          13.54 * Math.log(tc) - 3.114 * Math.log(age) * Math.log(tc) -
+          13.578 * Math.log(hdl) + 3.149 * Math.log(age) * Math.log(hdl) +
+          2.019 * Math.log(sbp) + 7.574 * (htn ? 1 : 0) - 1.665 * Math.log(age) * (htn ? 1 : 0) +
+          (smoke ? 7.99 : 0) - 1.769 * Math.log(age) * (smoke ? 1 : 0) +
+          (dm ? 0.661 : 0) - 29.18
+        ));
+      } else {
+        risk = 1 - Math.pow(0.9144, Math.exp(
+          12.344 * Math.log(age) + 11.853 * Math.log(tc) - 2.664 * Math.log(age) * Math.log(tc) -
+          7.99 * Math.log(hdl) + 1.769 * Math.log(age) * Math.log(hdl) +
+          1.797 * Math.log(sbp) + 1.764 * (htn ? 1 : 0) - 1.795 * Math.log(age) * (htn ? 1 : 0) +
+          (smoke ? 7.837 : 0) - 1.795 * Math.log(age) * (smoke ? 1 : 0) +
+          (dm ? 0.658 : 0) - 61.18
+        ));
+      }
+    }
+
+    risk = Math.max(0, Math.min(100, risk * 100));
+    const valEl = document.getElementById('ascvd-value');
+    const lblEl = document.getElementById('ascvd-label');
+    valEl.textContent = risk.toFixed(1) + '%';
+    valEl.className = 'result-value ' + (risk < 5 ? 'risk-low' : risk < 7.5 ? 'risk-borderline' : 'risk-high');
+    lblEl.textContent = risk < 5 ? 'Low risk (<5%)' : risk < 7.5 ? 'Borderline risk (5-7.5%)' : risk < 20 ? 'Intermediate risk (7.5-20%)' : 'High risk (>=20%)';
+    document.getElementById('ascvd-result').style.display = 'block';
+  }
+
+  // BMI
+  function calcBMI() {
+    const wt = parseFloat(document.getElementById('bmi-wt').value);
+    const ht = parseFloat(document.getElementById('bmi-ht').value) / 100;
+    if (!wt || !ht) return;
+    const bmi = wt / (ht * ht);
+    const valEl = document.getElementById('bmi-value');
+    const lblEl = document.getElementById('bmi-label');
+    valEl.textContent = bmi.toFixed(1) + ' kg/m\u00b2';
+    let cat = ''; let cls = '';
+    if (bmi < 18.5) { cat = 'Underweight'; cls = 'risk-borderline'; }
+    else if (bmi < 25) { cat = 'Normal weight'; cls = 'risk-low'; }
+    else if (bmi < 30) { cat = 'Overweight'; cls = 'risk-borderline'; }
+    else { cat = 'Obese'; cls = 'risk-high'; }
+    valEl.className = 'result-value ' + cls;
+    lblEl.textContent = cat;
+    document.getElementById('bmi-result').style.display = 'block';
+  }
+
+  // BSA (Du Bois)
+  function calcBSA() {
+    const wt = parseFloat(document.getElementById('bsa-wt').value);
+    const ht = parseFloat(document.getElementById('bsa-ht').value);
+    if (!wt || !ht) return;
+    const bsa = 0.007184 * Math.pow(wt, 0.425) * Math.pow(ht, 0.725);
+    document.getElementById('bsa-value').textContent = bsa.toFixed(2) + ' m\u00b2';
+    document.getElementById('bsa-result').style.display = 'block';
+  }
+
+  // CrCl (Cockcroft-Gault)
+  function calcCrCl() {
+    const age = parseFloat(document.getElementById('crcl-age').value);
+    const wt = parseFloat(document.getElementById('crcl-wt').value);
+    const scr = parseFloat(document.getElementById('crcl-scr').value);
+    const sex = document.getElementById('crcl-sex').value;
+    if (!age || !wt || !scr) return;
+    let crcl = ((140 - age) * wt) / (72 * scr);
+    if (sex === 'female') crcl *= 0.85;
+    document.getElementById('crcl-value').textContent = crcl.toFixed(1) + ' mL/min';
+    document.getElementById('crcl-result').style.display = 'block';
+  }
+
+  function checked(id) {
+    return !!document.getElementById(id)?.checked;
+  }
+
+  function selNum(id) {
+    return Number(document.getElementById(id)?.value || 0);
+  }
+
+  function num(id) {
+    return Number(document.getElementById(id)?.value || 0);
+  }
+
+  function showResult(prefix, value, label, detail, cls) {
+    const valEl = document.getElementById(prefix + '-value');
+    const lblEl = document.getElementById(prefix + '-label');
+    const detEl = document.getElementById(prefix + '-detail');
+    if (valEl) {
+      valEl.textContent = value;
+      valEl.className = cls ? 'result-value ' + cls : 'result-value';
+    }
+    if (lblEl) lblEl.textContent = label;
+    if (detEl) detEl.textContent = detail || '';
+    const box = document.getElementById(prefix + '-result');
+    if (box) box.style.display = 'block';
+  }
+
+  function sumChecks(ids) {
+    return ids.reduce((total, id) => total + (checked(id) ? 1 : 0), 0);
+  }
+
+  // TIMI
+  function calcTIMI() {
+    const score = sumChecks(['timi-age','timi-rf','timi-cad','timi-aspirin','timi-angina','timi-stdepr','timi-biomark']);
+    const cls = score <= 2 ? 'risk-low' : score <= 4 ? 'risk-borderline' : 'risk-high';
+    const label = score <= 2 ? 'Low risk' : score <= 4 ? 'Intermediate risk' : 'High risk';
+    showResult('timi', String(score), label, 'UA/NSTEMI short-term risk score.', cls);
+  }
+
+  // HEART
+  function calcHEART() {
+    const score = selNum('heart-history') + selNum('heart-ecg') + selNum('heart-age') + selNum('heart-risk') + selNum('heart-trop');
+    const cls = score <= 3 ? 'risk-low' : score <= 6 ? 'risk-borderline' : 'risk-high';
+    const label = score <= 3 ? 'Low risk' : score <= 6 ? 'Moderate risk' : 'High risk';
+    showResult('heart', String(score), label, 'ED chest-pain risk score.', cls);
+  }
+
+  // Wells DVT
+  function calcWellsDVT() {
+    let score = sumChecks(['dvt-cancer','dvt-paralysis','dvt-bed','dvt-tender','dvt-swollen','dvt-calf','dvt-pitting','dvt-collateral','dvt-prev']);
+    if (checked('dvt-alt')) score -= 2;
+    const cls = score <= 0 ? 'risk-low' : score <= 2 ? 'risk-borderline' : 'risk-high';
+    const label = score <= 0 ? 'Unlikely' : score <= 2 ? 'Moderate' : 'Likely';
+    showResult('welldvt', String(score), label, 'Pre-test probability for DVT.', cls);
+  }
+
+  // Wells PE
+  function calcWellsPE() {
+    let score = 0;
+    if (checked('pe-dvt')) score += 3;
+    if (checked('pe-alt')) score += 3;
+    if (checked('pe-hr')) score += 1.5;
+    if (checked('pe-surg')) score += 1.5;
+    if (checked('pe-prev')) score += 1.5;
+    if (checked('pe-hemop')) score += 1;
+    if (checked('pe-cancer')) score += 1;
+    const cls = score <= 4 ? 'risk-low' : 'risk-high';
+    const label = score <= 4 ? 'PE unlikely' : 'PE likely';
+    showResult('wellspe', score.toFixed(1), label, 'Clinical probability for pulmonary embolism.', cls);
+  }
+
+  // PERC
+  function calcPERC() {
+    const positives = sumChecks(['perc-age','perc-pulse','perc-spo2','perc-leg','perc-hx','perc-estrogen','perc-surg','perc-vte']);
+    const ok = positives === 0;
+    showResult('perc', ok ? '0' : String(positives), ok ? 'PERC negative' : 'PERC positive', ok ? 'No PE testing needed if pretest risk is low.' : 'Cannot rule out PE without testing.', ok ? 'risk-low' : 'risk-high');
+  }
+
+  // MDRD
+  function calcMDRD() {
+    const age = parseFloat(document.getElementById('mdrd-age').value);
+    const scr = parseFloat(document.getElementById('mdrd-scr').value);
+    const sex = document.getElementById('mdrd-sex').value;
+    const race = document.getElementById('mdrd-race').value;
+    if (!age || !scr) return;
+    let egfr = 175 * Math.pow(scr, -1.154) * Math.pow(age, -0.203);
+    if (sex === 'female') egfr *= 0.742;
+    if (race === 'black') egfr *= 1.212;
+    const stage = egfr >= 90 ? 'G1' : egfr >= 60 ? 'G2' : egfr >= 45 ? 'G3a' : egfr >= 30 ? 'G3b' : egfr >= 15 ? 'G4' : 'G5';
+    showResult('mdrd', egfr.toFixed(1) + ' mL/min/1.73 m\u00b2', 'CKD stage ' + stage, 'Older eGFR estimate; CKD-EPI is preferred.', egfr >= 60 ? 'risk-low' : egfr >= 30 ? 'risk-borderline' : 'risk-high');
+  }
+
+  // FENa
+  function calcFENa() {
+    const sna = parseFloat(document.getElementById('fena-sna').value);
+    const una = parseFloat(document.getElementById('fena-una').value);
+    const scr = parseFloat(document.getElementById('fena-scr').value);
+    const ucr = parseFloat(document.getElementById('fena-ucr').value);
+    if (!sna || !una || !scr || !ucr) return;
+    const fena = (una * scr) / (sna * ucr) * 100;
+    const label = fena < 1 ? 'Pre-renal' : fena > 2 ? 'Intrinsic AKI' : 'Indeterminate';
+    const cls = fena < 1 ? 'risk-low' : fena > 2 ? 'risk-high' : 'risk-borderline';
+    showResult('fena', fena.toFixed(2) + '%', label, 'Urinary Na handling in AKI.', cls);
+  }
+
+  // Serum osmolality
+  function calcOsmolality() {
+    const na = parseFloat(document.getElementById('osmo-na').value);
+    const glu = parseFloat(document.getElementById('osmo-glu').value);
+    const bun = parseFloat(document.getElementById('osmo-bun').value);
+    const etoh = parseFloat(document.getElementById('osmo-etoh').value || 0);
+    if (!na || !glu || !bun) return;
+    const osm = 2 * na + glu / 18 + bun / 2.8 + (Number.isFinite(etoh) ? etoh / 3.7 : 0);
+    const label = osm < 275 ? 'Low' : osm <= 295 ? 'Normal' : 'High';
+    showResult('osmo', osm.toFixed(1) + ' mOsm/kg', label, 'Calculated serum osmolality.', osm < 275 ? 'risk-low' : osm <= 295 ? 'risk-borderline' : 'risk-high');
+  }
+
+  // Free water deficit
+  function calcWaterDeficit() {
+    const wt = parseFloat(document.getElementById('wdef-wt').value);
+    const age = parseFloat(document.getElementById('wdef-age').value);
+    const sex = document.getElementById('wdef-sex').value;
+    const na = parseFloat(document.getElementById('wdef-na').value);
+    if (!wt || !age || !na) return;
+    const tbwFactor = sex === 'male' ? (age >= 65 ? 0.5 : 0.6) : (age >= 65 ? 0.45 : 0.5);
+    const tbw = wt * tbwFactor;
+    const deficit = Math.max(0, tbw * (na / 140 - 1));
+    showResult('wdef', deficit.toFixed(2) + ' L', na > 145 ? 'Hypernatremia' : 'No deficit', 'TBW factor Ã— [Na/140 - 1].', deficit > 0 ? 'risk-borderline' : 'risk-low');
+  }
+
+  // Corrected calcium
+  function calcCorrectedCalcium() {
+    const ca = parseFloat(document.getElementById('cca-ca').value);
+    const alb = parseFloat(document.getElementById('cca-alb').value);
+    if (!ca || !alb) return;
+    const corrected = ca + 0.8 * (4 - alb);
+    const label = corrected < 8.5 ? 'Low' : corrected > 10.5 ? 'High' : 'Normal';
+    showResult('cca', corrected.toFixed(1) + ' mg/dL', label, 'Corrected Ca = measured Ca + 0.8 Ã— (4 - albumin).', corrected < 8.5 ? 'risk-low' : corrected > 10.5 ? 'risk-high' : 'risk-borderline');
+  }
+
+  // GCS
+  function calcGCS() {
+    const score = selNum('gcs-eye') + selNum('gcs-verbal') + selNum('gcs-motor');
+    const label = score <= 8 ? 'Severe' : score <= 12 ? 'Moderate' : 'Mild';
+    showResult('gcs', String(score), label, 'Coma / consciousness score.', score <= 8 ? 'risk-high' : score <= 12 ? 'risk-borderline' : 'risk-low');
+  }
+
+  // Pediatric GCS
+  function calcPedGCS() {
+    const score = selNum('pgcs-eye') + selNum('pgcs-verbal') + selNum('pgcs-motor');
+    const label = score <= 8 ? 'Severe' : score <= 12 ? 'Moderate' : 'Mild';
+    showResult('pgcs', String(score), label, 'Pediatric consciousness score.', score <= 8 ? 'risk-high' : score <= 12 ? 'risk-borderline' : 'risk-low');
+  }
+
+  // qSOFA
+  function calcQSOFA() {
+    const score = sumChecks(['qsofa-rr','qsofa-sbp','qsofa-ment']);
+    const label = score >= 2 ? 'Higher risk' : 'Lower risk';
+    showResult('qsofa', String(score), label, 'Sepsis bedside screen.', score >= 2 ? 'risk-high' : 'risk-low');
+  }
+
+  // SOFA
+  function calcSOFA() {
+    const score = selNum('sofa-resp') + selNum('sofa-coag') + selNum('sofa-liver') + selNum('sofa-cv') + selNum('sofa-cns') + selNum('sofa-renal');
+    const label = score < 5 ? 'Mild' : score < 10 ? 'Moderate' : 'Severe';
+    showResult('sofa', String(score), label, 'Sequential Organ Failure Assessment.', score < 5 ? 'risk-low' : score < 10 ? 'risk-borderline' : 'risk-high');
+  }
+
+  // CURB-65
+  function calcCURB65() {
+    const score = sumChecks(['curb-conf','curb-urea','curb-rr','curb-bp','curb-age']);
+    const label = score <= 1 ? 'Low risk' : score === 2 ? 'Consider admit' : 'High risk';
+    showResult('curb', String(score), label, 'Community-acquired pneumonia severity.', score <= 1 ? 'risk-low' : score === 2 ? 'risk-borderline' : 'risk-high');
+  }
+
+  // qTICI
+  function calcQTICI() {
+    const select = document.getElementById('qtici-grade');
+    const val = Number(select.value || 0);
+    const text = select.options[select.selectedIndex]?.text || '';
+    showResult('qtici', text.split(' - ')[0], text, 'Angiographic reperfusion grade.', val >= 4 ? 'risk-low' : 'risk-borderline');
+  }
+
+  // ANC
+  function calcANC() {
+    const wbc = parseFloat(document.getElementById('anc-wbc').value);
+    const neut = parseFloat(document.getElementById('anc-neut').value);
+    const bands = parseFloat(document.getElementById('anc-bands').value || 0);
+    if (!wbc || !neut) return;
+    const anc = wbc * ((neut + bands) / 100);
+    const label = anc < 500 ? 'Severe neutropenia' : anc < 1000 ? 'Moderate neutropenia' : anc < 1500 ? 'Mild neutropenia' : 'Normal';
+    showResult('anc', anc.toFixed(0) + '/ÂµL', label, 'Infection-fighting neutrophil count.', anc < 500 ? 'risk-high' : anc < 1500 ? 'risk-borderline' : 'risk-low');
+  }
+
+  // 4Ts
+  function calc4Ts() {
+    const score = selNum('tts-plt') + selNum('tts-time') + selNum('tts-thromb') + selNum('tts-other');
+    const label = score <= 3 ? 'Low probability' : score <= 5 ? 'Intermediate probability' : 'High probability';
+    showResult('tts', String(score), label, 'Heparin-induced thrombocytopenia screen.', score <= 3 ? 'risk-low' : score <= 5 ? 'risk-borderline' : 'risk-high');
+  }
+
+  // MASCC
+  function calcMASCC() {
+    const score =
+      (checked('mascc-burden') ? 5 : 0) +
+      (checked('mascc-bp') ? 5 : 0) +
+      (checked('mascc-copd') ? 4 : 0) +
+      (checked('mascc-fungal') ? 4 : 0) +
+      (checked('mascc-dehyd') ? 3 : 0) +
+      (checked('mascc-out') ? 3 : 0) +
+      (checked('mascc-age') ? 2 : 0);
+    const label = score >= 21 ? 'Low risk' : 'High risk';
+    showResult('mascc', String(score), label, 'Febrile neutropenia outpatient triage.', score >= 21 ? 'risk-low' : 'risk-high');
+  }
+
+  function calcMELDNa() {
+    const bili = Math.max(1, num('meld-bili') || 1);
+    const inr = Math.max(1, num('meld-inr') || 1);
+    const dial = document.getElementById('meld-dial')?.value === 'yes';
+    let cr = dial ? 4 : Math.max(1, num('meld-cr') || 1);
+    cr = Math.min(4, cr);
+    const naRaw = num('meld-na') || 135;
+    const na = Math.max(125, Math.min(137, naRaw));
+    const meld = 3.78 * Math.log(bili) + 11.2 * Math.log(inr) + 9.57 * Math.log(cr) + 6.43;
+    const meldClamped = Math.max(6, Math.min(40, meld));
+    const meldNa = na < 137
+      ? Math.max(6, Math.min(40, meldClamped + 1.32 * (137 - na) - 0.033 * meldClamped * (137 - na)))
+      : meldClamped;
+    const label = meldNa < 10 ? 'Lower risk' : meldNa < 20 ? 'Moderate risk' : 'High risk';
+    showResult('meld', meldNa.toFixed(1), label, 'Predicts 3-month mortality in cirrhosis / transplant urgency.', meldNa < 10 ? 'risk-low' : meldNa < 20 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcChildPugh() {
+    const score = selNum('child-bili') + selNum('child-alb') + selNum('child-inr') + selNum('child-ascites') + selNum('child-enceph');
+    const cls = score <= 6 ? 'A' : score <= 9 ? 'B' : 'C';
+    showResult('child', String(score), `Class ${cls}`, 'A = 5-6, B = 7-9, C = 10-15.', cls === 'A' ? 'risk-low' : cls === 'B' ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcFIB4() {
+    const age = num('fib-age') || 0;
+    const ast = num('fib-ast') || 0;
+    const alt = Math.max(num('fib-alt') || 0, 0.1);
+    const plt = num('fib-plt') || 0;
+    const value = (age * ast) / (plt * Math.sqrt(alt));
+    const label = value < 1.3 ? 'Low fibrosis' : value <= 2.67 ? 'Indeterminate' : 'High fibrosis';
+    showResult('fib', value.toFixed(2), label, 'Non-invasive fibrosis screen.', value < 1.3 ? 'risk-low' : value <= 2.67 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcGBS() {
+    const sex = document.getElementById('gbs-sex')?.value || 'male';
+    const bunMgdL = num('gbs-bun') || 0;
+    const bun = bunMgdL / 2.8;
+    const hb = num('gbs-hb') || 0;
+    const sbp = num('gbs-sbp') || 0;
+    let score = 0;
+
+    if (bun >= 70) score += 6;
+    else if (bun >= 28) score += 4;
+    else if (bun >= 22.4) score += 3;
+    else if (bun >= 18.2) score += 2;
+
+    if (sex === 'male') {
+      if (hb < 10) score += 6;
+      else if (hb < 12) score += 3;
+      else if (hb < 13) score += 1;
+    } else {
+      if (hb < 10) score += 6;
+      else if (hb < 12) score += 1;
+    }
+
+    if (sbp < 90) score += 3;
+    else if (sbp < 100) score += 2;
+    else if (sbp < 110) score += 1;
+
+    score += checked('gbs-melena') ? 1 : 0;
+    score += checked('gbs-syncope') ? 2 : 0;
+    score += checked('gbs-liver') ? 2 : 0;
+    score += checked('gbs-heart') ? 2 : 0;
+
+    const label = score === 0 ? 'Very low risk' : score <= 5 ? 'Low risk' : 'Higher risk';
+    const detail = `Pulse entered: ${Math.round(num('gbs-pulse') || 0)} bpm. Pulse is not part of standard GBS scoring.`;
+    showResult('gbs', String(score), label, detail, score === 0 ? 'risk-low' : score <= 5 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcRockall() {
+    const score = selNum('rock-age') + selNum('rock-shock') + selNum('rock-comorb');
+    const label = score <= 2 ? 'Low risk' : score <= 4 ? 'Intermediate risk' : 'High risk';
+    showResult('rock', String(score), label, 'Pre-endoscopic upper GI bleed score.', score <= 2 ? 'risk-low' : score <= 4 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcNIHSS() {
+    const total = selNum('nihss-loc') + selNum('nihss-q') + selNum('nihss-cmd') + selNum('nihss-gaze') + selNum('nihss-vis') + selNum('nihss-face') + selNum('nihss-larm') + selNum('nihss-rarm') + selNum('nihss-lleg') + selNum('nihss-rleg') + selNum('nihss-ataxia') + selNum('nihss-sens') + selNum('nihss-lang') + selNum('nihss-dys') + selNum('nihss-neg');
+    const label = total <= 4 ? 'Minor stroke' : total <= 15 ? 'Moderate stroke' : total <= 20 ? 'Moderately severe' : 'Severe stroke';
+    showResult('nihss', String(total), label, 'Quantifies acute stroke deficit.', total <= 4 ? 'risk-low' : total <= 15 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcABCD2() {
+    const score = selNum('abcd-age') + selNum('abcd-bp') + selNum('abcd-clin') + selNum('abcd-dur') + selNum('abcd-dm');
+    const label = score <= 3 ? 'Low risk' : score <= 5 ? 'Moderate risk' : 'High risk';
+    showResult('abcd', String(score), label, 'Estimates early stroke risk after TIA.', score <= 3 ? 'risk-low' : score <= 5 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcPHQ9() {
+    const total = selNum('phq1') + selNum('phq2') + selNum('phq3') + selNum('phq4') + selNum('phq5') + selNum('phq6') + selNum('phq7') + selNum('phq8') + selNum('phq9q');
+    const label = total <= 4 ? 'Minimal' : total <= 9 ? 'Mild' : total <= 14 ? 'Moderate' : total <= 19 ? 'Moderately severe' : 'Severe';
+    showResult('phq', String(total), label, 'Depression screen / severity.', total <= 4 ? 'risk-low' : total <= 9 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcGAD7() {
+    const total = selNum('gad1') + selNum('gad2') + selNum('gad3') + selNum('gad4') + selNum('gad5') + selNum('gad6') + selNum('gad7');
+    const label = total <= 4 ? 'Minimal' : total <= 9 ? 'Mild' : total <= 14 ? 'Moderate' : 'Severe';
+    showResult('gad', String(total), label, 'Anxiety severity screen.', total <= 4 ? 'risk-low' : total <= 9 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcAAGradient() {
+    const age = num('aa-age') || 0;
+    const pao2 = num('aa-pao2') || 0;
+    const fio2 = num('aa-fio2') || 0.21;
+    const paco2 = num('aa-paco2') || 0;
+    const alveolar = fio2 * (760 - 47) - (paco2 / 0.8);
+    const gradient = Math.max(0, alveolar - pao2);
+    const expected = Math.max(0, (age / 4) + 4);
+    const label = gradient <= expected ? 'Expected for age' : 'Elevated gradient';
+    const detail = `Expected ~${expected.toFixed(1)} mmHg for age; higher values suggest V/Q mismatch or shunt.`;
+    showResult('aa', gradient.toFixed(1), label, detail, gradient <= expected ? 'risk-low' : 'risk-high');
+  }
+
+  function calcBODE() {
+    const bmi = num('bode-bmi') || 0;
+    const fev1 = num('bode-fev1') || 0;
+    const dyspnea = selNum('bode-dyspnea');
+    const walk = num('bode-walk') || 0;
+    const bmiPts = bmi <= 21 ? 1 : 0;
+    const fevPts = fev1 >= 65 ? 0 : fev1 >= 50 ? 1 : fev1 >= 36 ? 2 : 3;
+    const walkPts = walk >= 350 ? 0 : walk >= 250 ? 1 : walk >= 150 ? 2 : 3;
+    const total = bmiPts + fevPts + dyspnea + walkPts;
+    const label = total <= 2 ? 'Lower risk' : total <= 4 ? 'Moderate risk' : total <= 6 ? 'High risk' : 'Very high risk';
+    const detail = `BMI ${bmiPts}, FEV1 ${fevPts}, Dyspnea ${dyspnea}, Walk ${walkPts}.`;
+    showResult('bode', String(total), label, detail, total <= 2 ? 'risk-low' : total <= 4 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcLights() {
+    const sp = num('light-sp') || 1;
+    const pp = num('light-pp') || 0;
+    const sldh = num('light-sldh') || 1;
+    const pldh = num('light-pldh') || 0;
+    const ratioProtein = pp / sp;
+    const ratioLdh = pldh / sldh;
+    const exudate = ratioProtein > 0.5 || ratioLdh > 0.6 || pldh > (2 / 3) * sldh;
+    const detail = `Protein ratio ${ratioProtein.toFixed(2)} | LDH ratio ${ratioLdh.toFixed(2)}.`;
+    showResult('light', exudate ? 'Exudate' : 'Transudate', exudate ? 'Exudate' : 'Transudate', detail, exudate ? 'risk-high' : 'risk-low');
+  }
+
+  function calcAPGAR() {
+    const score1 = selNum('apgar-appear') + selNum('apgar-pulse') + selNum('apgar-grim') + selNum('apgar-act') + selNum('apgar-resp');
+    const score5 = selNum('apgar5-appear') + selNum('apgar5-pulse') + selNum('apgar5-grim') + selNum('apgar5-act') + selNum('apgar5-resp');
+    const label = score5 >= 7 ? 'Reassuring' : score5 >= 4 ? 'Intermediate' : 'Low';
+    const detail = `1 min: ${score1}/10 | 5 min: ${score5}/10.`;
+    showResult('apgar', `${score1} / ${score5}`, label, detail, score5 >= 7 ? 'risk-low' : score5 >= 4 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcCentor() {
+    const score = selNum('centor-fever') + selNum('centor-exudate') + selNum('centor-nodes') + selNum('centor-cough') + selNum('centor-age');
+    const label = score <= 1 ? 'Low likelihood' : score <= 3 ? 'Intermediate likelihood' : 'High likelihood';
+    showResult('centor', String(score), label, 'McIsaac-adjusted GAS probability.', score <= 1 ? 'risk-low' : score <= 3 ? 'risk-borderline' : 'risk-high');
+  }
+
+  function calcAPACHEII() {
+    const temp = num('apache-temp');
+    const map = num('apache-map');
+    const hr = num('apache-hr');
+    const rr = num('apache-rr');
+    const pao2 = num('apache-pao2');
+    const ph = num('apache-ph');
+    const na = num('apache-na');
+    const k = num('apache-k');
+    const cr = num('apache-cr');
+    const hct = num('apache-hct');
+    const wbc = num('apache-wbc');
+    const gcs = Math.max(3, Math.min(15, num('apache-gcs') || 15));
+
+    const tempPts = temp >= 41 ? 4 : temp >= 39 ? 3 : temp >= 38.5 ? 1 : temp >= 36 ? 0 : temp >= 34 ? 1 : temp >= 32 ? 2 : temp >= 30 ? 3 : 4;
+    const mapPts = map >= 160 ? 4 : map >= 130 ? 3 : map >= 110 ? 2 : map >= 70 ? 0 : map >= 50 ? 2 : 4;
+    const hrPts = hr >= 180 ? 4 : hr >= 140 ? 3 : hr >= 110 ? 2 : hr >= 70 ? 0 : hr >= 55 ? 2 : hr >= 40 ? 3 : 4;
+    const rrPts = rr >= 50 ? 4 : rr >= 35 ? 3 : rr >= 25 ? 1 : rr >= 12 ? 0 : rr >= 10 ? 1 : rr >= 6 ? 2 : 4;
+    const o2Pts = pao2 >= 70 ? 0 : pao2 >= 61 ? 1 : pao2 >= 55 ? 3 : 4;
+    const phPts = ph >= 7.7 ? 4 : ph >= 7.6 ? 3 : ph >= 7.5 ? 1 : ph >= 7.33 ? 0 : ph >= 7.25 ? 2 : ph >= 7.15 ? 3 : 4;
+    const naPts = na >= 180 ? 4 : na >= 160 ? 3 : na >= 155 ? 2 : na >= 150 ? 1 : na >= 130 ? 0 : na >= 120 ? 2 : na >= 111 ? 3 : 4;
+    const kPts = k >= 7 ? 4 : k >= 6 ? 3 : k >= 5.5 ? 1 : k >= 3.5 ? 0 : k >= 3 ? 1 : k >= 2.5 ? 2 : 4;
+    const crPts = cr >= 3.5 ? 4 : cr >= 2 ? 3 : cr >= 1.5 ? 2 : cr >= 0.6 ? 0 : 2;
+    const hctPts = hct >= 60 ? 4 : hct >= 50 ? 2 : hct >= 46 ? 1 : hct >= 30 ? 0 : hct >= 20 ? 2 : 4;
+    const wbcPts = wbc >= 40 ? 4 : wbc >= 20 ? 2 : wbc >= 15 ? 1 : wbc >= 3 ? 0 : wbc >= 1 ? 2 : 4;
+    const gcsPts = 15 - gcs;
+    const agePts = selNum('apache-age');
+    const chronicPts = selNum('apache-chronic');
+
+    const physiology = tempPts + mapPts + hrPts + rrPts + o2Pts + phPts + naPts + kPts + crPts + hctPts + wbcPts + gcsPts;
+    const total = physiology + agePts + chronicPts;
+    const label = total <= 4 ? 'Low severity' : total <= 9 ? 'Mild severity' : total <= 14 ? 'Moderate severity' : total <= 19 ? 'High severity' : 'Very high severity';
+    const detail = `Physiology ${physiology}, age ${agePts}, chronic ${chronicPts}.`;
+    showResult('apache', String(total), label, detail, total <= 4 ? 'risk-low' : total <= 9 ? 'risk-borderline' : 'risk-high');
+  }
+
+  // eGFR (CKD-EPI 2021)
+  function calcEGFR() {
+    const age = parseFloat(document.getElementById('egfr-age').value);
+    const scr = parseFloat(document.getElementById('egfr-scr').value);
+    const sex = document.getElementById('egfr-sex').value;
+    if (!age || !scr) return;
+
+    const k = sex === 'female' ? 0.7 : 0.9;
+    const a = sex === 'female' ? -0.241 : -0.302;
+    let egfr = 142 * Math.pow(Math.min(scr / k, 1), a) * Math.pow(Math.max(scr / k, 1), -1.200) * Math.pow(0.9938, age);
+    if (sex === 'female') egfr *= 1.012;
+
+    const stage = egfr >= 90 ? 'G1' : egfr >= 60 ? 'G2' : egfr >= 45 ? 'G3a' : egfr >= 30 ? 'G3b' : egfr >= 15 ? 'G4' : 'G5';
+    const stageLabel = egfr >= 90 ? 'Normal or high' : egfr >= 60 ? 'Mildly reduced' : egfr >= 45 ? 'Mild-moderate reduction' : egfr >= 30 ? 'Moderate-severe reduction' : egfr >= 15 ? 'Severe reduction' : 'Kidney failure range';
+
+    document.getElementById('egfr-value').textContent = egfr.toFixed(1) + ' mL/min/1.73 m\u00b2';
+    document.getElementById('egfr-label').textContent = 'CKD stage ' + stage;
+    document.getElementById('egfr-detail').textContent = stageLabel + ' | Race-free CKD-EPI 2021 estimate.';
+    document.getElementById('egfr-result').style.display = 'block';
+  }
+
+  // Corrected sodium
+  function calcCorrectedSodium() {
+    const na = parseFloat(document.getElementById('sodium-na').value);
+    const glu = parseFloat(document.getElementById('sodium-glu').value);
+    if (!na || !glu) return;
+
+    const corrected = na + 1.6 * ((glu - 100) / 100);
+    const delta = corrected - na;
+
+    document.getElementById('sodium-value').textContent = corrected.toFixed(1) + ' mEq/L';
+    document.getElementById('sodium-label').textContent = 'Katz corrected Na';
+    document.getElementById('sodium-detail').textContent = 'Shift vs measured: ' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' mEq/L';
+    document.getElementById('sodium-result').style.display = 'block';
+  }
+
+  // Anion gap
+  function calcAnionGap() {
+    const na = parseFloat(document.getElementById('ag-na').value);
+    const cl = parseFloat(document.getElementById('ag-cl').value);
+    const hco3 = parseFloat(document.getElementById('ag-hco3').value);
+    const alb = parseFloat(document.getElementById('ag-alb').value);
+    if (!na || !cl || !hco3) return;
+
+    const ag = na - (cl + hco3);
+    const corrected = Number.isFinite(alb) ? ag + 2.5 * (4 - alb) : null;
+    const status = ag < 8 ? 'Low AG' : ag <= 12 ? 'Normal AG' : 'High AG';
+
+    document.getElementById('aniongap-value').textContent = ag.toFixed(1) + ' mEq/L';
+    document.getElementById('aniongap-label').textContent = status;
+    document.getElementById('aniongap-detail').textContent = corrected === null
+      ? 'Enter albumin to add a correction for hypoalbuminaemia.'
+      : 'Albumin-corrected AG: ' + corrected.toFixed(1) + ' mEq/L';
+    document.getElementById('aniongap-result').style.display = 'block';
+  }
+
+  // QTc
+  function calcQTc() {
+    const qtMs = parseFloat(document.getElementById('qtc-qt').value);
+    const hr = parseFloat(document.getElementById('qtc-hr').value);
+    const sex = document.getElementById('qtc-sex').value;
+    if (!qtMs || !hr) return;
+
+    const qtSec = qtMs / 1000;
+    const rr = 60 / hr;
+    const bazett = (qtSec / Math.sqrt(rr)) * 1000;
+    const fridericia = (qtSec / Math.cbrt(rr)) * 1000;
+    const cutoff = sex === 'female' ? 460 : 450;
+
+    let cls = 'risk-low';
+    let label = 'Normal';
+    if (bazett > 500) {
+      cls = 'risk-high';
+      label = 'Markedly prolonged';
+    } else if (bazett > cutoff) {
+      cls = 'risk-borderline';
+      label = 'Prolonged';
+    }
+
+    const valEl = document.getElementById('qtc-value');
+    valEl.textContent = bazett.toFixed(0) + ' ms';
+    valEl.className = 'result-value ' + cls;
+    document.getElementById('qtc-label').textContent = label + ' | Bazett';
+    document.getElementById('qtc-detail').textContent = 'Fridericia: ' + fridericia.toFixed(0) + ' ms | Cutoff: <=' + cutoff + ' ms';
+    document.getElementById('qtc-result').style.display = 'block';
+  }
+
+  // CHA2DS2-VASc
+  function calcCHA() {
+    const score =
+      checked('cha-hf') +
+      checked('cha-htn') +
+      (checked('cha-age75') ? 2 : 0) +
+      checked('cha-dm') +
+      (checked('cha-stroke') ? 2 : 0) +
+      checked('cha-vascular') +
+      checked('cha-age65') +
+      checked('cha-female');
+    const isFemale = checked('cha-female');
+    const rec = isFemale
+      ? (score <= 1 ? 'Low risk' : score === 2 ? 'Consider OAC' : 'OAC usually recommended')
+      : (score === 0 ? 'Low risk' : score === 1 ? 'Consider OAC' : 'OAC usually recommended');
+    const cls = score <= 1 ? 'risk-low' : score === 2 ? 'risk-borderline' : 'risk-high';
+
+    const valEl = document.getElementById('cha-value');
+    valEl.textContent = String(score);
+    valEl.className = 'result-value ' + cls;
+    document.getElementById('cha-label').textContent = rec;
+    document.getElementById('cha-detail').textContent = 'Nonvalvular AF stroke risk score. Female sex is a modifier, not a stand-alone risk factor.';
+    document.getElementById('cha-result').style.display = 'block';
+  }
+
+  // HAS-BLED
+  function calcHASBLED() {
+    const score =
+      checked('has-htn') +
+      checked('has-renal') +
+      checked('has-liver') +
+      checked('has-stroke') +
+      checked('has-bleed') +
+      checked('has-inr') +
+      checked('has-elderly') +
+      checked('has-drugs') +
+      checked('has-alcohol');
+    const risk = score <= 1 ? 'Low bleed risk' : score === 2 ? 'Moderate bleed risk' : 'High bleed risk';
+    const cls = score <= 1 ? 'risk-low' : score === 2 ? 'risk-borderline' : 'risk-high';
+
+    const valEl = document.getElementById('has-value');
+    valEl.textContent = String(score);
+    valEl.className = 'result-value ' + cls;
+    document.getElementById('has-label').textContent = risk;
+    document.getElementById('has-detail').textContent = 'Score >= 3 should trigger closer review of modifiable bleeding risks, not automatic withholding of OAC.';
+    document.getElementById('has-result').style.display = 'block';
+  }
+
+  // Dosage
+  const drugData = {
+    amoxicillin: { mgkg: 30, note: 'Pediatric: 20-40 mg/kg/day divided q8h. Adult: 500 mg q8h or 875 mg q12h.', max: 4000 },
+    azithromycin: { mgkg: 10, note: 'Day 1: 10 mg/kg (max 500 mg), then 5 mg/kg days 2-5 (max 250 mg).', max: 500 },
+    paracetamol: { mgkg: 12.5, note: '10-15 mg/kg per dose q4-6h. Max 4 g/day adult, 75 mg/kg/day child.', max: 1000 },
+    ibuprofen: { mgkg: 7.5, note: '5-10 mg/kg per dose q6-8h. Max 40 mg/kg/day.', max: 800 },
+    metformin: { mgkg: 0, note: 'Adult dosing: 500-2000 mg/day. Not weight-based.', max: 2000 },
+    amlodipine: { mgkg: 0, note: 'Adult: 2.5-10 mg once daily. Pediatric: 0.1-0.2 mg/kg (max 5 mg).', max: 10 },
+    atorvastatin: { mgkg: 0, note: 'Adult: 10-80 mg once daily. Not weight-based.', max: 80 },
+    lisinopril: { mgkg: 0, note: 'Adult: 5-40 mg once daily. Not weight-based.', max: 40 }
+  };
+
+  function updateDosage() {
+    const drug = document.getElementById('dosage-drug').value;
+    document.getElementById('dosage-custom-row').style.display = drug === 'custom' ? 'block' : 'none';
+  }
+
+  function calcDosage() {
+    const drug = document.getElementById('dosage-drug').value;
+    const wt = parseFloat(document.getElementById('dosage-wt').value);
+    const freq = parseInt(document.getElementById('dosage-freq').value);
+    if (!wt || !freq) return;
+
+    let totalDose = 0, perDose = 0, note = '', max = 99999;
+
+    if (drug === 'custom') {
+      const mgkg = parseFloat(document.getElementById('dosage-custom').value) || 10;
+      totalDose = mgkg * wt;
+      perDose = totalDose / freq;
+      note = 'Custom dose: ' + mgkg + ' mg/kg/day divided into ' + freq + ' doses.';
+    } else {
+      const d = drugData[drug];
+      note = d.note; max = d.max;
+      if (d.mgkg > 0) {
+        totalDose = d.mgkg * wt;
+        perDose = totalDose / freq;
+      } else {
+        perDose = max / freq;
+        totalDose = max;
+        note += ' (Standard adult dose shown; not weight-based.)';
+      }
+    }
+
+    perDose = Math.min(perDose, max / freq);
+    totalDose = Math.min(totalDose, max);
+
+    document.getElementById('dosage-value').textContent = perDose.toFixed(1) + ' mg per dose';
+    document.getElementById('dosage-label').textContent = 'Total daily: ' + totalDose.toFixed(1) + ' mg | ' + freq + 'x daily';
+    document.getElementById('dosage-note').textContent = note;
+    document.getElementById('dosage-result').style.display = 'block';
+  }
+
+  // Scientific Calculator
+  let sciExpr = '';
+  function sciUpdate() { document.getElementById('sci-display').textContent = sciExpr || '0'; }
+  function sciNum(n) { sciExpr += n; sciUpdate(); }
+  function sciOp(op) {
+    if (sciExpr.length > 0 && '+-*/^'.includes(sciExpr.slice(-1))) sciExpr = sciExpr.slice(0, -1);
+    sciExpr += op === '^' ? '**' : op; sciUpdate();
+  }
+  function sciClear() { sciExpr = ''; sciUpdate(); }
+  function sciFunc(fn) {
+    try {
+      let val = parseFloat(sciExpr) || 0;
+      let res = 0;
+      switch(fn) {
+        case 'sqrt': res = Math.sqrt(val); break;
+        case 'log': res = Math.log10(val); break;
+        case 'ln': res = Math.log(val); break;
+        case 'sin': res = Math.sin(val * Math.PI / 180); break;
+        case 'cos': res = Math.cos(val * Math.PI / 180); break;
+        case 'tan': res = Math.tan(val * Math.PI / 180); break;
+        case 'inv': res = 1 / val; break;
+        case 'abs': res = Math.abs(val); break;
+      }
+      sciExpr = String(Number(res.toFixed(8)));
+      sciUpdate();
+    } catch(e) { sciExpr = 'Error'; sciUpdate(); }
+  }
+  function sciEval() {
+    try {
+      let clean = sciExpr.replace(/\*\*/g, '^').replace(/\^/g, '**');
+      let res = Function('"use strict"; return (' + clean + ')')();
+      sciExpr = String(Number(Number(res).toFixed(8)));
+      sciUpdate();
+    } catch(e) { sciExpr = 'Error'; sciUpdate(); }
+  }
+</script>
+
+</body>
+</html>
+
+
+

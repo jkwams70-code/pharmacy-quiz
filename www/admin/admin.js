@@ -1,4 +1,4 @@
-const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
+﻿const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const currentHost = String(window.location.hostname || "").trim();
 const currentOrigin = String(window.location.origin || "").trim();
 const isLocalHost = ["localhost", "127.0.0.1"].includes(currentHost);
@@ -532,46 +532,37 @@ async function ensureAdminApiBase({ force = false } = {}) {
       }
 
       function getMonetizationBucket(request = {}) {
-        const requestStatus = String(request?.status || "").trim().toLowerCase();
-        const userStatus = String(
-          request?.user?.subscriptionAccess?.status ||
-            request?.user?.subscriptionStatus ||
-            "",
-        )
-          .trim()
-          .toLowerCase();
-        const expirationAt = String(
-          request?.user?.subscriptionAccess?.expirationAt ||
-            request?.user?.subscriptionExpirationAt ||
-            request?.user?.subscriptionEndsAt ||
-            request?.expirationAt ||
-            "",
-        ).trim();
-        const expirationTime = expirationAt ? Date.parse(expirationAt) : NaN;
-        const isExpiredByDate = Number.isFinite(expirationTime) && expirationTime <= Date.now();
+  const requestStatus = String(request?.status || "").trim().toLowerCase();
+  const expirationAt = String(request?.expirationAt || request?.expiresAt || request?.expiredAt || "").trim();
+  const expirationTime = expirationAt ? Date.parse(expirationAt) : NaN;
+  const hasFutureExpiry = Number.isFinite(expirationTime) && expirationTime > Date.now();
+  const isExpired =
+    requestStatus === "expired" ||
+    Boolean(request?.isExpired) ||
+    (Number.isFinite(expirationTime) && expirationTime <= Date.now());
+  const isActive =
+    requestStatus === "active" ||
+    requestStatus === "approved" ||
+    requestStatus === "trial" ||
+    Boolean(request?.isActive) ||
+    hasFutureExpiry;
 
-        if (requestStatus === "rejected") {
-          return "rejected";
-        }
-        if (requestStatus === "pending") {
-          return "request";
-        }
-        if (userStatus === "pending") {
-          return "request";
-        }
-        if (userStatus === "rejected") {
-          return "rejected";
-        }
-        if (requestStatus === "expired" || userStatus === "expired" || isExpiredByDate) {
-          return "expired";
-        }
-        if (["approved", "active"].includes(requestStatus) || ["active", "trial"].includes(userStatus)) {
-          return "activated";
-        }
-        return "request";
-      }
+  if (requestStatus === "rejected") {
+    return "rejected";
+  }
+  if (requestStatus === "pending") {
+    return "request";
+  }
+  if (isExpired) {
+    return "expired";
+  }
+  if (isActive) {
+    return "activated";
+  }
+  return "request";
+}
 
-      function getMonetizationBucketMeta(bucket = "request") {
+function getMonetizationBucketMeta(bucket = "request") {
         const safeBucket = String(bucket || "request").trim().toLowerCase();
         const meta = {
           request: {
@@ -632,10 +623,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
         if (metaBucket === "expired") {
           return formatDate(
+            request?.expirationAt ||
             request?.user?.subscriptionAccess?.expirationAt ||
               request?.user?.subscriptionExpirationAt ||
-              request?.user?.subscriptionEndsAt ||
-              request?.reviewDeadlineAt,
+              request?.user?.subscriptionEndsAt,
           );
         }
         return formatDate(request?.requestedAt);
@@ -656,10 +647,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function getMonetizationRequestExpiry(request = {}) {
         return formatDate(
+          request?.expirationAt ||
           request?.user?.subscriptionAccess?.expirationAt ||
             request?.user?.subscriptionExpirationAt ||
-            request?.user?.subscriptionEndsAt ||
-            request?.reviewDeadlineAt,
+            request?.user?.subscriptionEndsAt,
         );
       }
 
@@ -737,10 +728,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
         if (safeBucket === "expired") {
           return Date.parse(
+            request?.expirationAt ||
             request?.user?.subscriptionAccess?.expirationAt ||
               request?.user?.subscriptionExpirationAt ||
               request?.user?.subscriptionEndsAt ||
-              request?.reviewDeadlineAt ||
               request?.requestedAt ||
               0,
           );
@@ -1199,7 +1190,9 @@ async function ensureAdminApiBase({ force = false } = {}) {
             throw new Error(data.error || "Failed to load subscription requests");
           }
 
-          cachedSubscriptionRequests = data.requests;
+          cachedSubscriptionRequests = data.requests.filter(
+            (entry) => String(entry?.plan || "").trim().toLowerCase() !== "trial",
+          );
           subscriptionRequestsLoaded = true;
           renderMonetizationPanel();
           return true;
@@ -2584,10 +2577,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function showAlert(containerId, message, type = "info") {
         const container = document.getElementById(containerId);
-        if (!container) {
-          console.warn(`Missing alert container: ${containerId}`);
-          return;
-        }
+        if (!container) return;
         const alert = document.createElement("div");
         alert.className = `alert ${type}`;
         alert.textContent = message;
@@ -2595,7 +2585,15 @@ async function ensureAdminApiBase({ force = false } = {}) {
         container.appendChild(alert);
       }
 
-      function getAdminNotificationBannerEl() {
+function getAdminLoginScreen() {
+        return document.getElementById("login-screen") || document.querySelector(".login-screen");
+      }
+
+      function getAdminDashboard() {
+        return document.getElementById("dashboard") || document.querySelector(".dashboard");
+      }
+
+            function getAdminNotificationBannerEl() {
         return document.getElementById("admin-notification-banner");
       }
 
@@ -2701,8 +2699,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
           if (res.ok) {
             localStorage.setItem(ADMIN_KEY_STORAGE, adminKey);
-            document.getElementById("login-screen").style.display = "none";
-            document.getElementById("dashboard").classList.add("active");
+            const loginScreen = getAdminLoginScreen();
+            if (loginScreen) loginScreen.style.display = "none";
+            const dashboard = getAdminDashboard();
+            if (dashboard) dashboard.classList.add("active");
             refreshData();
           } else {
             alert("Invalid admin key");
@@ -2726,8 +2726,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
         broadcastThreadOpen = false;
         selectedBroadcastStatusId = "";
         broadcastOverviewLoaded = false;
-        document.getElementById("login-screen").style.display = "block";
-        document.getElementById("dashboard").classList.remove("active");
+        const loginScreen = getAdminLoginScreen();
+        if (loginScreen) loginScreen.style.display = "block";
+        const dashboard = getAdminDashboard();
+        if (dashboard) dashboard.classList.remove("active");
         document.getElementById("admin-key").value = "";
         setAdminKeyVisibility(false);
       }
@@ -2975,17 +2977,18 @@ async function ensureAdminApiBase({ force = false } = {}) {
           const data = await res.json();
           cachedAdminStats = data;
 
-          document.getElementById("stat-users").textContent = data.totalUsers;
-          document.getElementById("stat-questions").textContent =
-            data.totalQuestions;
-          document.getElementById("stat-attempts").textContent =
-            data.totalAttempts;
-          document.getElementById("stat-categories").textContent =
-            data.totalCategories;
-          document.getElementById("stat-avg-score").textContent =
-            data.averageScore + "%";
-          document.getElementById("stat-sync-events").textContent =
-            data.totalSyncEvents;
+          const statUsers = document.getElementById("stat-users");
+          if (statUsers) statUsers.textContent = String(data.totalUsers ?? 0);
+          const statQuestions = document.getElementById("stat-questions");
+          if (statQuestions) statQuestions.textContent = String(data.totalQuestions ?? 0);
+          const statAttempts = document.getElementById("stat-attempts");
+          if (statAttempts) statAttempts.textContent = String(data.totalAttempts ?? 0);
+          const statCategories = document.getElementById("stat-categories");
+          if (statCategories) statCategories.textContent = String(data.totalCategories ?? 0);
+          const statAvgScore = document.getElementById("stat-avg-score");
+          if (statAvgScore) statAvgScore.textContent = String(data.averageScore ?? 0) + "%";
+          const statSyncEvents = document.getElementById("stat-sync-events");
+          if (statSyncEvents) statSyncEvents.textContent = String(data.totalSyncEvents ?? 0);
           const statGroups = document.getElementById("stat-groups");
           if (statGroups) {
             statGroups.textContent = String(data.totalGroups ?? 0);
@@ -3020,6 +3023,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
           }
 
           const catPerf = document.getElementById("category-performance");
+          if (!catPerf) {
+            renderAdminAnalyticsPanel();
+            return true;
+          }
           catPerf.innerHTML = "";
           const categoryRows = Array.isArray(data.categories)
             ? data.categories
@@ -5482,8 +5489,12 @@ async function ensureAdminApiBase({ force = false } = {}) {
       if (adminKey) {
         (async () => {
           await ensureAdminApiBase();
-          document.getElementById("login-screen").style.display = "none";
-          document.getElementById("dashboard").classList.add("active");
+          const loginScreen = getAdminLoginScreen();
+            if (loginScreen) loginScreen.style.display = "none";
+          const dashboard = getAdminDashboard();
+            if (dashboard) dashboard.classList.add("active");
           refreshData();
         })();
       }
+
+

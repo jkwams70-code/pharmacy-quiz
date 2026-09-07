@@ -1,5 +1,5 @@
 import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
-import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js";
+import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js?v=20260907-idb-recovery-v1";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
 const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
 
@@ -1985,6 +1985,7 @@ function recordLawDrillAnswer(question, selectedAnswer, isCorrect) {
 }
 
 async function startLawDrillSession({ resumeState = null } = {}) {
+  await new Promise((resolve) => setTimeout(resolve, 0));
   await ensureQuestionBankLoaded();
   studySessionEnded = false;
   clearAiExplainStateSession();
@@ -3453,7 +3454,9 @@ function setDrillLobbyVariant(variant = "rapid") {
     const isActive = String(panel.dataset.drillPanel || "").toLowerCase() === safeVariant;
     panel.classList.toggle("is-active", isActive);
   });
-  renderMenuDrillHistory();
+ requestAnimationFrame(() => {
+  setTimeout(renderMenuDrillHistory, 0);
+});
 }
 
 function openDrillsScreen(variant = "rapid") {
@@ -3465,6 +3468,7 @@ async function openGppqeScreen() {
   showScreen("gppqe-screen");
   gppqeState.view = "hub";
   gppqeState.historyModalOpen = false;
+  await new Promise((resolve) => setTimeout(resolve, 0));
   renderGppqeScreen();
 
   await ensureQuestionBankLoaded().catch(() => []);
@@ -36435,8 +36439,8 @@ function formatSubscriptionExpiryLabel(value) {
 function getSubscriptionPlanList() {
   const defaultPlans = [
         { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock everything for 7 days." },
-        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 15, durationDays: 30, description: "Unlock everything for 30 days." },
-        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 120, durationDays: 365, description: "Unlock everything for 365 days." },
+        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 10, durationDays: 30, description: "Unlock everything for 30 days." },
+        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 100, durationDays: 365, description: "Unlock everything for 365 days." },
       ];
   if (Array.isArray(subscriptionPlansCache) && subscriptionPlansCache.length) {
     return normalizeSubscriptionPlans(subscriptionPlansCache);
@@ -36458,7 +36462,7 @@ function normalizeSubscriptionPlans(plans = []) {
       key: "monthly",
       label: "Monthly Access",
       shortLabel: "Month Pass",
-      priceGhs: 15,
+      priceGhs: 10,
       durationDays: 30,
       description: "Unlock everything for 30 days.",
     },
@@ -36466,7 +36470,7 @@ function normalizeSubscriptionPlans(plans = []) {
       key: "yearly",
       label: "Annual Access",
       shortLabel: "Annual Pass",
-      priceGhs: 120,
+      priceGhs: 100,
       durationDays: 365,
       description: "Unlock everything for 365 days.",
     },
@@ -39816,9 +39820,70 @@ function toggleModeHistory(containerId) {
   el.classList.toggle("hidden");
 }
 
+let globalLoadingTimer = null;
+let globalLoadingHideTimer = null;
+
+function getGlobalLoadingOverlay() {
+  let overlay = document.getElementById("global-loading-overlay");
+
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "global-loading-overlay";
+    overlay.setAttribute("role", "status");
+    overlay.setAttribute("aria-live", "polite");
+    overlay.textContent = "Loading...";
+   Object.assign(overlay.style, {
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  zIndex: "99999",
+  transform: "translate(-50%, -50%)",
+  padding: "16px 24px",
+  minWidth: "120px",
+  textAlign: "center",
+  borderRadius: "12px",
+  background: "#ffffff",
+  color: "#0b2948",
+  border: "1px solid rgba(11, 41, 72, 0.14)",
+  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.18)",
+  fontSize: "15px",
+  fontWeight: "700",
+  opacity: "0",
+  pointerEvents: "none",
+  transition: "opacity 120ms ease",
+});
+    document.body.appendChild(overlay);
+  }
+
+  return overlay;
+}
+
+function beginGlobalLoading(label = "Loading...") {
+  const overlay = getGlobalLoadingOverlay();
+  overlay.textContent = label;
+
+  clearTimeout(globalLoadingTimer);
+  clearTimeout(globalLoadingHideTimer);
+
+  globalLoadingTimer = setTimeout(() => {
+    overlay.style.opacity = "1";
+  }, 250);
+
+  globalLoadingHideTimer = setTimeout(endGlobalLoading, 1500);
+}
+
+function endGlobalLoading() {
+  clearTimeout(globalLoadingTimer);
+  clearTimeout(globalLoadingHideTimer);
+
+  const overlay = document.getElementById("global-loading-overlay");
+  if (overlay) overlay.style.opacity = "0";
+}
+
 function showScreen(id, options = {}) {
   const { recordHistory = true, skipSubscriptionGate = false } = options;
   const normalizedId = String(id || "").trim();
+  beginGlobalLoading();
   if (!skipSubscriptionGate && isSubscriptionLockedForFeature(normalizedId)) {
     if (currentUser && backendClient.isAuthenticated()) {
       void refreshSubscriptionAccessForAction().then(() => {
@@ -40005,6 +40070,7 @@ function showScreen(id, options = {}) {
       history.replaceState({ screen: id }, "", "");
     }
   }
+window.setTimeout(endGlobalLoading, 250);
 }
 
 window.addEventListener("focus", () => {

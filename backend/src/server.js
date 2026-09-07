@@ -1,4 +1,4 @@
-﻿import crypto from "node:crypto";
+import crypto from "node:crypto";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
@@ -14,7 +14,6 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import agoraAccessTokenPackage from "agora-access-token";
 import {
-  AUTH_COOKIE_NAME,
   createToken,
   hashPassword,
   optionalAuth,
@@ -38,10 +37,6 @@ import {
   normalizeMajorCategory,
 } from "./categoryTaxonomy.js";
 import { inferQuestionRotation } from "../../rotationTaxonomy.js";
-import { createMedLensRouter } from "./services/medlensQueue.js";
-import { createMedLensDiseaseRouter } from "./services/medlensDiseaseQueue.js";
-import { createMedLensInteractionRouter } from "./services/medlensInteractionQueue.js";
-import { createGuidelineRouter } from "./services/guidelineQueue.js";
 
 const app = express();
 const execFileAsync = promisify(execFile);
@@ -60,7 +55,7 @@ const ALLOWED_ROTATIONS = new Set([
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendPath = path.join(__dirname, "..", "..", "www");
+const frontendPath = path.join(__dirname, "..", "..");
 const logPath = path.join(__dirname, "..", config.logDir);
 fs.mkdirSync(logPath, { recursive: true });
 const accessLogStream = fs.createWriteStream(path.join(logPath, "access.log"), {
@@ -78,58 +73,6 @@ let cachedFfprobePath = "";
 const COMMUNITY_REALTIME_GLOBAL_TOPIC = "community:global";
 const COMMUNITY_REALTIME_PRESENCE_TOPIC = "community:presence";
 const communityCallSessionsByConversation = new Map();
-
-const AUTH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-
-function isSecureRequest(req) {
-  if (req?.secure) {
-    return true;
-  }
-
-  const forwardedProto = String(req?.headers?.["x-forwarded-proto"] || "")
-    .split(",")[0]
-    .trim()
-    .toLowerCase();
-  return forwardedProto === "https";
-}
-
-function getAuthCookieOptions(req) {
-  return {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    secure: isSecureRequest(req),
-    maxAge: AUTH_COOKIE_MAX_AGE_MS,
-  };
-}
-
-function isProtectedHtmlRequest(req) {
-  const method = String(req?.method || "").toUpperCase();
-  if (method !== "GET" && method !== "HEAD") {
-    return false;
-  }
-
-  const requestPath = String(req?.path || req?.originalUrl || "");
-  if (!requestPath || requestPath.startsWith("/api/") || requestPath.startsWith("/backend")) {
-    return false;
-  }
-  if (requestPath === "/" || requestPath === "/index.html") {
-    return false;
-  }
-
-  const ext = path.extname(requestPath).toLowerCase();
-  if (ext === ".html") {
-    return true;
-  }
-
-  const accept = String(req?.headers?.accept || "");
-  return accept.includes("text/html");
-}
-
-function buildLoginRedirectUrl(req) {
-  const originalUrl = String(req?.originalUrl || req?.url || "/").trim() || "/";
-  return "/index.html?next=" + encodeURIComponent(originalUrl);
-}
 
 function resolveWingetFfmpegBinary(binaryName = "ffmpeg.exe") {
   const localAppData = String(process.env.LOCALAPPDATA || "").trim();
@@ -1825,7 +1768,7 @@ function normalizeNewsStatus(rawStatus = "") {
   if (!text) return "pending_review";
   if (text === "draft" || text === "queued" || text === "pending") return "pending_review";
   if (text === "approved" || text === "reviewed") return "approved";
-  if (text === "published" || text === "live" || text.startsWith("publish") || text.startsWith("live_")) return "published";
+  if (text === "published" || text === "live") return "published";
   if (text === "rejected" || text === "rejected_by_admin") return "rejected";
   if (text === "archived" || text === "hidden") return "archived";
   return NEWS_ITEM_STATUS_ORDER.has(text) ? text : "pending_review";
@@ -1932,18 +1875,7 @@ function normalizeNewsItem(raw = {}) {
   const sourceUrl = normalizeNewsUrl(raw.sourceUrl || raw.url || raw.link || canonicalUrl);
   const sourceId = String(raw.sourceId || raw.sourceSlug || "").trim();
   const isManualSource = sourceId.toLowerCase().startsWith("manual-");
-  const sourceName = cleanNewsText(
-    raw.sourceName || raw.sourcePublishedLabel || raw.publishedByName || raw.sourceLabel || raw.source || "",
-    120
-  ) || "News Source";
-  const status = (() => {
-    const normalizedStatus = normalizeNewsStatus(raw.status || "");
-    if (String(raw.status || "").trim()) return normalizedStatus;
-    if (String(raw.publishedById || "").trim() || String(raw.publishedByName || "").trim()) return "published";
-    if (String(raw.approvedAt || "").trim()) return "approved";
-    if (String(raw.reviewedAt || "").trim() && raw.reviewRequired === false) return "rejected";
-    return normalizedStatus;
-  })();
+  const status = normalizeNewsStatus(raw.status || "");
   const tags = Array.isArray(raw.tags)
     ? [...new Set(raw.tags.map((tag) => cleanNewsText(tag, 48)).filter(Boolean))]
     : [];
@@ -1967,8 +1899,7 @@ function normalizeNewsItem(raw = {}) {
   return {
     id: String(raw.id || crypto.randomUUID()).trim(),
     sourceId,
-    sourceName,
-    status,
+    sourceName: isManualSource ? "Manual feed" : cleanNewsText(raw.sourceName || "", 120) || "News Source",
     sourceType: isManualSource ? "manual" : normalizeNewsSourceType(raw.sourceType || raw.extractMode || "", "structured"),
     sourceUrl,
     canonicalUrl,
@@ -1977,6 +1908,7 @@ function normalizeNewsItem(raw = {}) {
     content,
     category: sourceCategory,
     importance: normalizeNewsImportance(raw.importance || "", raw.priority >= 85 ? "high" : "medium"),
+    status,
     featured: raw.featured === true || String(raw.featured || "").trim().toLowerCase() === "true",
     reviewRequired: raw.reviewRequired !== false,
     allowComments,
@@ -2000,7 +1932,7 @@ function normalizeNewsItem(raw = {}) {
     aiModel,
     aiGeneratedAt,
     aiCategory,
-    imageUrl: normalizeNewsUrl(raw.imageUrl || raw.image_url || raw.thumbnailUrl || raw.thumbnail_url || raw.thumbnail || raw.image?.url || raw.enclosure?.url || raw.image || ""),
+    imageUrl: normalizeNewsUrl(raw.imageUrl || raw.image || ""),
     imageAlt: cleanNewsText(raw.imageAlt || "", 120),
     author: cleanNewsText(raw.author || "", 120),
     tags,
@@ -2413,40 +2345,6 @@ function mergeNewsItems(existing = [], incoming = []) {
   return { items: merged, addedCount, updatedCount, skippedCount };
 }
 
-function preserveEditorialNewsState(items = [], sourceItems = []) {
-  const latestByKey = new Map();
-  (Array.isArray(sourceItems) ? sourceItems : []).forEach((item) => {
-    const key = buildNewsItemKey(item);
-    if (key) latestByKey.set(key, normalizeNewsItem(item));
-  });
-
-  return (Array.isArray(items) ? items : []).map((item) => {
-    const key = buildNewsItemKey(item);
-    const latest = latestByKey.get(key);
-    if (!latest) return normalizeNewsItem(item);
-    const hasEditorialState =
-      ["approved", "published", "rejected", "archived"].includes(normalizeNewsStatus(latest.status || "")) ||
-      Boolean(latest.reviewedAt || latest.approvedAt || latest.publishedAt || latest.reviewedById || latest.publishedById || latest.reviewNote);
-    if (!hasEditorialState) {
-      return normalizeNewsItem(item);
-    }
-    return normalizeNewsItem({
-      ...item,
-      status: latest.status || item.status,
-      reviewRequired: latest.reviewRequired !== undefined ? latest.reviewRequired : item.reviewRequired,
-      reviewNote: latest.reviewNote || item.reviewNote || "",
-      reviewedAt: latest.reviewedAt || item.reviewedAt || "",
-      reviewedById: latest.reviewedById || item.reviewedById || "",
-      reviewedByName: latest.reviewedByName || item.reviewedByName || "",
-      approvedAt: latest.approvedAt || item.approvedAt || "",
-      publishedAt: latest.publishedAt || item.publishedAt || "",
-      publishedById: latest.publishedById || item.publishedById || "",
-      publishedByName: latest.publishedByName || item.publishedByName || "",
-      updatedAt: latest.updatedAt || item.updatedAt || "",
-    });
-  });
-}
-
 function sortNewsItemsForPublic(items = []) {
   return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
     const aTime = String(a?.publishedAt || a?.updatedAt || a?.collectedAt || a?.createdAt || "");
@@ -2515,111 +2413,39 @@ function pickDistinctNewsItems(candidates = [], count = 0, usedIds = new Set()) 
 }
 
 function buildNewsFeedSections(items = []) {
-  const published = sortNewsItemsForPublic(
-    (Array.isArray(items) ? items : []).filter(
-      (item) => item.status === "published",
-    ),
-  );
-
+  const published = sortNewsItemsForPublic((Array.isArray(items) ? items : []).filter((item) => item.status === "published"));
   const byPopularity = [...published].sort((a, b) => {
     const scoreDiff = getNewsPopularityScore(b) - getNewsPopularityScore(a);
     if (Math.abs(scoreDiff) > 0.0001) return scoreDiff;
-
-    const aTime = String(
-      a?.publishedAt || a?.updatedAt || a?.collectedAt || a?.createdAt || "",
-    );
-    const bTime = String(
-      b?.publishedAt || b?.updatedAt || b?.collectedAt || b?.createdAt || "",
-    );
+    const aTime = String(a?.publishedAt || a?.updatedAt || a?.collectedAt || a?.createdAt || "");
+    const bTime = String(b?.publishedAt || b?.updatedAt || b?.collectedAt || b?.createdAt || "");
     return bTime.localeCompare(aTime);
   });
 
+  const heroCandidates = [
+    ...published.filter((item) => item.featured),
+    ...byPopularity,
+    ...published,
+  ];
+  const popularCandidates = [...byPopularity];
+  const latestCandidates = [...published];
+  const medicineCandidates = [
+    ...published.filter((item) => ["medicine", "clinical-news"].includes(normalizeNewsCategory(item.category || "", ""))),
+    ...published.filter((item) => !["medicine", "clinical-news"].includes(normalizeNewsCategory(item.category || "", ""))),
+  ];
+  const trendingCandidates = [
+    ...published.filter((item) => normalizeNewsCategory(item.category || "", "") === "trending"),
+    ...published.filter((item) => item.featured || normalizeNewsImportance(item.importance || "", "medium") === "high"),
+    ...byPopularity,
+  ];
   const usedIds = new Set();
 
-  const takeUnique = (candidates, limit = Infinity) => {
-    const selected = [];
-
-    for (const item of Array.isArray(candidates) ? candidates : []) {
-      const id = String(item?.id || "").trim();
-      if (!id || usedIds.has(id)) continue;
-
-      usedIds.add(id);
-      selected.push(item);
-
-      if (selected.length >= limit) break;
-    }
-
-    return selected;
-  };
-
-  const hero = takeUnique(
-    published.filter((item) => Boolean(item.featured)),
-    3,
-  );
-
-  const popular = takeUnique(byPopularity, 3);
-
-  const trendingCategories = new Set([
-    normalizeNewsCategory("Drug Safety Alerts", ""),
-    normalizeNewsCategory("Guidelines and Clinical Updates", ""),
-    normalizeNewsCategory("New Drug Approvals", ""),
-    normalizeNewsCategory("Regulations and Policy", ""),
-  ]);
-
-  const trendingPool = published.filter((item) =>
-    trendingCategories.has(
-      normalizeNewsCategory(item.category || "", ""),
-    ),
-  );
-
-  const trending = takeUnique(trendingPool, 6);
-
-  const latestPool = published.filter(
-    (item) =>
-      !trending.some(
-        (trendingItem) => String(trendingItem?.id || "") === String(item?.id || ""),
-      ),
-  );
-
-  const latest = takeUnique(latestPool, 6);
-
-  const trendingIds = new Set(
-    trending.map((item) => String(item?.id || "").trim()),
-  );
-  const latestIds = new Set(
-    latest.map((item) => String(item?.id || "").trim()),
-  );
-
-  const moreNews = [
-    ...trendingPool.filter(
-      (item) => !trendingIds.has(String(item?.id || "").trim()),
-    ),
-    ...latestPool.filter(
-      (item) => !latestIds.has(String(item?.id || "").trim()),
-    ),
-  ].filter((item, index, list) => {
-    const id = String(item?.id || "").trim();
-    return (
-      id &&
-      list.findIndex(
-        (candidate) => String(candidate?.id || "").trim() === id,
-      ) === index
-    );
-  });
-
-  const medicine = published.filter((item) =>
-    ["medicine", "clinical-news"].includes(
-      normalizeNewsCategory(item.category || "", ""),
-    ),
-  );
-
   return {
-    hero,
-    popularStories: popular,
-    latest,
-    medicine,
-    trendingNow: trending,
-    moreNews,
+    hero: pickDistinctNewsItems(heroCandidates, 3, usedIds),
+    popularStories: pickDistinctNewsItems(popularCandidates, 3, usedIds),
+    latest: pickDistinctNewsItems(latestCandidates, 4, usedIds),
+    medicine: pickDistinctNewsItems(medicineCandidates, 6, usedIds),
+    trendingNow: pickDistinctNewsItems(trendingCandidates, 5, usedIds),
   };
 }
 
@@ -2749,8 +2575,6 @@ async function collectAndStoreNews({ sourceId = "", triggeredBy = "system" } = {
     }
 
     const { items: mergedItems, addedCount, updatedCount, skippedCount } = mergeNewsItems(currentItems, selectedIncoming);
-    const latestItems = (await readCollection("newsItems")).map(normalizeNewsItem);
-    const reconciledItems = preserveEditorialNewsState(mergedItems, latestItems);
     const nextSources = sources.map((source) =>
       normalizeNewsSource({
         ...source,
@@ -2774,7 +2598,7 @@ async function collectAndStoreNews({ sourceId = "", triggeredBy = "system" } = {
     });
 
     await writeCollection("newsSources", nextSources);
-    await writeCollection("newsItems", reconciledItems);
+    await writeCollection("newsItems", mergedItems);
     const priorRuns = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
     await writeCollection("newsCollectRuns", [run, ...priorRuns].slice(0, 100));
 
@@ -4731,19 +4555,13 @@ function computeSubscriptionState(rawUser = {}) {
   const rawStatus = normalizeSubscriptionStatusValue(rawUser.subscriptionStatus);
   const planMeta = getSubscriptionPlanMeta(plan);
   const trialEndsAt = getIsoTimeValue(rawUser.trialEndsAt) || addDaysToIsoDate(createdAt, SUBSCRIPTION_TRIAL_DAYS);
-  const storedSubscriptionEndsAt = getIsoTimeValue(rawUser.subscriptionEndsAt);
-  const computedSubscriptionEndsAt =
-    plan === "trial"
+  const subscriptionEndsAt =
+    getIsoTimeValue(rawUser.subscriptionEndsAt) ||
+    (plan === "trial"
       ? trialEndsAt
       : startedAt && planMeta.durationDays
         ? addDaysToIsoDate(startedAt, planMeta.durationDays)
-        : null;
-  const subscriptionEndsAt =
-    storedSubscriptionEndsAt &&
-    Number.isFinite(Date.parse(storedSubscriptionEndsAt)) &&
-    (!startedAt || Date.parse(storedSubscriptionEndsAt) >= Date.parse(startedAt))
-      ? storedSubscriptionEndsAt
-      : computedSubscriptionEndsAt;
+        : null);
   const now = Date.now();
   let status = rawStatus;
 
@@ -4772,11 +4590,14 @@ function computeSubscriptionState(rawUser = {}) {
   if (status === "pending" && (approvedAt || rejectedAt)) {
     status = approvedAt ? "active" : "rejected";
   }
-  const trialIsStillValid = trialEndsAt && Date.parse(trialEndsAt) > now;
-  const subscriptionIsStillValid = subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now;
-  if (status === "expired" && (trialIsStillValid || subscriptionIsStillValid)) {
-    status = plan === "trial" && trialIsStillValid ? "trial" : "active";
+  if (status === "pending" || status === "rejected") {
+    if (subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now) {
+      status = "active";
+    } else if (trialEndsAt && Date.parse(trialEndsAt) > now) {
+      status = "trial";
+    }
   }
+
   const isActive = status === "trial" || status === "active";
   const isLocked = !isActive;
   const durationDays = planMeta.durationDays || 0;
@@ -4800,6 +4621,7 @@ function computeSubscriptionState(rawUser = {}) {
   return {
     plan,
     planMeta,
+    status,
     requestedAt,
     reviewedAt,
     approvedAt,
@@ -4833,8 +4655,6 @@ function createEmptySetupPoints() {
     sudden: 0,
     clinical: 0,
     law: 0,
-    gppqeStudy: 0,
-    gppqeExam: 0,
   };
 }
 
@@ -4848,16 +4668,6 @@ function normalizeSetupPointsValue(rawPoints = {}) {
     next[key] = Math.max(0, Math.round(Number(rawPoints[key]) || 0));
   }
 
-  return next;
-}
-
-function mergeSetupPointsValue(left = {}, right = {}) {
-  const safeLeft = normalizeSetupPointsValue(left);
-  const safeRight = normalizeSetupPointsValue(right);
-  const next = createEmptySetupPoints();
-  for (const key of Object.keys(next)) {
-    next[key] = Math.max(safeLeft[key], safeRight[key]);
-  }
   return next;
 }
 
@@ -5236,12 +5046,12 @@ function normalizeSubscriptionRequest(rawRequest = {}) {
     userName: String(rawRequest.userName || "").trim(),
     username: String(rawRequest.username || "").trim(),
     contact: String(rawRequest.contact || "").trim(),
-    subscriptionCode: String(rawRequest.subscriptionCode || "").trim(),
     plan,
     planLabel: planMeta.label,
     planShortLabel: planMeta.shortLabel,
     priceGhs: planMeta.priceGhs,
     durationDays: planMeta.durationDays,
+    status,
     requestedAt,
     reviewedAt,
     approvedAt,
@@ -5262,46 +5072,29 @@ function normalizeSubscriptionRequest(rawRequest = {}) {
     paymentMethod: String(rawRequest.paymentMethod || "").trim(),
     createdAt: requestedAt,
     updatedAt: String(rawRequest.updatedAt || requestedAt),
-    status: getSubscriptionRequestStatus({
-      ...rawRequest,
-      plan,
-      requestedAt,
-      reviewedAt,
-      approvedAt,
-      rejectedAt,
-      activatedAt: getIsoTimeValue(rawRequest.activatedAt),
-      expiresAt: getIsoTimeValue(rawRequest.expiresAt),
-      expiredAt: getIsoTimeValue(rawRequest.expiredAt),
-      status: ["pending", "approved", "rejected", "active", "expired"].includes(rawStatus)
-        ? rawStatus
-        : "pending",
-    }),
   };
 }
 
 function getSubscriptionRequestExpiresAt(request = {}) {
   const explicitExpiresAt = getIsoTimeValue(request.expiresAt);
+  if (explicitExpiresAt) {
+    return explicitExpiresAt;
+  }
+
   const activatedAt =
     getIsoTimeValue(request.activatedAt) ||
     getIsoTimeValue(request.approvedAt) ||
     getIsoTimeValue(request.reviewedAt);
+  if (!activatedAt) {
+    return null;
+  }
+
   const planMeta = getSubscriptionPlanMeta(request.plan || "trial");
   const durationDays = Math.max(
     1,
     Math.round(Number(request.durationDays) || planMeta.durationDays || SUBSCRIPTION_TRIAL_DAYS),
   );
-  const computedExpiresAt = activatedAt ? addDaysToIsoDate(activatedAt, durationDays) : null;
-  if (explicitExpiresAt) {
-    const explicitExpiresTime = Date.parse(explicitExpiresAt);
-    const activatedTime = activatedAt ? Date.parse(activatedAt) : NaN;
-    if (
-      Number.isFinite(explicitExpiresTime) &&
-      (!Number.isFinite(activatedTime) || explicitExpiresTime >= activatedTime)
-    ) {
-      return explicitExpiresAt;
-    }
-  }
-  return computedExpiresAt;
+  return addDaysToIsoDate(activatedAt, durationDays);
 }
 
 function getSubscriptionRequestStatus(request = {}) {
@@ -5309,19 +5102,15 @@ function getSubscriptionRequestStatus(request = {}) {
   if (rawStatus === "rejected") {
     return "rejected";
   }
+  if (rawStatus === "expired") {
+    return "expired";
+  }
   if (rawStatus === "pending") {
     return "pending";
   }
 
   const expiresAt = getSubscriptionRequestExpiresAt(request);
   const expiresMs = Date.parse(String(expiresAt || ""));
-  const hasFutureExpiry = Number.isFinite(expiresMs) && expiresMs > Date.now();
-  if (rawStatus === "expired") {
-    return hasFutureExpiry ? "active" : "expired";
-  }
-  if (hasFutureExpiry && ["approved", "active", "trial"].includes(rawStatus)) {
-    return "active";
-  }
   if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) {
     return "expired";
   }
@@ -5402,58 +5191,71 @@ function buildSubscriptionRequestFromUser(user = {}, rawRequest = {}) {
 }
 
 function synchronizeSubscriptionRequestsWithUsers(users = [], rawRequests = []) {
-  const normalizedRequests = coerceCollectionArray(rawRequests)
-    .map(normalizeSubscriptionRequest)
-    .filter((request) => {
-      const plan = normalizeSubscriptionPlanValue(request.plan) || "trial";
-      return plan !== "trial" && Boolean(String(request.userId || "").trim());
-    })
-    .sort((a, b) => Date.parse(a.requestedAt || 0) - Date.parse(b.requestedAt || 0));
+  const normalizedUsers = coerceCollectionArray(users).map(normalizeExistingUser);
+  const normalizedRequests = coerceCollectionArray(rawRequests).map(normalizeSubscriptionRequest);
+  const requests = [...normalizedRequests];
+  const requestsByUserId = new Map();
+  for (const request of requests) {
+    const userId = String(request.userId || "").trim();
+    if (!userId) continue;
+    if (!requestsByUserId.has(userId)) {
+      requestsByUserId.set(userId, []);
+    }
+    requestsByUserId.get(userId).push(request);
+  }
 
-  const usedCodes = new Set();
-  let nextCode = 1;
-  let changed = normalizedRequests.length !== coerceCollectionArray(rawRequests).length;
+  let changed = false;
+  for (const user of normalizedUsers) {
+    const userId = String(user.id || "").trim();
+    if (!userId) continue;
+    const userRequests = requestsByUserId.get(userId) || [];
+    if (!userRequests.length) {
+      requests.push(buildSubscriptionRequestFromUser(user));
+      changed = true;
+      continue;
+    }
 
-  for (const request of normalizedRequests) {
-    const requestCode = String(request.subscriptionCode || "").trim();
-    if (requestCode) {
-      usedCodes.add(requestCode);
-      const numericCode = Number.parseInt(requestCode, 10);
-      if (Number.isFinite(numericCode) && numericCode >= nextCode) {
-        nextCode = numericCode + 1;
+    if (userRequests.length === 1) {
+      const currentRequest = userRequests[0];
+      const subscriptionState = computeSubscriptionState(user);
+      const desiredStatus =
+        subscriptionState.status === "rejected"
+          ? "rejected"
+          : subscriptionState.status === "expired"
+            ? "expired"
+            : subscriptionState.status === "pending"
+              ? "pending"
+              : "active";
+      const nextRequest = buildSubscriptionRequestFromUser(user, currentRequest);
+      const nextStatus = getSubscriptionRequestStatus(nextRequest);
+      if (
+        String(currentRequest.status || "").trim().toLowerCase() !== nextStatus ||
+        String(currentRequest.userName || "") !== String(nextRequest.userName || "") ||
+        String(currentRequest.username || "") !== String(nextRequest.username || "") ||
+        String(currentRequest.contact || "") !== String(nextRequest.contact || "") ||
+        String(currentRequest.plan || "") !== String(nextRequest.plan || "") ||
+        String(currentRequest.requestedAt || "") !== String(nextRequest.requestedAt || "") ||
+        String(currentRequest.reviewDeadlineAt || "") !== String(nextRequest.reviewDeadlineAt || "") ||
+        String(currentRequest.activatedAt || "") !== String(nextRequest.activatedAt || "") ||
+        String(currentRequest.expiresAt || "") !== String(nextRequest.expiresAt || "") ||
+        String(currentRequest.expiredAt || "") !== String(nextRequest.expiredAt || "")
+      ) {
+        const requestIndex = requests.findIndex((entry) => entry.id === currentRequest.id);
+        if (requestIndex >= 0) {
+          requests[requestIndex] = {
+            ...currentRequest,
+            ...nextRequest,
+            status: desiredStatus,
+          };
+          changed = true;
+        }
       }
     }
   }
 
-  const allocateSubscriptionCode = () => {
-    let code = String(nextCode).padStart(3, "0");
-    while (usedCodes.has(code)) {
-      nextCode += 1;
-      code = String(nextCode).padStart(3, "0");
-    }
-    usedCodes.add(code);
-    nextCode += 1;
-    changed = true;
-    return code;
-  };
-
-  const requestsById = new Map();
-  for (const request of normalizedRequests) {
-    const requestId = String(request.id || "").trim();
-    if (!requestId) {
-      changed = true;
-      continue;
-    }
-    const nextRequest = request.subscriptionCode ? request : { ...request, subscriptionCode: allocateSubscriptionCode() };
-    if (requestsById.has(requestId)) {
-      changed = true;
-    }
-    requestsById.set(requestId, nextRequest);
-  }
-
   return {
     changed,
-    requests: [...requestsById.values()].sort((a, b) => Date.parse(b.requestedAt || 0) - Date.parse(a.requestedAt || 0)),
+    requests,
   };
 }
 
@@ -5471,47 +5273,6 @@ function toPublicSubscriptionRequest(rawRequest = {}, usersById = new Map()) {
     user: user ? toPublicUser(user) : null,
   };
 }
-
-function buildSubscriptionAccessFromRequest(request = {}) {
-  const normalizedRequest = normalizeSubscriptionRequest(request);
-  const status = getSubscriptionRequestStatus(normalizedRequest);
-  const plan = normalizeSubscriptionPlanValue(normalizedRequest.plan) || "trial";
-  const planMeta = getSubscriptionPlanMeta(plan);
-  const expirationAt = getSubscriptionRequestExpiresAt(normalizedRequest);
-  const expirationTime = Date.parse(String(expirationAt || ""));
-  const daysRemaining = Number.isFinite(expirationTime)
-    ? Math.max(0, Math.ceil((expirationTime - Date.now()) / (24 * 60 * 60 * 1000)))
-    : null;
-
-  return {
-    requestId: normalizedRequest.id,
-    subscriptionCode: normalizedRequest.subscriptionCode || normalizedRequest.id,
-    plan,
-    planLabel: normalizedRequest.planLabel || planMeta.label,
-    planShortLabel: normalizedRequest.planShortLabel || planMeta.shortLabel,
-    priceGhs: Number.isFinite(Number(normalizedRequest.priceGhs)) ? Number(normalizedRequest.priceGhs) : planMeta.priceGhs,
-    status,
-    statusLabel: getSubscriptionStatusLabel(status),
-    isActive: status === "active" || status === "trial",
-    isLocked: !["active", "trial"].includes(status),
-    lockedReason:
-      status === "pending"
-        ? normalizedRequest.reviewNote || "Your payment proof is in review."
-        : status === "rejected"
-          ? normalizedRequest.reviewNote || "The admin could not verify the last submission."
-          : status === "expired"
-            ? "Your free trial or paid access has ended."
-            : "",
-    daysRemaining,
-    expirationAt,
-    trialEndsAt: plan === "trial" ? expirationAt : null,
-    approvalDeadlineAt: normalizedRequest.reviewDeadlineAt || null,
-    reviewNote: normalizedRequest.reviewNote || "",
-    rejectionReason: normalizedRequest.reviewNote || "",
-    lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
-  };
-}
-
 
 function normalizePasswordResetRequest(rawRequest = {}) {
   const requestedAt = getIsoTimeValue(rawRequest.requestedAt) || new Date().toISOString();
@@ -5552,6 +5313,7 @@ function normalizePasswordResetRequest(rawRequest = {}) {
           : "registered contact"),
     resetCode: String(rawRequest.resetCode || "").trim(),
     resetCodeHash: String(rawRequest.resetCodeHash || "").trim(),
+    status,
     requestedAt,
     sentAt: rawRequest.sentAt ? String(rawRequest.sentAt) : null,
     resolvedAt: rawRequest.resolvedAt ? String(rawRequest.resolvedAt) : null,
@@ -5596,6 +5358,7 @@ function toPublicPasswordResetRequest(rawRequest = {}, usersById = new Map()) {
   const user = usersById.get(request.userId) || null;
   return {
     ...request,
+    status,
     isExpired: status === "expired",
     user: user ? toPublicUser(user) : null,
   };
@@ -6788,10 +6551,6 @@ function normalizeQuestionForApi(rawQuestion) {
   const text = String(rawQuestion?.text ?? rawQuestion?.question ?? "").trim();
   const topicSlug = normalizeSlugValue(rawQuestion?.topicSlug);
   const sectionId = normalizeSlugValue(rawQuestion?.sectionId);
-  const bank = String(rawQuestion?.bank || "main").trim().toLowerCase() || "main";
-  const comboVariant = String(rawQuestion?.comboVariant || "").trim().toLowerCase();
-  const yearValue = Number(rawQuestion?.year);
-  const displayNumberValue = Number(rawQuestion?.displayNumber);
   const drillTags = Array.isArray(rawQuestion?.drillTags)
     ? rawQuestion.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
     : [];
@@ -6815,13 +6574,8 @@ function normalizeQuestionForApi(rawQuestion) {
     text,
     question: text,
     category: normalizedCategory,
-    bank,
-    comboVariant: comboVariant || undefined,
-    year: Number.isFinite(yearValue) ? yearValue : undefined,
-    displayNumber: Number.isFinite(displayNumberValue) ? displayNumberValue : undefined,
     options: Array.isArray(rawQuestion?.options) ? rawQuestion.options : [],
     correct: rawQuestion?.correct,
-    answer: Number.isFinite(Number(rawQuestion?.answer)) ? Number(rawQuestion.answer) : undefined,
     explanation: String(rawQuestion?.explanation || ""),
     topicSlug: topicSlug || undefined,
     sectionId: sectionId || undefined,
@@ -7059,48 +6813,12 @@ function buildChoiceCatalog(question = {}) {
   });
 
   if (rows.length === 0 && String(question?.type || "").trim().toLowerCase() === "combo") {
-    const comboVariant = String(question?.comboVariant || "").trim().toLowerCase();
-    const statementCount = Array.isArray(question?.statements) ? question.statements.length : 0;
-    const fallbackOptions =
-      comboVariant === "assertion-5"
-        ? [
-            "First statement is TRUE, Second statement is TRUE and they are RELATED",
-            "First statement is TRUE, Second statement is TRUE but they are NOT related",
-            "First statement is TRUE but Second statement is FALSE",
-            "First statement is FALSE but Second statement is TRUE",
-            "Both statements are FALSE",
-          ]
-        : comboVariant === "table-4"
-          ? [
-              "I, II and III",
-              "II and III only",
-              "I only",
-              "III only",
-            ]
-          : comboVariant === "pair-relationship" || statementCount === 2
-        ? [
-            "first statement is true, second statement is true and the two are related",
-            "first statement is true, second statement is true but the two are not related",
-            "first statement is false, second statement is true",
-            "both statements are false",
-          ]
-        : [
-            "1, 2 and 3",
-            "1 and 2 only",
-            "2 and 3 only",
-            "1 only",
-            "3 only",
-          ];
-
-    rows = fallbackOptions.map((text, index) => {
-      const letter = String.fromCharCode(65 + index);
-      return {
-        letter,
-        text,
-        normalized: normalizeChoiceText(text),
-        normalizedNoPrefix: normalizeChoiceText(trimLeadingOptionLetter(text)),
-      };
-    });
+    rows = ["A", "B", "C", "D", "E"].map((letter) => ({
+      letter,
+      text: `Option ${letter}`,
+      normalized: normalizeChoiceText(letter),
+      normalizedNoPrefix: normalizeChoiceText(letter),
+    }));
   }
 
   let correctLetter = extractOptionLetter(question?.correct);
@@ -7128,38 +6846,6 @@ function buildChoiceCatalog(question = {}) {
   }
 
   return { rows, correctLetter };
-}
-
-function getComboOptionTexts(comboVariant = "", statementCount = 0) {
-  const variant = String(comboVariant || "").trim().toLowerCase();
-  if (variant === "assertion-5") {
-    return [
-      "First statement is TRUE, Second statement is TRUE and they are RELATED",
-      "First statement is TRUE, Second statement is TRUE but they are NOT related",
-      "First statement is TRUE but Second statement is FALSE",
-      "First statement is FALSE but Second statement is TRUE",
-      "Both statements are FALSE",
-    ];
-  }
-
-  if (variant === "table-4") {
-    return ["I, II and III", "II and III only", "I only", "III only"];
-  }
-
-  if (variant === "pair-relationship" || statementCount === 2) {
-    return [
-      "first statement is true, second statement is true and the two are related",
-      "first statement is true, second statement is true but the two are not related",
-      "first statement is false, second statement is true",
-      "both statements are false",
-    ];
-  }
-
-  if (variant === "three-statement" || statementCount === 3) {
-    return ["1, 2 and 3", "1 and 2 only", "2 and 3 only", "1 only", "3 only"];
-  }
-
-  return [];
 }
 
 function resolveSelectionLetter(selection, catalog) {
@@ -7457,23 +7143,6 @@ app.use("/backend", (_req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-// Lock standalone HTML pages behind the login session.
-app.use((req, res, next) => {
-  if (!isProtectedHtmlRequest(req)) {
-    next();
-    return;
-  }
-
-  optionalAuth(req, res, () => {
-    if (req.user) {
-      next();
-      return;
-    }
-
-    res.redirect(302, buildLoginRedirectUrl(req));
-  });
-});
-
 // Serve static frontend files.
 app.use(
   express.static(frontendPath, {
@@ -7509,11 +7178,6 @@ app.use("/api/admin", (req, _res, next) => {
 });
 
 // API routes
-app.use(createMedLensRouter({ config, frontendPath }));
-app.use(createMedLensDiseaseRouter({ config, frontendPath }));
-app.use(createMedLensInteractionRouter({ config, frontendPath }));
-app.use(createGuidelineRouter({ config }));
-
 app.get("/api/health", (_req, res) => {
   const mem = process.memoryUsage();
   res.json({
@@ -7645,7 +7309,6 @@ app.post(
     await writeCollection("users", users);
 
     const token = createToken(user);
-    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
     res.status(201).json({
       token,
       user: toPublicUser(user),
@@ -7714,7 +7377,6 @@ app.post(
     }
 
     const token = createToken(updatedUser);
-    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
     res.json({
       token,
       user: toPublicUser(updatedUser),
@@ -7745,21 +7407,10 @@ app.post(
   }),
 );
 
-app.post(
-  "/api/auth/logout",
-  asyncHandler(async (req, res) => {
-    res.clearCookie(AUTH_COOKIE_NAME, { path: "/" });
-    res.json({ ok: true });
-  }),
-);
-
 app.get(
   "/api/auth/me",
   requireAuth,
   asyncHandler(async (req, res) => {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
     await purgeExpiredDeactivatedUsers();
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
@@ -7789,9 +7440,6 @@ app.get(
 app.get(
   "/api/subscriptions/plans",
   asyncHandler(async (_req, res) => {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
     res.json({
       ok: true,
       approvalWindowHours: SUBSCRIPTION_APPROVAL_WINDOW_HOURS,
@@ -7809,9 +7457,6 @@ app.get(
   "/api/subscriptions/me",
   requireAuth,
   asyncHandler(async (req, res) => {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
     const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
     const user = users.find((entry) => entry.id === req.user.sub);
     if (!user) {
@@ -7820,20 +7465,20 @@ app.get(
     }
 
     const rawRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
-    const requests = rawRequests
-      .map(normalizeSubscriptionRequest)
-      .filter((entry) => entry.userId === user.id && normalizeSubscriptionPlanValue(entry.plan) !== "trial")
-      .sort((a, b) => Date.parse(b.requestedAt || 0) - Date.parse(a.requestedAt || 0));
-    const latestRequest = requests[0] || null;
-    const latestSubscription = latestRequest
-      ? buildSubscriptionAccessFromRequest(latestRequest)
-      : toPublicUser(user).subscriptionAccess;
+    const syncedRequests = synchronizeSubscriptionRequestsWithUsers([user], rawRequests);
+    if (syncedRequests.changed) {
+      await writeCollection("subscriptionRequests", syncedRequests.requests);
+    }
+    const requests = syncedRequests.requests
+      .map((request) => toPublicSubscriptionRequest(request, new Map([[user.id, user]])))
+      .filter((entry) => entry.userId === user.id)
+      .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
 
     res.json({
       ok: true,
       user: toPublicUser(user),
-      subscription: latestSubscription,
-      request: latestRequest || null,
+      subscription: toPublicUser(user).subscriptionAccess,
+      request: requests[0] || null,
       requests,
       plans: Object.values(SUBSCRIPTION_PLAN_CATALOG).map((plan) => ({
         ...plan,
@@ -7848,7 +7493,7 @@ app.get(
 
 app.post(
   "/api/subscriptions/requests",
-  optionalAuth,
+  requireAuth,
   asyncHandler(async (req, res) => {
     const requestedPlan = normalizeSubscriptionPlanValue(
       req.body?.plan || req.body?.subscriptionPlan || req.body?.tier,
@@ -7877,18 +7522,14 @@ app.post(
     }
 
     const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
-    const actorId = String(req.user?.sub || req.body?.userId || "").trim();
-    if (!actorId) {
-      res.status(400).json({ error: "Could not identify the subscription account." });
-      return;
-    }
-    const userIndex = users.findIndex((entry) => entry.id === actorId);
+    const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
     if (userIndex < 0) {
       res.status(404).json({ error: "user not found" });
       return;
     }
-    const actorUser = users[userIndex];
-    const currentState = computeSubscriptionState(actorUser);
+
+    const currentUser = users[userIndex];
+    const currentState = computeSubscriptionState(currentUser);
     if (currentState.status === "active" || currentState.status === "pending") {
       res.status(409).json({
         error:
@@ -7902,7 +7543,7 @@ app.post(
     const now = new Date().toISOString();
     const requests = (await readCollection("subscriptionRequests")).map(normalizeSubscriptionRequest);
     const existingPendingIndex = requests.findIndex(
-      (entry) => entry.userId === actorId && entry.status === "pending",
+      (entry) => entry.userId === currentUser.id && entry.status === "pending",
     );
     const existingPending = existingPendingIndex >= 0 ? requests[existingPendingIndex] : null;
     if (existingPending) {
@@ -7913,11 +7554,10 @@ app.post(
     const request = normalizeSubscriptionRequest({
       ...(existingPending || {}),
       id: existingPending?.id || crypto.randomUUID(),
-      userId: actorId,
-      userName: actorUser.name,
-      username: actorUser.username,
-      contact: actorUser.contact,
-      subscriptionCode: String(requests.length + 1).padStart(3, "0"),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      username: currentUser.username,
+      contact: currentUser.contact,
       plan: requestedPlan,
       status: "pending",
       requestedAt: existingPending?.requestedAt || now,
@@ -7947,7 +7587,7 @@ app.post(
     }
 
     users[userIndex] = {
-      ...actorUser,
+      ...currentUser,
       subscriptionPlan: requestedPlan,
       subscriptionStatus: "pending",
       subscriptionRequestedAt: now,
@@ -7967,7 +7607,7 @@ app.post(
       ok: true,
       request,
       user: toPublicUser(users[userIndex]),
-      subscription: buildSubscriptionAccessFromRequest(request),
+      subscription: toPublicUser(users[userIndex]).subscriptionAccess,
     });
   }),
 );
@@ -8513,7 +8153,7 @@ app.put(
 
     const nextUser = {
       ...currentUser,
-      setupPoints: mergeSetupPointsValue(currentUser.setupPoints, req.body.setupPoints),
+      setupPoints: normalizeSetupPointsValue(req.body.setupPoints),
       updatedAt: new Date().toISOString(),
     };
 
@@ -11634,8 +11274,6 @@ app.get(
   "/api/questions",
   asyncHandler(async (req, res) => {
     const category = String(req.query.category || "").trim();
-    const bank = String(req.query.bank || "").trim().toLowerCase();
-    const year = safeNumber(req.query.year);
     const idsRaw = String(req.query.ids || "").trim();
     const start = safeNumber(req.query.start);
     const limit = safeNumber(req.query.limit);
@@ -11643,14 +11281,6 @@ app.get(
       String(req.query.shuffle || "").toLowerCase() === "true";
 
     let questions = (await readCollection("questions")).map(normalizeQuestionForApi);
-
-    if (bank) {
-      questions = questions.filter((q) => String(q.bank || "main").trim().toLowerCase() === bank);
-    }
-
-    if (Number.isFinite(year)) {
-      questions = questions.filter((q) => Number(q.year) === year);
-    }
 
     if (category && category !== "all") {
       questions = questions.filter((q) => q.category === category);
@@ -13892,11 +13522,6 @@ app.post(
     requests[requestIndex] = {
       ...request,
       status: "rejected",
-      reviewRequired: false,
-      publishedAt: "",
-      approvedAt: "",
-      publishedById: "",
-      publishedByName: "",
       reviewedAt: now,
       approvedAt: null,
       rejectedAt: now,
@@ -13959,10 +13584,6 @@ app.post(
 
     const text = String(req.body?.text || req.body?.question || "").trim();
     const rawCategory = String(req.body?.category || "").trim();
-    const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
-    const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
-    const year = Number(req.body?.year);
-    const displayNumber = Number(req.body?.displayNumber);
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionId = normalizeSlugValue(req.body?.sectionId);
     const rotation = String(req.body?.rotation || "").trim();
@@ -13987,30 +13608,15 @@ app.post(
       : [];
     const correct = req.body?.correct;
 
-    const isComboVariant = Boolean(comboVariant);
-    let resolvedOptions = options;
-    if (resolvedOptions.length === 0 && isComboVariant) {
-      resolvedOptions = getComboOptionTexts(comboVariant);
-    }
-
-    if (!text || !rawCategory || resolvedOptions.length < 2 || correct === undefined) {
+    if (!text || !rawCategory || options.length < 2 || correct === undefined) {
       res.status(400).json({
         error:
-          "Required fields: text, category, options (at least 2) and correct (index or exact option text)",
+          "Required fields: text, category, options (at least 2), correct (index or exact option text)",
       });
       return;
     }
-    if (resolvedOptions.length > 8) {
+    if (options.length > 8) {
       res.status(400).json({ error: "options cannot exceed 8 items" });
-      return;
-    }
-    if (
-      comboVariant &&
-      !new Set(["pair-relationship", "assertion-5", "table-4", "three-statement"]).has(comboVariant)
-    ) {
-      res.status(400).json({
-        error: "comboVariant must be pair-relationship, assertion-5, table-4 or three-statement",
-      });
       return;
     }
     if (topicSlug === null) {
@@ -14031,24 +13637,8 @@ app.post(
       });
       return;
     }
-    if (bank !== "main" && bank !== "gppqe") {
-      res.status(400).json({ error: "bank must be either main or gppqe" });
-      return;
-    }
-    if (req.body?.year !== undefined && req.body?.year !== "" && !Number.isFinite(year)) {
-      res.status(400).json({ error: "year must be a valid number" });
-      return;
-    }
-    if (
-      req.body?.displayNumber !== undefined &&
-      req.body?.displayNumber !== "" &&
-      !Number.isFinite(displayNumber)
-    ) {
-      res.status(400).json({ error: "displayNumber must be a valid number" });
-      return;
-    }
 
-    const resolvedCorrect = resolveCorrectAnswerValue(correct, resolvedOptions);
+    const resolvedCorrect = resolveCorrectAnswerValue(correct, options);
     if (!resolvedCorrect) {
       res.status(400).json({
         error:
@@ -14065,19 +13655,11 @@ app.post(
 
     const newQuestion = {
       id: String(newId),
-      bank,
-      comboVariant: comboVariant || undefined,
-      year: Number.isFinite(year) ? year : undefined,
-      displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
       text,
       question: text,
       category,
-      options: resolvedOptions,
+      options,
       correct: resolvedCorrect,
-      answer:
-        req.body?.answer !== undefined && Number.isFinite(Number(req.body?.answer))
-          ? Number(req.body.answer)
-          : undefined,
       explanation: String(req.body?.explanation || ""),
       topicSlug: topicSlug || undefined,
       sectionId: sectionId || undefined,
@@ -14111,22 +13693,12 @@ app.put(
     const text = String(req.body?.text ?? req.body?.question ?? "").trim();
     const categoryProvided = req.body?.category !== undefined;
     const rawCategory = String(req.body?.category || "").trim();
-    const bankProvided = req.body?.bank !== undefined;
-    const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
-    const comboVariantProvided = req.body?.comboVariant !== undefined;
-    const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
-    const yearProvided = req.body?.year !== undefined;
-    const year = Number(req.body?.year);
-    const displayNumberProvided = req.body?.displayNumber !== undefined;
-    const displayNumber = Number(req.body?.displayNumber);
     const optionsProvided = Array.isArray(req.body?.options);
     const options = optionsProvided
       ? req.body.options.map((opt) => String(opt || "").trim()).filter(Boolean)
       : null;
     const correctProvided = req.body?.correct !== undefined;
     const correct = req.body?.correct;
-    const answerProvided = req.body?.answer !== undefined;
-    const answer = Number(req.body?.answer);
     const explanationProvided = req.body?.explanation !== undefined;
     const explanation = String(req.body?.explanation || "");
     const topicSlugProvided = req.body?.topicSlug !== undefined;
@@ -14161,32 +13733,6 @@ app.put(
       });
       return;
     }
-    if (bankProvided && bank !== "main" && bank !== "gppqe") {
-      res.status(400).json({ error: "bank must be either main or gppqe" });
-      return;
-    }
-    if (
-      comboVariantProvided &&
-      comboVariant &&
-      !new Set(["pair-relationship", "assertion-5", "table-4", "three-statement"]).has(comboVariant)
-    ) {
-      res.status(400).json({
-        error: "comboVariant must be pair-relationship, assertion-5, table-4 or three-statement",
-      });
-      return;
-    }
-    if (yearProvided && req.body?.year !== "" && !Number.isFinite(year)) {
-      res.status(400).json({ error: "year must be a valid number" });
-      return;
-    }
-    if (displayNumberProvided && req.body?.displayNumber !== "" && !Number.isFinite(displayNumber)) {
-      res.status(400).json({ error: "displayNumber must be a valid number" });
-      return;
-    }
-    if (answerProvided && req.body?.answer !== "" && !Number.isFinite(answer)) {
-      res.status(400).json({ error: "answer must be a valid number" });
-      return;
-    }
 
     if (textProvided) {
       if (!text) {
@@ -14217,27 +13763,15 @@ app.put(
       questions[idx].category = normalizeMajorCategory(rawCategory, categoryContext);
     }
     if (optionsProvided) {
-      if (comboVariant && options.length === 0) {
-        questions[idx].options = getComboOptionTexts(comboVariant, Array.isArray(questions[idx].statements) ? questions[idx].statements.length : 0);
-      } else if (!options || options.length < 2) {
+      if (!options || options.length < 2) {
         res.status(400).json({ error: "options must contain at least 2 items" });
         return;
-      } else if (options.length > 8) {
+      }
+      if (options.length > 8) {
         res.status(400).json({ error: "options cannot exceed 8 items" });
         return;
-      } else {
-        questions[idx].options = options;
       }
-    }
-    if (comboVariantProvided) {
-      questions[idx].comboVariant = comboVariant || undefined;
-      if (
-        comboVariant &&
-        (!Array.isArray(questions[idx].options) || questions[idx].options.length === 0) &&
-        !optionsProvided
-      ) {
-        questions[idx].options = getComboOptionTexts(comboVariant, Array.isArray(questions[idx].statements) ? questions[idx].statements.length : 0);
-      }
+      questions[idx].options = options;
     }
     if (correctProvided) {
       const optionPool = Array.isArray(questions[idx].options)
@@ -14255,18 +13789,6 @@ app.put(
     }
     if (explanationProvided) {
       questions[idx].explanation = explanation;
-    }
-    if (bankProvided) {
-      questions[idx].bank = bank || "main";
-    }
-    if (yearProvided) {
-      questions[idx].year = Number.isFinite(year) ? year : undefined;
-    }
-    if (displayNumberProvided) {
-      questions[idx].displayNumber = Number.isFinite(displayNumber) ? displayNumber : undefined;
-    }
-    if (answerProvided) {
-      questions[idx].answer = Number.isFinite(answer) ? answer : undefined;
     }
     if (topicSlugProvided) {
       questions[idx].topicSlug = topicSlug || undefined;
@@ -14310,12 +13832,9 @@ app.delete(
 app.get(
   "/api/news/feed",
   asyncHandler(async (req, res) => {
-const requestedCategoryRaw = String(req.query?.category || "").trim();
-const requestedCategory = requestedCategoryRaw
-  ? normalizeNewsCategory(requestedCategoryRaw, "")
-  : "";
+    const requestedCategory = normalizeNewsCategory(req.query?.category || "", "");
     const requestedSourceId = String(req.query?.sourceId || "").trim();
-    const limit = Math.max(1, Math.min(200, Math.round(Number(req.query?.limit) || 20)));
+    const limit = Math.max(1, Math.min(50, Math.round(Number(req.query?.limit) || 20)));
     const allItems = (await readCollection("newsItems")).map(normalizeNewsItem);
     const items = sortNewsItemsForPublic(allItems)
       .filter((item) => item.status === "published")
@@ -14647,10 +14166,7 @@ app.post(
 
     const summary = cleanNewsText(req.body?.summary || req.body?.excerpt || "", 420);
     const content = normalizeNewsRichContent(req.body?.content || req.body?.body || "", 12000);
-    const sourceLabel = cleanNewsText(
-      req.body?.sourceName || req.body?.sourceLabel || req.body?.publishedByName || req.body?.sourcePublishedLabel || "",
-      120
-    ) || "News Source";
+    const sourceLabel = cleanNewsText(req.body?.sourceName || req.body?.sourceLabel || "Manual submission", 120) || "Manual submission";
     const sourceId = cleanNewsText(req.body?.sourceId || "", 120) || `manual-${crypto.randomUUID()}`;
     const sourceType = normalizeNewsSourceType(req.body?.sourceType || "structured", "structured");
     const sourcePublishedAt = cleanNewsText(req.body?.sourcePublishedAt || "", 80);
@@ -14710,21 +14226,6 @@ app.post(
 
     const items = (await readCollection("newsItems")).map(normalizeNewsItem);
     const existingIndex = items.findIndex((entry) => buildNewsItemKey(entry) === buildNewsItemKey(item));
-    const wasAlreadyFeatured =
-  existingIndex !== -1 && items[existingIndex].featured === true;
-
-if (item.featured === true && !wasAlreadyFeatured) {
-  const featuredCount = items.filter(
-    (entry) => entry.featured === true,
-  ).length;
-
-  if (featuredCount >= 3) {
-    res.status(409).json({
-      error: "Maximum of 3 featured news articles is allowed",
-    });
-    return;
-  }
-}
     if (existingIndex === -1) {
       items.unshift(item);
     } else {
@@ -14837,42 +14338,16 @@ app.patch(
     }
 
     const current = items[index];
-    const requestedFeatured =
-  req.body?.featured !== undefined
-    ? req.body.featured === true ||
-      String(req.body.featured || "").trim().toLowerCase() === "true"
-    : Boolean(current.featured);
-
-if (requestedFeatured && !current.featured) {
-  const featuredCount = items.filter(
-    (item) => item.featured && item.id !== current.id,
-  ).length;
-
-  if (featuredCount >= 3) {
-    res.status(409).json({
-      error: "Maximum of 3 featured news articles is allowed",
-    });
-    return;
-  }
-}
-    const currentStatus = normalizeNewsStatus(current.status || "");
-    const wasRejected = currentStatus === "rejected";
     const now = new Date().toISOString();
     const next = normalizeNewsItem({
       ...current,
-      status: wasRejected ? "pending_review" : current.status,
-      reviewRequired: wasRejected ? true : current.reviewRequired,
-      reviewedAt: wasRejected ? "" : current.reviewedAt,
-      approvedAt: wasRejected ? "" : current.approvedAt,
-      reviewedById: wasRejected ? "" : current.reviewedById,
-      reviewedByName: wasRejected ? "" : current.reviewedByName,
       title: req.body?.title !== undefined ? cleanNewsText(req.body.title, 180) || current.title : current.title,
       summary: req.body?.summary !== undefined ? cleanNewsText(req.body.summary, 420) : current.summary,
       content: req.body?.content !== undefined ? normalizeNewsRichContent(req.body.content, 12000) : current.content,
       category: req.body?.category !== undefined ? normalizeNewsCategory(req.body.category || "", current.category) : current.category,
       importance: req.body?.importance !== undefined ? normalizeNewsImportance(req.body.importance || "", current.importance) : current.importance,
       reviewNote: req.body?.reviewNote !== undefined ? cleanNewsText(req.body.reviewNote, 240) : current.reviewNote,
-      featured: requestedFeatured,
+      featured: req.body?.featured !== undefined ? Boolean(req.body.featured) : current.featured,
       sourceName: req.body?.sourceName !== undefined ? cleanNewsText(req.body.sourceName, 120) || current.sourceName : current.sourceName,
       sourceUrl: req.body?.sourceUrl !== undefined ? normalizeNewsUrl(req.body.sourceUrl || current.sourceUrl) : current.sourceUrl,
       sourceType: req.body?.sourceType !== undefined ? normalizeNewsSourceType(req.body.sourceType || "", current.sourceType) : current.sourceType,
@@ -14951,7 +14426,6 @@ app.post(
     const next = normalizeNewsItem({
       ...items[index],
       status: "published",
-      reviewRequired: false,
       reviewedAt: items[index].reviewedAt || now,
       approvedAt: items[index].approvedAt || now,
       publishedAt: now,
@@ -14988,7 +14462,6 @@ app.post(
     const next = normalizeNewsItem({
       ...items[index],
       status: "rejected",
-      reviewRequired: false,
       reviewedAt: now,
       reviewedById: "admin",
       reviewedByName: ADMIN_NOTICE_SENDER_NAME,
@@ -15689,7 +15162,3 @@ start().catch((error) => {
   console.error("Failed to start backend:", error);
   process.exitCode = 1;
 });
-
-
-
-

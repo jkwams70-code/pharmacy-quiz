@@ -39833,7 +39833,6 @@ function toggleModeHistory(containerId) {
 }
 
 let globalLoadingTimer = null;
-let globalLoadingHideTimer = null;
 
 function getGlobalLoadingOverlay() {
   let overlay = document.getElementById("global-loading-overlay");
@@ -39875,18 +39874,15 @@ function beginGlobalLoading(label = "Loading...") {
   overlay.textContent = label;
 
   clearTimeout(globalLoadingTimer);
-  clearTimeout(globalLoadingHideTimer);
 
   globalLoadingTimer = setTimeout(() => {
     overlay.style.opacity = "1";
   }, 0);
 
-  globalLoadingHideTimer = setTimeout(endGlobalLoading, 1500);
 }
 
 function endGlobalLoading() {
   clearTimeout(globalLoadingTimer);
-  clearTimeout(globalLoadingHideTimer);
 
   const overlay = document.getElementById("global-loading-overlay");
   if (overlay) overlay.style.opacity = "0";
@@ -39911,7 +39907,6 @@ document.addEventListener("pointerdown", (event) => {
 function showScreen(id, options = {}) {
   const { recordHistory = true, skipSubscriptionGate = false } = options;
   const normalizedId = String(id || "").trim();
-  beginGlobalLoading();
   if (!skipSubscriptionGate && isSubscriptionLockedForFeature(normalizedId)) {
     if (currentUser && backendClient.isAuthenticated()) {
       void refreshSubscriptionAccessForAction().then(() => {
@@ -40102,6 +40097,7 @@ function showScreen(id, options = {}) {
       history.replaceState({ screen: id }, "", "");
     }
   }
+  endGlobalLoading();
 }
 
 window.addEventListener("focus", () => {

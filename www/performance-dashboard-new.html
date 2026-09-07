@@ -41,7 +41,8 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+  body { overflow-x: hidden; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background: var(--bg);
@@ -52,6 +53,7 @@
   button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
   .app {
+    width: 100%;
     max-width: 1160px;
     margin: 0 auto;
     padding: 24px 24px 48px;
@@ -67,7 +69,7 @@
     border-bottom: 1px solid var(--border);
     margin-top: -24px;
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     gap: 12px;
     margin-bottom: 24px;
@@ -84,6 +86,7 @@
   .dash-logo img { width: 36px; height: 36px; display: block; object-fit: contain; border-radius: 8px; }
   .dash-title {
     justify-self: center;
+    min-width: 0;
     font-size: 17px;
     font-weight: 650;
     letter-spacing: -0.01em;
@@ -359,8 +362,10 @@
   }
   @media (max-width: 640px) {
     .app { padding: 16px 14px 40px; }
-    .dash-header { grid-template-columns: auto 1fr auto; }
-    .dash-title { font-size: 15px; }
+    .dash-header { grid-template-columns: 36px minmax(0, 1fr) auto; gap: 6px; }
+    .dash-title { min-width: 0; font-size: 15px; }
+    .dash-actions { gap: 4px; }
+    .icon-btn { width: 32px; height: 32px; }
     .dash-logo span { display: none; }
     .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .metric-card { padding: 13px 14px; }
@@ -386,7 +391,7 @@
       <img src="images/app-logo.png?v=20260903-mascot" alt="AjiX mascot" />
     </div>
 
-    <h1 class="dash-title" id="dashTitle">Performance Dashboard</h1>
+    <h1 class="dash-title" id="dashTitle">Performance</h1>
 
     <div class="dash-actions">
       <button class="icon-btn" id="themeToggle" data-action="theme" aria-label="Toggle color theme" title="Toggle theme">
@@ -405,8 +410,6 @@
         </svg>
       </button>
     </div>
-  </header>
-
   <div class="dash-nav-panel" id="dashNavPanel" hidden aria-label="Dashboard navigation">
     <div class="dash-nav-title">Dashboard</div>
     <button class="dash-nav-link" type="button" data-dash-route="quiz-menu">Menu</button>
@@ -417,6 +420,9 @@
     <button class="dash-nav-link" type="button" data-dash-route="profile-screen">Profile</button>
     <button class="dash-nav-link" type="button" data-dash-route="tour-screen">Help</button>
   </div>
+  </header>
+
+
 
   <!-- ================= Summary metrics ================= -->
   <section class="metrics-grid" id="summaryMetrics" aria-label="Summary metrics">
@@ -464,66 +470,12 @@
 
     <div class="card card-subjects" id="topSubjects">
       <div class="card-title">Top Subjects <span class="hint">by accuracy</span></div>
-      <div class="subject-row" data-subject="mathematics" data-score="92">
-        <span class="subject-rank">1</span>
-        <div class="subject-info">
-          <div class="subject-name">Mathematics</div>
-          <div class="subject-meta">64 sessions</div>
-        </div>
-        <span class="subject-score">92%</span>
-      </div>
-      <div class="subject-row" data-subject="physics" data-score="88">
-        <span class="subject-rank">2</span>
-        <div class="subject-info">
-          <div class="subject-name">Physics</div>
-          <div class="subject-meta">51 sessions</div>
-        </div>
-        <span class="subject-score">88%</span>
-      </div>
-      <div class="subject-row" data-subject="chemistry" data-score="85">
-        <span class="subject-rank">3</span>
-        <div class="subject-info">
-          <div class="subject-name">Chemistry</div>
-          <div class="subject-meta">47 sessions</div>
-        </div>
-        <span class="subject-score">85%</span>
-      </div>
-      <div class="subject-row" data-subject="biology" data-score="79">
-        <span class="subject-rank">4</span>
-        <div class="subject-info">
-          <div class="subject-name">Biology</div>
-          <div class="subject-meta">42 sessions</div>
-        </div>
-        <span class="subject-score">79%</span>
-      </div>
-      <div class="subject-row" data-subject="english" data-score="74">
-        <span class="subject-rank">5</span>
-        <div class="subject-info">
-          <div class="subject-name">English</div>
-          <div class="subject-meta">44 sessions</div>
-        </div>
-        <span class="subject-score">74%</span>
-      </div>
+      <div class="data-empty">Loading subject data...</div>
     </div>
 
     <div class="card card-category" id="categoryBreakdown">
       <div class="card-title">Category Breakdown <span class="hint">this month</span></div>
-      <div class="cat-row" data-category="practice">
-        <div class="cat-head"><span class="cat-name">Practice Tests</span><span class="cat-val">42%</span></div>
-        <div class="cat-track"><div class="cat-fill" data-fill="42" style="background:var(--accent)"></div></div>
-      </div>
-      <div class="cat-row" data-category="review">
-        <div class="cat-head"><span class="cat-name">Review</span><span class="cat-val">27%</span></div>
-        <div class="cat-track"><div class="cat-fill" data-fill="27" style="background:var(--violet)"></div></div>
-      </div>
-      <div class="cat-row" data-category="lessons">
-        <div class="cat-head"><span class="cat-name">Lessons</span><span class="cat-val">19%</span></div>
-        <div class="cat-track"><div class="cat-fill" data-fill="19" style="background:var(--green)"></div></div>
-      </div>
-      <div class="cat-row" data-category="flashcards">
-        <div class="cat-head"><span class="cat-name">Flashcards</span><span class="cat-val">12%</span></div>
-        <div class="cat-track"><div class="cat-fill" data-fill="12" style="background:var(--amber)"></div></div>
-      </div>
+      <div class="data-empty">Loading category data...</div>
     </div>
 
     <div class="card card-rotation" id="rotationBreakdown">
@@ -532,24 +484,18 @@
         <div class="donut" id="rotationDonut">
           <svg width="118" height="118" viewBox="0 0 118 118">
             <circle cx="59" cy="59" r="48" fill="none" stroke="var(--surface-2)" stroke-width="13"/>
-            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--accent)"  stroke-width="13" data-seg="38" stroke-linecap="round"/>
-            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--violet)" stroke-width="13" data-seg="27" stroke-linecap="round"/>
-            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--green)"  stroke-width="13" data-seg="21" stroke-linecap="round"/>
-            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--amber)"  stroke-width="13" data-seg="14" stroke-linecap="round"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--accent)" stroke-width="13" stroke-linecap="round"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--violet)" stroke-width="13" stroke-linecap="round"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--green)" stroke-width="13" stroke-linecap="round"/>
+            <circle class="seg" cx="59" cy="59" r="48" fill="none" stroke="var(--amber)" stroke-width="13" stroke-linecap="round"/>
           </svg>
-          <div class="donut-center">
-            <div>
-              <div class="dc-value">36.5h</div>
-              <div class="dc-label">Total</div>
-            </div>
-          </div>
+          <div class="donut-center"><div><div class="dc-value">0</div><div class="dc-label">Total</div></div></div>
         </div>
-        <div class="legend" id="rotationLegend">
-          <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span><span class="legend-name">Deep Work</span><span class="legend-val">38%</span></div>
-          <div class="legend-item"><span class="legend-dot" style="background:var(--violet)"></span><span class="legend-name">Problem Sets</span><span class="legend-val">27%</span></div>
-          <div class="legend-item"><span class="legend-dot" style="background:var(--green)"></span><span class="legend-name">Reading</span><span class="legend-val">21%</span></div>
-          <div class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span><span class="legend-name">Drills</span><span class="legend-val">14%</span></div>
-        </div>
+        <div class="legend" id="rotationLegend"><div class="data-empty">Loading rotation data...</div></div>
+      </div>
+    </div>
+
+    <div class="card card-results
       </div>
     </div>
 
@@ -557,31 +503,6 @@
       <div class="card-title">Recent Results <span class="hint">latest sessions</span></div>
       <div class="results-list" id="resultsList">
                 <div class="result-empty">Loading recent results...</div>
-      </div>
-        <div class="result-row" data-result="pass" data-score="88">
-          <span class="result-date">Sep 02</span>
-          <span class="result-name">Thermodynamics Quiz</span>
-          <span class="result-sub">Physics</span>
-          <span class="result-badge pass">88%</span>
-        </div>
-        <div class="result-row" data-result="avg" data-score="76">
-          <span class="result-date">Sep 01</span>
-          <span class="result-name">Organic Chemistry Review</span>
-          <span class="result-sub">Chemistry</span>
-          <span class="result-badge avg">76%</span>
-        </div>
-        <div class="result-row" data-result="pass" data-score="91">
-          <span class="result-date">Aug 31</span>
-          <span class="result-name">Cell Biology Mock Exam</span>
-          <span class="result-sub">Biology</span>
-          <span class="result-badge pass">91%</span>
-        </div>
-        <div class="result-row" data-result="fail" data-score="58">
-          <span class="result-date">Aug 30</span>
-          <span class="result-name">Reading Comprehension Set 8</span>
-          <span class="result-sub">English</span>
-          <span class="result-badge fail">58%</span>
-        </div>
       </div>
     </div>
 
@@ -605,8 +526,112 @@
     } catch (e) { return []; }
   }
 
+  var remoteSessions = [];
+  var remoteCategoryPerformance = {};
+  var remoteRotationPerformance = {};
+
+  function getPerformanceApiBase() {
+    var stored = '';
+    try { stored = String(localStorage.getItem('quizApiBase') || '').trim(); } catch (e) {}
+    if (stored) return stored.replace(/\/+$/, '');
+    var host = String(window.location.hostname || '').toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1') return 'http://127.0.0.1:4000/api';
+    return '/api';
+  }
+
+  function getPerformanceApiHeaders() {
+    var headers = { 'x-client-id': '' };
+    try {
+      var clientId = localStorage.getItem('quizClientId') || '';
+      if (!clientId) {
+        clientId = (window.crypto && window.crypto.randomUUID)
+          ? window.crypto.randomUUID()
+          : 'client-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+        localStorage.setItem('quizClientId', clientId);
+      }
+      headers['x-client-id'] = clientId;
+      var token = localStorage.getItem('quizAuthToken') || '';
+      if (token) headers.Authorization = 'Bearer ' + token;
+    } catch (e) {}
+    return headers;
+  }
+
+  function normalizeRemoteSession(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    var score = Number(entry.score) || 0;
+    var total = Number(entry.total) || 0;
+    var timestamp = entry.timestamp || entry.createdAt || entry.finishedAt || entry.date || '';
+    return {
+      sessionId: entry.sessionId || entry.id || '',
+      mode: entry.mode || entry.studyType || 'Practice session',
+      category: entry.category || entry.studyType || '',
+      score: score,
+      total: total,
+      percent: Number(entry.percent) || (total ? Math.round(score / total * 100) : 0),
+      timestamp: timestamp,
+      createdAt: entry.createdAt || entry.finishedAt || timestamp,
+      date: entry.date || timestamp,
+      duration: entry.duration != null ? entry.duration : entry.durationSeconds,
+    };
+  }
+
+  function hasPerformanceAttempts(rows) {
+    return Object.keys(rows || {}).some(function (name) { return Number(rows[name] && rows[name].attempts) > 0; });
+  }
+
+  function buildRemotePerformanceMaps(events) {
+    var category = {};
+    var rotation = {};
+    function addRow(rows, name, isCorrect) {
+      var key = String(name || '').trim();
+      if (!key) return;
+      if (!rows[key]) rows[key] = { attempts: 0, correct: 0 };
+      rows[key].attempts += 1;
+      if (isCorrect) rows[key].correct += 1;
+    }
+    (Array.isArray(events) ? events : []).forEach(function (event) {
+      var isCorrect = event && (event.isCorrect === true || event.isCorrect === 1 || String(event.isCorrect).toLowerCase() === 'true');
+      addRow(category, event && event.category, isCorrect);
+      addRow(rotation, event && event.rotation, isCorrect);
+    });
+    return { category: category, rotation: rotation };
+  }
+
+  async function loadRemoteSessions() {
+    var base = getPerformanceApiBase();
+    var headers = getPerformanceApiHeaders();
+    var requests = [
+      fetch(base + '/sync/history?limit=5000', { headers: headers }).then(function (response) { return response.ok ? response.json() : { sessions: [] }; }),
+      fetch(base + '/attempts/history?limit=500', { headers: headers }).then(function (response) { return response.ok ? response.json() : { attempts: [] }; }),
+      fetch(base + '/sync/performance-state?limit=5000', { headers: headers }).then(function (response) { return response.ok ? response.json() : { events: [] }; }),
+    ];
+    var results = await Promise.allSettled(requests);
+    var performanceResult = results[2];
+    remoteCategoryPerformance = {};
+    remoteRotationPerformance = {};
+    if (performanceResult && performanceResult.status === 'fulfilled' && performanceResult.value) {
+      var performanceMaps = buildRemotePerformanceMaps(performanceResult.value.events);
+      remoteCategoryPerformance = performanceMaps.category;
+      remoteRotationPerformance = performanceMaps.rotation;
+    }
+    var rows = [];
+    results.forEach(function (result) {
+      if (result.status !== 'fulfilled' || !result.value) return;
+      var payload = result.value;
+      var source = Array.isArray(payload.sessions) ? payload.sessions : (Array.isArray(payload.attempts) ? payload.attempts : []);
+      rows = rows.concat(source.map(normalizeRemoteSession).filter(Boolean));
+    });
+    remoteSessions = rows;
+    renderRecentResults();
+    renderTopSubjects();
+    renderCategoryBreakdown();
+    renderRotationBreakdown();
+    renderSummary();
+    PERIODS = buildRealPeriods();
+    drawChart(currentPeriod, 1);
+  }
   function getStoredSessions() {
-    var combined = readStoredArray('quizSessionHistory').concat(readStoredArray('recentSessionResults'));
+    var combined = readStoredArray('quizSessionHistory').concat(readStoredArray('quizRecentSessionResultsV1')).concat(remoteSessions);
     var seen = {};
     return combined.filter(function (entry) {
       if (!entry || typeof entry !== 'object' || !entry.total) return false;
@@ -754,7 +779,7 @@
   function renderRecentResults() {
     var list = document.getElementById('resultsList');
     if (!list) return;
-    var combined = readStoredArray('quizSessionHistory').concat(readStoredArray('recentSessionResults'));
+    var combined = readStoredArray('quizSessionHistory').concat(readStoredArray('quizRecentSessionResultsV1')).concat(remoteSessions);
     var seen = {};
     var entries = combined.filter(function (entry) {
       if (!entry || typeof entry !== 'object') return false;
@@ -780,7 +805,7 @@
       return '<div class="result-row" data-result="' + status + '" data-score="' + percent + '">' +
         '<span class="result-date">' + escapeHtml(dateLabel) + '</span>' +
         '<span class="result-name">' + escapeHtml(mode) + '</span>' +
-        '<span class="result-sub">' + escapeHtml(score + '/' + total) + '</span>' +
+        '<span class="result-sub">' + escapeHtml(String(entry.category || entry.studyType || '').trim() || (score + '/' + total)) + '</span>' +
         '<span class="result-badge ' + status + '">' + percent + '%</span>' +
       '</div>';
     }).join('');
@@ -788,8 +813,27 @@
 
   renderRecentResults();
 
+  function buildCategoryPerformanceFromSessions() {
+    var rows = {};
+    getStoredSessions().forEach(function (item) {
+      var name = String(item.entry.category || item.entry.studyType || item.entry.mode || '').trim();
+      if (!name) return;
+      if (!rows[name]) rows[name] = { attempts: 0, correct: 0 };
+      rows[name].attempts += item.total;
+      rows[name].correct += item.score;
+    });
+    return rows;
+  }
+
   function renderTopSubjects() {
     var rows = readStoredObject('quizCategoryPerformance');
+    if (hasPerformanceAttempts(rows)) {
+      // Local performance data is the most specific source.
+    } else if (hasPerformanceAttempts(remoteCategoryPerformance)) {
+      rows = remoteCategoryPerformance;
+    } else {
+      rows = buildCategoryPerformanceFromSessions();
+    }
     var card = document.getElementById('topSubjects');
     if (!card) return;
     var subjects = Object.keys(rows).map(function (name) {
@@ -820,6 +864,13 @@
 
   function renderCategoryBreakdown() {
     var rows = readStoredObject('quizCategoryPerformance');
+    if (hasPerformanceAttempts(rows)) {
+      // Local performance data is the most specific source.
+    } else if (hasPerformanceAttempts(remoteCategoryPerformance)) {
+      rows = remoteCategoryPerformance;
+    } else {
+      rows = buildCategoryPerformanceFromSessions();
+    }
     var card = document.getElementById('categoryBreakdown');
     if (!card) return;
     var categories = Object.keys(rows).map(function (name) {
@@ -853,6 +904,7 @@
 
   function renderRotationBreakdown(sourceRows) {
     var rows = sourceRows || readStoredObject('quizRotationPerformance');
+    if (!sourceRows && !hasPerformanceAttempts(rows) && hasPerformanceAttempts(remoteRotationPerformance)) rows = remoteRotationPerformance;
     var card = document.getElementById('rotationBreakdown');
     var legend = document.getElementById('rotationLegend');
     if (!card || !legend) return;
@@ -1189,7 +1241,7 @@
     resizeT = setTimeout(function () { drawChart(currentPeriod, 1); }, 120);
   });
 
-  drawDonut();
+  loadRemoteSessions().catch(function () {});
   requestAnimationFrame(function () {
     animateChart(currentPeriod);
     fillBars();

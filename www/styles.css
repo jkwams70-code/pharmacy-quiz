@@ -51335,3 +51335,13 @@ body.theme-dark #dashboard .performance-dashboard-metrics .metric-caption {
   #dashboard .performance-dashboard-trend .dashboard-trend-chart { min-height: 180px; }
   #dashboard .performance-dashboard-panel { grid-column: span 12; }
 }
+
+
+#quiz-menu #menu-performance-btn,
+#quiz-menu #menu-performance-btn:visited,
+#quiz-menu #menu-performance-btn:hover,
+#quiz-menu #menu-performance-btn:focus,
+#quiz-menu #menu-performance-btn:active {
+  color: inherit;
+  text-decoration: none !important;
+}

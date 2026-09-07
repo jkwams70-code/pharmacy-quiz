@@ -3785,7 +3785,7 @@
       }
           .extra-workspace{margin-top:18px;padding:24px;border:1px solid #d8e0eb;border-radius:18px;background:linear-gradient(145deg,#ffffff,#f4f8fc);box-shadow:0 16px 36px rgba(20,48,78,.12)}
       .extra-workspace-head{margin-bottom:20px}.extra-kicker{display:block;color:#087f82;font-size:11px;font-weight:800;letter-spacing:.12em;margin-bottom:7px}.extra-workspace h2{margin:0;color:#172b45;font-size:27px}.extra-workspace p{margin:6px 0 0;color:#64758b}
-      .extra-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.extra-card{min-height:132px;padding:18px;display:flex;align-items:flex-start;gap:12px;position:relative;text-decoration:none;border-radius:14px;border:1px solid transparent;box-shadow:0 8px 20px rgba(22,45,75,.1);transition:transform .18s ease,box-shadow .18s ease}.extra-card:hover{transform:translateY(-3px);box-shadow:0 13px 25px rgba(22,45,75,.16)}.extra-card-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.72);font-weight:900}.extra-card strong{display:block;font-size:17px;color:#172b45}.extra-card small{display:block;max-width:190px;margin-top:5px;line-height:1.45;color:#405873}.extra-card b{position:absolute;right:16px;bottom:15px;font-size:11px;color:#264b65;text-transform:uppercase;letter-spacing:.06em}.extra-card-medlens{background:#dff7f3;border-color:#a9e7df}.extra-card-news{background:#e7efff;border-color:#bfd3fa}.extra-card-guides{background:#fff1d8;border-color:#f4d397}.extra-card-calc{background:#eee8ff;border-color:#d4c5f7}.extra-card-articles{background:#edf1f5;border-color:#d6dee7;opacity:.84}
+      button.extra-card{width:100%;font:inherit;text-align:left;cursor:pointer}.extra-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.extra-card{min-height:132px;padding:18px 18px 42px;display:flex;align-items:flex-start;gap:12px;position:relative;text-decoration:none;border-radius:14px;border:1px solid transparent;box-shadow:0 8px 20px rgba(22,45,75,.1);transition:transform .18s ease,box-shadow .18s ease}.extra-card:hover{transform:translateY(-3px);box-shadow:0 13px 25px rgba(22,45,75,.16)}.extra-card-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.72);font-weight:900}.extra-card strong{display:block;font-size:17px;color:#172b45}.extra-card small{display:block;max-width:190px;margin-top:5px;line-height:1.45;color:#405873}.extra-card b{position:absolute;right:16px;bottom:15px;font-size:11px;color:#264b65;text-transform:uppercase;letter-spacing:.06em}.extra-card-medlens{background:#dff7f3;border-color:#a9e7df}.extra-card-news{background:#e7efff;border-color:#bfd3fa}.extra-card-guides{background:#fff1d8;border-color:#f4d397}.extra-card-calc{background:#eee8ff;border-color:#d4c5f7}.extra-card-articles{background:#edf1f5;border-color:#d6dee7;opacity:.84}
       @media(max-width:620px){.extra-workspace{padding:17px}.extra-card-grid{grid-template-columns:1fr}}</style>
   </head>
   <body>
@@ -4581,8 +4581,8 @@
             <a class="extra-card extra-card-medlens" href="medlens-studio.html"><span class="extra-card-icon">M</span><span><strong>MedLens</strong><small>Drug, disease, and interaction databases.</small></span><b>Open</b></a>
             <a class="extra-card extra-card-news" href="news-studio.html"><span class="extra-card-icon">N</span><span><strong>News Studio</strong><small>Fetch, review, edit, and publish news.</small></span><b>Open</b></a>
             <a class="extra-card extra-card-guides" href="guidelines.html"><span class="extra-card-icon">G</span><span><strong>Guidelines</strong><small>Manage clinical guideline content.</small></span><b>Open</b></a>
-            <a class="extra-card extra-card-calc" href="../calculator.html"><span class="extra-card-icon">C</span><span><strong>Calculator</strong><small>Open the clinical calculator.</small></span><b>Open</b></a>
-            <div class="extra-card extra-card-articles"><span class="extra-card-icon">A</span><span><strong>Articles</strong><small>Article workspace coming soon.</small></span><b>Coming soon</b></div>
+            <button type="button" class="extra-card extra-card-calc" data-admin-placeholder="Calculator"><span class="extra-card-icon">C</span><span><strong>Calculator</strong><small>Admin workspace coming soon.</small></span><b>Coming soon</b></button>
+            <button type="button" class="extra-card extra-card-articles" data-admin-placeholder="Articles"><span class="extra-card-icon">A</span><span><strong>Articles</strong><small>Admin workspace coming soon.</small></span><b>Coming soon</b></button>
           </div>
         </div>
       </div>
@@ -4990,8 +4990,44 @@
       </div>
     </div>
 
+    <div id="admin-workspace-placeholder-modal" class="modal" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="admin-workspace-placeholder-title">
+        <div id="admin-workspace-placeholder-title" class="modal-title">Admin workspace coming soon</div>
+        <p id="admin-workspace-placeholder-copy" style="color: #64748b; line-height: 1.6;">
+          This workspace is reserved for admin tools and is not available yet.
+        </p>
+        <div class="modal-actions">
+          <button id="admin-workspace-placeholder-close" type="button" class="secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
     <script src="admin.js?v=20260830-admin-shellfix2"></script>
     <script>
+      const adminWorkspacePlaceholderModal = document.getElementById("admin-workspace-placeholder-modal");
+      const adminWorkspacePlaceholderCopy = document.getElementById("admin-workspace-placeholder-copy");
+      const closeAdminWorkspacePlaceholder = () => {
+        adminWorkspacePlaceholderModal.classList.remove("active");
+        adminWorkspacePlaceholderModal.setAttribute("aria-hidden", "true");
+      };
+      document.querySelectorAll("[data-admin-placeholder]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const name = button.getAttribute("data-admin-placeholder") || "This";
+          adminWorkspacePlaceholderCopy.textContent =
+            name + " is reserved for admin tools and is not available yet.";
+          adminWorkspacePlaceholderModal.classList.add("active");
+          adminWorkspacePlaceholderModal.setAttribute("aria-hidden", "false");
+        });
+      });
+      document.getElementById("admin-workspace-placeholder-close").addEventListener("click", closeAdminWorkspacePlaceholder);
+      adminWorkspacePlaceholderModal.addEventListener("click", (event) => {
+        if (event.target === adminWorkspacePlaceholderModal) closeAdminWorkspacePlaceholder();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && adminWorkspacePlaceholderModal.classList.contains("active")) {
+          closeAdminWorkspacePlaceholder();
+        }
+      });
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker

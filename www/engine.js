@@ -3474,13 +3474,21 @@ const hasMountedHub =
   root?.dataset.gppqeView === "hub";
 
 if (!hasMountedHub) {
-  // Let the GPPQE shell paint before preparing the full hub.
-  await new Promise((resolve) => setTimeout(resolve, 0));
-
-  await ensureQuestionBankLoaded().catch(() => []);
-
-  // Build the full hub once.
+  // Render the GPPQE page immediately.
   renderGppqeScreen();
+
+  // Load questions in the background, then refresh the page.
+  void ensureQuestionBankLoaded()
+    .catch(() => [])
+    .then(() => {
+      if (
+        gppqeScreen &&
+        !gppqeScreen.classList.contains("hidden") &&
+        gppqeState.view === "hub"
+      ) {
+        renderGppqeScreen();
+      }
+    });
 }
 
   // Refresh account and subscription state without blocking the screen.
@@ -26003,8 +26011,7 @@ if (topicLibrarySearchInput) {
 
 if (topicLibraryBtns.length) {
   topicLibraryBtns.forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
+    btn.addEventListener("click", () => {
       closeMenuUserHub();
       void openTopicLibrary("quiz-menu");
     });
@@ -31089,14 +31096,26 @@ async function ensureTopicCatalogLoaded() {
 }
 
 async function openTopicLibrary(returnScreen = "quiz-menu") {
-  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   topicLibraryReturnScreen = returnScreen;
+
+  // Show the Library immediately.
   showScreen("topic-library");
+
   if (getActiveScreenId() !== "topic-library") {
     return;
   }
-  ensureTopicCatalogLoaded();
+
+  // Render cached/current data immediately.
   renderTopicLibrary();
+
+  // Refresh account and topic data in the background.
+  void refreshSharedAccountState({
+    force: true,
+    silent: true,
+    deferHydration: true,
+  }).catch(() => false);
+
+  void ensureTopicCatalogLoaded();
 }
 
 function enforceTopicViewerMobileLayout() {
@@ -35382,19 +35401,40 @@ if (menuDrillsTab) {
 
 if (menuLawTab) {
   menuLawTab.onclick = async () => {
+    // Show the Law screen immediately.
+    setMenuHubActiveTab("law");
+    showScreen("quiz-area");
+
+    if (lawDrillPanelEl) {
+      lawDrillPanelEl.classList.remove("hidden");
+    }
+
+    if (questionCardEl) {
+      questionCardEl.classList.add("hidden");
+    }
+
+    if (lawDrillRailEl) {
+      lawDrillRailEl.innerHTML =
+        '<div class="law-drill-panel-note">Loading law drill...</div>';
+    }
+
+    // Keep the access check before starting the actual session.
     await refreshSubscriptionAccessForAction();
+
     if (!requireSubscriptionAccess("law")) {
       return;
     }
-    setMenuHubActiveTab("law");
+
     const savedSession = getSavedLawDrillSession();
-    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+
+    void startLawDrillSession(
+      savedSession ? { resumeState: savedSession } : {},
+    );
   };
 }
 
 if (menuGppqeTab) {
-  menuGppqeTab.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+  menuGppqeTab.onclick = () => {
     setMenuHubActiveTab("gppqe");
     void openGppqeScreen();
   };
@@ -35542,12 +35582,20 @@ inReview = false; // reset properly
 };
 
 if (studyBtn) {
-  studyBtn.onclick = async () => {
-    await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
+  studyBtn.onclick = () => {
+    showScreen("study-setup");
+
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
-    showScreen("study-setup");
+
+    void refreshSharedAccountState({
+      force: true,
+      silent: true,
+      deferHydration: true,
+    }).catch(() => false);
+
     const modalState = buildResumeStudySessionModalState();
+
     if (modalState) {
       openSessionResumeModal(modalState);
     }
@@ -39841,77 +39889,7 @@ function toggleModeHistory(containerId) {
   el.classList.toggle("hidden");
 }
 
-let globalLoadingTimer = null;
 
-function getGlobalLoadingOverlay() {
-  let overlay = document.getElementById("global-loading-overlay");
-
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "global-loading-overlay";
-    overlay.setAttribute("role", "status");
-    overlay.setAttribute("aria-live", "polite");
-    overlay.textContent = "Loading...";
-   Object.assign(overlay.style, {
-  position: "fixed",
-  top: "50%",
-  left: "50%",
-  zIndex: "99999",
-  transform: "translate(-50%, -50%)",
-  padding: "16px 24px",
-  minWidth: "120px",
-  textAlign: "center",
-  borderRadius: "12px",
-  background: "#ffffff",
-  color: "#0b2948",
-  border: "1px solid rgba(11, 41, 72, 0.14)",
-  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.18)",
-  fontSize: "15px",
-  fontWeight: "700",
-  opacity: "0",
-  pointerEvents: "none",
-  transition: "opacity 120ms ease",
-});
-    document.body.appendChild(overlay);
-  }
-
-  return overlay;
-}
-
-function beginGlobalLoading(label = "Loading...") {
-  const overlay = getGlobalLoadingOverlay();
-  overlay.textContent = label;
-
-  clearTimeout(globalLoadingTimer);
-
-  globalLoadingTimer = setTimeout(() => {
-    overlay.style.opacity = "1";
-  }, 0);
-
-}
-
-function endGlobalLoading() {
-  clearTimeout(globalLoadingTimer);
-
-  const overlay = document.getElementById("global-loading-overlay");
-  if (overlay) overlay.style.opacity = "0";
-}
-
-document.addEventListener("pointerdown", (event) => {
-  const target = event.target.closest("button, a, [role='button']");
-  if (!target) return;
-
-  // Do not show navigation loading for answer choices or small UI controls.
-  if (
-    target.matches(
-      ".answer-option, .option-button, .drills-lobby-tab, input, select, textarea"
-    )
-  ) {
-    return;
-  }
-
-  beginGlobalLoading("Loading...");
-}, true);
 
 function showScreen(id, options = {}) {
   const { recordHistory = true, skipSubscriptionGate = false } = options;
@@ -40105,7 +40083,7 @@ function showScreen(id, options = {}) {
       history.replaceState({ screen: id }, "", "");
     }
   }
-  endGlobalLoading();
+  
 }
 
 window.addEventListener("focus", () => {

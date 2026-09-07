@@ -39867,7 +39867,7 @@ function beginGlobalLoading(label = "Loading...") {
 
   globalLoadingTimer = setTimeout(() => {
     overlay.style.opacity = "1";
-  }, 250);
+  }, 0);
 
   globalLoadingHideTimer = setTimeout(endGlobalLoading, 1500);
 }

@@ -3465,11 +3465,9 @@ function openDrillsScreen(variant = "rapid") {
 }
 
 async function openGppqeScreen() {
-  showScreen("gppqe-screen");
   gppqeState.view = "hub";
   gppqeState.historyModalOpen = false;
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  renderGppqeScreen();
+  showScreen("gppqe-screen");
 
   await ensureQuestionBankLoaded().catch(() => []);
 
@@ -39983,9 +39981,8 @@ function showScreen(id, options = {}) {
     syncViewportBackground(target);
   }
   if (id === "gppqe-screen") {
-    setMenuHubActiveTab("gppqe");
-    renderGppqeScreen();
-  }
+  setMenuHubActiveTab("gppqe");
+}
   syncCommunityViewportFrame();
 
   updateMenuBottomNavState(id);

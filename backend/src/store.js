@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
 
@@ -46,6 +47,11 @@ const defaults = {
   syncPerformance: [],
   syncWeakTracker: [],
   aiUsage: [],
+  medlensDrugQueue: [],
+  medlensAiProgress: [],
+  medlensDiseaseQueue: [],
+  medlensInteractionQueue: [],
+  guidelineQueue: [],
 };
 
 const WRITE_RETRY_CODES = new Set(["EBUSY", "EPERM"]);
@@ -60,6 +66,20 @@ function pathFor(collection) {
 function backupPathFor(collection) {
   return path.join(dataDir, `${resolveCollectionName(collection)}.bak.json`);
 }
+
+async function writeGuidelineQueueAtomically(filePath, data) {
+  const tempPath = filePath + "." + process.pid + "." + randomUUID() + ".tmp";
+  const serialized = JSON.stringify(data, null, 2);
+  try {
+    await runWithWriteRetry(() => fs.writeFile(tempPath, serialized, "utf8"));
+    const verification = JSON.parse(await fs.readFile(tempPath, "utf8"));
+    if (!Array.isArray(verification)) throw new Error("Guideline queue safety check failed: expected an array.");
+    await runWithWriteRetry(() => fs.rename(tempPath, filePath));
+  } finally {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+  }
+}
+
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -157,6 +177,15 @@ export async function readCollection(collection) {
     const raw = await runWithReadRetry(() => fs.readFile(filePath, "utf8"));
     return JSON.parse(raw);
   } catch (primaryError) {
+    if (resolvedCollection === "guidelineQueue") {
+      try {
+        const backupRaw = await runWithReadRetry(() => fs.readFile(backupPath, "utf8"));
+        const parsedBackup = JSON.parse(backupRaw);
+        if (Array.isArray(parsedBackup)) return parsedBackup;
+      } catch {
+        // Fall through to the standard collection fallback below.
+      }
+    }
     if (collection === "users") {
       try {
         const backupRaw = await runWithReadRetry(() => fs.readFile(backupPath, "utf8"));
@@ -194,6 +223,15 @@ export async function writeCollection(collection, data) {
       "Refusing to write an empty users collection. Set ALLOW_EMPTY_USERS_WRITE=true to override.",
     );
   }
+  if (resolvedCollection === "guidelineQueue") {
+    try {
+      await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(resolvedCollection)));
+    } catch (error) {
+      if (String(error?.code || "").toUpperCase() !== "ENOENT") throw error;
+    }
+    await writeGuidelineQueueAtomically(filePath, data);
+    return;
+  }
   if (resolvedCollection === "users") {
     try {
       await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(resolvedCollection)));
@@ -212,3 +250,4 @@ export async function updateCollection(collection, updater) {
   await writeCollection(collection, next);
   return next;
 }
+

@@ -9,10 +9,10 @@ const __dirname = path.dirname(__filename);
 const backendRoot = path.resolve(__dirname, "..", "..");
 const quizRoot = path.resolve(backendRoot, "..");
 const questionSourceCandidates = [
-  path.join(backendRoot, "backups", "data_20260619_183446", "questions.json"),
   path.join(quizRoot, "www", "data.js"),
   path.join(quizRoot, "android", "app", "src", "main", "assets", "public", "data.js"),
   path.join(quizRoot, "data.js"),
+  path.join(backendRoot, "data", "questions.json"),
 ];
 const questionBatchDirectories = [
   path.join(quizRoot, "www", "question-batches"),
@@ -215,6 +215,10 @@ function enrichDerivedCaseSeries(questions = []) {
 function buildQuestionSignature(question = {}) {
   return JSON.stringify({
     id: Number(question?.id),
+    bank: String(question?.bank || "main").trim().toLowerCase() || "main",
+    comboVariant: String(question?.comboVariant || "").trim().toLowerCase() || "",
+    year: Number(question?.year) || null,
+    displayNumber: Number(question?.displayNumber) || null,
     type: question?.type || "single",
     category: question?.category || "",
     question: question?.question || "",
@@ -223,6 +227,7 @@ function buildQuestionSignature(question = {}) {
     caseId: question?.caseId || "",
     caseBlock: question?.caseBlock || "",
     correct: question?.correct ?? "",
+    answer: Number.isFinite(Number(question?.answer)) ? Number(question.answer) : null,
     explanation: question?.explanation || "",
     explainCorrect: question?.explainCorrect || "",
     wrongOptionExplanations:
@@ -244,9 +249,18 @@ function normalizeQuestion(q) {
   const sectionId = String(q.sectionId || "").trim().toLowerCase();
   const questionText = String(q.question || q.text || "");
   const explanationText = String(q.explanation || "");
+  const bank = String(q.bank || "main").trim().toLowerCase() || "main";
+  const comboVariant = String(q.comboVariant || "").trim().toLowerCase();
+  const year = Number(q.year);
+  const displayNumber = Number(q.displayNumber);
+  const answer = Number(q.answer);
 
   return {
     id: Number(q.id),
+    bank,
+    comboVariant: comboVariant || undefined,
+    year: Number.isFinite(year) ? year : undefined,
+    displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
     type: q.type || "single",
     category: normalizeMajorCategory(q.category, `${questionText} ${explanationText}`),
     question: q.question || "",
@@ -255,6 +269,7 @@ function normalizeQuestion(q) {
     caseId: q.caseId || undefined,
     caseBlock: q.caseBlock || undefined,
     correct: q.correct,
+    answer: Number.isFinite(answer) ? answer : undefined,
     explanation: q.explanation || "",
     explainCorrect: q.explainCorrect || undefined,
     wrongOptionExplanations:

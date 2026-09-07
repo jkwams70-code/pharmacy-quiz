@@ -3468,11 +3468,20 @@ async function openGppqeScreen() {
   gppqeState.view = "hub";
   gppqeState.historyModalOpen = false;
   showScreen("gppqe-screen");
+const root = gppqeGetRoot();
+const hasMountedHub =
+  root?.dataset.gppqeMounted === "true" &&
+  root?.dataset.gppqeView === "hub";
+
+if (!hasMountedHub) {
+  // Let the GPPQE shell paint before preparing the full hub.
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   await ensureQuestionBankLoaded().catch(() => []);
 
-  // Render immediately from the local question cache.
+  // Build the full hub once.
   renderGppqeScreen();
+}
 
   // Refresh account and subscription state without blocking the screen.
   void Promise.all([
@@ -5000,6 +5009,8 @@ function renderGppqeScreen() {
   const root = gppqeGetRoot();
   if (!root) return;
   root.innerHTML = gppqeRenderMarkup();
+  root.dataset.gppqeMounted = "true";
+  root.dataset.gppqeView = gppqeState.view;
   if (gppqeState.view === 'hub') gppqeEnhancePickerFields(root);
   if (gppqeState.view === "session" && gppqeState.selectedMode === "exam" && !gppqeState.examTimerId) {
     gppqeStartTimer();

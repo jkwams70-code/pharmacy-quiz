@@ -10353,6 +10353,10 @@ function refreshCommunityOverviewIfNeeded() {
 }
 
 function startCommunityOverviewPolling({ background = false } = {}) {
+  if (background && !isCommunityScreenId(getActiveScreenId())) {
+    return;
+  }
+
   if (background) {
     communityOverviewBackgroundPollingEnabled = true;
   }
@@ -10364,6 +10368,10 @@ function startCommunityOverviewPolling({ background = false } = {}) {
 }
 
 function stopCommunityOverviewPolling({ force = false } = {}) {
+  if (force) {
+    communityOverviewBackgroundPollingEnabled = false;
+  }
+
   if (communityOverviewBackgroundPollingEnabled && !force) return;
   if (communityOverviewPollHandle) {
     clearInterval(communityOverviewPollHandle);
@@ -28427,17 +28435,21 @@ document.addEventListener("visibilitychange", () => {
     void syncCommunityRealtimePresenceTracking();
     return;
   }
-  if (document.visibilityState === "visible") {
-    void pingCommunityPresence();
-    syncCommunityPresenceHeartbeat();
-  } else {
-    stopCommunityPresenceHeartbeat();
-    clearCommunityTypingTimers();
-    void sendCommunityTypingState(false);
-    if (isCommunityLockEnabled()) {
-      communityState.communityLockSessionUnlocked = false;
-    }
+  if (
+  document.visibilityState === "visible" &&
+  isCommunityScreenId(getActiveScreenId())
+) {
+  void pingCommunityPresence();
+  syncCommunityPresenceHeartbeat();
+} else {
+  stopCommunityPresenceHeartbeat();
+  clearCommunityTypingTimers();
+  void sendCommunityTypingState(false);
+
+  if (isCommunityLockEnabled()) {
+    communityState.communityLockSessionUnlocked = false;
   }
+}
   void syncCommunityRealtimePresenceTracking();
 });
 
@@ -40018,7 +40030,7 @@ function showScreen(id, options = {}) {
   if (nextCommunityScreen) {
     startCommunityOverviewPolling();
   } else {
-    stopCommunityOverviewPolling();
+   stopCommunityOverviewPolling({ force: true });
   }
 
   if (id === "daily-setup") {
@@ -40049,14 +40061,18 @@ function showScreen(id, options = {}) {
     syncCommunityChatPolling();
   }
 
-  if (currentUser?.id && document.visibilityState === "visible") {
-    void pingCommunityPresence();
-    syncCommunityPresenceHeartbeat();
-    void syncCommunityRealtimePresenceTracking();
-  } else if (!currentUser?.id || document.visibilityState === "hidden") {
-    stopCommunityPresenceHeartbeat();
-    void syncCommunityRealtimePresenceTracking();
-  }
+  if (
+  currentUser?.id &&
+  document.visibilityState === "visible" &&
+  nextCommunityScreen
+) {
+  void pingCommunityPresence();
+  syncCommunityPresenceHeartbeat();
+  void syncCommunityRealtimePresenceTracking();
+} else {
+  stopCommunityPresenceHeartbeat();
+  void syncCommunityRealtimePresenceTracking();
+}
 
   if (id !== "quiz-area") {
     if (timerEl) timerEl.classList.add("hidden");

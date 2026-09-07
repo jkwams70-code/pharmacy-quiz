@@ -39892,6 +39892,22 @@ function endGlobalLoading() {
   if (overlay) overlay.style.opacity = "0";
 }
 
+document.addEventListener("pointerdown", (event) => {
+  const target = event.target.closest("button, a, [role='button']");
+  if (!target) return;
+
+  // Do not show navigation loading for answer choices or small UI controls.
+  if (
+    target.matches(
+      ".answer-option, .option-button, .drills-lobby-tab, input, select, textarea"
+    )
+  ) {
+    return;
+  }
+
+  beginGlobalLoading("Loading...");
+}, true);
+
 function showScreen(id, options = {}) {
   const { recordHistory = true, skipSubscriptionGate = false } = options;
   const normalizedId = String(id || "").trim();
@@ -40086,7 +40102,6 @@ function showScreen(id, options = {}) {
       history.replaceState({ screen: id }, "", "");
     }
   }
-window.setTimeout(endGlobalLoading, 250);
 }
 
 window.addEventListener("focus", () => {

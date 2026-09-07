@@ -25041,15 +25041,19 @@ function selectNewsSearchQuery(query = "") {
 }
 
 async function openNewsScreen({ refresh = false } = {}) {
+  await refreshSubscriptionAccessForAction();
+
   if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
     return;
   }
-  window.location.href = "./news.html";
+
   closeMenuUserHub();
   closeGlobalQuickNav();
   closeNewsSearch();
   closeNewsMobileMenu();
   resetNewsScrollPosition();
+
+  window.location.href = "./news.html";
 }
 
 function clearDeviceLocalCache() {
@@ -35401,24 +35405,8 @@ if (menuDrillsTab) {
 
 if (menuLawTab) {
   menuLawTab.onclick = async () => {
-    // Show the Law screen immediately.
     setMenuHubActiveTab("law");
-    showScreen("quiz-area");
 
-    if (lawDrillPanelEl) {
-      lawDrillPanelEl.classList.remove("hidden");
-    }
-
-    if (questionCardEl) {
-      questionCardEl.classList.add("hidden");
-    }
-
-    if (lawDrillRailEl) {
-      lawDrillRailEl.innerHTML =
-        '<div class="law-drill-panel-note">Loading law drill...</div>';
-    }
-
-    // Keep the access check before starting the actual session.
     await refreshSubscriptionAccessForAction();
 
     if (!requireSubscriptionAccess("law")) {
@@ -35441,9 +35429,10 @@ if (menuGppqeTab) {
 }
 
 if (menuExtraTab) {
-  menuExtraTab.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+  menuExtraTab.onclick = () => {
     openExtraScreen();
+
+    void refreshSubscriptionAccessForAction().catch(() => false);
   };
 }
 

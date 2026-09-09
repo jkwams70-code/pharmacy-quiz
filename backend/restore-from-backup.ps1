@@ -1,9 +1,9 @@
-$ErrorActionPreference = "Stop"
-
 param(
   [Parameter(Mandatory = $true)]
   [string]$BackupFolderName
 )
+
+$ErrorActionPreference = "Stop"
 
 $backendDir = $PSScriptRoot
 $backupsDir = Join-Path $backendDir "backups"

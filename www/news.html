@@ -138,21 +138,27 @@
   }
   .hero-carousel-btn {
     pointer-events: auto;
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
+    width: clamp(56px, 12%, 88px);
+    height: 100%;
+    border-radius: 0;
     background: transparent;
     color: rgba(255, 255, 255, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+    transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
     opacity: 0.72;
   }
-  .hero-carousel-btn:hover {
+  .hero-carousel-btn:hover,
+  .hero-carousel-btn:focus-visible {
     color: #fff;
     opacity: 1;
-    transform: translateY(-1px);
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.2), transparent);
+    outline: none;
+  }
+  .hero-carousel-btn:last-child:hover,
+  .hero-carousel-btn:last-child:focus-visible {
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.2), transparent);
   }
   .hero-carousel-btn svg {
     width: 18px;
@@ -990,7 +996,7 @@
 
     <!-- SECTION: MORE NEWS (LIST VIEW) -->
     <div class="section-header">
-      <h2 class="section-title">More from medicine</h2>
+      <h2 class="section-title" id="more-news-title">More News</h2>
       <button type="button" class="widget-link" id="medicine-view-toggle" aria-controls="medicine-list" aria-expanded="false">View all &rarr;</button>
     </div>
 
@@ -1237,11 +1243,12 @@
   const articleActionsTemplate = document.querySelector('.article-card .article-actions')?.outerHTML || '';
   const listActionsTemplate = document.querySelector('.list-item .list-actions')?.outerHTML || '';
   const POPULAR_STORY_LIMIT = 3;
-  const LATEST_STORY_LIMIT = 10;
+  const LATEST_STORY_LIMIT = 6;
   const MEDICINE_PAGE_SIZE = 10;
   const TRENDING_PREVIEW_LIMIT = 5;
-  let medicineFeedItems = [];
-  let medicineRenderedCount = 0;
+  let popularFeedItems = [];
+  let moreNewsFeedItems = [];
+  let moreNewsRenderedCount = 0;
   let defaultHeroFeedItems = [];
   let defaultLatestFeedItems = [];
   let trendingFeedItems = [];
@@ -1320,13 +1327,24 @@
     newsEmptyStateEl.innerHTML = '<h3 style="margin:0;font-size:20px;line-height:1.2;">No published stories yet</h3><p style="margin:0;color:var(--text-secondary);max-width:48rem;">' + message + '</p>';
   }
 
+  function getNewsAuthHeaders() {
+    const token = String(window.localStorage.getItem('quizAuthToken') || '').trim();
+    return token ? { Accept: 'application/json', Authorization: 'Bearer ' + token } : { Accept: 'application/json' };
+  }
+
   async function hydratePublishedNewsFeed() {
     const cachedFeed = loadCachedPublishedNewsFeed();
     if (cachedFeed) applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
     try {
       const apiBase = await ensureNewsApiBase();
-      const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store' });
-      if (!response.ok) throw new Error('Failed to load published news (' + response.status + ')');
+      const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store', headers: getNewsAuthHeaders() });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          renderNewsLockState(await loadNewsSubscriptionAccess());
+          return;
+        }
+        throw new Error('Failed to load published news (' + response.status + ')');
+      }
       const feed = normalizePublishedNewsFeed(await response.json());
       saveCachedPublishedNewsFeed(feed);
       applyPublishedNewsFeed(feed);
@@ -1544,7 +1562,7 @@
     const rawItems = Array.isArray(feed?.items) ? feed.items : [];
     rawItems.forEach(pushItem);
     if (!items.length) {
-      ['hero', 'latest', 'medicine', 'trendingNow'].forEach((sectionName) => {
+      ['hero', 'popularStories', 'latest', 'medicine', 'trendingNow', 'moreNews'].forEach((sectionName) => {
         const sectionItems = Array.isArray(sourceSections[sectionName]) ? sourceSections[sectionName] : [];
         sectionItems.forEach(pushItem);
       });
@@ -1560,9 +1578,10 @@
 
     const normalizedSections = {
       hero: normalizeSectionItems('hero', normalizedItems.slice(0, 3)),
-      latest: normalizeSectionItems('latest', normalizedItems.slice(0, 4)),
-      medicine: normalizeSectionItems('medicine', normalizedItems),
-      trendingNow: normalizeSectionItems('trendingNow', normalizedItems),
+      popularStories: normalizeSectionItems('popularStories', []),
+      latest: normalizeSectionItems('latest', normalizedItems.slice(0, 6)),
+      trendingNow: normalizeSectionItems('trendingNow', []),
+      moreNews: normalizeSectionItems('moreNews', []),
     };
 
     return {
@@ -1720,20 +1739,17 @@
     const normalizedFeed = normalizePublishedNewsFeed(feed);
     const sections = normalizedFeed.sections || {};
     const allItems = sortNewsByDate(Array.isArray(normalizedFeed?.items) ? normalizedFeed.items : []);
+    allPublishedNewsItems = allItems;
     renderLatestFilterTabs(allItems);
     const heroRecords = getRecordsByClass('hero-slide');
-    const heroItems = Array.isArray(sections.hero) && sections.hero.length ? sections.hero : allItems.slice(0, heroRecords.length);
-    const latestItems = sortNewsByDate(Array.isArray(sections.latest) && sections.latest.length ? sections.latest : allItems).slice(0, LATEST_STORY_LIMIT);
-    const medicineItems = sortNewsByDate(Array.isArray(sections.medicine) && sections.medicine.length ? sections.medicine : allItems);
-    const popularItems = sortNewsByPopularity(Array.isArray(sections.popular) && sections.popular.length ? sections.popular : allItems).slice(0, POPULAR_STORY_LIMIT);
-    const importantItems = allItems.filter(isImportantNewsItem);
-    const requestedTrendingItems = Array.isArray(sections.trendingNow) ? sections.trendingNow : [];
-    const trendingSource = requestedTrendingItems.length
-      ? requestedTrendingItems.filter(isImportantNewsItem).length
-        ? requestedTrendingItems.filter(isImportantNewsItem)
-        : requestedTrendingItems
-      : (importantItems.length ? importantItems : allItems);
-    const trendingItems = sortNewsByPopularity(trendingSource);
+    const heroItems = Array.isArray(sections.hero) && sections.hero.length ? sections.hero : allItems.slice(0, 3);
+    const popularItems = sortNewsByPopularity(Array.isArray(sections.popularStories) && sections.popularStories.length ? sections.popularStories : allItems).slice(0, POPULAR_STORY_LIMIT);
+    popularFeedItems = popularItems.slice();
+    const reservedIds = new Set([...heroItems, ...popularItems].map((item) => String(item?.id || '').trim()).filter(Boolean));
+    const trendingCategories = new Set(['drug-safety-alerts', 'guidelines-clinical-updates', 'new-drug-approvals', 'regulations-policy', 'regulations-and-policy']);
+    const isTrendingItem = (item) => trendingCategories.has(normalizeFilterValue(item?.category || item?.filter || ''));
+    const trendingItems = sortNewsByDate(allItems.filter((item) => isTrendingItem(item)));
+    const latestItems = sortNewsByDate(allItems.filter((item) => !isTrendingItem(item) && !reservedIds.has(String(item?.id || '').trim())));
     defaultHeroFeedItems = heroItems.slice();
     defaultLatestFeedItems = latestItems.slice();
     trendingFeedItems = trendingItems.slice();
@@ -1744,10 +1760,6 @@
       Object.assign(record, updateItemRecordFromFeed(record, item, index));
     });
     replaceGeneratedSection('side-card', popularStoryPanel, popularItems, makeSideCardElement);
-    replaceGeneratedSection('article-card', latestGrid, latestItems, makeArticleCardElement);
-    replaceGeneratedSection('trending-item', trendingWidget, trendingItems.slice(0, TRENDING_PREVIEW_LIMIT), makeTrendingItemElement);
-    medicineFeedItems = medicineItems;
-    renderNextMedicineChunk(true);
     renderNewsFilterView(currentFilter);
     applyFilters();
     if (allItems.length) {
@@ -2519,27 +2531,33 @@
     items.forEach((item, index) => addGeneratedNewsRecord(container, item, createElement, index));
   }
 
-  function updateMedicineViewButton() {
+  function updateMoreNewsViewButton() {
     if (!medicineViewToggle) return;
-    const remaining = Math.max(0, medicineFeedItems.length - medicineRenderedCount);
-    const hasMedicineStories = medicineFeedItems.length > 0;
-    medicineViewToggle.hidden = !hasMedicineStories;
+    const remaining = Math.max(0, moreNewsFeedItems.length - moreNewsRenderedCount);
+    const hasMoreNews = moreNewsFeedItems.length > 0;
+    medicineViewToggle.hidden = !hasMoreNews;
     medicineViewToggle.disabled = remaining <= 0;
     medicineViewToggle.setAttribute('aria-expanded', String(remaining <= 0));
     medicineViewToggle.textContent = remaining > 0 ? 'View more (' + Math.min(MEDICINE_PAGE_SIZE, remaining) + ' more) ->' : 'All stories loaded';
   }
 
-  function renderNextMedicineChunk(reset) {
+  function renderNextMoreNewsChunk(reset) {
     if (!medicineList) return;
     if (reset) {
       medicineList.innerHTML = '';
       removeRecordsByClass('list-item');
-      medicineRenderedCount = 0;
+      moreNewsRenderedCount = 0;
     }
-    const nextItems = medicineFeedItems.slice(medicineRenderedCount, medicineRenderedCount + MEDICINE_PAGE_SIZE);
-    nextItems.forEach((item, index) => addGeneratedNewsRecord(medicineList, item, makeListItemElement, medicineRenderedCount + index));
-    medicineRenderedCount += nextItems.length;
-    updateMedicineViewButton();
+    const nextItems = moreNewsFeedItems.slice(moreNewsRenderedCount, moreNewsRenderedCount + MEDICINE_PAGE_SIZE);
+    nextItems.forEach((item, index) => addGeneratedNewsRecord(medicineList, item, makeListItemElement, moreNewsRenderedCount + index));
+    moreNewsRenderedCount += nextItems.length;
+    updateMoreNewsViewButton();
+  }
+
+  function renderMoreNewsForFilter(items = []) {
+    moreNewsFeedItems = Array.isArray(items) ? items.slice(LATEST_STORY_LIMIT) : [];
+    renderNextMoreNewsChunk(true);
+    updateMoreNewsViewButton();
   }
 
   function getItemState(itemId) {
@@ -2603,11 +2621,11 @@
     }
   }
   function syncMedicineViewToggle() {
-    updateMedicineViewButton();
+    updateMoreNewsViewButton();
   }
 
   function toggleMedicineList() {
-    renderNextMedicineChunk(false);
+    renderNextMoreNewsChunk(false);
     applyFilters();
   }
 
@@ -2771,28 +2789,36 @@
   }
   function renderNewsFilterView(filter) {
     const isTrendingView = normalizeFilterValue(filter) === 'trending';
+    const activeCategory = isTrendingView ? 'trending' : normalizeFilterValue(currentLatestFilter);
+    const reservedIds = new Set([...defaultHeroFeedItems, ...popularFeedItems].map((item) => String(item?.id || '').trim()).filter(Boolean));
+    const trendingCategories = new Set(['drug-safety-alerts', 'guidelines-clinical-updates', 'new-drug-approvals', 'regulations-policy', 'regulations-and-policy']);
+    const isTrendingItem = (item) => trendingCategories.has(normalizeFilterValue(item?.category || item?.filter || ''));
+    const filterItems = activeCategory === 'trending'
+      ? allPublishedNewsItems.filter((item) => isTrendingItem(item))
+      : activeCategory === 'all'
+        ? allPublishedNewsItems.filter((item) => !isTrendingItem(item) && !reservedIds.has(String(item?.id || '').trim()))
+        : allPublishedNewsItems.filter((item) => normalizeFilterValue(item?.category || item?.filter || '') === activeCategory && !reservedIds.has(String(item?.id || '').trim()));
+    const mainItems = sortNewsByDate(filterItems);
     const latestNewsTitle = document.getElementById('latest-news-title');
-    if (latestNewsTitle) latestNewsTitle.textContent = isTrendingView ? 'Trending news' : 'Latest news';
+    if (latestNewsTitle) latestNewsTitle.textContent = isTrendingView ? 'Trending news' : activeCategory === 'all' ? 'Latest news' : formatNewsCategoryLabel(activeCategory);
+    const moreNewsTitle = document.getElementById('more-news-title');
+    if (moreNewsTitle) moreNewsTitle.textContent = activeCategory === 'all' ? 'More News' : 'More ' + formatNewsCategoryLabel(activeCategory);
     const trendingColumnTitle = document.getElementById('trending-column-title');
     const trendingColumnLink = document.getElementById('trending-view-all');
     if (trendingColumnTitle) trendingColumnTitle.textContent = isTrendingView ? 'For you' : 'Trending now';
     if (trendingColumnLink) trendingColumnLink.textContent = isTrendingView ? 'For you' : 'View all';
-    const heroItems = isTrendingView ? trendingFeedItems : defaultHeroFeedItems;
-    const latestItems = isTrendingView ? trendingFeedItems : defaultLatestFeedItems;
-    const forYouItems = [...defaultLatestFeedItems, ...medicineFeedItems]
-      .filter((item, index, items) => item && items.findIndex((candidate) => candidate?.id === item.id) === index)
-      .slice(0, TRENDING_PREVIEW_LIMIT);
-    const columnItems = isTrendingView ? forYouItems : trendingFeedItems.slice(0, TRENDING_PREVIEW_LIMIT);
     const heroRecords = getRecordsByClass('hero-slide');
     heroRecords.forEach((record, index) => {
-      const item = heroItems[index];
+      const item = defaultHeroFeedItems[index];
       if (!item) { hideUnusedRecords([record]); return; }
       revealRecord(record);
       Object.assign(record, updateItemRecordFromFeed(record, item, index));
     });
-    replaceGeneratedSection('article-card', latestGrid, latestItems, makeArticleCardElement);
-    replaceGeneratedSection('trending-item', trendingWidget, columnItems, makeTrendingItemElement);
+    replaceGeneratedSection('article-card', latestGrid, mainItems.slice(0, LATEST_STORY_LIMIT), makeArticleCardElement);
+    replaceGeneratedSection('trending-item', trendingWidget, trendingFeedItems.slice(0, TRENDING_PREVIEW_LIMIT), makeTrendingItemElement);
+    renderMoreNewsForFilter(mainItems);
   }
+
   function setFilter(nextFilter) {
     currentFilter = normalizeFilterValue(nextFilter);
     if (currentFilter === 'trending') currentLatestFilter = 'all';
@@ -2803,6 +2829,8 @@
 
   function setLatestFilter(nextFilter) {
     currentLatestFilter = normalizeFilterValue(nextFilter);
+    currentFilter = currentLatestFilter === 'all' ? 'all' : currentLatestFilter;
+    renderNewsFilterView(currentFilter);
     syncControlStates();
     applyFilters();
   }
@@ -2889,6 +2917,9 @@
     startHeroRotation();
   }
 
+  heroPrevBtn?.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); bumpHeroSlide(-1); });
+  heroNextBtn?.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); bumpHeroSlide(1); });
+
   const footerSheetContent = {
     about: { title: 'About', body: '<p><strong>Ajix News</strong> gathers health, pharmacy, and clinical updates in a quick-reading format.</p><p>It is built for fast scanning, easy reading on mobile, and a calmer way to keep up with important updates.</p>' },
     privacy: { title: 'Privacy', body: '<p>This news page may remember lightweight preferences such as theme and reading state on your device.</p><p>If you open an external link, that destination controls its own privacy and cookies policy.</p>' },
@@ -2961,6 +2992,7 @@
   }
 
   function itemMatchesFilter(item) {
+    if (item.element.classList.contains('hero-slide')) return true;
     if (currentFilter === 'trending') {
       if (item.element.classList.contains('side-card')) return true;
       return item.element.classList.contains('hero-slide')

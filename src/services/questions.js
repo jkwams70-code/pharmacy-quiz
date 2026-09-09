@@ -11,6 +11,7 @@ const questionSourceCandidates = [
   path.join(quizRoot, "www", "data.js"),
   path.join(quizRoot, "android", "app", "src", "main", "assets", "public", "data.js"),
   path.join(quizRoot, "data.js"),
+  path.join(backendRoot, "data", "questions.json"),
 ];
 const questionBatchDirectories = [
   path.join(quizRoot, "www", "question-batches"),
@@ -26,6 +27,7 @@ function normalizeQuestion(q) {
     question: q.question || "",
     options: Array.isArray(q.options) ? q.options : undefined,
     statements: Array.isArray(q.statements) ? q.statements : undefined,
+    comboVariant: String(q.comboVariant || "").trim().toLowerCase() || undefined,
     caseId: q.caseId || undefined,
     caseBlock: q.caseBlock || undefined,
     correct: q.correct,

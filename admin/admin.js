@@ -454,7 +454,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
               <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
               <div class="broadcast-chat-attachment-type-text">Audio</div>
             </div>
-            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">Ã—</button>
           `;
         }
         return `
@@ -463,7 +463,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
             <div class="broadcast-chat-attachment-type-text">${safeMimeType}</div>
           </div>
-          <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+          <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">Ã—</button>
         `;
       }
 
@@ -493,7 +493,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
               <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
               <div class="broadcast-chat-attachment-type-text">${safeMimeType}</div>
             </div>
-            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">Ã—</button>
           `;
         } else {
           previewEl.innerHTML = buildBroadcastComposerAttachmentMarkup(broadcastChatAttachment);
@@ -546,10 +546,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
           .trim()
           .toLowerCase();
         const expirationAt = String(
+          request?.expirationAt ||
           request?.user?.subscriptionAccess?.expirationAt ||
             request?.user?.subscriptionExpirationAt ||
             request?.user?.subscriptionEndsAt ||
-            request?.expirationAt ||
             "",
         ).trim();
         const expirationTime = expirationAt ? Date.parse(expirationAt) : NaN;
@@ -634,10 +634,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
         if (metaBucket === "expired") {
           return formatDate(
+            request?.expirationAt ||
             request?.user?.subscriptionAccess?.expirationAt ||
               request?.user?.subscriptionExpirationAt ||
-              request?.user?.subscriptionEndsAt ||
-              request?.reviewDeadlineAt,
+              request?.user?.subscriptionEndsAt,
           );
         }
         return formatDate(request?.requestedAt);
@@ -645,10 +645,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function getMonetizationRequestExpiry(request = {}) {
         return formatDate(
+          request?.expirationAt ||
           request?.user?.subscriptionAccess?.expirationAt ||
             request?.user?.subscriptionExpirationAt ||
-            request?.user?.subscriptionEndsAt ||
-            request?.reviewDeadlineAt,
+            request?.user?.subscriptionEndsAt,
         );
       }
 
@@ -726,10 +726,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
         }
         if (safeBucket === "expired") {
           return Date.parse(
+            request?.expirationAt ||
             request?.user?.subscriptionAccess?.expirationAt ||
               request?.user?.subscriptionExpirationAt ||
               request?.user?.subscriptionEndsAt ||
-              request?.reviewDeadlineAt ||
               request?.requestedAt ||
               0,
           );
@@ -764,7 +764,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
                           data-action="toggle-monetization-sort"
                           aria-label="Toggle date sort"
                           title="${monetizationSortDirection === "desc" ? "Newest first" : "Oldest first"}"
-                        >↕</button>
+                        >â†•</button>
                       </span>
                     </th>
                   `;
@@ -1180,7 +1180,9 @@ async function ensureAdminApiBase({ force = false } = {}) {
             throw new Error(data.error || "Failed to load subscription requests");
           }
 
-          cachedSubscriptionRequests = data.requests;
+          cachedSubscriptionRequests = data.requests.filter(
+            (entry) => String(entry?.plan || "").trim().toLowerCase() !== "trial",
+          );
           subscriptionRequestsLoaded = true;
           renderMonetizationPanel();
           return true;
@@ -2543,10 +2545,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
       function showAlert(containerId, message, type = "info") {
         const container = document.getElementById(containerId);
-        if (!container) {
-          console.warn(`Missing alert container: ${containerId}`);
-          return;
-        }
+        if (!container) return;
         const alert = document.createElement("div");
         alert.className = `alert ${type}`;
         alert.textContent = message;
@@ -2554,7 +2553,15 @@ async function ensureAdminApiBase({ force = false } = {}) {
         container.appendChild(alert);
       }
 
-      function getAdminNotificationBannerEl() {
+function getAdminLoginScreen() {
+        return document.getElementById("login-screen") || document.querySelector(".login-screen");
+      }
+
+      function getAdminDashboard() {
+        return document.getElementById("dashboard") || document.querySelector(".dashboard");
+      }
+
+            function getAdminNotificationBannerEl() {
         return document.getElementById("admin-notification-banner");
       }
 
@@ -2660,8 +2667,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
 
           if (res.ok) {
             localStorage.setItem(ADMIN_KEY_STORAGE, adminKey);
-            document.getElementById("login-screen").style.display = "none";
-            document.getElementById("dashboard").classList.add("active");
+            const loginScreen = getAdminLoginScreen();
+            if (loginScreen) loginScreen.style.display = "none";
+            const dashboard = getAdminDashboard();
+            if (dashboard) dashboard.classList.add("active");
             refreshData();
           } else {
             alert("Invalid admin key");
@@ -2685,8 +2694,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
         broadcastThreadOpen = false;
         selectedBroadcastStatusId = "";
         broadcastOverviewLoaded = false;
-        document.getElementById("login-screen").style.display = "block";
-        document.getElementById("dashboard").classList.remove("active");
+        const loginScreen = getAdminLoginScreen();
+        if (loginScreen) loginScreen.style.display = "block";
+        const dashboard = getAdminDashboard();
+        if (dashboard) dashboard.classList.remove("active");
         document.getElementById("admin-key").value = "";
         setAdminKeyVisibility(false);
       }
@@ -2929,17 +2940,18 @@ async function ensureAdminApiBase({ force = false } = {}) {
           const data = await res.json();
           cachedAdminStats = data;
 
-          document.getElementById("stat-users").textContent = data.totalUsers;
-          document.getElementById("stat-questions").textContent =
-            data.totalQuestions;
-          document.getElementById("stat-attempts").textContent =
-            data.totalAttempts;
-          document.getElementById("stat-categories").textContent =
-            data.totalCategories;
-          document.getElementById("stat-avg-score").textContent =
-            data.averageScore + "%";
-          document.getElementById("stat-sync-events").textContent =
-            data.totalSyncEvents;
+          const statUsers = document.getElementById("stat-users");
+          if (statUsers) statUsers.textContent = String(data.totalUsers ?? 0);
+          const statQuestions = document.getElementById("stat-questions");
+          if (statQuestions) statQuestions.textContent = String(data.totalQuestions ?? 0);
+          const statAttempts = document.getElementById("stat-attempts");
+          if (statAttempts) statAttempts.textContent = String(data.totalAttempts ?? 0);
+          const statCategories = document.getElementById("stat-categories");
+          if (statCategories) statCategories.textContent = String(data.totalCategories ?? 0);
+          const statAvgScore = document.getElementById("stat-avg-score");
+          if (statAvgScore) statAvgScore.textContent = String(data.averageScore ?? 0) + "%";
+          const statSyncEvents = document.getElementById("stat-sync-events");
+          if (statSyncEvents) statSyncEvents.textContent = String(data.totalSyncEvents ?? 0);
           const statGroups = document.getElementById("stat-groups");
           if (statGroups) {
             statGroups.textContent = String(data.totalGroups ?? 0);
@@ -2974,6 +2986,10 @@ async function ensureAdminApiBase({ force = false } = {}) {
           }
 
           const catPerf = document.getElementById("category-performance");
+          if (!catPerf) {
+            renderAdminAnalyticsPanel();
+            return true;
+          }
           catPerf.innerHTML = "";
           const categoryRows = Array.isArray(data.categories)
             ? data.categories
@@ -3723,7 +3739,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
           bodyEl.innerHTML = `
             <div class="broadcast-attachment-viewer-stage">
               <div class="broadcast-attachment-viewer-file">
-                <div class="broadcast-attachment-viewer-file-icon">⤓</div>
+                <div class="broadcast-attachment-viewer-file-icon">â¤“</div>
                 <div class="broadcast-attachment-viewer-file-text">
                   <div class="broadcast-attachment-viewer-file-name">${safeFileName}</div>
                   <div class="broadcast-attachment-viewer-file-meta">${safeMimeType}</div>
@@ -3778,7 +3794,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
           bodyEl.innerHTML = `
             <div class="broadcast-attachment-viewer-stage">
               <div class="broadcast-attachment-viewer-file">
-                <div class="broadcast-attachment-viewer-file-icon">⧉</div>
+                <div class="broadcast-attachment-viewer-file-icon">â§‰</div>
                 <div class="broadcast-attachment-viewer-file-text">
                   <div class="broadcast-attachment-viewer-file-name">${safeFileName}</div>
                   <div class="broadcast-attachment-viewer-file-meta">${safeMimeType}</div>
@@ -4236,7 +4252,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             return `
               <div class="news-source-row${source.enabled === false ? " is-disabled" : ""}">
                 <div class="news-source-title">${escapeHtml(source.name || source.id || "Source")}</div>
-                <div class="news-source-meta">${escapeHtml(status)} · ${escapeHtml(source.category || "clinical-news")}</div>
+                <div class="news-source-meta">${escapeHtml(status)} Â· ${escapeHtml(source.category || "clinical-news")}</div>
                 <div class="news-source-url">${escapeHtml(source.url || "")}</div>
                 <div class="news-source-foot">
                   <span>Last run: ${escapeHtml(lastRun)}</span>
@@ -4264,7 +4280,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             return `
               <div class="news-run-row">
                 <div class="news-run-title">${escapeHtml(formatBroadcastDateTime(run.createdAt || run.startedAt || ""))}</div>
-                <div class="news-run-meta">${escapeHtml(label)} · ${escapeHtml(summary)}</div>
+                <div class="news-run-meta">${escapeHtml(label)} Â· ${escapeHtml(summary)}</div>
               </div>
             `;
           })
@@ -4468,11 +4484,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
       function openNewsReviewItem(newsId = "") {
         const safeNewsId = String(newsId || "").trim();
         if (!safeNewsId) return;
-        selectedNewsItemId = safeNewsId;
-        const nextItem = Array.isArray(cachedNewsItems) ? cachedNewsItems.find((item) => String(item?.id || "") === safeNewsId) : null;
-        selectedNewsPublishSlot = inferNewsPublishSlot(nextItem || {});
-        selectedNewsPublishSlotItemId = safeNewsId;
-        renderNewsReviewOverview();
+        window.location.href = `./news-story.html?review=1&newsId=${encodeURIComponent(safeNewsId)}`;
       }
 
       async function loadBroadcastThreadDetail(threadKey = "") {
@@ -5134,7 +5146,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
         return;
         if (
           !confirm(
-            "⚠️ This will DELETE all users and attempts. Questions will be re-seeded.",
+            "âš ï¸ This will DELETE all users and attempts. Questions will be re-seeded.",
           )
         )
           return;
@@ -5837,8 +5849,11 @@ async function ensureAdminApiBase({ force = false } = {}) {
       if (adminKey) {
         (async () => {
           await ensureAdminApiBase();
-          document.getElementById("login-screen").style.display = "none";
-          document.getElementById("dashboard").classList.add("active");
+          const loginScreen = getAdminLoginScreen();
+            if (loginScreen) loginScreen.style.display = "none";
+          const dashboard = getAdminDashboard();
+            if (dashboard) dashboard.classList.add("active");
           refreshData();
         })();
       }
+

@@ -315,13 +315,82 @@
 
   /* FOOTER */
   .app-footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 32px 24px; background: var(--surface); }
-  .footer-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+  .footer-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
   .footer-brand { font-size: 16px; font-weight: 700; }
-  .footer-links { display: flex; gap: 24px; }
-  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; }
+  .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 24px; }
+  .footer-links a { font-size: 13px; color: var(--text-tertiary); transition: color 0.15s; white-space: nowrap; }
   .footer-links a:hover { color: var(--text-primary); }
   .footer-copy { font-size: 12px; color: var(--text-muted); }
-
+  .footer-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 220;
+  }
+  .footer-sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
+  .footer-sheet {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 100%);
+    width: min(92vw, 760px);
+    max-height: min(80vh, 640px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 48px rgba(15, 23, 42, 0.18);
+    z-index: 230;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.28s ease;
+  }
+  .footer-sheet.is-open { transform: translate(-50%, 0); }
+  .footer-sheet-handle { width: 54px; height: 5px; border-radius: 999px; background: rgba(148, 163, 184, 0.6); margin: 10px auto 0; }
+  .footer-sheet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 20px 12px; border-bottom: 1px solid var(--border); }
+  .footer-sheet-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 6px; }
+  .footer-sheet-title { margin: 0; font-size: 22px; line-height: 1.15; letter-spacing: -0.02em; }
+  .footer-sheet-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 22px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .footer-sheet-body { padding: 18px 20px 22px; overflow: auto; color: var(--text-secondary); line-height: 1.65; max-height: calc(min(80vh, 640px) - 112px); }
+  .footer-sheet-body p { margin: 0 0 14px; }
+  .footer-sheet-body h3 { margin: 18px 0 10px; color: var(--text-primary); font-size: 16px; }
+  .footer-sheet-body ul { margin: 0 0 16px 18px; padding: 0; }
+  .footer-sheet-contact-list { display: grid; gap: 12px; margin-top: 12px; }
+  .footer-sheet-contact-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .footer-sheet-contact-btn:hover { border-color: var(--accent-blue); }
+  body.is-footer-sheet-open { overflow: hidden; }
+  html[data-theme="dark"] .footer-sheet { background: #111; }
+  html[data-theme="dark"] .footer-sheet-backdrop { background: rgba(0, 0, 0, 0.48); }
+  html[data-theme="dark"] .footer-sheet-close { background: #111; border-color: #2a2a2a; }
   /* RESPONSIVE */
   html[data-theme="dark"] {
     --bg: #0a0a0a;
@@ -340,6 +409,9 @@
   html[data-theme="dark"] .mobile-search-close { background: #111; border-color: #2a2a2a; }
   html[data-theme="dark"] .mobile-panel-btn { background: rgba(28,28,28,0.96); border-color: #2a2a2a; }
   html[data-theme="dark"] .mobile-panel-overlay { background: rgba(0,0,0,0.45); }
+  html[data-theme="dark"] .footer-sheet { background: #111; }
+  html[data-theme="dark"] .footer-sheet-backdrop { background: rgba(0,0,0,0.48); }
+  html[data-theme="dark"] .footer-sheet-close { background: #111; border-color: #2a2a2a; }
   html[data-theme="dark"] .mobile-panel-sheet { background: #111; }
   html[data-theme="dark"] .mobile-panel-sheet-header { background: rgba(17,17,17,0.85); }
   html[data-theme="dark"] .mobile-panel-sheet-close { background: #111; border-color: #2a2a2a; }
@@ -369,6 +441,11 @@
     .nav-search-toggle { display: flex; }
     .nav-left { gap: 12px; }
     .nav-back-btn { padding: 8px 10px; }
+    .top-nav-inner { padding: 0 12px; gap: 8px; min-height: 58px; }
+    .nav-left { gap: 8px; }
+    .nav-right { gap: 6px; }
+    .nav-logo { font-size: 18px; letter-spacing: -0.2px; }
+    .nav-icon-btn { width: 36px; height: 36px; }
     .mobile-search-panel-inner { padding: 10px 14px 14px; }
     .mobile-panel-rail { display: flex; }
   }
@@ -530,6 +607,18 @@
       </div>
     </div>
 
+    <div class="review-panel" id="news-review-panel" hidden>
+      <div class="review-panel-copy">
+        <div class="review-panel-kicker">Admin preview</div>
+        <div class="review-panel-title" id="news-review-title">Review this article</div>
+        <div class="review-panel-note" id="news-review-note">Loading the review preview...</div>
+        <div class="review-panel-meta" id="news-review-meta">Fetching article details from the review queue...</div>
+      </div>
+      <div class="review-panel-actions">
+        <button type="button" class="review-action-btn review-reject" id="news-review-reject">Reject</button>
+        <button type="button" class="review-action-btn review-publish" id="news-review-publish">Publish</button>
+      </div>
+    </div>
     <div class="author-bio-card">
       <div class="author-bio-avatar">SC</div>
       <div class="author-bio-content">
@@ -621,14 +710,26 @@
   <div class="footer-inner">
     <div class="footer-brand">AjixPharmacy</div>
     <div class="footer-links">
-      <a href="#">About</a>
-      <a href="#">Privacy</a>
-      <a href="#">Terms</a>
-      <a href="#">Contact</a>
+      <a href="#" data-footer-topic="about">About</a>
+      <a href="#" data-footer-topic="privacy">Privacy</a>
+      <a href="#" data-footer-topic="terms">Terms</a>
+      <a href="#" data-footer-topic="contact">Contact</a>
     </div>
-    <div class="footer-copy">© 2026 AjixPharmacy. All rights reserved.</div>
+    <div class="footer-copy">2026 AjixPharmacy. All rights reserved.</div>
   </div>
 </footer>
+<div id="footer-sheet-backdrop" class="footer-sheet-backdrop" aria-hidden="true"></div>
+<section id="footer-sheet" class="footer-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="footer-sheet-title">
+  <div class="footer-sheet-handle" aria-hidden="true"></div>
+  <div class="footer-sheet-header">
+    <div>
+      <div class="footer-sheet-kicker">AjixPharmacy</div>
+      <h2 id="footer-sheet-title" class="footer-sheet-title">About</h2>
+    </div>
+    <button id="footer-sheet-close" class="footer-sheet-close" type="button" aria-label="Close footer details">&times;</button>
+  </div>
+  <div id="footer-sheet-body" class="footer-sheet-body"></div>
+</section>
 
 <script>
 (function () {
@@ -675,6 +776,55 @@
   const reviewPublishBtn = document.getElementById('news-review-publish');
   const reviewRejectBtn = document.getElementById('news-review-reject');
   const tocItems = () => document.querySelectorAll('.toc-item');
+
+  const footerSheetBackdrop = document.getElementById('footer-sheet-backdrop');
+  const footerSheet = document.getElementById('footer-sheet');
+  const footerSheetCloseBtn = document.getElementById('footer-sheet-close');
+  const footerSheetTitle = document.getElementById('footer-sheet-title');
+  const footerSheetBody = document.getElementById('footer-sheet-body');
+  const footerSheetLinks = Array.from(document.querySelectorAll('[data-footer-topic]'));
+  const footerSheetContent = {
+    about: {
+      title: 'About AjixPharmacy',
+      body: '<p>AjixPharmacy uses the same polished story layout on the admin preview page so the preview feels consistent with the public reader view.</p><p>The footer sheet keeps the same lightweight pattern on desktop and mobile.</p>',
+    },
+    privacy: {
+      title: 'Privacy',
+      body: '<p>We keep this experience lightweight. Basic preferences such as theme and reading state may be stored locally on your device so the interface feels consistent when you return.</p><p>We do not use the footer sheets to collect personal information; they simply open the information you request.</p>',
+    },
+    terms: {
+      title: 'Terms',
+      body: '<p>Use the admin preview as a reading and review experience. Content is provided for editorial review and internal publishing workflow only.</p><h3>Quick notes</h3><ul><li>Share links responsibly.</li><li>Do not repost content without permission.</li><li>Check critical clinical information against official sources.</li></ul>',
+    },
+    contact: {
+      title: 'Contact',
+      body: '<p>If you need to reach the team, use the same contact details shown on the home page.</p><div class="footer-sheet-contact-list"><a class="footer-sheet-contact-btn" href="mailto:ajixpharmacy@gmail.com"><span>Email</span><span>ajixpharmacy@gmail.com</span></a><a class="footer-sheet-contact-btn" href="https://wa.me/233595597218" target="_blank" rel="noopener noreferrer"><span>WhatsApp</span><span>+233 595 597 218</span></a></div>',
+    },
+  };
+
+  function renderFooterSheet(topic = 'about') {
+    const entry = footerSheetContent[topic] || footerSheetContent.about;
+    if (footerSheetTitle) footerSheetTitle.textContent = entry.title;
+    if (footerSheetBody) footerSheetBody.innerHTML = entry.body;
+  }
+
+  function openFooterSheet(topic = 'about') {
+    renderFooterSheet(topic);
+    footerSheet?.classList.add('is-open');
+    footerSheetBackdrop?.classList.add('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'false');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('is-footer-sheet-open');
+  }
+
+  function closeFooterSheet() {
+    footerSheet?.classList.remove('is-open');
+    footerSheetBackdrop?.classList.remove('is-open');
+    footerSheet?.setAttribute('aria-hidden', 'true');
+    footerSheetBackdrop?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('is-footer-sheet-open');
+  }
+
 
   function slugify(value) {
     return String(value || '')
@@ -974,7 +1124,7 @@
     }
 
     reviewPanel.hidden = false;
-    const status = String(reviewNewsItem?.status || 'pending_review').trim().toLowerCase();
+    const status = normalizeNewsStatusValue(reviewNewsItem?.status || 'pending_review');
     const statusLabel = getNewsStatusLabel(status);
     const reviewTitleText = reviewNewsItem?.title || story?.title || 'Review this article';
     if (reviewTitle) reviewTitle.textContent = reviewTitleText;
@@ -1111,7 +1261,7 @@
       if (!res.ok) {
         throw new Error(data.error || `Failed to ${action} the article`);
       }
-      window.location.href = './admin/news-studio.html';
+      window.location.href = './news-studio.html';
     } catch (error) {
       if (reviewNote) {
         reviewNote.textContent = `Could not ${action} the article: ${error.message}`;
@@ -1266,7 +1416,7 @@
   let keywordQuery = '';
   let activeStoryKey = '';
   let story = null;
-  const storyReviewEnabled = false;
+  const storyReviewEnabled = true;
   let reviewMode = false;
   let reviewNewsItem = null;
   let storySavedState = loadSavedState();
@@ -2120,6 +2270,32 @@
     });
   }
 
+  function buildEmptyReviewStory(payload) {
+    const title = String(payload?.title || payload?.storyKey || payload?.id || 'Review preview').trim() || 'Review preview';
+    const sourceName = String(payload?.sourceName || payload?.source || '').trim();
+    const authorName = String(payload?.author || sourceName || 'Ajixpharmacy Desk').trim();
+    const likes = getStoryLikeCount(payload);
+    return makeStory({
+      title,
+      category: 'Admin preview',
+      badge: 'Admin preview',
+      badgeColor: '#2563eb',
+      subtitle: 'Preview this article exactly as it appears in the review queue.',
+      author: { initials: getAvatarInitials(authorName, 'AJ'), name: authorName, role: sourceName || 'Admin review' },
+      meta: { date: 'Review preview', readTime: '0 min read', views: 'Preview mode', source: sourceName, likes },
+      likes,
+      sourceName,
+      heroLabel: `PREVIEW - ${title}`,
+      heroGradient: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #60a5fa 100%)',
+      tags: ['Admin preview'],
+      toc: [{ id: 'toc-1', label: 'Preview content' }],
+      bodyHtml: '<p>This article is available to admins in preview mode.</p>',
+      takeaways: [],
+      bio: 'Admin preview placeholder for unpublished or unavailable items.',
+      related: [],
+    });
+  }
+
   function readStoredStory() {
     try {
       const raw = window.sessionStorage.getItem(STORAGE_KEY);
@@ -2141,8 +2317,23 @@
     return text.replace(/[-_]+/g, ' ').replace(/\b\w/g, (match) => match.toUpperCase());
   }
 
-  function getNewsStatusLabel(status = '') {
-    const next = String(status || '').trim().toLowerCase();
+  function normalizeNewsStatusValue(value = "") {
+  const next = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!next) return "pending_review";
+  if (next === "draft" || next === "queued" || next === "pending" || next === "in_review" || next === "inreview" || next === "review" || next === "under_review") return "pending_review";
+  if (next === "approved" || next === "reviewed") return "approved";
+  if (next === "published" || next === "live" || next.startsWith("publish") || next.startsWith("live_")) return "published";
+  if (next === "rejected" || next === "rejected_by_admin") return "rejected";
+  if (next === "archived" || next === "hidden") return "archived";
+  return next === "pending_review" ? next : "pending_review";
+}
+
+function isPublishedNewsItem(value = "") {
+  return normalizeNewsStatusValue(value) === "published";
+}
+
+function getNewsStatusLabel(status = '') {
+    const next = normalizeNewsStatusValue(status);
     if (next === 'pending_review') return 'In review';
     if (next === 'approved') return 'Approved';
     if (next === 'published') return 'Published';
@@ -2348,7 +2539,7 @@
   const requestedKey = getRequestedStoryKey();
   reviewMode = storyReviewEnabled && getRequestedReviewMode();
   const resolvedKey = requestedKey || slugify(storedStory.storyKey || storedStory.title || storedStory.id || '');
-  const initialStory = buildEmptyPublishedStory(storedStory);
+  const initialStory = reviewMode ? buildEmptyReviewStory(storedStory) : buildEmptyPublishedStory(storedStory);
   storySavedState = loadSavedState();
   applyTheme(loadThemePreference());
 
@@ -2473,7 +2664,7 @@
 
   backBtn?.addEventListener('click', function (e) {
     e.stopPropagation();
-    window.location.href = reviewMode ? './admin/news-studio.html' : './news.html';
+    window.location.href = './news-studio.html';
   });
 
   tocList?.addEventListener('click', function (event) {
@@ -2532,8 +2723,20 @@
       closeMobilePanel();
     }
   });
+  footerSheetLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      openFooterSheet(link.dataset.footerTopic || 'about');
+    });
+  });
+  footerSheetCloseBtn?.addEventListener('click', closeFooterSheet);
+  footerSheetBackdrop?.addEventListener('click', closeFooterSheet);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeFooterSheet();
+  });
 })();
 </script>
 
 </body>
 </html>
+

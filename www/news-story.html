@@ -1372,6 +1372,11 @@
     return data.item || null;
   }
 
+  function getNewsStoryAuthHeaders() {
+    const token = String(window.localStorage.getItem('quizAuthToken') || '').trim();
+    return token ? { Accept: 'application/json', Authorization: 'Bearer ' + token } : { Accept: 'application/json' };
+  }
+
   async function loadPublishedNewsItem(newsId = '') {
     const safeId = String(newsId || '').trim();
     if (!safeId) return null;
@@ -1379,6 +1384,7 @@
       const apiBase = await ensureReviewApiBase();
       const res = await fetch(`${apiBase}/news/${encodeURIComponent(safeId)}`, {
         cache: 'no-store',
+        headers: getNewsStoryAuthHeaders(),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -1892,7 +1898,7 @@
   async function loadRelatedPublishedStories(currentStory) {
     try {
       const apiBase = await ensureReviewApiBase();
-      const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store' });
+      const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store', headers: getNewsStoryAuthHeaders() });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Failed to load related articles');
       const sections = data.sections && typeof data.sections === 'object' ? data.sections : {};

@@ -5,6 +5,8 @@ import {
   collectionNames,
   ensureStore,
   readCollection,
+  readUsersSnapshot,
+  writeUsersSnapshot,
   writeCollection,
 } from "../store.js";
 
@@ -54,13 +56,18 @@ async function run() {
 
   process.env.ALLOW_EMPTY_USERS_WRITE = "true";
   await ensureStore();
+  const usersSnapshot = await readUsersSnapshot();
   const safetyDir = await writeSafetySnapshot();
 
   for (const collection of collectionNames) {
     const filePath = path.join(sourceDir, `${collection}.json`);
     const raw = await fs.readFile(filePath, "utf8");
     const parsed = JSON.parse(raw);
-    await writeCollection(collection, parsed);
+    if (collection === "users") {
+      await writeUsersSnapshot(usersSnapshot, parsed);
+    } else {
+      await writeCollection(collection, parsed);
+    }
   }
 
   console.log(`Restore completed from: ${sourceDir}`);

@@ -1,12 +1,13 @@
-﻿const CACHE_VERSION = "ajix-app-shell-v117-offline-shell";
+const CACHE_VERSION = "ajix-app-shell-v119-medlens-interactions";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-"/engine.js?v=20260904-rotation-tracking-v1",
+"/engine.js?v=20260907-subscription-pricing-v1",
   "/backendClient.js?v=20260619-cross-device-sync-fix3",
+  "/offlineStore.js?v=20260907-idb-recovery-v1",
   "/auth-lock.js",
   "/standalone-back.js",
   "/medlens-interactions-database.js",

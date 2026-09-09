@@ -567,7 +567,7 @@
         margin-bottom: 20px;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
-        overscroll-behavior-y: contain;
+        overscroll-behavior-y: auto;
         touch-action: pan-x pan-y;
       }
 
@@ -3711,10 +3711,12 @@
         #questions .table-container,
         #monetization .table-container {
           overflow-x: auto;
-          overflow-y: hidden;
+          overflow-y: auto;
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
-          overscroll-behavior: contain;
+          /* Let vertical table swipes continue scrolling the page. */
+          overscroll-behavior-x: contain;
+          overscroll-behavior-y: auto;
         }
 
         #users table {
@@ -3783,7 +3785,10 @@
         height: 0 !important;
         display: none !important;
       }
-    </style>
+          .extra-workspace{margin-top:18px;padding:24px;border:1px solid #d8e0eb;border-radius:18px;background:linear-gradient(145deg,#ffffff,#f4f8fc);box-shadow:0 16px 36px rgba(20,48,78,.12)}
+      .extra-workspace-head{margin-bottom:20px}.extra-kicker{display:block;color:#087f82;font-size:11px;font-weight:800;letter-spacing:.12em;margin-bottom:7px}.extra-workspace h2{margin:0;color:#172b45;font-size:27px}.extra-workspace p{margin:6px 0 0;color:#64758b}
+      .extra-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.extra-card{min-height:132px;padding:18px;display:flex;align-items:flex-start;gap:12px;position:relative;text-decoration:none;border-radius:14px;border:1px solid transparent;box-shadow:0 8px 20px rgba(22,45,75,.1);transition:transform .18s ease,box-shadow .18s ease}.extra-card:hover{transform:translateY(-3px);box-shadow:0 13px 25px rgba(22,45,75,.16)}.extra-card-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.72);font-weight:900}.extra-card strong{display:block;font-size:17px;color:#172b45}.extra-card small{display:block;max-width:190px;margin-top:5px;line-height:1.45;color:#405873}.extra-card b{position:absolute;right:16px;bottom:15px;font-size:11px;color:#264b65;text-transform:uppercase;letter-spacing:.06em}.extra-card-medlens{background:#dff7f3;border-color:#a9e7df}.extra-card-news{background:#e7efff;border-color:#bfd3fa}.extra-card-guides{background:#fff1d8;border-color:#f4d397}.extra-card-calc{background:#eee8ff;border-color:#d4c5f7}.extra-card-articles{background:#edf1f5;border-color:#d6dee7;opacity:.84}
+      @media(max-width:620px){.extra-workspace{padding:17px}.extra-card-grid{grid-template-columns:1fr}}</style>
   </head>
   <body>
     <!-- LOGIN SCREEN -->
@@ -3835,11 +3840,13 @@
           <h1>Admin Dashboard</h1>
         </div>
         <div class="header-actions">
-          <button type="button" class="secondary header-btn" onclick="window.location.href='./news-studio.html'">News Studio</button>
-          <button id="refresh-data-btn" class="secondary header-btn">
+          <button id="refresh-data-btn" class="secondary header-btn" type="button">
             Refresh
           </button>
-          <button id="logout-btn" class="danger header-btn">Logout</button>
+          <button id="news-studio-btn" class="secondary header-btn" type="button" onclick="switchTab('extra')">
+            Extra
+          </button>
+          <button id="logout-btn" class="danger header-btn" type="button">Logout</button>
         </div>
       </div>
 
@@ -3854,8 +3861,6 @@
         <button class="tab-btn" data-tab="groups">Groups</button>
         <button class="tab-btn" data-tab="reports">Reports <span id="reports-tab-badge" class="admin-tab-badge hidden">0</span></button>
         <button class="tab-btn" data-tab="broadcast">Broadcast</button>
-        <button class="tab-btn" type="button" onclick="window.location.href='./news-studio.html'">News Studio</button>
-        <button class="tab-btn" data-tab="news">News</button>
         <button class="tab-btn" data-tab="questions">
           Questions
         </button>
@@ -3863,7 +3868,7 @@
         <button class="tab-btn" data-tab="password-resets">
           Password Resets <span id="password-reset-tab-badge" class="admin-tab-badge hidden">0</span>
         </button>
-        <button class="tab-btn" data-tab="settings">
+<button class="tab-btn" data-tab="settings">
           Settings
         </button>
       </div>
@@ -4151,7 +4156,7 @@
 
             <section id="broadcast-thread-panel" class="broadcast-thread-panel hidden">
               <div class="broadcast-thread-header">
-                <button type="button" id="broadcast-thread-back-btn" class="broadcast-thread-back-btn" aria-label="Back to broadcast list">‹</button>
+                <button type="button" id="broadcast-thread-back-btn" class="broadcast-thread-back-btn" aria-label="Back to broadcast list">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹</button>
                 <div class="broadcast-thread-header-main">
                   <div id="broadcast-thread-title" class="broadcast-thread-title">Announcement</div>
                   <div id="broadcast-thread-subtitle" class="broadcast-thread-subtitle">Broadcast to everyone</div>
@@ -4217,88 +4222,6 @@
         </div>
       </div>
 
-      <!-- NEWS TAB -->
-      <div id="news" class="content">
-        <div id="news-alerts"></div>
-        <div class="news-review-shell">
-          <section class="news-review-header">
-            <div class="news-review-header-copy">
-              <div class="news-review-kicker">Curated intake</div>
-              <h2 class="news-review-title">News review workspace</h2>
-              <p class="news-review-subtitle">
-                Auto-collected items are reviewed here before they are published to the public news feed.
-              </p>
-            </div>
-            <div class="news-review-actions">
-              <button id="news-collect-btn" type="button" class="primary">Collect now</button>
-              <button id="news-refresh-btn" type="button" class="secondary">Refresh</button>
-            </div>
-          </section>
-
-          <div class="news-review-stats">
-            <div class="stat-card news-review-stat">
-              <div class="stat-label">Pending</div>
-              <div class="stat-value" id="news-pending-count">0</div>
-            </div>
-            <div class="stat-card news-review-stat">
-              <div class="stat-label">Approved</div>
-              <div class="stat-value" id="news-approved-count">0</div>
-            </div>
-            <div class="stat-card news-review-stat">
-              <div class="stat-label">Published</div>
-              <div class="stat-value" id="news-published-count">0</div>
-            </div>
-            <div class="stat-card news-review-stat">
-              <div class="stat-label">Sources</div>
-              <div class="stat-value" id="news-source-count">0</div>
-            </div>
-          </div>
-
-          <div class="news-review-layout">
-            <aside class="news-review-side">
-              <div class="news-review-panel">
-                <div class="news-review-panel-head">
-                  <h3>Sources</h3>
-                  <span class="news-review-panel-note">Enabled feeds</span>
-                </div>
-                <div id="news-source-list" class="news-source-list"></div>
-              </div>
-              <div class="news-review-panel">
-                <div class="news-review-panel-head">
-                  <h3>Recent runs</h3>
-                  <span class="news-review-panel-note">Latest collection jobs</span>
-                </div>
-                <div id="news-run-list" class="news-run-list"></div>
-              </div>
-            </aside>
-
-            <section class="news-review-main">
-              <div class="news-review-toolbar">
-                <div class="news-review-status-filters">
-                  <button type="button" class="news-review-filter is-active" data-news-status-filter="pending_review">Pending</button>
-                  <button type="button" class="news-review-filter" data-news-status-filter="approved">Approved</button>
-                  <button type="button" class="news-review-filter" data-news-status-filter="published">Published</button>
-                  <button type="button" class="news-review-filter" data-news-status-filter="rejected">Rejected</button>
-                  <button type="button" class="news-review-filter" data-news-status-filter="all">All</button>
-                </div>
-                <div class="users-search news-review-search">
-                  <svg class="users-search-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M10.5 4a6.5 6.5 0 1 1 4.34 11.34l4.91 4.91-1.42 1.42-4.91-4.91A6.5 6.5 0 0 1 10.5 4zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" fill="currentColor"/>
-                  </svg>
-                  <input type="search" id="news-search" placeholder="Search by title, source, or category..." autocomplete="off" />
-                </div>
-              </div>
-              <div id="news-review-list" class="news-review-list"></div>
-            </section>
-
-            <aside class="news-review-detail">
-              <div id="news-review-empty" class="news-review-empty">Select a news item to review its details and publish controls.</div>
-              <div id="news-review-detail-card" class="news-review-detail-card hidden"></div>
-            </aside>
-          </div>
-        </div>
-      </div>
-
       <div id="broadcast-status-modal" class="modal">
         <div class="modal-content broadcast-status-modal">
           <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -4306,7 +4229,7 @@
               <h2 class="modal-title" style="margin: 0;">Add Status</h2>
               <p class="modal-subtitle" style="margin: 4px 0 0;">Publish an admin status to every user.</p>
             </div>
-            <button id="broadcast-status-close-btn" type="button" class="icon-btn" aria-label="Close status composer">×</button>
+            <button id="broadcast-status-close-btn" type="button" class="icon-btn" aria-label="Close status composer">ÃƒÆ’Ã¢â‚¬â€</button>
           </div>
           <div class="form-group">
             <label for="broadcast-status-message">Status text / caption</label>
@@ -4335,7 +4258,7 @@
               <h2 class="modal-title" id="broadcast-status-viewer-title" style="margin: 0;">Status</h2>
               <p class="modal-subtitle" id="broadcast-status-viewer-subtitle" style="margin: 4px 0 0;">Admin broadcast status</p>
             </div>
-            <button id="broadcast-status-viewer-close-btn" type="button" class="icon-btn" aria-label="Close status viewer">×</button>
+            <button id="broadcast-status-viewer-close-btn" type="button" class="icon-btn" aria-label="Close status viewer">ÃƒÆ’Ã¢â‚¬â€</button>
           </div>
           <div id="broadcast-status-viewer-body" class="broadcast-status-viewer-body"></div>
         </div>
@@ -4348,7 +4271,7 @@
               <h2 class="modal-title" id="broadcast-attachment-viewer-title" style="margin: 0;">Attachment</h2>
               <p class="modal-subtitle" id="broadcast-attachment-viewer-subtitle" style="margin: 4px 0 0;">Preview broadcast attachment</p>
             </div>
-            <button id="broadcast-attachment-viewer-close-btn" type="button" class="icon-btn" aria-label="Close attachment viewer">Ã—</button>
+            <button id="broadcast-attachment-viewer-close-btn" type="button" class="icon-btn" aria-label="Close attachment viewer">ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</button>
           </div>
           <div id="broadcast-attachment-viewer-body" class="broadcast-attachment-viewer-body"></div>
           <div id="broadcast-attachment-viewer-actions" class="broadcast-attachment-viewer-actions"></div>
@@ -4650,6 +4573,21 @@
       </div>
 
       <!-- SETTINGS TAB -->
+      <!-- EXTRA TAB -->
+      <div id="extra" class="content">
+        <div class="extra-workspace">
+          <div class="extra-workspace-head">
+            <div><span class="extra-kicker">TOOLS & WORKSPACES</span><h2>Extra</h2><p>Everything beyond the main dashboard, gathered in one place.</p></div>
+          </div>
+          <div class="extra-card-grid">
+            <a class="extra-card extra-card-medlens" href="medlens-studio.html"><span class="extra-card-icon">M</span><span><strong>MedLens</strong><small>Drug, disease, and interaction databases.</small></span><b>Open</b></a>
+            <a class="extra-card extra-card-news" href="news-studio.html"><span class="extra-card-icon">N</span><span><strong>News Studio</strong><small>Fetch, review, edit, and publish news.</small></span><b>Open</b></a>
+            <a class="extra-card extra-card-guides" href="guidelines.html"><span class="extra-card-icon">G</span><span><strong>Guidelines</strong><small>Manage clinical guideline content.</small></span><b>Open</b></a>
+            <a class="extra-card extra-card-calc" href="../calculator.html"><span class="extra-card-icon">C</span><span><strong>Calculator</strong><small>Open the clinical calculator.</small></span><b>Open</b></a>
+            <div class="extra-card extra-card-articles"><span class="extra-card-icon">A</span><span><strong>Articles</strong><small>Article workspace coming soon.</small></span><b>Coming soon</b></div>
+          </div>
+        </div>
+      </div>
       <div id="settings" class="content">
         <div style="background: white; padding: 30px; border-radius: 10px">
           <h3 style="margin-bottom: 20px; color: #333">System Settings</h3>
@@ -5054,7 +4992,7 @@
       </div>
     </div>
 
-    <script src="admin.js?v=20260816-admin-tabletouch4"></script>
+    <script src="admin.js?v=20260830-admin-shellfix2"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
@@ -5070,3 +5008,10 @@
     </script>
   </body>
 </html>
+
+
+
+
+
+
+

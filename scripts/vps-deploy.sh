@@ -11,16 +11,15 @@ git fetch origin
 git checkout "${BRANCH}"
 git pull --ff-only origin "${BRANCH}"
 
-echo "==> Sync frontend files"
+echo "==> Sync frontend files from www/"
 mkdir -p "${FRONTEND_DIR}"
-
 if command -v rsync >/dev/null 2>&1; then
   rsync -a --delete "${REPO_DIR}/www/" "${FRONTEND_DIR}/"
 else
   cp -a "${REPO_DIR}/www/." "${FRONTEND_DIR}/"
 fi
 
-echo "==> Copy Google Search Console verification files"
+# Copy Google Search Console verification files if present.
 shopt -s nullglob
 for verify_file in google*.html; do
   cp -f "${verify_file}" "${FRONTEND_DIR}/${verify_file}"

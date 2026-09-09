@@ -4014,6 +4014,11 @@ body{padding-top:65px}
             });
         }, observerOptions);
 
+        function getGuidelinesAuthHeaders() {
+            const token = String(window.localStorage.getItem('quizAuthToken') || '').trim();
+            return token ? { Accept: 'application/json', Authorization: 'Bearer ' + token } : { Accept: 'application/json' };
+        }
+
         async function loadPublishedGuidelines() {
             try {
                 const storedApiBase = window.localStorage.getItem('quizApiBase')?.trim();
@@ -4025,7 +4030,7 @@ body{padding-top:65px}
                 let response = null;
                 for (const apiBase of candidates) {
                     try {
-                        const candidate = await fetch(apiBase + '/guidelines', { cache: 'no-store', headers: { Accept: 'application/json' } });
+                        const candidate = await fetch(apiBase + '/guidelines', { cache: 'no-store', headers: getGuidelinesAuthHeaders() });
                         if (candidate.ok) {
                             response = candidate;
                             break;

@@ -26,7 +26,7 @@ const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendPath = path.join(__dirname, "..", "..");
+const frontendPath = path.join(__dirname, "..", "www");
 
 function asyncHandler(handler) {
   return (req, res, next) => {
@@ -1672,17 +1672,65 @@ app.post(
     }
 
     const { text, category, options, correct } = req.body;
+    const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
+    const allowedComboVariants = new Set([
+      "pair-relationship",
+      "assertion-5",
+      "table-4",
+      "three-statement",
+    ]);
+    const getComboOptionTexts = (variant = "") => {
+      const normalized = String(variant || "").trim().toLowerCase();
+      if (normalized === "assertion-5") {
+        return [
+          "First statement is TRUE, Second statement is TRUE and they are RELATED",
+          "First statement is TRUE, Second statement is TRUE but they are NOT related",
+          "First statement is TRUE but Second statement is FALSE",
+          "First statement is FALSE but Second statement is TRUE",
+          "Both statements are FALSE",
+        ];
+      }
+      if (normalized === "table-4") {
+        return ["I, II and III", "II and III only", "I only", "III only"];
+      }
+      if (normalized === "pair-relationship") {
+        return [
+          "first statement is true, second statement is true and the two are related",
+          "first statement is true, second statement is true but the two are not related",
+          "first statement is false, second statement is true",
+          "both statements are false",
+        ];
+      }
+      if (normalized === "three-statement") {
+        return ["1, 2 and 3", "1 and 2 only", "2 and 3 only", "1 only", "3 only"];
+      }
+      return [];
+    };
+    const normalizedOptions = Array.isArray(options)
+      ? options.map((option) => String(option || "").trim()).filter(Boolean)
+      : [];
+    const resolvedOptions =
+      normalizedOptions.length > 0
+        ? normalizedOptions
+        : comboVariant
+          ? getComboOptionTexts(comboVariant)
+          : [];
 
     if (
       !text ||
       !category ||
-      !Array.isArray(options) ||
-      options.length === 0 ||
+      resolvedOptions.length < 2 ||
       correct === undefined
     ) {
       res.status(400).json({
         error:
           "Required fields: text, category, options (array), correct (option index)",
+      });
+      return;
+    }
+    if (comboVariant && !allowedComboVariants.has(comboVariant)) {
+      res.status(400).json({
+        error: "comboVariant must be pair-relationship, assertion-5, table-4 or three-statement",
       });
       return;
     }
@@ -1697,7 +1745,8 @@ app.post(
       id: String(newId),
       text,
       category,
-      options,
+      comboVariant: comboVariant || undefined,
+      options: resolvedOptions,
       correct: String(correct),
     };
 
@@ -1719,6 +1768,43 @@ app.put(
 
     const questionId = req.params.questionId;
     const { text, category, options, correct } = req.body;
+    const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
+    const allowedComboVariants = new Set([
+      "pair-relationship",
+      "assertion-5",
+      "table-4",
+      "three-statement",
+    ]);
+    const getComboOptionTexts = (variant = "") => {
+      const normalized = String(variant || "").trim().toLowerCase();
+      if (normalized === "assertion-5") {
+        return [
+          "First statement is TRUE, Second statement is TRUE and they are RELATED",
+          "First statement is TRUE, Second statement is TRUE but they are NOT related",
+          "First statement is TRUE but Second statement is FALSE",
+          "First statement is FALSE but Second statement is TRUE",
+          "Both statements are FALSE",
+        ];
+      }
+      if (normalized === "table-4") {
+        return ["I, II and III", "II and III only", "I only", "III only"];
+      }
+      if (normalized === "pair-relationship") {
+        return [
+          "first statement is true, second statement is true and the two are related",
+          "first statement is true, second statement is true but the two are not related",
+          "first statement is false, second statement is true",
+          "both statements are false",
+        ];
+      }
+      if (normalized === "three-statement") {
+        return ["1, 2 and 3", "1 and 2 only", "2 and 3 only", "1 only", "3 only"];
+      }
+      return [];
+    };
+    const normalizedOptions = Array.isArray(options)
+      ? options.map((option) => String(option || "").trim()).filter(Boolean)
+      : [];
 
     const questions = await readCollection("questions");
     const idx = questions.findIndex((q) => String(q.id) === questionId);
@@ -1727,11 +1813,23 @@ app.put(
       res.status(404).json({ error: "Question not found" });
       return;
     }
+    if (comboVariant && !allowedComboVariants.has(comboVariant)) {
+      res.status(400).json({
+        error: "comboVariant must be pair-relationship, assertion-5, table-4 or three-statement",
+      });
+      return;
+    }
 
     if (text) questions[idx].text = text;
     if (category) questions[idx].category = category;
-    if (Array.isArray(options) && options.length > 0)
-      questions[idx].options = options;
+    if (comboVariant) {
+      questions[idx].comboVariant = comboVariant || undefined;
+    }
+    if (normalizedOptions.length > 0) {
+      questions[idx].options = normalizedOptions;
+    } else if (comboVariant) {
+      questions[idx].options = getComboOptionTexts(comboVariant);
+    }
     if (correct !== undefined) questions[idx].correct = String(correct);
 
     await writeCollection("questions", questions);

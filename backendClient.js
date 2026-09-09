@@ -1,4 +1,4 @@
-const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
+﻿const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const currentHost = String(window.location.hostname || "").trim();
 const currentProtocol = String(window.location.protocol || "").trim().toLowerCase();
 const currentPort = String(window.location.port || "").trim();
@@ -157,6 +157,7 @@ async function request(method, path, payload = undefined) {
     fetch(`${base}${path}`, {
       method,
       headers: buildHeaders(useJson),
+      cache: "no-store",
       body: useJson ? JSON.stringify(payload) : undefined,
     });
 
@@ -889,4 +890,5 @@ export const backendClient = {
     return post("/ai/explain", payload);
   },
 };
+
 

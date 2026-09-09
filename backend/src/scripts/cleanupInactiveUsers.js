@@ -1,4 +1,4 @@
-import { ensureStore, readCollection, writeCollection } from "../store.js";
+import { ensureStore, readCollection, readUsersSnapshot, writeUsersSnapshot } from "../store.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -37,7 +37,8 @@ async function run() {
   const dryRun = String(process.env.INACTIVE_USER_DRY_RUN || "false").toLowerCase() === "true";
   const cutoffMs = Date.now() - inactivityDays * DAY_MS;
 
-  const users = await readCollection("users");
+  const usersSnapshot = await readUsersSnapshot();
+  const users = usersSnapshot.data;
   const attempts = await readCollection("attempts");
   const syncSessions = await readCollection("syncSessions");
   const syncPerformance = await readCollection("syncPerformance");
@@ -106,7 +107,7 @@ async function run() {
   );
 
   if (!dryRun && usersToRemove.length > 0) {
-    await writeCollection("users", cleanedUsers);
+    await writeUsersSnapshot(usersSnapshot, cleanedUsers);
     console.log("Inactive user cleanup applied.");
   } else if (dryRun) {
     console.log("Dry run only; no files were changed.");

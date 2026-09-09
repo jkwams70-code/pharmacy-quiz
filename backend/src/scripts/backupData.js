@@ -21,7 +21,7 @@ function timestamp() {
 async function run() {
   await fs.mkdir(backupRoot, { recursive: true });
   const target = path.join(backupRoot, `data_${timestamp()}`);
-  await fs.mkdir(target, { recursive: true });
+  await fs.mkdir(target, { recursive: true, mode: 0o700 });
 
   await ensureStore();
 
@@ -30,7 +30,7 @@ async function run() {
     await fs.writeFile(
       path.join(target, `${collection}.json`),
       JSON.stringify(data, null, 2),
-      "utf8",
+      { encoding: "utf8", flag: "wx", mode: 0o600 },
     );
   }
 

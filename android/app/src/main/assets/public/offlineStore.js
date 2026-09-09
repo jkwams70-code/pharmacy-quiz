@@ -10,9 +10,17 @@ function isIndexedDbAvailable() {
 }
 
 function requestToPromise(request) {
+  if (!request) return Promise.resolve(null);
   return new Promise((resolve, reject) => {
-    request.addEventListener("success", () => resolve(request.result));
-    request.addEventListener("error", () => reject(request.error));
+    const onSuccess = () => resolve(request.result);
+    const onError = () => reject(request.error);
+    if (typeof request.addEventListener === "function") {
+      request.addEventListener("success", onSuccess);
+      request.addEventListener("error", onError);
+    } else {
+      request.onsuccess = onSuccess;
+      request.onerror = onError;
+    }
   });
 }
 
@@ -35,7 +43,14 @@ function openDatabase() {
       }
     });
 
-    request.addEventListener("success", () => resolve(request.result));
+    request.addEventListener("success", () => {
+      const db = request.result;
+      db.addEventListener("versionchange", () => {
+        db.close();
+        dbPromise = null;
+      });
+      resolve(db);
+    });
     request.addEventListener("error", () => reject(request.error));
     request.addEventListener("blocked", () => reject(new Error("IndexedDB is blocked")));
   });
@@ -47,7 +62,18 @@ async function withStore(storeName, mode, callback) {
   const db = await openDatabase();
   if (!db) return null;
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, mode);
+    let tx;
+    try {
+      tx = db.transaction(storeName, mode);
+    } catch (error) {
+      if (error?.name === "InvalidStateError") {
+        dbPromise = null;
+        resolve(null);
+        return;
+      }
+      reject(error);
+      return;
+    }
     const store = tx.objectStore(storeName);
     let settled = false;
 

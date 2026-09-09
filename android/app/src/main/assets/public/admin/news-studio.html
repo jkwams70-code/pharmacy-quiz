@@ -1,6 +1,7 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="admin-auth-lock.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
@@ -40,7 +41,7 @@ a{text-decoration:none;color:inherit}
 .btn-p{background:var(--t1);color:#fff}.btn-p:hover{background:#000}
 .btn-s{background:var(--surface);color:var(--t1);border:1px solid var(--border)}.btn-s:hover{border-color:var(--t3)}
 .btn-d{background:rgba(220,38,38,0.08);color:var(--red);border:1px solid rgba(220,38,38,0.2)}.btn-d:hover{background:rgba(220,38,38,0.12)}
-.btn-sm{padding:6px 12px;font-size:12px}
+.btn-sm{padding:6px 12px;font-size:12px}.icon-btn{width:40px;height:40px;min-width:40px;padding:0;justify-content:center}.icon-btn svg{width:16px;height:16px;flex-shrink:0}
 .content{padding:32px}
 .view{display:none}.view.active{display:block}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:32px}
@@ -78,7 +79,8 @@ a{text-decoration:none;color:inherit}
 .act-item:last-child{border-bottom:none;padding-bottom:0}.act-item:first-child{padding-top:0}
 .act-av{width:36px;height:36px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--t3);flex-shrink:0}
 .act-content{flex:1}.act-text{font-size:13px;color:var(--t2);line-height:1.5}.act-text strong{color:var(--t1);font-weight:600}.act-time{font-size:12px;color:var(--t3);margin-top:2px}
-.two-col{display:grid;grid-template-columns:1.2fr 0.8fr;gap:24px}
+.two-col{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,0.8fr);gap:24px}
+.two-col > div{min-width:0}
 .editor{display:grid;grid-template-columns:1fr 320px;gap:24px}
 .ed-main{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:28px;box-shadow:var(--s)}
 .ed-side{display:flex;flex-direction:column;gap:20px}
@@ -202,7 +204,7 @@ a{text-decoration:none;color:inherit}
   .search{display:none}
   .topbar{padding:0 14px}
   .topbar-left{gap:8px}
-  .topbar-title{font-size:16px}
+  .topbar-title{font-size:16px}.icon-btn{width:34px;height:34px;min-width:34px}.icon-btn svg{width:14px;height:14px}
   .btn-p.desktop-new{display:none}
   .mobile-only{display:inline-flex}
 }
@@ -214,9 +216,27 @@ a{text-decoration:none;color:inherit}
 <!-- DELETE MODAL -->
 <div class="modal" id="deleteModal">
   <div class="modal-box">
-    <div class="modal-hd"><span class="modal-t">Delete article?</span><button class="xbtn" onclick="closeModal()">âœ•</button></div>
+    <div class="modal-hd"><span class="modal-t">Delete article?</span><button class="xbtn" onclick="closeModal()">&#10005;</button></div>
     <div class="modal-bd"><p style="font-size:14px;color:var(--t2);line-height:1.6">This will permanently delete the article and remove it from the site. This action cannot be undone.</p></div>
     <div class="modal-ft"><button class="btn btn-s" onclick="closeModal()">Cancel</button><button class="btn btn-d" onclick="confirmDelete()">Delete article</button></div>
+  </div>
+</div>
+
+<!-- NEWS ACTION MODAL -->
+<div class="modal" id="newsActionModal" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="newsActionModalTitle">
+    <div class="modal-hd"><span class="modal-t" id="newsActionModalTitle">Confirm action</span><button class="xbtn" type="button" id="newsActionModalClose" aria-label="Close">&#10005;</button></div>
+    <div class="modal-bd"><p id="newsActionModalMessage" style="font-size:14px;color:var(--t2);line-height:1.6"></p></div>
+    <div class="modal-ft"><button class="btn btn-s" type="button" id="newsActionModalCancel">Cancel</button><button class="btn btn-p" type="button" id="newsActionModalConfirm">Confirm</button></div>
+  </div>
+</div>
+
+<!-- EDITOR DRAFT RECOVERY MODAL -->
+<div class="modal" id="newsDraftModal" aria-hidden="true">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="newsDraftModalTitle">
+    <div class="modal-hd"><span class="modal-t" id="newsDraftModalTitle">Recover unsaved article?</span><button class="xbtn" type="button" id="newsDraftModalClose" aria-label="Close">&#10005;</button></div>
+    <div class="modal-bd"><p id="newsDraftModalMessage" style="font-size:14px;color:var(--t2);line-height:1.6">An unfinished article draft was saved on this device.</p></div>
+    <div class="modal-ft"><button class="btn btn-s" type="button" id="newsDraftDiscardBtn">Discard draft</button><button class="btn btn-p" type="button" id="newsDraftRecoverBtn">Recover draft</button></div>
   </div>
 </div>
 
@@ -284,22 +304,21 @@ a{text-decoration:none;color:inherit}
 
   <main class="main">
     <div class="topbar">
-      <div class="topbar-left">
-        <button class="btn btn-s btn-sm" onclick="window.location.href='./index.html'">&larr; Back</button>
+            <div class="topbar-left">
+        <button class="btn btn-s btn-sm icon-btn" type="button" onclick="window.location.href='./index.html'" aria-label="Admin dashboard" title="Admin dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg></button>
         <div class="topbar-title" id="pageTitle">Dashboard</div>
       </div>
       <div class="topbar-right">
         <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11.5 3C16.1944 3 20 6.80558 20 11.5C20 13.523 19.2933 15.381 18.1132 16.8404L21.1364 19.8636C21.4879 20.2151 21.4879 20.7849 21.1364 21.1364C20.7849 21.4879 20.2151 21.4879 19.8636 21.1364L16.8404 18.1132C15.381 19.2933 13.523 20 11.5 20C6.80558 20 3 16.1944 3 11.5C3 6.80558 6.80558 3 11.5 3ZM11.5 18.2C15.2003 18.2 18.2 15.2003 18.2 11.5C18.2 7.79969 15.2003 4.8 11.5 4.8C7.79969 4.8 4.8 7.79969 4.8 11.5C4.8 15.2003 7.79969 18.2 11.5 18.2Z" fill="currentColor"/></svg><input type="text" placeholder="Search..."></div>
-        <button class="btn btn-s btn-sm" style="display:none" id="backBtn" onclick="go('articles')">â† Back</button>
-        <button class="btn btn-p desktop-new" id="newArticleBtn" onclick="startNewArticle()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>New article</button>
-        <button class="btn btn-p btn-sm mobile-only" type="button" id="mobileNewArticleBtn" onclick="startNewArticle()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg>New article</button>
+        <button class="btn btn-p btn-sm icon-btn news-nav-btn" id="newsNavBtn" onclick="go('articles')" aria-label="Open review queue" title="Open review queue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg></button>
+        <button class="btn btn-s btn-sm icon-btn studio-nav-btn studio-articles-btn" style="display:none" id="backBtn" onclick="go('articles')" aria-label="Back to articles" title="Back to articles"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="btn btn-p btn-sm icon-btn new-article-btn" id="newArticleBtn" onclick="startNewArticle()" aria-label="New article" title="New article"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/></svg></button>
         <button class="btn btn-s btn-sm mobile-only" type="button" aria-label="Open dashboard menu" onclick="toggleNav(true)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h7v7H4V5zm9 0h7v7h-7V5zM4 14h7v5H4v-5zm9 0h7v5h-7v-5z" fill="currentColor"/></svg>
         </button>
       </div>
     </div>
-
-    <div class="content">
+      <div class="content">
       <!-- DASHBOARD -->
       <div class="view active" id="view-dashboard">
         <div class="stats">
@@ -310,11 +329,11 @@ a{text-decoration:none;color:inherit}
         </div>
         <div class="two-col">
           <div>
-            <div class="sec-hd"><h2 class="sec-title">Recent articles</h2><a href="#" class="link" onclick="go('articles'); return false;">View all â†’</a></div>
+            <div class="sec-hd"><h2 class="sec-title">Recent articles</h2><a href="#" class="link" onclick="go('articles'); return false;">View all &rarr;</a></div>
             <div class="table"><table><thead><tr><th>Article</th><th>Status</th><th>Views</th><th>Date</th></tr></thead><tbody id="recentArticleRows"></tbody></table></div>
           </div>
           <div>
-            <div class="sec-hd"><h2 class="sec-title">Recent activity</h2><a href="#" class="link" onclick="go('activity'); return false;">View all â†’</a></div>
+            <div class="sec-hd"><h2 class="sec-title">Recent activity</h2><a href="#" class="link" onclick="go('activity'); return false;">View all &rarr;</a></div>
             <div class="activity" id="recentActivityList"></div>
           </div>
         </div>
@@ -323,7 +342,7 @@ a{text-decoration:none;color:inherit}
       <!-- ARTICLES -->
       <div class="view" id="view-articles">
         <div id="newsStudioMessage" class="news-banner" hidden></div>
-        <div class="sec-hd"><h2 class="sec-title">Review queue</h2><div style="display:flex;gap:8px"><button class="btn btn-s btn-sm" id="queueRefreshBtn" type="button">Refresh queue</button><button class="btn btn-p btn-sm" id="queueCollectBtn" type="button">Collect latest</button></div></div>
+        <div class="sec-hd"><h2 class="sec-title">Review queue</h2></div>
         <div class="filters">
           <button class="chip on" data-filter="all" onclick="filter(this,'all')">All</button>
           <button class="chip" data-filter="pending_review" onclick="filter(this,'pending_review')">In review</button>
@@ -332,8 +351,8 @@ a{text-decoration:none;color:inherit}
           <button class="chip" data-filter="rejected" onclick="filter(this,'rejected')">Rejected</button>
           <select class="fs" style="width:auto;padding:6px 12px;font-size:13px;margin-left:auto" id="queueSort"><option value="newest">Sort: Newest</option><option value="oldest">Sort: Oldest</option><option value="status">Sort: Status</option></select>
         </div>
-        <div class="table"><table><thead><tr><th style="width:40px"><input type="checkbox"></th><th>Article</th><th>Author</th><th>Category</th><th>Status</th><th>Views</th><th>Modified</th><th style="width:132px">Actions</th></tr></thead><tbody id="articleRows"></tbody></table></div>
-        <div class="pag"><div class="pag-info" id="queueInfo">Loading review queueâ€¦</div><div class="pag-btns"><button class="pbtn" id="queuePrevBtn" disabled>â†</button><button class="pbtn on" id="queuePageBtn">1</button><button class="pbtn" id="queueNextBtn">â†’</button></div></div>
+        <div class="table"><table><thead><tr><th>Article</th><th>Source</th><th>Author</th><th>Category</th><th>Status</th><th>Views</th><th>Modified</th><th style="width:132px">Actions</th></tr></thead><tbody id="articleRows"></tbody></table></div>
+        <div class="pag"><div class="pag-info" id="queueInfo">Loading review queue&hellip;</div><div class="pag-btns"><button class="pbtn" id="queuePrevBtn" disabled>&larr;</button><button class="pbtn on" id="queuePageBtn">1</button><button class="pbtn" id="queueNextBtn">&rarr;</button></div></div>
       </div>
 
       <!-- SOURCES -->
@@ -344,7 +363,7 @@ a{text-decoration:none;color:inherit}
           <div class="stat-card"><div class="stat-label">Live sources</div><div class="stat-value" id="sourceLiveCount">0</div><div class="stat-up">Enabled feeds being queried</div></div>
           <div class="stat-card"><div class="stat-label">Admin entries</div><div class="stat-value" id="sourceManualCount">0</div><div class="stat-up">Articles added by admins</div></div>
           <div class="stat-card"><div class="stat-label">Live articles</div><div class="stat-value" id="sourceArticleCount">0</div><div class="stat-up">Collected from authentic sources</div></div>
-          <div class="stat-card"><div class="stat-label">Last run</div><div class="stat-value" id="sourceLastRun">â€”</div><div class="stat-up" id="sourceLastRunMeta">No collection yet</div></div>
+          <div class="stat-card"><div class="stat-label">Last run</div><div class="stat-value" id="sourceLastRun">—</div><div class="stat-up" id="sourceLastRunMeta">No collection yet</div></div>
         </div>
         <div class="panel">
           <div class="panel-title">Add or edit source</div>
@@ -401,7 +420,7 @@ a{text-decoration:none;color:inherit}
                 <div class="img-up-overlay">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style="margin-bottom:6px;color:currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" fill="currentColor"/></svg>
                   <div class="img-up-t" id="newsHeroTitle">Drag & drop an image or click to browse</div>
-                  <div class="img-up-h" id="newsHeroHint">Recommended: 1200Ã—630px, JPG or PNG, max 2MB</div>
+                  <div class="img-up-h" id="newsHeroHint">Recommended: 1200&times;630px, JPG or PNG, max 2MB</div>
                   <div class="img-up-actions">
                     <button class="img-up-chip" type="button" data-hero-action="browse">Choose file</button>
                     <button class="img-up-chip" type="button" data-hero-action="clear">Remove image</button>
@@ -499,10 +518,10 @@ a{text-decoration:none;color:inherit}
       <div class="view" id="view-categories-static" style="display:none">
         <div class="sec-hd"><h2 class="sec-title">Categories</h2><button class="btn btn-p">Add category</button></div>
         <div class="table"><table><thead><tr><th>Name</th><th>Slug</th><th>Articles</th><th>Color</th><th>Actions</th></tr></thead><tbody>
-          <tr><td class="title-cell">Medicine</td><td>medicine</td><td>86</td><td><span class="dot" style="background:var(--blue)"></span>#2563eb</td><td><div class="tactions"><button class="tact">âœŽ</button><button class="tact del">ðŸ—‘</button></div></td></tr>
-          <tr><td class="title-cell">Wellness</td><td>wellness</td><td>64</td><td><span class="dot" style="background:var(--green)"></span>#16a34a</td><td><div class="tactions"><button class="tact">âœŽ</button><button class="tact del">ðŸ—‘</button></div></td></tr>
-          <tr><td class="title-cell">Research</td><td>research</td><td>52</td><td><span class="dot" style="background:var(--purple)"></span>#9333ea</td><td><div class="tactions"><button class="tact">âœŽ</button><button class="tact del">ðŸ—‘</button></div></td></tr>
-          <tr><td class="title-cell">Trending</td><td>trending</td><td>46</td><td><span class="dot" style="background:var(--red)"></span>#dc2626</td><td><div class="tactions"><button class="tact">âœŽ</button><button class="tact del">ðŸ—‘</button></div></td></tr>
+          <tr><td class="title-cell">Medicine</td><td>medicine</td><td>86</td><td><span class="dot" style="background:var(--blue)"></span>#2563eb</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
+          <tr><td class="title-cell">Wellness</td><td>wellness</td><td>64</td><td><span class="dot" style="background:var(--green)"></span>#16a34a</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
+          <tr><td class="title-cell">Research</td><td>research</td><td>52</td><td><span class="dot" style="background:var(--purple)"></span>#9333ea</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
+          <tr><td class="title-cell">Trending</td><td>trending</td><td>46</td><td><span class="dot" style="background:var(--red)"></span>#dc2626</td><td><div class="tactions"><button class="tact">&#9998;</button><button class="tact del">&#128465;</button></div></td></tr>
         </tbody></table></div>
       </div>
 
@@ -510,11 +529,11 @@ a{text-decoration:none;color:inherit}
       <div class="view" id="view-users">
         <div class="sec-hd"><h2 class="sec-title">Users</h2><button class="btn btn-p">Invite user</button></div>
         <div class="table"><table><thead><tr><th>User</th><th>Role</th><th>Articles</th><th>Last active</th><th>Actions</th></tr></thead><tbody>
-          <tr><td style="font-weight:600">James Doe</td><td>Chief Editor</td><td>124</td><td>Just now</td><td><div class="tactions"><button class="tact">âœŽ</button></div></td></tr>
-          <tr><td style="font-weight:600">Dr. Sarah Chen</td><td>Senior Writer</td><td>86</td><td>2 hours ago</td><td><div class="tactions"><button class="tact">âœŽ</button></div></td></tr>
-          <tr><td style="font-weight:600">Amy Liu</td><td>Writer</td><td>42</td><td>5 hours ago</td><td><div class="tactions"><button class="tact">âœŽ</button></div></td></tr>
-          <tr><td style="font-weight:600">Mark Kim</td><td>Writer</td><td>28</td><td>1 day ago</td><td><div class="tactions"><button class="tact">âœŽ</button></div></td></tr>
-          <tr><td style="font-weight:600">Dr. Rachel Wong</td><td>Contributor</td><td>18</td><td>2 days ago</td><td><div class="tactions"><button class="tact">âœŽ</button></div></td></tr>
+          <tr><td style="font-weight:600">James Doe</td><td>Chief Editor</td><td>124</td><td>Just now</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Dr. Sarah Chen</td><td>Senior Writer</td><td>86</td><td>2 hours ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Amy Liu</td><td>Writer</td><td>42</td><td>5 hours ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Mark Kim</td><td>Writer</td><td>28</td><td>1 day ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Dr. Rachel Wong</td><td>Contributor</td><td>18</td><td>2 days ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
         </tbody></table></div>
       </div>
 
@@ -522,12 +541,12 @@ a{text-decoration:none;color:inherit}
       <div class="view" id="view-analytics">
         <div class="sec-hd"><h2 class="sec-title">Analytics</h2><select class="fs" style="width:auto;padding:6px 12px;font-size:13px"><option>Last 7 days</option><option>Last 30 days</option><option>Last 90 days</option></select></div>
         <div class="stats">
-          <div class="stat-card"><div class="stat-label">Page Views</div><div class="stat-value" style="color:var(--blue)">342K</div><div class="stat-up">â†‘ 18%</div></div>
-          <div class="stat-card"><div class="stat-label">Unique Visitors</div><div class="stat-value" style="color:var(--purple)">89K</div><div class="stat-up">â†‘ 12%</div></div>
-          <div class="stat-card"><div class="stat-label">Avg. Read Time</div><div class="stat-value">4m 32s</div><div class="stat-up">â†‘ 8%</div></div>
-          <div class="stat-card"><div class="stat-label">Bounce Rate</div><div class="stat-value" style="color:var(--red)">34%</div><div class="stat-down">â†“ 3%</div></div>
+          <div class="stat-card"><div class="stat-label">Page Views</div><div class="stat-value" style="color:var(--blue)">342K</div><div class="stat-up">↑ 18%</div></div>
+          <div class="stat-card"><div class="stat-label">Unique Visitors</div><div class="stat-value" style="color:var(--purple)">89K</div><div class="stat-up">↑ 12%</div></div>
+          <div class="stat-card"><div class="stat-label">Avg. Read Time</div><div class="stat-value">4m 32s</div><div class="stat-up">↑ 8%</div></div>
+          <div class="stat-card"><div class="stat-label">Bounce Rate</div><div class="stat-value" style="color:var(--red)">34%</div><div class="stat-down">↓ 3%</div></div>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:40px;text-align:center;color:var(--t3);font-size:14px">Chart placeholder â€” top articles by views over time</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);padding:40px;text-align:center;color:var(--t3);font-size:14px">Chart placeholder — top articles by views over time</div>
       </div>
 
       <!-- SETTINGS -->
@@ -582,9 +601,14 @@ let newsPipelineState = {
   search: "",
 };
 let editingNewsId = "";
+let pendingNewsAction = null;
 let newsQueuePage = 1;
+const NEWS_STUDIO_ARTICLES_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>';
+const NEWS_STUDIO_DASHBOARD_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>';
 const NEWS_PIPELINE_REFRESH_KEY = "ajix-news-pipeline-refresh-v1";
 const PUBLIC_NEWS_FEED_CACHE_KEY = "ajix-news-public-feed-v1";
+const NEWS_EDITOR_DRAFT_KEY = "ajix-news-editor-draft-v1";
+let newsEditorAutosaveTimer = null;
 
 function normalizeApiBase(value = "") {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -651,10 +675,36 @@ function loadCachedPublishedNewsFeed() {
   }
 }
 
+function normalizeNewsStatusValue(value = "") {
+  const next = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!next) return "pending_review";
+  if (
+    next === "draft" ||
+    next === "queued" ||
+    next === "pending" ||
+    next === "submitted" ||
+    next === "submitted_for_review" ||
+    next === "awaiting_review" ||
+    next === "in_review" ||
+    next === "inreview" ||
+    next === "review" ||
+    next === "under_review"
+  ) return "pending_review";
+  if (next === "approved" || next === "reviewed") return "approved";
+  if (next === "published" || next === "live" || next.startsWith("publish") || next.startsWith("live_")) return "published";
+  if (next === "rejected" || next === "rejected_by_admin") return "rejected";
+  if (next === "archived" || next === "hidden") return "archived";
+  return next === "pending_review" ? next : "pending_review";
+}
+
+function isPublishedNewsItem(value = "") {
+  return normalizeNewsStatusValue(value) === "published";
+}
+
 async function syncPublicNewsFeedCache(items = []) {
   if (!Array.isArray(items)) return;
   const publishedItems = items
-    .filter((item) => String(item?.status || "").trim().toLowerCase() === "published")
+    .filter((item) => isPublishedNewsItem(item?.status || ""))
     .map((item) => ({ ...item }))
     .sort((a, b) => {
       const aTime = String(a.publishedAt || a.updatedAt || a.createdAt || "");
@@ -679,13 +729,7 @@ async function syncPublicNewsFeedCache(items = []) {
       cachedAt: new Date().toISOString(),
     };
     localStorage.setItem(PUBLIC_NEWS_FEED_CACHE_KEY, JSON.stringify(feed));
-    await ensureApiBase();
-    await fetch(`${API_BASE}/news/feed`, {
-      method: "POST",
-      headers: getHeaders(),
-      cache: "no-store",
-      body: JSON.stringify({ items: publishedItems }),
-    });
+   
   } catch (error) {
     void error;
   }
@@ -729,16 +773,17 @@ function slugifyNewsText(value = "") {
 }
 
 function getNewsStatusLabel(status = "") {
-  const next = String(status || "").trim().toLowerCase();
+  const next = normalizeNewsStatusValue(status);
   if (next === "pending_review") return "In review";
   if (next === "approved") return "Approved";
   if (next === "published") return "Published";
   if (next === "rejected") return "Rejected";
-  return next || "Unknown";
+  if (next === "archived") return "Archived";
+  return "Unknown";
 }
 
 function getNewsStatusClass(status = "") {
-  const next = String(status || "").trim().toLowerCase();
+  const next = normalizeNewsStatusValue(status);
   if (next === "published") return "st-pub";
   if (next === "approved" || next === "pending_review") return "st-rev";
   if (next === "rejected") return "st-draft";
@@ -934,12 +979,12 @@ function getNewsActivityEntries(limit = 50) {
       actor: run.triggeredBy || "system",
       avatar: "CR",
       title: "Collection run",
-      detail: `${String(run.status || "success").toUpperCase()} Â· ${Number(run.sourceCount || 0)} sources Â· ${Number(run.addedCount || 0)} added, ${Number(run.updatedCount || 0)} updated, ${Number(run.errorCount || 0)} errors`,
+      detail: `${String(run.status || "success").toUpperCase()} · ${Number(run.sourceCount || 0)} sources · ${Number(run.addedCount || 0)} added, ${Number(run.updatedCount || 0)} updated, ${Number(run.errorCount || 0)} errors`,
     });
   });
 
   items.forEach((item) => {
-    const status = String(item.status || "").trim().toLowerCase();
+    const status = normalizeNewsStatusValue(item.status || "");
     const actor = item.author || item.sourceName || "Not set";
     const action = status === "published"
       ? "published"
@@ -987,7 +1032,7 @@ function renderActivityEntries(target, entries, compact = false) {
           : "";
         const textHtml = isItem
           ? `<strong>${actor}</strong> ${detail ? `${detail} <strong>${title}</strong>` : `<strong>${title}</strong>`}`
-          : `<strong>${title}</strong> by <strong>${actor}</strong>${detail ? ` Â· ${detail}` : ""}`;
+          : `<strong>${title}</strong> by <strong>${actor}</strong>${detail ? ` · ${detail}` : ""}`;
         return `
           <div class="act-item${compact ? " compact" : ""}">
             <div class="act-av">${avatar}</div>
@@ -1005,7 +1050,7 @@ function renderActivityEntries(target, entries, compact = false) {
 function renderDashboardView() {
   const data = getNewsSourceUsage();
   const counts = data.items.reduce((accumulator, item) => {
-    const status = String(item.status || "").trim().toLowerCase();
+    const status = normalizeNewsStatusValue(item.status || "");
     if (accumulator[status] !== undefined) accumulator[status] += 1;
     return accumulator;
   }, { pending_review: 0, approved: 0, published: 0, rejected: 0 });
@@ -1031,7 +1076,7 @@ function renderDashboardView() {
           const statusLabel = getNewsStatusLabel(item.status || "");
           const statusClass = getNewsStatusClass(item.status || "");
           const modifiedAt = formatNewsDateTime(item.updatedAt || item.publishedAt || item.createdAt || item.collectedAt || "");
-          const viewsValue = formatQueueViews(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views ?? "â€”");
+          const viewsValue = formatQueueViews(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views ?? "—");
           return `
             <tr data-news-id="${escapeHtml(item.id || "")}">
               <td class="title-cell" data-news-id="${escapeHtml(item.id || "")}">${escapeHtml(item.title || "Untitled article")}</td>
@@ -1056,7 +1101,7 @@ function renderActivityView() {
   const total = document.getElementById("activityTotalCount");
   if (total) total.textContent = String(entries.length);
   const published = document.getElementById("activityPublishedCount");
-  if (published) published.textContent = String(data.items.filter((item) => String(item.status || "").trim().toLowerCase() === "published").length);
+  if (published) published.textContent = String(data.items.filter((item) => isPublishedNewsItem(item.status || "")).length);
   const manual = document.getElementById("activityManualCount");
   if (manual) manual.textContent = String(data.manualCount);
   const runs = document.getElementById("activityRunCount");
@@ -1082,7 +1127,7 @@ function renderSourcesView() {
           const lastCollected = source.lastCollectedAt ? formatNewsDateTime(source.lastCollectedAt) : "Never";
           const firstSeen = source.firstSeenAt ? formatNewsDateTime(source.firstSeenAt) : "Not set";
           const actions = isManual
-            ? `<div class="tactions"><button type="button" class="tact" disabled title="Admin entries are managed by admins">â€”</button></div>`
+            ? `<div class="tactions"><button type="button" class="tact" disabled title="Admin entries are managed by admins">—</button></div>`
             : `<div class="tactions"><button type="button" class="tact" data-source-action="edit" data-source-id="${escapeHtml(source.id || "")}">Edit</button><button type="button" class="tact del" data-source-action="remove" data-source-id="${escapeHtml(source.id || "")}">Remove</button></div>`;
           return `
             <tr data-source-id="${escapeHtml(source.id || "")}" data-source-manual="${isManual ? "true" : "false"}">
@@ -1110,11 +1155,11 @@ function renderSourcesView() {
   const sourceArticleCount = document.getElementById("sourceArticleCount");
   if (sourceArticleCount) sourceArticleCount.textContent = String(data.liveArticleCount);
   const sourceLastRun = document.getElementById("sourceLastRun");
-  if (sourceLastRun) sourceLastRun.textContent = data.latestRun ? formatNewsDateTime(data.latestRun.startedAt || data.latestRun.createdAt || data.latestRun.finishedAt || "") : "â€”";
+  if (sourceLastRun) sourceLastRun.textContent = data.latestRun ? formatNewsDateTime(data.latestRun.startedAt || data.latestRun.createdAt || data.latestRun.finishedAt || "") : "—";
   const sourceLastRunMeta = document.getElementById("sourceLastRunMeta");
   if (sourceLastRunMeta) {
     sourceLastRunMeta.textContent = data.latestRun
-      ? `${String(data.latestRun.status || "success").toUpperCase()} Â· ${Number(data.latestRun.sourceCount || 0)} sources Â· ${Number(data.latestRun.addedCount || 0)} added`
+      ? `${String(data.latestRun.status || "success").toUpperCase()} · ${Number(data.latestRun.sourceCount || 0)} sources · ${Number(data.latestRun.addedCount || 0)} added`
       : "No collection yet";
   }
   const sourceBadge = document.getElementById("sourceCountBadge");
@@ -1126,7 +1171,7 @@ function renderSourcesView() {
       ? data.runs.slice(0, 6).map((run) => `
           <div class="news-run-item">
             <div class="news-run-name">${escapeHtml(formatNewsDateTime(run.startedAt || run.createdAt || run.finishedAt || ""))}</div>
-            <div class="news-run-meta">${escapeHtml(String(run.status || "success").toUpperCase())} Â· ${escapeHtml(run.triggeredBy || "system")} Â· ${escapeHtml(run.sourceCount || 0)} sources, ${escapeHtml(run.addedCount || 0)} added, ${escapeHtml(run.updatedCount || 0)} updated, ${escapeHtml(run.errorCount || 0)} errors</div>
+            <div class="news-run-meta">${escapeHtml(String(run.status || "success").toUpperCase())} · ${escapeHtml(run.triggeredBy || "system")} · ${escapeHtml(run.sourceCount || 0)} sources, ${escapeHtml(run.addedCount || 0)} added, ${escapeHtml(run.updatedCount || 0)} updated, ${escapeHtml(run.errorCount || 0)} errors</div>
           </div>
         `).join("")
       : `<div class="news-empty" style="margin:0">No collection runs recorded yet.</div>`;
@@ -1544,6 +1589,103 @@ function syncEditorPreview() {
   if (titleEl) titleEl.textContent = metaTitle || headline || "Your article title will appear here";
   if (descEl) descEl.textContent = metaDescription || excerpt || "Write a meta description to preview how the article may appear in search results.";
   if (tagEl) tagEl.textContent = tags.length ? `Tags: ${tags.join(", ")}` : "No tags added yet.";
+  scheduleNewsEditorAutosave();
+}
+
+function readNewsEditorDraft() {
+  try {
+    const raw = localStorage.getItem(NEWS_EDITOR_DRAFT_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== "object" || !draft.payload || typeof draft.payload !== "object") return null;
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function clearNewsEditorDraft() {
+  if (newsEditorAutosaveTimer) {
+    clearTimeout(newsEditorAutosaveTimer);
+    newsEditorAutosaveTimer = null;
+  }
+  try {
+    localStorage.removeItem(NEWS_EDITOR_DRAFT_KEY);
+  } catch {}
+}
+
+function hasMeaningfulNewsDraft(payload = {}) {
+  return Boolean(
+    String(payload.title || "").trim() ||
+    String(payload.summary || "").trim() ||
+    String(payload.content || "").trim() ||
+    String(payload.sourceName || "").trim() ||
+    String(payload.metaTitle || "").trim() ||
+    String(payload.metaDescription || "").trim() ||
+    String(payload.slug || "").trim() ||
+    (Array.isArray(payload.tags) && payload.tags.length) ||
+    String(payload.imageUrl || "").trim()
+  );
+}
+
+function saveNewsEditorDraft() {
+  const payload = getEditorPayload();
+  if (!hasMeaningfulNewsDraft(payload)) return;
+  try {
+    localStorage.setItem(NEWS_EDITOR_DRAFT_KEY, JSON.stringify({
+      version: 1,
+      savedAt: new Date().toISOString(),
+      editingNewsId: String(editingNewsId || "").trim(),
+      payload,
+    }));
+  } catch (error) {
+    console.warn("Could not autosave News Studio draft.", error);
+  }
+}
+
+function scheduleNewsEditorAutosave() {
+  if (newsEditorAutosaveTimer) clearTimeout(newsEditorAutosaveTimer);
+  newsEditorAutosaveTimer = setTimeout(() => {
+    newsEditorAutosaveTimer = null;
+    saveNewsEditorDraft();
+  }, 500);
+}
+
+function closeNewsDraftModal() {
+  const modal = document.getElementById("newsDraftModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function discardNewsEditorDraft() {
+  clearNewsEditorDraft();
+  closeNewsDraftModal();
+}
+
+function recoverNewsEditorDraft() {
+  const draft = readNewsEditorDraft();
+  if (!draft) {
+    closeNewsDraftModal();
+    return;
+  }
+  editingNewsId = String(draft.editingNewsId || "").trim();
+  fillEditorFromItem({ ...(draft.payload || {}), id: editingNewsId });
+  closeNewsDraftModal();
+  go("editor");
+}
+
+function offerNewsEditorDraftRecovery() {
+  const draft = readNewsEditorDraft();
+  if (!draft || !hasMeaningfulNewsDraft(draft.payload)) return;
+  const modal = document.getElementById("newsDraftModal");
+  const message = document.getElementById("newsDraftModalMessage");
+  if (!modal) return;
+  const savedAt = new Date(draft.savedAt || "");
+  const when = Number.isNaN(savedAt.getTime()) ? "earlier" : savedAt.toLocaleString();
+  if (message) message.textContent = "An unfinished article draft was saved on this device " + when + ". Recover it or discard it.";
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
 }
 
 function resetEditorForm() {
@@ -1627,7 +1769,7 @@ function getVisibleNewsItems() {
   const query = String(newsPipelineState.search || "").trim().toLowerCase();
   return Array.isArray(newsPipelineState.items)
     ? newsPipelineState.items.filter((item) => {
-        const status = String(item?.status || "").trim().toLowerCase();
+        const status = normalizeNewsStatusValue(item?.status || "");
         const matchesStatus = newsPipelineState.filter === "all" || status === newsPipelineState.filter;
         const haystack = [
           item?.title,
@@ -1949,7 +2091,7 @@ function formatQueueViews(value) {
     if (numeric >= 1000) return `${Math.round((numeric / 1000) * 10) / 10}K`;
     return String(Math.round(numeric));
   }
-  return String(value || "â€”");
+  return String(value || "—");
 }
 
 function sortQueueItems(items = []) {
@@ -2032,6 +2174,16 @@ function fillEditorFromItem(item = {}) {
 }
 
 function startNewArticle() {
+  if (newsEditorAutosaveTimer) {
+    clearTimeout(newsEditorAutosaveTimer);
+    newsEditorAutosaveTimer = null;
+  }
+  saveNewsEditorDraft();
+  if (readNewsEditorDraft()) {
+    go("editor");
+    offerNewsEditorDraftRecovery();
+    return;
+  }
   editingNewsId = "";
   resetEditorForm();
   go("editor");
@@ -2066,7 +2218,7 @@ function renderNewsPipeline() {
     rejected: 0,
   };
   newsPipelineState.items.forEach((item) => {
-    const status = String(item?.status || "").trim().toLowerCase();
+    const status = normalizeNewsStatusValue(item?.status || "");
     if (counts[status] !== undefined) counts[status] += 1;
   });
   const selected = getSelectedNewsItem();
@@ -2145,9 +2297,11 @@ function renderNewsPipeline() {
           <textarea class="ft" id="newsReviewNote" rows="4" placeholder="Add an internal review note...">${escapeHtml(selected.reviewNote || "")}</textarea>
         </div>
         <div class="news-pipeline-detail-actions">
-          <button type="button" class="btn btn-s btn-sm" data-news-action="approve">Approve</button>
+          ${normalizeNewsStatusValue(selected.status || "") === "published"
+            ? `<button type="button" class="btn btn-d btn-sm" data-news-action="unpublish">Unpublish</button>`
+            : `<button type="button" class="btn btn-s btn-sm" data-news-action="approve">Approve</button>
           <button type="button" class="btn btn-p btn-sm" data-news-action="publish">Publish</button>
-          <button type="button" class="btn btn-d btn-sm" data-news-action="reject">Reject</button>
+          <button type="button" class="btn btn-d btn-sm" data-news-action="reject">Reject</button>`}
         </div>
       </div>
     `
@@ -2158,7 +2312,7 @@ function renderNewsPipeline() {
         .map((source) => `
           <div class="news-source-item">
             <div class="news-source-name">${escapeHtml(source.name || source.id || "Source")}</div>
-            <div class="news-source-meta">${escapeHtml(source.enabled === false ? "Disabled" : "Enabled")} Â· ${escapeHtml(source.extractMode || "structured")} Â· ${escapeHtml(source.category || "clinical-news")}</div>
+            <div class="news-source-meta">${escapeHtml(source.enabled === false ? "Disabled" : "Enabled")} · ${escapeHtml(source.extractMode || "structured")} · ${escapeHtml(source.category || "clinical-news")}</div>
             <div class="news-source-url">${escapeHtml(source.url || "")}</div>
             <div class="news-source-meta">Last run: ${escapeHtml(source.lastCollectedAt ? formatNewsDateTime(source.lastCollectedAt) : "Never")}</div>
           </div>
@@ -2172,7 +2326,7 @@ function renderNewsPipeline() {
         .map((run) => `
           <div class="news-run-item">
             <div class="news-run-name">${escapeHtml(formatNewsDateTime(run.startedAt || run.createdAt || ""))}</div>
-            <div class="news-run-meta">${escapeHtml(String(run.status || "success").toUpperCase())} Â· ${escapeHtml(run.triggeredBy || "system")} Â· ${escapeHtml(run.addedCount || 0)} added, ${escapeHtml(run.updatedCount || 0)} updated, ${escapeHtml(run.errorCount || 0)} errors</div>
+            <div class="news-run-meta">${escapeHtml(String(run.status || "success").toUpperCase())} · ${escapeHtml(run.triggeredBy || "system")} · ${escapeHtml(run.addedCount || 0)} added, ${escapeHtml(run.updatedCount || 0)} updated, ${escapeHtml(run.errorCount || 0)} errors</div>
           </div>
         `)
         .join("")
@@ -2242,7 +2396,7 @@ function getQueueItems() {
   const query = String(newsPipelineState.search || '').trim().toLowerCase();
   const items = Array.isArray(newsPipelineState.items) ? newsPipelineState.items : [];
   return sortQueueItems(items.filter((item) => {
-    const status = String(item?.status || '').trim().toLowerCase();
+    const status = normalizeNewsStatusValue(item?.status || '');
     const matchesStatus = newsPipelineState.filter === 'all' || status === newsPipelineState.filter;
     const haystack = [
       item?.title,
@@ -2285,7 +2439,7 @@ function renderNewsQueue() {
   renderNewsCategoriesView();
 
   const counts = (Array.isArray(newsPipelineState.items) ? newsPipelineState.items : []).reduce((accumulator, item) => {
-    const status = String(item?.status || "").trim().toLowerCase();
+    const status = normalizeNewsStatusValue(item?.status || "");
     if (accumulator[status] !== undefined) accumulator[status] += 1;
     return accumulator;
   }, {
@@ -2313,24 +2467,32 @@ function renderNewsQueue() {
           const statusLabel = getNewsStatusLabel(item.status || "");
           const statusClass = getNewsStatusClass(item.status || "");
           const modifiedAt = formatNewsDateTime(item.updatedAt || item.publishedAt || item.createdAt || "");
-          const viewsValue = formatQueueViews(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views ?? "â€”");
+          const viewsValue = formatQueueViews(item.views ?? item.viewCount ?? item.readCount ?? item.metrics?.views ?? "—");
           return `
             <tr data-news-id="${escapeHtml(item.id || "")}" data-status="${escapeHtml(String(item.status || "").trim().toLowerCase())}">
-              <td><input type="checkbox" aria-label="Select ${escapeHtml(item.title || "article")}"></td>
               <td>
                 <div class="title-cell" title="${escapeHtml(item.title || "Untitled article")}">${escapeHtml(item.title || "Untitled article")}</div>
+                ${item.featured ? '<span style="display:inline-block;margin-top:5px;padding:2px 7px;border-radius:999px;background:#fff3cd;color:#8a5a00;font-size:10px;font-weight:700;letter-spacing:.04em">FEATURED</span>' : ''}
                 <div style="font-size:12px;color:var(--t3);margin-top:3px;max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.summary || item.content || "No summary provided.")}</div>
               </td>
-              <td>${escapeHtml(item.author || item.sourceName || "Not set")}</td>
+              <td>${escapeHtml(item.sourceName || item.sourceId || "Not set")}</td><td>${escapeHtml(item.author || "Not set")}</td>
               <td><span class="dot" style="background:${escapeHtml(getCategoryDotColor(item.category || ""))}"></span>${escapeHtml(category)}</td>
               <td><span class="status ${statusClass}">${escapeHtml(statusLabel)}</span></td>
               <td>${escapeHtml(viewsValue)}</td>
               <td>${escapeHtml(modifiedAt)}</td>
               <td>
                 <div class="tactions">
-                  <button type="button" class="tact" data-queue-action="edit" data-news-id="${escapeHtml(item.id || "")}" aria-label="Edit article">âœŽ</button>
-                  <button type="button" class="tact" data-queue-action="view" data-news-id="${escapeHtml(item.id || "")}" aria-label="View article">ðŸ‘</button>
-                </div>
+                  <button type="button" class="tact" data-queue-action="edit" data-news-id="${escapeHtml(item.id || "")}" aria-label="Edit article">&#9998;</button>
+                  <button type="button" class="tact" data-queue-action="view" data-news-id="${escapeHtml(item.id || "")}" aria-label="View article">&#128065;</button>
+<button
+  type="button"
+  class="tact"
+  data-queue-action="toggle-featured"
+  data-news-id="${escapeHtml(item.id || "")}"
+  data-featured="${item.featured ? "false" : "true"}"
+  title="${item.featured ? "Remove Featured" : "Add to Featured"}"
+  aria-label="${item.featured ? "Remove Featured" : "Add to Featured"}"
+>${item.featured ? "★" : "☆"}</button>                </div>
               </td>
             </tr>
           `;
@@ -2343,7 +2505,7 @@ function renderNewsQueue() {
     const search = String(newsPipelineState.search || "").trim();
     const filterLabel = filterButtons.find(([key]) => key === newsPipelineState.filter)?.[1] || "All";
     queueInfo.textContent = pageState.total
-      ? `Showing ${pageState.start + 1}-${pageState.end} of ${pageState.total} article${pageState.total === 1 ? "" : "s"} Â· ${filterLabel}${search ? ` Â· Search: "${search}"` : ""} Â· Page ${newsQueuePage} of ${pageState.totalPages}`
+      ? `Showing ${pageState.start + 1}-${pageState.end} of ${pageState.total} article${pageState.total === 1 ? "" : "s"} · ${filterLabel}${search ? ` · Search: "${search}"` : ""} · Page ${newsQueuePage} of ${pageState.totalPages}`
       : `No articles match ${search ? `the search "${search}"` : "this filter"}.`;
   }
 
@@ -2469,6 +2631,55 @@ async function collectLatestNews() {
   }
 }
 
+async function toggleNewsFeatured(newsId, featured) {
+  const safeId = String(newsId || "").trim();
+  if (!safeId) return false;
+
+  try {
+    await ensureApiBase();
+
+    const res = await fetch(
+      `${API_BASE}/admin/news/${encodeURIComponent(safeId)}`,
+      {
+        method: "PATCH",
+        headers: getHeaders(),
+        cache: "no-store",
+        body: JSON.stringify({ featured: Boolean(featured) }),
+      },
+    );
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(
+        data?.error || `Could not update Featured status (${res.status})`,
+      );
+    }
+
+    const index = newsPipelineState.items.findIndex(
+      (item) => String(item?.id || "") === safeId,
+    );
+
+    if (index !== -1) {
+      newsPipelineState.items[index] = {
+        ...newsPipelineState.items[index],
+        ...(data.item || {}),
+        featured: Boolean(data.item?.featured ?? featured),
+      };
+    }
+
+    showNotice(
+      featured ? "Article added to Featured." : "Article removed from Featured.",
+      "success",
+    );
+    renderNewsQueue();
+    return true;
+  } catch (error) {
+    showNotice(String(error?.message || error), "error");
+    return false;
+  }
+}
+
 async function saveManualArticle() {
   const payload = getEditorPayload();
   if (!payload.title) {
@@ -2497,6 +2708,7 @@ async function saveManualArticle() {
       throw new Error(data.error || "Failed to save article");
     }
     showNotice(isEditing ? "Article updated." : "Manual article saved to the review queue.", "info");
+    clearNewsEditorDraft();
     resetEditorForm();
     await loadNewsPipeline();
     editingNewsId = "";
@@ -2517,6 +2729,7 @@ async function runNewsAction(action, newsId) {
     approve: `/admin/news/${encodeURIComponent(safeId)}/approve`,
     publish: `/admin/news/${encodeURIComponent(safeId)}/publish`,
     reject: `/admin/news/${encodeURIComponent(safeId)}/reject`,
+    unpublish: `/admin/news/${encodeURIComponent(safeId)}/reject`,
   };
   const endpoint = endpointMap[action];
   if (!endpoint) return false;
@@ -2533,7 +2746,7 @@ async function runNewsAction(action, newsId) {
     if (!res.ok) {
       throw new Error(data.error || "Failed to update the news item");
     }
-    showNotice(`Article ${action}d successfully.`, "info");
+    showNotice(`Article ${action === "reject" ? "rejected" : action === "unpublish" ? "unpublished" : action === "approve" ? "approved" : "published"} successfully.`, "info");
     newsPipelineState.selectedId = safeId;
     await loadNewsPipeline();
     return true;
@@ -2572,11 +2785,25 @@ function go(view) {
   const titleEl = document.getElementById("pageTitle");
   if (titleEl) titleEl.textContent = titles[view] || view;
   const backBtn = document.getElementById("backBtn");
-  const desktopNewBtn = document.getElementById("newArticleBtn");
-  const mobileNewBtn = document.getElementById("mobileNewArticleBtn");
-  if (backBtn) backBtn.style.display = view === "editor" ? "inline-flex" : "none";
-  if (desktopNewBtn) desktopNewBtn.style.display = view === "editor" ? "none" : "inline-flex";
-  if (mobileNewBtn) mobileNewBtn.hidden = view === "editor";
+  const newsNavBtn = document.getElementById("newsNavBtn");
+  const newArticleBtn = document.getElementById("newArticleBtn");
+  if (backBtn) {
+    backBtn.style.display = view === "editor" ? "inline-flex" : "none";
+  }
+  if (newsNavBtn) {
+    const showNewsNav = view === "dashboard" || view === "articles";
+    newsNavBtn.style.display = showNewsNav ? "inline-flex" : "none";
+    if (showNewsNav) {
+      const nextView = view === "dashboard" ? "articles" : "dashboard";
+      newsNavBtn.onclick = () => go(nextView);
+      newsNavBtn.title = nextView === "articles" ? "Open review queue" : "Back to dashboard";
+      newsNavBtn.setAttribute("aria-label", nextView === "articles" ? "Open review queue" : "Back to dashboard");
+      newsNavBtn.innerHTML = nextView === "articles" ? NEWS_STUDIO_ARTICLES_ICON : NEWS_STUDIO_DASHBOARD_ICON;
+    }
+  }
+  if (newArticleBtn) {
+    newArticleBtn.style.display = view === "editor" ? "none" : "inline-flex";
+  }
   if (newsStudioLoaded) {
     renderNewsQueue();
   }
@@ -2618,8 +2845,73 @@ function toggleNav(open) {
   backdrop.classList.toggle("show", !!open);
 }
 
+function closeNewsActionModal() {
+  pendingNewsAction = null;
+  const modal = document.getElementById("newsActionModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function openNewsActionModal(action, newsId) {
+  const safeAction = String(action || "").trim().toLowerCase();
+  const safeId = String(newsId || "").trim();
+  const item = newsPipelineState.items.find((entry) => String(entry?.id || "") === safeId);
+  if (!item || (safeAction !== "publish" && safeAction !== "reject" && safeAction !== "unpublish")) return;
+  pendingNewsAction = { action: safeAction, newsId: safeId };
+  const isReject = safeAction === "reject" || safeAction === "unpublish";
+  const title = document.getElementById("newsActionModalTitle");
+  const message = document.getElementById("newsActionModalMessage");
+  const confirm = document.getElementById("newsActionModalConfirm");
+  if (title) title.textContent = safeAction === "unpublish" ? "Unpublish article?" : isReject ? "Reject article?" : "Publish article?";
+  if (message) message.textContent = isReject
+    ? "This will unpublish \"" + (item.title || "this article") + "\" immediately and move it to the Rejected table."
+    : "This will make \"" + (item.title || "this article") + "\" visible on the public news page.";
+  if (confirm) {
+    confirm.textContent = safeAction === "unpublish" ? "Unpublish article" : isReject ? "Reject article" : "Publish article";
+    confirm.classList.toggle("btn-d", isReject);
+    confirm.classList.toggle("btn-p", !isReject);
+  }
+  const modal = document.getElementById("newsActionModal");
+  if (!modal) return;
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  confirm?.focus();
+}
+
+async function confirmNewsAction() {
+  const pending = pendingNewsAction;
+  closeNewsActionModal();
+  if (!pending) return;
+  await runNewsAction(pending.action, pending.newsId);
+}
+
 function initNewsStudio() {
   resetEditorForm();
+  const pipelineMount = document.getElementById("newsPipelineMount");
+  pipelineMount?.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-news-action]");
+    if (!(button instanceof HTMLElement)) return;
+    const action = String(button.dataset.newsAction || "").trim().toLowerCase();
+    const selectedId = String(newsPipelineState.selectedId || "").trim();
+    if (action === "publish" || action === "reject" || action === "unpublish") {
+      openNewsActionModal(action, selectedId);
+    } else if (action === "approve") {
+      void runNewsAction(action, selectedId);
+    }
+  });
+  document.getElementById("newsActionModalClose")?.addEventListener("click", closeNewsActionModal);
+  document.getElementById("newsActionModalCancel")?.addEventListener("click", closeNewsActionModal);
+  document.getElementById("newsActionModalConfirm")?.addEventListener("click", () => void confirmNewsAction());
+  document.getElementById("newsActionModal")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeNewsActionModal();
+  });
+  document.getElementById("newsDraftModalClose")?.addEventListener("click", discardNewsEditorDraft);
+  document.getElementById("newsDraftDiscardBtn")?.addEventListener("click", discardNewsEditorDraft);
+  document.getElementById("newsDraftRecoverBtn")?.addEventListener("click", recoverNewsEditorDraft);
+  document.getElementById("newsDraftModal")?.addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeNewsDraftModal();
+  });
   resetSourceForm();
   document.querySelectorAll("[data-news-toggle]").forEach((toggleEl) => {
     toggleEl.addEventListener("click", () => {
@@ -2683,6 +2975,10 @@ function initNewsStudio() {
   document.getElementById("newsMetaTitle")?.addEventListener("input", syncEditorPreview);
   document.getElementById("newsMetaDescription")?.addEventListener("input", syncEditorPreview);
   document.getElementById("newsSlug")?.addEventListener("input", syncEditorPreview);
+  ["newsPublishDate", "newsSourceName", "newsAuthor", "newsStatus"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", scheduleNewsEditorAutosave);
+    document.getElementById(id)?.addEventListener("change", scheduleNewsEditorAutosave);
+  });
   document.getElementById("newsBody")?.addEventListener("input", syncEditorPreview);
   document.getElementById("newsBody")?.addEventListener("blur", syncEditorPreview);
   document.getElementById("newsBody")?.addEventListener("paste", (event) => {
@@ -2761,12 +3057,6 @@ function initNewsStudio() {
   document.getElementById("newsSubmitReviewBtn")?.addEventListener("click", () => {
     void saveManualArticle();
   });
-  document.getElementById("queueCollectBtn")?.addEventListener("click", () => {
-    void collectLatestNews();
-  });
-  document.getElementById("queueRefreshBtn")?.addEventListener("click", () => {
-    void loadNewsPipeline();
-  });
   document.getElementById("queueSort")?.addEventListener("change", () => {
     newsQueuePage = 1;
     renderNewsQueue();
@@ -2832,7 +3122,7 @@ function initNewsStudio() {
     const row = target.closest("[data-news-id]");
     if (row instanceof HTMLElement) {
       const newsId = String(row.dataset.newsId || "").trim();
-      if (newsId) openNewsEditor(newsId);
+      if (newsId) openNewsStoryReview(newsId);
     }
   });
   document.getElementById("articleRows")?.addEventListener("click", (event) => {
@@ -2842,12 +3132,20 @@ function initNewsStudio() {
     if (actionButton instanceof HTMLElement) {
       const newsId = String(actionButton.dataset.newsId || "").trim();
       const action = String(actionButton.dataset.queueAction || "").trim().toLowerCase();
-      if (action === "edit") {
-        openNewsEditor(newsId);
-      } else if (action === "view") {
-        openNewsStoryReview(newsId);
-      }
+     if (action === "toggle-featured") {
+  const nextFeatured = actionButton.dataset.featured === "true";
+  void toggleNewsFeatured(newsId, nextFeatured);
+} else if (action === "edit") {
+  openNewsEditor(newsId);
+} else if (action === "view") {
+  openNewsStoryReview(newsId);
+}
       return;
+    }
+    const row = target.closest("tr[data-news-id]");
+    if (row instanceof HTMLElement) {
+      const newsId = String(row.dataset.newsId || "").trim();
+      if (newsId) openNewsStoryReview(newsId);
     }
   });
   document.querySelector(".search input")?.addEventListener("input", (event) => {
@@ -2871,12 +3169,22 @@ function initNewsStudio() {
   });
   void loadNewsPipeline();
   go(launchView);
+  window.setTimeout(offerNewsEditorDraftRecovery, 0);
 }
 
 initNewsStudio();
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 

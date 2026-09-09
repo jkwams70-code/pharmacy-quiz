@@ -2371,6 +2371,8 @@ const OFFLINE_SUBSCRIPTION_GRACE_MS =
 let subscriptionEntitlement = null;
 let subscriptionEntitlementHydrated = false;
 let subscriptionEntitlementHydrationPromise = null;
+let subscriptionExpiryTimerHandle = null;
+const SUBSCRIPTION_EXPIRY_TIMER_MAX_MS = 2_147_000_000;
 
 function getSubscriptionEntitlementValue(entry) {
   return entry?.value && typeof entry.value === "object"
@@ -2445,6 +2447,83 @@ async function cacheSubscriptionEntitlement(access = null) {
   }
 }
 
+function stopSubscriptionExpiryTimer() {
+  if (subscriptionExpiryTimerHandle) {
+    clearTimeout(subscriptionExpiryTimerHandle);
+    subscriptionExpiryTimerHandle = null;
+  }
+}
+
+function handleSubscriptionExpiry() {
+  const access = resolveSubscriptionAccess(
+    currentUser,
+    subscriptionStatusSnapshot,
+  );
+
+  const expirationCandidates = [
+    access?.expirationAt,
+    currentUser?.subscriptionExpirationAt,
+    currentUser?.subscriptionEndsAt,
+    subscriptionStatusSnapshot?.subscription?.expirationAt,
+    subscriptionStatusSnapshot?.user?.subscriptionExpirationAt,
+  ]
+    .map((value) => Date.parse(String(value || "")))
+    .filter(Number.isFinite);
+
+  const expirationTime = expirationCandidates.length
+    ? Math.max(...expirationCandidates)
+    : NaN;
+
+  if (!Number.isFinite(expirationTime) || Date.now() < expirationTime) {
+    scheduleSubscriptionExpiryTimer();
+    return;
+  }
+
+  const expiredAccess = {
+    ...(access || {}),
+    status: "expired",
+    isActive: false,
+    isLocked: true,
+    expirationAt: new Date(expirationTime).toISOString(),
+    lockedReason: "Your subscription has ended.",
+  };
+  if (currentUser) {
+    currentUser.subscriptionStatus = "expired";
+    currentUser.subscriptionAccess = expiredAccess;
+  }
+  if (subscriptionStatusSnapshot) {
+    subscriptionStatusSnapshot = { ...subscriptionStatusSnapshot, subscription: expiredAccess };
+  }
+  void cacheSubscriptionEntitlement(expiredAccess);
+  renderAuthState();
+
+  const activeScreen = getActiveScreenId();
+  if (SUBSCRIPTION_LOCKED_FEATURES.has(getSubscriptionGateFeature(activeScreen))) {
+    openSubscriptionScreen({
+      intent: getSubscriptionGateFeature(activeScreen) || "subscription",
+      returnScreen: "quiz-menu",
+    });
+  }
+}
+
+function scheduleSubscriptionExpiryTimer() {
+  stopSubscriptionExpiryTimer();
+  const access = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
+  const expirationAt = access?.expirationAt || currentUser?.subscriptionExpirationAt || currentUser?.subscriptionEndsAt || "";
+  const expirationTime = Date.parse(String(expirationAt || ""));
+  if (!Number.isFinite(expirationTime)) return;
+
+  const delay = expirationTime - Date.now();
+  if (delay <= 0) {
+    handleSubscriptionExpiry();
+    return;
+  }
+
+  subscriptionExpiryTimerHandle = window.setTimeout(
+    handleSubscriptionExpiry,
+    Math.min(delay, SUBSCRIPTION_EXPIRY_TIMER_MAX_MS),
+  );
+}
 function hasUsableOfflineSubscriptionEntitlement() {
   const entitlement = subscriptionEntitlement;
   if (!entitlement) return false;
@@ -3491,34 +3570,18 @@ if (!hasMountedHub) {
     });
 }
 
-  // Refresh account and subscription state without blocking the screen.
-  void Promise.all([
-    refreshSharedAccountState({
-      force: true,
-      silent: true,
-      deferHydration: true,
-    }).catch(() => false),
+  // Use the current entitlement immediately; subscription expiry is timer-driven.
+  if (!requireSubscriptionAccess("gppqe")) {
+    return;
+  }
 
-    loadSubscriptionScreenData({
-      force: true,
-    }).catch(() => false),
-  ]).then(() => {
-    if (!gppqeScreen || gppqeScreen.classList.contains("hidden")) {
-      return;
-    }
+  renderGppqeScreen();
 
-    if (!requireSubscriptionAccess("gppqe")) {
-      return;
-    }
-
+  gppqePromptResumeForStudyStart(() => {
+    gppqeState.view = "hub";
+    gppqeState.notice = "";
+    gppqeState.historyModalOpen = false;
     renderGppqeScreen();
-
-    gppqePromptResumeForStudyStart(() => {
-      gppqeState.view = "hub";
-      gppqeState.notice = "";
-      gppqeState.historyModalOpen = false;
-      renderGppqeScreen();
-    });
   });
 }
 
@@ -7585,6 +7648,7 @@ let communityOverviewRefreshPromise = null;
 let communityOverviewPollHandle = null;
 let communityOverviewPollInFlight = false;
 let communityOverviewBackgroundPollingEnabled = false;
+let communityAccessDenied = false;
 let communityTypingBroadcastHandle = null;
 let communityTypingInactiveHandle = null;
 let communityAdminBroadcastAttachment = null;
@@ -10299,6 +10363,12 @@ function syncCommunityRealtimePresenceState() {
 }
 
 async function loadCommunityRealtimeConfig({ force = false } = {}) {
+  if (isSubscriptionLockedForFeature("community")) {
+    stopCommunityPresenceRealtimeSubscription();
+    communityRealtimeConfig = null;
+    communityRealtimeConfigPromise = null;
+    return null;
+  }
   if (!backendClient.isAuthenticated()) {
     stopCommunityPresenceRealtimeSubscription();
     communityRealtimeConfig = null;
@@ -10356,7 +10426,18 @@ function scheduleCommunityRealtimeOverviewRefresh() {
   }, 140);
 }
 
+function handleCommunityAccessDenied() {
+  communityAccessDenied = true;
+  teardownCommunityRealtime();
+  stopCommunityPresenceHeartbeat();
+  const activeScreen = getActiveScreenId();
+  if (isCommunityScreenId(activeScreen)) {
+    openSubscriptionScreen({ intent: "community", returnScreen: "quiz-menu" });
+  }
+}
+
 function refreshCommunityOverviewIfNeeded() {
+  if (communityAccessDenied) return;
   if (communityOverviewPollInFlight) return;
   if (!backendClient.isAuthenticated()) return;
   const activeScreenId = getActiveScreenId();
@@ -10370,6 +10451,7 @@ function refreshCommunityOverviewIfNeeded() {
 }
 
 function startCommunityOverviewPolling({ background = false } = {}) {
+  if (communityAccessDenied) return;
   if (background && !isCommunityScreenId(getActiveScreenId())) {
     return;
   }
@@ -10667,7 +10749,8 @@ async function pingCommunityPresence() {
   if (!currentUser?.id || !backendClient.isAuthenticated() || document.visibilityState === "hidden") return;
   try {
     await backendClient.pingCommunityPresence();
-  } catch {
+  } catch (error) {
+    if (Number(error?.status) === 403) handleCommunityAccessDenied();
     // Presence ping should stay silent.
   }
 }
@@ -11621,6 +11704,11 @@ async function joinCommunityConversationActiveCall(callPayload = null) {
 async function refreshCommunityConversationActiveCall({ silent = true, force = false } = {}) {
   const activeScreen = String(getActiveScreenId() || "").trim();
   const chatScreenOpen = activeScreen === "community-chat-screen";
+  const conversationType = String(communityState.activeConversation?.type || "").trim().toLowerCase();
+  if (conversationType && conversationType !== "direct") {
+    setCommunityChatActiveCallBar(null);
+    return null;
+  }
   const safeConversationId =
     String(communityState.activeConversation?.id || "").trim() ||
     String(communityState.activeCall?.conversationId || "").trim();
@@ -19956,6 +20044,12 @@ function renderCommunityView() {
 }
 
 async function loadCommunityOverview({ silent = false, preferCache = false } = {}) {
+  if (isSubscriptionLockedForFeature("community")) {
+    stopCommunityOverviewPolling({ force: true });
+    stopCommunityPresenceRealtimeSubscription();
+    teardownCommunityRealtime();
+    return null;
+  }
   if (!silent) {
     setCommunityFeedback("Loading community...");
   }
@@ -20009,7 +20103,8 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
           communityOverviewRefreshPromise = null;
         }
       })().catch((error) => {
-        if (Number(error?.status) === 401) {
+        if (Number(error?.status) === 401 || Number(error?.status) === 403) {
+          if (Number(error?.status) === 403) handleCommunityAccessDenied();
           communityState.overview = null;
           communityState.statuses = [];
           communityState.searchResults = null;
@@ -20048,6 +20143,7 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
       refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
     });
   } catch (error) {
+    if (Number(error?.status) === 403) return null;
     setCommunityFeedback(generalApiErrorMessage(error, "Community could not load right now."), true);
     renderCommunityNotificationBadges();
     communityState.resultsRenderSignature = "";
@@ -20502,11 +20598,24 @@ async function openCommunityProfile(userId = "") {
     }
     void (async () => {
       try {
-        const freshProfile = await backendClient.fetchCommunityProfile(userId, { preferCache: true });
-        const nextProfile = await ensureCommunityProfileLeaderboardStats(freshProfile, userId);
-        communityState.profile = nextProfile;
-        void setOfflineEntry(`community-profile:${safeUserId}`, nextProfile);
-        renderCommunityProfileView();
+        const freshProfile = await backendClient.fetchCommunityProfile(userId);
+
+let nextProfile = freshProfile;
+
+try {
+  nextProfile =
+    (await ensureCommunityProfileLeaderboardStats(freshProfile, userId)) ||
+    freshProfile;
+} catch (error) {
+  console.warn(
+    "Profile leaderboard enrichment failed; rendering base profile:",
+    error,
+  );
+}
+
+communityState.profile = nextProfile;
+void setOfflineEntry(`community-profile:${safeUserId}`, nextProfile);
+renderCommunityProfileView();
         requestAnimationFrame(() => {
           const communityProfileScrollEl = getCommunityProfileScrollEl();
           if (communityProfileScrollEl instanceof HTMLElement) {
@@ -20514,9 +20623,17 @@ async function openCommunityProfile(userId = "") {
           }
           syncCommunityGroupProfileHeaderOffset();
         });
-      } catch {
-        // Keep cached or loading state visible.
-      }
+      } catch (error) {
+  console.error("Learner profile failed after API response:", error);
+
+  if (communityProfileCardEl) {
+    communityProfileCardEl.innerHTML = `
+      <div class="community-empty-state is-chat">
+        Profile could not be displayed.
+      </div>
+    `;
+  }
+}
     })();
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Profile could not load right now."), true);
@@ -23512,9 +23629,13 @@ async function executeCommunityAction(action = "", payload = {}) {
 }
 
 async function openCommunityScreen() {
+  if (communityAccessDenied) {
+    openSubscriptionScreen({ intent: "community", returnScreen: "quiz-menu" });
+    return;
+  }
   const ok = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!ok) return;
-  await refreshSubscriptionAccessForAction();
+  refreshSubscriptionAccessForAction();
   if (!requireSubscriptionAccess("community")) {
     return;
   }
@@ -25041,7 +25162,7 @@ function selectNewsSearchQuery(query = "") {
 }
 
 async function openNewsScreen({ refresh = false } = {}) {
-  await refreshSubscriptionAccessForAction();
+  refreshSubscriptionAccessForAction();
 
   if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
     return;
@@ -31112,13 +31233,6 @@ async function openTopicLibrary(returnScreen = "quiz-menu") {
   // Render cached/current data immediately.
   renderTopicLibrary();
 
-  // Refresh account and topic data in the background.
-  void refreshSharedAccountState({
-    force: true,
-    silent: true,
-    deferHydration: true,
-  }).catch(() => false);
-
   void ensureTopicCatalogLoaded();
 }
 
@@ -33321,7 +33435,8 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
     return false;
   }
   try {
-    currentUser = await backendClient.fetchMe({ preferCache: true });
+    currentUser = await backendClient.fetchMe({ preferCache: false });
+    scheduleSubscriptionExpiryTimer();
     renderAuthState();
     scheduleSharedAccountHydration({ silent: true, deferHydration });
     return true;
@@ -33344,6 +33459,7 @@ let sharedAccountHydrationHandle = null;
 let sharedAccountHydrationInFlight = null;
 
 function stopSharedAccountStatePolling() {
+  stopSubscriptionExpiryTimer();
   if (sharedAccountStatePollingHandle) {
     clearInterval(sharedAccountStatePollingHandle);
     sharedAccountStatePollingHandle = null;
@@ -33355,12 +33471,9 @@ function startSharedAccountStatePolling() {
   if (!currentUser || !backendClient.isAuthenticated()) {
     return;
   }
-  sharedAccountStatePollingHandle = setInterval(() => {
-    if (document.hidden || !currentUser || !backendClient.isAuthenticated()) {
-      return;
-    }
-    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
-  }, 20_000);
+  // Subscription validity is tied to the server-provided expiry timestamp.
+  // Do not poll the account repeatedly while that entitlement is still valid.
+  sharedAccountStatePollingHandle = null;
 }
 
 function scheduleSharedAccountHydration({ silent = true, deferHydration = false } = {}) {
@@ -33420,6 +33533,8 @@ async function refreshSharedAccountState({
   sharedAccountStateRefreshInFlight = (async () => {
     const freshUser = await backendClient.fetchMe();
     currentUser = freshUser;
+    communityAccessDenied = false;
+    scheduleSubscriptionExpiryTimer();
     renderAuthState();
     syncPointsFromCurrentUser();
     writeCurrentSetupPoints(readCurrentSetupPoints(), {
@@ -33432,12 +33547,12 @@ async function refreshSharedAccountState({
     scheduleSharedAccountHydration({ silent, deferHydration });
     renderMenuDashboardStats();
     renderSetupPoints();
-    void loadDashboardTrendData({ force: false });
     renderDailyQuizUi();
     if (getActiveScreenId() === "subscription-screen") {
       renderSubscriptionScreen();
     }
     startSharedAccountStatePolling();
+    scheduleSubscriptionExpiryTimer();
     return true;
   })().finally(() => {
       sharedAccountStateRefreshInFlight = null;
@@ -33446,14 +33561,10 @@ async function refreshSharedAccountState({
   return sharedAccountStateRefreshInFlight;
 }
 
-async function refreshSubscriptionAccessForAction() {
-  if (!backendClient.isAuthenticated() || !currentUser) {
-    return false;
-  }
-  await Promise.allSettled([
-    refreshSharedAccountState({ force: true, silent: true, deferHydration: true }),
-    loadSubscriptionScreenData({ force: true }),
-  ]);
+function refreshSubscriptionAccessForAction() {
+  // Compatibility shim: navigation uses the latest entitlement immediately.
+  if (!backendClient.isAuthenticated() || !currentUser) return false;
+  scheduleSubscriptionExpiryTimer();
   return true;
 }
 
@@ -33490,15 +33601,13 @@ function openWelcomeRegisterFlow(event) {
 }
 
 async function handlePortalEntry() {
-  if (currentUser || backendClient.isAuthenticated()) {
-    showScreen("quiz-menu");
-    void restoreAuthSession({ deferHydration: true });
-    startQuestionBankBootstrap();
-    startBackendBootstrap();
-    return;
+  if (backendClient.isAuthenticated()) {
+    const restored = await restoreAuthSession({ deferHydration: true });
+    if (!restored) return;
+  } else {
+    const allowed = await ensureAuthenticated({ nextScreen: "quiz-menu" });
+    if (!allowed) return;
   }
-  const allowed = await ensureAuthenticated({ nextScreen: "quiz-menu" });
-  if (!allowed) return;
   showScreen("quiz-menu");
   startQuestionBankBootstrap();
   startBackendBootstrap();
@@ -33647,7 +33756,6 @@ async function handleAuthSubmit(event) {
         });
         renderPoints();
         scheduleSharedAccountHydration({ silent: true, deferHydration: true });
-        void loadDashboardTrendData({ force: false });
       } catch (postAuthHydrationError) {
         console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
       }
@@ -33677,8 +33785,7 @@ async function handleAuthSubmit(event) {
         });
         renderPoints();
         scheduleSharedAccountHydration({ silent: true, deferHydration: true });
-        void loadDashboardTrendData({ force: false });
-      } catch (postAuthHydrationError) {
+          } catch (postAuthHydrationError) {
         console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
       }
       return;
@@ -35350,7 +35457,7 @@ async function startMenuDrill(variant = "rapid") {
 
 if (rapidDrillBtn) {
   rapidDrillBtn.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("rapid")) {
       return;
     }
@@ -35388,7 +35495,7 @@ if (clinicalDrillBtn) {
 
 if (lawDrillBtn) {
   lawDrillBtn.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("law")) {
       return;
     }
@@ -35407,7 +35514,7 @@ if (menuLawTab) {
   menuLawTab.onclick = async () => {
     setMenuHubActiveTab("law");
 
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
 
     if (!requireSubscriptionAccess("law")) {
       return;
@@ -35432,7 +35539,7 @@ if (menuExtraTab) {
   menuExtraTab.onclick = () => {
     openExtraScreen();
 
-    void refreshSubscriptionAccessForAction().catch(() => false);
+    refreshSubscriptionAccessForAction();
   };
 }
 
@@ -35459,7 +35566,7 @@ if (drillsLobbyTabs.length) {
   drillsLobbyTabs.forEach((tab) => {
     tab.onclick = async () => {
       const variant = String(tab.dataset.drillVariant || "rapid").toLowerCase();
-      await refreshSubscriptionAccessForAction();
+      refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess(variant)) {
         return;
       }
@@ -35486,7 +35593,7 @@ if (menuNewsBtn) {
 
 if (menuGuidelinesBtn) {
   menuGuidelinesBtn.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("extra-content")) {
       return;
     }
@@ -35502,7 +35609,7 @@ if (extraScreen) {
         : null;
     if (!(target instanceof HTMLElement)) return;
     if (target.hasAttribute("data-medlens")) {
-      await refreshSubscriptionAccessForAction();
+      refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess("extra-content")) {
         return;
       }
@@ -35510,7 +35617,7 @@ if (extraScreen) {
       return;
     }
     if (target.hasAttribute("data-calculator")) {
-      await refreshSubscriptionAccessForAction();
+      refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess("extra-content")) {
         return;
       }
@@ -35576,12 +35683,6 @@ if (studyBtn) {
 
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
-
-    void refreshSharedAccountState({
-      force: true,
-      silent: true,
-      deferHydration: true,
-    }).catch(() => false);
 
     const modalState = buildResumeStudySessionModalState();
 
@@ -37009,8 +37110,9 @@ async function loadSubscriptionScreenData({ force = false } = {}) {
     }
     subscriptionStatusSnapshot = meResponse || null;
     await cacheSubscriptionEntitlement(
-  meResponse?.subscription || currentUser?.subscriptionAccess || null,
-);
+      meResponse?.subscription || currentUser?.subscriptionAccess || null,
+    );
+    scheduleSubscriptionExpiryTimer();
     renderSubscriptionScreen();
     return true;
   } catch (error) {
@@ -37062,6 +37164,12 @@ function isSubscriptionLockedForFeature(feature = "") {
     subscriptionStatusSnapshot,
   );
 
+  const expirationAt = access?.expirationAt || currentUser?.subscriptionExpirationAt || currentUser?.subscriptionEndsAt || "";
+  const expirationTime = Date.parse(String(expirationAt || ""));
+  if (Number.isFinite(expirationTime) && Date.now() >= expirationTime) {
+    return true;
+  }
+
   const currentStatus = String(
     access?.status ||
       subscriptionStatusSnapshot?.user?.subscriptionStatus ||
@@ -37074,23 +37182,31 @@ function isSubscriptionLockedForFeature(feature = "") {
   const isOnline = navigator.onLine !== false;
 
   if (isOnline) {
-    if (
-      currentStatus === "active" ||
-      currentStatus === "trial"
-    ) {
-      return false;
-    }
-
-    if (
-      currentStatus === "pending" ||
-      currentStatus === "expired" ||
-      currentStatus === "rejected"
-    ) {
-      return true;
-    }
-
-    return Boolean(access?.isLocked);
+  if (
+    currentStatus === "active" ||
+    currentStatus === "trial"
+  ) {
+    return false;
   }
+
+  if (
+    currentStatus === "pending" ||
+    currentStatus === "expired" ||
+    currentStatus === "rejected"
+  ) {
+    return true;
+  }
+
+  if (
+    currentUser &&
+    ["", "unknown", "loading"].includes(currentStatus)
+  ) {
+    // Allow navigation while the background subscription read is pending.
+    return false;
+  }
+
+  return Boolean(access?.isLocked);
+}
 
   // Offline premium access is limited by the cached 72-hour entitlement.
   if (hasUsableOfflineSubscriptionEntitlement()) {
@@ -37102,27 +37218,10 @@ function isSubscriptionLockedForFeature(feature = "") {
 
 let subscriptionRevalidationInFlight = false;
 
-async function revalidateSubscriptionEntitlement() {
-  if (
-    navigator.onLine === false ||
-    !backendClient.isAuthenticated() ||
-    !currentUser ||
-    subscriptionRevalidationInFlight
-  ) {
-    return false;
-  }
-
-  subscriptionRevalidationInFlight = true;
-
-  try {
-    await loadSubscriptionScreenData({ force: true });
-    return true;
-  } catch (error) {
-    console.warn("Subscription entitlement revalidation failed:", error);
-    return false;
-  } finally {
-    subscriptionRevalidationInFlight = false;
-  }
+function revalidateSubscriptionEntitlement() {
+  if (!backendClient.isAuthenticated() || !currentUser) return false;
+  scheduleSubscriptionExpiryTimer();
+  return true;
 }
 
 window.addEventListener("online", () => {
@@ -37135,15 +37234,33 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-function requireSubscriptionAccess(feature = "feature", returnScreen = getActiveScreenId() || "quiz-menu") {
+function requireSubscriptionAccess(
+  feature = "feature",
+  returnScreen = getActiveScreenId() || "quiz-menu",
+) {
   const gateFeature = getSubscriptionGateFeature(feature);
+
+
+  // Community navigation must not wait for subscription refresh.
+  // Backend API routes still enforce subscription access.
+  if (gateFeature === "community") {
+    return true;
+  }
+
+  // Do not block the first click while account data is loading.
+  if (!currentUser || !subscriptionStatusSnapshot) {
+    return true;
+  }
+
   if (!isSubscriptionLockedForFeature(gateFeature)) {
     return true;
   }
+
   openSubscriptionScreen({
     intent: gateFeature || feature,
     returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",
   });
+
   return false;
 }
 /* ==============================
@@ -37164,7 +37281,7 @@ async function startStudy() {
 
   const studyType = getCurrentStudyType();
   if (studyType === "law") {
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("law")) {
       return;
     }
@@ -37291,7 +37408,7 @@ async function startExam(count, requestedVariant = null) {
     .trim()
     .toLowerCase();
   const gateFeature = ["rapid", "sudden", "clinical", "law"].includes(variant) ? variant : "exam";
-  await refreshSubscriptionAccessForAction();
+  refreshSubscriptionAccessForAction();
   if (!requireSubscriptionAccess(gateFeature)) {
     return;
   }
@@ -39881,28 +39998,29 @@ function toggleModeHistory(containerId) {
 
 
 function showScreen(id, options = {}) {
-  const { recordHistory = true, skipSubscriptionGate = false } = options;
+  const {
+    recordHistory = true,
+    skipSubscriptionGate = false,
+  } = options;
+
   const normalizedId = String(id || "").trim();
-  if (!skipSubscriptionGate && isSubscriptionLockedForFeature(normalizedId)) {
-    if (currentUser && backendClient.isAuthenticated()) {
-      void refreshSubscriptionAccessForAction().then(() => {
-        if (isSubscriptionLockedForFeature(normalizedId)) {
-          openSubscriptionScreen({
-            intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
-            returnScreen: getActiveScreenId() || "quiz-menu",
-          });
-          return;
-        }
-        showScreen(normalizedId, { ...options, skipSubscriptionGate: true });
-      });
-      return;
-    }
+
+  const isCommunityScreen =
+    normalizedId === "community-screen" ||
+    normalizedId === "community-chat-screen";
+
+  if (
+    !skipSubscriptionGate &&
+    !isCommunityScreen &&
+    isSubscriptionLockedForFeature(normalizedId)
+  ) {
     openSubscriptionScreen({
       intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
       returnScreen: getActiveScreenId() || "quiz-menu",
     });
     return;
   }
+  
   const screens = [
     "welcome-screen",
     "home-screen",
@@ -39979,6 +40097,7 @@ function showScreen(id, options = {}) {
   }
 
   if (id === "quiz-menu") {
+    scheduleSubscriptionExpiryTimer();
     closeMenuUserHub();
     closeGlobalQuickNav();
     closeLeaderboardModal?.({ useHistory: false });
@@ -39989,9 +40108,6 @@ function showScreen(id, options = {}) {
     closeCommunityConfirmModal?.();
     closeCommunityConversationActions?.();
     closeCommunityFriendActions?.();
-    window.setTimeout(() => {
-      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-    }, 0);
   }
 
   if (id === "drills-screen" || id === "gppqe-screen" || id === "extra-screen") {
@@ -40000,9 +40116,6 @@ function showScreen(id, options = {}) {
   }
 
   if (["daily-setup", "study-setup", "exam-setup"].includes(id)) {
-    window.setTimeout(() => {
-      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-    }, 0);
   }
 
   if (nextCommunityScreen && !wasCommunityScreen && isCommunityLockEnabled() && !communityState.communityLockSessionUnlocked) {
@@ -40076,15 +40189,11 @@ function showScreen(id, options = {}) {
 }
 
 window.addEventListener("focus", () => {
-  if (currentUser && backendClient.isAuthenticated()) {
-    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-  }
+  if (currentUser && backendClient.isAuthenticated()) scheduleSubscriptionExpiryTimer();
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && currentUser && backendClient.isAuthenticated()) {
-    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-  }
+  if (!document.hidden && currentUser && backendClient.isAuthenticated()) scheduleSubscriptionExpiryTimer();
 });
 function restoreStreakUI() {
   const streakBox = document.getElementById("streak-box");

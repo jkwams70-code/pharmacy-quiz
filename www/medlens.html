@@ -2297,12 +2297,17 @@ html[data-theme="dark"] .badge-success {
 
     let drugs = [];
 
+    function getMedLensAuthHeaders() {
+        const token = window.localStorage.getItem('quizAuthToken') || '';
+        return token ? { Accept: 'application/json', Authorization: 'Bearer ' + token } : { Accept: 'application/json' };
+    }
+
     async function loadPublishedMedLensDrugs() {
         try {
             const storedApiBase = window.localStorage.getItem('quizApiBase')?.trim();
             const localApiBase = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:4000/api' : '/api';
             const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, '') : localApiBase;
-            const response = await fetch(apiBase + '/medlens/drugs', { headers: { Accept: 'application/json' } });
+            const response = await fetch(apiBase + '/medlens/drugs', { headers: getMedLensAuthHeaders() });
             if (!response.ok) throw new Error('Published MedLens records unavailable');
             const payload = await response.json();
             drugs = Array.isArray(payload.items) ? payload.items : [];
@@ -2395,7 +2400,7 @@ html[data-theme="dark"] .badge-success {
             const storedApiBase = window.localStorage.getItem("quizApiBase")?.trim();
             const localApiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:4000/api" : "/api";
             const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, "") : localApiBase;
-            const response = await fetch(apiBase + "/medlens/diseases", { headers: { Accept: "application/json" } });
+            const response = await fetch(apiBase + "/medlens/diseases", { headers: getMedLensAuthHeaders() });
             if (!response.ok) throw new Error("Published MedLens diseases unavailable");
             const payload = await response.json();
             diseases = Array.isArray(payload.items) ? payload.items : [];
@@ -2462,20 +2467,30 @@ html[data-theme="dark"] .badge-success {
         return Array.from(map.values());
     }
 
-    let interactionData = [];
+    let interactionData = mergeMedLensInteractionSources(
+        embeddedInteractionData,
+        getMedLensExternalInteractions()
+    );
 
     async function loadPublishedMedLensInteractions() {
         try {
             const storedApiBase = window.localStorage.getItem("quizApiBase")?.trim();
             const localApiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:4000/api" : "/api";
             const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, "") : localApiBase;
-            const response = await fetch(apiBase + "/medlens/interactions", { headers: { Accept: "application/json" } });
+            const response = await fetch(apiBase + "/medlens/interactions", { headers: getMedLensAuthHeaders() });
             if (!response.ok) throw new Error("Published MedLens interactions unavailable");
             const payload = await response.json();
-            interactionData = Array.isArray(payload.items) ? payload.items : [];
+            interactionData = mergeMedLensInteractionSources(
+                Array.isArray(payload.items) ? payload.items : [],
+                getMedLensExternalInteractions()
+            );
             updateInteractionDatalist();
         } catch (error) {
-            interactionData = [];
+            interactionData = mergeMedLensInteractionSources(
+                embeddedInteractionData,
+                getMedLensExternalInteractions()
+            );
+            updateInteractionDatalist();
             console.warn("MedLens public interaction data could not be loaded:", error.message);
         }
     }
@@ -2544,10 +2559,6 @@ html[data-theme="dark"] .badge-success {
             drug.route,
             drug.mainUses,
             drug.components,
-            drug.overview,
-            drug.indications,
-            drug.monograph && drug.monograph.overview && getMedLensSectionHtml(drug.monograph.overview, 'overview'),
-            drug.monograph && drug.monograph.indicationDosage && getMedLensSectionHtml(drug.monograph.indicationDosage, 'indicationDosage')
         ].filter(Boolean).join(' '));
     }
 
@@ -2605,7 +2616,7 @@ html[data-theme="dark"] .badge-success {
     }
     function renderDrugSearchResult(drug) {
         const hints = sanitizeVisibleText([drug.brand && drug.brand !== drug.generic ? drug.brand : '', getDrugClassLabel(drug)].filter(Boolean).join(' / '));
-        return '<button type="button" class="search-result-item" onclick="openSearchDrug(\'' + drug.id + '\')">' +
+        return '<button type="button" class="search-result-item" data-search-drug-id="' + escapeHtml(String(drug.id || '')) + '">' +
             '<span class="search-result-copy"><span class="search-result-title">' + escapeHtml(sanitizeVisibleText(drug.generic || drug.brand || drug.id)) + '</span>' +
             (hints ? '<span class="search-result-subtitle">' + escapeHtml(hints) + '</span>' : '') + '</span>' +
         '</button>';
@@ -2613,7 +2624,7 @@ html[data-theme="dark"] .badge-success {
 
     function renderDiseaseSearchResult(disease) {
         const hint = sanitizeVisibleText(disease.category || '');
-        return '<button type="button" class="search-result-item" onclick="openSearchDisease(\'' + disease.id + '\')">' +
+        return '<button type="button" class="search-result-item" data-search-disease-id="' + escapeHtml(String(disease.id || '')) + '">' +
             '<span class="search-result-copy"><span class="search-result-title">' + escapeHtml(sanitizeVisibleText(disease.name || disease.id)) + '</span>' +
             (hint ? '<span class="search-result-subtitle">' + escapeHtml(hint) + '</span>' : '') + '</span>' +
         '</button>';
@@ -2632,7 +2643,19 @@ html[data-theme="dark"] .badge-success {
 
         const terms = normalized.split(' ').filter(Boolean);
         const matchesAll = function (haystack) { return terms.every(function (term) { return haystack.includes(term); }); };
-        const drugResults = drugs.filter(function (drug) { return matchesAll(getDrugSearchText(drug)); }).slice(0, 8).map(renderDrugSearchResult);
+        const drugMatches = drugs.filter(function (drug) { return matchesAll(getDrugSearchText(drug)); });
+        drugMatches.sort(function (a, b) {
+            const queryName = normalized;
+            const aName = normalizeSearchText(a.generic || a.brand || a.id);
+            const bName = normalizeSearchText(b.generic || b.brand || b.id);
+            const score = function (name) {
+                if (name === queryName) return 0;
+                if (name.indexOf(queryName) === 0) return 1;
+                return name.indexOf(queryName) >= 0 ? 2 : 3;
+            };
+            return score(aName) - score(bName) || aName.localeCompare(bName);
+        });
+        const drugResults = drugMatches.slice(0, 8).map(renderDrugSearchResult);
         const diseaseResults = diseases.filter(function (disease) { return matchesAll(getDiseaseSearchText(disease)); }).slice(0, 5).map(renderDiseaseSearchResult);
         const html = renderSearchGroup('Drugs', drugResults) + renderSearchGroup('Diseases', diseaseResults);
 
@@ -2644,6 +2667,16 @@ html[data-theme="dark"] .badge-success {
         const input = document.getElementById('searchInput');
         const clearBtn = document.getElementById('clearSearch');
         if (!input) return;
+        const panel = document.getElementById('searchResultsPanel');
+        if (panel && panel.dataset.resultClickBound !== 'true') {
+            panel.dataset.resultClickBound = 'true';
+            panel.addEventListener('click', function (event) {
+                const result = event.target.closest('.search-result-item');
+                if (!result || !panel.contains(result)) return;
+                if (result.dataset.searchDrugId) openSearchDrug(result.dataset.searchDrugId);
+                else if (result.dataset.searchDiseaseId) openSearchDisease(result.dataset.searchDiseaseId);
+            });
+        }
         input.addEventListener('input', function () { handleGlobalSearch(input.value); });
         input.addEventListener('focus', function () { if (input.value.trim().length >= 2) handleGlobalSearch(input.value); });
         input.addEventListener('keydown', function (event) {
@@ -3707,6 +3740,21 @@ html[data-theme="dark"] .badge-success {
     loadPublishedMedLensDrugs();
     loadPublishedMedLensDiseases();
     loadPublishedMedLensInteractions();
+    Object.assign(window, {
+        showScreen,
+        showDrugList,
+        showDiseaseList,
+        showInteraction,
+        showFavorites,
+        goBackToMenu,
+        showDrugDetail,
+        showDiseaseDetail,
+        switchDrugTab,
+        switchDiseaseTab,
+        addInteractionDrug,
+        removeInteractionDrug,
+        runInteractionCheck,
+    });
     window.addEventListener('message', function (event) {
         const data = event && event.data;
         if (!data || data.type !== 'ajix-medlens-admin-preview' || !data.drug || !data.drug.id) return;

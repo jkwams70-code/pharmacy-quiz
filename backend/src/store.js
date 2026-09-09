@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
+import { createUsersStore } from "./usersStore.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,6 +54,13 @@ const defaults = {
   medlensInteractionQueue: [],
   guidelineQueue: [],
 };
+
+export const collectionNames = Object.freeze(Object.keys(defaults));
+const usersStore = createUsersStore(path.join(dataDir, "users.json"), {
+  allowEmpty: () => process.env.ENABLE_ADMIN_RESET === "true" || process.env.ALLOW_EMPTY_USERS_WRITE === "true",
+});
+export const readUsersSnapshot = () => usersStore.readSnapshot();
+export const writeUsersSnapshot = (snapshot, data) => usersStore.writeSnapshot(snapshot, data);
 
 const WRITE_RETRY_CODES = new Set(["EBUSY", "EPERM"]);
 const WRITE_RETRY_DELAYS_MS = [40, 100, 180, 320, 520];
@@ -119,51 +127,47 @@ async function runWithReadRetry(operation) {
   throw lastError;
 }
 
-async function readLatestUsersSnapshotBackup() {
-  try {
-    const entries = await fs.readdir(backupsDir, { withFileTypes: true });
-    let latestPath = "";
-    let latestTime = 0;
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const candidate = path.join(backupsDir, entry.name, "users.json");
-      try {
-        const stats = await fs.stat(candidate);
-        const modified = stats.mtimeMs || 0;
-        if (modified > latestTime && stats.size > 2) {
-          latestTime = modified;
-          latestPath = candidate;
-        }
-      } catch {
-        // Ignore folders that do not contain a valid users snapshot.
-      }
-    }
-    if (!latestPath) return null;
-    const raw = await runWithReadRetry(() => fs.readFile(latestPath, "utf8"));
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-  } catch {
-    // Ignore snapshot lookup failures and fall through to the default fallback.
-  }
-  return null;
-}
-
 export async function ensureStore() {
   await fs.mkdir(dataDir, { recursive: true });
+  try {
+    await fs.access(pathFor("users"));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    const existingFiles = await fs.readdir(dataDir);
+    const backupEntries = await fs.readdir(backupsDir, { withFileTypes: true }).catch((backupError) => {
+      if (backupError.code === "ENOENT") return [];
+      throw backupError;
+    });
+    let hasUserBackup = false;
+    for (const entry of backupEntries) {
+      if (!entry.isDirectory()) continue;
+      try {
+        await fs.access(path.join(backupsDir, entry.name, "users.json"));
+        hasUserBackup = true;
+      } catch (backupError) {
+        if (backupError.code !== "ENOENT") throw backupError;
+      }
+    }
+    if (existingFiles.some((name) => name.endsWith(".json")) || hasUserBackup) {
+      throw new Error("users.json is missing from an existing store. Preserve data and recover it explicitly; refusing to initialize empty accounts.");
+    }
+  }
 
   for (const [collection, initialValue] of Object.entries(defaults)) {
     const filePath = pathFor(collection);
     try {
       await fs.access(filePath);
-    } catch {
-      await fs.writeFile(filePath, JSON.stringify(initialValue, null, 2), "utf8");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      await fs.writeFile(filePath, JSON.stringify(initialValue, null, 2), { encoding: "utf8", flag: "wx", mode: 0o600 }).catch((writeError) => {
+        if (writeError.code !== "EEXIST") throw writeError;
+      });
     }
   }
 }
 
 export async function readCollection(collection) {
+  if (collection === "users") return (await readUsersSnapshot()).data;
   const resolvedCollection = resolveCollectionName(collection);
   const filePath = pathFor(resolvedCollection);
   const backupPath = backupPathFor(resolvedCollection);
@@ -186,43 +190,16 @@ export async function readCollection(collection) {
         // Fall through to the standard collection fallback below.
       }
     }
-    if (collection === "users") {
-      try {
-        const backupRaw = await runWithReadRetry(() => fs.readFile(backupPath, "utf8"));
-        const parsedBackup = JSON.parse(backupRaw);
-        if (Array.isArray(parsedBackup) && parsedBackup.length > 0) {
-          return parsedBackup;
-        }
-      } catch {
-        // Fall through to the standard fallback below.
-      }
-      const latestSnapshotBackup = await readLatestUsersSnapshotBackup();
-      if (latestSnapshotBackup) {
-        return latestSnapshotBackup;
-      }
-    }
-    const code = String(primaryError?.code || "").trim().toUpperCase();
-    if (collection === "users" && READ_RETRY_CODES.has(code)) {
-      throw primaryError;
-    }
     return structuredClone(fallback);
   }
 }
 
 export async function writeCollection(collection, data) {
+  if (collection === "users") {
+    throw new Error("Account writes require writeUsersSnapshot(snapshot, data) or updateCollection(\"users\", updater).");
+  }
   const resolvedCollection = resolveCollectionName(collection);
   const filePath = pathFor(resolvedCollection);
-  if (
-    resolvedCollection === "users" &&
-    Array.isArray(data) &&
-    data.length === 0 &&
-    process.env.ENABLE_ADMIN_RESET !== "true" &&
-    process.env.ALLOW_EMPTY_USERS_WRITE !== "true"
-  ) {
-    throw new Error(
-      "Refusing to write an empty users collection. Set ALLOW_EMPTY_USERS_WRITE=true to override.",
-    );
-  }
   if (resolvedCollection === "guidelineQueue") {
     try {
       await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(resolvedCollection)));
@@ -232,19 +209,13 @@ export async function writeCollection(collection, data) {
     await writeGuidelineQueueAtomically(filePath, data);
     return;
   }
-  if (resolvedCollection === "users") {
-    try {
-      await runWithWriteRetry(() => fs.copyFile(filePath, backupPathFor(resolvedCollection)));
-    } catch {
-      // Ignore backup copy failure when file does not exist yet.
-    }
-  }
   await runWithWriteRetry(() =>
     fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf8"),
   );
 }
 
 export async function updateCollection(collection, updater) {
+  if (collection === "users") return usersStore.update(updater);
   const current = await readCollection(collection);
   const next = await updater(current);
   await writeCollection(collection, next);

@@ -30,8 +30,10 @@ import { generateAiExplanation, generateNewsDraft } from "./services/ai.js";
 import {
   ensureStore,
   readCollection,
+  readUsersSnapshot,
   updateCollection,
   writeCollection,
+  writeUsersSnapshot,
 } from "./store.js";
 import {
   MAJOR_CATEGORIES,
@@ -173,6 +175,51 @@ function asyncHandler(handler) {
   return (req, res, next) => {
     Promise.resolve(handler(req, res, next)).catch(next);
   };
+}
+
+async function requireActiveSubscription(req, res, next) {
+  // Realtime connection metadata is not premium content. The route still
+  // applies its own authentication check, while Community data remains gated.
+  if (String(req.path || "") === "/realtime/config") {
+    next();
+    return;
+  }
+
+  optionalAuth(req, res, async () => {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    try {
+      const users = (await readCollection("users")).map(normalizeExistingUser);
+      const user = users.find((entry) => entry.id === req.user.sub);
+      if (!user) {
+        res.status(403).json({ error: "An active subscription is required for this feature." });
+        return;
+      }
+      const requests = (await readCollection("subscriptionRequests"))
+        .map(normalizeSubscriptionRequest)
+        .filter((entry) => entry.userId === user.id && normalizeSubscriptionPlanValue(entry.plan) !== "trial")
+        .sort((a, b) => Date.parse(b.requestedAt || 0) - Date.parse(a.requestedAt || 0));
+      const latestRequest = requests[0] || null;
+      const access = latestRequest
+        ? buildSubscriptionAccessFromRequest(latestRequest)
+        : toPublicUser(user).subscriptionAccess;
+      if (!access?.isActive) {
+        res.status(403).json({
+          error: "An active subscription is required for this feature.",
+          subscriptionStatus: access?.status || "expired",
+          expiresAt: access?.expirationAt || null,
+        });
+        return;
+      }
+      req.subscriptionAccess = access;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
 }
 
 function safeNumber(value) {
@@ -2572,7 +2619,8 @@ function buildNewsFeedSections(items = []) {
     ),
   );
 
-  const trending = takeUnique(trendingPool, 6);
+  const trending = trendingPool.slice(0, 6);
+  trending.forEach((item) => usedIds.add(String(item?.id || '').trim()));
 
   const latestPool = published.filter(
     (item) =>
@@ -2590,21 +2638,9 @@ function buildNewsFeedSections(items = []) {
     latest.map((item) => String(item?.id || "").trim()),
   );
 
-  const moreNews = [
-    ...trendingPool.filter(
-      (item) => !trendingIds.has(String(item?.id || "").trim()),
-    ),
-    ...latestPool.filter(
-      (item) => !latestIds.has(String(item?.id || "").trim()),
-    ),
-  ].filter((item, index, list) => {
-    const id = String(item?.id || "").trim();
-    return (
-      id &&
-      list.findIndex(
-        (candidate) => String(candidate?.id || "").trim() === id,
-      ) === index
-    );
+  const moreNews = published.filter((item) => {
+    const id = String(item?.id || '').trim();
+    return id && !usedIds.has(id);
   });
 
   const medicine = published.filter((item) =>
@@ -6714,7 +6750,8 @@ function validateProfileImageValue(value) {
 }
 
 async function purgeExpiredDeactivatedUsers() {
-  const users = await readCollection("users");
+  const usersSnapshot = await readUsersSnapshot();
+  const users = usersSnapshot.data;
   if (!Array.isArray(users) || users.length === 0) {
     return 0;
   }
@@ -6740,7 +6777,7 @@ async function purgeExpiredDeactivatedUsers() {
   }
 
   try {
-    await writeCollection("users", next);
+    await writeUsersSnapshot(usersSnapshot, next);
   } catch (error) {
     if (!isSkippableUsersWriteError(error)) {
       throw error;
@@ -7509,6 +7546,11 @@ app.use("/api/admin", (req, _res, next) => {
 });
 
 // API routes
+// Server-backed premium areas enforce the same expiry timestamp as the frontend.
+app.use("/api/community", requireActiveSubscription);
+app.use("/api/news", requireActiveSubscription);
+app.use("/api/medlens", requireActiveSubscription);
+app.use("/api/guidelines", requireActiveSubscription);
 app.use(createMedLensRouter({ config, frontendPath }));
 app.use(createMedLensDiseaseRouter({ config, frontendPath }));
 app.use(createMedLensInteractionRouter({ config, frontendPath }));
@@ -7641,8 +7683,19 @@ app.post(
       dailyQuiz: normalizeDailyQuizState({}),
     };
 
-    users.push(user);
-    await writeCollection("users", users);
+    await updateCollection("users", (current) => {
+      const latestUsers = current.map(normalizeExistingUser);
+      if (latestUsers.some((entry) => normalizeIdentifier(entry.username) === username)) {
+        throw Object.assign(new Error("username already in use"), { code: "ACCOUNT_ALREADY_EXISTS", status: 409 });
+      }
+      if (latestUsers.some((entry) =>
+        normalizeIdentifier(entry.contact) === normalizeIdentifier(contact) ||
+        (contactDigits && normalizePhoneComparable(entry.contact) === contactDigits)
+      )) {
+        throw Object.assign(new Error("contact already in use"), { code: "ACCOUNT_ALREADY_EXISTS", status: 409 });
+      }
+      return [...current, user];
+    });
 
     const token = createToken(user);
     res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
@@ -7697,18 +7750,14 @@ app.post(
     }
 
     const signedInAt = new Date().toISOString();
-    const updatedUsers = users.map((entry) =>
-      entry.id === user.id
-        ? {
-            ...entry,
-            updatedAt: signedInAt,
-            lastSeenAt: signedInAt,
-          }
-        : entry,
-    );
-    const updatedUser = updatedUsers.find((entry) => entry.id === user.id) || user;
+    let updatedUser = user;
     try {
-      await writeCollection("users", updatedUsers);
+      const updatedUsers = await updateCollection("users", (current) =>
+        current.map((entry) => entry.id === user.id
+          ? { ...entry, updatedAt: signedInAt, lastSeenAt: signedInAt }
+          : entry),
+      );
+      updatedUser = updatedUsers.find((entry) => entry.id === user.id) || user;
     } catch (writeError) {
       console.warn("Failed to persist login timestamp", writeError?.message || writeError);
     }
@@ -7723,12 +7772,11 @@ app.post(
     void (async () => {
       try {
         const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
-        const reconciliation = reconcileUsersWithPointHistory(users, pointEvents);
-        if (!reconciliation.changed) {
-          return;
-        }
         try {
-          await writeCollection("users", reconciliation.users);
+          await updateCollection("users", (current) => {
+            const reconciliation = reconcileUsersWithPointHistory(current.map(normalizeExistingUser), pointEvents);
+            return reconciliation.changed ? reconciliation.users : current;
+          });
         } catch (writeError) {
           console.warn(
             "Skipping post-login user reconciliation write",
@@ -7761,11 +7809,12 @@ app.get(
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     await purgeExpiredDeactivatedUsers();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
     const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
     if (changed) {
-      await writeCollection("users", reconciledUsers);
+      await writeUsersSnapshot(usersSnapshot, reconciledUsers);
     }
     const user = reconciledUsers.find((u) => u.id === req.user.sub);
 
@@ -7876,7 +7925,8 @@ app.post(
       return;
     }
 
-    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const actorId = String(req.user?.sub || req.body?.userId || "").trim();
     if (!actorId) {
       res.status(400).json({ error: "Could not identify the subscription account." });
@@ -7961,7 +8011,7 @@ app.post(
     };
 
     await writeCollection("subscriptionRequests", requests);
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
 
     res.status(existingPending ? 200 : 201).json({
       ok: true,
@@ -7984,7 +8034,8 @@ app.post(
       return;
     }
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
     const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
@@ -7995,7 +8046,7 @@ app.post(
     }
 
     if (changed) {
-      await writeCollection("users", reconciledUsers);
+      await writeUsersSnapshot(usersSnapshot, reconciledUsers);
     }
 
     const currentUser = reconciledUsers[userIndex];
@@ -8016,7 +8067,7 @@ app.post(
     });
 
     reconciledUsers[userIndex] = nextUser;
-    await writeCollection("users", reconciledUsers);
+    await writeUsersSnapshot(usersSnapshot, reconciledUsers);
     pointEvents.push(nextPointEvent);
     await writeCollection("pointEvents", pointEvents);
 
@@ -8042,11 +8093,12 @@ app.get(
 
     const rawLimit = Number(req.query?.limit);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.round(rawLimit) : null;
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
     const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
     if (changed) {
-      await writeCollection("users", reconciledUsers);
+      await writeUsersSnapshot(usersSnapshot, reconciledUsers);
     }
     const snapshot = buildPointsLeaderboardSnapshot({
       users: reconciledUsers,
@@ -8077,7 +8129,8 @@ app.post(
       return;
     }
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const user = findUserByRegisteredContact(users, contact);
 
     if (!user) {
@@ -8104,7 +8157,7 @@ app.post(
         updatedAt: new Date().toISOString(),
       };
     });
-    await writeCollection("users", nextUsers);
+    await writeUsersSnapshot(usersSnapshot, nextUsers);
 
     const resetRequests = coerceCollectionArray(await readCollection("passwordResetRequests")).map(
       normalizePasswordResetRequest,
@@ -8173,7 +8226,8 @@ app.post(
       return;
     }
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const user = findUserByRegisteredContact(users, contact);
     if (!user) {
       res.status(400).json({
@@ -8217,7 +8271,7 @@ app.post(
         };
       }),
     );
-    await writeCollection("users", updatedUsers);
+    await writeUsersSnapshot(usersSnapshot, updatedUsers);
 
     const nextResetRequests = resetRequests.map((entry) => {
       if (entry.id !== matchingRequest.id) return entry;
@@ -8281,7 +8335,8 @@ app.post(
       return;
     }
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const user = users.find((entry) => entry.id === req.user.sub);
     if (!user) {
       res.status(404).json({ error: "user not found" });
@@ -8310,7 +8365,7 @@ app.post(
         };
       }),
     );
-    await writeCollection("users", updatedUsers);
+    await writeUsersSnapshot(usersSnapshot, updatedUsers);
     res.json({ ok: true, message: "Password changed successfully." });
   }),
 );
@@ -8320,7 +8375,8 @@ app.put(
   requireAuth,
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
 
     if (userIndex === -1) {
@@ -8482,7 +8538,7 @@ app.put(
     nextUser.updatedAt = new Date().toISOString();
 
     users[userIndex] = nextUser;
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
     res.json({ ok: true, user: toPublicUser(nextUser) });
   }),
 );
@@ -8492,7 +8548,8 @@ app.put(
   requireAuth,
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
 
     if (userIndex === -1) {
@@ -8518,7 +8575,7 @@ app.put(
     };
 
     users[userIndex] = nextUser;
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
     res.json({
       ok: true,
       setupPoints: normalizeSetupPointsValue(nextUser.setupPoints),
@@ -8532,7 +8589,8 @@ app.put(
   requireAuth,
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
 
     if (userIndex === -1) {
@@ -8558,7 +8616,7 @@ app.put(
     };
 
     users[userIndex] = nextUser;
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
     res.json({
       ok: true,
       lawDrillSession: normalizeLawDrillSessionValue(nextUser.lawDrillSession),
@@ -8865,15 +8923,16 @@ app.get(
     const targetId = String(req.params.userId || "");
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const [users, pointEvents] = await Promise.all([
-      readCollection("users"),
+    const [usersSnapshot, pointEvents] = await Promise.all([
+      readUsersSnapshot(),
       readCollection("pointEvents"),
     ]);
+    const users = usersSnapshot.data;
     const normalizedUsers = users.map(normalizeExistingUser);
     const normalizedPointEvents = pointEvents.map(normalizePointEvent);
     const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(normalizedUsers, normalizedPointEvents);
     if (changed) {
-      await writeCollection("users", reconciledUsers);
+      await writeUsersSnapshot(usersSnapshot, reconciledUsers);
     }
     const [friendships, friendRequests, blocks] = await Promise.all([
       readCollection("friendships"),
@@ -11558,7 +11617,8 @@ app.post(
       return;
     }
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
     if (userIndex === -1) {
       res.status(404).json({ error: "user not found" });
@@ -11576,7 +11636,7 @@ app.post(
       updatedAt: nowIso,
     };
 
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
     res.json({
       ok: true,
       message: `Account deactivated for ${days} day(s).`,
@@ -11598,7 +11658,8 @@ app.delete(
     }
 
     const userId = req.user.sub;
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const user = users.find((entry) => entry.id === userId);
     if (!user) {
       res.status(404).json({ error: "user not found" });
@@ -11614,7 +11675,7 @@ app.delete(
 
     const filteredUsers = users.filter((entry) => entry.id !== userId);
     try {
-      await writeCollection("users", filteredUsers);
+      await writeUsersSnapshot(usersSnapshot, filteredUsers);
     } catch (error) {
       await updateCollection("deletedUsers", async (items) =>
         items.filter((entry) => entry.archiveId !== archiveRecord.archiveId),
@@ -11776,7 +11837,8 @@ app.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
 
     if (userIndex === -1) {
@@ -11833,7 +11895,7 @@ app.get(
         dailyQuiz: dailyState,
         updatedAt: new Date().toISOString(),
       };
-      await writeCollection("users", users);
+      await writeUsersSnapshot(usersSnapshot, users);
     }
 
     res.json({
@@ -11848,7 +11910,8 @@ app.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     await purgeExpiredDeactivatedUsers();
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === req.user.sub);
 
     if (userIndex === -1) {
@@ -11979,7 +12042,7 @@ app.post(
       dailyQuiz: dailyState,
       updatedAt: new Date().toISOString(),
     };
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
 
     res.json({
       ...buildDailyQuizResponse(dailyState, todayKey),
@@ -12754,7 +12817,8 @@ app.post(
       return;
     }
 
-    const activeUsers = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const activeUsers = usersSnapshot.data.map(normalizeExistingUser);
     const restoredUser = buildRestoredUserFromArchive(archive);
     const conflicts = findRestoreConflicts(activeUsers, restoredUser);
     if (conflicts.length > 0) {
@@ -12798,7 +12862,7 @@ app.post(
     nextDeletedUsers[archiveIndex] = restoredArchive;
 
     try {
-      await writeCollection("users", nextUsers);
+      await writeUsersSnapshot(usersSnapshot, nextUsers);
     } catch (error) {
       res.status(500).json({ error: "Failed to restore archived user" });
       return;
@@ -12807,7 +12871,7 @@ app.post(
     try {
       await writeCollection("deletedUsers", nextDeletedUsers);
     } catch (error) {
-      await writeCollection("users", activeUsers);
+      await writeUsersSnapshot(usersSnapshot, activeUsers);
       throw error;
     }
 
@@ -13606,7 +13670,8 @@ app.delete(
     }
 
     const userId = req.params.userId;
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const user = users.find((entry) => entry.id === userId);
     if (!user) {
       res.status(404).json({ error: "User not found" });
@@ -13622,7 +13687,7 @@ app.delete(
 
     const filtered = users.filter((entry) => entry.id !== userId);
     try {
-      await writeCollection("users", filtered);
+      await writeUsersSnapshot(usersSnapshot, filtered);
     } catch (error) {
       await updateCollection("deletedUsers", async (items) =>
         items.filter((entry) => entry.archiveId !== archiveRecord.archiveId),
@@ -13653,7 +13718,8 @@ app.put(
       return;
     }
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const idx = users.findIndex((entry) => entry.id === userId);
     if (idx < 0) {
       res.status(404).json({ error: "User not found" });
@@ -13665,7 +13731,7 @@ app.put(
       subscriptionTier: nextTier,
       updatedAt: new Date().toISOString(),
     };
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
 
     res.json({
       ok: true,
@@ -13723,7 +13789,8 @@ app.post(
     const request = requests[requestIndex];
     const plan = normalizeSubscriptionPlanValue(request.plan) || "daily";
     const planMeta = getSubscriptionPlanMeta(plan);
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === request.userId);
     if (userIndex < 0) {
       res.status(404).json({ error: "User not found" });
@@ -13770,7 +13837,7 @@ app.post(
     };
 
     await writeCollection("subscriptionRequests", requests);
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
 
     res.json({
       ok: true,
@@ -13844,7 +13911,8 @@ app.post(
     };
     await writeCollection("passwordResetRequests", requests);
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const nextUsers = users.map((entry) => {
       if (entry.id !== currentRequest.userId) return entry;
       return {
@@ -13853,7 +13921,7 @@ app.post(
         updatedAt: now,
       };
     });
-    await writeCollection("users", nextUsers);
+    await writeUsersSnapshot(usersSnapshot, nextUsers);
     const usersById = new Map(users.map((user) => [user.id, user]));
     res.json({
       ok: true,
@@ -13882,7 +13950,8 @@ app.post(
     }
 
     const request = requests[requestIndex];
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const usersSnapshot = await readUsersSnapshot();
+    const users = usersSnapshot.data.map(normalizeExistingUser);
     const userIndex = users.findIndex((entry) => entry.id === request.userId);
     if (userIndex < 0) {
       res.status(404).json({ error: "User not found" });
@@ -13914,7 +13983,7 @@ app.post(
     };
 
     await writeCollection("subscriptionRequests", requests);
-    await writeCollection("users", users);
+    await writeUsersSnapshot(usersSnapshot, users);
 
     res.json({
       ok: true,
@@ -15534,7 +15603,7 @@ app.post(
       return;
     }
 
-    await writeCollection("users", []);
+    await updateCollection("users", () => []);
     await writeCollection("attempts", []);
     await writeCollection("syncPerformance", []);
     await writeCollection("syncSessions", []);
@@ -15569,6 +15638,10 @@ app.use((error, _req, res, _next) => {
   );
   if (String(error?.type || "").trim() === "entity.too.large" || Number(error?.status) === 413) {
     res.status(413).json({ error: "Attachment is too large for upload." });
+    return;
+  }
+  if (["USERS_WRITE_CONFLICT", "USERS_STORE_BUSY", "USERS_STORE_UNAVAILABLE", "EMPTY_USERS_WRITE", "ACCOUNT_ALREADY_EXISTS"].includes(error?.code)) {
+    res.status(error.status || 503).json({ error: error.message });
     return;
   }
   res.status(500).json({ error: "Internal server error" });

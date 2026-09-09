@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import vm from "node:vm";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import express from "express";
@@ -50,15 +51,12 @@ async function getQueue(frontendPath) {
   const sourcePath = path.join(frontendPath, "www", "medlens-database.js");
   try {
     const source = await fs.promises.readFile(sourcePath, "utf8");
-    const entries = {};
-    const pattern = /window\.MEDLENS_DATABASE\[(?:"([^"]+)"|'([^']+)')\]\s*=\s*({[\s\S]*?})\s*;/g;
-    let match;
-    while ((match = pattern.exec(source))) {
-      const id = match[1] || match[2];
-      const raw = JSON.parse(match[3]);
-      entries[id] = normalize({ ...raw, id, source: raw.source || "MedLens database", status: raw.editor || raw.aiEdited ? "published" : "fetched" });
-    }
-    const seeded = Object.values(entries);
+    const sandbox = { window: { MEDLENS_DATABASE: {} } };
+    vm.runInNewContext(source, sandbox, { timeout: 3000 });
+    const entries = sandbox.window.MEDLENS_DATABASE || {};
+    const seeded = Object.entries(entries).map(([id, raw]) =>
+      normalize({ ...raw, id, source: raw.source || "MedLens database", status: "published" }, "published"),
+    );
     if (seeded.length) await writeCollection("medlensDrugQueue", seeded);
     return seeded;
   } catch {
@@ -163,7 +161,7 @@ export function createMedLensRouter({ config, frontendPath }) {
     setProgress(id, { status: "running", percent: 0, completed: 0, total: aiSections.length, step: "Starting AI editor...", drugName: all[index].brand || all[index].generic || id, error: "" });
     try {
       await fs.promises.writeFile(input, JSON.stringify({ [id]: all[index] }), "utf8");
-      await runAiEditor({ id, drugName: all[index].brand || all[index].generic || id, command: process.execPath, args: [path.join(frontendPath, "scripts", "medlens-ai-editor.cjs"), "--drug", id, "--input", input, "--output", output], cwd: frontendPath });
+      await runAiEditor({ id, drugName: all[index].brand || all[index].generic || id, command: process.execPath, args: [path.resolve(frontendPath, "..", "scripts", "medlens-ai-editor.cjs"), "--drug", id, "--input", input, "--output", output], cwd: frontendPath });
       const edited = JSON.parse(await fs.promises.readFile(output, "utf8")); all[index] = normalize({ ...all[index], ...(edited[0] || edited), status: "in_review", updatedAt: new Date().toISOString() }, "in_review");
       await writeCollection("medlensDrugQueue", all);
       setProgress(id, { status: "done", percent: 100, completed: aiSections.length, total: aiSections.length, step: "Complete", drugName: all[index].brand || all[index].generic || id, error: "", expiresAt: new Date(Date.now() + progressRetentionMs).toISOString() });

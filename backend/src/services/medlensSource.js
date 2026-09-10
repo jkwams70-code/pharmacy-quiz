@@ -1,3 +1,9 @@
+import dns from "node:dns";
+
+// Some VPS networks advertise IPv6 for public APIs without routing IPv6.
+// Prefer IPv4 so Node fetch can reach providers that are available over IPv4.
+dns.setDefaultResultOrder("ipv4first");
+
 // Keep provider outages distinct from a genuine missing source record.
 export async function fetchMedLensSource(url, provider, headers = {}) {
   let response;

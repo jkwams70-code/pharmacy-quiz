@@ -5,6 +5,7 @@ import vm from "node:vm";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import express from "express";
+import { fetchMedLensSource } from "./medlensSource.js";
 import { readCollection, writeCollection } from "../store.js";
 const aiProgress = new Map();
 let progressWrite = Promise.resolve();
@@ -40,15 +41,14 @@ const normalize = (raw, fallback = "fetched") => {
 };
 async function fetchLabel(term) {
   const q = encodeURIComponent("openfda.generic_name:\"" + String(term).replace(/"/g, "") + "\"");
-  const response = await fetch("https://api.fda.gov/drug/label.json?search=" + q + "&limit=1", { headers: { Accept: "application/json" } });
-  if (!response.ok) return null;
-  const json = await response.json();
+  const json = await fetchMedLensSource("https://api.fda.gov/drug/label.json?search=" + q + "&limit=1", "openFDA");
+  if (!json) return null;
   return Array.isArray(json.results) ? json.results[0] || null : null;
 }
 async function getQueue(frontendPath) {
   const stored = await readCollection("medlensDrugQueue");
   if (stored.length) return stored;
-  const sourcePath = path.join(frontendPath, "www", "medlens-database.js");
+  const sourcePath = path.join(frontendPath, "medlens-database.js");
   try {
     const source = await fs.promises.readFile(sourcePath, "utf8");
     const sandbox = { window: { MEDLENS_DATABASE: {} } };
@@ -65,7 +65,7 @@ async function getQueue(frontendPath) {
 }
 function runAiEditor({ id, drugName, command, args, cwd }) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, { cwd, env: process.env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     let output = "";
     let errorOutput = "";
     const updateProgress = () => {
@@ -140,16 +140,20 @@ export function createMedLensRouter({ config, frontendPath }) {
         .slice(0, Math.min(Number(req.body.count) || 10, randomDrugCandidates.length));
     }
     if (!terms.length) return res.status(400).json({ error: "No unused drug records are available." });
-    const next = [...all]; const fetched = []; const notFound = []; const duplicates = [];
+    const next = [...all]; const fetched = []; const notFound = []; const duplicates = []; const errors = [];
     for (const term of terms) {
-      const label = await fetchLabel(term).catch(() => null);
+      let label;
+      try { label = await fetchLabel(term); }
+      catch (error) { errors.push({ term, error: error.message }); continue; }
       if (!label) { notFound.push(term); continue; }
       const fda = label.openfda || {}; const generic = first(fda.generic_name) || first(fda.substance_name) || term;
       const item = normalize({ id: "drug-" + clean(generic), name: generic, generic, brand: first(fda.brand_name), class: first(fda.pharm_class_epc) || first(fda.pharm_class_moa), route: first(fda.route), source: "openFDA", sourceLabel: label });
       const index = next.findIndex((x) => x.id === item.id);
       if (index < 0) { next.push(item); fetched.push(item); } else { duplicates.push(term); }
     }
-    await writeCollection("medlensDrugQueue", next); res.json({ ok: true, fetched, notFound, duplicates, total: fetched.length });
+    if (fetched.length) await writeCollection("medlensDrugQueue", next);
+    if (errors.length && !fetched.length) return res.status(502).json({ error: errors[0].error, errors, notFound, duplicates });
+    res.json({ ok: true, fetched, notFound, duplicates, errors, total: fetched.length });
   }));
   router.post("/api/admin/medlens/drugs/:drugId/ai-edit", wrap(async (req, res) => {
     if (!admin(req, config)) return res.status(403).json({ error: "Forbidden" });

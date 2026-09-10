@@ -2,6 +2,8 @@
 
 Use `www` as the source of truth for local UI work.
 
+See [CANONICAL_WORKSPACE.md](CANONICAL_WORKSPACE.md) for the recovered workspace baseline, test command, and outstanding verification findings.
+
 ## Edit here
 
 - `www/index.html`

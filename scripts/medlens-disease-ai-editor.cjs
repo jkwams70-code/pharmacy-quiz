@@ -54,7 +54,7 @@ const ALLOWED_HTML = [
 ].join(', ');
 
 function parseArgs(argv) {
-  const args = { apply: false, all: false, limit: 1, model: process.env.OPENAI_MODEL || 'gpt-5-mini', source: TARGET_DB_FILES[0], output: '', diseases: [], skipEdited: false };
+  const args = { apply: false, all: false, limit: 1, model: process.env.OPENAI_MODEL || 'gpt-5-mini', source: TARGET_DB_FILES[1], output: '', diseases: [], skipEdited: false };
   for (let i = 2; i < argv.length; i += 1) {
     const value = argv[i];
     if (value === '--apply') args.apply = true;

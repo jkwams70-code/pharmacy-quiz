@@ -90,7 +90,7 @@ function parseArgs(argv) {
     all: false,
     limit: 1,
     model: process.env.OPENAI_MODEL || 'gpt-5-mini',
-    source: TARGET_DB_FILES[0],
+    source: TARGET_DB_FILES[1],
     drugs: [],
     skipEdited: false,
     ignoreSkipList: false,
@@ -596,7 +596,8 @@ function applyEditedArticle(drug, edited, model) {
 async function main() {
   const args = parseArgs(process.argv);
   if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is missing. Add it to your environment or .env file before running the AI editor.');
-  if (!fs.existsSync(args.source)) throw new Error(`Database file not found: ${args.source}`);
+  const inputPath = args.input || args.source;
+  if (!fs.existsSync(inputPath)) throw new Error(`Database file not found: ${inputPath}`);
 
   const entries = args.input
     ? JSON.parse(fs.readFileSync(args.input, 'utf8'))

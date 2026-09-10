@@ -1,4 +1,4 @@
-﻿import test from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -37,6 +37,7 @@ test('MedLens loads canonical databases and fetches, edits, reviews and publishe
   let server;
   t.after(async () => {
     globalThis.fetch = nativeFetch;
+    delete globalThis.__MEDLENS_FETCH;
     if (oldNodeOptions === undefined) delete process.env.NODE_OPTIONS; else process.env.NODE_OPTIONS = oldNodeOptions;
     if (server) await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
     if (path.dirname(path.resolve(root)) !== testDir || !path.basename(root).startsWith('.medlens-workflow-')) throw new Error('Unsafe fixture cleanup path');
@@ -75,6 +76,7 @@ test('MedLens loads canonical databases and fetches, edits, reviews and publishe
     if (u.hostname === 'en.wikipedia.org') return Response.json({ query: { pages: { '1': { title: u.searchParams.get('titles'), extract: 'Synthetic disease source.\n\nSynthetic second paragraph.' } } } });
     throw new Error('Unexpected source URL');
   };
+  globalThis.__MEDLENS_FETCH = globalThis.fetch;
   const app = express();
   app.use(express.json());
   for (const def of kinds) {

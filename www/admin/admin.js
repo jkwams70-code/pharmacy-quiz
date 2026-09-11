@@ -83,6 +83,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let cachedDeletedGroups = [];
       let cachedReports = [];
       let cachedSubscriptionRequests = [];
+      let subscriptionRequestsLoadingPromise = null;
       let cachedPasswordResetRequests = [];
       let cachedAdminStats = null;
       let cachedDeletedUsers = [];
@@ -1086,12 +1087,15 @@ function getMonetizationBucketMeta(bucket = "request") {
         selectedMonetizationBucket = ["request", "activated", "rejected", "expired"].includes(nextBucket)
           ? nextBucket
           : "request";
-        document.querySelectorAll("[data-monetization-bucket]").forEach((el) => {
+         document.querySelectorAll("[data-monetization-bucket]").forEach((el) => {
           const isActive = el.dataset.monetizationBucket === selectedMonetizationBucket;
           el.classList.toggle("is-active", isActive);
           el.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
-        renderMonetizationPanel();
+
+        if (subscriptionRequestsLoaded || cachedSubscriptionRequests.length > 0) {
+          renderMonetizationPanel();
+        }
       }
 
       function renderMonetizationPanel() {
@@ -1180,28 +1184,41 @@ function getMonetizationBucketMeta(bucket = "request") {
       }
 
       async function loadMonetizationRequests() {
-        try {
-          const res = await fetch(withNoCache(`${API_BASE}/admin/subscription-requests`), {
-            headers: getHeaders(),
-            cache: "no-store",
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !Array.isArray(data.requests)) {
-            throw new Error(data.error || "Failed to load subscription requests");
-          }
+  if (subscriptionRequestsLoadingPromise) {
+    return subscriptionRequestsLoadingPromise;
+  }
 
-          cachedSubscriptionRequests = data.requests.filter(
-            (entry) => String(entry?.plan || "").trim().toLowerCase() !== "trial",
-          );
-          subscriptionRequestsLoaded = true;
-          renderMonetizationPanel();
-          return true;
-        } catch (err) {
-          console.error("Failed to load subscription requests:", err);
-          showAlert("monetization-alerts", "Failed to load subscription requests", "error");
-          return false;
-        }
+  subscriptionRequestsLoadingPromise = (async () => {
+    try {
+      const res = await fetch(withNoCache(`${API_BASE}/admin/subscription-requests`), {
+        headers: getHeaders(),
+        cache: "no-store",
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !Array.isArray(data.requests)) {
+        throw new Error(data.error || "Failed to load subscription requests");
       }
+
+      cachedSubscriptionRequests = data.requests;
+
+      subscriptionRequestsLoaded = true;
+      renderMonetizationPanel();
+      return true;
+    } catch (err) {
+      console.error("Failed to load subscription requests:", err);
+      showAlert("monetization-alerts", "Failed to load subscription requests", "error");
+      return false;
+    }
+  })();
+
+  try {
+    return await subscriptionRequestsLoadingPromise;
+  } finally {
+    subscriptionRequestsLoadingPromise = null;
+  }
+}
 
       function getPasswordResetRequestName(request = {}) {
         return String(request?.name || request?.user?.name || request?.username || request?.contact || "Password reset request").trim() || "Password reset request";

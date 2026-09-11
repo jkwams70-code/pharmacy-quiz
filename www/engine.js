@@ -5273,6 +5273,36 @@ const menuProfileSubtitleEl = document.getElementById("menu-profile-subtitle");
 const menuPointsBtn = document.getElementById("menu-points-btn");
 const newsMenuBtn = document.getElementById("news-feed-btn");
 const menuPointsValueEl = document.getElementById("menu-points-value");
+const menuWelcomeTrialBtn =
+  document.getElementById("menu-welcome-trial-btn");
+const menuWelcomeTrialTimeEl =
+  document.getElementById("menu-welcome-trial-time");
+let welcomeTrialTimerHandle = null;
+if (menuWelcomeTrialBtn) {
+  menuWelcomeTrialBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    openSubscriptionScreen({
+      intent: "general",
+      returnScreen: "quiz-menu",
+    });
+  });
+
+  menuWelcomeTrialBtn.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    openSubscriptionScreen({
+      intent: "general",
+      returnScreen: "quiz-menu",
+    });
+  });
+}
 const menuStreakCardBtn = document.getElementById("menu-streak-card");
 const menuPointsCardBtn = document.getElementById("menu-points-card");
 const menuRankCardBtn = document.getElementById("menu-rank-card");
@@ -32667,6 +32697,8 @@ function buildMenuSnapshotFromUser(user = null) {
     contact: String(user.contact || "").trim(),
     professionalType: String(user.professionalType || "").trim(),
     profileImage: String(user.profileImage || "").trim(),
+    welcomeTrialEndsAt: user.welcomeTrialEndsAt || null,
+welcomeBonusUsed: user.welcomeBonusUsed === true,
     points,
     dailyQuiz: {
       streak: dailyStreak,
@@ -32874,8 +32906,50 @@ function openTourScreen() {
   showScreen("tour-screen");
 }
 
+function renderWelcomeTrialChip() {
+  if (!menuWelcomeTrialBtn || !menuWelcomeTrialTimeEl) return;
+
+ const trialUser = currentUser || getMenuSnapshotUser();
+
+const eligible =
+  trialUser &&
+  trialUser.welcomeBonusUsed !== true &&
+  trialUser.welcomeTrialEndsAt;
+
+const remainingMs = eligible
+  ? Math.max(0, Date.parse(trialUser.welcomeTrialEndsAt) - Date.now())
+  : 0;
+
+  if (remainingMs <= 0) {
+    menuWelcomeTrialBtn.hidden = true;
+
+    if (welcomeTrialTimerHandle) {
+      clearInterval(welcomeTrialTimerHandle);
+      welcomeTrialTimerHandle = null;
+    }
+
+    return;
+  }
+
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  menuWelcomeTrialTimeEl.textContent =
+    `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  menuWelcomeTrialBtn.hidden = false;
+
+  if (!welcomeTrialTimerHandle) {
+    welcomeTrialTimerHandle = setInterval(renderWelcomeTrialChip, 1000);
+  }
+}
+
 function renderAuthState() {
   if (!authUserLabel || !logoutBtn || !profileBtn) return;
+
+  renderWelcomeTrialChip();
 
   const menuUser = getMenuSnapshotUser();
   const isAuthHydrating = backendClient.isAuthenticated() && !currentUser;
@@ -32936,7 +33010,7 @@ function renderAuthState() {
         : menuUser.professionalType || "Signed in";
     authUserLabel.textContent = isAdmin ? displayName : username ? `@${username}` : fallbackLabel;
     authUserLabel.classList.remove("hidden");
-    logoutBtn.classList.add("hidden");
+    logoutBtn.classList.toggle("hidden", !backendClient.isAuthenticated());
     profileBtn.classList.remove("hidden");
     if (menuProfileNameEl) menuProfileNameEl.textContent = displayName;
     if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = displaySubtitle;
@@ -36853,6 +36927,7 @@ function renderSubscriptionScreen() {
   const sectionTitleEl = document.getElementById("subscription-section-title");
   const sectionNoteEl = document.getElementById("subscription-section-note");
   const statusBadgesEl = document.getElementById("subscription-status-badges");
+  const trialStatusLineEl = document.getElementById("subscription-trial-status");
   const selectedTitleEl = document.getElementById("subscription-selected-plan-title");
   const selectedCopyEl = document.getElementById("subscription-selected-plan-copy");
   const modalTitleEl = subscriptionPaymentModalTitleEl;
@@ -36875,24 +36950,49 @@ function renderSubscriptionScreen() {
     .trim()
     .toLowerCase();
   const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || currentUser?.subscriptionPlan || "").trim().toLowerCase();
-  const currentSubscriptionExpiryLabel = formatSubscriptionExpiryLabel(
-    currentSubscriptionAccess?.expirationAt ||
-      currentUser?.subscriptionExpirationAt ||
-      currentUser?.subscriptionEndsAt ||
-      "",
-  );
-  const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
-  const subscriptionReviewing =
-    latestRequestStatus === "pending" ||
-    currentSubscriptionStatus === "pending";
+ const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+const subscriptionReviewing =
+  latestRequestStatus === "pending" ||
+  currentSubscriptionStatus === "pending";
+
+const pendingTrialEndsAt =
+  subscriptionReviewing &&
+  (currentSubscriptionAccess?.trialEndsAt ||
+    currentUser?.trialEndsAt ||
+    currentUser?.welcomeTrialEndsAt ||
+    "");
+
+const pendingTrialExpiryLabel =
+  pendingTrialEndsAt &&
+  Date.parse(pendingTrialEndsAt) > Date.now()
+    ? formatSubscriptionExpiryLabel(pendingTrialEndsAt)
+    : "";
+
+const currentSubscriptionExpiryLabel =
+  pendingTrialExpiryLabel ||
+  (subscriptionReviewing
+    ? ""
+    : formatSubscriptionExpiryLabel(
+        currentSubscriptionAccess?.expirationAt ||
+          currentUser?.subscriptionExpirationAt ||
+          currentUser?.subscriptionEndsAt ||
+          "",
+      ));
   const subscriptionActive =
-    currentSubscriptionStatus === "active" && currentSubscriptionPlan !== "trial";
+  (currentSubscriptionStatus === "active" ||
+    currentSubscriptionStatus === "trial") &&
+  !subscriptionReviewing;
   const subscriptionActionDisabled = subscriptionReviewing || subscriptionActive;
   const subscriptionActionDisabledReason = subscriptionActionDisabled
     ? subscriptionActive
       ? "Your subscription is already active."
       : "A subscription request is already under review."
     : "";
+   const subscriptionUser = currentUser || getMenuSnapshotUser();
+
+const welcomeBonusEligible =
+  Boolean(subscriptionUser?.welcomeTrialEndsAt) &&
+  subscriptionUser?.welcomeBonusUsed !== true;
   const plans = getSubscriptionPlanList();
   const selectedPlan = planInputEl?.value || plans.find((plan) => plan.key !== "trial")?.key || "weekly";
   const selectedPlanData = plans.find((plan) => plan.key === selectedPlan) || plans[0];
@@ -36938,11 +37038,41 @@ function renderSubscriptionScreen() {
   const durationText = Number(selectedPlanData?.durationDays) === 1 ? "1 day" : `${selectedPlanData?.durationDays} days`;
   const proofReference = getSubscriptionProofReference(selectedPlan);
 
-  if (titleEl) titleEl.textContent = `Subscription: ${state.title}`;
-  if (subtitleEl) subtitleEl.textContent = state.subtitle;
-  if (noteEl) noteEl.textContent = state.note;
-  if (pillEl) pillEl.textContent = state.pill || (state.isActive ? "active" : "inactive");
-  if (modalTitleEl) modalTitleEl.textContent = displayName;
+  const subscriptionDisplayUser = currentUser || getMenuSnapshotUser();
+const freeTrialEndsAt =
+  currentSubscriptionAccess?.trialEndsAt ||
+  subscriptionDisplayUser?.welcomeTrialEndsAt ||
+  subscriptionDisplayUser?.trialEndsAt ||
+  "";
+
+const freeTrialAvailable =
+  Boolean(freeTrialEndsAt) &&
+  subscriptionDisplayUser?.welcomeBonusUsed !== true;
+
+const freeTrialActive =
+  freeTrialAvailable &&
+  Number.isFinite(Date.parse(freeTrialEndsAt)) &&
+  Date.parse(freeTrialEndsAt) > Date.now();
+
+const freeTrialExpiryLabel = freeTrialAvailable
+  ? formatSubscriptionExpiryLabel(freeTrialEndsAt)
+  : "";
+
+const showFreeTrialStatus = freeTrialAvailable;
+
+ if (trialStatusLineEl) {
+  if (showFreeTrialStatus) {
+    trialStatusLineEl.hidden = false;
+    trialStatusLineEl.textContent = freeTrialExpiryLabel
+      ? `${freeTrialActive ? "ACTIVE" : "EXPIRED"} FREE TRIAL · ${
+          freeTrialActive ? "Expires" : "Expired"
+        } ${freeTrialExpiryLabel}`
+      : `${freeTrialActive ? "ACTIVE" : "EXPIRED"} FREE TRIAL`;
+  } else {
+    trialStatusLineEl.hidden = true;
+    trialStatusLineEl.textContent = "";
+  }
+}
   if (modalCopyEl) modalCopyEl.textContent = selectedPlanData?.description || "Pick a payment pass to continue.";
   if (amountEl) amountEl.textContent = priceText;
   if (requestStatusEl) {
@@ -36963,11 +37093,22 @@ function renderSubscriptionScreen() {
     sectionNoteEl.textContent = "";
   }
   if (statusBadgesEl) {
-    const currentBadgeState = subscriptionReviewing
-      ? "pending"
-      : subscriptionActive
-        ? "active"
-        : "expired";
+   const pendingPlanKey = String(
+  latestRequest?.plan || currentSubscriptionPlan || "",
+)
+  .trim()
+  .toLowerCase();
+
+const pendingPaidSubscription =
+  subscriptionReviewing && pendingPlanKey !== "trial";
+
+const currentBadgeState = pendingPaidSubscription
+  ? "pending"
+  : showFreeTrialStatus && freeTrialActive
+    ? "active"
+    : subscriptionActive
+      ? "active"
+      : "expired";
     statusBadgesEl.innerHTML = [
       { key: "active", label: "Active", active: currentBadgeState === "active" },
       { key: "pending", label: "Pending", active: currentBadgeState === "pending" },
@@ -36990,6 +37131,14 @@ function renderSubscriptionScreen() {
         const active = String(plan.key) === String(selectedPlan);
         const planName = plan.label || plan.shortLabel || "Plan";
         const planMeta = planCardMeta[plan.key] || planCardMeta.monthly;
+        const welcomeBonusDays =
+        Number(plan.durationDays) === 7
+          ? 3
+          : Number(plan.durationDays) === 30
+            ? 7
+            : Number(plan.durationDays) === 365
+              ? 30
+              : 0;
         const priceLabel = Number(plan.priceGhs) === 0 ? "Free" : `GHS ${plan.priceGhs}`;
         const periodLabel =
           Number(plan.durationDays) === 7
@@ -37000,10 +37149,27 @@ function renderSubscriptionScreen() {
         const bullets = featureSets[plan.key] || featureSets.monthly;
         return `
           <article class="subscription-plan-tile ${active ? "is-active" : ""} ${planMeta.featured ? "is-popular" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""} ${plan.key === currentSubscriptionPlan ? "is-current-subscription" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}">
+         ${welcomeBonusEligible && welcomeBonusDays > 0 ? `
+  <div class="subscription-welcome-bonus" aria-label="Welcome bonus">
+    <span class="subscription-welcome-sparkle sparkle-one" aria-hidden="true">✦</span>
+    <span class="subscription-welcome-sparkle sparkle-two" aria-hidden="true">✦</span>
+    <span class="subscription-welcome-sparkle sparkle-three" aria-hidden="true">✦</span>
+    <span class="subscription-welcome-sparkle sparkle-four" aria-hidden="true">✦</span>
+    <div class="subscription-welcome-bonus-label">WELCOME BONUS</div>
+    <div class="subscription-welcome-bonus-value">
+      <strong>+${welcomeBonusDays}</strong> bonus days on your first subscription
+    </div>
+  </div>
+` : ""}
             ${planMeta.featured ? '<div class="subscription-plan-popular-badge">POPULAR</div>' : ""}
             <div class="subscription-plan-name-row">
               <div class="subscription-plan-name">${escapeHtml(planMeta.title)}</div>
-              ${plan.key === currentSubscriptionPlan && currentSubscriptionExpiryLabel ? `<div class="subscription-plan-expiry">Expires ${escapeHtml(currentSubscriptionExpiryLabel)}</div>` : ""}
+              ${plan.key === currentSubscriptionPlan &&
+subscriptionActive &&
+!subscriptionReviewing &&
+currentSubscriptionExpiryLabel
+  ? `<div class="subscription-plan-expiry">Expires ${escapeHtml(currentSubscriptionExpiryLabel)}</div>`
+  : ""}
             </div>
             <div class="subscription-plan-desc">${escapeHtml(plan.description || planMeta.subtitle)}</div>
             <div class="subscription-plan-price">
@@ -40076,6 +40242,9 @@ function showScreen(id, options = {}) {
     target.classList.add("screen-active");
     syncViewportBackground(target);
   }
+  if (normalizedId === "quiz-menu" || normalizedId === "home-screen") {
+  renderWelcomeTrialChip();
+}
   if (id === "gppqe-screen") {
   setMenuHubActiveTab("gppqe");
 }

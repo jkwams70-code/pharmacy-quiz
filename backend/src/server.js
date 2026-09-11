@@ -4808,18 +4808,47 @@ function computeSubscriptionState(rawUser = {}) {
   if (status === "pending" && (approvedAt || rejectedAt)) {
     status = approvedAt ? "active" : "rejected";
   }
-  const trialIsStillValid = trialEndsAt && Date.parse(trialEndsAt) > now;
-  const subscriptionIsStillValid = subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now;
-  if (status === "expired" && (trialIsStillValid || subscriptionIsStillValid)) {
-    status = plan === "trial" && trialIsStillValid ? "trial" : "active";
-  }
-  const isActive = status === "trial" || status === "active";
-  const isLocked = !isActive;
-  const durationDays = planMeta.durationDays || 0;
-  const expirationAt = plan === "trial" ? trialEndsAt : subscriptionEndsAt;
-  const daysRemaining = expirationAt
-    ? Math.max(0, Math.ceil((Date.parse(expirationAt) - now) / (24 * 60 * 60 * 1000)))
-    : null;
+  const trialIsStillValid =
+  trialEndsAt && Date.parse(trialEndsAt) > now;
+
+const subscriptionIsStillValid =
+  subscriptionEndsAt && Date.parse(subscriptionEndsAt) > now;
+
+if (status === "expired" && (trialIsStillValid || subscriptionIsStillValid)) {
+  status =
+    plan === "trial" && trialIsStillValid
+      ? "trial"
+      : "active";
+}
+
+const pendingPaidRequestWithTrial =
+  status === "pending" &&
+  plan !== "trial" &&
+  trialIsStillValid;
+
+const isActive =
+  status === "trial" ||
+  status === "active" ||
+  pendingPaidRequestWithTrial;
+
+const isLocked = !isActive;
+
+const durationDays = planMeta.durationDays || 0;
+
+const expirationAt =
+  plan === "trial" || pendingPaidRequestWithTrial
+    ? trialEndsAt
+    : subscriptionEndsAt;
+
+const daysRemaining = expirationAt
+  ? Math.max(
+      0,
+      Math.ceil(
+        (Date.parse(expirationAt) - now) /
+          (24 * 60 * 60 * 1000),
+      ),
+    )
+  : null;
   const approvalDeadlineAt = requestedAt
     ? new Date(Date.parse(requestedAt) + SUBSCRIPTION_APPROVAL_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
     : null;
@@ -5214,6 +5243,9 @@ function toPublicUser(user) {
     subscriptionRejectedAt: subscriptionState.rejectedAt,
     subscriptionStartedAt: subscriptionState.startedAt,
     trialEndsAt: subscriptionState.trialEndsAt,
+    welcomeTrialEndsAt: normalized.welcomeTrialEndsAt || null,
+welcomeBonusUsed: normalized.welcomeBonusUsed === true,
+welcomeBonusAppliedAt: normalized.welcomeBonusAppliedAt || null,
     subscriptionEndsAt: subscriptionState.subscriptionEndsAt,
     subscriptionExpirationAt: subscriptionState.expirationAt,
     subscriptionApprovalDeadlineAt: subscriptionState.approvalDeadlineAt,
@@ -7642,8 +7674,9 @@ app.post(
 
     const createdAt = new Date().toISOString();
     const name = buildDisplayName(title, firstName, lastName, username);
-    const trialEndsAt = addDaysToIsoDate(createdAt, SUBSCRIPTION_TRIAL_DAYS);
-    const user = {
+const trialEndsAt = new Date(
+  Date.parse(createdAt) + 24 * 60 * 60 * 1000,
+).toISOString();    const user = {
       id: crypto.randomUUID(),
       title,
       firstName,
@@ -7665,6 +7698,9 @@ app.post(
       subscriptionStartedAt: createdAt,
       trialEndsAt,
       subscriptionEndsAt: trialEndsAt,
+      welcomeTrialEndsAt: trialEndsAt,
+welcomeBonusUsed: false,
+welcomeBonusAppliedAt: null,
       subscriptionApprovalDeadlineAt: null,
       professionalType,
       country,
@@ -13749,15 +13785,96 @@ app.get(
     }
 
     const users = (await readCollection("users")).map(normalizeExistingUser);
-    const usersById = new Map(users.map((user) => [user.id, user]));
-    const rawRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
-    const syncedRequests = synchronizeSubscriptionRequestsWithUsers(users, rawRequests);
-    if (syncedRequests.changed) {
-      await writeCollection("subscriptionRequests", syncedRequests.requests);
-    }
-    const requests = syncedRequests.requests
-      .map((request) => toPublicSubscriptionRequest(request, usersById))
-      .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+const usersById = new Map(users.map((user) => [user.id, user]));
+
+const rawRequests = coerceCollectionArray(
+  await readCollection("subscriptionRequests"),
+);
+
+const syncedRequests = synchronizeSubscriptionRequestsWithUsers(
+  users,
+  rawRequests,
+);
+
+if (syncedRequests.changed) {
+  await writeCollection(
+    "subscriptionRequests",
+    syncedRequests.requests,
+  );
+}
+
+const paidRequests = syncedRequests.requests
+  .map((request) =>
+    toPublicSubscriptionRequest(request, usersById),
+  );
+
+const paidActiveUserIds = new Set(
+  paidRequests
+    .filter((request) => {
+      const status = String(request?.status || "")
+        .trim()
+        .toLowerCase();
+
+      return (
+        status === "active" &&
+        String(request?.plan || "")
+          .trim()
+          .toLowerCase() !== "trial"
+      );
+    })
+    .map((request) =>
+      String(request?.userId || "").trim(),
+    )
+    .filter(Boolean),
+);
+
+const trialRequests = users
+  .map((user) => {
+    const trialEndsAt =
+      user.welcomeTrialEndsAt ||
+      user.trialEndsAt ||
+      "";
+
+    if (!trialEndsAt) return null;
+
+    const trialConsumed =
+      user.welcomeBonusUsed === true ||
+      paidActiveUserIds.has(String(user.id || "").trim());
+
+    const trialIsActive =
+      !trialConsumed &&
+      Number.isFinite(Date.parse(trialEndsAt)) &&
+      Date.parse(trialEndsAt) > Date.now();
+
+    return toPublicSubscriptionRequest(
+      {
+        id: `trial:${user.id}`,
+        userId: user.id,
+        userName: user.name,
+        username: user.username,
+        contact: user.contact,
+        plan: "trial",
+        planLabel: "Free trial",
+        planShortLabel: "Free trial",
+        priceGhs: 0,
+        status: trialIsActive ? "active" : "expired",
+        requestedAt: user.createdAt,
+        activatedAt: user.createdAt,
+        expiresAt: trialEndsAt,
+        expiredAt: trialIsActive
+          ? null
+          : user.welcomeBonusAppliedAt || trialEndsAt,
+      },
+      usersById,
+    );
+  })
+  .filter(Boolean);
+
+const requests = [...paidRequests, ...trialRequests].sort(
+  (a, b) =>
+    Date.parse(b.requestedAt || 0) -
+    Date.parse(a.requestedAt || 0),
+);
 
     res.json({
       ok: true,
@@ -13797,11 +13914,28 @@ app.post(
       return;
     }
 
-    const subscriptionStartedAt = now;
-    const subscriptionEndsAt =
-      plan === "trial"
-        ? addDaysToIsoDate(subscriptionStartedAt, SUBSCRIPTION_TRIAL_DAYS)
-        : addDaysToIsoDate(subscriptionStartedAt, planMeta.durationDays);
+   const subscriptionStartedAt = now;
+
+const welcomeBonusDays =
+  plan !== "trial" &&
+  Boolean(users[userIndex].welcomeTrialEndsAt) &&
+  users[userIndex].welcomeBonusUsed !== true
+    ? ({
+        7: 3,
+        30: 7,
+        365: 30,
+      }[Number(planMeta.durationDays)] || 0)
+    : 0;
+
+const subscriptionDurationDays =
+  plan === "trial"
+    ? SUBSCRIPTION_TRIAL_DAYS
+    : Number(planMeta.durationDays) || 0;
+
+const subscriptionEndsAt = addDaysToIsoDate(
+  subscriptionStartedAt,
+  subscriptionDurationDays + welcomeBonusDays,
+);
 
     requests[requestIndex] = {
       ...request,
@@ -13831,6 +13965,14 @@ app.post(
       subscriptionStartedAt,
       trialEndsAt: plan === "trial" ? subscriptionEndsAt : users[userIndex].trialEndsAt,
       subscriptionEndsAt,
+      welcomeBonusUsed:
+  welcomeBonusDays > 0
+    ? true
+    : users[userIndex].welcomeBonusUsed === true,
+welcomeBonusAppliedAt:
+  welcomeBonusDays > 0
+    ? now
+    : users[userIndex].welcomeBonusAppliedAt || null,
       subscriptionApprovalDeadlineAt: request.reviewDeadlineAt,
       subscriptionPaymentReference: request.paymentReference,
       updatedAt: now,

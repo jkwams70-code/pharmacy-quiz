@@ -1529,6 +1529,188 @@
           grid-template-columns: 1fr;
         }
 
+        #subscription-screen .subscription-welcome-bonus {
+  position: relative;
+  margin: -1px -1px 18px;
+  padding: 14px 20px 16px;
+  background: linear-gradient(
+    135deg,
+    #fef3c7 0%,
+    #fde68a 25%,
+    #fbbf24 50%,
+    #f59e0b 75%,
+    #d97706 100%
+  );
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  text-align: center;
+  border-bottom: 1px solid rgba(217, 119, 6, 0.18);
+  isolation: isolate;
+}
+
+#subscription-screen .subscription-welcome-bonus::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -100%;
+  width: 60%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.38),
+    transparent
+  );
+  transform: skewX(-20deg);
+  animation: subscription-welcome-shimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes subscription-welcome-shimmer {
+  0% { left: -100%; }
+  50%, 100% { left: 150%; }
+}
+
+#subscription-screen .subscription-welcome-bonus-label,
+#subscription-screen .subscription-welcome-bonus-value {
+  position: relative;
+  z-index: 2;
+}
+
+#subscription-screen .subscription-welcome-bonus-label {
+  margin-bottom: 4px;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+#subscription-screen .subscription-welcome-bonus-value {
+  color: #78350f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#subscription-screen .subscription-welcome-bonus-value strong {
+  color: #451a03;
+  font-weight: 800;
+}
+
+#subscription-screen .subscription-welcome-sparkle {
+  position: absolute;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  animation: subscription-welcome-sparkle 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+#subscription-screen .subscription-welcome-sparkle.sparkle-one {
+  top: 8px;
+  left: 18px;
+}
+
+#subscription-screen .subscription-welcome-sparkle.sparkle-two {
+  top: 10px;
+  right: 22px;
+  font-size: 10px;
+  animation-delay: 0.7s;
+}
+
+#subscription-screen .subscription-welcome-sparkle.sparkle-three {
+  bottom: 10px;
+  left: 30px;
+  font-size: 11px;
+  animation-delay: 1.4s;
+}
+
+#subscription-screen .subscription-welcome-sparkle.sparkle-four {
+  right: 28px;
+  bottom: 8px;
+  animation-delay: 2.1s;
+}
+
+@keyframes subscription-welcome-sparkle {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.9) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(15deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #subscription-screen .subscription-welcome-bonus::before,
+  #subscription-screen .subscription-welcome-sparkle {
+    animation: none;
+  }
+
+  #subscription-screen .subscription-welcome-sparkle {
+    opacity: 0.65;
+  }
+}
+/* Welcome bonus desktop edge-to-edge override */
+#subscription-screen .subscription-plan-tile > .subscription-welcome-bonus {
+  display: block !important;
+  position: relative;
+  width: auto;
+  margin: -24px -24px 18px !important;
+  padding: 14px 20px 16px !important;
+  background: linear-gradient(
+    135deg,
+    #fef3c7 0%,
+    #fde68a 25%,
+    #fbbf24 50%,
+    #f59e0b 75%,
+    #d97706 100%
+  ) !important;
+  border: 0;
+  border-bottom: 1px solid rgba(217, 119, 6, 0.18);
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  text-align: center;
+  isolation: isolate;
+}
+
+#subscription-screen .subscription-plan-tile > .subscription-welcome-bonus
+  .subscription-welcome-bonus-label,
+#subscription-screen .subscription-plan-tile > .subscription-welcome-bonus
+  .subscription-welcome-bonus-value {
+  display: block;
+  position: relative;
+  z-index: 2;
+}
+
+#subscription-screen .subscription-plan-tile > .subscription-welcome-bonus
+  .subscription-welcome-bonus-label {
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+#subscription-screen .subscription-plan-tile > .subscription-welcome-bonus
+  .subscription-welcome-bonus-value {
+  color: #78350f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#subscription-screen .subscription-plan-tile > .subscription-welcome-bonus
+  .subscription-welcome-bonus-value strong {
+  color: #451a03;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  #subscription-screen .subscription-plan-tile > .subscription-welcome-bonus {
+    margin: -12px -12px 18px !important;
+  }
+}
+
       }
     </style>
   </head>
@@ -1844,10 +2026,32 @@
                   </span>
                 </span>
                 <span class="menu-modern-profile-copy">
-                  <span id="menu-profile-name" class="menu-modern-profile-name">Your Profile</span>
-                  <span id="menu-profile-subtitle" class="menu-modern-profile-subtitle">Tap to sign in</span>
-                </span>
-              </button>
+  <span id="menu-profile-name" class="menu-modern-profile-name">
+    Your Profile
+  </span>
+  <span id="menu-profile-subtitle" class="menu-modern-profile-subtitle">
+    Tap to sign in
+  </span>
+</span>
+
+<span
+  id="menu-welcome-trial-btn"
+  class="menu-modern-trial-pill"
+  role="button"
+  tabindex="0"
+  hidden
+  aria-label="Welcome trial and first subscription bonus"
+>
+  <span class="menu-modern-trial-icon" aria-hidden="true">✦</span>
+  <span class="menu-modern-trial-copy">
+    <span class="menu-modern-trial-label">TRIAL</span>
+    <span id="menu-welcome-trial-time" class="menu-modern-trial-time">
+      24:00:00
+    </span>
+  </span>
+  <span class="menu-modern-trial-cta">View first bonus</span>
+</span>
+</button>
 
               <button
                 id="menu-points-btn"
@@ -2611,6 +2815,10 @@
               <p id="subscription-section-note" class="subscription-section-note" hidden></p>
             </div>
             <div id="subscription-status-badges" class="subscription-status-badges" aria-label="Subscription status badges"></div>
+            <p id="subscription-trial-status"
+   class="subscription-trial-status"
+   aria-live="polite"
+   hidden></p>
           </div>
 
           <section class="subscription-plan-grid-wrap">

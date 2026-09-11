@@ -602,6 +602,8 @@ let newsPipelineState = {
 };
 let editingNewsId = "";
 let pendingNewsAction = null;
+let newsSaveInFlight = false;
+let newsCreateRequestId = "";
 let newsQueuePage = 1;
 const NEWS_STUDIO_ARTICLES_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="currentColor"/></svg>';
 const NEWS_STUDIO_DASHBOARD_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>';
@@ -2681,6 +2683,7 @@ async function toggleNewsFeatured(newsId, featured) {
 }
 
 async function saveManualArticle() {
+  if (newsSaveInFlight) return false;
   const payload = getEditorPayload();
   if (!payload.title) {
     showNotice("Please add a headline before saving the article.", "error");
@@ -2691,15 +2694,29 @@ async function saveManualArticle() {
     return false;
   }
 
+  const saveButtons = [
+    document.getElementById("newsSaveDraftBtn"),
+    document.getElementById("newsSubmitReviewBtn"),
+  ].filter(Boolean);
+  newsSaveInFlight = true;
+  saveButtons.forEach((button) => { button.disabled = true; });
+
   try {
     await ensureApiBase();
     const isEditing = Boolean(String(editingNewsId || "").trim());
+    if (!isEditing && !newsCreateRequestId) {
+      newsCreateRequestId = "news-create-" + crypto.randomUUID();
+    }
     const endpoint = isEditing
       ? `${API_BASE}/admin/news/${encodeURIComponent(String(editingNewsId).trim())}`
       : `${API_BASE}/admin/news`;
+    const headers = { ...getHeaders() };
+    if (!isEditing && newsCreateRequestId) {
+      headers["Idempotency-Key"] = newsCreateRequestId;
+    }
     const res = await fetch(endpoint, {
       method: isEditing ? "PATCH" : "POST",
-      headers: getHeaders(),
+      headers,
       cache: "no-store",
       body: JSON.stringify(payload),
     });
@@ -2712,12 +2729,16 @@ async function saveManualArticle() {
     resetEditorForm();
     await loadNewsPipeline();
     editingNewsId = "";
+    newsCreateRequestId = "";
     newsQueuePage = 1;
     go("articles");
     return true;
   } catch (error) {
-    showNotice(`Could not save article: ${error.message}`, "error");
+    showNotice("Could not save article: " + error.message, "error");
     return false;
+  } finally {
+    newsSaveInFlight = false;
+    saveButtons.forEach((button) => { button.disabled = false; });
   }
 }
 

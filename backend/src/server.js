@@ -2011,8 +2011,10 @@ function normalizeNewsItem(raw = {}) {
   const aiCategory = normalizeNewsCategory(raw.aiCategory || "", "");
   const views = Math.max(0, Math.round(Number(raw.views ?? raw.viewCount ?? raw.readCount ?? raw.metrics?.views) || 0));
   const likes = Math.max(0, Math.round(Number(raw.likes ?? raw.likesCount ?? raw.likeCount ?? raw.metrics?.likes) || 0));
+  const clientRequestId = cleanNewsText(raw.clientRequestId || raw.idempotencyKey || "", 160);
   return {
     id: String(raw.id || crypto.randomUUID()).trim(),
+    clientRequestId,
     sourceId,
     sourceName,
     status,
@@ -2730,6 +2732,21 @@ async function collectNewsFromSource(
 }
 
 let newsCollectionLock = null;
+let newsAdminWriteLock = Promise.resolve();
+
+async function withNewsAdminWriteLock(task) {
+  const previous = newsAdminWriteLock;
+  let release;
+  newsAdminWriteLock = new Promise((resolve) => {
+    release = resolve;
+  });
+  await previous;
+  try {
+    return await task();
+  } finally {
+    release();
+  }
+}
 
 async function collectAndStoreNews({ sourceId = "", triggeredBy = "system" } = {}) {
   if (newsCollectionLock) return newsCollectionLock;
@@ -14919,36 +14936,53 @@ app.post(
       updatedAt: now,
     });
 
-    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
-    const existingIndex = items.findIndex((entry) => buildNewsItemKey(entry) === buildNewsItemKey(item));
-    const wasAlreadyFeatured =
-  existingIndex !== -1 && items[existingIndex].featured === true;
+    const clientRequestId = cleanNewsText(
+      req.get("Idempotency-Key") || req.body?.clientRequestId || req.body?.idempotencyKey || "",
+      160,
+    );
+    const result = await withNewsAdminWriteLock(async () => {
+      const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+      const existingIndex = clientRequestId
+        ? items.findIndex((entry) => entry.clientRequestId === clientRequestId)
+        : items.findIndex((entry) => buildNewsItemKey(entry) === buildNewsItemKey(item));
+      if (clientRequestId && existingIndex !== -1) {
+        return { status: 200, item: items[existingIndex] };
+      }
+      const wasAlreadyFeatured =
+        existingIndex !== -1 && items[existingIndex].featured === true;
 
-if (item.featured === true && !wasAlreadyFeatured) {
-  const featuredCount = items.filter(
-    (entry) => entry.featured === true,
-  ).length;
+      if (item.featured === true && !wasAlreadyFeatured) {
+        const featuredCount = items.filter(
+          (entry) => entry.featured === true,
+        ).length;
 
-  if (featuredCount >= 3) {
-    res.status(409).json({
-      error: "Maximum of 3 featured news articles is allowed",
+        if (featuredCount >= 3) {
+          return {
+            status: 409,
+            error: "Maximum of 3 featured news articles is allowed",
+          };
+        }
+      }
+      const nextItem = normalizeNewsItem({ ...item, clientRequestId });
+      if (existingIndex === -1) {
+        items.unshift(nextItem);
+      } else {
+        items[existingIndex] = normalizeNewsItem({
+          ...items[existingIndex],
+          ...nextItem,
+          createdAt: items[existingIndex].createdAt || nextItem.createdAt,
+          updatedAt: now,
+        });
+      }
+      await writeCollection("newsItems", sortNewsItemsForAdmin(items));
+      return { status: 201, item: nextItem };
     });
-    return;
-  }
-}
-    if (existingIndex === -1) {
-      items.unshift(item);
-    } else {
-      items[existingIndex] = normalizeNewsItem({
-        ...items[existingIndex],
-        ...item,
-        createdAt: items[existingIndex].createdAt || item.createdAt,
-        updatedAt: now,
-      });
-    }
-    await writeCollection("newsItems", sortNewsItemsForAdmin(items));
 
-    res.status(201).json({ ok: true, item });
+    if (result.error) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.status(result.status).json({ ok: true, item: result.item });
   }),
 );
 

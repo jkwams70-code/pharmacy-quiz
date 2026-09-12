@@ -19,6 +19,7 @@
     "renumber:questions:apply": "node src/scripts/renumberQuestionIds.js --apply",
     "questions:expand": "node src/scripts/generateQuestionExpansion.js",
     "questions:expand:apply": "node src/scripts/generateQuestionExpansion.js --apply",
+    "questions:audit": "node src/scripts/auditQuestions.js --out reports/questions-audit.json",
     "preflight:prod": "node src/scripts/preflightProduction.js",
     "secrets:generate": "node src/scripts/generateSecrets.js",
     "smoke:ui": "node src/scripts/uiSmoke.js",

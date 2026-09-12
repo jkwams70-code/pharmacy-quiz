@@ -48,3 +48,5 @@ _pdf_extracted.txt
 Thumbs.db
 .env
 .env.local
+
+backend/reports/

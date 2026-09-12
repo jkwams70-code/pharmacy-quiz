@@ -2694,7 +2694,7 @@ async function ensureQuestionBankLoaded() {
     const cached = await getOfflineEntry(QUESTION_BANK_CACHE_KEY);
 
     if (Array.isArray(cached?.value) && cached.value.length > 0) {
-      questionBank = [...cached.value];
+      questionBank = cached.value.map((question) => ({ ...question, correct: normalizeQuestionCorrectValue(question, question) }));
       localTopicQuestionBank = [...questionBank];
       normalizedLocalQuestions = [...questionBank];
 
@@ -2766,6 +2766,20 @@ async function ensureQuestionBankLoaded() {
   return questionBankBootstrapPromise;
 }
 
+function normalizeQuestionCorrectValue(q = {}, fallback = {}) {
+  const raw = String(q.correct ?? fallback.correct ?? "").trim();
+  const answer = Number(q.answer ?? fallback.answer);
+  if (Number.isInteger(answer) && answer >= 0 && answer < 26) return String.fromCharCode(65 + answer);
+  const kind = String(q.type || fallback.type || "").toLowerCase();
+  if (kind !== "combo") return raw;
+  if (/^[A-E](?:\s*[:.)-]|$)/i.test(raw)) return raw.charAt(0).toUpperCase();
+  const options = Array.isArray(q.options) && q.options.length ? q.options : (Array.isArray(fallback.options) ? fallback.options : []);
+  const clean = value => String(value || "").replace(/^\s*[A-E](?:\s*[:.)-]\s*)/i, "").trim().toLowerCase();
+  const target = clean(raw);
+  const index = options.findIndex(option => clean(option) === target);
+  return index >= 0 ? String.fromCharCode(65 + index) : raw;
+}
+
 function mapBackendQuestionToLocal(q = {}) {
   const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
   return {
@@ -2783,11 +2797,13 @@ function mapBackendQuestionToLocal(q = {}) {
       question: q.question || q.text || fallback.question || fallback.text || "",
       explanation: q.explanation || fallback.explanation || "",
     }),
-    options: Array.isArray(q.options)
+    options: Array.isArray(q.options) && q.options.length
       ? q.options
-      : Array.isArray(fallback.options)
+      : Array.isArray(fallback.options) && fallback.options.length
         ? fallback.options
-        : [],
+        : ((String(q.type || fallback.type || '').toLowerCase() === 'combo' || String(q.type || fallback.type || '').toLowerCase() === 'three-statement') && Array.isArray(q.statements || fallback.statements) && (q.statements || fallback.statements).length === 3
+          ? ['I, II, III', 'I, II', 'II, III', 'I only', 'III only']
+          : []),
     statements: Array.isArray(q.statements)
       ? q.statements
       : Array.isArray(fallback.statements)
@@ -2795,7 +2811,7 @@ function mapBackendQuestionToLocal(q = {}) {
         : [],
     caseId: q.caseId || fallback.caseId || "",
     caseBlock: q.caseBlock || fallback.caseBlock || "",
-    correct: q.correct || fallback.correct,
+    correct: normalizeQuestionCorrectValue(q, fallback),
     answer: Number.isFinite(Number(q.answer)) ? Number(q.answer) : Number(fallback.answer) || undefined,
     explanation: q.explanation || fallback.explanation || "",
     explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
@@ -2821,11 +2837,11 @@ function mapBackendQuestionToLocal(q = {}) {
 }
 
 const COMBO_THREE_STATEMENT_CHOICES = [
-  { letter: "A", text: "A: 1, 2 and 3" },
-  { letter: "B", text: "B: 1 and 2 only" },
-  { letter: "C", text: "C: 2 and 3 only" },
-  { letter: "D", text: "D: 1 only" },
-  { letter: "E", text: "E: 3 only" },
+  { letter: "A", text: "A: I, II and III" },
+  { letter: "B", text: "B: I and II only" },
+  { letter: "C", text: "C: II and III only" },
+  { letter: "D", text: "D: I only" },
+  { letter: "E", text: "E: III only" },
 ];
 
 const COMBO_PAIR_RELATION_CHOICES = [
@@ -2862,6 +2878,24 @@ const COMBO_ASSERTION_CHOICES = [
   { letter: "E", text: "E: Both statements are FALSE" },
 ];
 
+function displayOptionText(value, question = {}) {
+  let text = String(value || "").replace(/^\s*[A-E](?:\s*[:.)-]\s*)/i, "").trim();
+  const type = String(question.type || "").toLowerCase();
+  const variant = String(question.comboVariant || "").toLowerCase();
+  if (type === "combo" && variant === "three-statement") {
+    text = text.replace(/\b1\b/g, "I").replace(/\b2\b/g, "II").replace(/\b3\b/g, "III").replace(/\b4\b/g, "IV");
+  }
+  return text;
+}
+
+function formatComboStatement(statement, index, question = {}) {
+  const raw = String(statement || "").replace(/^\s*(?:\d+|[IVX]+)[.)-]\s*/i, "").trim();
+  const variant = String(question.comboVariant || "").toLowerCase();
+  const count = Array.isArray(question.statements) ? question.statements.length : 0;
+  const labels = variant === "assertion-5" ? ["Assertion", "Reason"] : count >= 3 ? ["I", "II", "III", "IV"] : [];
+  return (labels[index] || String(index + 1)) + ". " + raw;
+}
+
 function getComboChoiceRows(question = {}) {
   const explicitOptions = Array.isArray(question?.options)
     ? question.options.map((option) => String(option || "").trim()).filter(Boolean)
@@ -2870,7 +2904,7 @@ function getComboChoiceRows(question = {}) {
   if (explicitOptions.length > 0) {
     return explicitOptions.map((text, index) => {
       const letter = String.fromCharCode(65 + index);
-      const renderedText = /^[A-E][\s:.)-]/i.test(text) ? text : `${letter}: ${text}`;
+      const renderedText = displayOptionText(text);
       return { letter, text: renderedText };
     });
   }
@@ -24542,7 +24576,7 @@ function persistSessionForQuickNavigation() {
     return;
   }
 
-  if (mode === "exam" || mode === "smart" || isPausableDrillSession()) {
+  if (isPausableDrillSession()) {
     saveExamSession();
   }
 }
@@ -30974,49 +31008,9 @@ function getQuestionExplanationSections(question) {
 
 function renderQuestionExplanation(question) {
   if (!explanationEl) return;
-  const sections = getQuestionExplanationSections(question);
-  const hasContent =
-    Boolean(sections.base) ||
-    Boolean(sections.explainCorrect) ||
-    (Array.isArray(sections.wrongLines) && sections.wrongLines.length > 0);
-
-  if (!hasContent) {
-    explanationEl.classList.add("hidden");
-    explanationEl.innerHTML = "";
-    return;
-  }
-
-  const blocks = [];
-  if (sections.base) {
-    blocks.push(
-      `<section class="explain-section explain-main"><h4 class="explain-label">Explanation</h4><div class="explain-body">${formatExplanationTextForHtml(sections.base)}</div></section>`,
-    );
-  }
-
-  if (sections.explainCorrect) {
-    blocks.push(
-      `<section class="explain-section explain-correct"><h4 class="explain-label">Why Correct</h4><div class="explain-body">${formatExplanationTextForHtml(sections.explainCorrect)}</div></section>`,
-    );
-  }
-
-  if (Array.isArray(sections.wrongLines) && sections.wrongLines.length > 0) {
-    const items = sections.wrongLines
-      .map((line) => {
-        const splitAt = line.indexOf(":");
-        if (splitAt <= 0) {
-          return `<li class="explain-item">${formatExplanationTextForHtml(line)}</li>`;
-        }
-        const option = line.slice(0, splitAt).trim();
-        const reason = line.slice(splitAt + 1).trim();
-        return `<li class="explain-item"><span class="explain-option">${escapeHtml(option)}:</span> ${formatExplanationTextForHtml(reason)}</li>`;
-      })
-      .join("");
-    blocks.push(
-      `<section class="explain-section explain-wrong"><h4 class="explain-label">Why Others Are Wrong</h4><ul class="explain-list">${items}</ul></section>`,
-    );
-  }
-
-  explanationEl.innerHTML = blocks.join("");
+  const base = String(question?.explanation || "").trim();
+  if (!base) { explanationEl.classList.add("hidden"); explanationEl.innerHTML = ""; return; }
+  explanationEl.innerHTML = '<section class="explain-section explain-main"><h4 class="explain-label">Explanation</h4><div class="explain-body">' + formatExplanationTextForHtml(base) + '</div></section>';
   explanationEl.classList.remove("hidden");
 }
 
@@ -32000,6 +31994,7 @@ await ensureQuestionBankLoaded();
     showScreen("quiz-area");
     showQuestion();
     restoreStreakUI();
+    saveTopicQuizProgress();
   } catch (error) {
     console.error("Topic quiz launch failed:", error);
     alert(`Topic quiz launch failed: ${error?.message || error}`);
@@ -35779,6 +35774,11 @@ document.addEventListener(
     if (!(target instanceof HTMLElement)) return;
 
     if (target.id === "start-study-btn") {
+      if (!requireSubscriptionAccess("study", "study-setup")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       const modalState = buildResumeStudySessionModalState();
       if (!modalState) return;
       event.preventDefault();
@@ -37290,6 +37290,7 @@ async function loadSubscriptionScreenData({ force = false } = {}) {
 
 const SUBSCRIPTION_LOCKED_FEATURES = new Set([
   "exam",
+  "study",
   "topic-library",
   "community",
   "news",
@@ -37434,6 +37435,11 @@ function requireSubscriptionAccess(
                         ================================= */
 
 async function startStudy() {
+  await hydrateSubscriptionEntitlement();
+  if (!requireSubscriptionAccess("study", "study-setup")) {
+    return;
+  }
+
   studySessionEnded = false;
   clearAiExplainStateSession();
   examVariant = "normal";
@@ -37567,6 +37573,7 @@ async function startStudy() {
   prevBtn.onclick = previousQuestion;
 
   showQuestion();
+  saveStudyProgress();
 }
 
 async function startExam(count, requestedVariant = null) {
@@ -37923,7 +37930,7 @@ function showQuestion() {
   if (q.type === "match" || q.type === "single") {
     optionList.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
       btn.dataset.value = opt;
       btn.disabled = lockSelection;
       if (lockSelection) {
@@ -37954,19 +37961,14 @@ function showQuestion() {
     statementList.forEach((s, index) => {
       const p = document.createElement("p");
 
-      // Auto-number if not already numbered
-      if (!/^\d+\./.test(s.trim())) {
-        p.innerText = `${index + 1}. ${s}`;
-      } else {
-        p.innerText = s;
-      }
+      p.innerText = formatComboStatement(s, index, q);
 
       comboBlock.appendChild(p);
     });
 
     comboChoices.forEach((option) => {
       const btn = document.createElement("button");
-      btn.innerText = option.text;
+      btn.innerText = displayOptionText(option.text, q);
       btn.dataset.value = option.letter;
       btn.disabled = lockSelection;
       if (lockSelection) {
@@ -39612,7 +39614,7 @@ function renderDetailedQuestion() {
   if (q.type === "match" || q.type === "single") {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
       btn.dataset.value = opt;
       btn.disabled = !editableReview;
       if (editableReview) {
@@ -39649,18 +39651,14 @@ function renderDetailedQuestion() {
     q.statements.forEach((s, index) => {
       const p = document.createElement("p");
 
-      if (!/^\d+\./.test(s.trim())) {
-        p.innerText = `${index + 1}. ${s}`;
-      } else {
-        p.innerText = s;
-      }
+      p.innerText = formatComboStatement(s, index, q);
 
       comboBlock.appendChild(p);
     });
 
     comboChoices.forEach((option) => {
       const btn = document.createElement("button");
-      btn.innerText = option.text;
+      btn.innerText = displayOptionText(option.text, q);
       btn.dataset.value = option.letter;
       btn.disabled = !editableReview;
       if (editableReview) {
@@ -39691,7 +39689,7 @@ function renderDetailedQuestion() {
   else if (q.options) {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
       btn.dataset.value = opt;
       btn.disabled = !editableReview;
       if (editableReview) {
@@ -39745,7 +39743,7 @@ function showQuestionDetailedMode() {
   if (q.type === "match" || q.type === "single") {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
 
       if (opt === q.correct) {
         btn.classList.add("correct");
@@ -40213,6 +40211,9 @@ function showScreen(id, options = {}) {
   ];
 
   const currentActiveId = getActiveScreenId();
+  if (currentActiveId === "quiz-area" && normalizedId !== "quiz-area") {
+    persistSessionForQuickNavigation();
+  }
   if (currentActiveId === "gppqe-screen" && normalizedId !== "gppqe-screen") {
     gppqeStopTimer();
   }
@@ -40458,6 +40459,9 @@ document.addEventListener("keydown", function (e) {
 // ==============================
 
 window.addEventListener("beforeunload", function () {
+  if (mode === "study" && active.length > 0 && !studySessionEnded) {
+    saveStudyProgress();
+  }
   if ((mode === "exam" || mode === "smart") && active.length > 0) {
     saveExamSession();
     if (isPausableDrillSession()) {

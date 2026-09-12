@@ -4,14 +4,14 @@
     "bank": "main",
     "type": "combo",
     "category": "Rheumatology & Pain",
-    "question": "Q1. In the long-term, drugs that could be considered as additional treatment to methotrexate for the management of rheumatoid arthritis in AX include:",
+    "question": "In the long-term, drugs that could be considered as additional treatment to methotrexate for the management of rheumatoid arthritis in AX include:",
     "statements": [
-      "1. infliximab",
-      "2. etanercept",
-      "3. doxorubicin"
+      "infliximab",
+      "etanercept",
+      "doxorubicin"
     ],
     "caseId": "t4_case2",
-    "correct": "B",
+    "correct": "1 and 2 only",
     "explanation": "Cytokine inhibitors such as inﬂiximab, etanercept, adalimumab are used as disease-modifying antirheumatic drugs in the management of rheumatoid arthritis.",
     "explainCorrect": "Option B is correct because infliximab and etanercept are biologic DMARD options for methotrexate-add-on therapy in rheumatoid arthritis; doxorubicin is an anticancer agent, not RA biologic therapy.",
     "wrongOptionExplanations": {
@@ -20,21 +20,35 @@
       "D": "Statement 1 alone is incomplete because etanercept is also an appropriate add-on in this set.",
       "E": "Statement 3 alone is outside standard RA disease-modifying therapy."
     },
-    "memoryTrick": "RA biologic add-ons here are anti-TNF agents, not cytotoxic oncology drugs."
+    "memoryTrick": "RA biologic add-ons here are anti-TNF agents, not cytotoxic oncology drugs.",
+    "reviewStatus": "corrected",
+    "rotation": "Internal Medicine",
+    "text": "In the long-term, drugs that could be considered as additional treatment to methotrexate for the management of rheumatoid arthritis in AX include:",
+    "options": [
+      "1, 2 and 3",
+      "1 and 2 only",
+      "2 and 3 only",
+      "1 only",
+      "3 only"
+    ],
+    "comboVariant": "three-statement",
+    "caseBlock": "AX is a 72-year-old male with rheumatoid arthritis flare-up (3-week history of fever and painful joints, swelling/warmth in hands, wrists and ankles). PMH: rheumatoid arthritis, peptic ulceration, colonic polyps. DH includes fluvastatin 20 mg nocte, methotrexate 15 mg weekly, folic acid 10 mg weekly, paracetamol 1 g every 8 hours prn. Drug allergies: leflunomide; prior gold injections caused reversible renal impairment. On admission, methylprednisolone 500 mg was given by slow IV infusion for one day.",
+    "reviewNotes": "",
+    "year": 0
   },
   {
     "id": 2,
     "bank": "main",
     "type": "combo",
     "category": "Cardiovascular Disorders",
-    "question": "Q2. Isosorbide dinitrate:",
+    "question": "Isosorbide dinitrate:",
     "statements": [
       "1. is used for prophylaxis of angina",
       "2. is metabolised to isosorbide mononitrate",
       "3. can only be administered sublingually"
     ],
     "caseId": "t2_case1",
-    "correct": "B",
+    "correct": "1 and 2 only",
     "explanation": "Isosorbide dinitrate is a nitrate that is used in the prophylaxis and treatment of angina and in left ventricular failure.",
     "explainCorrect": "Option B (1 and 2 only) is correct because isosorbide dinitrate is used in angina prophylaxis and is metabolized to isosorbide mononitrate, while it is not limited to sublingual-only administration.",
     "wrongOptionExplanations": {
@@ -43,20 +57,33 @@
       "D": "Only statement 1 is incomplete because statement 2 is also true.",
       "E": "Only statement 3 is not correct in this context."
     },
-    "memoryTrick": "Dinitrate works for prevention and converts to mononitrate; not sublingual-only."
+    "memoryTrick": "Dinitrate works for prevention and converts to mononitrate; not sublingual-only.",
+    "text": "Isosorbide dinitrate:",
+    "options": [
+      "1, 2 and 3",
+      "1 and 2 only",
+      "2 and 3 only",
+      "1 only",
+      "3 only"
+    ],
+    "comboVariant": "three-statement",
+    "caseBlock": "AB is a 74-year-old male admitted to a medical ward. PMH: diabetes mellitus controlled by diet, hypertension, congestive heart failure. DH: bumetanide 1 mg daily, potassium chloride 600 mg bd, isosorbide dinitrate 10 mg tds, atenolol 100 mg bd, aspirin 75 mg daily, lorazepam 1 mg tds, metoclopramide 10 mg prn. PC: increasing shortness of breath, dyspnoea, cyanosis, tachycardia. O/E: BP 160/100 mmHg, pulse 100 bpm. Diagnosis: congestive heart failure. Labs: sodium 130 mmol/l, potassium 3.2 mmol/l, chloride 95 mmol/l, fasting blood glucose 15.6 mmol/l. Discharge treatment: bumetanide 1 mg daily, isosorbide dinitrate 10 mg tds, enalapril 5 mg nocte, aspirin 75 mg daily, lorazepam 1 mg tds, metoclopramide 10 mg prn.",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "year": 0,
+    "rotation": "Internal Medicine"
   },
   {
     "id": 3,
     "bank": "main",
     "type": "single",
     "category": "Endocrinology",
-    "question": "Q3. As regards glibenclamide therapy:",
+    "question": "As regards glibenclamide therapy:",
     "options": [
       "Gliclazide is preferred in this patient",
       "The dose could be increased to 10 mg daily",
       "The drug is administered in the afternoon",
-      "The drug reduces insulin secretion",
-      "It restores beta-cell activity"
+      "The drug reduces insulin secretion"
     ],
     "caseId": "case2",
     "correct": "Gliclazide is preferred in this patient",
@@ -68,20 +95,26 @@
       "The drug reduces insulin secretion": "Glibenclamide increases pancreatic insulin release; it does not reduce it.",
       "It restores beta-cell activity": "Sulfonylureas stimulate remaining beta-cell function but do not restore damaged beta-cell capacity."
     },
-    "memoryTrick": "Elderly plus sulfonylurea: choose lower prolonged hypo risk, usually gliclazide over glibenclamide."
+    "memoryTrick": "Elderly plus sulfonylurea: choose lower prolonged hypo risk, usually gliclazide over glibenclamide.",
+    "text": "As regards glibenclamide therapy:",
+    "caseBlock": "CA is a 77-year-old patient admitted with infected multiple sores and complaints of polyuria and weakness. She presents with reduced skin turgor, dehydration, tremor and confusion. Past medical history includes diabetes managed by diet alone. On admission she is started on glibenclamide 2.5 mg daily, ciprofloxacin 500 mg bd, sodium chloride 0.9% IV infusion and haloperidol 0.5 mg bd. Random blood glucose: 12 mmol/L. Blood pressure: 125/78 mmHg.",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "year": 0,
+    "rotation": "Internal Medicine"
   },
   {
     "id": 4,
     "bank": "main",
-    "type": "match",
+    "type": "single",
     "category": "Infectious Diseases",
-    "question": "Q4. Which ONE of the following is the MOST appropriate therapeutic use of Desmopressin?",
+    "question": "Which ONE of the following is the MOST appropriate therapeutic use of Desmopressin?",
     "options": [
       "Central diabetes insipidus and selected nocturnal enuresis cases.",
       "Prevention of chemotherapy-induced nausea and vomiting.",
       "Hyperphosphatemia control in chronic kidney disease.",
-      "Hypertension, especially in patients with diabetic kidney disease.",
-      "Prevention of stent thrombosis and recurrent ischemic events after ACS."
+      "Hypertension, especially in patients with diabetic kidney disease."
     ],
     "correct": "Central diabetes insipidus and selected nocturnal enuresis cases.",
     "explanation": "Desmopressin: Central diabetes insipidus and selected nocturnal enuresis cases.",
@@ -92,20 +125,26 @@
       "Hypertension, especially in patients with diabetic kidney disease.": "This is antihypertensive indication.",
       "Prevention of stent thrombosis and recurrent ischemic events after ACS.": "This is antiplatelet indication."
     },
-    "memoryTrick": "Desmopressin treats ADH-deficit patterns like central DI."
+    "memoryTrick": "Desmopressin treats ADH-deficit patterns like central DI.",
+    "text": "Which ONE of the following is the MOST appropriate therapeutic use of Desmopressin?",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "year": 0,
+    "rotation": "Internal Medicine"
   },
   {
     "id": 5,
     "bank": "main",
     "type": "combo",
     "category": "Infectious Diseases",
-    "question": "Q5. In HIV infection:",
+    "question": "In HIV infection:",
     "statements": [
-      " Accumulation of mutations associated with drug resistance may occur",
-      " Drug resistance testing is not possible",
-      " Monotherapy is preferred"
+      "Accumulation of mutations associated with drug resistance may occur",
+      "Drug resistance testing is not possible",
+      "Monotherapy is preferred"
     ],
-    "correct": "D",
+    "correct": "1, 2 and 3",
     "explanation": "Statement 1 only is correct.",
     "explainCorrect": "Option D (1 only) is correct because resistance mutations can accumulate; statements 2 and 3 are false since resistance testing is possible and monotherapy is not preferred.",
     "wrongOptionExplanations": {
@@ -114,22 +153,34 @@
       "C": "Omits statement 1 and keeps statement 3, so it is incorrect.",
       "E": "Only statement 3 is false and misses true statement 1."
     },
-    "memoryTrick": "HIV therapy logic here: resistance can evolve, testing exists, and monotherapy is not preferred."
+    "memoryTrick": "HIV therapy logic here: resistance can evolve, testing exists, and monotherapy is not preferred.",
+    "text": "In HIV infection:",
+    "options": [
+      "1, 2 and 3",
+      "1 and 2 only",
+      "2 and 3 only",
+      "1 only",
+      "3 only"
+    ],
+    "comboVariant": "three-statement",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "year": 0,
+    "rotation": "Internal Medicine"
   },
   {
     "id": 6,
     "bank": "main",
-    "type": "match",
+    "type": "single",
     "category": "Endocrinology",
-    "question": "Q6. is released from the beta cells of the pancreas",
+    "question": "_______  is released from the beta cells of the pancreas",
     "options": [
       "gonadotrophin-releasing hormone",
       "C peptide",
       "troponin I",
-      "prolactin",
-      "human chorionic gonadotrophin"
+      "prolactin"
     ],
-    "correct": "C peptide",
+    "correct": "gonadotrophin-releasing hormone",
     "explanation": "C peptide is released from pancreatic beta cells during insulin synthesis.",
     "explainCorrect": "C peptide is correct because insulin is cleaved from proinsulin and C peptide is co-released from pancreatic beta cells.",
     "wrongOptionExplanations": {
@@ -138,7 +189,13 @@
       "prolactin": "Prolactin is a pituitary hormone and not beta-cell derived.",
       "human chorionic gonadotrophin": "hCG is produced by placental trophoblasts."
     },
-    "memoryTrick": "Beta-cell insulin release comes with C peptide as a partner."
+    "memoryTrick": "Beta-cell insulin release comes with C peptide as a partner.",
+    "text": "_______  is released from the beta cells of the pancreas",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "year": 0,
+    "rotation": "Internal Medicine"
   },
   {
     "id": 7,

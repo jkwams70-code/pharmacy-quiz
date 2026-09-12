@@ -6870,6 +6870,9 @@ function normalizeSlugValue(value) {
   return next;
 }
 
+const QUESTION_REVIEW_STATUSES = new Set(["needs_review", "corrected", "quarantined"]);
+function normalizeQuestionReviewStatus(value, fallback = "needs_review") { const status = String(value || "").trim().toLowerCase().replace(/-/g, "_"); return QUESTION_REVIEW_STATUSES.has(status) ? status : fallback; }
+
 function normalizeQuestionForApi(rawQuestion) {
   const text = String(rawQuestion?.text ?? rawQuestion?.question ?? "").trim();
   const topicSlug = normalizeSlugValue(rawQuestion?.topicSlug);
@@ -6902,6 +6905,12 @@ function normalizeQuestionForApi(rawQuestion) {
     question: text,
     category: normalizedCategory,
     bank,
+    type: String(rawQuestion?.type || "").trim().toLowerCase() || undefined,
+    reviewStatus: normalizeQuestionReviewStatus(rawQuestion?.reviewStatus ?? rawQuestion?.status, "corrected"),
+    reviewNotes: String(rawQuestion?.reviewNotes ?? rawQuestion?.notes ?? ""),
+    caseId: String(rawQuestion?.caseId || "").trim() || undefined,
+    caseBlock: String(rawQuestion?.caseBlock || "").trim() || undefined,
+    statements: Array.isArray(rawQuestion?.statements) ? rawQuestion.statements : [],
     comboVariant: comboVariant || undefined,
     year: Number.isFinite(yearValue) ? yearValue : undefined,
     displayNumber: Number.isFinite(displayNumberValue) ? displayNumberValue : undefined,
@@ -11756,7 +11765,7 @@ app.get(
     const shouldShuffle =
       String(req.query.shuffle || "").toLowerCase() === "true";
 
-    let questions = (await readCollection("questions")).map(normalizeQuestionForApi);
+    let questions = (await readCollection("questions")).map(normalizeQuestionForApi).filter((question) => question.reviewStatus === "corrected");
 
     if (bank) {
       questions = questions.filter((q) => String(q.bank || "main").trim().toLowerCase() === bank);
@@ -14162,7 +14171,7 @@ app.get(
     }
 
     const questions = (await readCollection("questions"))
-      .map(normalizeQuestionForApi)
+      .map((question) => ({ ...normalizeQuestionForApi(question), reviewStatus: normalizeQuestionReviewStatus(question?.reviewStatus ?? question?.status, "corrected") }))
       .sort((a, b) => {
         const aOrder = extractQuestionOrderValue(a);
         const bOrder = extractQuestionOrderValue(b);
@@ -14187,6 +14196,8 @@ app.post(
 
     const text = String(req.body?.text || req.body?.question || "").trim();
     const rawCategory = String(req.body?.category || "").trim();
+    const questionType = String(req.body?.type || "single").trim().toLowerCase() || "single";
+    const requestedId = String(req.body?.id || "").trim();
     const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
     const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
     const year = Number(req.body?.year);
@@ -14194,6 +14205,9 @@ app.post(
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionId = normalizeSlugValue(req.body?.sectionId);
     const rotation = String(req.body?.rotation || "").trim();
+    const caseId = String(req.body?.caseId || "").trim();
+    const caseBlock = String(req.body?.caseBlock || "").trim();
+    const statements = Array.isArray(req.body?.statements) ? req.body.statements.map((item) => String(item || "").trim()).filter(Boolean) : [];
     const drillTags = Array.isArray(req.body?.drillTags)
       ? req.body.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
       : [];
@@ -14286,14 +14300,19 @@ app.post(
     }
 
     const questions = await readCollection("questions");
-    const newId =
-      questions.length > 0
-        ? Math.max(...questions.map((q) => Number(q.id))) + 1
-        : 1;
+    if (!["single", "match", "combo"].includes(questionType)) { res.status(400).json({ error: "type must be single, match, or combo" }); return; }
+    if (requestedId && !/^\d+$/.test(requestedId)) { res.status(400).json({ error: "id must contain numbers only" }); return; }
+    if (requestedId && questions.some((question) => String(question.id) === requestedId)) { res.status(409).json({ error: "A question with that ID already exists" }); return; }
+    const newId = requestedId || (questions.length > 0 ? Math.max(...questions.map((q) => Number(q.id))) + 1 : 1);
 
     const newQuestion = {
       id: String(newId),
       bank,
+      type: questionType,
+      reviewStatus: "needs_review",
+      caseId: caseId || undefined,
+      caseBlock: caseBlock || undefined,
+      statements: statements.length ? statements : undefined,
       comboVariant: comboVariant || undefined,
       year: Number.isFinite(year) ? year : undefined,
       displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
@@ -14307,6 +14326,7 @@ app.post(
           ? Number(req.body.answer)
           : undefined,
       explanation: String(req.body?.explanation || ""),
+      memoryTrick: String(req.body?.memoryTrick || "").trim() || undefined,
       topicSlug: topicSlug || undefined,
       sectionId: sectionId || undefined,
       drillTags: drillTags.length > 0 ? drillTags : undefined,
@@ -14334,9 +14354,10 @@ app.put(
     }
 
     const questionId = req.params.questionId;
-    const textProvided =
-      req.body?.text !== undefined || req.body?.question !== undefined;
+    const textProvided = req.body?.text !== undefined || req.body?.question !== undefined;
     const text = String(req.body?.text ?? req.body?.question ?? "").trim();
+    const typeProvided = req.body?.type !== undefined;
+    const questionType = String(req.body?.type || "").trim().toLowerCase();
     const categoryProvided = req.body?.category !== undefined;
     const rawCategory = String(req.body?.category || "").trim();
     const bankProvided = req.body?.bank !== undefined;
@@ -14357,12 +14378,22 @@ app.put(
     const answer = Number(req.body?.answer);
     const explanationProvided = req.body?.explanation !== undefined;
     const explanation = String(req.body?.explanation || "");
+    const memoryTrickProvided = req.body?.memoryTrick !== undefined;
+    const memoryTrick = String(req.body?.memoryTrick || "").trim();
     const topicSlugProvided = req.body?.topicSlug !== undefined;
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionIdProvided = req.body?.sectionId !== undefined;
     const sectionId = normalizeSlugValue(req.body?.sectionId);
     const rotationProvided = req.body?.rotation !== undefined;
     const rotation = String(req.body?.rotation || "").trim();
+    const reviewNotesProvided = req.body?.reviewNotes !== undefined || req.body?.notes !== undefined;
+    const reviewNotes = String(req.body?.reviewNotes ?? req.body?.notes ?? "");
+    const reviewStatusProvided = req.body?.reviewStatus !== undefined || req.body?.status !== undefined;
+    const reviewStatus = normalizeQuestionReviewStatus(req.body?.reviewStatus ?? req.body?.status, "needs_review");
+    const caseIdProvided = req.body?.caseId !== undefined;
+    const caseBlockProvided = req.body?.caseBlock !== undefined;
+    const statementsProvided = Array.isArray(req.body?.statements);
+    const statements = statementsProvided ? req.body.statements.map((item) => String(item || "").trim()).filter(Boolean) : null;
 
     const questions = await readCollection("questions");
     const idx = questions.findIndex((q) => String(q.id) === questionId);
@@ -14371,6 +14402,8 @@ app.put(
       res.status(404).json({ error: "Question not found" });
       return;
     }
+    if (typeProvided && !["single", "match", "combo"].includes(questionType)) { res.status(400).json({ error: "type must be single, match, or combo" }); return; }
+    if (reviewStatusProvided && !QUESTION_REVIEW_STATUSES.has(reviewStatus)) { res.status(400).json({ error: "reviewStatus must be needs_review, corrected, or quarantined" }); return; }
     if (topicSlugProvided && topicSlug === null) {
       res.status(400).json({
         error: "topicSlug must use lowercase kebab-case (a-z, 0-9, -)",
@@ -14416,6 +14449,7 @@ app.put(
       return;
     }
 
+    if (typeProvided) questions[idx].type = questionType;
     if (textProvided) {
       if (!text) {
         res.status(400).json({ error: "text cannot be empty" });
@@ -14484,6 +14518,12 @@ app.put(
     if (explanationProvided) {
       questions[idx].explanation = explanation;
     }
+    if (memoryTrickProvided) questions[idx].memoryTrick = memoryTrick || undefined;
+    if (caseIdProvided) questions[idx].caseId = String(req.body?.caseId || "").trim() || undefined;
+    if (caseBlockProvided) questions[idx].caseBlock = String(req.body?.caseBlock || "").trim() || undefined;
+    if (statementsProvided) questions[idx].statements = statements || [];
+    if (reviewStatusProvided) questions[idx].reviewStatus = reviewStatus;
+    if (reviewNotesProvided) questions[idx].reviewNotes = reviewNotes;
     if (bankProvided) {
       questions[idx].bank = bank || "main";
     }

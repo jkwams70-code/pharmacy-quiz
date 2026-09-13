@@ -1,4 +1,4 @@
-﻿(function(){
+(function(){
   const API_BASE=window.GUIDELINES_API_BASE||localStorage.getItem('quizApiBase')||(location.hostname==='localhost'?'http://localhost:4000/api':'/api');
   let ADMIN_KEY=window.ADMIN_API_KEY||localStorage.getItem('adminKey')||'';
   const tableBody=document.getElementById('tableBody'),previewModal=document.getElementById('previewModal'),previewTitle=document.getElementById('previewTitle'),previewBody=document.getElementById('previewBody');
@@ -104,6 +104,8 @@
     modal.querySelector('[data-submit-fetch]').onclick=async()=>{const button=modal.querySelector('[data-submit-fetch]'),message=modal.querySelector('[data-fetch-message]'),terms=modal.querySelector('[data-fetch-terms]').value.split(/[\\n,]+/).map(v=>v.trim()).filter(Boolean);if(!terms.length){message.textContent='Enter at least one URL or title.';return}button.disabled=true;message.textContent='Fetching...';try{const result=await api('/admin/guidelines/fetch',{method:'POST',body:JSON.stringify({terms})});message.textContent='Fetched '+(result.total||0)+' record(s).';await loadLive();setTimeout(()=>modal.remove(),700)}catch(error){message.textContent=error.message||'Unable to fetch guidelines.'}finally{button.disabled=false}};
   }
   installManualAiFeedButton();
+  window.setInterval(()=>{if(document.visibilityState==="visible")void loadLive()},30000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")void loadLive()});
   loadLive();
 })();
 

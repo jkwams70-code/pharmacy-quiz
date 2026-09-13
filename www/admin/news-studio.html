@@ -3194,6 +3194,12 @@ function initNewsStudio() {
 }
 
 initNewsStudio();
+let newsStudioLiveRefreshTimer = window.setInterval(() => {
+  if (document.visibilityState === "visible" && typeof loadNewsPipeline === "function") void loadNewsPipeline();
+}, 30_000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && typeof loadNewsPipeline === "function") void loadNewsPipeline();
+});
 </script>
 </body>
 </html>

@@ -7569,6 +7569,11 @@ app.use((req, res, next) => {
   });
 });
 
+// Law Library is premium content and must pass the active-subscription check.
+app.get("/law.html", requireActiveSubscription, (_req, res) => {
+  res.sendFile(path.join(frontendPath, "law.html"));
+});
+
 // Serve static frontend files.
 app.use(
   express.static(frontendPath, {

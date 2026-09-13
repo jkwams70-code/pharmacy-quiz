@@ -2496,6 +2496,14 @@ function handleSubscriptionExpiry() {
   }
   void cacheSubscriptionEntitlement(expiredAccess);
   renderAuthState();
+  if (getActiveScreenId() === "subscription-screen") {
+    renderSubscriptionScreen();
+  }
+  window.setTimeout(() => {
+    if (getActiveScreenId() === "subscription-screen") {
+      renderSubscriptionScreen();
+    }
+  }, 60 * 60 * 1000);
 
   const activeScreen = getActiveScreenId();
   if (SUBSCRIPTION_LOCKED_FEATURES.has(getSubscriptionGateFeature(activeScreen))) {
@@ -35674,9 +35682,17 @@ if (extraScreen) {
   extraScreen.addEventListener("click", async (event) => {
     const target =
       event.target instanceof HTMLElement
-        ? event.target.closest("[data-coming-soon='true'], [data-medlens='true'], [data-calculator='true']")
+        ? event.target.closest("[data-coming-soon=\x27true\x27], [data-law=\x27true\x27], [data-medlens=\x27true\x27], [data-calculator=\x27true\x27]")
         : null;
     if (!(target instanceof HTMLElement)) return;
+    if (target.hasAttribute("data-law")) {
+      refreshSubscriptionAccessForAction();
+      if (!requireSubscriptionAccess("extra-content")) {
+        return;
+      }
+      window.location.href = "law.html";
+      return;
+    }
     if (target.hasAttribute("data-medlens")) {
       refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess("extra-content")) {
@@ -37054,11 +37070,17 @@ const freeTrialActive =
   Number.isFinite(Date.parse(freeTrialEndsAt)) &&
   Date.parse(freeTrialEndsAt) > Date.now();
 
-const freeTrialExpiryLabel = freeTrialAvailable
+const freeTrialExpiryTime = Date.parse(String(freeTrialEndsAt || ""));
+const freeTrialExpiredNoticeGraceEndsAt = Number.isFinite(freeTrialExpiryTime)
+  ? freeTrialExpiryTime + 60 * 60 * 1000
+  : NaN;
+const showFreeTrialStatus =
+  freeTrialAvailable &&
+  (!Number.isFinite(freeTrialExpiredNoticeGraceEndsAt) ||
+    Date.now() < freeTrialExpiredNoticeGraceEndsAt);
+const freeTrialExpiryLabel = showFreeTrialStatus
   ? formatSubscriptionExpiryLabel(freeTrialEndsAt)
   : "";
-
-const showFreeTrialStatus = freeTrialAvailable;
 
  if (trialStatusLineEl) {
   if (showFreeTrialStatus) {

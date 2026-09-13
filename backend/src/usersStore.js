@@ -19,12 +19,13 @@ function validateUsers(data) {
 const revisionOf = (raw) => createHash("sha256").update(raw).digest("hex");
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const operationQueues = new Map();
+const LOCK_STALE_MS = 30_000;
 
-// All processes writing this file must use this store. Never steal an old lock:
-// a slow process could still own it. After a crash, stop all writers before
-// removing users.json.lock and restarting the service.
+// All processes writing this file must use this store. Locks record their owner
+// process, and only locks whose owner is gone can be recovered automatically.
 export function createUsersStore(filePath, { allowEmpty = () => false, lockTimeoutMs = 5000 } = {}) {
   const lockPath = `${filePath}.lock`;
+  const ownerPath = `${lockPath}/owner.json`;
   const backupPath = filePath.replace(/\.json$/, ".bak.json");
 
   async function readSnapshot() {
@@ -51,12 +52,29 @@ export function createUsersStore(filePath, { allowEmpty = () => false, lockTimeo
 
   async function withFileLock(operation) {
     const deadline = Date.now() + lockTimeoutMs;
+    async function recoverDeadOwner() {
+      let stat;
+      try { stat = await fs.stat(lockPath); } catch (error) { return error.code === "ENOENT"; }
+      try {
+        const owner = JSON.parse(await fs.readFile(ownerPath, "utf8"));
+        if (!Number.isInteger(owner.pid) || owner.pid === process.pid) return false;
+        try { process.kill(owner.pid, 0); return false; }
+        catch (error) { if (error.code !== "ESRCH") return false; }
+      } catch (error) {
+        if (error.code !== "ENOENT") return false;
+        if (Date.now() - stat.mtimeMs < LOCK_STALE_MS) return false;
+      }
+      try { await fs.rm(lockPath, { recursive: true, force: true }); return true; }
+      catch { return false; }
+    }
     while (true) {
       try {
         await fs.mkdir(lockPath);
+        await fs.writeFile(ownerPath, JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }), { flag: "wx" });
         break;
       } catch (error) {
         if (!["EEXIST", "EPERM", "EBUSY"].includes(error.code)) throw error;
+        if (await recoverDeadOwner()) continue;
         if (Date.now() >= deadline) throw storageError("USERS_STORE_BUSY", "Account storage is busy. Please retry.");
         await sleep(25);
       }
@@ -66,7 +84,7 @@ export function createUsersStore(filePath, { allowEmpty = () => false, lockTimeo
     } finally {
       for (let attempt = 0; ; attempt += 1) {
         try {
-          await fs.rmdir(lockPath);
+          await fs.rm(lockPath, { recursive: true, force: true });
           break;
         } catch (error) {
           if (!["EPERM", "EBUSY"].includes(error.code) || attempt >= 5) throw error;

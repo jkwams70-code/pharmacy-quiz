@@ -1333,6 +1333,13 @@
   }
 
   async function hydratePublishedNewsFeed() {
+    // Verify access before showing cached or live premium stories.
+    const access = await loadNewsSubscriptionAccess();
+    if (!access?.isActive) {
+      renderNewsLockState(access);
+      return;
+    }
+
     const cachedFeed = loadCachedPublishedNewsFeed();
     if (cachedFeed) applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
     try {

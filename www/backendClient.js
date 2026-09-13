@@ -349,6 +349,7 @@ async function requestCached(
       "/community/",
       "/sync/",
     ].some((prefix) => path.startsWith(prefix))),
+    allowStaleOnError = true,
   } = {},
 ) {
   const cached = cacheable ? readCachedResponse(cacheKey) : null;
@@ -371,7 +372,7 @@ async function requestCached(
     }
     return response;
   } catch (error) {
-    if (cached?.value !== undefined) {
+    if (allowStaleOnError && cached?.value !== undefined) {
       return cached.value;
     }
     throw error;
@@ -502,8 +503,8 @@ export const backendClient = {
     return data;
   },
 
-  fetchMe({ preferCache = false } = {}) {
-    return get("/auth/me", { preferCache });
+  fetchMe({ preferCache = false, allowStaleOnError = false } = {}) {
+    return get("/auth/me", { preferCache, allowStaleOnError });
   },
 
   fetchSubscriptionPlans({ preferCache = true } = {}) {

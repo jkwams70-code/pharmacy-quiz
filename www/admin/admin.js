@@ -2721,6 +2721,7 @@ function getAdminLoginScreen() {
             const dashboard = getAdminDashboard();
             if (dashboard) dashboard.classList.add("active");
             refreshData();
+            startAdminLiveRefresh();
           } else {
             alert("Invalid admin key");
           }
@@ -2730,6 +2731,8 @@ function getAdminLoginScreen() {
       }
 
       function logout() {
+        if (adminLiveRefreshTimer) window.clearInterval(adminLiveRefreshTimer);
+        adminLiveRefreshTimer = null;
         localStorage.removeItem(ADMIN_KEY_STORAGE);
         adminKey = null;
         hideAdminNotificationBanner();
@@ -2791,6 +2794,40 @@ function getAdminLoginScreen() {
           refreshBtn.textContent = originalText;
         }
       }
+
+      let adminLiveRefreshTimer = null;
+      let adminLiveRefreshInFlight = null;
+
+      async function refreshAdminLiveData() {
+        if (!adminKey || adminLiveRefreshInFlight) return;
+        adminLiveRefreshInFlight = (async () => {
+          await ensureAdminApiBase();
+          await Promise.all([loadStats(), loadUsers(), loadMonetizationRequests()]);
+          if (adminActiveTab === "groups") await loadGroups();
+          if (adminActiveTab === "reports") await loadReports();
+          if (adminActiveTab === "questions") await loadQuestions();
+          if (adminActiveTab === "broadcast") await loadBroadcastOverview();
+          if (adminActiveTab === "password-resets") await loadPasswordResetRequests();
+        })().catch((error) => {
+          console.warn("Admin live refresh failed:", error);
+        }).finally(() => {
+          adminLiveRefreshInFlight = null;
+        });
+        return adminLiveRefreshInFlight;
+      }
+
+      function startAdminLiveRefresh() {
+        if (adminLiveRefreshTimer) window.clearInterval(adminLiveRefreshTimer);
+        adminLiveRefreshTimer = null;
+        if (!adminKey) return;
+        adminLiveRefreshTimer = window.setInterval(() => {
+          if (document.visibilityState === "visible") void refreshAdminLiveData();
+        }, 30_000);
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && adminKey) void refreshAdminLiveData();
+      });
 
       function getAnalyticsPeriodData(period = selectedAnalyticsPeriod) {
         const analytics = cachedAdminStats?.activityAnalytics || null;
@@ -5511,6 +5548,7 @@ function getAdminLoginScreen() {
           const dashboard = getAdminDashboard();
             if (dashboard) dashboard.classList.add("active");
           refreshData();
+          startAdminLiveRefresh();
         })();
       }
 

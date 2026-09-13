@@ -1,12 +1,12 @@
-const CACHE_VERSION = "ajix-app-shell-v119-medlens-interactions";
+const CACHE_VERSION = "ajix-app-shell-v120-subscription-refresh";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-"/engine.js?v=20260907-subscription-pricing-v1",
-  "/backendClient.js?v=20260619-cross-device-sync-fix3",
+"/engine.js?v=20260913-entitlement-live1",
+  "/backendClient.js?v=20260913-entitlement-live1",
   "/offlineStore.js?v=20260907-idb-recovery-v1",
   "/auth-lock.js",
   "/standalone-back.js",
@@ -93,6 +93,10 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (!isSameOriginRequest(event.request)) return;
+
+  // Never cache API responses. Auth, subscription, and admin data must be live.
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.pathname.startsWith("/api/")) return;
 
   event.respondWith(
     (async () => {

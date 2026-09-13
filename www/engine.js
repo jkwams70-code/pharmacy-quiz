@@ -1,4 +1,4 @@
-import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
+import { backendClient } from "./backendClient.js?v=20260913-entitlement-live1";
 import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js?v=20260907-idb-recovery-v1";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
 const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
@@ -2364,6 +2364,8 @@ let topicCatalog = { topics: [], categories: [] };
 let topicCatalogLoaded = false;
 let subscriptionPlansCache = [];
 let subscriptionStatusSnapshot = null;
+const SHARED_SUBSCRIPTION_REFRESH_COOLDOWN_MS = 20_000;
+const SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS = 8_000;
 const SUBSCRIPTION_ENTITLEMENT_CACHE_KEY =
   "subscriptionEntitlementCacheV1";
 const OFFLINE_SUBSCRIPTION_GRACE_MS =
@@ -33545,12 +33547,13 @@ function stopSharedAccountStatePolling() {
 
 function startSharedAccountStatePolling() {
   stopSharedAccountStatePolling();
-  if (!currentUser || !backendClient.isAuthenticated()) {
-    return;
-  }
-  // Subscription validity is tied to the server-provided expiry timestamp.
-  // Do not poll the account repeatedly while that entitlement is still valid.
-  sharedAccountStatePollingHandle = null;
+  if (!currentUser || !backendClient.isAuthenticated()) return;
+  sharedAccountStatePollingHandle = window.setTimeout(() => {
+    sharedAccountStatePollingHandle = null;
+    if (document.visibilityState === "visible") {
+      void refreshSharedAccountState({ silent: true, deferHydration: true });
+    }
+  }, SHARED_SUBSCRIPTION_REFRESH_COOLDOWN_MS);
 }
 
 function scheduleSharedAccountHydration({ silent = true, deferHydration = false } = {}) {
@@ -33598,7 +33601,7 @@ async function refreshSharedAccountState({
   }
 
   const now = Date.now();
-  if (!force && now - sharedAccountStateRefreshAt < 12_000) {
+  if (!force && now - sharedAccountStateRefreshAt < SHARED_SUBSCRIPTION_REFRESH_COOLDOWN_MS) {
     return true;
   }
 
@@ -33608,8 +33611,14 @@ async function refreshSharedAccountState({
 
   sharedAccountStateRefreshAt = now;
   sharedAccountStateRefreshInFlight = (async () => {
-    const freshUser = await backendClient.fetchMe();
+    const timeoutPromise = new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error("Subscription verification timed out.")), SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS);
+    });
+    const freshUser = await Promise.race([backendClient.fetchMe({ preferCache: false }), timeoutPromise]);
     currentUser = freshUser;
+    subscriptionStatusSnapshot = freshUser?.subscriptionAccess
+      ? { subscription: freshUser.subscriptionAccess, user: freshUser }
+      : null;
     communityAccessDenied = false;
     scheduleSubscriptionExpiryTimer();
     renderAuthState();
@@ -33639,8 +33648,8 @@ async function refreshSharedAccountState({
 }
 
 function refreshSubscriptionAccessForAction() {
-  // Compatibility shim: navigation uses the latest entitlement immediately.
   if (!backendClient.isAuthenticated() || !currentUser) return false;
+  void refreshSharedAccountState({ silent: true, deferHydration: true });
   scheduleSubscriptionExpiryTimer();
   return true;
 }
@@ -37415,11 +37424,13 @@ function revalidateSubscriptionEntitlement() {
 
 window.addEventListener("online", () => {
   void revalidateSubscriptionEntitlement();
+  void refreshSharedAccountState({ silent: true, deferHydration: true });
 });
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     void revalidateSubscriptionEntitlement();
+    void refreshSharedAccountState({ silent: true, deferHydration: true });
   }
 });
 
@@ -37436,9 +37447,13 @@ function requireSubscriptionAccess(
     return true;
   }
 
-  // Do not block the first click while account data is loading.
-  if (!currentUser || !subscriptionStatusSnapshot) {
-    return true;
+  // Unknown subscription state must not unlock premium content.
+  if (!currentUser || !resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot)) {
+    openSubscriptionScreen({
+      intent: gateFeature || feature,
+      returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",
+    });
+    return false;
   }
 
   if (!isSubscriptionLockedForFeature(gateFeature)) {

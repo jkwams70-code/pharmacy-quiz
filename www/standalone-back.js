@@ -18,6 +18,20 @@
   }
 
   function goBackToAppShell() {
+    try {
+      const referrer = document.referrer ? new URL(document.referrer) : null;
+      if (
+        !isNativeApp() &&
+        referrer &&
+        referrer.origin === window.location.origin &&
+        window.history.length > 1
+      ) {
+        window.history.back();
+        return;
+      }
+    } catch {
+      // Fall through to the deterministic app-shell URL.
+    }
     const target = new URL(getBackUrl(), window.location.href);
     window.location.href = target.toString();
   }

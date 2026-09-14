@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-app-shell-v120-subscription-refresh";
+const CACHE_VERSION = "ajix-app-shell-v121-fast-navigation";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
@@ -9,7 +9,7 @@ const SHELL_ASSETS = [
   "/backendClient.js?v=20260913-entitlement-live1",
   "/offlineStore.js?v=20260907-idb-recovery-v1",
   "/auth-lock.js",
-  "/standalone-back.js",
+  "/standalone-back.js?v=20260914-fast-back1",
   "/medlens-interactions-database.js",
   "/medlens-disease-database.js",
   "/styles.css",
@@ -101,16 +101,22 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       const cached = await caches.match(event.request);
-
-      try {
-        const response = await fetch(event.request);
-
+      const isVersionedStatic = requestUrl.searchParams.has("v") && ["script", "style", "font", "image"].includes(event.request.destination);
+      const refresh = fetch(event.request).then(async (response) => {
         if (response && response.ok) {
           const cache = await caches.open(RUNTIME_CACHE);
           await cache.put(event.request, response.clone());
         }
-
         return response;
+      });
+
+      if (cached && isVersionedStatic) {
+        event.waitUntil(refresh.catch(() => {}));
+        return cached;
+      }
+
+      try {
+        return await refresh;
       } catch {
   if (cached) return cached;
 

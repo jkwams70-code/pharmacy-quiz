@@ -7580,13 +7580,14 @@ app.use(
     dotfiles: "ignore",
     setHeaders(res, filePath) {
       const lowered = String(filePath || "").toLowerCase();
-      if (
-        lowered.endsWith(".html") ||
-        lowered.endsWith(".js") ||
-        lowered.endsWith(".css") ||
-        lowered.endsWith(".webmanifest") ||
-        lowered.endsWith(".json")
-      ) {
+      const requestUrl = String(res.req?.originalUrl || "");
+      const isVersionedAsset = /[?&]v=[^&]+/i.test(requestUrl);
+      const isStaticAsset = lowered.endsWith(".js") || lowered.endsWith(".css") || lowered.endsWith(".webmanifest") || lowered.endsWith(".json");
+      if (isVersionedAsset && isStaticAsset) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        return;
+      }
+      if (lowered.endsWith(".html") || isStaticAsset) {
         res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
         res.setHeader("Pragma", "no-cache");
         res.setHeader("Expires", "0");

@@ -5601,9 +5601,19 @@ function buildSubscriptionAccessFromRequest(request = {}) {
 function normalizePasswordResetRequest(rawRequest = {}) {
   const requestedAt = getIsoTimeValue(rawRequest.requestedAt) || new Date().toISOString();
   const rawStatus = String(rawRequest.status || "").trim().toLowerCase();
+  const hasSentAt = Boolean(getIsoTimeValue(rawRequest.sentAt));
+  const hasResolvedAt = Boolean(getIsoTimeValue(rawRequest.resolvedAt));
+  const sentAtMs = Date.parse(String(getIsoTimeValue(rawRequest.sentAt) || ""));
+  const resolvedAtMs = Date.parse(String(getIsoTimeValue(rawRequest.resolvedAt) || ""));
+  const inferredStatus =
+    hasSentAt && (!hasResolvedAt || sentAtMs >= resolvedAtMs)
+      ? "sent"
+      : hasResolvedAt
+        ? "resolved"
+        : "pending";
   const status = ["pending", "sent", "resolved", "expired", "cancelled"].includes(rawStatus)
     ? rawStatus
-    : "pending";
+    : inferredStatus;
   const contact = normalizeContactValue(rawRequest.contact) || normalizeWhitespace(rawRequest.contact);
   const contactType = String(
     rawRequest.contactType || (contact ? detectContactType(contact) : ""),
@@ -5621,6 +5631,7 @@ function normalizePasswordResetRequest(rawRequest = {}) {
 
   return {
     id: String(rawRequest.id || crypto.randomUUID()),
+    status,
     userId: String(rawRequest.userId || "").trim(),
     username: String(rawRequest.username || "").trim(),
     name: String(rawRequest.name || "").trim(),
@@ -5681,6 +5692,7 @@ function toPublicPasswordResetRequest(rawRequest = {}, usersById = new Map()) {
   const user = usersById.get(request.userId) || null;
   return {
     ...request,
+    status,
     isExpired: status === "expired",
     user: user ? toPublicUser(user) : null,
   };
@@ -6947,6 +6959,11 @@ function resolveCorrectAnswerValue(rawCorrect, options) {
 
   const asString = String(rawCorrect || "").trim();
   if (!asString) return null;
+  const letterMatch = asString.match(/^([A-H])(?:[.)\s:\-]|$)/i);
+  if (letterMatch) {
+    const letterIndex = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+    if (letterIndex >= 0 && letterIndex < options.length) return String(options[letterIndex]);
+  }
   if (options.includes(asString)) return asString;
   return null;
 }

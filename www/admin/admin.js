@@ -131,6 +131,8 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let selectedSubscriptionRequestId = "";
       let selectedSubscriptionProofDataUrl = "";
       let passwordResetRequestsLoaded = false;
+      let passwordResetRequestsLoadVersion = 0;
+      let passwordResetRequestsMutationVersion = 0;
       let selectedAnalyticsPeriod = "week";
       let pendingSubscriptionApproveRequestId = "";
       let pendingSubscriptionRejectRequestId = "";
@@ -175,26 +177,21 @@ async function ensureAdminApiBase({ force = false } = {}) {
       function toCorrectOptionIndex(question) {
         const options = getEffectiveOptions(question);
         const rawCorrect = question?.correct;
+        const rawText = String(rawCorrect ?? "").trim();
 
-        if (
-          String(question?.type || "").toLowerCase() === "combo" &&
-          typeof rawCorrect === "string"
-        ) {
-          const comboIndex = COMBO_OPTIONS.findIndex(
-            (opt) => opt.letter === rawCorrect.trim().toUpperCase(),
-          );
-          if (comboIndex >= 0) return comboIndex;
+        const letterMatch = rawText.match(/^([A-H])(?:[.)\s:\-]|$)/i);
+        if (letterMatch) {
+          const letterIndex = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+          if (letterIndex >= 0 && letterIndex < options.length) return letterIndex;
         }
 
         if (Number.isInteger(rawCorrect) && rawCorrect >= 0 && rawCorrect < options.length) {
           return rawCorrect;
         }
 
-        if (typeof rawCorrect === "string" && rawCorrect.trim()) {
-          const byTextIndex = options.indexOf(rawCorrect);
-          if (byTextIndex >= 0) {
-            return byTextIndex;
-          }
+        if (rawText) {
+          const byTextIndex = options.findIndex((option) => option === rawText);
+          if (byTextIndex >= 0) return byTextIndex;
         }
 
         const numeric = Number(rawCorrect);
@@ -1239,10 +1236,12 @@ function getMonetizationBucketMeta(bucket = "request") {
       }
 
       function getPasswordResetRequestStatus(request = {}) {
-        const status = String(request?.status || "pending").trim().toLowerCase();
-        if (["pending", "sent", "resolved", "expired", "cancelled"].includes(status)) {
-          return status;
+        const rawStatus = String(request?.status || "").trim().toLowerCase();
+        if (["pending", "sent", "resolved", "expired", "cancelled"].includes(rawStatus)) {
+          return rawStatus;
         }
+        if (String(request?.sentAt || "").trim()) return "sent";
+        if (String(request?.resolvedAt || "").trim()) return "resolved";
         return "pending";
       }
 
@@ -1459,6 +1458,8 @@ function getMonetizationBucketMeta(bucket = "request") {
       }
 
       async function loadPasswordResetRequests() {
+        const loadVersion = ++passwordResetRequestsLoadVersion;
+        const mutationVersion = passwordResetRequestsMutationVersion;
         try {
           const res = await fetch(withNoCache(`${API_BASE}/admin/password-reset-requests`), {
             headers: getHeaders(),
@@ -1467,6 +1468,13 @@ function getMonetizationBucketMeta(bucket = "request") {
           const data = await res.json().catch(() => ({}));
           if (!res.ok || !Array.isArray(data.requests)) {
             throw new Error(data.error || "Failed to load password reset requests");
+          }
+
+          if (
+            loadVersion !== passwordResetRequestsLoadVersion ||
+            mutationVersion !== passwordResetRequestsMutationVersion
+          ) {
+            return true;
           }
 
           cachedPasswordResetRequests = data.requests;
@@ -1492,6 +1500,23 @@ function getMonetizationBucketMeta(bucket = "request") {
           if (!res.ok || !data?.request) {
             throw new Error(data.error || "Failed to update password reset request");
           }
+          passwordResetRequestsMutationVersion += 1;
+          const updatedRequest = data.request;
+          const updatedRequestId = String(updatedRequest.id || safeRequestId).trim();
+          const cachedRequestIndex = cachedPasswordResetRequests.findIndex(
+            (entry) => {
+              const entryId = String(entry?.id || "").trim();
+              return entryId === safeRequestId || entryId === updatedRequestId;
+            },
+          );
+          if (cachedRequestIndex >= 0) {
+            cachedPasswordResetRequests[cachedRequestIndex] = {
+              ...cachedPasswordResetRequests[cachedRequestIndex],
+              ...updatedRequest,
+              status: "sent",
+            };
+          }
+          renderPasswordResetRequests();
           showAlert("password-reset-alerts", "Password reset request marked as sent", "success");
           await loadPasswordResetRequests();
           await loadStats();

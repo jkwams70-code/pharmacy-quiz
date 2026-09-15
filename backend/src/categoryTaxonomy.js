@@ -12,6 +12,7 @@ export const MAJOR_CATEGORIES = [
   "Women's & Men's Health",
   "Immunizations",
   "Manufacturing and Calculation",
+  "Pharmacy Practice",
   "Pharmacy Law & Ethics",
 ];
 

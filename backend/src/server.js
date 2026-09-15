@@ -14376,6 +14376,8 @@ app.put(
     }
 
     const questionId = req.params.questionId;
+    const idProvided = req.body?.id !== undefined;
+    const nextQuestionId = String(req.body?.id ?? "").trim();
     const textProvided = req.body?.text !== undefined || req.body?.question !== undefined;
     const text = String(req.body?.text ?? req.body?.question ?? "").trim();
     const typeProvided = req.body?.type !== undefined;
@@ -14424,6 +14426,16 @@ app.put(
       res.status(404).json({ error: "Question not found" });
       return;
     }
+    if (idProvided) {
+      if (!/^\d+$/.test(nextQuestionId)) {
+        res.status(400).json({ error: "id must contain numbers only" });
+        return;
+      }
+      if (questions.some((question, questionIndex) => questionIndex !== idx && String(question.id) === nextQuestionId)) {
+        res.status(409).json({ error: "A question with that ID already exists" });
+        return;
+      }
+    }
     if (typeProvided && !["single", "match", "combo"].includes(questionType)) { res.status(400).json({ error: "type must be single, match, or combo" }); return; }
     if (reviewStatusProvided && !QUESTION_REVIEW_STATUSES.has(reviewStatus)) { res.status(400).json({ error: "reviewStatus must be needs_review, corrected, or quarantined" }); return; }
     if (topicSlugProvided && topicSlug === null) {
@@ -14470,6 +14482,7 @@ app.put(
       res.status(400).json({ error: "answer must be a valid number" });
       return;
     }
+    if (idProvided) questions[idx].id = nextQuestionId;
 
     if (typeProvided) questions[idx].type = questionType;
     if (textProvided) {

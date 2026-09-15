@@ -24,7 +24,7 @@ import {
 import { config } from "./config.js";
 import {
   ensureQuestionsSeeded,
-  normalizeStoredQuestionCategories,
+
 } from "./services/questions.js";
 import { generateAiExplanation, generateNewsDraft } from "./services/ai.js";
 import {
@@ -12786,9 +12786,8 @@ app.post(
       res.status(403).json({ error: "Forbidden" });
       return;
     }
-
-    const force = Boolean(req.body?.force);
-    const result = await ensureQuestionsSeeded({ force });
+    const importNew = req.body?.importNew === true;
+    const result = await ensureQuestionsSeeded({ importNew });
     res.json(result);
   }),
 );
@@ -15874,7 +15873,6 @@ async function start() {
   const userNormalizeInfo = await normalizeStoredUsers();
   const purgedDeactivatedUsers = await purgeExpiredDeactivatedUsers();
   const seedInfo = await ensureQuestionsSeeded();
-  const categoryNormalizeInfo = await normalizeStoredQuestionCategories();
   const newsSourceSeedInfo = await seedDefaultNewsSources();
   if (userNormalizeInfo.changed > 0) {
     console.log(
@@ -15887,14 +15885,7 @@ async function start() {
     );
   }
   if (seedInfo.seeded) {
-    console.log(
-      `[seed] imported ${seedInfo.count} questions from Quiz/data.js`,
-    );
-  }
-  if (categoryNormalizeInfo.changed > 0) {
-    console.log(
-      `[taxonomy] normalized ${categoryNormalizeInfo.changed}/${categoryNormalizeInfo.total} question categories and rotation tags`,
-    );
+    console.log(`[seed] imported ${seedInfo.imported || seedInfo.count} new questions; preserved ${seedInfo.preserved || 0} admin questions`);
   }
   if (Array.isArray(newsSourceSeedInfo) && newsSourceSeedInfo.length > 0) {
     console.log(`[news] ready with ${newsSourceSeedInfo.length} curated source(s)`);

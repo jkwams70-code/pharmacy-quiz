@@ -4603,11 +4603,10 @@
           >
             <h4 style="margin-bottom: 15px; color: #666">Seed Questions</h4>
             <p style="color: #999; margin-bottom: 15px; font-size: 14px">
-              Import questions from <code>Quiz/data.js</code>. You can run safe
-              seed (only if empty) or force replace all existing questions.
+              Import new questions from <code>Quiz/data.js</code> without replacing existing admin-managed questions.
             </p>
             <button id="seed-questions-btn">
-              Seed / Reseed Questions from Frontend Data
+              Import New Questions from Frontend Data
             </button>
           </div>
 
@@ -5006,7 +5005,7 @@
       </div>
     </div>
 
-    <script src="admin.js?v=20260913-live-refresh1"></script>
+    <script src="admin.js?v=20260914-question-authority1"></script>
     <script>
       const adminWorkspacePlaceholderModal = document.getElementById("admin-workspace-placeholder-modal");
       const adminWorkspacePlaceholderCopy = document.getElementById("admin-workspace-placeholder-copy");

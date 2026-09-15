@@ -1,4 +1,4 @@
-﻿const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
+const storedApiBase = localStorage.getItem("quizApiBase")?.trim();
 const currentHost = String(window.location.hostname || "").trim();
 const currentOrigin = String(window.location.origin || "").trim();
 const isLocalHost = ["localhost", "127.0.0.1"].includes(currentHost);
@@ -450,7 +450,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
               <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
               <div class="broadcast-chat-attachment-type-text">Audio</div>
             </div>
-            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">Ã—</button>
           `;
         }
         return `
@@ -459,7 +459,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
             <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
             <div class="broadcast-chat-attachment-type-text">${safeMimeType}</div>
           </div>
-          <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+          <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">Ã—</button>
         `;
       }
 
@@ -489,7 +489,7 @@ async function ensureAdminApiBase({ force = false } = {}) {
               <div class="broadcast-chat-attachment-name-text">${safeFileName}</div>
               <div class="broadcast-chat-attachment-type-text">${safeMimeType}</div>
             </div>
-            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">×</button>
+            <button type="button" class="broadcast-chat-attachment-remove" data-broadcast-chat-remove-attachment aria-label="Remove attachment" title="Remove attachment">Ã—</button>
           `;
         } else {
           previewEl.innerHTML = buildBroadcastComposerAttachmentMarkup(broadcastChatAttachment);
@@ -767,7 +767,7 @@ function getMonetizationBucketMeta(bucket = "request") {
                           data-action="toggle-monetization-sort"
                           aria-label="Toggle date sort"
                           title="${monetizationSortDirection === "desc" ? "Newest first" : "Oldest first"}"
-                        >↕</button>
+                        >â†•</button>
                       </span>
                     </th>
                   `;
@@ -917,7 +917,7 @@ function getMonetizationBucketMeta(bucket = "request") {
                 style="width: 100%; justify-content: center; border-radius: 18px; padding: 12px 14px;"
               >
                 <img src="${escapeHtml(proofUrl)}" alt="${title} proof preview" />
-                <span>${proofFileName} · ${proofMimeType}</span>
+                <span>${proofFileName} Â· ${proofMimeType}</span>
               </button>
             </div>
           `
@@ -1058,7 +1058,7 @@ function getMonetizationBucketMeta(bucket = "request") {
             <div class="subscription-detail-card">
               <div class="subscription-detail-mini-label">Plan</div>
               <div class="subscription-detail-value">${planLabel}</div>
-              <div class="subscription-detail-meta">${title} · ${contact}</div>
+              <div class="subscription-detail-meta">${title} Â· ${contact}</div>
             </div>
 
             <div class="subscription-detail-card">
@@ -1519,8 +1519,8 @@ function getMonetizationBucketMeta(bucket = "request") {
         const title = document.getElementById("subscription-request-title");
         const subtitle = document.getElementById("subscription-request-subtitle");
         if (body) body.innerHTML = buildCompactMonetizationRequestDetailHtml(request);
-        if (title) title.textContent = `${getMonetizationRequestTitle(request)} • ${request.planLabel || request.plan || "Subscription"}`;
-        if (subtitle) subtitle.textContent = `${getMonetizationRequestContact(request)} • ${formatDate(request.requestedAt)}`;
+        if (title) title.textContent = `${getMonetizationRequestTitle(request)} â€¢ ${request.planLabel || request.plan || "Subscription"}`;
+        if (subtitle) subtitle.textContent = `${getMonetizationRequestContact(request)} â€¢ ${formatDate(request.requestedAt)}`;
         if (title) title.textContent = getMonetizationRequestModalTitle(getMonetizationBucket(request));
         modal?.classList.add("active");
       }
@@ -1646,7 +1646,7 @@ function getMonetizationBucketMeta(bucket = "request") {
         const select = document.getElementById("subscription-reject-reason");
         const amount = getMonetizationRequestAmount(request);
         if (title) title.textContent = "Reject with Reason";
-        if (subtitle) subtitle.textContent = `${getMonetizationRequestTitle(request)} · ${request.planLabel || request.plan || "Subscription"}`;
+        if (subtitle) subtitle.textContent = `${getMonetizationRequestTitle(request)} Â· ${request.planLabel || request.plan || "Subscription"}`;
         if (summary) {
           summary.innerHTML = `
             <div><strong>Student:</strong> ${escapeHtml(getMonetizationRequestTitle(request))}</div>
@@ -2325,7 +2325,7 @@ function getMonetizationBucketMeta(bucket = "request") {
                             }
                             <div>
                               <div class="group-member-name">${escapeHtml(displayValue(member?.name || member?.username))}</div>
-                              <div class="group-member-meta">@${escapeHtml(displayValue(member?.username))} • ${escapeHtml(displayValue(member?.country || member?.institution || "Member"))}</div>
+                              <div class="group-member-meta">@${escapeHtml(displayValue(member?.username))} â€¢ ${escapeHtml(displayValue(member?.country || member?.institution || "Member"))}</div>
                             </div>
                             <div class="group-member-role">${escapeHtml(role.charAt(0).toUpperCase() + role.slice(1))}</div>
                           </div>
@@ -2370,7 +2370,7 @@ function getMonetizationBucketMeta(bucket = "request") {
                       }
                       <div>
                         <div class="group-member-name">${escapeHtml(targetName)}</div>
-                        <div class="group-member-meta">Owner: ${escapeHtml(displayValue(report?.target?.ownerName || report?.target?.ownerUsername))} • ${escapeHtml(String(report?.target?.memberCount || 0))} members</div>
+                        <div class="group-member-meta">Owner: ${escapeHtml(displayValue(report?.target?.ownerName || report?.target?.ownerUsername))} â€¢ ${escapeHtml(String(report?.target?.memberCount || 0))} members</div>
                       </div>
                       <div class="group-member-role">${escapeHtml(status)}</div>
                     </div>
@@ -3824,7 +3824,7 @@ function getAdminLoginScreen() {
           bodyEl.innerHTML = `
             <div class="broadcast-attachment-viewer-stage">
               <div class="broadcast-attachment-viewer-file">
-                <div class="broadcast-attachment-viewer-file-icon">⤓</div>
+                <div class="broadcast-attachment-viewer-file-icon">â¤“</div>
                 <div class="broadcast-attachment-viewer-file-text">
                   <div class="broadcast-attachment-viewer-file-name">${safeFileName}</div>
                   <div class="broadcast-attachment-viewer-file-meta">${safeMimeType}</div>
@@ -3879,7 +3879,7 @@ function getAdminLoginScreen() {
           bodyEl.innerHTML = `
             <div class="broadcast-attachment-viewer-stage">
               <div class="broadcast-attachment-viewer-file">
-                <div class="broadcast-attachment-viewer-file-icon">⧉</div>
+                <div class="broadcast-attachment-viewer-file-icon">â§‰</div>
                 <div class="broadcast-attachment-viewer-file-text">
                   <div class="broadcast-attachment-viewer-file-name">${safeFileName}</div>
                   <div class="broadcast-attachment-viewer-file-meta">${safeMimeType}</div>
@@ -4829,22 +4829,20 @@ function getAdminLoginScreen() {
       }
 
       async function seedQuestions() {
-        const force = confirm(
-          "Use FORCE reseed?\nOK = replace all existing questions from Quiz/data.js\nCancel = seed only if questions table is empty",
-        );
+        const importNew = confirm("Import new questions from Quiz/data.js?\nExisting admin questions will be preserved.\nOK = import new IDs\nCancel = cancel");
 
         try {
           const res = await fetch(`${API_BASE}/admin/seed-questions`, {
             method: "POST",
             headers: getHeaders(),
-            body: JSON.stringify({ force }),
+            body: JSON.stringify({ importNew }),
           });
 
           const data = await res.json();
           if (data.seeded) {
-            const detail = data.replaced
-              ? `Replaced ${data.previousCount || 0} existing questions with ${data.count} fresh questions`
-              : `Seeded ${data.count} questions`;
+            const detail = data.imported
+              ? `Imported ${data.imported} new questions; preserved ${data.preserved || 0} admin questions`
+              : `No new questions found. Preserved ${data.count} admin questions`;
             showAlert(
               "settings-alerts",
               detail,
@@ -4855,7 +4853,7 @@ function getAdminLoginScreen() {
           } else {
             showAlert(
               "settings-alerts",
-              "Questions already exist. Run force reseed to replace them.",
+              "No new questions found. Existing admin questions were preserved.",
               "info",
             );
           }
@@ -4873,7 +4871,7 @@ function getAdminLoginScreen() {
         return;
         if (
           !confirm(
-            "⚠️ This will DELETE all users and attempts. Questions will be re-seeded.",
+            "âš ï¸ This will DELETE all users and attempts. Questions will be re-seeded.",
           )
         )
           return;

@@ -21,6 +21,11 @@ function hasAny(text, words) {
 
 export function normalizeMajorCategory(category, context = "") {
   const rawCategory = String(category || "").trim();
+  // An administrator explicit selection is authoritative. Only infer a
+  // category when the stored/imported value is not supported.
+  if (MAJOR_CATEGORIES.includes(rawCategory)) {
+    return rawCategory;
+  }
   const lowerCategory = rawCategory.toLowerCase();
   const lowerContext = String(context || "").toLowerCase();
   const combined = `${lowerCategory} ${lowerContext}`;

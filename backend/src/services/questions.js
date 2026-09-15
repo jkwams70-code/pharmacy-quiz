@@ -374,50 +374,31 @@ export async function importQuestionsFromFrontend() {
   return questions;
 }
 
-export async function ensureQuestionsSeeded() {
+export async function ensureQuestionsSeeded({ importNew = false } = {}) {
   const existing = await readCollection("questions");
-  const seededQuestions = await importQuestionsFromFrontend();
-  const existingIds = new Set(
-    existing
-      .map((row) => Number(row?.id))
-      .filter((id) => Number.isFinite(id)),
-  );
-  const sourceIds = new Set(
-    seededQuestions
-      .map((row) => Number(row?.id))
-      .filter((id) => Number.isFinite(id)),
-  );
 
-  const hasMissingSourceRows = seededQuestions.some((row) => !existingIds.has(Number(row?.id)));
-  const hasExtraStoredRows = existing.some((row) => !sourceIds.has(Number(row?.id)));
-  const existingById = new Map(
-    existing
-      .map((row) => [Number(row?.id), row])
-      .filter(([id]) => Number.isFinite(id)),
-  );
-  const hasChangedRows = seededQuestions.some((row) => {
-    const current = existingById.get(Number(row?.id));
-    if (!current) return true;
-    return buildQuestionSignature(current) !== buildQuestionSignature(row);
-  });
-  const shouldReseed =
-    existing.length === 0 ||
-    existing.length !== seededQuestions.length ||
-    hasMissingSourceRows ||
-    hasExtraStoredRows ||
-    hasChangedRows;
-
-  if (shouldReseed) {
-    await writeCollection("questions", seededQuestions);
-    return {
-      seeded: true,
-      count: seededQuestions.length,
-    };
+  // The backend collection is authoritative once it contains records. Startup
+  // must never replace admin edits with the frontend source copy.
+  if (existing.length > 0 && !importNew) {
+    return { seeded: false, count: existing.length, imported: 0, preserved: existing.length };
   }
 
-  return { seeded: false, count: existing.length };
-}
+  const sourceQuestions = await importQuestionsFromFrontend();
+  if (existing.length === 0) {
+    await writeCollection("questions", sourceQuestions);
+    return { seeded: true, count: sourceQuestions.length, imported: sourceQuestions.length, preserved: 0 };
+  }
 
+  const existingIds = new Set(existing.map((row) => Number(row?.id)).filter((id) => Number.isFinite(id)));
+  const additions = sourceQuestions.filter((row) => !existingIds.has(Number(row?.id)));
+  if (additions.length === 0) {
+    return { seeded: false, count: existing.length, imported: 0, preserved: existing.length };
+  }
+
+  const merged = [...existing, ...additions].sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  await writeCollection("questions", merged);
+  return { seeded: true, count: merged.length, imported: additions.length, preserved: existing.length };
+}
 export async function normalizeStoredQuestionCategories() {
   const questions = await readCollection("questions");
   let changed = 0;

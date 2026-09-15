@@ -2903,7 +2903,8 @@ function formatComboStatement(statement, index, question = {}) {
   const variant = String(question.comboVariant || "").toLowerCase();
   const count = Array.isArray(question.statements) ? question.statements.length : 0;
   const labels = variant === "assertion-5" ? ["Assertion", "Reason"] : count >= 3 ? ["I", "II", "III", "IV"] : [];
-  return (labels[index] || String(index + 1)) + ". " + raw;
+  const label = labels[index] || String(index + 1);
+  return `<strong>${escapeHtml(label)}.</strong> ${escapeHtml(raw)}`;
 }
 
 function getComboChoiceRows(question = {}) {
@@ -37998,7 +37999,7 @@ function showQuestion() {
     statementList.forEach((s, index) => {
       const p = document.createElement("p");
 
-      p.innerText = formatComboStatement(s, index, q);
+      p.innerHTML = formatComboStatement(s, index, q);
 
       comboBlock.appendChild(p);
     });
@@ -39688,7 +39689,7 @@ function renderDetailedQuestion() {
     q.statements.forEach((s, index) => {
       const p = document.createElement("p");
 
-      p.innerText = formatComboStatement(s, index, q);
+      p.innerHTML = formatComboStatement(s, index, q);
 
       comboBlock.appendChild(p);
     });
@@ -39797,9 +39798,9 @@ function showQuestionDetailedMode() {
   }
 
   if (q.type === "combo") {
-    q.statements.forEach((s) => {
+    q.statements.forEach((s, index) => {
       const p = document.createElement("p");
-      p.innerText = s;
+      p.innerHTML = formatComboStatement(s, index, q);
       answersEl.appendChild(p);
     });
 

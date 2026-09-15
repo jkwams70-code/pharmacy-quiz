@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-app-shell-v121-fast-navigation";
+const CACHE_VERSION = "ajix-app-shell-v122-premium-content-lock";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
@@ -13,7 +13,6 @@ const SHELL_ASSETS = [
   "/medlens-interactions-database.js",
   "/medlens-disease-database.js",
   "/styles.css",
-  "/data.js?v=20260613-manufacturing-set2",
   "/rotationTaxonomy.js",
   "/pwa-launch.html",
   "/manifest.webmanifest",
@@ -28,8 +27,7 @@ const SHELL_ASSETS = [
   "/icons/icon-512-f1.png",
   "/images/app-logo.png",
   "/images/ajix-logo.png",
-  "/calculator.html",
-"/guidelines.html",
+  "/guidelines.html",
 "/news.html",
 "/news-story.html",
 "/medlens.html",
@@ -97,6 +95,10 @@ self.addEventListener("fetch", (event) => {
   // Never cache API responses. Auth, subscription, and admin data must be live.
   const requestUrl = new URL(event.request.url);
   if (requestUrl.pathname.startsWith("/api/")) return;
+  if (requestUrl.pathname === "/data.js") {
+    event.respondWith(new Response("Not found", { status: 404 }));
+    return;
+  }
 
   event.respondWith(
     (async () => {

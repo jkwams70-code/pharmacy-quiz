@@ -429,7 +429,7 @@ a{text-decoration:none;color:inherit}
               </div>
             </div>
             <div class="fg"><label class="fl">Body Content</label>
-              <div class="toolbar" id="newsBodyToolbar"><button class="tbtn on" type="button" data-command="bold"><b>B</b></button><button class="tbtn" type="button" data-command="italic"><i>I</i></button><button class="tbtn" type="button" data-command="underline">U</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="formatBlock" data-value="H1">H1</button><button class="tbtn" type="button" data-command="formatBlock" data-value="H2">H2</button><button class="tbtn" type="button" data-command="formatBlock" data-value="H3">H3</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="insertUnorderedList">UL</button><button class="tbtn" type="button" data-command="insertOrderedList">OL</button><button class="tbtn" type="button" data-command="formatBlock" data-value="BLOCKQUOTE">Quote</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="createLink">Link</button><button class="tbtn" type="button" data-command="insertImage">IMG</button></div>
+              <div class="toolbar" id="newsBodyToolbar"><button class="tbtn on" type="button" data-command="bold"><b>B</b></button><button class="tbtn" type="button" data-command="italic"><i>I</i></button><button class="tbtn" type="button" data-command="underline">U</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="formatBlock" data-value="H1">H1</button><button class="tbtn" type="button" data-command="formatBlock" data-value="H2">H2</button><button class="tbtn" type="button" data-command="formatBlock" data-value="H3">H3</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="insertUnorderedList">UL</button><button class="tbtn" type="button" data-command="insertOrderedList">OL</button><button class="tbtn" type="button" data-command="formatBlock" data-value="BLOCKQUOTE">Quote</button><div class="tdiv"></div><button class="tbtn" type="button" data-command="createLink">Link</button><button class="tbtn" type="button" data-command="insertImage">IMG</button><button class="tbtn" type="button" id="newsResizeImageBtn" title="Resize selected image">Resize image</button></div>
               <div class="ft" id="newsBody" contenteditable="true" spellcheck="true" data-placeholder="Write your article here..."></div>
             </div>
             <div class="fg"><label class="fl">Tags</label><div class="tags" id="newsTagsField"><div class="tag-chip-list" id="newsTagChips"></div><input type="text" id="newsTagInput" placeholder="Add tag..." autocomplete="off" spellcheck="false"></div></div>
@@ -1334,6 +1334,27 @@ function getNewsBodyEditor() {
   return document.getElementById("newsBody");
 }
 
+let activeNewsImage = null;
+
+function setNewsImageWidth(width = "") {
+  const image = activeNewsImage;
+  const body = getNewsBodyEditor();
+  if (!image || !body || !body.contains(image)) {
+    showNotice("Click an image in the article first.", "info");
+    return;
+  }
+  const value = String(width || "").trim();
+  if (!value) {
+    image.style.removeProperty("width");
+    image.removeAttribute("width");
+  } else {
+    image.style.width = value.endsWith("%") ? value : `${Math.max(120, Math.min(1600, Number(value) || 1200))}px`;
+    image.style.maxWidth = "100%";
+    image.style.height = "auto";
+  }
+  image.classList.add("is-resize-selected");
+  syncEditorPreview();
+}
 function getNewsHeroDropzone() {
   return document.getElementById("newsHeroDropzone");
 }
@@ -3000,7 +3021,31 @@ function initNewsStudio() {
     document.getElementById(id)?.addEventListener("input", scheduleNewsEditorAutosave);
     document.getElementById(id)?.addEventListener("change", scheduleNewsEditorAutosave);
   });
-  document.getElementById("newsBody")?.addEventListener("input", syncEditorPreview);
+  document.getElementById("newsBody")?.addEventListener("click", (event) => {
+    const image = event.target instanceof HTMLImageElement ? event.target : null;
+    if (!image) return;
+    document.querySelectorAll("#newsBody img.is-resize-selected").forEach((item) => item.classList.remove("is-resize-selected"));
+    activeNewsImage = image;
+    image.classList.add("is-resize-selected");
+  });
+  document.getElementById("newsBody")?.addEventListener("pointerdown", (event) => {
+    const image = event.target instanceof HTMLImageElement ? event.target : null;
+    if (!image) return;
+    activeNewsImage = image;
+    image.classList.add("is-resize-selected");
+  }, true);
+  document.getElementById("newsBody")?.addEventListener("click", (event) => {
+    const image = event.target instanceof HTMLImageElement ? event.target : null;
+    if (!image) return;
+    activeNewsImage = image;
+    const current = activeNewsImage.style.width || "1200px";
+    const width = window.prompt("Image width in pixels (120–1600), or leave blank for automatic width:", current.replace("px", ""));
+    if (width !== null) setNewsImageWidth(width);
+  });  document.getElementById("newsResizeImageBtn")?.addEventListener("click", () => {
+    const current = activeNewsImage?.style.width || "1200px";
+    const width = window.prompt("Image width in pixels (120–1600), or leave blank for automatic width:", current.replace("px", ""));
+    if (width !== null) setNewsImageWidth(width);
+  });  document.getElementById("newsBody")?.addEventListener("input", syncEditorPreview);
   document.getElementById("newsBody")?.addEventListener("blur", syncEditorPreview);
   document.getElementById("newsBody")?.addEventListener("paste", (event) => {
     event.preventDefault();

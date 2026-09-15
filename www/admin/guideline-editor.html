@@ -400,7 +400,7 @@
     .editor-surface li { margin-bottom: 6px; }
     .editor-surface a { color: var(--accent); text-decoration: underline; }
     .editor-surface strong, .editor-surface b { font-weight: 700; }
-    .editor-surface img { max-width: 100%; height: auto; border-radius: 6px; }
+    .editor-surface img { max-width: 100%; height: auto; border-radius: 6px; }.editor-surface img.is-resize-selected { outline: 2px solid var(--accent); outline-offset: 3px; }
     .editor-surface table {
       width: 100%;
       border-collapse: collapse;
@@ -1085,6 +1085,7 @@
 
     let activeTableSurface = null;
     let activeImageSurface = null;
+    let activeImageElement = null;
     let dragSrcId = null;
     let autoSaveTimer = null;
     const AUTOSAVE_KEY_BASE = 'ajix_guideline_editor_autosave';
@@ -1159,6 +1160,7 @@
       document.getElementById(id).classList.remove('active');
       activeTableSurface = null;
       activeImageSurface = null;
+      activeImageElement = null;
     }
 
     /* ========== SECTION MANAGEMENT ========== */
@@ -1208,7 +1210,7 @@
           <button type="button" class="toolbar-btn" data-action="link" title="Insert link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
           <button type="button" class="toolbar-btn" data-action="table" title="Insert table"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg></button>
           <select class="attention-select" data-action="attention" title="Insert attention card" aria-label="Insert attention card"><option value="">Card</option><option value="plain">Plain</option><option value="key">Key notice</option><option value="info">Information</option><option value="warning">Warning</option><option value="caution">Caution</option></select>
-<button type="button" class="toolbar-btn" data-action="image" title="Insert image"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button>
+<button type="button" class="toolbar-btn" data-action="image" title="Insert image"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></button><button type="button" class="toolbar-btn" data-action="resize-image" title="Resize selected image">Resize</button>
         </div>
         <div class="editor-surface" contenteditable="true">${section.content}</div>
       `;
@@ -1417,6 +1419,61 @@
         document.getElementById('imageModal').classList.add('active');
       });
 
+      surface.addEventListener('click', (event) => {
+        const image = event.target instanceof HTMLImageElement ? event.target : null;
+        if (!image) return;
+        document.querySelectorAll('.editor-surface img.is-resize-selected').forEach((item) => item.classList.remove('is-resize-selected'));
+        activeImageSurface = surface;
+        activeImageElement = image;
+        image.classList.add('is-resize-selected');
+      });
+      card.querySelector('[data-action="resize-image"]')?.addEventListener('mousedown', (e) => e.preventDefault());
+      card.querySelector('[data-action="resize-image"]')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const image = activeImageElement && surface.contains(activeImageElement) ? activeImageElement : null;
+        if (!image) { alert('Click an image first, then choose Resize.'); return; }
+        const current = image.style.width || '100%';
+        const value = prompt('Image width in pixels (120–1600), or percentage:', current.replace('px', ''));
+        if (value === null) return;
+        const text = String(value).trim();
+        if (!text) {
+          image.style.removeProperty('width');
+          image.removeAttribute('width');
+        } else if (text.endsWith('%')) {
+          image.style.width = `${Math.max(10, Math.min(100, Number(text.slice(0, -1)) || 100))}%`;
+          image.style.maxWidth = '100%';
+          image.style.height = 'auto';
+        } else {
+          image.style.width = `${Math.max(120, Math.min(1600, Number(text) || 1200))}px`;
+          image.style.maxWidth = '100%';
+          image.style.height = 'auto';
+        }
+        section.content = surface.innerHTML;
+        triggerAutosave();
+      });
+      surface.addEventListener('pointerdown', (event) => {
+        const image = event.target instanceof HTMLImageElement ? event.target : null;
+        if (!image) return;
+        activeImageSurface = surface;
+        activeImageElement = image;
+        image.classList.add('is-resize-selected');
+      }, true);
+      surface.addEventListener('click', (event) => {
+        const image = event.target instanceof HTMLImageElement ? event.target : null;
+        if (!image) return;
+        activeImageSurface = surface;
+        activeImageElement = image;
+        const value = prompt('Image width in pixels (120–1600), or percentage:', (image.style.width || '100%').replace('px', ''));
+        if (value === null) return;
+        const text = String(value).trim();
+        if (!text) image.style.removeProperty('width');
+        else if (text.endsWith('%')) image.style.width = Math.max(10, Math.min(100, Number(text.slice(0, -1)) || 100)) + '%';
+        else image.style.width = Math.max(120, Math.min(1600, Number(text) || 1200)) + 'px';
+        image.style.maxWidth = '100%';
+        image.style.height = 'auto';
+        section.content = surface.innerHTML;
+        triggerAutosave();
+      });
       /* --- Selection tracking for toolbar state --- */
       surface.addEventListener('keyup', () => updateToolbarState(card));
       surface.addEventListener('mouseup', () => updateToolbarState(card));

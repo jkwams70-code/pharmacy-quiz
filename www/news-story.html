@@ -1033,6 +1033,10 @@
     );
   }
 
+  function formatStoryViews(item = {}) {
+    const views = Math.max(0, Math.round(Number(item.views ?? item.viewCount ?? item.readCount) || 0));
+    return views > 0 ? `${formatLikeCount(views)} views` : '';
+  }
   function formatLikeCount(value = 0) {
     const likes = Math.max(0, Math.round(Number(value) || 0));
     if (likes >= 1000000) {
@@ -1093,8 +1097,10 @@
 
   function syncStoryActionButtons() {
     const state = ensureStoryState() || { bookmarked: false, readLater: false };
-    likeBtn?.classList.toggle('liked', Boolean(state.readLater));
-    likeBtn?.setAttribute('aria-pressed', String(Boolean(state.readLater)));
+    likeBtn?.classList.toggle('liked', Boolean(story?.likedByViewer));
+    likeBtn?.setAttribute('aria-pressed', String(Boolean(story?.likedByViewer)));
+    const likeLabel = likeBtn?.querySelector('span');
+    if (likeLabel) likeLabel.textContent = formatLikeCount(getStoryLikeCount(story || {}));
     saveBtn?.classList.toggle('saved', Boolean(state.bookmarked));
     saveBtn?.setAttribute('aria-pressed', String(Boolean(state.bookmarked)));
     const saveLabel = saveBtn?.querySelector('span');
@@ -1197,8 +1203,10 @@
       badgeColor: story.badgeColor || 'var(--accent-blue)',
       subtitle: summary,
       author: story.author || { initials: 'AJ', name: 'Ajix News Desk', role: 'Admin review' },
-      meta: story.meta || { date: '', readTime: '3 min read', views: 'Preview mode', source: '', likes: 0 },
+      meta: story.meta || { date: '', readTime: '3 min read', views: '', source: '', likes: 0 },
       likes: Number(story.likes || 0),
+      likedByViewer: Boolean(story.likedByViewer),
+      newsId: String(story.newsId || story.id || '').trim(),
       sourceName: String(story.sourceName || '').trim(),
       heroLabel: String(story.heroLabel || '').trim(),
       imageUrl: String(story.imageUrl || '').trim(),
@@ -1241,12 +1249,12 @@
       author: {
         initials: authorInitials,
         name: authorName,
-        role: sourceName || 'Admin review',
+        role: sourceName || 'Ajix News Desk',
       },
       meta: {
-        date: publishedLabel || 'Review preview',
+        date: publishedLabel || '',
         readTime: estimateReadTime(content || summary),
-        views: 'Preview mode',
+        views: formatStoryViews(item),
         source: sourceName,
         likes,
       },
@@ -1830,11 +1838,7 @@
 
   function renderMetaDetails(story) {
     if (!metaDetails) return;
-    metaDetails.innerHTML = `
-      <span>${escapeHtml(story.meta.date)}</span>
-      <span>${escapeHtml(story.meta.readTime)}</span>
-      <span>${escapeHtml(story.meta.views)}</span>
-    `;
+    metaDetails.innerHTML = [story.meta.date, story.meta.readTime, story.meta.views].filter(Boolean).map((value) => `<span>${escapeHtml(value)}</span>`).join("");
     const likeCountNode = likeBtn?.querySelector('span');
     if (likeCountNode) {
       likeCountNode.textContent = formatLikeCount(getStoryLikeCount(story));
@@ -2076,9 +2080,34 @@
 
   likeBtn?.addEventListener('click', function (e) {
     e.stopPropagation();
-    toggleStoryReadLater();
+    void toggleStoryLike();
   });
 
+  async function toggleStoryLike() {
+    if (reviewMode || !story) return;
+    const newsId = String(story.newsId || requestedNewsId || '').trim();
+    if (!newsId) return;
+    likeBtn.disabled = true;
+    try {
+      const apiBase = await ensureReviewApiBase();
+      const response = await fetch(`${apiBase}/news/${encodeURIComponent(newsId)}/like`, {
+        method: 'POST',
+        headers: { ...getNewsStoryAuthHeaders(), 'Content-Type': 'application/json' },
+        cache: 'no-store',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not update the like.');
+      story.likes = Number(data.likesCount || 0);
+      story.likedByViewer = data.liked === true;
+      story.meta = { ...(story.meta || {}), likes: story.likes };
+      renderMetaDetails(story);
+      syncStoryActionButtons();
+    } catch (error) {
+      window.alert(error.message || 'Could not update the like.');
+    } finally {
+      likeBtn.disabled = false;
+    }
+  }
   saveBtn?.addEventListener('click', function (e) {
     e.stopPropagation();
     toggleStoryBookmark();

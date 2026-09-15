@@ -1299,7 +1299,7 @@
       if (!res.ok) {
         throw new Error(data.error || `Failed to ${action} the article`);
       }
-      window.location.href = './news-studio.html';
+      window.location.href = './news-studio.html?v=20260915-image-resize1';
     } catch (error) {
       if (reviewNote) {
         reviewNote.textContent = `Could not ${action} the article: ${error.message}`;
@@ -2702,7 +2702,7 @@ function getNewsStatusLabel(status = '') {
 
   backBtn?.addEventListener('click', function (e) {
     e.stopPropagation();
-    window.location.href = './news-studio.html';
+    window.location.href = './news-studio.html?v=20260915-image-resize1';
   });
 
   tocList?.addEventListener('click', function (event) {

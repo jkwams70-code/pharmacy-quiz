@@ -2686,8 +2686,8 @@
     const newsId = String(item.id || '').trim();
     const storyKey = String(item.storyKey || item.id || '').trim();
     window.location.href = newsId
-      ? './news-story.html?newsId=' + encodeURIComponent(newsId) + '&story=' + encodeURIComponent(storyKey)
-      : './news-story.html?story=' + encodeURIComponent(storyKey);
+      ? './news-story.html?newsId=' + encodeURIComponent(newsId) + '&story=' + encodeURIComponent(storyKey) + '&v=20260915-news-likes1'
+      : './news-story.html?story=' + encodeURIComponent(storyKey) + '&v=20260915-news-likes1';
   }
 
   backBtn?.addEventListener('click', () => {

@@ -37338,6 +37338,7 @@ function getSubscriptionGateFeature(feature = "") {
   const normalized = String(feature || "").trim().toLowerCase();
   if (!normalized) return "";
   if (["exam-setup", "exam", "exams", "smart"].includes(normalized)) return "exam";
+  if (["study-setup", "study"].includes(normalized)) return "study";
   if (["topic-viewer", "topic-library", "library"].includes(normalized)) return "topic-library";
   if (
     ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen", "community"].includes(

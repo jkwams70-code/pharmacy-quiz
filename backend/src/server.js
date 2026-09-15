@@ -2011,6 +2011,7 @@ function normalizeNewsItem(raw = {}) {
   const aiCategory = normalizeNewsCategory(raw.aiCategory || "", "");
   const views = Math.max(0, Math.round(Number(raw.views ?? raw.viewCount ?? raw.readCount ?? raw.metrics?.views) || 0));
   const likes = Math.max(0, Math.round(Number(raw.likes ?? raw.likesCount ?? raw.likeCount ?? raw.metrics?.likes) || 0));
+  const likedBy = [...new Set((Array.isArray(raw.likedBy) ? raw.likedBy : []).map((value) => String(value || '').trim()).filter(Boolean))];
   const clientRequestId = cleanNewsText(raw.clientRequestId || raw.idempotencyKey || "", 160);
   return {
     id: String(raw.id || crypto.randomUUID()).trim(),
@@ -2057,6 +2058,7 @@ function normalizeNewsItem(raw = {}) {
     viewCount: views,
     readCount: views,
     likes,
+    likedBy,
     likesCount: likes,
     likeCount: likes,
     metrics: {
@@ -2068,6 +2070,21 @@ function normalizeNewsItem(raw = {}) {
   };
 }
 
+function toPublicNewsItem(raw = {}, viewerId = '') {
+  const item = normalizeNewsItem(raw);
+  const likedBy = Array.isArray(item.likedBy) ? item.likedBy : [];
+  const publicItem = { ...item };
+  delete publicItem.likedBy;
+  publicItem.likedByViewer = Boolean(viewerId && likedBy.includes(String(viewerId)));
+  return publicItem;
+}
+
+function toPublicNewsSections(sections = {}, viewerId = '') {
+  return Object.fromEntries(Object.entries(sections || {}).map(([key, items]) => [
+    key,
+    Array.isArray(items) ? items.map((item) => toPublicNewsItem(item, viewerId)) : [],
+  ]));
+}
 function normalizeNewsCollectRun(raw = {}) {
   const createdAt = String(raw.createdAt || new Date().toISOString());
   const updatedAt = String(raw.updatedAt || createdAt);
@@ -7591,6 +7608,19 @@ app.get("/law.html", requireActiveSubscription, (_req, res) => {
   res.sendFile(path.join(frontendPath, "law.html"));
 });
 
+// Calculator is premium content and must not be reachable by bypassing the
+// Extra-page subscription check.
+app.get("/calculator.html", requireActiveSubscription, (_req, res) => {
+  res.sendFile(path.join(frontendPath, "calculator.html"));
+});
+
+// The question bank is served through the authenticated API only. Keeping the
+// bundled data file public would allow premium question content to be fetched
+// without subscription access.
+app.get("/data.js", (_req, res) => {
+  res.status(404).end();
+});
+
 // Serve static frontend files.
 app.use(
   express.static(frontendPath, {
@@ -11778,6 +11808,7 @@ app.delete(
 
 app.get(
   "/api/questions",
+  requireActiveSubscription,
   asyncHandler(async (req, res) => {
     const category = String(req.query.category || "").trim();
     const bank = String(req.query.bank || "").trim().toLowerCase();
@@ -11835,7 +11866,7 @@ app.get(
 
 app.get(
   "/api/questions/:questionId/insights",
-  optionalAuth,
+  requireActiveSubscription,
   asyncHandler(async (req, res) => {
     const questionId = safeNumber(req.params.questionId);
     if (!Number.isInteger(questionId) || questionId <= 0) {
@@ -14619,6 +14650,7 @@ const requestedCategory = requestedCategoryRaw
   : "";
     const requestedSourceId = String(req.query?.sourceId || "").trim();
     const limit = Math.max(1, Math.min(200, Math.round(Number(req.query?.limit) || 20)));
+    const viewerId = String(req.user?.sub || "").trim();
     const allItems = (await readCollection("newsItems")).map(normalizeNewsItem);
     const items = sortNewsItemsForPublic(allItems)
       .filter((item) => item.status === "published")
@@ -14626,7 +14658,7 @@ const requestedCategory = requestedCategoryRaw
       .filter((item) => !requestedSourceId || item.sourceId === requestedSourceId)
       .slice(0, limit);
     const sources = (await readCollection("newsSources")).map(normalizeNewsSource).filter((source) => source.enabled !== false);
-    const sections = buildNewsFeedSections(allItems);
+    const sections = toPublicNewsSections(buildNewsFeedSections(allItems), viewerId);
     const categoryCounts = items.reduce((accumulator, item) => {
       const category = normalizeNewsCategory(item.category || "", "clinical-news");
       accumulator[category] = (accumulator[category] || 0) + 1;
@@ -14635,7 +14667,7 @@ const requestedCategory = requestedCategoryRaw
     res.json({
       ok: true,
       total: items.length,
-      items,
+      items: items.map((item) => toPublicNewsItem(item, viewerId)),
       sections,
       categories: categoryCounts,
       sources: sources.map((source) => ({
@@ -14666,7 +14698,34 @@ app.get(
       res.status(404).json({ error: "News item not found" });
       return;
     }
-    res.json({ ok: true, item });
+    res.json({ ok: true, item: toPublicNewsItem(item, String(req.user?.sub || "").trim()) });
+  }),
+);
+
+app.post(
+  "/api/news/:newsId/like",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const viewerId = String(req.user?.sub || "").trim();
+    const newsId = String(req.params.newsId || "").trim();
+    const items = (await readCollection("newsItems")).map(normalizeNewsItem);
+    const index = items.findIndex((entry) => entry.id === newsId && entry.status === "published");
+    if (index < 0) {
+      res.status(404).json({ error: "News item not found" });
+      return;
+    }
+    const current = items[index];
+    const likedBy = Array.isArray(current.likedBy) ? current.likedBy : [];
+    const hasLiked = likedBy.includes(viewerId);
+    const nextLikedBy = hasLiked ? likedBy.filter((entry) => entry !== viewerId) : [...likedBy, viewerId];
+    items[index] = normalizeNewsItem({
+      ...current,
+      likedBy: nextLikedBy,
+      likes: Math.max(0, Number(current.likes || 0) + (hasLiked ? -1 : 1)),
+      updatedAt: new Date().toISOString(),
+    });
+    await writeCollection("newsItems", sortNewsItemsForAdmin(items));
+    res.json({ ok: true, liked: !hasLiked, likesCount: items[index].likes });
   }),
 );
 

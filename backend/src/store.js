@@ -71,6 +71,12 @@ function pathFor(collection) {
   return path.join(dataDir, `${resolveCollectionName(collection)}.json`);
 }
 
+function questionPreviewPath() {
+  const configured = String(process.env.AJIX_QUESTION_PREVIEW_FILE || "").trim();
+  if (!configured) return "";
+  return path.isAbsolute(configured) ? configured : path.resolve(dataDir, configured);
+}
+
 function backupPathFor(collection) {
   return path.join(dataDir, `${resolveCollectionName(collection)}.bak.json`);
 }
@@ -169,7 +175,8 @@ export async function ensureStore() {
 export async function readCollection(collection) {
   if (collection === "users") return (await readUsersSnapshot()).data;
   const resolvedCollection = resolveCollectionName(collection);
-  const filePath = pathFor(resolvedCollection);
+  const configuredPreviewPath = resolvedCollection === "questions" ? questionPreviewPath() : "";
+  const filePath = configuredPreviewPath || pathFor(resolvedCollection);
   const backupPath = backupPathFor(resolvedCollection);
   const fallback = defaults[resolvedCollection];
 
@@ -199,6 +206,9 @@ export async function writeCollection(collection, data) {
     throw new Error("Account writes require writeUsersSnapshot(snapshot, data) or updateCollection(\"users\", updater).");
   }
   const resolvedCollection = resolveCollectionName(collection);
+  if (resolvedCollection === "questions" && questionPreviewPath()) {
+    throw new Error("Question preview mode is read-only; disable AJIX_QUESTION_PREVIEW_FILE before writing questions.");
+  }
   const filePath = pathFor(resolvedCollection);
   if (resolvedCollection === "guidelineQueue") {
     try {

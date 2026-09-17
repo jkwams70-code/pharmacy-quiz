@@ -145,6 +145,24 @@ async function getQueue() {
   return seeded;
 }
 
+function sortGuidelinesNewestFirst(items = []) {
+  const getYear = (item) => {
+    const value = String(item?.year || item?.version || item?.publishedAt || "");
+    const match = value.match(/\b(19|20)\d{2}\b/);
+    return match ? Number(match[0]) : 0;
+  };
+
+  return [...(Array.isArray(items) ? items : [])].sort((left, right) => {
+    const yearDifference = getYear(right) - getYear(left);
+    if (yearDifference) return yearDifference;
+
+    const leftDate = Date.parse(String(left?.updatedAt || left?.publishedAt || left?.createdAt || "")) || 0;
+    const rightDate = Date.parse(String(right?.updatedAt || right?.publishedAt || right?.createdAt || "")) || 0;
+    if (rightDate !== leftDate) return rightDate - leftDate;
+
+    return String(left?.title || "").localeCompare(String(right?.title || ""));
+  });
+}
 function summary(items) {
   return Object.fromEntries(["fetched", "manual_feed", "draft", "in_review", "published", "rejected"].map((status) => [status, items.filter((item) => item.status === status).length]));
 }
@@ -160,7 +178,7 @@ export function createGuidelineRouter({ config }) {
   const router = express.Router();
 
   router.get("/api/guidelines", async (_req, res) => {
-    const items = (await getQueue()).filter((item) => item.status === "published");
+    const items = sortGuidelinesNewestFirst((await getQueue()).filter((item) => item.status === "published"));
     res.json({ ok: true, total: items.length, items });
   });
 

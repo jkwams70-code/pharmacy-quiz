@@ -1,25 +1,11 @@
 import { backendClient } from "./backendClient.js?v=20260913-entitlement-live1";
 import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js?v=20260907-idb-recovery-v1";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
+import { CANONICAL_CATEGORIES } from "./category-taxonomy.js?v=20260916-taxonomy1";
+
 const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
 
-const MAJOR_CATEGORIES = [
-  "Cardiovascular Disorders",
-  "Infectious Diseases",
-  "Endocrinology",
-  "Respiratory Disorders",
-  "Renal & Electrolyte Disorders",
-  "Gastrointestinal Disorders",
-  "Neurology & Psychiatry",
-  "Hematology",
-  "Oncology",
-  "Rheumatology & Pain",
-  "Women's & Men's Health",
-  "Immunizations",
-  "Pharmacy Practice",
-  "Manufacturing and Calculation",
-  "Pharmacy Law & Ethics",
-];
+const MAJOR_CATEGORIES = CANONICAL_CATEGORIES;
 
 const ROTATION_OPTIONS = [
   "Internal Medicine",
@@ -273,6 +259,7 @@ ensureQuestionBankSchemaVersion();
 function normalizeMajorCategory(category, context = "") {
   const raw = String(category || "").trim();
   if (LEGACY_CATEGORY_MAP[raw]) return LEGACY_CATEGORY_MAP[raw];
+  if (raw) return raw;
 
   const combined = `${raw} ${String(context || "")}`.toLowerCase();
   if (combined.includes("cardio") || combined.includes("hypertens")) {

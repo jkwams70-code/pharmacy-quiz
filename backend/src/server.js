@@ -46,6 +46,13 @@ import { createMedLensInteractionRouter } from "./services/medlensInteractionQue
 import { createGuidelineRouter } from "./services/guidelineQueue.js";
 
 const app = express();
+
+app.use((_req, res, next) => {
+  if (process.env.AJIX_QUESTION_PREVIEW_FILE) {
+    res.setHeader("X-AJIX-Question-Preview", "true");
+  }
+  next();
+});
 const execFileAsync = promisify(execFile);
 const { RtcRole, RtcTokenBuilder } = agoraAccessTokenPackage;
 const ALLOWED_ROTATIONS = new Set([
@@ -6913,7 +6920,7 @@ function normalizeQuestionForApi(rawQuestion) {
   const drillTags = Array.isArray(rawQuestion?.drillTags)
     ? rawQuestion.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
     : [];
-  const normalizedCategory = normalizeMajorCategory(
+  const normalizedCategory = String(rawQuestion?.category || "").trim() || normalizeMajorCategory(
     rawQuestion?.category,
     [
       text,
@@ -14223,7 +14230,7 @@ app.get(
       return;
     }
 
-    const questions = (await readCollection("questions"))
+const questions = (await readCollection("questions"))
       .map((question) => ({ ...normalizeQuestionForApi(question), reviewStatus: normalizeQuestionReviewStatus(question?.reviewStatus ?? question?.status, "corrected") }))
       .sort((a, b) => {
         const aOrder = extractQuestionOrderValue(a);
@@ -14231,10 +14238,28 @@ app.get(
         if (aOrder !== bOrder) return aOrder - bOrder;
         return Number(a.id || 0) - Number(b.id || 0);
       });
-    res.json({
-      total: questions.length,
-      questions,
-    });
+    const requestedId = String(req.query?.id || "").trim();
+    if (requestedId) {
+      const question = questions.find((item) => String(item.id) === requestedId);
+      if (!question) {
+        res.status(404).json({ error: "Question not found" });
+        return;
+      }
+      res.json({ total: 1, question, questions: [question] });
+      return;
+    }
+    if (String(req.query?.summary || "") === "1") {
+      res.json({
+        total: questions.length,
+        questions: questions.map(({ id, text, question, type, comboVariant, category, year, caseId, reviewStatus, statements, options }) => ({
+          id, text, question, type, comboVariant, category, year, caseId, reviewStatus,
+          statementCount: Array.isArray(statements) ? statements.length : 0,
+          optionCount: Array.isArray(options) ? options.length : 0,
+        })),
+      });
+      return;
+    }
+    res.json({ total: questions.length, questions });
   }),
 );
 
@@ -14258,6 +14283,10 @@ app.post(
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionId = normalizeSlugValue(req.body?.sectionId);
     const rotation = String(req.body?.rotation || "").trim();
+    const reviewStatus = normalizeQuestionReviewStatus(
+      req.body?.reviewStatus ?? req.body?.status,
+      "needs_review",
+    );
     const caseId = String(req.body?.caseId || "").trim();
     const caseBlock = String(req.body?.caseBlock || "").trim();
     const statements = Array.isArray(req.body?.statements) ? req.body.statements.map((item) => String(item || "").trim()).filter(Boolean) : [];
@@ -14295,10 +14324,6 @@ app.post(
       });
       return;
     }
-    if (resolvedOptions.length > 8) {
-      res.status(400).json({ error: "options cannot exceed 8 items" });
-      return;
-    }
     if (
       comboVariant &&
       !new Set(["pair-relationship", "assertion-5", "table-4", "three-statement"]).has(comboVariant)
@@ -14328,6 +14353,12 @@ app.post(
     }
     if (bank !== "main" && bank !== "gppqe") {
       res.status(400).json({ error: "bank must be either main or gppqe" });
+      return;
+    }
+    if (!QUESTION_REVIEW_STATUSES.has(reviewStatus)) {
+      res.status(400).json({
+        error: "reviewStatus must be needs_review, corrected, or quarantined",
+      });
       return;
     }
     if (req.body?.year !== undefined && req.body?.year !== "" && !Number.isFinite(year)) {
@@ -14362,7 +14393,7 @@ app.post(
       id: String(newId),
       bank,
       type: questionType,
-      reviewStatus: "needs_review",
+      reviewStatus,
       caseId: caseId || undefined,
       caseBlock: caseBlock || undefined,
       statements: statements.length ? statements : undefined,
@@ -14549,9 +14580,6 @@ app.put(
         questions[idx].options = getComboOptionTexts(comboVariant, Array.isArray(questions[idx].statements) ? questions[idx].statements.length : 0);
       } else if (!options || options.length < 2) {
         res.status(400).json({ error: "options must contain at least 2 items" });
-        return;
-      } else if (options.length > 8) {
-        res.status(400).json({ error: "options cannot exceed 8 items" });
         return;
       } else {
         questions[idx].options = options;

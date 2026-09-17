@@ -262,7 +262,7 @@ function normalizeQuestion(q) {
     year: Number.isFinite(year) ? year : undefined,
     displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
     type: q.type || "single",
-    category: normalizeMajorCategory(q.category, `${questionText} ${explanationText}`),
+    category: String(q.category || "").trim() || normalizeMajorCategory(q.category, `${questionText} ${explanationText}`),
     question: q.question || "",
     options: Array.isArray(q.options) ? q.options : undefined,
     statements: Array.isArray(q.statements) ? q.statements : undefined,

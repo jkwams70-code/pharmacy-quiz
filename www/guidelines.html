@@ -1749,6 +1749,7 @@ body{padding-top:65px}
         html[data-theme="dark"] .brand-text .brand-core { color: #f3f4f6; }
         html[data-theme="dark"] .brand-text .brand-guide { color: #5eead4; }
 </style>
+<script src="ui-preferences.js?v=20260915-global-text-size"></script>
 </head>
 <body>
 
@@ -3850,19 +3851,36 @@ body{padding-top:65px}
             });
         }
 
+        function compareGuidelinesNewestFirst(left, right) {
+            const getYear = (guideline) => {
+                const value = String(guideline?.year || guideline?.version || guideline?.publishedAt || '');
+                const match = value.match(/\b(19|20)\d{2}\b/);
+                return match ? Number(match[0]) : 0;
+            };
+            const yearDifference = getYear(right) - getYear(left);
+            if (yearDifference) return yearDifference;
+
+            const leftDate = Date.parse(String(left?.updatedAt || left?.publishedAt || left?.createdAt || '')) || 0;
+            const rightDate = Date.parse(String(right?.updatedAt || right?.publishedAt || right?.createdAt || '')) || 0;
+            if (rightDate !== leftDate) return rightDate - leftDate;
+
+            return String(left?.title || '').localeCompare(String(right?.title || ''));
+        }
+
         // ===== RENDER LIST =====
         function renderGuidelines(data) {
+            const orderedData = [...(Array.isArray(data) ? data : [])].sort(compareGuidelinesNewestFirst);
             const grid = document.getElementById('guidelinesGrid');
             const noResults = document.getElementById('noResults');
             
-            if (data.length === 0) {
+            if (orderedData.length === 0) {
                 grid.innerHTML = '';
                 noResults.style.display = 'block';
                 return;
             }
             
             noResults.style.display = 'none';
-            grid.innerHTML = data.map(g => `
+            grid.innerHTML = orderedData.map(g => `
                 <div class="gl-card" onclick="showDetail('${g.id}')">
                     <div class="gl-card-header">
                         <span class="gl-source-badge">${g.source}</span>

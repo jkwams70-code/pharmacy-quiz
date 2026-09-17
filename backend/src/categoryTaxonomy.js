@@ -1,20 +1,6 @@
-export const MAJOR_CATEGORIES = [
-  "Cardiovascular Disorders",
-  "Infectious Diseases",
-  "Endocrinology",
-  "Respiratory Disorders",
-  "Renal & Electrolyte Disorders",
-  "Gastrointestinal Disorders",
-  "Neurology & Psychiatry",
-  "Hematology",
-  "Oncology",
-  "Rheumatology & Pain",
-  "Women's & Men's Health",
-  "Immunizations",
-  "Manufacturing and Calculation",
-  "Pharmacy Practice",
-  "Pharmacy Law & Ethics",
-];
+import { CANONICAL_CATEGORIES } from "../../www/category-taxonomy.js";
+
+export const MAJOR_CATEGORIES = CANONICAL_CATEGORIES;
 
 function hasAny(text, words) {
   return words.some((word) => text.includes(word));

@@ -11,7 +11,7 @@ dotenv.config({
 });
 
 const isProduction = process.env.NODE_ENV === "production";
-const port = Number(process.env.PORT || 4000);
+const port = Number(process.env.AJIX_PREVIEW_PORT || process.env.PORT || 4000);
 const corsOrigin = process.env.CORS_ORIGIN || "*";
 const jwtSecret = process.env.JWT_SECRET || "";
 const adminKey = process.env.ADMIN_KEY || "";

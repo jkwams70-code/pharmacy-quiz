@@ -2352,7 +2352,7 @@ let topicCatalogLoaded = false;
 let subscriptionPlansCache = [];
 let subscriptionStatusSnapshot = null;
 const SHARED_SUBSCRIPTION_REFRESH_COOLDOWN_MS = 20_000;
-const SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS = 8_000;
+const SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS = 15_000;
 const SUBSCRIPTION_ENTITLEMENT_CACHE_KEY =
   "subscriptionEntitlementCacheV1";
 const OFFLINE_SUBSCRIPTION_GRACE_MS =
@@ -2962,7 +2962,6 @@ function startBackendBootstrap() {
   if (backendBootstrapStarted) return;
   backendBootstrapStarted = true;
   const runBootstrap = () => {
-    void loadQuestionsFromBackend();
     backendClient
       .warmup()
       .then(() => {
@@ -5493,6 +5492,7 @@ const subscriptionForm = document.getElementById("subscription-form");
 const subscriptionPlanInput = document.getElementById("subscription-plan-input");
 const subscriptionTransactionInput = document.getElementById("subscription-transaction-input");
 const subscriptionProofInput = document.getElementById("subscription-proof-input");
+let subscriptionProofDataUrl = "";
 const subscriptionProofPreview = document.getElementById("subscription-proof-preview");
 const subscriptionProofPreviewContent = document.getElementById("subscription-proof-preview-content");
 const subscriptionSubmitBtn = document.getElementById("subscription-submit-btn");
@@ -33599,10 +33599,11 @@ async function refreshSharedAccountState({
 
   sharedAccountStateRefreshAt = now;
   sharedAccountStateRefreshInFlight = (async () => {
+    let timeoutHandle;
     const timeoutPromise = new Promise((_, reject) => {
-      window.setTimeout(() => reject(new Error("Subscription verification timed out.")), SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS);
+      timeoutHandle = window.setTimeout(() => reject(new Error("Subscription verification timed out.")), SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS);
     });
-    const freshUser = await Promise.race([backendClient.fetchMe({ preferCache: false }), timeoutPromise]);
+    const freshUser = await Promise.race([backendClient.fetchMe({ preferCache: false }), timeoutPromise]).finally(() => window.clearTimeout(timeoutHandle));
     currentUser = freshUser;
     subscriptionStatusSnapshot = freshUser?.subscriptionAccess
       ? { subscription: freshUser.subscriptionAccess, user: freshUser }
@@ -33628,9 +33629,12 @@ async function refreshSharedAccountState({
     startSharedAccountStatePolling();
     scheduleSubscriptionExpiryTimer();
     return true;
-  })().finally(() => {
-      sharedAccountStateRefreshInFlight = null;
-    });
+  })().catch((error) => {
+    console.warn("Subscription refresh skipped", error?.message || error);
+    return false;
+  }).finally(() => {
+    sharedAccountStateRefreshInFlight = null;
+  });
 
   return sharedAccountStateRefreshInFlight;
 }
@@ -35267,6 +35271,7 @@ if (subscriptionProofInput) {
   subscriptionProofInput.addEventListener("change", async () => {
     const file = subscriptionProofInput.files?.[0] || null;
     if (!file) {
+      subscriptionProofDataUrl = "";
       renderSubscriptionProofPreview();
       return;
     }
@@ -35277,6 +35282,7 @@ if (subscriptionProofInput) {
         reader.onerror = () => reject(reader.error || new Error("Failed to read payment screenshot."));
         reader.readAsDataURL(file);
       });
+      subscriptionProofDataUrl = dataUrl;
       renderSubscriptionProofPreview({ dataUrl });
     } catch {
       renderSubscriptionProofPreview();
@@ -35363,19 +35369,13 @@ if (subscriptionForm) {
 
     try {
       const file = subscriptionProofInput?.files?.[0] || null;
-      let proofDataUrl = "";
+      let proofDataUrl = subscriptionProofDataUrl;
       let proofFileName = "";
       let proofMimeType = "";
 
       if (file) {
         proofFileName = file.name || "payment-proof";
         proofMimeType = file.type || "image/*";
-        proofDataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ""));
-          reader.onerror = () => reject(reader.error || new Error("Failed to read proof image."));
-          reader.readAsDataURL(file);
-        });
       }
 
       const response = await backendClient.submitSubscriptionRequest({
@@ -35401,6 +35401,7 @@ if (subscriptionForm) {
         subscriptionFormFeedback.dataset.persist = "1";
       }
       if (subscriptionTransactionInput) subscriptionTransactionInput.value = "";
+      subscriptionProofDataUrl = "";
       if (subscriptionProofInput) subscriptionProofInput.value = "";
       renderSubscriptionProofPreview();
       renderSubscriptionScreen();
@@ -36840,6 +36841,7 @@ function buildSubscriptionProofPlaceholderMarkup() {
 }
 
 function clearSubscriptionProofSelection() {
+  subscriptionProofDataUrl = "";
   if (subscriptionProofInput) {
     subscriptionProofInput.value = "";
   }

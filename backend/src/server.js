@@ -7933,12 +7933,7 @@ app.get(
     await purgeExpiredDeactivatedUsers();
     const usersSnapshot = await readUsersSnapshot();
     const users = usersSnapshot.data.map(normalizeExistingUser);
-    const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
-    const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
-    if (changed) {
-      await writeUsersSnapshot(usersSnapshot, reconciledUsers);
-    }
-    const user = reconciledUsers.find((u) => u.id === req.user.sub);
+    const user = users.find((u) => u.id === req.user.sub);
 
     if (!user) {
       res.status(404).json({ error: "user not found" });
@@ -7952,8 +7947,17 @@ app.get(
       return;
     }
 
-    await touchUserLastSeen(user.id);
     res.json(toPublicUser(user));
+    void (async () => {
+      try {
+        const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
+        const { users: reconciledUsers, changed } = reconcileUsersWithPointHistory(users, pointEvents);
+        if (changed) await writeUsersSnapshot(usersSnapshot, reconciledUsers);
+        await touchUserLastSeen(user.id);
+      } catch (error) {
+        console.warn("Background auth reconciliation skipped", error?.message || error);
+      }
+    })();
   }),
 );
 

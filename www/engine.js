@@ -2777,6 +2777,24 @@ function normalizeQuestionCorrectValue(q = {}, fallback = {}) {
   return index >= 0 ? String.fromCharCode(65 + index) : raw;
 }
 
+function normalizeQuestionAnswerIndex(q = {}, fallback = {}) {
+  const options = Array.isArray(q.options) && q.options.length
+    ? q.options
+    : Array.isArray(fallback.options)
+      ? fallback.options
+      : [];
+  const numeric = Number(q.answer ?? fallback.answer);
+  if (Number.isInteger(numeric) && numeric >= 0 && numeric < options.length) return numeric;
+  const normalizedCorrect = normalizeQuestionCorrectValue(q, fallback);
+  const letter = String(normalizedCorrect || "").trim().match(/^([A-Z])(?:$|[.:) -])/i);
+  if (letter) {
+    const index = letter[1].toUpperCase().charCodeAt(0) - 65;
+    if (index >= 0 && index < options.length) return index;
+  }
+  const raw = String(q.correct ?? fallback.correct ?? "").trim().toLowerCase();
+  const exactIndex = options.findIndex((option) => String(option || "").trim().toLowerCase() === raw);
+  return exactIndex >= 0 ? exactIndex : -1;
+}
 function mapBackendQuestionToLocal(q = {}) {
   const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
   return {
@@ -2809,7 +2827,7 @@ function mapBackendQuestionToLocal(q = {}) {
     caseId: q.caseId || fallback.caseId || "",
     caseBlock: q.caseBlock || fallback.caseBlock || "",
     correct: normalizeQuestionCorrectValue(q, fallback),
-    answer: Number.isFinite(Number(q.answer)) ? Number(q.answer) : Number(fallback.answer) || undefined,
+    answer: normalizeQuestionAnswerIndex(q, fallback) >= 0 ? normalizeQuestionAnswerIndex(q, fallback) : undefined,
     explanation: q.explanation || fallback.explanation || "",
     explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
     wrongOptionExplanations:

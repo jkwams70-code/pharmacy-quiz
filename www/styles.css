@@ -51665,3 +51665,28 @@ button:has(> #menu-welcome-trial-btn) .menu-modern-profile-copy {
     padding: 5px 7px;
   }
 }
+
+/* GPPQE answer states: keep feedback solid and readable after selection. */
+body #gppqe-screen .gppqe-option:disabled { opacity: 1 !important; filter: none !important; }
+body #gppqe-screen .gppqe-option:disabled .gppqe-option-text,
+body #gppqe-screen .gppqe-option:disabled .gppqe-option-letter { opacity: 1 !important; -webkit-text-fill-color: currentColor; }
+body #gppqe-screen .gppqe-option.is-correct,
+body #gppqe-screen .gppqe-option.is-correct:disabled { background: #bbf7d0 !important; border-color: #22c55e !important; color: #166534 !important; opacity: 1 !important; filter: none !important; }
+body #gppqe-screen .gppqe-option.is-correct .gppqe-option-text,
+body #gppqe-screen .gppqe-option.is-correct:disabled .gppqe-option-text { color: #166534 !important; opacity: 1 !important; -webkit-text-fill-color: #166534; }
+body #gppqe-screen .gppqe-option.is-correct .gppqe-option-letter,
+body #gppqe-screen .gppqe-option.is-correct:disabled .gppqe-option-letter { background: #86efac !important; color: #166534 !important; opacity: 1 !important; -webkit-text-fill-color: #166534; }
+body #gppqe-screen .gppqe-option.is-wrong,
+body #gppqe-screen .gppqe-option.is-wrong:disabled { background: #fecaca !important; border-color: #ef4444 !important; color: #991b1b !important; opacity: 1 !important; filter: none !important; }
+body #gppqe-screen .gppqe-option.is-wrong .gppqe-option-text,
+body #gppqe-screen .gppqe-option.is-wrong:disabled .gppqe-option-text { color: #991b1b !important; opacity: 1 !important; -webkit-text-fill-color: #991b1b; }
+body #gppqe-screen .gppqe-option.is-wrong .gppqe-option-letter,
+body #gppqe-screen .gppqe-option.is-wrong:disabled .gppqe-option-letter { background: #fca5a5 !important; color: #991b1b !important; opacity: 1 !important; -webkit-text-fill-color: #991b1b; }
+body.dark-mode #gppqe-screen .gppqe-option.is-correct,
+body.dark-mode #gppqe-screen .gppqe-option.is-correct:disabled { background: #14532d !important; border-color: #4ade80 !important; color: #dcfce7 !important; }
+body.dark-mode #gppqe-screen .gppqe-option.is-correct .gppqe-option-text,
+body.dark-mode #gppqe-screen .gppqe-option.is-correct:disabled .gppqe-option-text { color: #dcfce7 !important; -webkit-text-fill-color: #dcfce7; }
+body.dark-mode #gppqe-screen .gppqe-option.is-wrong,
+body.dark-mode #gppqe-screen .gppqe-option.is-wrong:disabled { background: #7f1d1d !important; border-color: #fb7185 !important; color: #fee2e2 !important; }
+body.dark-mode #gppqe-screen .gppqe-option.is-wrong .gppqe-option-text,
+body.dark-mode #gppqe-screen .gppqe-option.is-wrong:disabled .gppqe-option-text { color: #fee2e2 !important; -webkit-text-fill-color: #fee2e2; }

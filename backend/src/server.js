@@ -13886,12 +13886,7 @@ const syncedRequests = synchronizeSubscriptionRequestsWithUsers(
   rawRequests,
 );
 
-if (syncedRequests.changed) {
-  await writeCollection(
-    "subscriptionRequests",
-    syncedRequests.requests,
-  );
-}
+
 
 const paidRequests = syncedRequests.requests
   .map((request) =>

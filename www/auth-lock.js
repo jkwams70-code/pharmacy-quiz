@@ -49,6 +49,7 @@
     try {
       window.localStorage.removeItem(AUTH_TOKEN_KEY);
       window.localStorage.removeItem("adminKey");
+      window.AJIXSubscription?.clear?.();
     } catch {
       // Ignore storage failures during logout cleanup.
     }

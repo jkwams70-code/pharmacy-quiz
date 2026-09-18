@@ -1,13 +1,15 @@
-const CACHE_VERSION = "ajix-app-shell-v122-premium-content-lock";
+const CACHE_VERSION = "ajix-app-shell-v126-canonical-entitlement";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-"/engine.js?v=20260913-entitlement-live1",
+"/engine.js?v=20260918-subscription-loading5",
   "/backendClient.js?v=20260913-entitlement-live1",
   "/offlineStore.js?v=20260907-idb-recovery-v1",
+  "/subscription-state.js?v=20260918-entitlement6",
+  "/subscription-route-lock.js?v=20260918-entitlement4",
   "/auth-lock.js",
   "/standalone-back.js?v=20260914-fast-back1",
   "/medlens-interactions-database.js",

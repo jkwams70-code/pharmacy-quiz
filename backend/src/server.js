@@ -199,20 +199,12 @@ async function requireActiveSubscription(req, res, next) {
     }
 
     try {
-      const users = (await readCollection("users")).map(normalizeExistingUser);
-      const user = users.find((entry) => entry.id === req.user.sub);
-      if (!user) {
+      const entitlement = await getSubscriptionEntitlementForUser(req.user.sub);
+      if (!entitlement) {
         res.status(403).json({ error: "An active subscription is required for this feature." });
         return;
       }
-      const requests = (await readCollection("subscriptionRequests"))
-        .map(normalizeSubscriptionRequest)
-        .filter((entry) => entry.userId === user.id && normalizeSubscriptionPlanValue(entry.plan) !== "trial")
-        .sort((a, b) => Date.parse(b.requestedAt || 0) - Date.parse(a.requestedAt || 0));
-      const latestRequest = requests[0] || null;
-      const access = latestRequest
-        ? buildSubscriptionAccessFromRequest(latestRequest)
-        : toPublicUser(user).subscriptionAccess;
+      const access = entitlement.subscription;
       if (!access?.isActive) {
         res.status(403).json({
           error: "An active subscription is required for this feature.",
@@ -229,6 +221,35 @@ async function requireActiveSubscription(req, res, next) {
   });
 }
 
+
+
+async function getSubscriptionEntitlementForUser(userId) {
+  const safeUserId = String(userId || "").trim();
+  if (!safeUserId) return null;
+
+  const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
+  const user = users.find((entry) => entry.id === safeUserId);
+  if (!user) return null;
+
+  const requests = coerceCollectionArray(await readCollection("subscriptionRequests"))
+    .map(normalizeSubscriptionRequest)
+    .filter((entry) => entry.userId === user.id && normalizeSubscriptionPlanValue(entry.plan) !== "trial")
+    .sort((a, b) => Date.parse(b.requestedAt || 0) - Date.parse(a.requestedAt || 0));
+  const latestRequest = requests[0] || null;
+  const subscription = latestRequest
+    ? buildSubscriptionAccessFromRequest(latestRequest)
+    : toPublicUser(user).subscriptionAccess;
+
+  return {
+    user,
+    subscription,
+    request: latestRequest,
+    requests,
+    plans: Object.values(SUBSCRIPTION_PLAN_CATALOG).map((plan) => ({ ...plan, currency: "GHS" })),
+    lockedFeatures: [...SUBSCRIPTION_LOCKED_FEATURES],
+    checkedAt: new Date().toISOString(),
+  };
+}
 function safeNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
@@ -7483,10 +7504,19 @@ function buildDailyLeaderboardSnapshot({
 
 function createCorsOptions() {
   if (process.env.NODE_ENV !== "production") {
-    return { origin: true };
+    return {
+      origin(origin, callback) {
+        if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
+      credentials: true,
+    };
   }
   if (config.corsOrigins.includes("*")) {
-    return { origin: true };
+    return { origin: true, credentials: false };
   }
 
   const allowed = new Set(config.corsOrigins);
@@ -7496,9 +7526,9 @@ function createCorsOptions() {
         callback(null, true);
         return;
       }
-      // Block disallowed origins without generating noisy error stacks.
       callback(null, false);
     },
+    credentials: true,
   };
 }
 
@@ -7565,6 +7595,7 @@ app.use((req, res, next) => {
 
   if (origin && (allowedOrigins.includes("*") || allowedOrigins.includes(origin))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Vary", "Origin");
   } else if (allowedOrigins.includes("*")) {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -7947,7 +7978,16 @@ app.get(
       return;
     }
 
-    res.json(toPublicUser(user));
+    const entitlement = await getSubscriptionEntitlementForUser(user.id);
+    const publicUser = toPublicUser(user);
+    if (entitlement?.subscription) {
+      publicUser.subscriptionAccess = entitlement.subscription;
+      publicUser.subscriptionStatus = entitlement.subscription.status;
+      publicUser.subscriptionStatusLabel = entitlement.subscription.statusLabel;
+      publicUser.subscriptionPlan = entitlement.subscription.plan;
+      publicUser.subscriptionExpirationAt = entitlement.subscription.expirationAt;
+    }
+    res.json(publicUser);
     void (async () => {
       try {
         const pointEvents = (await readCollection("pointEvents")).map(normalizePointEvent);
@@ -7976,6 +8016,29 @@ app.get(
         ...plan,
         currency: "GHS",
       })),
+    });
+  }),
+);
+
+app.get(
+  "/api/auth/entitlement",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    res.setHeader("Cache-Control", "private, max-age=15, stale-while-revalidate=60");
+    const entitlement = await getSubscriptionEntitlementForUser(req.user.sub);
+    if (!entitlement) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+    res.json({
+      ok: true,
+      userId: entitlement.user.id,
+      subscription: entitlement.subscription,
+      request: entitlement.request,
+      requests: entitlement.requests,
+      plans: entitlement.plans,
+      lockedFeatures: entitlement.lockedFeatures,
+      checkedAt: entitlement.checkedAt,
     });
   }),
 );

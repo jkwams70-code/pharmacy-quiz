@@ -476,11 +476,14 @@ export const backendClient = {
   setToken(token) {
     const cleaned = String(token || "").trim();
     if (!cleaned) return;
+    const previous = String(localStorage.getItem(AUTH_TOKEN_KEY) || "").trim();
+    if (previous && previous !== cleaned) window.AJIXSubscription?.clear?.();
     localStorage.setItem(AUTH_TOKEN_KEY, cleaned);
   },
 
   clearToken() {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.AJIXSubscription?.clear?.();
   },
 
   isAuthenticated() {

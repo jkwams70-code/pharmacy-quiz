@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="auth-lock.js" data-login-url="index.html"></script>
+<script src="/subscription-state.js?v=20260918-entitlement6"></script><script src="auth-lock.js" data-login-url="index.html"></script>
 <script>document.documentElement.setAttribute('data-news-shell', 'pending');</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
 <link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
@@ -960,46 +960,17 @@
   }
 
   async function loadStorySubscriptionAccess() {
-    const token = String(window.localStorage.getItem('quizAuthToken') || '').trim();
-    if (!token) {
-      return {
-        isActive: false,
-        isLocked: true,
-        lockedReason: 'Sign in and subscribe to unlock this published article.',
-      };
-    }
-
-    try {
-      const apiBase = await ensureReviewApiBase();
-      const response = await fetch(`${apiBase}/subscriptions/me`, {
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      });
-      const data = await response.json().catch(() => ({}));
-      const access = data?.subscription && typeof data.subscription === 'object'
-        ? data.subscription
-        : data?.user?.subscriptionAccess && typeof data.user.subscriptionAccess === 'object'
-          ? data.user.subscriptionAccess
-          : null;
-      if (!response.ok || !access) {
-        return {
-          isActive: false,
-          isLocked: true,
-          lockedReason: data?.error || 'Your subscription could not be verified. Please sign in again or renew access.',
-        };
-      }
-      return access;
-    } catch (error) {
-      return {
-        isActive: false,
-        isLocked: true,
-        lockedReason: error?.message || 'Your subscription could not be verified right now.',
-      };
-    }
+    const snapshot = await window.AJIXSubscription?.get();
+    const access = snapshot?.subscription || null;
+    if (access?.isActive) return access;
+    return {
+      ...(access || {}),
+      isActive: false,
+      isLocked: true,
+      lockedReason: access?.lockedReason || 'Sign in and subscribe to unlock this published article.',
+    };
   }
+
 
   const NEWS_MASCOT_AVATAR_URL = '/images/app-logo.png?v=20260617-admin-avatar';
 

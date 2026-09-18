@@ -2400,6 +2400,16 @@ async function hydrateSubscriptionEntitlement() {
 
 void hydrateSubscriptionEntitlement();
 
+if (window.AJIXSubscription?.subscribe) {
+  window.AJIXSubscription.subscribe((snapshot) => {
+    if (!snapshot) return;
+    subscriptionStatusSnapshot = snapshot;
+    scheduleSubscriptionExpiryTimer();
+    if (typeof renderAuthState === "function") renderAuthState();
+    if (getActiveScreenId() === "subscription-screen") renderSubscriptionScreen();
+  });
+}
+
 async function cacheSubscriptionEntitlement(access = null) {
   if (!access || typeof access !== "object") return false;
 
@@ -2444,69 +2454,17 @@ function stopSubscriptionExpiryTimer() {
 }
 
 function handleSubscriptionExpiry() {
-  const access = resolveSubscriptionAccess(
-    currentUser,
-    subscriptionStatusSnapshot,
-  );
-
-  const expirationCandidates = [
-    access?.expirationAt,
-    currentUser?.subscriptionExpirationAt,
-    currentUser?.subscriptionEndsAt,
-    subscriptionStatusSnapshot?.subscription?.expirationAt,
-    subscriptionStatusSnapshot?.user?.subscriptionExpirationAt,
-  ]
-    .map((value) => Date.parse(String(value || "")))
-    .filter(Number.isFinite);
-
-  const expirationTime = expirationCandidates.length
-    ? Math.max(...expirationCandidates)
-    : NaN;
-
-  if (!Number.isFinite(expirationTime) || Date.now() < expirationTime) {
-    scheduleSubscriptionExpiryTimer();
-    return;
-  }
-
-  const expiredAccess = {
-    ...(access || {}),
-    status: "expired",
-    isActive: false,
-    isLocked: true,
-    expirationAt: new Date(expirationTime).toISOString(),
-    lockedReason: "Your subscription has ended.",
-  };
-  if (currentUser) {
-    currentUser.subscriptionStatus = "expired";
-    currentUser.subscriptionAccess = expiredAccess;
-  }
-  if (subscriptionStatusSnapshot) {
-    subscriptionStatusSnapshot = { ...subscriptionStatusSnapshot, subscription: expiredAccess };
-  }
-  void cacheSubscriptionEntitlement(expiredAccess);
-  renderAuthState();
-  if (getActiveScreenId() === "subscription-screen") {
-    renderSubscriptionScreen();
-  }
-  window.setTimeout(() => {
-    if (getActiveScreenId() === "subscription-screen") {
-      renderSubscriptionScreen();
-    }
-  }, 60 * 60 * 1000);
-
-  const activeScreen = getActiveScreenId();
-  if (SUBSCRIPTION_LOCKED_FEATURES.has(getSubscriptionGateFeature(activeScreen))) {
-    openSubscriptionScreen({
-      intent: getSubscriptionGateFeature(activeScreen) || "subscription",
-      returnScreen: "quiz-menu",
-    });
-  }
+  void window.AJIXSubscription?.refresh?.().then((snapshot) => {
+    subscriptionStatusSnapshot = snapshot || null;
+    renderAuthState();
+    if (getActiveScreenId() === "subscription-screen") renderSubscriptionScreen();
+  }).catch(() => {});
 }
 
 function scheduleSubscriptionExpiryTimer() {
   stopSubscriptionExpiryTimer();
   const access = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
-  const expirationAt = access?.expirationAt || currentUser?.subscriptionExpirationAt || currentUser?.subscriptionEndsAt || "";
+  const expirationAt = access?.expirationAt || "";
   const expirationTime = Date.parse(String(expirationAt || ""));
   if (!Number.isFinite(expirationTime)) return;
 
@@ -2543,6 +2501,7 @@ let subscriptionScreenState = {
   returnScreen: "quiz-menu",
   paymentModalOpen: false,
   paymentProofOpen: false,
+  loading: false,
 };
 let topicLibraryReturnScreen = "quiz-menu";
 let topicViewerReturnScreen = "topic-library";
@@ -25247,7 +25206,7 @@ function selectNewsSearchQuery(query = "") {
 }
 
 async function openNewsScreen({ refresh = false } = {}) {
-  refreshSubscriptionAccessForAction();
+  await refreshSubscriptionAccessForAction();
 
   if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
     return;
@@ -33526,6 +33485,8 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
   }
   try {
     currentUser = await backendClient.fetchMe({ preferCache: false });
+    await window.AJIXSubscription?.get({ fresh: true });
+    subscriptionStatusSnapshot = window.AJIXSubscription?.getState?.() || null;
     scheduleSubscriptionExpiryTimer();
     renderAuthState();
     scheduleSharedAccountHydration({ silent: true, deferHydration });
@@ -33628,9 +33589,7 @@ async function refreshSharedAccountState({
     });
     const freshUser = await Promise.race([backendClient.fetchMe({ preferCache: false }), timeoutPromise]).finally(() => window.clearTimeout(timeoutHandle));
     currentUser = freshUser;
-    subscriptionStatusSnapshot = freshUser?.subscriptionAccess
-      ? { subscription: freshUser.subscriptionAccess, user: freshUser }
-      : null;
+    subscriptionStatusSnapshot = window.AJIXSubscription?.getState?.() || subscriptionStatusSnapshot;
     communityAccessDenied = false;
     scheduleSubscriptionExpiryTimer();
     renderAuthState();
@@ -33662,11 +33621,20 @@ async function refreshSharedAccountState({
   return sharedAccountStateRefreshInFlight;
 }
 
-function refreshSubscriptionAccessForAction() {
-  if (!backendClient.isAuthenticated() || !currentUser) return false;
-  void refreshSharedAccountState({ silent: true, deferHydration: true });
-  scheduleSubscriptionExpiryTimer();
-  return true;
+async function refreshSubscriptionAccessForAction() {
+  try {
+    const snapshot = await window.AJIXSubscription?.get?.({ fresh: true });
+    subscriptionStatusSnapshot = snapshot || null;
+    const access = snapshot?.subscription || null;
+    if (access) {
+      await cacheSubscriptionEntitlement(access);
+    }
+    scheduleSubscriptionExpiryTimer();
+    return access?.isActive === true;
+  } catch (error) {
+    console.warn("Subscription refresh before navigation failed:", error);
+    return false;
+  }
 }
 
 async function ensureAuthenticated({ nextScreen = "quiz-menu" } = {}) {
@@ -35362,7 +35330,7 @@ if (subscriptionForm) {
       (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
     const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
     const currentSubscriptionStatus = String(
-      currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+      currentSubscriptionAccess?.status || "",
     )
       .trim()
       .toLowerCase();
@@ -35417,7 +35385,7 @@ if (subscriptionForm) {
       currentUser = response?.user || currentUser;
       renderAuthState();
       subscriptionPlansCache = Array.isArray(response?.plans) ? response.plans : subscriptionPlansCache;
-      subscriptionStatusSnapshot = response || subscriptionStatusSnapshot;
+      subscriptionStatusSnapshot = await window.AJIXSubscription.refresh();
       if (subscriptionFormFeedback) {
         subscriptionFormFeedback.textContent =
           "Payment proof submitted. Admin review can take up to 24 hours.";
@@ -35691,7 +35659,7 @@ if (menuNewsBtn) {
 
 if (menuGuidelinesBtn) {
   menuGuidelinesBtn.onclick = async () => {
-    refreshSubscriptionAccessForAction();
+    await refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("extra-content")) {
       return;
     }
@@ -35707,7 +35675,7 @@ if (extraScreen) {
         : null;
     if (!(target instanceof HTMLElement)) return;
     if (target.hasAttribute("data-law")) {
-      refreshSubscriptionAccessForAction();
+      await refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess("extra-content")) {
         return;
       }
@@ -35715,7 +35683,7 @@ if (extraScreen) {
       return;
     }
     if (target.hasAttribute("data-medlens")) {
-      refreshSubscriptionAccessForAction();
+      await refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess("extra-content")) {
         return;
       }
@@ -35723,7 +35691,7 @@ if (extraScreen) {
       return;
     }
     if (target.hasAttribute("data-calculator")) {
-      refreshSubscriptionAccessForAction();
+      await refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess("extra-content")) {
         return;
       }
@@ -36595,8 +36563,8 @@ function updateModeIndicator(studyType = null) {
     if (!compactHeaderMode) headerInlineMeta.innerHTML = "";
   }
 }
-function resolveSubscriptionAccess(user = currentUser, snapshot = subscriptionStatusSnapshot) {
-  return snapshot?.subscription || user?.subscriptionAccess || null;
+function resolveSubscriptionAccess() {
+  return window.AJIXSubscription?.getAccess?.() || null;
 }
 
 function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptionStatusSnapshot) {
@@ -36636,12 +36604,12 @@ function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptio
 
   if (!access) {
     return {
-      title: "Free Trial",
-      subtitle: "7 days after signup",
-      note: "You are currently on the trial access path.",
-      pill: "active",
-      locked: false,
-      isActive: true,
+      title: "Subscription unavailable",
+      subtitle: "Please try again",
+      note: "Your subscription could not be verified.",
+      pill: "expired",
+      locked: true,
+      isActive: false,
     };
   }
 
@@ -36802,6 +36770,7 @@ function openSubscriptionScreen({ intent = "general", returnScreen = "quiz-menu"
   subscriptionScreenState.intent = String(intent || "general").trim().toLowerCase() || "general";
   subscriptionScreenState.returnScreen = String(returnScreen || "quiz-menu").trim() || "quiz-menu";
   subscriptionScreenState.paymentModalOpen = false;
+  subscriptionScreenState.loading = true;
   void loadSubscriptionScreenData({ force: true }).catch(() => false);
   showScreen("subscription-screen");
   window.requestAnimationFrame(() => {
@@ -36839,8 +36808,8 @@ function isSubscriptionPurchaseBlocked(user = currentUser, snapshot = subscripti
     user?.subscriptionRequest ||
     null;
   const currentAccess = resolveSubscriptionAccess(user, snapshot);
-  const currentStatus = String(currentAccess?.status || user?.subscriptionStatus || "").trim().toLowerCase();
-  const currentPlan = String(currentAccess?.plan || user?.subscriptionPlan || "").trim().toLowerCase();
+  const currentStatus = String(currentAccess?.status || "").trim().toLowerCase();
+  const currentPlan = String(currentAccess?.plan || "").trim().toLowerCase();
   const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
   const requestIsBlocking = latestRequestStatus === "pending";
   const activePaidAccess = currentStatus === "active" && currentPlan !== "trial";
@@ -36978,16 +36947,17 @@ function renderSubscriptionScreen() {
   const feedbackEl = document.getElementById("subscription-form-feedback");
   const requestStatusEl = document.getElementById("subscription-request-status");
   const isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
+  const subscriptionDataLoading = subscriptionScreenState.loading === true;
   const latestRequest =
     subscriptionStatusSnapshot?.request ||
     (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
   const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
   const currentSubscriptionStatus = String(
-    currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+    currentSubscriptionAccess?.status || "",
   )
     .trim()
     .toLowerCase();
-  const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || currentUser?.subscriptionPlan || "").trim().toLowerCase();
+  const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || "").trim().toLowerCase();
  const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
 const subscriptionReviewing =
   latestRequestStatus === "pending" ||
@@ -36996,8 +36966,6 @@ const subscriptionReviewing =
 const pendingTrialEndsAt =
   subscriptionReviewing &&
   (currentSubscriptionAccess?.trialEndsAt ||
-    currentUser?.trialEndsAt ||
-    currentUser?.welcomeTrialEndsAt ||
     "");
 
 const pendingTrialExpiryLabel =
@@ -37012,19 +36980,20 @@ const currentSubscriptionExpiryLabel =
     ? ""
     : formatSubscriptionExpiryLabel(
         currentSubscriptionAccess?.expirationAt ||
-          currentUser?.subscriptionExpirationAt ||
-          currentUser?.subscriptionEndsAt ||
-          "",
+          currentSubscriptionAccess?.expirationAt || "",
       ));
   const subscriptionActive =
-  (currentSubscriptionStatus === "active" ||
+  currentSubscriptionAccess?.isActive === true ||
+  ((currentSubscriptionStatus === "active" ||
     currentSubscriptionStatus === "trial") &&
-  !subscriptionReviewing;
-  const subscriptionActionDisabled = subscriptionReviewing || subscriptionActive;
+    !subscriptionReviewing);
+  const subscriptionActionDisabled = subscriptionDataLoading || subscriptionReviewing || subscriptionActive;
   const subscriptionActionDisabledReason = subscriptionActionDisabled
-    ? subscriptionActive
-      ? "Your subscription is already active."
-      : "A subscription request is already under review."
+    ? subscriptionDataLoading
+      ? "Checking your current subscription..."
+      : subscriptionActive
+        ? "Your subscription is already active."
+        : "A subscription request is already under review."
     : "";
    const subscriptionUser = currentUser || getMenuSnapshotUser();
 
@@ -37146,18 +37115,23 @@ const freeTrialExpiryLabel = showFreeTrialStatus
 const pendingPaidSubscription =
   subscriptionReviewing && pendingPlanKey !== "trial";
 
-const currentBadgeState = pendingPaidSubscription
-  ? "pending"
-  : showFreeTrialStatus && freeTrialActive
-    ? "active"
-    : subscriptionActive
+const currentBadgeState = subscriptionDataLoading
+  ? "loading"
+  : pendingPaidSubscription
+    ? "pending"
+    : showFreeTrialStatus && freeTrialActive
       ? "active"
-      : "expired";
-    statusBadgesEl.innerHTML = [
-      { key: "active", label: "Active", active: currentBadgeState === "active" },
-      { key: "pending", label: "Pending", active: currentBadgeState === "pending" },
-      { key: "expired", label: "Expired", active: currentBadgeState === "expired" },
-    ]
+      : subscriptionActive
+        ? "active"
+        : "expired";
+    const statusBadges = subscriptionDataLoading
+      ? [{ key: "loading", label: "Checking...", active: true }]
+      : [
+          { key: "active", label: "Active", active: currentBadgeState === "active" },
+          { key: "pending", label: "Pending", active: currentBadgeState === "pending" },
+          { key: "expired", label: "Expired", active: currentBadgeState === "expired" },
+        ];
+    statusBadgesEl.innerHTML = statusBadges
       .map(
         (badge) => `
           <span class="subscription-status-badge ${badge.active ? `is-${badge.key} is-current` : ""}">
@@ -37302,33 +37276,29 @@ currentSubscriptionExpiryLabel
 }
 
 async function loadSubscriptionScreenData({ force = false } = {}) {
-  if (!backendClient.isAuthenticated() || !currentUser) {
+  subscriptionScreenState.loading = true;
+  if (!backendClient.isAuthenticated()) {
     subscriptionStatusSnapshot = null;
+    subscriptionScreenState.loading = false;
     renderSubscriptionScreen();
     return true;
   }
   try {
-    const plansPromise = subscriptionPlansCache.length && !force
-      ? Promise.resolve({ plans: subscriptionPlansCache })
-      : backendClient.fetchSubscriptionPlans({ preferCache: !force });
-    const [plansResponse, meResponse] = await Promise.all([
-      plansPromise,
-      backendClient.fetchMySubscription({ preferCache: !force }),
-    ]);
-    if (plansResponse?.plans) {
-      subscriptionPlansCache = normalizeSubscriptionPlans(plansResponse.plans);
+    const entitlementSnapshot = await window.AJIXSubscription.get({ fresh: true });
+    subscriptionStatusSnapshot = entitlementSnapshot || null;
+    if (Array.isArray(entitlementSnapshot?.plans)) {
+      subscriptionPlansCache = normalizeSubscriptionPlans(entitlementSnapshot.plans);
     }
-    subscriptionStatusSnapshot = meResponse || null;
-    await cacheSubscriptionEntitlement(
-      meResponse?.subscription || currentUser?.subscriptionAccess || null,
-    );
+    const sharedAccess = entitlementSnapshot?.subscription || null;
+    await cacheSubscriptionEntitlement(sharedAccess);
     scheduleSubscriptionExpiryTimer();
-    renderSubscriptionScreen();
     return true;
   } catch (error) {
     console.warn("Failed to load subscription screen:", error);
-    renderSubscriptionScreen();
     return false;
+  } finally {
+    subscriptionScreenState.loading = false;
+    if (getActiveScreenId() === "subscription-screen") renderSubscriptionScreen();
   }
 }
 
@@ -37366,66 +37336,8 @@ function getSubscriptionGateFeature(feature = "") {
 
 function isSubscriptionLockedForFeature(feature = "") {
   const gateFeature = getSubscriptionGateFeature(feature);
-
-  if (!SUBSCRIPTION_LOCKED_FEATURES.has(gateFeature)) {
-    return false;
-  }
-
-  const access = resolveSubscriptionAccess(
-    currentUser,
-    subscriptionStatusSnapshot,
-  );
-
-  const expirationAt = access?.expirationAt || currentUser?.subscriptionExpirationAt || currentUser?.subscriptionEndsAt || "";
-  const expirationTime = Date.parse(String(expirationAt || ""));
-  if (Number.isFinite(expirationTime) && Date.now() >= expirationTime) {
-    return true;
-  }
-
-  const currentStatus = String(
-    access?.status ||
-      subscriptionStatusSnapshot?.user?.subscriptionStatus ||
-      currentUser?.subscriptionStatus ||
-      "",
-  )
-    .trim()
-    .toLowerCase();
-
-  const isOnline = navigator.onLine !== false;
-
-  if (isOnline) {
-  if (
-    currentStatus === "active" ||
-    currentStatus === "trial"
-  ) {
-    return false;
-  }
-
-  if (
-    currentStatus === "pending" ||
-    currentStatus === "expired" ||
-    currentStatus === "rejected"
-  ) {
-    return true;
-  }
-
-  if (
-    currentUser &&
-    ["", "unknown", "loading"].includes(currentStatus)
-  ) {
-    // Allow navigation while the background subscription read is pending.
-    return false;
-  }
-
-  return Boolean(access?.isLocked);
-}
-
-  // Offline premium access is limited by the cached 72-hour entitlement.
-  if (hasUsableOfflineSubscriptionEntitlement()) {
-    return false;
-  }
-
-  return true;
+  if (!SUBSCRIPTION_LOCKED_FEATURES.has(gateFeature)) return false;
+  return window.AJIXSubscription?.getAccess?.()?.isActive !== true;
 }
 
 let subscriptionRevalidationInFlight = false;
@@ -37453,16 +37365,8 @@ function requireSubscriptionAccess(
   returnScreen = getActiveScreenId() || "quiz-menu",
 ) {
   const gateFeature = getSubscriptionGateFeature(feature);
-
-
-  // Community navigation must not wait for subscription refresh.
-  // Backend API routes still enforce subscription access.
-  if (gateFeature === "community") {
-    return true;
-  }
-
-  // Unknown subscription state must not unlock premium content.
-  if (!currentUser || !resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot)) {
+// Unknown subscription state must not unlock premium content.
+  if (!resolveSubscriptionAccess()) {
     openSubscriptionScreen({
       intent: gateFeature || feature,
       returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",

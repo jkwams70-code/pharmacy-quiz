@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="auth-lock.js" data-login-url="index.html"></script>
+<script src="/subscription-state.js?v=20260918-entitlement6"></script><script src="auth-lock.js" data-login-url="index.html"></script>
 <script src="standalone-back.js?v=20260914-fast-back1" data-back-url="index.html?screen=quiz-menu"></script>
 <script>document.documentElement.setAttribute('data-news-shell', 'pending');</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
@@ -1445,7 +1445,7 @@
       ? 'http://127.0.0.1:4000/api'
       : 'https://api.ajixpharmacy.online/api';
     const productionCandidates = [inferredApiBase, sameOriginApiBase, storedApiBase];
-    const localCandidates = [storedApiBase, sameOriginApiBase, inferredApiBase, 'http://127.0.0.1:4000/api', 'http://localhost:4000/api'];
+    const localCandidates = [inferredApiBase, 'http://127.0.0.1:4000/api', 'http://localhost:4000/api', storedApiBase];
     return Array.from(new Set((isProductionHost ? productionCandidates : localCandidates)
       .map(normalizeApiBase)
       .filter(Boolean)));
@@ -1698,46 +1698,18 @@
   }
 
   async function loadNewsSubscriptionAccess() {
-    const token = String(window.localStorage.getItem('quizAuthToken') || '').trim();
-    if (!token) {
-      return {
-        isActive: false,
-        isLocked: true,
-        lockedReason: 'Sign in and subscribe to unlock the admin-published news feed.',
-      };
-    }
-
-    try {
-      const apiBase = await ensureNewsApiBase();
-      const response = await fetch(`${apiBase}/subscriptions/me`, {
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      });
-      const data = await response.json().catch(() => ({}));
-      const access = data?.subscription && typeof data.subscription === 'object'
-        ? data.subscription
-        : data?.user?.subscriptionAccess && typeof data.user.subscriptionAccess === 'object'
-          ? data.user.subscriptionAccess
-          : null;
-      if (!response.ok || !access) {
-        return {
-          isActive: false,
-          isLocked: true,
-          lockedReason: data?.error || 'Your subscription could not be verified. Please sign in again or renew access.',
-        };
-      }
-      return access;
-    } catch (error) {
-      return {
-        isActive: false,
-        isLocked: true,
-        lockedReason: error?.message || 'Your subscription could not be verified right now.',
-      };
-    }
+    const snapshot = await window.AJIXSubscription?.get();
+    const access = snapshot?.subscription || null;
+    if (access?.isActive) return access;
+    return {
+      ...(access || {}),
+      isActive: false,
+      isLocked: true,
+      lockedReason: access?.lockedReason || 'Sign in and subscribe to unlock the admin-published news feed.',
+    };
   }
+
+
   function applyPublishedNewsFeed(feed = {}) {
     const normalizedFeed = normalizePublishedNewsFeed(feed);
     const sections = normalizedFeed.sections || {};

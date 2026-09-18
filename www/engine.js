@@ -2764,9 +2764,14 @@ async function ensureQuestionBankLoaded() {
 }
 
 function normalizeQuestionCorrectValue(q = {}, fallback = {}) {
-  const raw = String(q.correct ?? fallback.correct ?? "").trim();
+  const rawValue = q.correct ?? fallback.correct ?? "";
+  const raw = String(rawValue).trim();
   const answer = Number(q.answer ?? fallback.answer);
   if (Number.isInteger(answer) && answer >= 0 && answer < 26) return String.fromCharCode(65 + answer);
+  const correctIndex = Number(rawValue);
+  if (Number.isInteger(correctIndex) && correctIndex >= 0 && correctIndex < 26) {
+    return String.fromCharCode(65 + correctIndex);
+  }
   const kind = String(q.type || fallback.type || "").toLowerCase();
   if (kind !== "combo") return raw;
   if (/^[A-E](?:\s*[:.)-]|$)/i.test(raw)) return raw.charAt(0).toUpperCase();

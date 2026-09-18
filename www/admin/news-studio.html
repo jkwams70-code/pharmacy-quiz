@@ -617,13 +617,19 @@ function normalizeApiBase(value = "") {
 }
 
 function getApiBaseCandidates() {
-  return [
+  const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(currentHost);
+  const productionCandidates = [
+    inferredApiBase,
+    `${currentOrigin}/api`,
+    storedApiBase,
+  ];
+  const localCandidates = [
     storedApiBase,
     `${currentOrigin}/api`,
     inferredApiBase,
-    !isLocalHost && currentHost ? `http://${currentHost}:4000/api` : "",
     "http://localhost:4000/api",
-  ]
+  ];
+  return (isProductionHost ? productionCandidates : localCandidates)
     .map(normalizeApiBase)
     .filter(Boolean);
 }
@@ -3039,11 +3045,11 @@ function initNewsStudio() {
     if (!image) return;
     activeNewsImage = image;
     const current = activeNewsImage.style.width || "1200px";
-    const width = window.prompt("Image width in pixels (120–1600), or leave blank for automatic width:", current.replace("px", ""));
+    const width = window.prompt("Image width in pixels (120ï¿½1600), or leave blank for automatic width:", current.replace("px", ""));
     if (width !== null) setNewsImageWidth(width);
   });  document.getElementById("newsResizeImageBtn")?.addEventListener("click", () => {
     const current = activeNewsImage?.style.width || "1200px";
-    const width = window.prompt("Image width in pixels (120–1600), or leave blank for automatic width:", current.replace("px", ""));
+    const width = window.prompt("Image width in pixels (120ï¿½1600), or leave blank for automatic width:", current.replace("px", ""));
     if (width !== null) setNewsImageWidth(width);
   });  document.getElementById("newsBody")?.addEventListener("input", syncEditorPreview);
   document.getElementById("newsBody")?.addEventListener("blur", syncEditorPreview);

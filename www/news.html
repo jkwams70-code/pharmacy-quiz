@@ -1440,20 +1440,15 @@
     const sameOriginApiBase = currentOrigin && currentOrigin.startsWith('http')
       ? normalizeApiBase(`${currentOrigin}/api`)
       : '';
+    const isProductionHost = /(^|\.)ajixpharmacy\.online$/i.test(currentHost);
     const inferredApiBase = LOOPBACK_HOSTS.has(currentHost)
       ? 'http://127.0.0.1:4000/api'
       : 'https://api.ajixpharmacy.online/api';
-    const hostApiBase = currentHost && String(window.location.protocol || '').startsWith('http')
-      ? `http://${currentHost}:4000/api`
-      : '';
-
-    return Array.from(
-      new Set(
-        [storedApiBase, sameOriginApiBase, inferredApiBase, hostApiBase, 'http://127.0.0.1:4000/api', 'http://localhost:4000/api']
-          .map(normalizeApiBase)
-          .filter(Boolean),
-      ),
-    );
+    const productionCandidates = [inferredApiBase, sameOriginApiBase, storedApiBase];
+    const localCandidates = [storedApiBase, sameOriginApiBase, inferredApiBase, 'http://127.0.0.1:4000/api', 'http://localhost:4000/api'];
+    return Array.from(new Set((isProductionHost ? productionCandidates : localCandidates)
+      .map(normalizeApiBase)
+      .filter(Boolean)));
   }
 
   async function ensureNewsApiBase() {

@@ -26,7 +26,7 @@
     verificationEl = null;
   }
   async function verify() {
-    showVerificationState("Verifying your subscription…");
+    showVerificationState("Loading…");
     try {
       const snapshot = await window.AJIXSubscription.get({ fresh: true });
       clearVerificationState();

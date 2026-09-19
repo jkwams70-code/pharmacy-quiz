@@ -1273,7 +1273,7 @@
   let readCounts = loadReadCounts();
   let newsLockStateEl = null;  let newsVerificationEl = null;
 
-  function showNewsVerificationState(message = 'Verifying your subscription…') {
+  function showNewsVerificationState(message = 'Loading…') {
     if (!newsVerificationEl) {
       newsVerificationEl = document.createElement('div');
       newsVerificationEl.id = 'news-verification-state';

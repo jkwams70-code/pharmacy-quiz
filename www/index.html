@@ -145,8 +145,45 @@
         position: relative !important;
         z-index: 2 !important;
         padding: 14px 16px 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
       }
 
+      .home-minimal-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-left: auto;
+      }
+
+      .home-minimal-nav-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--primary) !important;
+        font: inherit;
+        font-size: 14px !important;
+        font-weight: 400;
+        text-decoration: underline;
+        cursor: pointer;
+        appearance: none;
+      }
+
+      @media (max-width: 760px) {
+        .home-minimal-nav-pill {
+          font-size: 12px !important;
+        }
+      }
+      .home-minimal-nav-pill:hover,
+      .home-minimal-nav-pill:focus-visible {
+        color: var(--primary-strong) !important;
+        text-decoration: underline;
+        outline: none;
+      }
       .home-minimal-logo-image {
         width: min(148px, 100%) !important;
         height: auto !important;
@@ -1938,6 +1975,10 @@
               src="images/ajix-logo.png.png?v=20260324-headerlogo1"
               alt="Ajix Pharmacy"
             />
+            <div class="home-minimal-nav-actions" aria-label="Public site links">
+              <button id="home-info-btn" class="home-minimal-nav-pill" type="button" onclick="window.location.href='info.html'">Info</button>
+              <button id="home-demo-btn" class="home-minimal-nav-pill" type="button" onclick="window.location.href='demo.html'">Demo</button>
+            </div>
           </div>
 
           <div class="home-minimal-container">

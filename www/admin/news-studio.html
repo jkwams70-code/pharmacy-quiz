@@ -27,7 +27,7 @@ a{text-decoration:none;color:inherit}
 .nav-icon{width:18px;height:18px;flex-shrink:0}
 .sidebar-footer{padding:16px 24px;border-top:1px solid var(--border)}
 .user{display:flex;align-items:center;gap:12px}
-.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;object-fit:cover;overflow:hidden}
 .user-name{font-size:13px;font-weight:600}.user-role{font-size:12px;color:var(--t3)}
 .main{min-width:0;overflow-y:auto;max-height:100vh}
 .topbar{position:sticky;top:0;z-index:50;background:rgba(245,245,247,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -298,7 +298,7 @@ a{text-decoration:none;color:inherit}
       </div>
     </nav>
     <div class="sidebar-footer">
-      <div class="user"><div class="user-avatar">JD</div><div><div class="user-name">James Doe</div><div class="user-role">Chief Editor</div></div></div>
+      <div class="user"><img class="user-avatar" src="/images/app-logo.png?v=20260617-admin-avatar" alt="Ajix Admin"><div><div class="user-name">Ajix Admin</div><div class="user-role">Chief Editor</div></div></div>
     </div>
   </aside>
 
@@ -529,7 +529,7 @@ a{text-decoration:none;color:inherit}
       <div class="view" id="view-users">
         <div class="sec-hd"><h2 class="sec-title">Users</h2><button class="btn btn-p">Invite user</button></div>
         <div class="table"><table><thead><tr><th>User</th><th>Role</th><th>Articles</th><th>Last active</th><th>Actions</th></tr></thead><tbody>
-          <tr><td style="font-weight:600">James Doe</td><td>Chief Editor</td><td>124</td><td>Just now</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
+          <tr><td style="font-weight:600">Ajix Admin</td><td>Chief Editor</td><td>124</td><td>Just now</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
           <tr><td style="font-weight:600">Dr. Sarah Chen</td><td>Senior Writer</td><td>86</td><td>2 hours ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
           <tr><td style="font-weight:600">Amy Liu</td><td>Writer</td><td>42</td><td>5 hours ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>
           <tr><td style="font-weight:600">Mark Kim</td><td>Writer</td><td>28</td><td>1 day ago</td><td><div class="tactions"><button class="tact">&#9998;</button></div></td></tr>

@@ -1270,7 +1270,23 @@
   let currentQuery = '';
   let savedState = loadSavedState();
   let readCounts = loadReadCounts();
-  let newsLockStateEl = null;
+  let newsLockStateEl = null;  let newsVerificationEl = null;
+
+  function showNewsVerificationState(message = 'Verifying your subscription…') {
+    if (!newsVerificationEl) {
+      newsVerificationEl = document.createElement('div');
+      newsVerificationEl.id = 'news-verification-state';
+      newsVerificationEl.style.cssText = 'position:fixed;inset:66px 0 0;z-index:9999;display:grid;place-items:center;background:var(--bg,#f5f7fb);color:var(--text-primary,#0f2742);font:600 16px Inter,Arial,sans-serif;text-align:center;padding:24px;box-sizing:border-box;';
+      document.body.appendChild(newsVerificationEl);
+    }
+    newsVerificationEl.textContent = message;
+    newsVerificationEl.hidden = false;
+  }
+
+  function clearNewsVerificationState() {
+    newsVerificationEl?.remove();
+    newsVerificationEl = null;
+  }
 
 
   function getRecordsByClass(className) {
@@ -1334,9 +1350,11 @@
   }
 
   async function hydratePublishedNewsFeed() {
+    showNewsVerificationState();
     // Verify access before showing cached or live premium stories.
     const access = await loadNewsSubscriptionAccess();
     if (!access?.isActive) {
+      clearNewsVerificationState();
       renderNewsLockState(access);
       return;
     }
@@ -1348,6 +1366,7 @@
       const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store', headers: getNewsAuthHeaders() });
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
+          clearNewsVerificationState();
           renderNewsLockState(await loadNewsSubscriptionAccess());
           return;
         }
@@ -1357,6 +1376,7 @@
       saveCachedPublishedNewsFeed(feed);
       applyPublishedNewsFeed(feed);
       setNewsShellReady();
+      clearNewsVerificationState();
     } catch (error) {
       console.warn('Could not load live news feed:', error);
       if (!cachedFeed) {
@@ -1366,6 +1386,7 @@
         setNewsShellReady();
       }
       setNewsShellReady();
+      clearNewsVerificationState();
     }
   }
 

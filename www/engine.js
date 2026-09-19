@@ -39866,7 +39866,9 @@ function saveStudyProgress() {
 
 window.addEventListener("load", function () {
   const pendingTopicQuizLaunch = hasPendingTopicQuizLaunch();
-  const pendingScreenLaunch = String(new URLSearchParams(window.location.search || "").get("screen") || "").trim().length > 0;
+  const pageParams = new URLSearchParams(window.location.search || "");
+  const pendingScreenLaunch = String(pageParams.get("screen") || "").trim().length > 0;
+  const pendingAuthMode = String(pageParams.get("auth") || "").trim().toLowerCase();
   setAuthMode("login");
   profileImageMarkedForDeletion = false;
   setProfileAvatarPreview("");
@@ -39879,6 +39881,13 @@ window.addEventListener("load", function () {
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
   }, 900);
+
+  if (pendingAuthMode === "register") {
+    openAuthModal("register");
+    pageParams.delete("auth");
+    const cleanQuery = pageParams.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ""}${window.location.hash || ""}`);
+  }
 
   if (pendingTopicQuizLaunch) {
     consumePendingTopicQuizLaunch();

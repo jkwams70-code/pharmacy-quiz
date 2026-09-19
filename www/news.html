@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow" />
-<script src="/subscription-state.js?v=20260918-entitlement6"></script><script src="auth-lock.js" data-login-url="index.html"></script>
+<script src="/subscription-state.js?v=20260919-cache2"></script><script src="auth-lock.js" data-login-url="index.html"></script>
 <script src="standalone-back.js?v=20260914-fast-back1" data-back-url="index.html?screen=quiz-menu"></script>
 <script>document.documentElement.setAttribute('data-news-shell', 'pending');</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
@@ -1351,7 +1351,6 @@
   }
 
   async function hydratePublishedNewsFeed() {
-    showNewsVerificationState();
     // Verify access before showing cached or live premium stories.
     const access = await loadNewsSubscriptionAccess();
     if (!access?.isActive) {
@@ -1720,7 +1719,14 @@
   }
 
   async function loadNewsSubscriptionAccess() {
-    const snapshot = await window.AJIXSubscription?.get();
+    const cached = await window.AJIXSubscription?.get?.({ fresh: false });
+    const cachedAccess = cached?.subscription || null;
+    if (cachedAccess?.isActive) {
+      void window.AJIXSubscription?.get?.({ fresh: true });
+      return cachedAccess;
+    }
+    showNewsVerificationState();
+    const snapshot = await window.AJIXSubscription?.get?.({ fresh: true });
     const access = snapshot?.subscription || null;
     if (access?.isActive) return access;
     return {
@@ -1730,7 +1736,6 @@
       lockedReason: access?.lockedReason || 'Sign in and subscribe to unlock the admin-published news feed.',
     };
   }
-
 
   function applyPublishedNewsFeed(feed = {}) {
     const normalizedFeed = normalizePublishedNewsFeed(feed);

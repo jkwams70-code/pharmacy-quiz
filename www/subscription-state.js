@@ -2,6 +2,8 @@
 (() => {
   "use strict";
   const TOKEN_KEY = "quizAuthToken";
+  const CACHE_KEY = "ajixSubscriptionEntitlementV2";
+  const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
   const REQUEST_TIMEOUT_MS = 8000;
   let state = null;
   let inFlight = null;
@@ -35,8 +37,33 @@
     subscription.isLocked = !subscription.isActive;
     return { ...snapshot, subscription, checkedAt: snapshot.checkedAt || new Date().toISOString() };
   }
+  function authFingerprint() {
+    try {
+      const value = String(localStorage.getItem(TOKEN_KEY) || "").trim();
+      return value ? value.slice(-32) : "";
+    } catch { return ""; }
+  }
+  function readCachedState() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (!raw || raw.fingerprint !== authFingerprint()) return null;
+      if (!Number.isFinite(Number(raw.cachedAt)) || Date.now() - Number(raw.cachedAt) > CACHE_MAX_AGE_MS) return null;
+      return normalize(raw.snapshot);
+    } catch { return null; }
+  }
+  function persistState(next) {
+    try {
+      if (!next) { localStorage.removeItem(CACHE_KEY); return; }
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        fingerprint: authFingerprint(),
+        cachedAt: Date.now(),
+        snapshot: next,
+      }));
+    } catch {}
+  }
   function emit(next) {
     state = normalize(next);
+    persistState(state);
     listeners.forEach((listener) => { try { listener(state); } catch {} });
   }
   async function request() {
@@ -61,9 +88,10 @@
       return state;
     } finally { clearTimeout(timer); }
   }
+  state = readCachedState();
   function get({ fresh = true } = {}) {
     if (inFlight) return inFlight;
-    if (!fresh && state) return Promise.resolve(state);
+    if (!fresh) return Promise.resolve(state);
     inFlight = request().finally(() => { inFlight = null; });
     return inFlight;
   }
@@ -71,12 +99,19 @@
   function subscribe(listener) {
     if (typeof listener !== "function") return () => {};
     listeners.add(listener);
-    if (state) listener(state);
+    if (state) {
+      window.setTimeout(() => {
+        if (listeners.has(listener)) {
+          try { listener(state); } catch {}
+        }
+      }, 0);
+    }
     return () => listeners.delete(listener);
   }
   window.AJIXSubscription = {
     get, refresh: () => get({ fresh: true }), clear, subscribe,
     getState: () => state,
+    getCached: () => state,
     getAccess: () => state?.subscription || null,
     isActive: () => state?.subscription?.isActive === true,
     require: async (feature = "feature") => {

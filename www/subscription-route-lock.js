@@ -26,13 +26,19 @@
     verificationEl = null;
   }
   async function verify() {
-    showVerificationState("Loading…");
+    const cached = await window.AJIXSubscription.get({ fresh: false });
+    if (cached?.subscription?.isActive === true) {
+      clearVerificationState();
+      void window.AJIXSubscription.get({ fresh: true });
+      return;
+    }
+    showVerificationState("Loading...");
     try {
       const snapshot = await window.AJIXSubscription.get({ fresh: true });
       clearVerificationState();
       if (snapshot && snapshot.subscription?.isActive !== true) redirect();
     } catch {
-      showVerificationState("We’re reconnecting to verify your subscription…");
+      showVerificationState("We are reconnecting to verify your subscription...");
       window.setTimeout(verify, 1500);
     }
   }

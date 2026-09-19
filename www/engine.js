@@ -33623,12 +33623,24 @@ async function refreshSharedAccountState({
 
 async function refreshSubscriptionAccessForAction() {
   try {
+    const cached = window.AJIXSubscription?.getCached?.() || window.AJIXSubscription?.getState?.();
+    if (cached?.subscription) {
+      subscriptionStatusSnapshot = cached;
+      scheduleSubscriptionExpiryTimer();
+      // Keep the shared state current without blocking the button action.
+      void window.AJIXSubscription?.get?.({ fresh: true }).then((snapshot) => {
+        if (!snapshot) return;
+        subscriptionStatusSnapshot = snapshot;
+        void cacheSubscriptionEntitlement(snapshot.subscription || null);
+        scheduleSubscriptionExpiryTimer();
+      }).catch(() => {});
+      return cached.subscription.isActive === true;
+    }
+
     const snapshot = await window.AJIXSubscription?.get?.({ fresh: true });
     subscriptionStatusSnapshot = snapshot || null;
     const access = snapshot?.subscription || null;
-    if (access) {
-      await cacheSubscriptionEntitlement(access);
-    }
+    if (access) await cacheSubscriptionEntitlement(access);
     scheduleSubscriptionExpiryTimer();
     return access?.isActive === true;
   } catch (error) {
@@ -33671,12 +33683,21 @@ function openWelcomeRegisterFlow(event) {
 
 async function handlePortalEntry() {
   if (backendClient.isAuthenticated()) {
+    // The portal shell is not premium content. Open it immediately, then
+    // reconcile the account and entitlement state in the background.
+    showScreen("quiz-menu");
+    startQuestionBankBootstrap();
+    startBackendBootstrap();
     const restored = await restoreAuthSession({ deferHydration: true });
-    if (!restored) return;
-  } else {
-    const allowed = await ensureAuthenticated({ nextScreen: "quiz-menu" });
-    if (!allowed) return;
+    if (!restored && !backendClient.isAuthenticated()) {
+      showScreen("home-screen", { recordHistory: false });
+      openAuthModal("login", "quiz-menu");
+    }
+    return;
   }
+
+  const allowed = await ensureAuthenticated({ nextScreen: "quiz-menu" });
+  if (!allowed) return;
   showScreen("quiz-menu");
   startQuestionBankBootstrap();
   startBackendBootstrap();

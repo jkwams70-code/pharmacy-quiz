@@ -2,6 +2,12 @@
   const loginPath = "/index.html";
   const isLogin = /(^|\/)index\.html$/.test(window.location.pathname) || window.location.pathname === "/";
   if (isLogin || !window.AJIXSubscription) return;
+  // Do not paint protected standalone markup while shared access is pending.
+  document.documentElement.setAttribute("data-ajix-access", "pending");
+  const cloakStyle = document.createElement("style");
+  cloakStyle.id = "ajix-standalone-access-cloak";
+  cloakStyle.textContent = 'html[data-ajix-access="pending"] body { visibility: hidden !important; } html[data-ajix-access="pending"] #ajix-standalone-access-status { visibility: visible !important; }';
+  (document.head || document.documentElement).appendChild(cloakStyle);
   let redirected = false;
   let verificationEl = null;
   const redirect = () => {
@@ -16,6 +22,7 @@
   function showVerificationState(message) {
     if (!verificationEl) {
       verificationEl = document.createElement("div");
+      verificationEl.id = "ajix-standalone-access-status";
       verificationEl.style.cssText = "position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:#f5f8fc;color:#0f3f7f;font:600 16px Inter,Arial,sans-serif;text-align:center;padding:24px";
       document.documentElement.appendChild(verificationEl);
     }
@@ -24,6 +31,7 @@
   function clearVerificationState() {
     verificationEl?.remove();
     verificationEl = null;
+    document.documentElement.setAttribute("data-ajix-access", "ready");
   }
   async function verify() {
     const cached = await window.AJIXSubscription.get({ fresh: false });
@@ -48,5 +56,6 @@
     redirect();
     return;
   }
+  showVerificationState("Loading...");
   void verify();
 })();

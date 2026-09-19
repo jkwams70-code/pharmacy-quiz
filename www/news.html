@@ -1351,6 +1351,8 @@
   }
 
   async function hydratePublishedNewsFeed() {
+    // Keep static templates hidden until verified backend content is available.
+    showNewsVerificationState('Loading...');
     // Verify access before showing cached or live premium stories.
     const access = await loadNewsSubscriptionAccess();
     if (!access?.isActive) {
@@ -1360,10 +1362,11 @@
     }
 
     const cachedFeed = loadCachedPublishedNewsFeed();
-    if (cachedFeed) applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
-    // The shell and cached stories should never wait for the live feed request.
-    setNewsShellReady();
-    clearNewsVerificationState();
+    if (cachedFeed) {
+      applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
+      setNewsShellReady();
+      clearNewsVerificationState();
+    }
     try {
       const apiBase = await ensureNewsApiBase();
       const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store', headers: getNewsAuthHeaders() });

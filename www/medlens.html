@@ -2304,18 +2304,27 @@ html[data-theme="dark"] .badge-success {
         return token ? { Accept: 'application/json', Authorization: 'Bearer ' + token } : { Accept: 'application/json' };
     }
 
+    let medLensDrugState = 'loading';
+    let medLensDrugError = '';
     async function loadPublishedMedLensDrugs() {
         try {
             const storedApiBase = window.localStorage.getItem('quizApiBase')?.trim();
             const localApiBase = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:4000/api' : '/api';
             const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, '') : localApiBase;
             const response = await fetch(apiBase + '/medlens/drugs', { headers: getMedLensAuthHeaders() });
-            if (!response.ok) throw new Error('Published MedLens records unavailable');
+            if (!response.ok) {
+                medLensDrugState = response.status === 401 || response.status === 403 ? 'unauthorized' : 'error';
+                throw new Error('Published MedLens records unavailable');
+            }
             const payload = await response.json();
             drugs = Array.isArray(payload.items) ? payload.items : [];
+            medLensDrugState = 'ready';
+            medLensDrugError = '';
             if (getActiveScreenId() === 'drug-list') renderDrugList(drugs);
         } catch (error) {
             drugs = [];
+            if (medLensDrugState === 'loading') medLensDrugState = 'error';
+            medLensDrugError = error?.message || 'Published MedLens records unavailable';
             if (getActiveScreenId() === 'drug-list') renderDrugList(drugs);
             console.warn('MedLens public data could not be loaded:', error.message);
         }
@@ -2802,7 +2811,9 @@ html[data-theme="dark"] .badge-success {
         const container = document.getElementById('drugListContainer');
         if (!container) return;
         if (list.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#x1F50D;</div><h3>No drugs found</h3><p>Try a different search term</p></div>`;
+            const title = medLensDrugState === 'loading' ? 'Loading...' : medLensDrugState === 'unauthorized' ? 'Sign in to view MedLens' : medLensDrugState === 'error' ? 'MedLens is unavailable' : 'No drugs found';
+            const message = medLensDrugState === 'loading' ? 'Loading published drug information...' : medLensDrugState === 'unauthorized' ? 'Your session could not be verified. Please sign in again.' : medLensDrugState === 'error' ? 'The published drug information could not be loaded. Please try again.' : 'Try a different search term';
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">&#x1F50D;</div><h3>${title}</h3><p>${escapeHtml(message)}</p></div>`;
             return;
         }
         const sorted = sortByDisplayName(list, function (drug) { return drug.generic || drug.brand || drug.id; });

@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   const DEFAULT_BACK_URL = "index.html?screen=extra-screen";
 
   function getBackUrl() {
@@ -18,21 +18,26 @@
   }
 
   function goBackToAppShell() {
+    const backUrl = getBackUrl();
     try {
       const referrer = document.referrer ? new URL(document.referrer) : null;
-      if (
-        !isNativeApp() &&
+      const target = new URL(backUrl, window.location.href);
+      const expectedScreen = target.searchParams.get("screen") || "";
+      const referrerScreen = referrer?.searchParams?.get("screen") || "";
+      const referrerIsExpectedAppShell =
         referrer &&
         referrer.origin === window.location.origin &&
-        window.history.length > 1
-      ) {
+        (referrer.pathname === "/" || /\/index\.html$/i.test(referrer.pathname)) &&
+        (!expectedScreen || referrerScreen === expectedScreen);
+
+      if (!isNativeApp() && referrerIsExpectedAppShell && window.history.length > 1) {
         window.history.back();
         return;
       }
     } catch {
       // Fall through to the deterministic app-shell URL.
     }
-    const target = new URL(getBackUrl(), window.location.href);
+    const target = new URL(backUrl, window.location.href);
     window.location.href = target.toString();
   }
 

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-app-shell-v128-subscription-cache";
+const CACHE_VERSION = "ajix-app-shell-v129-news-back";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
@@ -11,7 +11,7 @@ const SHELL_ASSETS = [
   "/subscription-state.js?v=20260919-cache2",
   "/subscription-route-lock.js?v=20260919-cache1",
   "/auth-lock.js",
-  "/standalone-back.js?v=20260914-fast-back1",
+  "/standalone-back.js?v=20260919-back-target1",
   "/medlens-interactions-database.js",
   "/medlens-disease-database.js",
   "/styles.css",

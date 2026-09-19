@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow" />
 <script src="/subscription-state.js?v=20260919-cache2"></script><script src="auth-lock.js" data-login-url="index.html"></script>
-<script src="standalone-back.js?v=20260914-fast-back1" data-back-url="index.html?screen=quiz-menu"></script>
+<script src="standalone-back.js?v=20260919-back-target1" data-back-url="index.html?screen=quiz-menu"></script>
 <script>document.documentElement.setAttribute('data-news-shell', 'pending');</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/images/app-logo.png?v=20260617-admin-avatar">
 <link rel="shortcut icon" href="/images/app-logo.png?v=20260617-admin-avatar">
@@ -1361,6 +1361,9 @@
 
     const cachedFeed = loadCachedPublishedNewsFeed();
     if (cachedFeed) applyPublishedNewsFeed(normalizePublishedNewsFeed(cachedFeed));
+    // The shell and cached stories should never wait for the live feed request.
+    setNewsShellReady();
+    clearNewsVerificationState();
     try {
       const apiBase = await ensureNewsApiBase();
       const response = await fetch(apiBase + '/news/feed?limit=200', { cache: 'no-store', headers: getNewsAuthHeaders() });
@@ -1474,22 +1477,15 @@
 
   async function ensureNewsApiBase() {
     const candidates = getApiBaseCandidates();
-    for (const candidate of candidates) {
+    const candidate = candidates[0] || '';
+    if (candidate) {
       try {
-        const response = await fetch(`${candidate}/health`, { cache: 'no-store' });
-        if (response && response.ok) {
-          try {
-            window.localStorage.setItem('quizApiBase', candidate);
-          } catch (error) {
-            void error;
-          }
-          return candidate;
-        }
+        window.localStorage.setItem('quizApiBase', candidate);
       } catch (error) {
         void error;
       }
     }
-    return candidates[0] || '';
+    return candidate;
   }
 
   function getNewsTheme(category = '', importance = '') {
@@ -2686,7 +2682,7 @@
   }
 
   backBtn?.addEventListener('click', () => {
-    window.location.href = './index.html?screen=extra-screen';
+    window.AJIXStandaloneBack?.goBack?.();
   });
 
   searchToggleBtn?.addEventListener('click', () => {

@@ -250,6 +250,19 @@ async function getSubscriptionEntitlementForUser(userId) {
     checkedAt: new Date().toISOString(),
   };
 }
+function toClientSubscriptionRequest(rawRequest = {}) {
+  const request = normalizeSubscriptionRequest(rawRequest);
+  const { proofDataUrl, ...safeRequest } = request;
+  void proofDataUrl;
+  const status = getSubscriptionRequestStatus(request);
+  return {
+    ...safeRequest,
+    status,
+    expirationAt: getSubscriptionRequestExpiresAt(request),
+    isExpired: status === "expired",
+    isActive: status === "active",
+  };
+}
 function safeNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
@@ -8030,12 +8043,13 @@ app.get(
       res.status(404).json({ error: "user not found" });
       return;
     }
+    const safeRequests = entitlement.requests.map(toClientSubscriptionRequest);
     res.json({
       ok: true,
       userId: entitlement.user.id,
       subscription: entitlement.subscription,
-      request: entitlement.request,
-      requests: entitlement.requests,
+      request: safeRequests[0] || null,
+      requests: safeRequests,
       plans: entitlement.plans,
       lockedFeatures: entitlement.lockedFeatures,
       checkedAt: entitlement.checkedAt,

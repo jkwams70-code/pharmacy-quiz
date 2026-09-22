@@ -753,6 +753,7 @@ function buildLawDrillStackMarkup(levelIndex = null, eyebrowLabel = null) {
 
 function normalizeLawDrillState(rawState = null) {
   if (!rawState || typeof rawState !== "object") return null;
+  if (Number(rawState.version || 1) < 2) return null;
 
   const levels = cloneLawDrillLevels(rawState.levels);
   if (levels.length === 0) return null;
@@ -871,7 +872,7 @@ function createLawDrillState(sourceQuestions = questionBank) {
   const levels = buildLawDrillLevels(sourceQuestions);
   if (!levels.length) return null;
   return {
-    version: 1,
+    version: 2,
     totalLevels: LAW_DRILL_TOTAL_LEVELS,
     questionsPerLevel: LAW_DRILL_QUESTIONS_PER_LEVEL,
     currentLevelIndex: 0,
@@ -37921,10 +37922,10 @@ function showQuestion() {
         btn.classList.add("selected-live");
       }
       if (lockSelection) {
-        if (opt === q.correct) {
+        if (isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("correct");
         }
-        if (savedAnswer === opt && opt !== q.correct) {
+        if (savedAnswer === opt && !isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -37959,10 +37960,10 @@ function showQuestion() {
         btn.classList.add("selected-live");
       }
       if (lockSelection) {
-        if (option.letter === q.correct) {
+        if (isQuestionAnswerCorrect(option.letter, q)) {
           btn.classList.add("correct");
         }
-        if (savedAnswer === option.letter && option.letter !== q.correct) {
+        if (savedAnswer === option.letter && !isQuestionAnswerCorrect(option.letter, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -38001,7 +38002,7 @@ function showQuestion() {
 function selectAnswer(value, q) {
   if (inDetailedReview) return;
   userAnswers[q.id] = value;
-  const isCorrect = String(value) === String(q.correct || "");
+  const isCorrect = isQuestionAnswerCorrect(value, q);
   const studyType = getCurrentStudyType();
 
   if (isPreSubmitReviewMode()) {
@@ -38165,7 +38166,7 @@ function selectAnswer(value, q) {
       btn.style.pointerEvents = "none";
       btn.classList.remove("selected-live", "correct", "wrong");
 
-      if (btnValue === String(q.correct || "")) {
+      if (isQuestionAnswerCorrect(btnValue, q)) {
         btn.classList.add("correct");
       }
 
@@ -38247,7 +38248,7 @@ function selectAnswer(value, q) {
       ? btn.innerText[0]
       : btn.innerText;
 
-    if (btnValue === q.correct) {
+    if (isQuestionAnswerCorrect(btnValue, q)) {
       btn.classList.add("correct");
     }
 
@@ -38336,7 +38337,7 @@ function nextQuestion() {
           ? btn.innerText[0]
           : btn.innerText;
 
-        if (btnValue === q.correct) {
+        if (isQuestionAnswerCorrect(btnValue, q)) {
           btn.classList.add("correct");
         }
       });
@@ -38400,11 +38401,11 @@ function restoreSelection(q) {
       btn.removeAttribute("onclick");
       btn.style.pointerEvents = "none";
 
-      if (btnValue === q.correct) {
+      if (isQuestionAnswerCorrect(btnValue, q)) {
         btn.classList.add("correct");
       }
 
-      if (btnValue === saved && saved !== q.correct) {
+      if (btnValue === saved && !isQuestionAnswerCorrect(saved, q)) {
         btn.classList.add("wrong");
       }
     }
@@ -38413,11 +38414,11 @@ function restoreSelection(q) {
       if (inReview) {
         btn.disabled = true;
 
-        if (btnValue === q.correct) {
+        if (isQuestionAnswerCorrect(btnValue, q)) {
           btn.classList.add("correct");
         }
 
-        if (btnValue === saved && saved !== q.correct) {
+        if (btnValue === saved && !isQuestionAnswerCorrect(saved, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -38446,7 +38447,7 @@ function calculateScore() {
 
   Object.keys(userAnswers).forEach((id) => {
     const q = active.find((q) => q.id == id);
-    if (q && userAnswers[id] === q.correct) total++;
+    if (q && isQuestionAnswerCorrect(userAnswers[id], q)) total++;
   });
 
   return total;
@@ -38831,7 +38832,7 @@ async function finishDailyQuizSession() {
 
     active.forEach((q) => {
       const selected = String(userAnswers?.[q.id] || "").trim();
-      const isCorrect = selected === String(q.correct || "");
+      const isCorrect = isQuestionAnswerCorrect(selected, q);
       updatePerformance(q.id, isCorrect, selected || "Skipped");
     });
 
@@ -38949,7 +38950,7 @@ async function finishExam() {
   clearDailyResultEnhancements();
 
   active.forEach((q) => {
-    const isCorrect = userAnswers[q.id] === q.correct;
+    const isCorrect = isQuestionAnswerCorrect(userAnswers[q.id], q);
     if (isCorrect) finalScore++;
 
     answers[q.id] = userAnswers[q.id];
@@ -39480,7 +39481,7 @@ function showDetailedReview() {
 
   active.forEach((q, index) => {
     const user = userAnswers[q.id] || "Not Answered";
-    const isCorrect = user === q.correct;
+    const isCorrect = isQuestionAnswerCorrect(user, q);
 
     const card = document.createElement("div");
     card.className =
@@ -39602,11 +39603,11 @@ function renderDetailedQuestion() {
       }
 
       if (!editableReview) {
-        if (opt === q.correct) {
+        if (isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("correct");
         }
 
-        if (savedAnswer === opt && opt !== q.correct) {
+        if (savedAnswer === opt && !isQuestionAnswerCorrect(savedAnswer, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -39646,11 +39647,11 @@ function renderDetailedQuestion() {
       }
 
       if (!editableReview) {
-        if (option.letter === q.correct) {
+        if (isQuestionAnswerCorrect(option.letter, q)) {
           btn.classList.add("correct");
         }
 
-        if (savedAnswer === option.letter && option.letter !== q.correct) {
+        if (savedAnswer === option.letter && !isQuestionAnswerCorrect(savedAnswer, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -39677,11 +39678,11 @@ function renderDetailedQuestion() {
       }
 
       if (!editableReview) {
-        if (opt === q.correct) {
+        if (isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("correct");
         }
 
-        if (savedAnswer === opt && opt !== q.correct) {
+        if (savedAnswer === opt && !isQuestionAnswerCorrect(savedAnswer, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -39721,11 +39722,11 @@ function showQuestionDetailedMode() {
       const btn = document.createElement("button");
       btn.innerText = displayOptionText(opt);
 
-      if (opt === q.correct) {
+      if (isQuestionAnswerCorrect(opt, q)) {
         btn.classList.add("correct");
       }
 
-      if (userAnswers[q.id] === opt && opt !== q.correct) {
+      if (userAnswers[q.id] === opt && !isQuestionAnswerCorrect(userAnswers[q.id], q)) {
         btn.classList.add("wrong");
       }
 
@@ -39748,11 +39749,11 @@ function showQuestionDetailedMode() {
       const btn = document.createElement("button");
       btn.innerText = letter;
 
-      if (letter === q.correct) {
+      if (isQuestionAnswerCorrect(letter, q)) {
         btn.classList.add("correct");
       }
 
-      if (userAnswers[q.id] === letter && letter !== q.correct) {
+      if (userAnswers[q.id] === letter && !isQuestionAnswerCorrect(userAnswers[q.id], q)) {
         btn.classList.add("wrong");
       }
 
@@ -40029,7 +40030,7 @@ function showStudyReviewPalette() {
     btn.className = "review-btn";
     btn.innerText = index + 1;
 
-    if (userAnswers[q.id] === q.correct) {
+    if (isQuestionAnswerCorrect(userAnswers[q.id], q)) {
       btn.classList.add("review-correct");
     } else if (userAnswers[q.id] === "Skipped") {
       btn.classList.add("review-skipped");
@@ -40757,4 +40758,30 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 });
+
+function isQuestionAnswerCorrect(value, question = {}) {
+  const normalize = (candidate) =>
+    String(candidate ?? "")
+      .replace(/^\s*[A-E](?:\s*[:.)-]\s*)/i, "")
+      .trim()
+      .toLowerCase();
+  const selected = String(value ?? "").trim();
+  const correct = String(question.correct ?? "").trim();
+  if (!selected || !correct) return false;
+  if (selected === correct || normalize(selected) === normalize(correct)) return true;
+  const options = Array.isArray(question.options) ? question.options : [];
+  const answerIndex = Number(question.answer);
+  if (Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex < options.length) {
+    if (selected.toUpperCase() === String.fromCharCode(65 + answerIndex)) return true;
+    if (normalize(selected) === normalize(options[answerIndex])) return true;
+  }
+  const correctLetter = correct.match(/^([A-E])(?:$|\s*[:.)-])/i);
+  if (correctLetter) {
+    const correctIndex = correctLetter[1].toUpperCase().charCodeAt(0) - 65;
+    if (correctIndex >= 0 && correctIndex < options.length) {
+      return normalize(selected) === normalize(options[correctIndex]);
+    }
+  }
+  return false;
+}
 

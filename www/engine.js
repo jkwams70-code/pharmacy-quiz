@@ -1831,11 +1831,6 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
     lawDrillCloseBtn.title = "Return to the law drill ladder";
     lawDrillCloseBtn.onclick = returnToLawLadder;
   }
-  if (lawDrillMenuBtn) {
-    lawDrillMenuBtn.textContent = "Menu";
-    lawDrillMenuBtn.onclick = goToMenu;
-  }
-
   showScreen("law-drill-result-screen");
   renderPoints();
   renderSessionPointsDisplay();
@@ -5187,7 +5182,6 @@ const lawDrillResultScoreEl = document.getElementById("law-drill-result-score");
 const lawDrillResultFeedbackEl = document.getElementById("law-drill-result-feedback");
 const lawDrillNextLevelBtn = document.getElementById("law-drill-next-level-btn");
 const lawDrillCloseBtn = document.getElementById("law-drill-close-btn");
-const lawDrillMenuBtn = document.getElementById("law-drill-menu-btn");
 const resultBadgeEl = document.getElementById("result-badge");
 const backReviewBtn = document.getElementById("back-review-btn");
 const quizMenu = document.getElementById("quiz-menu");

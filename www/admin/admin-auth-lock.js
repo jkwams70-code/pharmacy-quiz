@@ -1,4 +1,28 @@
 (function () {
+  // The question editor is a classic script and reads this value during
+  // initialization. The taxonomy module loads later, so provide the same
+  // canonical list synchronously as a bootstrap fallback.
+  if (!Array.isArray(window.AJIX_CANONICAL_CATEGORIES)) {
+    window.AJIX_CANONICAL_CATEGORIES = [
+      "Cardiovascular Disorders",
+      "Infectious Diseases",
+      "Endocrinology",
+      "Respiratory Disorders",
+      "Renal & Electrolyte Disorders",
+      "Gastrointestinal Disorders",
+      "Neurology & Psychiatry",
+      "Hematology",
+      "Oncology",
+      "Rheumatology & Pain",
+      "Women's & Men's Health",
+      "Immunizations",
+      "Manufacturing and Calculation",
+      "Pharmacy Practice",
+      "Pharmacy Law & Ethics",
+      "Research",
+    ];
+  }
+
   const ADMIN_KEY_STORAGE = "adminKey";
   const currentPath = window.location.pathname + window.location.search + window.location.hash;
 

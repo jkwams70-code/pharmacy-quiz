@@ -111,7 +111,8 @@ async function fetchAdmin(path, options = {}, { timeoutMs = ADMIN_REQUEST_TIMEOU
       let cachedMonetizationCounts = { request: 0, activated: 0, rejected: 0, expired: 0 };
       let cachedMonetizationAmountTotals = { request: 0, activated: 0, rejected: 0, expired: 0 };
       const monetizationLoadedBuckets = new Set();
-      let subscriptionRequestsLoadingPromise = null;
+      const monetizationLoadingBuckets = new Set();
+      const subscriptionRequestsLoadingPromises = new Map();
       let cachedPasswordResetRequests = [];
       let cachedAdminStats = null;
       let cachedDeletedUsers = [];
@@ -1121,6 +1122,7 @@ function getMonetizationBucketMeta(bucket = "request") {
         if (monetizationLoadedBuckets.has(selectedMonetizationBucket)) {
           renderMonetizationPanel();
         } else if (adminKey) {
+          renderMonetizationPanel();
           void loadMonetizationRequests(selectedMonetizationBucket);
         }
       }
@@ -1142,6 +1144,21 @@ function getMonetizationBucketMeta(bucket = "request") {
 
         const bucket = selectedMonetizationBucket;
         const meta = getMonetizationBucketMeta(bucket);
+        if (!monetizationLoadedBuckets.has(bucket) && monetizationLoadingBuckets.has(bucket)) {
+          const panelTitle = document.getElementById("monetization-panel-title");
+          const panelKicker = document.getElementById("monetization-panel-kicker");
+          const summaryCount = document.getElementById("monetization-summary-count");
+          const summaryTotal = document.getElementById("monetization-summary-total");
+          if (panelTitle) {
+            panelTitle.textContent = meta.title;
+            panelTitle.style.display = "";
+          }
+          if (panelKicker) panelKicker.textContent = bucket;
+          if (summaryCount) summaryCount.innerHTML = "Loading subscription records…";
+          if (summaryTotal) summaryTotal.textContent = "";
+          root.innerHTML = '<div class="monetization-empty-state is-loading">Loading subscription records…</div>';
+          return;
+        }
         const sortMultiplier = monetizationSortDirection === "asc" ? 1 : -1;
         const items = cachedSubscriptionRequests
           .filter((entry) => getMonetizationBucket(entry) === bucket)
@@ -1206,10 +1223,6 @@ function getMonetizationBucketMeta(bucket = "request") {
       }
 
       async function loadMonetizationRequests(bucket = selectedMonetizationBucket) {
-  if (subscriptionRequestsLoadingPromise) {
-    return subscriptionRequestsLoadingPromise;
-  }
-
   const statusByBucket = {
     request: "pending",
     activated: "active",
@@ -1220,8 +1233,11 @@ function getMonetizationBucketMeta(bucket = "request") {
     ? bucket
     : "request";
   const requestStatus = statusByBucket[requestedBucket];
+  const existingPromise = subscriptionRequestsLoadingPromises.get(requestedBucket);
+  if (existingPromise) return existingPromise;
 
-  subscriptionRequestsLoadingPromise = (async () => {
+  monetizationLoadingBuckets.add(requestedBucket);
+  const loadingPromise = (async () => {
     try {
       const query = new URLSearchParams({ status: requestStatus, page: "1", limit: "50" });
       const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/subscription-requests?${query.toString()}`), {
@@ -1257,7 +1273,7 @@ function getMonetizationBucketMeta(bucket = "request") {
       monetizationLoadedBuckets.add(requestedBucket);
 
       subscriptionRequestsLoaded = true;
-      renderMonetizationPanel();
+      if (selectedMonetizationBucket === requestedBucket) renderMonetizationPanel();
       return true;
     } catch (err) {
       console.error("Failed to load subscription requests:", err);
@@ -1265,11 +1281,14 @@ function getMonetizationBucketMeta(bucket = "request") {
       return false;
     }
   })();
+  subscriptionRequestsLoadingPromises.set(requestedBucket, loadingPromise);
 
   try {
-    return await subscriptionRequestsLoadingPromise;
+    return await loadingPromise;
   } finally {
-    subscriptionRequestsLoadingPromise = null;
+    monetizationLoadingBuckets.delete(requestedBucket);
+    subscriptionRequestsLoadingPromises.delete(requestedBucket);
+    if (selectedMonetizationBucket === requestedBucket) renderMonetizationPanel();
   }
 }
 
@@ -1357,7 +1376,8 @@ function getMonetizationBucketMeta(bucket = "request") {
       function getPasswordResetComposeUrl(request = {}) {
         const contact = getPasswordResetRequestContact(request);
         const code = getPasswordResetRequestCode(request);
-        if (!contact || !code) return "";
+        const status = getPasswordResetRequestStatus(request);
+        if (!contact || !code || status !== "pending") return "";
 
         const message = getPasswordResetComposeMessage(request);
         const method = getPasswordResetRequestMethod(request);
@@ -1412,8 +1432,8 @@ function getMonetizationBucketMeta(bucket = "request") {
         const codeMarkup = code && isPending
           ? `<code class="password-reset-code password-reset-copyable" data-action="copy-password-reset-code" data-request-id="${escapeHtml(requestId)}" role="button" tabindex="0" title="Click to copy the reset code">${escapeHtml(code)}</code>`
           : `<span class="password-reset-code is-muted">--</span>`;
-        const contactMarkup = status === "sent"
-          ? `<span class="password-reset-contact-link is-muted">${escapeHtml(contact)}</span>`
+        const contactMarkup = status !== "pending"
+          ? `<span class="password-reset-contact-link is-muted" aria-disabled="true" title="This reset request is no longer actionable">${escapeHtml(contact)}</span>`
           : composeUrl
           ? `<a class="password-reset-contact-link" href="${escapeHtml(composeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(contact)}</a>`
           : `<span class="password-reset-contact-link is-muted">${escapeHtml(contact)}</span>`;

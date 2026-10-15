@@ -32426,7 +32426,7 @@
     ],
     "correct": "12.9 mmol",
     "answer": 2,
-    "explanation": "144 hours = 6 days. For the first 2 days: 3 sachets/day Ã— 2 days = 6 sachets. For the remaining 4 days: 2 sachets/day Ã— 4 days = 8 sachets. Total = 14 sachets. 14 sachets Ã— 0.92 mmol/sachet = 12.88 mmol = 12.9 mmol (to one decimal place).\n\n---"
+    "explanation": "144 hours = 6 days. For the first 2 days: 3 sachets/day × 2 days = 6 sachets. For the remaining 4 days: 2 sachets/day × 4 days = 8 sachets. Total = 14 sachets. 14 sachets × 0.92 mmol/sachet = 12.88 mmol = 12.9 mmol (to one decimal place)."
   },
   {
     "id": 1696,
@@ -32444,7 +32444,7 @@
     ],
     "correct": "0.75 mL",
     "answer": 3,
-    "explanation": "Daily dose = 7.5mg/kg Ã— 15kg = 112.5mg/day. Per dose (3 times daily) = 112.5mg Ã· 3 = 37.5mg per dose. Strength = 0.25g/5mL = 250mg/5mL = 50mg/mL. Volume per dose = 37.5mg Ã· 50mg/mL = 0.75mL.\n\n---"
+    "explanation": "Daily dose = 7.5mg/kg × 15kg = 112.5mg/day. Per dose (3 times daily) = 112.5mg ÷ 3 = 37.5mg per dose. Strength = 0.25g/5mL = 250mg/5mL = 50mg/mL. Volume per dose = 37.5mg ÷ 50mg/mL = 0.75mL."
   },
   {
     "id": 1697,
@@ -32456,13 +32456,13 @@
     "question": "Miss B, aged 3 years and weighing 13kg, is a post-operative cardiac patient requiring prophylactic heparin. She has been prescribed a continuous infusion of heparin at a rate of 0.5mL/hr. The infusion syringe has been made up to a concentration of 13,000 units in 50mL. How much heparin is being administered, in units/kg/hour, to Miss B?",
     "options": [
       "10 units/kg/hr",
-      "1.0 unit/kg/ml",
+      "1.0 unit/kg/hr",
       "130 units/kg/hr",
-      "26 unit/kg/ml"
+      "26 unit/kg/hr"
     ],
     "correct": "10 units/kg/hr",
     "answer": 0,
-    "explanation": "Concentration = 13,000 units/50mL = 260 units/mL. Rate = 0.5mL/hr Ã— 260 units/mL = 130 units/hr. Per kg = 130 units/hr Ã· 13kg = 10 units/kg/hr.\n\n---"
+    "explanation": "Concentration = 13,000 units/50mL = 260 units/mL. Rate = 0.5mL/hr × 260 units/mL = 130 units/hr. Per kg = 130 units/hr ÷ 13kg = 10 units/kg/hr."
   },
   {
     "id": 1698,
@@ -32480,7 +32480,7 @@
     ],
     "correct": "140/90 mmHg",
     "answer": 1,
-    "explanation": "Hypertension is diagnosed when blood pressure is consistently â‰¥140/90 mmHg (according to WHO and Ghanaian guidelines). Readings of 120/80 (a) is normal, 130/70 (c) is elevated but not hypertension, and 100/60 (d) is normal/low.\n\n---"
+    "explanation": "Hypertension is diagnosed when blood pressure is consistently ≥140/90 mmHg (according to WHO and Ghanaian guidelines). Readings of 120/80 (a) is normal, 130/70 (c) is elevated but not hypertension, and 100/60 (d) is normal/low."
   },
   {
     "id": 1699,
@@ -32498,7 +32498,7 @@
     ],
     "correct": "Systolic: 5mmHg diastolic 2.5mmHg",
     "answer": 0,
-    "explanation": "Lifestyle modifications including diet (DASH diet), exercise, and weight loss reduce systolic BP by approximately 5mmHg and diastolic BP by approximately 2.5mmHg on average. Other options overestimate the effect.\n\n---"
+    "explanation": "Lifestyle modifications including diet (DASH diet), exercise, and weight loss reduce systolic BP by approximately 5mmHg and diastolic BP by approximately 2.5mmHg on average. Other options overestimate the effect."
   },
   {
     "id": 1700,
@@ -32516,7 +32516,7 @@
     ],
     "correct": "Direct sunlight",
     "answer": 2,
-    "explanation": "Doxycycline is a tetracycline antibiotic that causes photosensitivity. Patients should avoid direct sunlight and use sunscreen. Alcohol (a) is not a major concern, grapefruit (b) affects statins/CCBs, and heavy machinery (d) is not relevant.\n\n---"
+    "explanation": "Doxycycline is a tetracycline antibiotic that causes photosensitivity. Patients should avoid direct sunlight and use sunscreen. Alcohol (a) is not a major concern, grapefruit (b) affects statins/CCBs, and heavy machinery (d) is not relevant."
   },
   {
     "id": 1701,
@@ -32534,7 +32534,7 @@
     ],
     "correct": "Naklofen",
     "answer": 2,
-    "explanation": "Naklofen (diclofenac) is an NSAID. NSAIDs are a major cause of gastric ulcers by inhibiting prostaglandin synthesis and reducing gastric mucosal protection. Doreta (a) is an analgesic without significant ulcer risk, Furosemide (b) is a diuretic, Propranolol (d) is a beta-blocker.\n\n---"
+    "explanation": "Naklofen (diclofenac) is an NSAID. NSAIDs are a major cause of gastric ulcers by inhibiting prostaglandin synthesis and reducing gastric mucosal protection. Doreta (a) is an analgesic without significant ulcer risk, Furosemide (b) is a diuretic, Propranolol (d) is a beta-blocker."
   },
   {
     "id": 1702,
@@ -32545,14 +32545,14 @@
     "category": "Cardiovascular Disorders",
     "question": "A 64-year old man has been referred with chest pain in the coronary care unit. He has a history of ischaemic heart disease, hypertension, dyslipidaemia, osteoarthritis and obesity. These are his drugs on admission: aspirin, atorvastatin, ramipril, atenolol, orlistat, co-proxamol (codeine + paracetamol), verapamil, lactulose. Which of the following combinations has a potentially dangerous pharmacodynamics interaction?",
     "options": [
-      "Aspirin and co-coproxamol",
+      "Aspirin and co-proxamol",
       "Atenolol + verapamil",
       "Atorvastatin and verapamil",
       "Ramipril and atenolol"
     ],
     "correct": "Atenolol + verapamil",
     "answer": 1,
-    "explanation": "Atenolol (beta-blocker) and verapamil (calcium channel blocker) both have negative chronotropic and inotropic effects. Combined use can cause severe bradycardia, heart block, and cardiac failure. Aspirin + co-proxamol (a) are safe together, Atorvastatin + verapamil (c) is a pharmacokinetic interaction (not dangerous), Ramipril + atenolol (d) is acceptable combination.\n\n---"
+    "explanation": "Atenolol (beta-blocker) and verapamil (calcium channel blocker) both have negative chronotropic and inotropic effects. Combined use can cause severe bradycardia, heart block, and cardiac failure. Aspirin + co-proxamol (a) are safe together, Atorvastatin + verapamil (c) is a pharmacokinetic interaction (not dangerous), Ramipril + atenolol (d) is acceptable combination."
   },
   {
     "id": 1703,
@@ -32570,7 +32570,7 @@
     ],
     "correct": "Genital warts",
     "answer": 3,
-    "explanation": "The description of a painless, fleshy, cauliflower-like growth on the penis is characteristic of Genital Warts (Condyloma acuminata) caused by Human Papillomavirus (HPV). Syphilis (a) causes a painless ulcer (chancre), Chlamydia (b) causes discharge, and Herpes simplex (c) causes painful vesicles.\n\n---"
+    "explanation": "The description of a painless, fleshy, cauliflower-like growth on the penis is characteristic of Genital Warts (Condyloma acuminata) caused by Human Papillomavirus (HPV). Syphilis (a) causes a painless ulcer (chancre), Chlamydia (b) causes discharge, and Herpes simplex (c) causes painful vesicles."
   },
   {
     "id": 1704,
@@ -32588,7 +32588,7 @@
     ],
     "correct": "Filariasis",
     "answer": 1,
-    "explanation": "Filariasis is a helminth (parasitic worm) disease caused by filarial nematodes (Wuchereria bancrofti, Brugia malayi). Polio (a) is viral, Diphtheria (d) is bacterial. Filaria (c) is the organism, not the disease.\n\n---"
+    "explanation": "Filariasis is a helminth (parasitic worm) disease caused by filarial nematodes (Wuchereria bancrofti, Brugia malayi). Polio (a) is viral, Diphtheria (d) is bacterial. Filaria (c) is the organism, not the disease."
   },
   {
     "id": 1705,
@@ -32606,10 +32606,10 @@
     ],
     "correct": "Reduce oedema",
     "answer": 0,
-    "explanation": "Diuretics in heart failure primarily reduce fluid overload (oedema, pulmonary congestion) by promoting sodium and water excretion. While they may indirectly help breathlessness (c) and fatigue (d), their primary purpose is fluid removal.\n\n---"
+    "explanation": "Diuretics in heart failure primarily reduce fluid overload (oedema, pulmonary congestion) by promoting sodium and water excretion. While they may indirectly help breathlessness (c) and fatigue (d), their primary purpose is fluid removal."
   },
   {
-    "id": 1706,
+    "id": "1706",
     "bank": "gppqe",
     "year": 2021,
     "displayNumber": 58,
@@ -32617,14 +32617,19 @@
     "category": "Cardiovascular Disorders",
     "question": "Indicate the most likely cause of swelling of the lips and tongue in a newly diagnosed hypertensive male (41 yrs) with current therapy as",
     "options": [
-      "Tab Paracetamol 1g tds Ã— 3/7",
-      "Tab Bendrofluazide 2.5mg daily Ã— 30/7",
-      "Tab Multivite 1 tds Ã— 14/7",
-      "Tab Ramipril 2.5mg daily Ã— 30/7"
+      "Tab Paracetamol 1g tds × 3/7",
+      "Tab Bendrofluazide 2.5mg daily × 30/7",
+      "Tab Multivite 1 tds × 14/7",
+      "Tab Ramipril 2.5mg daily × 30/7"
     ],
-    "correct": "Tab Ramipril 2.5mg daily Ã— 30/7",
+    "correct": "Tab Ramipril 2.5mg daily × 30/7",
     "answer": 3,
-    "explanation": "Ramipril is an ACE inhibitor. Angioedema (swelling of lips, tongue, face) is a known side effect of ACE inhibitors due to bradykinin accumulation. Paracetamol (a), Bendrofluazide (b), and Multivitamins (c) do not cause angioedema.\n\n---"
+    "explanation": "Ramipril is an ACE inhibitor. Angioedema (swelling of lips, tongue, face) is a known side effect of ACE inhibitors due to bradykinin accumulation. Paracetamol (a), Bendrofluazide (b), and Multivitamins (c) do not cause angioedema.",
+    "text": "Indicate the most likely cause of swelling of the lips and tongue in a newly diagnosed hypertensive male (41 yrs) with current therapy as",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
     "id": 1707,
@@ -32642,31 +32647,33 @@
     ],
     "correct": "Clindamycin",
     "answer": 3,
-    "explanation": "Clindamycin has excellent anaerobic coverage, particularly against Bacteroides fragilis and other anaerobes. Flucloxacillin (a) and Cloxacillin (b) are penicillinase-resistant penicillins for Gram-positive, Ciprofloxacin (c) is for Gram-negative.\n\n---"
+    "explanation": "Clindamycin has excellent anaerobic coverage, particularly against Bacteroides fragilis and other anaerobes. Flucloxacillin (a) and Cloxacillin (b) are penicillinase-resistant penicillins for Gram-positive, Ciprofloxacin (c) is for Gram-negative."
   },
   {
-    "id": 1708,
+    "id": "1708",
     "bank": "gppqe",
-    "comboVariant": "assertion-5",
     "year": 2021,
     "displayNumber": 3,
-    "type": "combo",
+    "type": "single",
     "category": "Infectious Diseases",
     "question": "Levofloxacin is superior to Clindamycin in the treatment of community acquired pneumonia because of better coverage of",
     "options": [
-      "First statement is TRUE, Second statement is TRUE and they are RELATED",
-      "First statement is TRUE, Second statement is TRUE but they are NOT related",
-      "First statement is TRUE but Second statement is FALSE",
-      "First statement is FALSE but Second statement is TRUE",
-      "Both statements are FALSE"
+      "Gram positive organisms",
+      "Gram negative organisms",
+      "Anaerobic organisms",
+      "Atypical organisms"
     ],
     "statements": [
       "Levofloxacin is superior to Clindamycin in the treatment of community acquired pneumonia",
       "of better coverage of"
     ],
-    "correct": "D",
+    "correct": "Atypical organisms",
     "answer": 3,
-    "explanation": "Levofloxacin (a fluoroquinolone) has excellent activity against atypical organisms (Mycoplasma, Chlamydia, Legionella) which are common causes of CAP. Clindamycin has poor atypical coverage. Both cover Gram-positive organisms (a).\n\n---"
+    "explanation": "Levofloxacin (a fluoroquinolone) has excellent activity against atypical organisms (Mycoplasma, Chlamydia, Legionella) which are common causes of CAP. Clindamycin has poor atypical coverage. Both cover Gram-positive organisms (a).",
+    "text": "Levofloxacin is superior to Clindamycin in the treatment of community acquired pneumonia because of better coverage of",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
     "id": 1709,
@@ -32684,7 +32691,7 @@
     ],
     "correct": "12 months",
     "answer": 3,
-    "explanation": "WHO recommends preventive deworming (for soil-transmitted helminths) for children from 12 months of age (1 year) in endemic areas. This is part of the WHO guideline for deworming in children.\n\n---"
+    "explanation": "WHO recommends preventive deworming (for soil-transmitted helminths) for children from 12 months of age (1 year) in endemic areas. This is part of the WHO guideline for deworming in children."
   },
   {
     "id": 1710,
@@ -32702,7 +32709,7 @@
     ],
     "correct": "Insulin plus glucose or salbutamol or calcium gluconate 10%",
     "answer": 0,
-    "explanation": "Hyperkalaemia is managed with: (1) Insulin + glucose (drives K+ into cells), (2) Salbutamol (beta-agonist drives K+ into cells), (3) Calcium gluconate (stabilises cardiac membrane). Frusemide (b) helps but is not first-line. Spironolactone (b) is potassium-sparing and worsens hyperkalaemia.\n\n---"
+    "explanation": "Hyperkalaemia is managed with: (1) Insulin + glucose (drives K+ into cells), (2) Salbutamol (beta-agonist drives K+ into cells), (3) Calcium gluconate (stabilises cardiac membrane). Frusemide (b) helps but is not first-line. Spironolactone (b) is potassium-sparing and worsens hyperkalaemia."
   },
   {
     "id": 1711,
@@ -32720,7 +32727,7 @@
     ],
     "correct": "Less hypotension",
     "answer": 3,
-    "explanation": "Newer alpha1-blockers (e.g., tamsulosin) are more uroselective and cause less hypotension than older non-selective alpha-blockers (e.g., prazosin). Less erectile dysfunction (c) is also true but hypotension is the main advantage.\n\n---"
+    "explanation": "Newer alpha1-blockers (e.g., tamsulosin) are more uroselective and cause less hypotension than older non-selective alpha-blockers (e.g., prazosin). Less erectile dysfunction (c) is also true but hypotension is the main advantage."
   },
   {
     "id": 1712,
@@ -32738,7 +32745,7 @@
     ],
     "correct": "Reduction/prevention of cardiovascular disease",
     "answer": 2,
-    "explanation": "SGLT2 inhibitors (empagliflozin, canagliflozin) and GLP1 agonists (liraglutide, semaglutide) have demonstrated significant cardiovascular benefit (reduction in MACE). While they reduce HbA1c (a) and may improve renal function (b), CV benefit is their key advantage.\n\n---"
+    "explanation": "SGLT2 inhibitors (empagliflozin, canagliflozin) and GLP1 agonists (liraglutide, semaglutide) have demonstrated significant cardiovascular benefit (reduction in MACE). While they reduce HbA1c (a) and may improve renal function (b), CV benefit is their key advantage."
   },
   {
     "id": 1713,
@@ -32756,7 +32763,7 @@
     ],
     "correct": "Degree of cardiotoxicity",
     "answer": 1,
-    "explanation": "Epirubicin is preferred over doxorubicin due to less cardiotoxicity at equivalent doses, allowing higher cumulative doses to be administered. Both cause myelosuppression (a) but cardiotoxicity is the main differentiating factor. Nephrotoxicity (c) and hepatotoxicity (d) are not the primary differences.\n\n---"
+    "explanation": "Epirubicin is preferred over doxorubicin due to less cardiotoxicity at equivalent doses, allowing higher cumulative doses to be administered. Both cause myelosuppression (a) but cardiotoxicity is the main differentiating factor. Nephrotoxicity (c) and hepatotoxicity (d) are not the primary differences."
   },
   {
     "id": 1714,
@@ -32774,7 +32781,7 @@
     ],
     "correct": "All of the above",
     "answer": 3,
-    "explanation": "Polyphenol-rich cocoa improves insulin sensitivity (B), may enhance insulin release (A), and has incretin effects (C), making all statements true.\n\n---"
+    "explanation": "Polyphenol-rich cocoa improves insulin sensitivity (B), may enhance insulin release (A), and has incretin effects (C), making all statements true."
   },
   {
     "id": 1715,
@@ -32792,7 +32799,7 @@
     ],
     "correct": "If ovulation has occurred and the egg was fertilized",
     "answer": 2,
-    "explanation": "ECPs work by delaying or preventing ovulation. Once ovulation has occurred and fertilization has taken place, ECPs are ineffective. They work best within 72 hours (a) but can work up to 120 hours, not if used within 24 hours (b) or 48 hours (d).\n\n---"
+    "explanation": "ECPs work by delaying or preventing ovulation. Once ovulation has occurred and fertilization has taken place, ECPs are ineffective. They work best within 72 hours (a) but can work up to 120 hours, not if used within 24 hours (b) or 48 hours (d)."
   },
   {
     "id": 1716,
@@ -32810,7 +32817,7 @@
     ],
     "correct": "The same dose as females who weigh less than 70kg",
     "answer": 0,
-    "explanation": "Current evidence shows that ECPs (especially levonorgestrel) may be less effective in women >70kg, but the standard recommendation is to take the same dose; double-dosing is not routinely recommended. They should take it as soon as possible.\n\n---"
+    "explanation": "Current evidence shows that ECPs (especially levonorgestrel) may be less effective in women >70kg, but the standard recommendation is to take the same dose; double-dosing is not routinely recommended. They should take it as soon as possible."
   },
   {
     "id": 1717,
@@ -32828,7 +32835,7 @@
     ],
     "correct": "Increased production of nitric oxide, antiplatelet and anti-inflammatory effects",
     "answer": 2,
-    "explanation": "Flavonol-rich cocoa has cardioprotective effects through multiple mechanisms: increased NO production (vasodilation), antiplatelet effects, and anti-inflammatory properties. All mechanisms contribute.\n\n---"
+    "explanation": "Flavonol-rich cocoa has cardioprotective effects through multiple mechanisms: increased NO production (vasodilation), antiplatelet effects, and anti-inflammatory properties. All mechanisms contribute."
   },
   {
     "id": 1718,
@@ -32846,7 +32853,7 @@
     ],
     "correct": "Oxygen therapy, intravenous steroids, protocol based antibiotic therapy, anticoagulant therapy",
     "answer": 0,
-    "explanation": "Emergency treatment for confirmed COVID-19 with severe symptoms includes oxygen therapy, corticosteroids (dexamethasone), antibiotics for secondary infection, and anticoagulants. B, C, D are supportive measures but not the complete emergency treatment.\n\n---"
+    "explanation": "Emergency treatment for confirmed COVID-19 with severe symptoms includes oxygen therapy, corticosteroids (dexamethasone), antibiotics for secondary infection, and anticoagulants. B, C, D are supportive measures but not the complete emergency treatment."
   },
   {
     "id": 1719,
@@ -32864,7 +32871,7 @@
     ],
     "correct": "Ciprofloxacin",
     "answer": 1,
-    "explanation": "G6PD deficiency contraindicates nitrofurantoin (a) and co-trimoxazole (d) due to haemolysis risk. Gentamicin (c) requires IV administration and monitoring, not ideal for outpatient UTI. Ciprofloxacin (b) is effective against E.coli and safe in G6PD deficiency.\n\n---"
+    "explanation": "G6PD deficiency contraindicates nitrofurantoin (a) and co-trimoxazole (d) due to haemolysis risk. Gentamicin (c) requires IV administration and monitoring, not ideal for outpatient UTI. Ciprofloxacin (b) is effective against E.coli and safe in G6PD deficiency."
   },
   {
     "id": 1720,
@@ -32882,31 +32889,33 @@
     ],
     "correct": "Cerebrovascular and cardiovascular events",
     "answer": 3,
-    "explanation": "PAD is a marker of systemic atherosclerosis and is a risk factor for both cardiovascular events (MI) and cerebrovascular events (stroke). It indicates widespread vascular disease.\n\n---"
+    "explanation": "PAD is a marker of systemic atherosclerosis and is a risk factor for both cardiovascular events (MI) and cerebrovascular events (stroke). It indicates widespread vascular disease."
   },
   {
-    "id": 1721,
+    "id": "1721",
     "bank": "gppqe",
-    "comboVariant": "assertion-5",
     "year": 2021,
     "displayNumber": 97,
-    "type": "combo",
+    "type": "single",
     "category": "Endocrinology",
     "question": "Flavonol-rich cocoa is beneficial in persons with PAD because of",
     "options": [
-      "First statement is TRUE, Second statement is TRUE and they are RELATED",
-      "First statement is TRUE, Second statement is TRUE but they are NOT related",
-      "First statement is TRUE but Second statement is FALSE",
-      "First statement is FALSE but Second statement is TRUE",
-      "Both statements are FALSE"
+      "Improved flow-mediated dilation of blood vessels, cholesterol-lowering effect, antiplatelet property",
+      "Improved cognition, reduction in blood glucose, reduction in blood pressure",
+      "Improvement in the immune system, anti-platelet effect, and improved cognition",
+      "Reduction in blood pressure, anti-inflammatory effect, reduction in blood glucose"
     ],
     "statements": [
       "Flavonol-rich cocoa is beneficial in persons with PAD",
       "of"
     ],
-    "correct": "A",
+    "correct": "Improved flow-mediated dilation of blood vessels, cholesterol-lowering effect, antiplatelet property",
     "answer": 0,
-    "explanation": "Flavonol-rich cocoa benefits PAD by improving endothelial function (flow-mediated dilation), lowering cholesterol, and having antiplatelet properties. These directly address the pathophysiology of PAD.\n\n---"
+    "explanation": "Flavonol-rich cocoa benefits PAD by improving endothelial function (flow-mediated dilation), lowering cholesterol, and having antiplatelet properties. These directly address the pathophysiology of PAD.",
+    "text": "Flavonol-rich cocoa is beneficial in persons with PAD because of",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
     "id": 1722,
@@ -32924,7 +32933,7 @@
     ],
     "correct": "Hepatocellular carcinoma (HCC), cirrhosis, liver failure",
     "answer": 1,
-    "explanation": "The primary goals of HBV treatment are to prevent progression to hepatocellular carcinoma (HCC), cirrhosis, and liver failure. These are the most serious long-term complications of chronic HBV.\n\n---"
+    "explanation": "The primary goals of HBV treatment are to prevent progression to hepatocellular carcinoma (HCC), cirrhosis, and liver failure. These are the most serious long-term complications of chronic HBV."
   },
   {
     "id": 1723,
@@ -32942,7 +32951,7 @@
     ],
     "correct": "Abnormal aminotransferase levels, positive HBV DNA findings, positive or negative hepatitis B e antigen (HBeAg)",
     "answer": 0,
-    "explanation": "Treatment is recommended for chronic active hepatitis B based on: elevated ALT/AST, detectable HBV DNA, and HBeAg status (positive or negative). Options B, C, and D represent advanced disease rather than criteria for treatment initiation.\n\n---"
+    "explanation": "Treatment is recommended for chronic active hepatitis B based on: elevated ALT/AST, detectable HBV DNA, and HBeAg status (positive or negative). Options B, C, and D represent advanced disease rather than criteria for treatment initiation."
   },
   {
     "id": 1724,
@@ -32960,7 +32969,7 @@
     ],
     "correct": "Benzodiazepines",
     "answer": 2,
-    "explanation": "Benzodiazepines (e.g., diazepam, chlordiazepoxide) are the first-line and safest treatment for alcohol withdrawal syndrome to prevent seizures and delirium tremens. Phenothiazines (a) and Butyrophenones (d) are antipsychotics, TCAs (b) are antidepressants.\n\n---"
+    "explanation": "Benzodiazepines (e.g., diazepam, chlordiazepoxide) are the first-line and safest treatment for alcohol withdrawal syndrome to prevent seizures and delirium tremens. Phenothiazines (a) and Butyrophenones (d) are antipsychotics, TCAs (b) are antidepressants."
   },
   {
     "id": 1725,
@@ -32978,7 +32987,7 @@
     ],
     "correct": "Cefepime",
     "answer": 3,
-    "explanation": "Cefepime is a fourth-generation cephalosporin. Cefotaxime (a), Cefixime (b), and Ceftazidime (c) are third-generation cephalosporins.\n\n---"
+    "explanation": "Cefepime is a fourth-generation cephalosporin. Cefotaxime (a), Cefixime (b), and Ceftazidime (c) are third-generation cephalosporins."
   },
   {
     "id": 1726,
@@ -32996,7 +33005,7 @@
     ],
     "correct": "Formoterol & Budesonide",
     "answer": 2,
-    "explanation": "GINA 2020 recommends the combination of formoterol (rapid-acting LABA) and budesonide (ICS) for MART. Formoterol has rapid onset making it suitable for both maintenance and reliever use. Salmeterol (a) has slower onset and is not used for MART.\n\n---"
+    "explanation": "GINA 2020 recommends the combination of formoterol (rapid-acting LABA) and budesonide (ICS) for MART. Formoterol has rapid onset making it suitable for both maintenance and reliever use. Salmeterol (a) has slower onset and is not used for MART."
   },
   {
     "id": 1727,
@@ -33014,7 +33023,7 @@
     ],
     "correct": "Montelukast",
     "answer": 1,
-    "explanation": "Montelukast (leukotriene receptor antagonist) has a boxed warning for neuropsychiatric events including suicidal thoughts, depression, and sleep disturbances. Budesonide (a), Sodium cromoglicate (c), and Salmeterol (d) do not have this significant risk.\n\n---"
+    "explanation": "Montelukast (leukotriene receptor antagonist) has a boxed warning for neuropsychiatric events including suicidal thoughts, depression, and sleep disturbances. Budesonide (a), Sodium cromoglicate (c), and Salmeterol (d) do not have this significant risk."
   },
   {
     "id": 1728,
@@ -33032,7 +33041,7 @@
     ],
     "correct": "Auditory hallucinations",
     "answer": 2,
-    "explanation": "Auditory hallucinations (hearing voices) are the most characteristic and prominent symptom of schizophrenia. While delusions (a) occur, auditory hallucinations are more specific. Visual hallucinations (b) are less common in schizophrenia. Anhedonia (d) is a negative symptom.\n\n---"
+    "explanation": "Auditory hallucinations (hearing voices) are the most characteristic and prominent symptom of schizophrenia. While delusions (a) occur, auditory hallucinations are more specific. Visual hallucinations (b) are less common in schizophrenia. Anhedonia (d) is a negative symptom."
   },
   {
     "id": 1729,
@@ -33043,14 +33052,20 @@
     "type": "combo",
     "category": "Respiratory Disorders",
     "question": "In the prevention and management of Asthma:",
+    "options": [
+      "II and III",
+      "I and II",
+      "I only",
+      "I, II and III"
+    ],
     "statements": [
       "Daily low dose inhaled corticosteroids use is recommended treatment to reduce risk of severe exacerbation in patients with mild asthma",
       "Coronary artery disease may worsen asthma",
       "Obesity may be a risk factor for developing asthma"
     ],
-    "correct": "A",
-    "answer": 0,
-    "explanation": "All three statements are true: (I) Low-dose ICS reduces exacerbation risk in mild asthma, (II) CAD can worsen asthma through cardiac asthma mechanisms, (III) Obesity is a risk factor for developing asthma.\n\n---"
+    "correct": "D",
+    "answer": 3,
+    "explanation": "All three statements are true: (I) Low-dose ICS reduces exacerbation risk in mild asthma, (II) CAD can worsen asthma through cardiac asthma mechanisms, (III) Obesity is a risk factor for developing asthma."
   },
   {
     "id": 1730,
@@ -33068,7 +33083,7 @@
     ],
     "correct": "Fluoxetine",
     "answer": 3,
-    "explanation": "Fluoxetine is an antidepressant (SSRI), not an antipsychotic. First-line medications for schizophrenia are atypical antipsychotics: Olanzapine (a), Quetiapine (b), and Haloperidol (c) (typical but still first-line in some cases).\n\n---"
+    "explanation": "Fluoxetine is an antidepressant (SSRI), not an antipsychotic. First-line medications for schizophrenia are atypical antipsychotics: Olanzapine (a), Quetiapine (b), and Haloperidol (c) (typical but still first-line in some cases)."
   },
   {
     "id": 1731,
@@ -33086,7 +33101,7 @@
     ],
     "correct": "Meropenem",
     "answer": 2,
-    "explanation": "Carbapenems (meropenem, imipenem) are the drugs of choice for ESBL-producing organisms due to their stability against ESBL enzymes. Piperacillin-tazobactam (a) is sometimes used but has variable activity, Ceftazidime (b) is a cephalosporin that ESBL organisms are resistant to, Vancomycin (d) is for Gram-positive organisms.\n\n---"
+    "explanation": "Carbapenems (meropenem, imipenem) are the drugs of choice for ESBL-producing organisms due to their stability against ESBL enzymes. Piperacillin-tazobactam (a) is sometimes used but has variable activity, Ceftazidime (b) is a cephalosporin that ESBL organisms are resistant to, Vancomycin (d) is for Gram-positive organisms."
   },
   {
     "id": 1732,
@@ -33104,7 +33119,7 @@
     ],
     "correct": "Moxifloxacin",
     "answer": 2,
-    "explanation": "Moxifloxacin has poor activity against Pseudomonas aeruginosa. Meropenem (a), Tobramycin (b), and Ceftazidime (d) all have good anti-pseudomonal activity. Moxifloxacin is a respiratory fluoroquinolone with limited pseudomonal coverage.\n\n---"
+    "explanation": "Moxifloxacin has poor activity against Pseudomonas aeruginosa. Meropenem (a), Tobramycin (b), and Ceftazidime (d) all have good anti-pseudomonal activity. Moxifloxacin is a respiratory fluoroquinolone with limited pseudomonal coverage."
   },
   {
     "id": 1733,
@@ -33128,7 +33143,7 @@
     ],
     "correct": "B",
     "answer": 1,
-    "explanation": "Statement I is TRUE (carbapenems have broad spectrum covering Gram-positive, Gram-negative, and anaerobes). Statement III is TRUE (ertapenem, imipenem, meropenem are carbapenems). Statement II is FALSE (carbapenems are NOT active against MRSA or E. faecium; vancomycin is used for these).\n\n---\n\n## CASE 1: K.B - Adolescent Depression\n(Questions 40-41 depend on this case)\n\nK.B, a 16-year-old girl was seen in her dormitory, harming herself by placing a hot pan on her arm. She started crying and she said she wished to be dead. She refused to eat or attend classes. Dorm-mates noticed her to be sad all the time and unable to sleep for about a month. Preliminary test results were as follows; BMI = 17.5, RBS 8.0 mmol/L, Hb 9.0 g/dl, Temp 36.5C, BP 102/75"
+    "explanation": "Statement I is TRUE (carbapenems have broad spectrum covering Gram-positive, Gram-negative, and anaerobes). Statement III is TRUE (ertapenem, imipenem, meropenem are carbapenems). Statement II is FALSE (carbapenems are NOT active against MRSA or E. faecium; vancomycin is used for these)."
   },
   {
     "id": 1734,
@@ -33168,7 +33183,7 @@
     "caseBlock": "K.B, a 16-year-old girl was seen in her dormitory, harming herself by placing a hot pan on her arm. She started crying and she said she wished to be dead. She refused to eat or attend classes. Dorm-mates noticed her to be sad all the time and unable to sleep for about a month. Preliminary test results were as follows; BMI = 17.5, RBS 8.0 mmol/L, Hb 9.0 g/dl, Temp 36.5C, BP 102/75",
     "correct": "Sertraline",
     "answer": 0,
-    "explanation": "Sertraline is an SSRI antidepressant, first-line treatment for major depression in adolescents. Valproate (b) is a mood stabiliser, Risperidone (c) and Olanzapine (d) are antipsychotics. Antidepressants are appropriate for unipolar depression without psychosis.\n\n---"
+    "explanation": "Sertraline is an SSRI antidepressant, first-line treatment for major depression in adolescents. Valproate (b) is a mood stabiliser, Risperidone (c) and Olanzapine (d) are antipsychotics. Antidepressants are appropriate for unipolar depression without psychosis."
   },
   {
     "id": 1736,
@@ -33186,7 +33201,7 @@
     ],
     "correct": "Nitroglycerin",
     "answer": 2,
-    "explanation": "Nitroglycerin is contraindicated in patients who have taken sildenafil (phosphodiesterase-5 inhibitor) within 24-48 hours due to the risk of severe hypotension. Aspirin (a), heparin (b), and morphine (d) are safe and indicated for acute coronary syndrome.\n\n---"
+    "explanation": "Nitroglycerin is contraindicated in patients who have taken sildenafil (phosphodiesterase-5 inhibitor) within 24-48 hours due to the risk of severe hypotension. Aspirin (a), heparin (b), and morphine (d) are safe and indicated for acute coronary syndrome."
   },
   {
     "id": 1737,
@@ -33204,7 +33219,7 @@
     ],
     "correct": "A 39-year-old who smokes cigarettes occasionally and underwent uncomplicated appendectomy 2 months ago",
     "answer": 2,
-    "explanation": "Option C has the lowest risk: appendectomy 2 months ago is well past the high-risk period (usually 4-6 weeks post-surgery), occasional smoking is a weak risk factor. A (post-caesarean), B (hip replacement + estrogen), and D (factor V Leiden deficiency) all have significantly higher risk.\n\n---"
+    "explanation": "Option C has the lowest risk: appendectomy 2 months ago is well past the high-risk period (usually 4-6 weeks post-surgery), occasional smoking is a weak risk factor. A (post-caesarean), B (hip replacement + estrogen), and D (factor V Leiden deficiency) all have significantly higher risk."
   },
   {
     "id": 1738,
@@ -33222,7 +33237,7 @@
     ],
     "correct": "Moxifloxacin",
     "answer": 1,
-    "explanation": "Moxifloxacin is primarily hepatically metabolised and requires no dose adjustment in renal insufficiency. Ciprofloxacin (a), Norfloxacin (c), and Gatifloxacin (d) require dose adjustment in renal impairment due to renal excretion.\n\n---"
+    "explanation": "Moxifloxacin is primarily hepatically metabolised and requires no dose adjustment in renal insufficiency. Ciprofloxacin (a), Norfloxacin (c), and Gatifloxacin (d) require dose adjustment in renal impairment due to renal excretion."
   },
   {
     "id": 1739,
@@ -33240,7 +33255,7 @@
     ],
     "correct": "In active gastric bleeding and in haemorrhagic stroke",
     "answer": 3,
-    "explanation": "Absolute contraindications to thrombolytics include active internal bleeding (including gastric bleeding) and history of haemorrhagic stroke. Recent trauma (a) is a relative contraindication, previous ischaemic stroke (b) depends on timing, uncontrolled hypertension (c) is a relative contraindication.\n\n---"
+    "explanation": "Absolute contraindications to thrombolytics include active internal bleeding (including gastric bleeding) and history of haemorrhagic stroke. Recent trauma (a) is a relative contraindication, previous ischaemic stroke (b) depends on timing, uncontrolled hypertension (c) is a relative contraindication."
   },
   {
     "id": 1740,
@@ -33258,7 +33273,7 @@
     ],
     "correct": "A combination of a long-acting insulin with after meals short-acting soluble insulin",
     "answer": 2,
-    "explanation": "Physiologic insulin pattern involves basal insulin (continuous low level) and bolus insulin (post-meal spikes). A combination of long-acting (basal) and short-acting (bolus) insulin best mimics this pattern. This is known as basal-bolus therapy.\n\n---"
+    "explanation": "Physiologic insulin pattern involves basal insulin (continuous low level) and bolus insulin (post-meal spikes). A combination of long-acting (basal) and short-acting (bolus) insulin best mimics this pattern. This is known as basal-bolus therapy."
   },
   {
     "id": 1741,
@@ -33276,7 +33291,7 @@
     ],
     "correct": "Digoxin and beta blockers slow down conduction down the atrioventricular node",
     "answer": 0,
-    "explanation": "Both digoxin and beta-blockers slow conduction through the AV node, reducing ventricular rate in atrial fibrillation. Digoxin does this via vagal stimulation; beta-blockers do this by sympathetic blockade. Both are used for rate control in AF.\n\n---"
+    "explanation": "Both digoxin and beta-blockers slow conduction through the AV node, reducing ventricular rate in atrial fibrillation. Digoxin does this via vagal stimulation; beta-blockers do this by sympathetic blockade. Both are used for rate control in AF."
   },
   {
     "id": 1742,
@@ -33294,7 +33309,7 @@
     ],
     "correct": "As combination with inhaled corticosteroids",
     "answer": 2,
-    "explanation": "LABA should NEVER be used as monotherapy in asthma (a) due to increased risk of asthma-related death. They are used as add-on therapy in combination with ICS (c) when ICS alone is insufficient. They are NOT for rescue therapy (b); SABA is used for rescue.\n\n---"
+    "explanation": "LABA should NEVER be used as monotherapy in asthma (a) due to increased risk of asthma-related death. They are used as add-on therapy in combination with ICS (c) when ICS alone is insufficient. They are NOT for rescue therapy (b); SABA is used for rescue."
   },
   {
     "id": 1743,
@@ -33305,14 +33320,14 @@
     "category": "Respiratory Disorders",
     "question": "Which therapy should be available for ALL asthma patients (both intermittent and persistent cases)?",
     "options": [
-      "Low dose",
+      "Low-dose inhaled corticosteroid (ICS)",
       "PRN Short-Acting Beta-Agonist",
       "Long-Acting Beta-Agonists",
       "Leukotriene Antagonist"
     ],
-    "correct": "PRN Short-Acting Beta-Agonist",
-    "answer": 1,
-    "explanation": "All asthma patients, regardless of severity, should have a PRN SABA (e.g., salbutamol) for relief of acute symptoms. Low-dose ICS (a) is only for persistent asthma, LABA (c) is for add-on therapy, and LTRA (d) is for specific patients.\n\n---"
+    "correct": "Low-dose inhaled corticosteroid (ICS)",
+    "answer": 0,
+    "explanation": "A low-dose inhaled corticosteroid (ICS) should be available as the controller therapy for asthma. It reduces airway inflammation and the risk of exacerbations. LABA should not be used alone, and a reliever should be selected according to the intended guideline or lecture protocol."
   },
   {
     "id": 1744,
@@ -33330,7 +33345,7 @@
     ],
     "correct": "Digoxin",
     "answer": 1,
-    "explanation": "Digoxin has a positive inotropic effect (increases myocardial contractility) via inhibition of Na+/K+ ATPase, increasing intracellular calcium. Amiodarone and beta-blockers have negative inotropic effects. This makes digoxin particularly useful in AF with heart failure.\n\n---"
+    "explanation": "Digoxin has a positive inotropic effect (increases myocardial contractility) via inhibition of Na+/K+ ATPase, increasing intracellular calcium. Amiodarone and beta-blockers have negative inotropic effects. This makes digoxin particularly useful in AF with heart failure."
   },
   {
     "id": 1745,
@@ -33348,7 +33363,7 @@
     ],
     "correct": "More potent diuresis, effective in renal impairment, shorter duration",
     "answer": 2,
-    "explanation": "Loop diuretics (furosemide) are preferred in elderly cardiac failure because they are more potent, remain effective even with reduced renal function (common in elderly), and have a shorter duration allowing better control of fluid balance. Option A incorrectly states \"less risk of hyperkalemia\" (loop diuretics cause hypokalaemia), B incorrectly states \"works in liver failure\" and \"long-acting,\" D incorrectly states \"less potent.\"\n\n---"
+    "explanation": "Loop diuretics (furosemide) are preferred in elderly cardiac failure because they are more potent, remain effective even with reduced renal function (common in elderly), and have a shorter duration allowing better control of fluid balance. Option A incorrectly states \"less risk of hyperkalemia\" (loop diuretics cause hypokalaemia), B incorrectly states \"works in liver failure\" and \"long-acting,\" D incorrectly states \"less potent.\""
   },
   {
     "id": 1746,
@@ -33366,7 +33381,7 @@
     ],
     "correct": "Reversible lower airway constriction",
     "answer": 2,
-    "explanation": "Asthma is characterized by REVERSIBLE airway obstruction (bronchoconstriction) that responds to bronchodilators. Irreversible obstruction (a) is characteristic of COPD. Symptoms vary between patients (d) and can be intermittent (b).\n\n---"
+    "explanation": "Asthma is characterized by REVERSIBLE airway obstruction (bronchoconstriction) that responds to bronchodilators. Irreversible obstruction (a) is characteristic of COPD. Symptoms vary between patients (d) and can be intermittent (b)."
   },
   {
     "id": 1747,
@@ -33384,7 +33399,7 @@
     ],
     "correct": "All the above",
     "answer": 3,
-    "explanation": "All are environmental risk factors for asthma development. Allergen exposure (b) sensitises the airways, secondhand smoke (c) damages developing lungs, and socioeconomic status (a) affects access to healthcare and environmental exposures.\n\n---"
+    "explanation": "All are environmental risk factors for asthma development. Allergen exposure (b) sensitises the airways, secondhand smoke (c) damages developing lungs, and socioeconomic status (a) affects access to healthcare and environmental exposures."
   },
   {
     "id": 1748,
@@ -33402,7 +33417,7 @@
     ],
     "correct": "Inhaled corticosteroids",
     "answer": 2,
-    "explanation": "Exhaled nitric oxide (FeNO) is a marker of eosinophilic airway inflammation. ICS reduce FeNO levels by decreasing airway inflammation. SABA (a), LABA (b), and antimuscarinics (d) do not significantly reduce FeNO.\n\n---"
+    "explanation": "Exhaled nitric oxide (FeNO) is a marker of eosinophilic airway inflammation. ICS reduce FeNO levels by decreasing airway inflammation. SABA (a), LABA (b), and antimuscarinics (d) do not significantly reduce FeNO."
   },
   {
     "id": 1749,
@@ -33420,7 +33435,7 @@
     ],
     "correct": "Salbutamol",
     "answer": 0,
-    "explanation": "Salbutamol is a beta-2 agonist. Common side effects include palpitations (beta-1 stimulation), muscle cramps, and fine tremor (beta-2 stimulation). Beclomethasone (b) is an ICS with local effects, Cromolyn (c) is a mast cell stabiliser, Ipratropium (d) is an antimuscarinic.\n\n---"
+    "explanation": "Salbutamol is a beta-2 agonist. Common side effects include palpitations (beta-1 stimulation), muscle cramps, and fine tremor (beta-2 stimulation). Beclomethasone (b) is an ICS with local effects, Cromolyn (c) is a mast cell stabiliser, Ipratropium (d) is an antimuscarinic."
   },
   {
     "id": 1750,
@@ -33438,7 +33453,7 @@
     ],
     "correct": "FEV1/FVC < 70%",
     "answer": 2,
-    "explanation": "COPD is confirmed by post-bronchodilator FEV1/FVC ratio < 70% (or <0.7), indicating airflow obstruction that is not fully reversible. Options A and D indicate normal lung function, B is incorrect order.\n\n---"
+    "explanation": "COPD is confirmed by post-bronchodilator FEV1/FVC ratio < 70% (or <0.7), indicating airflow obstruction that is not fully reversible. Options A and D indicate normal lung function, B is incorrect order."
   },
   {
     "id": 1751,
@@ -33456,7 +33471,7 @@
     ],
     "correct": "Stop the intake of nicotine, carbon monoxide and other chemicals in tobacco",
     "answer": 0,
-    "explanation": "Smoking cessation aims to completely stop the intake of all harmful substances in tobacco: nicotine, carbon monoxide, tar, and thousands of other chemicals. Total cessation, not just minimization (b), is the goal. Nicotine replacement therapy may provide nicotine but avoids other harmful chemicals.\n\n---"
+    "explanation": "Smoking cessation aims to completely stop the intake of all harmful substances in tobacco: nicotine, carbon monoxide, tar, and thousands of other chemicals. Total cessation, not just minimization (b), is the goal. Nicotine replacement therapy may provide nicotine but avoids other harmful chemicals."
   },
   {
     "id": 1752,
@@ -33474,7 +33489,7 @@
     ],
     "correct": "Sex",
     "answer": 2,
-    "explanation": "Sex (gender) is a non-modifiable risk factor for CAD (males have higher risk). Obesity (a), glucose intolerance/diabetes (b), and smoking (d) are all modifiable risk factors that can be changed through lifestyle or medical intervention.\n\n---"
+    "explanation": "Sex (gender) is a non-modifiable risk factor for CAD (males have higher risk). Obesity (a), glucose intolerance/diabetes (b), and smoking (d) are all modifiable risk factors that can be changed through lifestyle or medical intervention."
   },
   {
     "id": 1753,
@@ -33492,7 +33507,7 @@
     ],
     "correct": "Inhibits Xanthine oxidase",
     "answer": 0,
-    "explanation": "Allopurinol works by inhibiting xanthine oxidase, reducing uric acid production. It may precipitate acute gout (b) if started during an acute attack, should be started 2-3 weeks after acute attack (c is incorrect phrasing), and dose should be reduced in renal failure (d is false).\n\n---"
+    "explanation": "Allopurinol works by inhibiting xanthine oxidase, reducing uric acid production. It may precipitate acute gout (b) if started during an acute attack, should be started 2-3 weeks after acute attack (c is incorrect phrasing), and dose should be reduced in renal failure (d is false)."
   },
   {
     "id": 1754,
@@ -33510,7 +33525,7 @@
     ],
     "correct": "Crohn's Disease",
     "answer": 3,
-    "explanation": "Crohn's disease can affect any part of the GI tract from mouth to anus, including the peri-anal region (perianal Crohn's). Ulcerative colitis (b) only affects the colon. Peri-anal disease (a) is a description, Prostatitis (c) is unrelated.\n\n---"
+    "explanation": "Crohn's disease can affect any part of the GI tract from mouth to anus, including the peri-anal region (perianal Crohn's). Ulcerative colitis (b) only affects the colon. Peri-anal disease (a) is a description, Prostatitis (c) is unrelated."
   },
   {
     "id": 1755,
@@ -33528,7 +33543,7 @@
     ],
     "correct": "E",
     "answer": 4,
-    "explanation": "Section 105 of Act 857 states that pharmacists and pharmaceutical support staff can give first aid in accidents and for simple ailments of common occurrence. Statement I is false (pharmaceutical support staff can also give first aid), Statement II is false (support staff can also), Statement III is true.\n\n---"
+    "explanation": "Section 105 of Act 857 states that pharmacists and pharmaceutical support staff can give first aid in accidents and for simple ailments of common occurrence. Statement I is false (pharmaceutical support staff can also give first aid), Statement II is false (support staff can also), Statement III is true."
   },
   {
     "id": 1756,
@@ -33546,7 +33561,7 @@
     ],
     "correct": "C",
     "answer": 2,
-    "explanation": "Statement I is NOT permissible (POM cannot be dispensed without a prescription). Statement II is permissible (pharmacists can charge for professional services). Statement III is permissible (referral to medical practitioner after emergency care is appropriate).\n\n---"
+    "explanation": "Statement I is NOT permissible (POM cannot be dispensed without a prescription). Statement II is permissible (pharmacists can charge for professional services). Statement III is permissible (referral to medical practitioner after emergency care is appropriate)."
   },
   {
     "id": 1757,
@@ -33564,43 +33579,47 @@
     ],
     "correct": "D",
     "answer": 3,
-    "explanation": "Statement I is TRUE (transactions must be recorded). Statement II is FALSE (referral should be immediate in emergencies, not within 24 hours). Statement III is FALSE (pharmacist should state all medicines used in the referral, not just those recorded).\n\n---"
+    "explanation": "Statement I is TRUE (transactions must be recorded). Statement II is FALSE (referral should be immediate in emergencies, not within 24 hours). Statement III is FALSE (pharmacist should state all medicines used in the referral, not just those recorded)."
   },
   {
-    "id": 1758,
+    "id": "1758",
     "bank": "gppqe",
-    "comboVariant": "table-4",
+    "comboVariant": "three-statement",
     "year": 2021,
     "displayNumber": 47,
     "type": "combo",
     "category": "Hematology",
     "question": "A foreign trained person may be registered as a practitioner where that person;",
     "options": [
-      "I, II and III",
+      "I and III only",
+      "I and II only",
       "II and III only",
-      "I only",
-      "III only"
+      "All the above"
     ],
     "statements": [
       "has satisfied the requirements in section 83 of ACT 857",
       "has a good working knowledge of the English language and",
       "has proof of qualification and registration to practise in that person's country of origin or where that person was trained"
     ],
-    "correct": "D",
+    "correct": "All the above",
     "answer": 3,
-    "explanation": "All three conditions must be satisfied for foreign-trained practitioners to be registered: Section 83 requirements (I), good English knowledge (II), and proof of qualifications/registration in country of origin (III).\n\n---"
+    "explanation": "All three conditions must be satisfied for foreign-trained practitioners to be registered: Section 83 requirements (I), good English knowledge (II), and proof of qualifications/registration in country of origin (III).",
+    "text": "A foreign trained person may be registered as a practitioner where that person;",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
-    "id": 1759,
+    "id": "1759",
     "bank": "gppqe",
-    "comboVariant": "table-4",
+    "comboVariant": "three-statement",
     "year": 2021,
     "displayNumber": 84,
     "type": "combo",
     "category": "Infectious Diseases",
     "question": "The Board shall on the recommendation of the Disciplinary Committee of the council cancel the registration of a pharmacist or pharmaceutical support staff",
     "options": [
-      "I, II and III",
+      "I and III only",
       "II and III only",
       "I only",
       "III only"
@@ -33610,24 +33629,28 @@
       "Who is dead",
       "Who has been found guilty of professional misconduct by the Disciplinary Committee"
     ],
-    "correct": "A",
+    "correct": "I and III only",
     "answer": 0,
-    "explanation": "Grounds for cancellation include failure to comply with penalties (I) and professional misconduct (III). Death (II) is a reason for REMOVAL from the register, not cancellation (removal is administrative; cancellation is punitive).\n\n---"
+    "explanation": "Grounds for cancellation include failure to comply with penalties (I) and professional misconduct (III). Death (II) is a reason for REMOVAL from the register, not cancellation (removal is administrative; cancellation is punitive).",
+    "text": "The Board shall on the recommendation of the Disciplinary Committee of the council cancel the registration of a pharmacist or pharmaceutical support staff",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
-    "id": 1760,
+    "id": "1760",
     "bank": "gppqe",
-    "comboVariant": "table-4",
+    "comboVariant": "three-statement",
     "year": 2021,
     "displayNumber": 121,
     "type": "combo",
     "category": "Hematology",
     "question": "Components of the Health Professions Regulatory Bodies Act, 2013 relating to pharmacy practice do not include:",
     "options": [
-      "I, II and III",
-      "II and III only",
-      "I only",
-      "III only"
+      "I and III",
+      "I and II",
+      "II and IV",
+      "II and III only"
     ],
     "statements": [
       "Provision for offences and penalties",
@@ -33635,33 +33658,41 @@
       "Provision for medicines classification",
       "Provisions for drug registration and clinical trials"
     ],
-    "correct": "C",
+    "correct": "II and IV",
     "answer": 2,
-    "explanation": "Act 857 does NOT include provisions for: control of import of drugs (II) - this is under FDA/other acts, and drug registration/clinical trials (IV) - this is under FDA Act. Provisions for offences/penalties (I) and medicines classification (III) are included in Act 857.\n\n---"
+    "explanation": "Act 857 does NOT include provisions for: control of import of drugs (II) - this is under FDA/other acts, and drug registration/clinical trials (IV) - this is under FDA Act. Provisions for offences/penalties (I) and medicines classification (III) are included in Act 857.",
+    "text": "Components of the Health Professions Regulatory Bodies Act, 2013 relating to pharmacy practice do not include:",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
-    "id": 1761,
+    "id": "1761",
     "bank": "gppqe",
-    "comboVariant": "assertion-5",
+    "comboVariant": "three-statement",
     "year": 2021,
     "displayNumber": 29,
     "type": "combo",
     "category": "Pharmacy Law & Ethics",
     "question": "A supply outlet may have limited license because its license is restricted to:",
     "options": [
-      "First statement is TRUE, Second statement is TRUE and they are RELATED",
-      "First statement is TRUE, Second statement is TRUE but they are NOT related",
-      "First statement is TRUE but Second statement is FALSE",
-      "First statement is FALSE but Second statement is TRUE",
+      "I and III",
+      "I only",
+      "III only",
+      "All the above",
       "Both statements are FALSE"
     ],
     "statements": [
-      "A supply outlet may have limited license",
-      "its license is restricted to:"
+      "The holder",
+      "Location not sufficiently served by existing facility for the supply of medicines",
+      "Retail supply of Class C medicines."
     ],
-    "correct": "D",
+    "correct": "All the above",
     "answer": 3,
-    "explanation": "A limited license is restricted to the holder (I), location not sufficiently served (II), and retail supply of Class C medicines (III). All are correct reasons for limited license.\n\n---"
+    "explanation": "A limited license is restricted to the holder (I), location not sufficiently served (II), and retail supply of Class C medicines (III). All are correct reasons for limited license.",
+    "text": "A supply outlet may have limited license because its license is restricted to:",
+    "reviewStatus": "corrected",
+    "reviewNotes": ""
   },
   {
     "id": 1762,
@@ -33679,7 +33710,7 @@
     ],
     "correct": "A",
     "answer": 0,
-    "explanation": "All statements are correct: Dentists' prescriptions must bear \"for dental treatment\" (I), Veterinary surgeons' must bear \"for animal treatment\" (II), and Medical practitioners' must bear \"for human treatment\" (III).\n\n---"
+    "explanation": "All statements are correct: Dentists' prescriptions must bear \"for dental treatment\" (I), Veterinary surgeons' must bear \"for animal treatment\" (II), and Medical practitioners' must bear \"for human treatment\" (III)."
   },
   {
     "id": 1763,
@@ -33697,7 +33728,7 @@
     ],
     "correct": "The Council of State",
     "answer": 2,
-    "explanation": "The Registrar of the Pharmacy Council is appointed by the President in accordance with Article 195 of the Constitution, on the advice of the Public Services Commission (a) and the Governing Council (b). The Council of State (c) is not involved in the appointment.\n\n---"
+    "explanation": "The Registrar of the Pharmacy Council is appointed by the President in accordance with Article 195 of the Constitution, on the advice of the Public Services Commission (a) and the Governing Council (b). The Council of State (c) is not involved in the appointment."
   },
   {
     "id": 1764,
@@ -33715,7 +33746,7 @@
     ],
     "correct": "C",
     "answer": 2,
-    "explanation": "According to pharmacy law philosophy: Medicines are NOT ordinary articles of commerce (I is false) - they are special products. Medicines are not chosen directly by buyers/patients (II is true). The seller/pharmacist is made responsible for the buyer's choice (III is true).\n\n---"
+    "explanation": "According to pharmacy law philosophy: Medicines are NOT ordinary articles of commerce (I is false) - they are special products. Medicines are not chosen directly by buyers/patients (II is true). The seller/pharmacist is made responsible for the buyer's choice (III is true)."
   },
   {
     "id": 1765,
@@ -33733,7 +33764,7 @@
     ],
     "correct": "Pharmacy Act 1994, ACT 498",
     "answer": 0,
-    "explanation": "The Pharmacy Act 1994, Act 498 was repealed and replaced by Part IV of the Health Professions Regulatory Bodies Act, 2013 (Act 857). Acts 489, 587, and 875 are not the correct Pharmacy Act numbers.\n\n---"
+    "explanation": "The Pharmacy Act 1994, Act 498 was repealed and replaced by Part IV of the Health Professions Regulatory Bodies Act, 2013 (Act 857). Acts 489, 587, and 875 are not the correct Pharmacy Act numbers."
   },
   {
     "id": 1766,
@@ -33751,7 +33782,7 @@
     ],
     "correct": "Three",
     "answer": 0,
-    "explanation": "A member of the Governing Board of the Pharmacy Council shall hold office for a period not exceeding three years, renewable for another term. The maximum is six years total (two terms of three years).\n\n---"
+    "explanation": "A member of the Governing Board of the Pharmacy Council shall hold office for a period not exceeding three years, renewable for another term. The maximum is six years total (two terms of three years)."
   },
   {
     "id": 1767,
@@ -33769,7 +33800,7 @@
     ],
     "correct": "Pharmacist",
     "answer": 0,
-    "explanation": "A pharmacist can dispense POM under a prescription but CANNOT issue or authorise a prescription (they dispense, not prescribe). Veterinary practitioners (b), persons authorised by the Minister (c), and medical/dental practitioners (d) can issue/authorise prescriptions.\n\n---"
+    "explanation": "A pharmacist can dispense POM under a prescription but CANNOT issue or authorise a prescription (they dispense, not prescribe). Veterinary practitioners (b), persons authorised by the Minister (c), and medical/dental practitioners (d) can issue/authorise prescriptions."
   },
   {
     "id": 1768,
@@ -33787,7 +33818,7 @@
     ],
     "correct": "A pharmacist with at least fifteen years professional experience",
     "answer": 0,
-    "explanation": "The Registrar of the Pharmacy Council shall be a pharmacist of good standing with at least fifteen years of professional experience. This is a statutory requirement under the Health Professions Regulatory Bodies Act.\n\n---"
+    "explanation": "The Registrar of the Pharmacy Council shall be a pharmacist of good standing with at least fifteen years of professional experience. This is a statutory requirement under the Health Professions Regulatory Bodies Act."
   },
   {
     "id": 1769,
@@ -33805,7 +33836,7 @@
     ],
     "correct": "Six months",
     "answer": 1,
-    "explanation": "Temporary registration under Section 87 is valid for a period of not more than six months. This allows for short-term practice under specific circumstances.\n\n---"
+    "explanation": "Temporary registration under Section 87 is valid for a period of not more than six months. This allows for short-term practice under specific circumstances."
   },
   {
     "id": 1770,
@@ -33823,10 +33854,10 @@
     ],
     "correct": "The Minister",
     "answer": 0,
-    "explanation": "The Minister (of Health) on the advice of the Board may by legislative instrument make regulations for discipline of pharmacists and pharmaceutical support staff. The Disciplinary Committee (b) handles cases, Registrar (c) administers, PSGH President (d) is professional body leader.\n\n---"
+    "explanation": "The Minister (of Health) on the advice of the Board may by legislative instrument make regulations for discipline of pharmacists and pharmaceutical support staff. The Disciplinary Committee (b) handles cases, Registrar (c) administers, PSGH President (d) is professional body leader."
   },
   {
-    "id": 1771,
+    "id": "1771",
     "bank": "gppqe",
     "year": 2021,
     "displayNumber": 12,
@@ -33840,7 +33871,12 @@
     ],
     "correct": "The Registrar",
     "answer": 0,
-    "explanation": "Under Section 86, a person who has practised with provisional registration should apply to the Registrar for permanent registration. The Registrar manages the application process and maintains the register.\n\n---"
+    "explanation": "Under Section 86, a person who has practised with provisional registration should apply to the Registrar for permanent registration. The Registrar manages the application process and maintains the register.",
+    "text": "Who should a person apply to for permanent registration after practising with a provisional registration for a determined period under section 86 of the Health Professions Regulatory Bodies Act, 2013 ACT 857?",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
     "id": 1772,
@@ -33858,7 +33894,7 @@
     ],
     "correct": "Three",
     "answer": 0,
-    "explanation": "Under Section 85 of Act 857, the Board shall have three categories of registers: (1) Register of Pharmacists, (2) Register of Pharmaceutical Support Staff, and (3) Register of Pharmaceutical Technicians.\n\n---"
+    "explanation": "Under Section 85 of Act 857, the Board shall have three categories of registers: (1) Register of Pharmacists, (2) Register of Pharmaceutical Support Staff, and (3) Register of Pharmaceutical Technicians."
   },
   {
     "id": 1773,
@@ -33876,7 +33912,7 @@
     ],
     "correct": "Pharmacy Council",
     "answer": 2,
-    "explanation": "The Pharmacy Council is responsible for ensuring equitable and accessible distribution of pharmaceutical premises throughout Ghana. This is part of their regulatory function to ensure pharmaceutical services are available to all citizens.\n\n---"
+    "explanation": "The Pharmacy Council is responsible for ensuring equitable and accessible distribution of pharmaceutical premises throughout Ghana. This is part of their regulatory function to ensure pharmaceutical services are available to all citizens."
   },
   {
     "id": 1774,
@@ -33894,7 +33930,7 @@
     ],
     "correct": "Sustainable development goal 3",
     "answer": 0,
-    "explanation": "SDG 3 is \"Good Health and Well-being\". SDG 8 is \"Decent Work and Economic Growth\", SDG 4 is \"Quality Education\", SDG 5 is \"Gender Equality\".\n\n---"
+    "explanation": "SDG 3 is \"Good Health and Well-being\". SDG 8 is \"Decent Work and Economic Growth\", SDG 4 is \"Quality Education\", SDG 5 is \"Gender Equality\"."
   },
   {
     "id": 1775,
@@ -33912,16 +33948,16 @@
     ],
     "correct": "I, III and IV",
     "answer": 0,
-    "explanation": "Medical Laboratory Technicians (I), Medical Laboratory Technologists (III), and Medical Laboratory Scientists (IV) qualify to practice laboratory investigations. Pharmacy Technicians (II) do not perform laboratory investigations, Clinical Psychologists (V) do not.\n\n---"
+    "explanation": "Medical Laboratory Technicians (I), Medical Laboratory Technologists (III), and Medical Laboratory Scientists (IV) qualify to practice laboratory investigations. Pharmacy Technicians (II) do not perform laboratory investigations, Clinical Psychologists (V) do not."
   },
   {
-    "id": 1776,
+    "id": "1776",
     "bank": "gppqe",
     "year": 2021,
     "displayNumber": 68,
     "type": "single",
     "category": "Pharmacy Law & Ethics",
-    "question": "Which agency of the Ministry of Health, Ghana is mandated by law to license (III) and (IV) listed in question 81",
+    "question": "Which agency of the Ministry of Health, Ghana is mandated by law to license  Medical Laboratory Technologists and Medical laboratory Scientists",
     "options": [
       "Pharmacy Council",
       "Medical and Dental Council",
@@ -33930,16 +33966,20 @@
     ],
     "correct": "Allied Health Professions Council",
     "answer": 3,
-    "explanation": "The Allied Health Professions Council is responsible for licensing Medical Laboratory Technologists (III) and Medical Laboratory Scientists (IV). The Pharmacy Council licenses pharmacists, Medical and Dental Council licenses doctors/dentists, Nurses and Midwives Council licenses nurses.\n\n---"
+    "explanation": "The Allied Health Professions Council is responsible for licensing Medical Laboratory Technologists and Medical Laboratory Scientists. The Pharmacy Council licenses pharmacists, Medical and Dental Council licenses doctors/dentists, Nurses and Midwives Council licenses nurses.",
+    "text": "Which agency of the Ministry of Health, Ghana is mandated by law to license  Medical Laboratory Technologists and Medical laboratory Scientists",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": ""
   },
   {
-    "id": 1777,
+    "id": "1777",
     "bank": "gppqe",
     "year": 2021,
     "displayNumber": 105,
     "type": "single",
     "category": "Neurology & Psychiatry",
-    "question": "Which of the following Health Professions in Ghana are considered as FRONT LINE HEALTH WORKERS?",
+    "question": "Which of the following Health Professions in Ghana are considered as FRONT LINE HEALTH WORKERS?\n\n(I) Pharmacists (II) Medical doctors (III) Nurses (IV) Health Laboratory Scientists (V) Clinical Psychologists (VI) Radiologists (VII) Health Administrators (VIII) Environmental Health Scientists",
     "options": [
       "I, II, III, IV, V, VI and VII",
       "VII only",
@@ -33948,7 +33988,12 @@
     ],
     "correct": "I, II, III, IV, V, VI and VII",
     "answer": 0,
-    "explanation": "Frontline health workers include Pharmacists (I), Medical doctors (II), Nurses (III), Health Laboratory Scientists (IV), Clinical Psychologists (V), Radiologists (VI), and Health Administrators (VII). Environmental Health Scientists (VIII) are not typically considered frontline clinical health workers.\n\n---"
+    "explanation": "Frontline health workers include Pharmacists (I), Medical doctors (II), Nurses (III), Health Laboratory Scientists (IV), Clinical Psychologists (V), Radiologists (VI), and Health Administrators (VII). Environmental Health Scientists (VIII) are not typically considered frontline clinical health workers.",
+    "text": "Which of the following Health Professions in Ghana are considered as FRONT LINE HEALTH WORKERS?\n\n(I) Pharmacists (II) Medical doctors (III) Nurses (IV) Health Laboratory Scientists (V) Clinical Psychologists (VI) Radiologists (VII) Health Administrators (VIII) Environmental Health Scientists",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Mental Health"
   },
   {
     "id": 1778,
@@ -33966,7 +34011,7 @@
     ],
     "correct": "The medicine must be that from the original manufacturer",
     "answer": 0,
-    "explanation": "Rational Use of Medicines (RUM) means patients receive medications appropriate to their clinical needs, in doses that meet their own individual requirements, for an adequate period of time, and at the lowest cost. The origin of manufacture (original vs generic) is not a component of RUM. Generic medicines are equally acceptable.\n\n---"
+    "explanation": "Rational Use of Medicines (RUM) means patients receive medications appropriate to their clinical needs, in doses that meet their own individual requirements, for an adequate period of time, and at the lowest cost. The origin of manufacture (original vs generic) is not a component of RUM. Generic medicines are equally acceptable."
   },
   {
     "id": 1779,
@@ -33984,7 +34029,7 @@
     ],
     "correct": "Low prices of medicines on the NHIS Medicines List",
     "answer": 1,
-    "explanation": "The most notorious challenge is low prices of medicines on the NHIS Medicines List, which often do not reflect market prices, making it financially unviable for community pharmacies to dispense NHIS prescriptions. This leads to stockouts and non-participation.\n\n---"
+    "explanation": "The most notorious challenge is low prices of medicines on the NHIS Medicines List, which often do not reflect market prices, making it financially unviable for community pharmacies to dispense NHIS prescriptions. This leads to stockouts and non-participation."
   },
   {
     "id": 1780,
@@ -34002,10 +34047,10 @@
     ],
     "correct": "Many quacks engaged in the production and sale of herbal medicines and devices associated with their trade or practice",
     "answer": 1,
-    "explanation": "The biggest challenge is the prevalence of unregistered practitioners (\"quacks\") producing and selling unregistered herbal medicines without quality assurance or safety standards. This poses significant health risks to the public.\n\n---"
+    "explanation": "The biggest challenge is the prevalence of unregistered practitioners (\"quacks\") producing and selling unregistered herbal medicines without quality assurance or safety standards. This poses significant health risks to the public."
   },
   {
-    "id": 1781,
+    "id": "1781",
     "bank": "gppqe",
     "comboVariant": "three-statement",
     "year": 2021,
@@ -34023,9 +34068,19 @@
       "Dispensing Technician",
       "Dental surgeon"
     ],
-    "correct": "D",
+    "correct": "I to V",
     "answer": 3,
-    "explanation": "Allied Health Professions Council registers Medical Physicists (I), Biostatisticians (II), Health Information Administrators (III), Environmental Health Officers (IV), and Ultrasonographers (V). Nurse Midwives (VI) are under Nurses and Midwives Council, Dispensing Technicians (VII) are under Pharmacy Council, Dental Surgeons (VIII) are under Medical and Dental Council.\n\n---"
+    "explanation": "Allied Health Professions Council registers Medical Physicists (I), Biostatisticians (II), Health Information Administrators (III), Environmental Health Officers (IV), and Ultrasonographers (V). Nurse Midwives (VI) are under Nurses and Midwives Council, Dispensing Technicians (VII) are under Pharmacy Council, Dental Surgeons (VIII) are under Medical and Dental Council.",
+    "text": "Which of the under listed health professions are registrable by the Allied Health Professions Council of Ghana",
+    "options": [
+      "I to V",
+      "V only",
+      "VI and VII",
+      "VIII only"
+    ],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Mental Health"
   },
   {
     "id": 1782,
@@ -34043,10 +34098,10 @@
     ],
     "correct": "Delta Covirus",
     "answer": 1,
-    "explanation": "The Delta variant (B.1.617.2) of SARS-CoV-2 was a major challenge in COVID-19 management due to increased transmissibility and reduced vaccine effectiveness. Alpha was also a variant but Delta was more significant. SARS is a different virus, Ebola is unrelated.\n\n---"
+    "explanation": "The Delta variant (B.1.617.2) of SARS-CoV-2 was a major challenge in COVID-19 management due to increased transmissibility and reduced vaccine effectiveness. Alpha was also a variant but Delta was more significant. SARS is a different virus, Ebola is unrelated."
   },
   {
-    "id": 1783,
+    "id": "1783",
     "bank": "gppqe",
     "comboVariant": "three-statement",
     "year": 2021,
@@ -34063,9 +34118,19 @@
       "Inadequate health Facilities",
       "Inadequate health personnel deployed to tackle the pandemic in Ghana"
     ],
-    "correct": "A",
+    "correct": "I, II, III and IV",
     "answer": 0,
-    "explanation": "Behaviour change issues include shaking hands (I), communal eating (II), failure to observe protocols (III), and poor hygiene (IV). Lack of vaccines (V), inadequate facilities (VI), and inadequate personnel (VII) are systemic/government challenges, not individual behaviour change issues.\n\n---"
+    "explanation": "Behaviour change issues include shaking hands (I), communal eating (II), failure to observe protocols (III), and poor hygiene (IV). Lack of vaccines (V), inadequate facilities (VI), and inadequate personnel (VII) are systemic/government challenges, not individual behaviour change issues.",
+    "text": "Listed below are some current challenges associated with the effective management of the COVID-19 outbreak in Ghana. Identify those that need behaviour change on the part of the individual resident in Ghana.",
+    "options": [
+      "I, II, III and IV",
+      "V only",
+      "V, VI and VII",
+      "None of the above"
+    ],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
     "id": 1784,
@@ -34083,7 +34148,7 @@
     ],
     "correct": "India",
     "answer": 3,
-    "explanation": "The Delta variant (B.1.617.2) that significantly challenged global COVID-19 management originated in India. This variant caused massive surges in cases worldwide and reduced vaccine effectiveness. China (a) is where the original virus was first identified, but not the Delta variant.\n\n---"
+    "explanation": "The Delta variant (B.1.617.2) that significantly challenged global COVID-19 management originated in India. This variant caused massive surges in cases worldwide and reduced vaccine effectiveness. China (a) is where the original virus was first identified, but not the Delta variant."
   },
   {
     "id": 1785,
@@ -34101,7 +34166,7 @@
     ],
     "correct": "During prescribing, dispensing, and administration",
     "answer": 2,
-    "explanation": "Medication errors can occur at any stage of the medication use process: prescribing (wrong drug/dose), transcription, dispensing (wrong drug/label), administration (wrong patient/route/time), and monitoring. Option C is the most comprehensive and correct. Options A and B are incomplete, D is incorrect.\n\n---"
+    "explanation": "Medication errors can occur at any stage of the medication use process: prescribing (wrong drug/dose), transcription, dispensing (wrong drug/label), administration (wrong patient/route/time), and monitoring. Option C is the most comprehensive and correct. Options A and B are incomplete, D is incorrect."
   },
   {
     "id": 1786,
@@ -34119,7 +34184,7 @@
     ],
     "correct": "Unimportant for preventing administration errors",
     "answer": 2,
-    "explanation": "Medication histories are important for preventing dispensing errors (a), prescribing errors (b), and are useful for record keeping (d). They are NOT unimportant for preventing administration errors (c); they are actually important for preventing administration errors as well.\n\n---"
+    "explanation": "Medication histories are important for preventing dispensing errors (a), prescribing errors (b), and are useful for record keeping (d). They are NOT unimportant for preventing administration errors (c); they are actually important for preventing administration errors as well."
   },
   {
     "id": 1787,
@@ -34137,7 +34202,7 @@
     ],
     "correct": "More patient focused than product focused",
     "answer": 2,
-    "explanation": "Pharmaceutical care has shifted from being product-focused (dispensing medications) to being more patient-focused (optimising medication therapy and patient outcomes). This is the fundamental philosophy of pharmaceutical care.\n\n---"
+    "explanation": "Pharmaceutical care has shifted from being product-focused (dispensing medications) to being more patient-focused (optimising medication therapy and patient outcomes). This is the fundamental philosophy of pharmaceutical care."
   },
   {
     "id": 1788,
@@ -34155,7 +34220,7 @@
     ],
     "correct": "A professional discipline in which direct patient care services are provided to optimize medication therapy, promote health; wellness and improve quality of life of patients",
     "answer": 3,
-    "explanation": "Clinical Pharmacy is defined as a health care discipline where pharmacists provide direct patient care services to optimise medication therapy and promote health and quality of life. Options A, B, and C are incomplete or incorrect definitions.\n\n---"
+    "explanation": "Clinical Pharmacy is defined as a health care discipline where pharmacists provide direct patient care services to optimise medication therapy and promote health and quality of life. Options A, B, and C are incomplete or incorrect definitions."
   },
   {
     "id": 1789,
@@ -34173,7 +34238,7 @@
     ],
     "correct": "The right to quality basic healthcare based on patients/clients geographical location",
     "answer": 1,
-    "explanation": "Act 851 guarantees rights to accessible, equitable, and quality healthcare (a), respect and choice (c), and protection from discrimination (d). It does NOT guarantee healthcare based specifically on geographical location (b) as this is not a right.\n\n---"
+    "explanation": "Act 851 guarantees rights to accessible, equitable, and quality healthcare (a), respect and choice (c), and protection from discrimination (d). It does NOT guarantee healthcare based specifically on geographical location (b) as this is not a right."
   },
   {
     "id": 1790,
@@ -34191,7 +34256,7 @@
     ],
     "correct": "Competence",
     "answer": 1,
-    "explanation": "Professionalism in pharmacy is based on competence (knowledge, skills, and judgement). Strictness (a) is not a professional attribute, knowing it all (c) is unrealistic, and personal experience (d) is not the basis of professional practice.\n\n---"
+    "explanation": "Professionalism in pharmacy is based on competence (knowledge, skills, and judgement). Strictness (a) is not a professional attribute, knowing it all (c) is unrealistic, and personal experience (d) is not the basis of professional practice."
   },
   {
     "id": 1791,
@@ -34209,7 +34274,7 @@
     ],
     "correct": "Patient's marital status",
     "answer": 2,
-    "explanation": "Clinical assessment evaluates patient characteristics (a), laboratory results (b), and disease state (d). Patient's marital status (c) is not clinically relevant for identifying pharmaco-therapeutic problems.\n\n---"
+    "explanation": "Clinical assessment evaluates patient characteristics (a), laboratory results (b), and disease state (d). Patient's marital status (c) is not clinically relevant for identifying pharmaco-therapeutic problems."
   },
   {
     "id": 1792,
@@ -34227,7 +34292,7 @@
     ],
     "correct": "All of the above",
     "answer": 3,
-    "explanation": "Quality assurance involves monitoring of processes (a), comparison with a standard (b), and feedback mechanisms (c) to ensure continuous improvement. All three components are essential parts of quality assurance.\n\n---"
+    "explanation": "Quality assurance involves monitoring of processes (a), comparison with a standard (b), and feedback mechanisms (c) to ensure continuous improvement. All three components are essential parts of quality assurance."
   },
   {
     "id": 1793,
@@ -34245,7 +34310,7 @@
     ],
     "correct": "Emotional experience",
     "answer": 2,
-    "explanation": "Clinical decision-making should be based on scientific evidence (a), practice ethics (b), and existing SOPs (d). Emotional experience (c) is subjective and should not guide clinical decisions; it can introduce bias.\n\n---\n\n## CASE 3: Mr AT - COPD and Hepatitis B\n(Questions 111-120 depend on this case)\n\nMr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid."
+    "explanation": "Clinical decision-making should be based on scientific evidence (a), practice ethics (b), and existing SOPs (d). Emotional experience (c) is subjective and should not guide clinical decisions; it can introduce bias."
   },
   {
     "id": 1794,
@@ -34261,7 +34326,7 @@
       "Pneumonia"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "Emphysema",
     "answer": 1,
     "explanation": "Mr AT has FEV1/FVC <70% and FEV1 <80% predicted, excessive mucus, dyspnoea, and noisy breathing - all consistent with COPD/Emphysema. Bronchitis (I) has more cough/sputum but not necessarily the same spirometry pattern. Pneumonia (III) would have fever/infection signs."
@@ -34281,7 +34346,7 @@
       "Psychological support is not needed because the patient often has decreased capacity to participate in social and recreational activities"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "B",
     "answer": 1,
     "explanation": "Smoking cessation (I) and exercise training (II) are key counselling points for COPD. Statement III is FALSE - psychological support IS needed as COPD patients often have reduced capacity for social activities and may experience depression."
@@ -34301,7 +34366,7 @@
       "Moraxella catarrhalis"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "A",
     "answer": 0,
     "explanation": "All three are common organisms causing respiratory infections in COPD exacerbations. Streptococcus pneumoniae (I), Haemophilus influenzae (II), and Moraxella catarrhalis (III) are the most frequent pathogens in COPD exacerbations."
@@ -34321,7 +34386,7 @@
       "Should be used cautiously in patients with prostatic glaucoma"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "A",
     "answer": 0,
     "explanation": "Ipratropium is an antimuscarinic bronchodilator (I). Its maximum effect occurs 30-60 minutes after use (II). It should be used cautiously in patients with glaucoma (III) due to potential anticholinergic effects."
@@ -34341,7 +34406,7 @@
       "Ipratropium Bromide"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "B",
     "answer": 1,
     "explanation": "Hydrocortisone (corticosteroid) (I) and Salbutamol (beta-agonist) (II) can cause hypokalemia. Ipratropium Bromide (III) is an antimuscarinic and does not significantly affect potassium levels."
@@ -34361,7 +34426,7 @@
       "Indeterminate Hepatitis B infection"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "Indeterminate Hepatitis B infection",
     "answer": 3,
     "explanation": "The presence of anti-HBc (IgG) alone, without HBsAg or HBcAg, typically indicates previous infection or indeterminate status. Acute infection (a) would have HBsAg positive. Chronic infection (c) would have HBsAg positive >6 months."
@@ -34381,10 +34446,10 @@
       "30"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "16",
     "answer": 0,
-    "explanation": "Mr AT smokes 20 cigarettes/day = 1 pack/day. Started at age 30, current age 46 = 16 years of smoking. Pack years = packs/day Ã— years smoked = 1 Ã— 16 = 16 pack years."
+    "explanation": "Mr AT smokes 20 cigarettes/day = 1 pack/day. Started at age 30, current age 46 = 16 years of smoking. Pack years = packs/day × years smoked = 1 × 16 = 16 pack years."
   },
   {
     "id": 1801,
@@ -34401,7 +34466,7 @@
       "Biventricular failure"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "Cor pulmonale",
     "answer": 2,
     "explanation": "Cor pulmonale is right ventricular hypertrophy and failure secondary to pulmonary hypertension caused by lung disease (COPD). This is the specific term for this condition. Right sided failure (a) is a broader term."
@@ -34421,7 +34486,7 @@
       "Prodromal period"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "Immunity",
     "answer": 0,
     "explanation": "The presence of antibodies to HBsAg (anti-HBs) indicates immunity, either from previous infection or vaccination. Active infection (b) is indicated by HBsAg positivity. Replication (c) is indicated by HBcAg or HBV DNA."
@@ -34441,10 +34506,10 @@
       "80 mmol of K"
     ],
     "caseId": "gppqe-2021-case-3",
-    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily Ã— 30, IV Amoksiklav 1g tid.",
+    "caseBlock": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
     "correct": "130 mmol of K",
     "answer": 0,
-    "explanation": "Mr AT's K+ = 2.5 mmol/L. Reference range = 3.5-5.5 mmol/L, average = 4.5 mmol/L. Deficit = 4.5 - 2.5 = 2.0 mmol/L. Total body water (approx 60% of weight = 30L). Deficit = 2.0 Ã— 30 = 60mmol. However, standard formula: potassium deficit (mmol) = (target K - actual K) Ã— body weight Ã— 0.4. = (4.5 - 2.5) Ã— 50 Ã— 0.4 = 2.0 Ã— 50 Ã— 0.4 = 40mmol. With additional losses, total ~130mmol.\n\n---\n\n## CASE 4: Mr KO - Type 2 Diabetes, Hypertension, Obesity\n(Questions 121-130 depend on this case)\n\nMr KO, a 65-year-old private accountant, visited the outpatient department with complaints of increasing tiredness and frequent thirsty feeling over the past few weeks. He also talks about frequent urination and especially over the night. He thinks this is abnormal and an obstruction to his work and sleep. Mr KO admits to regular club beer almost every evening to wind up his day which he said did not make him urinate much till some few weeks ago. Per his narration, he spends a lot of money on sugary snacks and fatty fast foods since he works far away from home. He admits to heavy cigarette smoking. He is obese with a body mass index of 32 kg/m2. His foot assessment was unremarkable. Mr KO's blood pressure was 135/90 mmHg and random blood sugar was 11.5 mmol/L. Mr KO's serum chemistry report the following day was: Fasting blood sugar (6 - 7mmol/L) 8.1mmol/L, Glycated haemoglobin (6.5 - 7.5%) 8.6%, Total cholesterol (<4mmol/L) 6.1 mmol/L, Creatinine (50 - 95umol/L) 78.0 umol/L, HDL cholesterol (>1.2mmol/L) 0.9mmol/L, Triglycerides (<2.3 mmol/L) 3.0 mmol/L."
+    "explanation": "Mr AT's K+ = 2.5 mmol/L. Reference range = 3.5-5.5 mmol/L, average = 4.5 mmol/L. Deficit = 4.5 - 2.5 = 2.0 mmol/L. Total body water (approx 60% of weight = 30L). Deficit = 2.0 × 30 = 60mmol. However, standard formula: potassium deficit (mmol) = (target K - actual K) × body weight × 0.4. = (4.5 - 2.5) × 50 × 0.4 = 2.0 × 50 × 0.4 = 40mmol. With additional losses, total ~130mmol."
   },
   {
     "id": 1804,
@@ -34644,7 +34709,7 @@
     "caseBlock": "Mr KO, a 65-year-old private accountant, visited the outpatient department with complaints of increasing tiredness and frequent thirsty feeling over the past few weeks. He also talks about frequent urination and especially over the night. He thinks this is abnormal and an obstruction to his work and sleep. Mr KO admits to regular club beer almost every evening to wind up his day which he said did not make him urinate much till some few weeks ago. Per his narration, he spends a lot of money on sugary snacks and fatty fast foods since he works far away from home. He admits to heavy cigarette smoking. He is obese with a body mass index of 32 kg/m2. His foot assessment was unremarkable. Mr KO's blood pressure was 135/90 mmHg and random blood sugar was 11.5 mmol/L. Mr KO's serum chemistry report the following day was: Fasting blood sugar (6 - 7mmol/L) 8.1mmol/L, Glycated haemoglobin (6.5 - 7.5%) 8.6%, Total cholesterol (<4mmol/L) 6.1 mmol/L, Creatinine (50 - 95umol/L) 78.0 umol/L, HDL cholesterol (>1.2mmol/L) 0.9mmol/L, Triglycerides (<2.3 mmol/L) 3.0 mmol/L.",
     "correct": "Glitazones cause fluid retention",
     "answer": 1,
-    "explanation": "Glitazones (pioglitazone, rosiglitazone) cause fluid retention, which can precipitate or worsen heart failure. This is a boxed warning. Liver failure (a) was a concern with troglitazone but not current glitazones. Hypotension (c) is not a major concern.\n\n---\n\n## CASE 5: Mr PK - Possession of Codeine-containing Syrup\n(Questions 131-140 depend on this case)\n\nMr PK, a 40-year-old Ghanaian pharmacist on the provisional register returned from the United States of America and was detained by the immigration officers at the airport for possessing a codeine-containing syrup. He challenged the officers insisting that there was no merit in his detention because the cough syrup he was carrying is an over-the-counter medicine and so he is being wrongfully detained.\n\nUse the answer code summary below for questions 131-140\nA = First statement is TRUE, Second statement is TRUE and they are RELATED\nB = First statement is TRUE, Second statement is TRUE but they are NOT related\nC = First statement is TRUE but Second statement is FALSE\nD = First statement is FALSE but Second statement is TRUE\nE = Both statements are FALSE"
+    "explanation": "Glitazones (pioglitazone, rosiglitazone) cause fluid retention, which can precipitate or worsen heart failure. This is a boxed warning. Liver failure (a) was a concern with troglitazone but not current glitazones. Hypotension (c) is not a major concern."
   },
   {
     "id": 1814,
@@ -34904,7 +34969,7 @@
     "caseBlock": "Mr PK, a 40-year-old Ghanaian pharmacist on the provisional register returned from the United States of America and was detained by the immigration officers at the airport for possessing a codeine-containing syrup. He challenged the officers insisting that there was no merit in his detention because the cough syrup he was carrying is an over-the-counter medicine and so he is being wrongfully detained.",
     "correct": "D",
     "answer": 3,
-    "explanation": "Statement 1 is FALSE (codeine-containing syrups have been RECLASSIFIED as restricted medicines, not declassified). Statement 2 is TRUE (the Minister does classify medicines by executive instrument). They are unrelated.\n\n---\n\n## END OF GPPQE 2021 (Questions 1-140)\n\n---\n\n### Summary of Cases Used:\n\n| Case | Questions | Topic |\n|:---|:---|:---|\n| Case 1: K.B | 40-41 | Adolescent Depression |\n| Case 2: Mrs BB | REMOVED | Inflammatory Bowel Disease (Case missing) |\n| Case 3: Mr AT | 111-120 | COPD and Hepatitis B |\n| Case 4: Mr KO | 121-130 | Type 2 Diabetes, Hypertension, Obesity |\n| Case 5: Mr PK | 131-140 | Codeine Possession (Assertion format) |\n| Case 6: Syndromic STI Management | 141-150 | Sexually Transmitted Infections |"
+    "explanation": "Statement 1 is FALSE (codeine-containing syrups have been RECLASSIFIED as restricted medicines, not declassified). Statement 2 is TRUE (the Minister does classify medicines by executive instrument). They are unrelated."
   },
   {
     "id": 1824,
@@ -40547,12 +40612,11 @@
     "explanation": "Chlorzoxazone can rarely cause serious hepatotoxicity, while diclofenac may also affect the liver. Monitoring liver function is therefore important, especially with prolonged use. ---"
   },
   {
-    "id": 2116,
+    "id": "2116",
     "bank": "gppqe",
-    "comboVariant": "assertion-5",
     "year": 2023,
     "displayNumber": 1,
-    "type": "combo",
+    "type": "single",
     "category": "Cardiovascular Disorders",
     "question": "Cilostazol is the preferred antiplatelet in the management of peripheral artery disease because of its",
     "options": [
@@ -40567,7 +40631,11 @@
     ],
     "correct": "vasodilating effect",
     "answer": 2,
-    "explanation": "Cilostazol inhibits phosphodiesterase III, producing both antiplatelet and vasodilator effects. It can improve walking distance in intermittent claudication. ---"
+    "explanation": "Cilostazol inhibits phosphodiesterase III, producing both antiplatelet and vasodilator effects. It can improve walking distance in intermittent claudication. ---",
+    "text": "Cilostazol is the preferred antiplatelet in the management of peripheral artery disease because of its",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
     "id": 2117,
@@ -40767,49 +40835,50 @@
     "explanation": "Chlamydophila pneumoniae is an obligate intracellular organism and lacks a conventional peptidoglycan cell wall. Beta-lactams are therefore ineffective; macrolides or doxycycline may be used. ---"
   },
   {
-    "id": 2128,
+    "id": "2128",
     "bank": "gppqe",
-    "comboVariant": "assertion-5",
     "year": 2023,
     "displayNumber": 1,
-    "type": "combo",
+    "type": "single",
     "category": "Immunizations",
     "question": "Achieving a high level of herd immunity is an important public health strategy because it:",
     "options": [
       "reduces immunization costs in communities.",
       "enhances individual immunologic responses.",
       "protects people who cannot be immunized.",
-      "requires fewer booster doses."
+      "requires fewer booster doses"
     ],
-    "statements": [
-      "Achieving a high level of herd immunity is an important public health strategy",
-      "it:"
-    ],
+    "statements": [],
     "correct": "protects people who cannot be immunized.",
     "answer": 2,
-    "explanation": "When many people are immune, transmission becomes less likely. This indirectly protects vulnerable people who cannot receive vaccines. ---"
+    "explanation": "When many people are immune, transmission becomes less likely. This indirectly protects vulnerable people who cannot receive vaccines. ---",
+    "text": "Achieving a high level of herd immunity is an important public health strategy because it:",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Paediatrics"
   },
   {
-    "id": 2129,
+    "id": "2129",
     "bank": "gppqe",
-    "comboVariant": "table-4",
     "year": 2023,
     "displayNumber": 38,
-    "type": "combo",
+    "type": "single",
     "category": "Manufacturing and Calculation",
-    "question": "Diazepam Injection U.S.P",
+    "question": "In the formulation given above, propylene glycol functions as a(n):",
     "options": [
       "emulsifier.",
       "antioxidant.",
       "co-solvent.",
       "buffer."
     ],
-    "statements": [
-      "n the formulation given above, propylene glycol functions as a(n):"
-    ],
+    "statements": [],
     "correct": "co-solvent.",
     "answer": 2,
-    "explanation": "Diazepam is poorly soluble in water. Propylene glycol works with ethanol as a co-solvent to increase its solubility in the injection. ---"
+    "explanation": "Diazepam is poorly soluble in water. Propylene glycol works with ethanol as a co-solvent to increase its solubility in the injection. ---",
+    "text": "In the formulation given above, propylene glycol functions as a(n):",
+    "caseBlock": "Diazepam Injection U.S.P \nDiazepam 5 mg/ml\nEthanol 10%\nPropylene glycol 40%\nBenzyl alcohol 1.5%\nWater for Injection qs 100%",
+    "reviewStatus": "corrected",
+    "reviewNotes": ""
   },
   {
     "id": 2130,
@@ -42994,12 +43063,11 @@
     "explanation": "Stable patients who can safely continue care elsewhere may be discharged, preserving transport and hospital resources for critically ill patients who require evacuation. ---"
   },
   {
-    "id": 2233,
+    "id": "2233",
     "bank": "gppqe",
-    "comboVariant": "assertion-5",
     "year": 2023,
     "displayNumber": 38,
-    "type": "combo",
+    "type": "single",
     "category": "Pharmacy Practice",
     "question": "Documenting the clients records and your actions are important in this occasion, because (choose the most appropriate)",
     "options": [
@@ -43008,18 +43076,19 @@
       "It serves as a means of detecting medication errors if it occurs",
       "It is used to determine your remuneration"
     ],
-    "statements": [
-      "Documenting the clients records and your actions are important in this occasion,",
-      "(choose the most appropriate):"
-    ],
+    "statements": [],
     "caseId": "gppqe-2023-case-5-flood-response",
     "caseBlock": "Dr Ankrah is the newly posted District Director for Health in South Tongu and resident in Sogakofe. The recent spillage of the Volta Dam created a challenge for the district since one of their major health facilities, Comboni Catholic Hospital was almost submerged. Meanwhile there are critical emerging issues of public health importance. The District Health Management Team (DHMT) called for an emergency meeting and asked that as the District Pharmacist, you are to chair the Emergency operations and report to the District Director.",
     "correct": "It helps to keep a paper trail of activities",
     "answer": 1,
-    "explanation": "Documentation provides continuity, accountability and a traceable record of decisions, medicines, referrals and services. It can also assist later evaluation and error investigation. ---"
+    "explanation": "Documentation provides continuity, accountability and a traceable record of decisions, medicines, referrals and services. It can also assist later evaluation and error investigation. ---",
+    "text": "Documenting the clients records and your actions are important in this occasion, because (choose the most appropriate)",
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
-    "id": 2234,
+    "id": "2234",
     "bank": "gppqe",
     "year": 2023,
     "displayNumber": 75,
@@ -43036,7 +43105,12 @@
     "caseBlock": "Dr Ankrah is the newly posted District Director for Health in South Tongu and resident in Sogakofe. The recent spillage of the Volta Dam created a challenge for the district since one of their major health facilities, Comboni Catholic Hospital was almost submerged. Meanwhile there are critical emerging issues of public health importance. The District Health Management Team (DHMT) called for an emergency meeting and asked that as the District Pharmacist, you are to chair the Emergency operations and report to the District Director.",
     "correct": "Performing clinical and public health checks and assessment of medicines being received and supplied",
     "answer": 0,
-    "explanation": "The pharmacist helps assess medicine quality and suitability, manage supplies, support public-health interventions and promote safe medicine use. --- ## CASE 2 A licensed community pharmacy in Ghana providing electronic pharmacy services without ePharmacy accreditation by the Pharmacy Council was closed down by the Data Protection Commission for various breaches of the data protection laws. The aggrieved owner of the community pharmacy petitions the Pharmacy Council to intervene on their behalf. Use the answer code below to answer questions 139â€“148. For these assertion-and-reason questions: A: Both statements are true, and the reason explains the assertion. B: Both statements are true, but the reason does not explain the assertion. C: Assertion is true, but the reason is false. D: Assertion is false, but the reason is true. E: Both statements are false. ---"
+    "explanation": "The pharmacist helps assess medicine quality and suitability, manage supplies, support public-health interventions and promote safe medicine use.",
+    "text": "The expanded role of the Pharmacist in the Disaster described above includes:",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Internal Medicine"
   },
   {
     "id": 2235,
@@ -44025,21 +44099,26 @@
     "explanation": "Among the options, professional dressing best supports a trustworthy and professional counselling environment. However, confidentiality is promoted more directly through private consultation areas, secure records and discreet communication."
   },
   {
-    "id": 2287,
+    "id": "2287",
     "bank": "gppqe",
     "year": 2025,
     "type": "single",
     "category": "Pharmacy Practice",
     "question": "Case: Pharm. Mensah has recently been employed as the Superintendent Pharmacist at Gate Pharmacy. As part of his responsibilities, he is tasked with minimising stock wastage and ensuring compliance with regulatory standards. Which of the following inventory rules should take precedence in this situation?",
     "options": [
-      "LIFO â€“ Last In, First Out",
-      "FIFO â€“ First In, First Out",
-      "HIFO â€“ Highest In, First Out",
-      "FEFO â€“ First Expiring, First Out"
+      "LIFO- Last In, First Out",
+      "FIFO- First In, First Out",
+      "HIFO- Highest In, First Out",
+      "FEFO- First Expiring, First Out"
     ],
-    "correct": 3,
+    "correct": "FEFO- First Expiring, First Out",
     "answer": "FEFO â€“ First Expiring, First Out",
-    "explanation": "FEFO ensures that products with the earliest expiry dates are issued first, minimizing expiration and medicine wastage."
+    "explanation": "FEFO ensures that products with the earliest expiry dates are issued first, minimizing expiration and medicine wastage.",
+    "text": "Case: Pharm. Mensah has recently been employed as the Superintendent Pharmacist at Gate Pharmacy. As part of his responsibilities, he is tasked with minimising stock wastage and ensuring compliance with regulatory standards. Which of the following inventory rules should take precedence in this situation?",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": "",
+    "rotation": "Maternal and Child Health"
   },
   {
     "id": 2288,
@@ -44826,7 +44905,7 @@
     "explanation": "A 2% w/v solution contains 2g per 100mL:\r\n\r\n$$\r\n\\frac{2g}{100mL}\\times20mL=0.4g\r\n$$\r\n\r\nFinal volume:\r\n\r\n$$\r\n250mL+20mL=270mL\r\n$$\r\n\r\nFinal concentration:\r\n\r\n$$\r\n\\frac{0.4g}{270mL}\\times100=0.148\\%\\approx0.15\\%\r\n$$"
   },
   {
-    "id": 2334,
+    "id": "2334",
     "bank": "gppqe",
     "year": 2025,
     "type": "single",
@@ -44838,12 +44917,16 @@
       "8",
       "12"
     ],
-    "correct": 1,
+    "correct": "6",
     "answer": "6",
-    "explanation": "Total amount available:\r\n\r\n$$\r\n20mL\\times4mg/mL=80mg\r\n$$\r\n\r\nDaily requirement:\r\n\r\n$$\r\n3mg\\times4=12mg/day\r\n$$\r\n\r\nDuration:\r\n\r\n$$\r\n80mg\\div12mg/day=6.67\\text{ days}\r\n$$\r\n\r\nIt provides six complete days, with 8mg remaining. Strictly, the supply lasts approximately 6.7 days, but that option is absent."
+    "explanation": "Total amount available:\n20 mL × 4 mg/mL = 80 mg\nDaily requirement:\n3 mg × 4 = 12 mg per day\nDuration:\n80 mg ÷ 12 mg per day = 6.67 days\nTherefore, it provides six complete days, with 8 mg remaining. Strictly, the supply lasts approximately 6.7 days, but that option is absent.",
+    "text": "How many days will a 20 mL of Dilauidid (4 mg/mL) last if the patient is instructed to use 3 mg qid?",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": ""
   },
   {
-    "id": 2335,
+    "id": "2335",
     "bank": "gppqe",
     "year": 2025,
     "type": "single",
@@ -44855,9 +44938,13 @@
       "0.005%",
       "0.05%"
     ],
-    "correct": 1,
+    "correct": "0.0005 %",
     "answer": "0.0005 %",
-    "explanation": "Since:\r\n\r\n$$\r\n1\\%=10,000ppm\r\n$$\r\n\r\nTherefore:\r\n\r\n$$\r\n5ppm\\div10,000=0.0005\\%\r\n$$"
+    "explanation": "Since 1% = 10,000 ppm,\n5 ppm ÷ 10,000 = 0.0005%.\nTherefore, 5 ppm is equal to 0.0005%.",
+    "text": "The concentration of mercury in a water sample is reported to be 5ppm. Express this concentration as a percentage.",
+    "statements": [],
+    "reviewStatus": "corrected",
+    "reviewNotes": ""
   },
   {
     "id": 2336,

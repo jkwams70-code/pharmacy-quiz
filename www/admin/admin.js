@@ -38,7 +38,7 @@ async function probeAdminApiBase(base = "") {
   const safeBase = normalizeApiBase(base);
   if (!safeBase) return false;
   try {
-    const res = await fetch(`${safeBase}/health`, { cache: "no-store" });
+    const res = await fetchAdmin(`${safeBase}/health`, { cache: "no-store" }, { timeoutMs: 5000 });
     return Boolean(res && res.ok);
   } catch {
     return false;
@@ -65,6 +65,30 @@ async function ensureAdminApiBase({ force = false } = {}) {
       apiBaseResolvedPromise = null;
   }
 }
+
+const ADMIN_REQUEST_TIMEOUT_MS = 10000;
+
+async function fetchAdmin(path, options = {}, { timeoutMs = ADMIN_REQUEST_TIMEOUT_MS } = {}) {
+  const controller = new AbortController();
+  const externalSignal = options?.signal;
+  const onAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", onAbort, { once: true });
+  }
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(path, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+    externalSignal?.removeEventListener("abort", onAbort);
+  }
+}
       const ADMIN_KEY_STORAGE = "adminKey";
       let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
       const adminKeyInput = document.getElementById("admin-key");
@@ -79,10 +103,14 @@ async function ensureAdminApiBase({ force = false } = {}) {
       let editingQuestionId = null;
       let cachedQuestions = [];
       let cachedUsers = [];
+      let usersLoaded = false;
       let cachedGroups = [];
       let cachedDeletedGroups = [];
       let cachedReports = [];
       let cachedSubscriptionRequests = [];
+      let cachedMonetizationCounts = { request: 0, activated: 0, rejected: 0, expired: 0 };
+      let cachedMonetizationAmountTotals = { request: 0, activated: 0, rejected: 0, expired: 0 };
+      const monetizationLoadedBuckets = new Set();
       let subscriptionRequestsLoadingPromise = null;
       let cachedPasswordResetRequests = [];
       let cachedAdminStats = null;
@@ -1090,8 +1118,10 @@ function getMonetizationBucketMeta(bucket = "request") {
           el.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
 
-        if (subscriptionRequestsLoaded || cachedSubscriptionRequests.length > 0) {
+        if (monetizationLoadedBuckets.has(selectedMonetizationBucket)) {
           renderMonetizationPanel();
+        } else if (adminKey) {
+          void loadMonetizationRequests(selectedMonetizationBucket);
         }
       }
 
@@ -1099,12 +1129,7 @@ function getMonetizationBucketMeta(bucket = "request") {
         const root = document.getElementById("monetization-list-root");
         if (!root) return;
 
-        const counts = {
-          request: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "request").length,
-          activated: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "activated").length,
-          rejected: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "rejected").length,
-          expired: cachedSubscriptionRequests.filter((entry) => getMonetizationBucket(entry) === "expired").length,
-        };
+        const counts = cachedMonetizationCounts;
 
         const updateCount = (id, value) => {
           const el = document.getElementById(id);
@@ -1127,7 +1152,7 @@ function getMonetizationBucketMeta(bucket = "request") {
             return getMonetizationRequestTitle(a).localeCompare(getMonetizationRequestTitle(b));
           });
         const filteredItems = items.filter((entry) => matchesMonetizationSearch(entry, monetizationSearchQuery));
-        const bucketTotal = getMonetizationBucketTotalAmount(bucket);
+        const bucketTotal = Number(cachedMonetizationAmountTotals[bucket]) || getMonetizationBucketTotalAmount(bucket);
 
         const panelTitle = document.getElementById("monetization-panel-title");
         const panelKicker = document.getElementById("monetization-panel-kicker");
@@ -1180,14 +1205,26 @@ function getMonetizationBucketMeta(bucket = "request") {
         `;
       }
 
-      async function loadMonetizationRequests() {
+      async function loadMonetizationRequests(bucket = selectedMonetizationBucket) {
   if (subscriptionRequestsLoadingPromise) {
     return subscriptionRequestsLoadingPromise;
   }
 
+  const statusByBucket = {
+    request: "pending",
+    activated: "active",
+    rejected: "rejected",
+    expired: "expired",
+  };
+  const requestedBucket = Object.prototype.hasOwnProperty.call(statusByBucket, bucket)
+    ? bucket
+    : "request";
+  const requestStatus = statusByBucket[requestedBucket];
+
   subscriptionRequestsLoadingPromise = (async () => {
     try {
-      const res = await fetch(withNoCache(`${API_BASE}/admin/subscription-requests`), {
+      const query = new URLSearchParams({ status: requestStatus, page: "1", limit: "50" });
+      const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/subscription-requests?${query.toString()}`), {
         headers: getHeaders(),
         cache: "no-store",
       });
@@ -1198,7 +1235,26 @@ function getMonetizationBucketMeta(bucket = "request") {
         throw new Error(data.error || "Failed to load subscription requests");
       }
 
-      cachedSubscriptionRequests = data.requests;
+      const existingById = new Map(cachedSubscriptionRequests.map((entry) => [String(entry?.id || ""), entry]));
+      data.requests.forEach((entry) => existingById.set(String(entry?.id || ""), entry));
+      cachedSubscriptionRequests = [...existingById.values()];
+      if (data.counts && typeof data.counts === "object") {
+        cachedMonetizationCounts = {
+          request: Number(data.counts.request) || 0,
+          activated: Number(data.counts.activated) || 0,
+          rejected: Number(data.counts.rejected) || 0,
+          expired: Number(data.counts.expired) || 0,
+        };
+      }
+      if (data.amountTotals && typeof data.amountTotals === "object") {
+        cachedMonetizationAmountTotals = {
+          request: Number(data.amountTotals.request) || 0,
+          activated: Number(data.amountTotals.activated) || 0,
+          rejected: Number(data.amountTotals.rejected) || 0,
+          expired: Number(data.amountTotals.expired) || 0,
+        };
+      }
+      monetizationLoadedBuckets.add(requestedBucket);
 
       subscriptionRequestsLoaded = true;
       renderMonetizationPanel();
@@ -1461,7 +1517,7 @@ function getMonetizationBucketMeta(bucket = "request") {
         const loadVersion = ++passwordResetRequestsLoadVersion;
         const mutationVersion = passwordResetRequestsMutationVersion;
         try {
-          const res = await fetch(withNoCache(`${API_BASE}/admin/password-reset-requests`), {
+          const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/password-reset-requests`), {
             headers: getHeaders(),
             cache: "no-store",
           });
@@ -2734,7 +2790,7 @@ function getAdminLoginScreen() {
         try {
           await ensureAdminApiBase();
           // Validate the key against a protected admin endpoint.
-          const res = await fetch(`${API_BASE}/admin/stats`, {
+          const res = await fetchAdmin(`${API_BASE}/admin/stats`, {
             headers: getHeaders(),
             cache: "no-store",
           });
@@ -2790,21 +2846,16 @@ function getAdminLoginScreen() {
 
         await ensureAdminApiBase();
 
-        const [statsOk, usersOk, deletedUsersOk, deletedGroupsOk, groupsOk, reportsOk, questionsOk, exportOk, broadcastOk, monetizationOk, passwordResetOk] = await Promise.all([
-          loadStats(),
-          loadUsers(),
-          loadDeletedUsers(),
-          loadDeletedGroups(),
-          loadGroups(),
-          loadReports(),
-          loadQuestions(),
-          loadExportData(),
-          loadBroadcastOverview(),
-          loadMonetizationRequests(),
-          loadPasswordResetRequests(),
-        ]);
+        const statsOk = await loadStats();
+        let activeTabOk = true;
+        if (adminActiveTab === "users") activeTabOk = await loadUsers();
+        if (adminActiveTab === "groups") activeTabOk = await loadGroups();
+        if (adminActiveTab === "reports") activeTabOk = await loadReports();
+        if (adminActiveTab === "broadcast") activeTabOk = await loadBroadcastOverview();
+        if (adminActiveTab === "monetization") activeTabOk = await loadMonetizationRequests();
+        if (adminActiveTab === "password-resets") activeTabOk = await loadPasswordResetRequests();
 
-        if (statsOk && usersOk && deletedUsersOk && deletedGroupsOk && groupsOk && reportsOk && questionsOk && exportOk && broadcastOk && monetizationOk && passwordResetOk) {
+        if (statsOk && activeTabOk) {
           showAlert("stats-alerts", "Dashboard refreshed successfully", "success");
         } else {
           showAlert(
@@ -2827,7 +2878,9 @@ function getAdminLoginScreen() {
         if (!adminKey || adminLiveRefreshInFlight) return;
         adminLiveRefreshInFlight = (async () => {
           await ensureAdminApiBase();
-          await Promise.all([loadStats(), loadUsers(), loadMonetizationRequests()]);
+          await loadStats();
+          if (adminActiveTab === "users") await loadUsers();
+          if (adminActiveTab === "monetization") await loadMonetizationRequests();
           if (adminActiveTab === "groups") await loadGroups();
           if (adminActiveTab === "reports") await loadReports();
           if (adminActiveTab === "questions") await loadQuestions();
@@ -3045,7 +3098,7 @@ function getAdminLoginScreen() {
 
       async function loadStats() {
         try {
-          const res = await fetch(withNoCache(`${API_BASE}/admin/stats`), {
+          const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/stats`), {
             headers: getHeaders(),
             cache: "no-store",
           });
@@ -3055,6 +3108,15 @@ function getAdminLoginScreen() {
           }
           const data = await res.json();
           cachedAdminStats = data;
+
+          const exportUsers = document.getElementById("export-users");
+          if (exportUsers) exportUsers.textContent = String(data.totalUsers ?? 0);
+          const exportQuestions = document.getElementById("export-questions");
+          if (exportQuestions) exportQuestions.textContent = String(data.totalQuestions ?? 0);
+          const exportAttempts = document.getElementById("export-attempts");
+          if (exportAttempts) exportAttempts.textContent = String(data.totalAttempts ?? 0);
+          const exportSync = document.getElementById("export-sync");
+          if (exportSync) exportSync.textContent = String(data.totalSyncEvents ?? 0);
 
           const statUsers = document.getElementById("stat-users");
           if (statUsers) statUsers.textContent = String(data.totalUsers ?? 0);
@@ -3175,7 +3237,7 @@ function getAdminLoginScreen() {
 
       async function loadUsers() {
         try {
-          const res = await fetch(withNoCache(`${API_BASE}/admin/users`), {
+          const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/users`), {
             headers: getHeaders(),
             cache: "no-store",
           });
@@ -3185,6 +3247,7 @@ function getAdminLoginScreen() {
           }
 
           cachedUsers = data.users;
+          usersLoaded = true;
           renderUsersTable();
           return true;
         } catch (err) {
@@ -3370,15 +3433,17 @@ function getAdminLoginScreen() {
 
       async function loadExportData() {
         try {
-          const res = await fetch(withNoCache(`${API_BASE}/admin/stats`), {
-            headers: getHeaders(),
-            cache: "no-store",
-          });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || `Failed to load export stats (${res.status})`);
-          }
-          const data = await res.json();
+          const data = cachedAdminStats || await (async () => {
+            const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/stats`), {
+              headers: getHeaders(),
+              cache: "no-store",
+            });
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(errorData.error || `Failed to load export stats (${res.status})`);
+            }
+            return res.json();
+          })();
 
           document.getElementById("export-users").textContent = data.totalUsers;
           document.getElementById("export-questions").textContent =
@@ -4576,13 +4641,22 @@ function getAdminLoginScreen() {
         dashboardEl?.classList.toggle("broadcast-mode", requestedTab === "broadcast");
 
         const reportsTabBadge = document.getElementById("reports-tab-badge");
-        if (requestedTab === "groups" && groupsLoaded) {
-          renderGroupsTable();
+        if (requestedTab === "users") {
+          if (usersLoaded) {
+            renderUsersTable();
+          } else {
+            void loadUsers();
+          }
         }
-        if (requestedTab === "reports" && reportsLoaded) {
+        if (requestedTab === "groups") {
+          if (groupsLoaded) renderGroupsTable();
+          else void loadGroups();
+        }
+        if (requestedTab === "reports") {
           hideAdminNotificationBanner();
           reportsTabBadge?.classList.add("hidden");
-          renderReportsTable();
+          if (reportsLoaded) renderReportsTable();
+          else void loadReports();
         }
         if (requestedTab === "broadcast") {
           if (broadcastOverviewLoaded) {
@@ -4592,10 +4666,10 @@ function getAdminLoginScreen() {
           }
         }
         if (requestedTab === "monetization") {
-          if (subscriptionRequestsLoaded) {
+          if (monetizationLoadedBuckets.has(selectedMonetizationBucket)) {
             renderMonetizationPanel();
           } else {
-            void loadMonetizationRequests();
+            void loadMonetizationRequests(selectedMonetizationBucket);
           }
         }
         if (requestedTab === "analytics") {

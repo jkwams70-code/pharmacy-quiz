@@ -34,20 +34,13 @@
     document.documentElement.setAttribute("data-ajix-access", "ready");
   }
   async function verify() {
-    const cached = await window.AJIXSubscription.get({ fresh: false });
-    if (cached?.subscription?.isActive === true) {
-      clearVerificationState();
-      void window.AJIXSubscription.get({ fresh: true });
-      return;
-    }
-    showVerificationState("Loading...");
+    // Extra pages are free after sign-in. Do not wait for or require a
+    // subscription entitlement before rendering them.
+    clearVerificationState();
     try {
-      const snapshot = await window.AJIXSubscription.get({ fresh: true });
-      clearVerificationState();
-      if (snapshot && snapshot.subscription?.isActive !== true) redirect();
+      await window.AJIXSubscription.get({ fresh: false });
     } catch {
-      showVerificationState("We are reconnecting to verify your subscription...");
-      window.setTimeout(verify, 1500);
+      clearVerificationState();
     }
   }
   let token = "";
@@ -56,6 +49,6 @@
     redirect();
     return;
   }
-  showVerificationState("Loading...");
+  clearVerificationState();
   void verify();
 })();

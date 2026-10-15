@@ -1201,10 +1201,16 @@ function readCurrentLawDrillSession() {
   const ownerKey = getLawDrillSessionOwnerKey();
   const local = state.owners?.[ownerKey] || null;
   const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
-  if (currentUser?.id && backendClient.isAuthenticated()) {
-    return remote;
+  const merged = mergeLawDrillSessions(local, remote);
+  if (
+    merged &&
+    currentUser?.id &&
+    backendClient.isAuthenticated() &&
+    getLawDrillSessionProgress(local) > getLawDrillSessionProgress(remote)
+  ) {
+    scheduleLawDrillSessionSync(0);
   }
-  return mergeLawDrillSessions(local, remote);
+  return merged;
 }
 
 function writeCurrentLawDrillSession(nextValue = {}, { scheduleSync = true } = {}) {
@@ -1217,6 +1223,18 @@ function writeCurrentLawDrillSession(nextValue = {}, { scheduleSync = true } = {
     scheduleLawDrillSessionSync();
   }
   return normalized;
+}
+
+function hydrateCurrentLawDrillSessionFromAccount() {
+  const state = readLawDrillSessionState();
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const local = normalizeStoredLawDrillSession(state.owners?.[ownerKey] || null);
+  const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
+  const merged = mergeLawDrillSessions(local, remote);
+  writeCurrentLawDrillSession(merged, {
+    scheduleSync: getLawDrillSessionProgress(merged) > getLawDrillSessionProgress(remote),
+  });
+  return merged;
 }
 
 let lawDrillSessionSyncHandle = null;
@@ -4261,7 +4279,6 @@ function gppqeFinishSession({ persistResult = true } = {}) {
           setupPoints: mergeSetupPoints(currentUser?.setupPoints || {}, currentSetupPoints),
         };
       }
-      scheduleSetupPointsSync(0);
     }
 
     if (gppqeState.selectedMode === "exam") {
@@ -8199,12 +8216,10 @@ function readCurrentSetupPoints({ scope = "normal" } = {}) {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
-  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
-  const merged = mergeSetupPoints(local, remote);
   const filtered = createEmptySetupPoints();
   const keys = getSetupPointKeys(scope);
   keys.forEach((key) => {
-    filtered[key] = Math.max(0, Math.round(Number(merged[key]) || 0));
+    filtered[key] = Math.max(0, Math.round(Number(local[key]) || 0));
   });
   return filtered;
 }
@@ -8219,9 +8234,6 @@ function writeCurrentSetupPoints(nextValue = {}, { scheduleSync = true, scope = 
   });
   state.owners[ownerKey] = current;
   writeSetupPointsState(state);
-  if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
-    scheduleSetupPointsSync();
-  }
   return state.owners[ownerKey];
 }
 
@@ -8297,8 +8309,9 @@ function scheduleSetupPointsSync(delayMs = 450) {
   }, delayMs);
 }
 
-function shouldCountCorrectAnswerTowardLeaderboard() {
-  return isLawStudyMode() || !(mode === "study" || isTopicQuizMode());
+function shouldCountCorrectAnswerTowardLeaderboard(setupPointsBucket = "") {
+  const bucket = String(setupPointsBucket || "").trim().toLowerCase();
+  return bucket !== "study" && bucket !== "gppqestudy";
 }
 
 function formatMenuCardPointsBadge(value) {
@@ -8572,6 +8585,7 @@ function commitFinishedSessionPoints({
   const safeScore = Math.max(0, Math.round(Number(score) || 0));
   const sessionId = String(sessionKey || latestSavedSession?.sessionId || "").trim();
   const scope = String(setupPointsBucket || "").startsWith("gppqe") ? "gppqe" : "normal";
+  const shouldAwardTotal = awardTotal && shouldCountCorrectAnswerTowardLeaderboard(setupPointsBucket);
 
   if (!sessionId || safeScore <= 0) {
     if (setupPointsBucket) {
@@ -8596,7 +8610,7 @@ function commitFinishedSessionPoints({
     writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true, scope });
   }
 
-  if (awardTotal) {
+  if (shouldAwardTotal) {
     const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
     writePendingPoints(readPendingPoints() + safeScore);
 
@@ -10402,12 +10416,6 @@ function syncCommunityRealtimePresenceState() {
 }
 
 async function loadCommunityRealtimeConfig({ force = false } = {}) {
-  if (isSubscriptionLockedForFeature("community")) {
-    stopCommunityPresenceRealtimeSubscription();
-    communityRealtimeConfig = null;
-    communityRealtimeConfigPromise = null;
-    return null;
-  }
   if (!backendClient.isAuthenticated()) {
     stopCommunityPresenceRealtimeSubscription();
     communityRealtimeConfig = null;
@@ -10469,10 +10477,6 @@ function handleCommunityAccessDenied() {
   communityAccessDenied = true;
   teardownCommunityRealtime();
   stopCommunityPresenceHeartbeat();
-  const activeScreen = getActiveScreenId();
-  if (isCommunityScreenId(activeScreen)) {
-    openSubscriptionScreen({ intent: "community", returnScreen: "quiz-menu" });
-  }
 }
 
 function refreshCommunityOverviewIfNeeded() {
@@ -20083,12 +20087,6 @@ function renderCommunityView() {
 }
 
 async function loadCommunityOverview({ silent = false, preferCache = false } = {}) {
-  if (isSubscriptionLockedForFeature("community")) {
-    stopCommunityOverviewPolling({ force: true });
-    stopCommunityPresenceRealtimeSubscription();
-    teardownCommunityRealtime();
-    return null;
-  }
   if (!silent) {
     setCommunityFeedback("Loading community...");
   }
@@ -23668,16 +23666,8 @@ async function executeCommunityAction(action = "", payload = {}) {
 }
 
 async function openCommunityScreen() {
-  if (communityAccessDenied) {
-    openSubscriptionScreen({ intent: "community", returnScreen: "quiz-menu" });
-    return;
-  }
   const ok = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!ok) return;
-  refreshSubscriptionAccessForAction();
-  if (!requireSubscriptionAccess("community")) {
-    return;
-  }
   const unlocked = await ensureCommunityLockAccess({
     fallbackScreen: getActiveScreenId() || "quiz-menu",
     redirectOnCancel: false,
@@ -24582,9 +24572,6 @@ async function handleGlobalQuickNavDestination(destination) {
   }
 
   if (destination === "news") {
-    if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
-      return;
-    }
     openNewsScreen();
     return;
   }
@@ -25201,12 +25188,6 @@ function selectNewsSearchQuery(query = "") {
 }
 
 async function openNewsScreen({ refresh = false } = {}) {
-  await refreshSubscriptionAccessForAction();
-
-  if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
-    return;
-  }
-
   closeMenuUserHub();
   closeGlobalQuickNav();
   closeNewsSearch();
@@ -33592,9 +33573,7 @@ async function refreshSharedAccountState({
     writeCurrentSetupPoints(readCurrentSetupPoints(), {
       scheduleSync: false,
     });
-    writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-      scheduleSync: false,
-    });
+    hydrateCurrentLawDrillSessionFromAccount();
     renderPoints();
     scheduleSharedAccountHydration({ silent, deferHydration });
     renderMenuDashboardStats();
@@ -33836,9 +33815,7 @@ async function handleAuthSubmit(event) {
         writeCurrentSetupPoints(readCurrentSetupPoints(), {
           scheduleSync: false,
         });
-        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-          scheduleSync: false,
-        });
+        hydrateCurrentLawDrillSessionFromAccount();
         renderPoints();
         scheduleSharedAccountHydration({ silent: true, deferHydration: true });
       } catch (postAuthHydrationError) {
@@ -33865,9 +33842,7 @@ async function handleAuthSubmit(event) {
         writeCurrentSetupPoints(readCurrentSetupPoints(), {
           scheduleSync: false,
         });
-        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-          scheduleSync: false,
-        });
+        hydrateCurrentLawDrillSessionFromAccount();
         renderPoints();
         scheduleSharedAccountHydration({ silent: true, deferHydration: true });
           } catch (postAuthHydrationError) {
@@ -35620,8 +35595,6 @@ if (menuGppqeTab) {
 if (menuExtraTab) {
   menuExtraTab.onclick = () => {
     openExtraScreen();
-
-    refreshSubscriptionAccessForAction();
   };
 }
 
@@ -35675,10 +35648,6 @@ if (menuNewsBtn) {
 
 if (menuGuidelinesBtn) {
   menuGuidelinesBtn.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
-    if (!requireSubscriptionAccess("extra-content")) {
-      return;
-    }
     window.location.href = "guidelines.html";
   };
 }
@@ -35691,26 +35660,14 @@ if (extraScreen) {
         : null;
     if (!(target instanceof HTMLElement)) return;
     if (target.hasAttribute("data-law")) {
-      await refreshSubscriptionAccessForAction();
-      if (!requireSubscriptionAccess("extra-content")) {
-        return;
-      }
       window.location.href = "law.html";
       return;
     }
     if (target.hasAttribute("data-medlens")) {
-      await refreshSubscriptionAccessForAction();
-      if (!requireSubscriptionAccess("extra-content")) {
-        return;
-      }
       window.location.href = "/medlens.html";
       return;
     }
     if (target.hasAttribute("data-calculator")) {
-      await refreshSubscriptionAccessForAction();
-      if (!requireSubscriptionAccess("extra-content")) {
-        return;
-      }
       window.location.href = "./calculator.html";
       return;
     }
@@ -36003,6 +35960,9 @@ function saveSession(mode, score, total, duration = null) {
 
   localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
   localStorage.setItem(RECENT_RESULTS_STORAGE_KEY, JSON.stringify(recentSessionResults));
+  if (currentUser && backendClient.isAuthenticated()) {
+    backendClient.syncSession(entry);
+  }
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
 }
@@ -36692,9 +36652,9 @@ function formatSubscriptionExpiryLabel(value) {
 
 function getSubscriptionPlanList() {
   const defaultPlans = [
-        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock everything for 7 days." },
-        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 10, durationDays: 30, description: "Unlock everything for 30 days." },
-        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 100, durationDays: 365, description: "Unlock everything for 365 days." },
+        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 7 days." },
+        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 10, durationDays: 30, description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 30 days." },
+        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 100, durationDays: 365, description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 365 days." },
       ];
   if (Array.isArray(subscriptionPlansCache) && subscriptionPlansCache.length) {
     return normalizeSubscriptionPlans(subscriptionPlansCache);
@@ -36710,7 +36670,7 @@ function normalizeSubscriptionPlans(plans = []) {
       shortLabel: "Week Pass",
       priceGhs: 5,
       durationDays: 7,
-      description: "Unlock everything for 7 days.",
+      description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 7 days.",
     },
     monthly: {
       key: "monthly",
@@ -36718,7 +36678,7 @@ function normalizeSubscriptionPlans(plans = []) {
       shortLabel: "Month Pass",
       priceGhs: 10,
       durationDays: 30,
-      description: "Unlock everything for 30 days.",
+      description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 30 days.",
     },
     yearly: {
       key: "yearly",
@@ -36726,7 +36686,7 @@ function normalizeSubscriptionPlans(plans = []) {
       shortLabel: "Annual Pass",
       priceGhs: 100,
       durationDays: 365,
-      description: "Unlock everything for 365 days.",
+      description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 365 days.",
     },
   };
   return ["weekly", "monthly", "yearly"].map((key) => {
@@ -37022,17 +36982,17 @@ const welcomeBonusEligible =
   const featureSets = {
     weekly: [
       "Unlock all drill modes",
-      "Unlock exams, library, and community",
+      "Unlock Study, Main Quiz, Law Drill, and GPPQE",
       "Perfect for short study bursts",
     ],
     monthly: [
       "Unlock all drill modes",
-      "Unlock exams, library, and community",
+      "Unlock Study, Main Quiz, Law Drill, and GPPQE",
       "Best value for ongoing practice",
     ],
     yearly: [
       "Unlock all drill modes",
-      "Unlock exams, library, and community",
+      "Unlock Study, Main Quiz, Law Drill, and GPPQE",
       "Best value for long-term access",
       "Priority renewal path",
     ],
@@ -37321,15 +37281,11 @@ async function loadSubscriptionScreenData({ force = false } = {}) {
 const SUBSCRIPTION_LOCKED_FEATURES = new Set([
   "exam",
   "study",
-  "topic-library",
-  "community",
-  "news",
   "rapid",
   "sudden",
   "clinical",
   "law",
   "gppqe",
-  "extra-content",
 ]);
 
 function getSubscriptionGateFeature(feature = "") {
@@ -37381,17 +37337,18 @@ function requireSubscriptionAccess(
   returnScreen = getActiveScreenId() || "quiz-menu",
 ) {
   const gateFeature = getSubscriptionGateFeature(feature);
-// Unknown subscription state must not unlock premium content.
+  const isPremiumFeature = isSubscriptionLockedForFeature(gateFeature);
+  if (!isPremiumFeature) {
+    return true;
+  }
+
+  // Unknown subscription state must not unlock premium content.
   if (!resolveSubscriptionAccess()) {
     openSubscriptionScreen({
       intent: gateFeature || feature,
       returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",
     });
     return false;
-  }
-
-  if (!isSubscriptionLockedForFeature(gateFeature)) {
-    return true;
   }
 
   openSubscriptionScreen({
@@ -40149,9 +40106,7 @@ function showScreen(id, options = {}) {
 
   const normalizedId = String(id || "").trim();
 
-  const isCommunityScreen =
-    normalizedId === "community-screen" ||
-    normalizedId === "community-chat-screen";
+  const isCommunityScreen = isCommunityScreenId(normalizedId);
 
   if (
     !skipSubscriptionGate &&
@@ -40670,6 +40625,16 @@ window.addEventListener("popstate", function (event) {
   }
 
   if (activeId === "quiz-area") {
+    if (isLawStudyMode()) {
+      persistLawDrillSession();
+      const lawView = getLawDrillView();
+      if (lawView === "review" || lawView === "result" || lawView === "level") {
+        returnToLawLadder();
+      } else {
+        goToMenu();
+      }
+      return;
+    }
     if (mode === "study") {
       saveStudyProgress();
       returnToParentScreen("study-setup");

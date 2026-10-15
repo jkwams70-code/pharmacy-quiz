@@ -611,6 +611,7 @@ const NEWS_PIPELINE_REFRESH_KEY = "ajix-news-pipeline-refresh-v1";
 const PUBLIC_NEWS_FEED_CACHE_KEY = "ajix-news-public-feed-v1";
 const NEWS_EDITOR_DRAFT_KEY = "ajix-news-editor-draft-v1";
 let newsEditorAutosaveTimer = null;
+const NEWS_REQUEST_TIMEOUT_MS = 10000;
 
 function normalizeApiBase(value = "") {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -638,10 +639,25 @@ async function probeApiBase(base = "") {
   const safeBase = normalizeApiBase(base);
   if (!safeBase) return false;
   try {
-    const res = await fetch(`${safeBase}/health`, { cache: "no-store" });
+    const res = await fetchWithTimeout(`${safeBase}/health`, { cache: "no-store" }, 5000);
     return Boolean(res && res.ok);
   } catch {
     return false;
+  }
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = NEWS_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
@@ -2599,7 +2615,7 @@ async function loadNewsPipeline() {
   const cachedFeed = loadCachedPublishedNewsFeed();
   try {
     await ensureApiBase();
-    const res = await fetch(`${API_BASE}/admin/news?limit=200&status=all`, {
+    const res = await fetchWithTimeout(`${API_BASE}/admin/news?limit=200&status=all&summary=1`, {
       headers: getHeaders(),
       cache: "no-store",
     });

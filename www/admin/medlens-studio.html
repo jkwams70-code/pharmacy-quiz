@@ -361,7 +361,70 @@ async function runAiEditInteraction(id,skipConfirm){if(!skipConfirm)return reque
 
 async function aiEditInteraction(id,skipConfirm){if(!skipConfirm)return requestInteractionAction(id,'ai-edit');return enqueueAiEdit("interactions",id,()=>runAiEditInteraction(id,true))}
 function childAction(){if(current==="drugs")fetchDrugs();else if(current==="diseases")openDiseaseFetchModal();else if(current==="interactions")openInteractionFetchModal()}
-load();
+let medlensInitialSummary = true;
+const nativeMedlensFetch = window.fetch.bind(window);
+window.fetch = function medlensFetch(input, options) {
+  const method = String(options?.method || "GET").toUpperCase();
+  const rawUrl = typeof input === "string" ? input : input?.url || "";
+  if (medlensInitialSummary && method === "GET" && /\/admin\/medlens\/(drugs|diseases|interactions)(?:\?|$)/.test(rawUrl) && !/[?&]summary=1(?:&|$)/.test(rawUrl)) {
+    const separator = rawUrl.includes("?") ? "&" : "?";
+    input = `${rawUrl}${separator}summary=1`;
+  }
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+  return nativeMedlensFetch(input, { ...options, signal: controller.signal })
+    .catch((error) => {
+      if (error?.name === "AbortError") throw new Error("Request timed out after 10 seconds");
+      throw error;
+    })
+    .finally(() => window.clearTimeout(timeoutId));
+};
+
+async function loadMedlensPage(page) {
+  const endpoints = {
+    drugs: "/admin/medlens/drugs?status=all",
+    diseases: "/admin/medlens/diseases?status=all",
+    interactions: "/admin/medlens/interactions?status=all",
+  };
+  const result = await api(endpoints[page]);
+  if (page === "drugs") {
+    queue = result.items || [];
+    document.getElementById("drugCount").firstChild.textContent = queue.length;
+    renderDrugs();
+  } else if (page === "diseases") {
+    diseaseQueue = result.items || [];
+    document.getElementById("diseaseCount").firstChild.textContent = diseaseQueue.length;
+    renderDiseases();
+  } else if (page === "interactions") {
+    interactionQueue = result.items || [];
+    document.getElementById("interactionCount").firstChild.textContent = interactionQueue.length;
+    renderInteractions();
+  }
+}
+
+const originalMedlensOpenPage = window.openPage;
+window.openPage = function openMedlensPage(page) {
+  medlensInitialSummary = false;
+  originalMedlensOpenPage(page);
+  if (page === "drugs") {
+    void loadMedlensPage(page).catch((error) => {
+      document.getElementById("activity").innerHTML = "<div><b>Database unavailable</b><span>" + previewText(error.message) + "</span></div>";
+    });
+  }
+};
+
+const originalMedlensGoDashboard = window.goDashboard;
+window.goDashboard = function goMedlensDashboard() {
+  medlensInitialSummary = true;
+  originalMedlensGoDashboard();
+  window.setTimeout(() => {
+    medlensInitialSummary = false;
+  }, 0);
+};
+
+void load().finally(() => {
+  medlensInitialSummary = false;
+});
 </script><div id="previewScreen" class="preview-screen"><div class="preview-bar"><h2>MedLens Article Preview</h2><div class="preview-bar-actions"><button class="theme-toggle-admin" onclick="toggleAdminTheme()" type="button" aria-label="Toggle theme" title="Toggle theme">&#9680;</button><div id="previewActions"></div><button class="preview-close" onclick="closeDrugPreview()" aria-label="Close preview" title="Close preview">&#10005;</button></div></div><main id="previewContent" class="preview-article"></main></div><div id="confirmModal" class="confirm-modal"><div class="confirm-card"><h3 id="confirmTitle">Confirm action</h3><p id="confirmText"></p><div class="confirm-actions"><button onclick="closeConfirm()">Cancel</button><button class="primary" onclick="confirmPendingAction()">Confirm</button></div></div></div><div id="fetchModal" class="confirm-modal fetch-modal"><div class="confirm-card"><h3>Fetch Drugs</h3><p>Enter up to 10 generic drug names, separated by commas.</p><textarea id="fetchTerms" placeholder="e.g. aspirin, losartan, doxycycline"></textarea><p class="fetch-message" id="fetchMessage"></p><div class="fetch-options"><div class="fetch-count-label"><span>Random count</span><select id="fetchCount" class="fetch-count-native"></select><button class="fetch-count-button" id="fetchCountButton" type="button" onclick="toggleFetchCountMenu()" aria-haspopup="listbox" aria-expanded="false">10</button><div class="fetch-count-menu" id="fetchCountMenu" role="listbox"></div></div><button class="fetch-icon fetch-cancel" onclick="closeFetchModal()" type="button" aria-label="Cancel" title="Cancel">&#10005;</button><button class="fetch-icon fetch-random" onclick="submitFetch(true)" type="button" aria-label="Random Fetch" title="Random Fetch">&#8644;</button><button class="primary fetch-icon fetch-submit" onclick="submitFetch(false)" type="button" aria-label="Fetch" title="Fetch">&#8594;</button></div></div></div></body></html>
 
 

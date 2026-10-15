@@ -1,20 +1,20 @@
-const CACHE_VERSION = "ajix-app-shell-v129-news-back";
+const CACHE_VERSION = "ajix-app-shell-v132-community-profile-mobile";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-"/engine.js?v=20260919-subscription-cache1",
+"/engine.js?v=20261014-community-profile-mobile1",
   "/backendClient.js?v=20260913-entitlement-live1",
   "/offlineStore.js?v=20260907-idb-recovery-v1",
   "/subscription-state.js?v=20260919-cache2",
-  "/subscription-route-lock.js?v=20260919-cache1",
+  "/subscription-route-lock.js?v=20261014-freeextras1",
   "/auth-lock.js",
   "/standalone-back.js?v=20260919-back-target1",
   "/medlens-interactions-database.js",
   "/medlens-disease-database.js",
-  "/styles.css",
+"/styles.css?v=20261014-community-profile-mobile2",
   "/rotationTaxonomy.js",
   "/pwa-launch.html",
   "/manifest.webmanifest",

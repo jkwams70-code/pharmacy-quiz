@@ -126,7 +126,11 @@ export function createMedLensRouter({ config, frontendPath }) {
     const all = (await getQueue(frontendPath)).map((x) => normalize(x));
     const filter = String(req.query.status || "all").toLowerCase();
     const items = all.filter((x) => filter === "all" || x.status === filter);
-    res.json({ ok: true, total: items.length, items, summary: Object.fromEntries(statuses.map((s) => [s, all.filter((x) => x.status === s).length])) });
+    const summaryOnly = String(req.query.summary || "") === "1";
+    const responseItems = summaryOnly
+      ? items.map(({ monograph: _monograph, sections: _sections, ...summary }) => summary)
+      : items;
+    res.json({ ok: true, total: items.length, items: responseItems, summary: Object.fromEntries(statuses.map((s) => [s, all.filter((x) => x.status === s).length])) });
   }));
   router.post("/api/admin/medlens/drugs/fetch", wrap(async (req, res) => {
     if (!admin(req, config)) return res.status(403).json({ error: "Forbidden" });

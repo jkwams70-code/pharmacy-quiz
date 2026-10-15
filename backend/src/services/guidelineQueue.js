@@ -167,6 +167,11 @@ function summary(items) {
   return Object.fromEntries(["fetched", "manual_feed", "draft", "in_review", "published", "rejected"].map((status) => [status, items.filter((item) => item.status === status).length]));
 }
 
+function toGuidelineSummary(item = {}) {
+  const { sections: _sections, manualFeed: _manualFeed, ...summaryItem } = item;
+  return summaryItem;
+}
+
 function updateItem(items, id, mutate) {
   const index = items.findIndex((item) => item.id === id);
   if (index < 0) return null;
@@ -187,7 +192,8 @@ export function createGuidelineRouter({ config }) {
     const all = await getQueue();
     const status = clean(req.query.status || "all").toLowerCase();
     const items = status === "all" ? all : all.filter((item) => item.status === status);
-    res.json({ ok: true, total: items.length, items, summary: summary(all) });
+    const summaryOnly = String(req.query.summary || "") === "1";
+    res.json({ ok: true, total: items.length, items: summaryOnly ? items.map(toGuidelineSummary) : items, summary: summary(all) });
   });
 
   router.post("/api/admin/guidelines/fetch", async (req, res) => {

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import https from "node:https";
@@ -9,6 +10,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import sharp from "sharp";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -70,6 +72,8 @@ const ALLOWED_ROTATIONS = new Set([
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendPath = path.join(__dirname, "..", "..", "www");
+const newsMediaPath = path.join(__dirname, "..", "data", "news-media");
+fs.mkdirSync(newsMediaPath, { recursive: true });
 const logPath = path.join(__dirname, "..", config.logDir);
 fs.mkdirSync(logPath, { recursive: true });
 const accessLogStream = fs.createWriteStream(path.join(logPath, "access.log"), {
@@ -385,7 +389,7 @@ const SUBSCRIPTION_PLAN_CATALOG = {
     shortLabel: "Week Pass",
     priceGhs: 5,
     durationDays: 7,
-    description: "Unlock drills, exams, library, and community for 7 days.",
+    description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 7 days.",
     ctaLabel: "Buy weekly access",
   },
   monthly: {
@@ -394,7 +398,7 @@ const SUBSCRIPTION_PLAN_CATALOG = {
     shortLabel: "Month Pass",
     priceGhs: 10,
     durationDays: 30,
-    description: "Unlock everything for 30 days.",
+    description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 30 days.",
     ctaLabel: "Buy monthly access",
   },
   yearly: {
@@ -403,11 +407,17 @@ const SUBSCRIPTION_PLAN_CATALOG = {
     shortLabel: "Annual Pass",
     priceGhs: 100,
     durationDays: 365,
-    description: "Unlock everything for a full year.",
+    description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for a full year.",
     ctaLabel: "Buy annual access",
   },
 };
-const SUBSCRIPTION_LOCKED_FEATURES = ["drills", "exams", "topic library", "community"];
+const SUBSCRIPTION_LOCKED_FEATURES = [
+  "study",
+  "exam",
+  "drills",
+  "law",
+  "gppqe",
+];
 const PROFESSIONAL_TYPE_VALUES = new Set([
   "Doctor of Pharmacy",
   "Pharmacy Technician",
@@ -1970,6 +1980,54 @@ function normalizeNewsUrl(value = "", fallbackBase = "") {
   }
 }
 
+function newsMediaBaseUrl(req) {
+  const protocol = String(req?.protocol || "http").trim();
+  const host = String(req?.get?.("host") || "").trim();
+  return host ? `${protocol}://${host}/api/news-media` : "/api/news-media";
+}
+
+async function createNewsImageVariants(imageValue = "", newsId = "", req = null) {
+  const raw = String(imageValue || "").trim();
+  if (!/^data:image\//i.test(raw)) return {};
+
+  const match = raw.match(/^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i);
+  if (!match) return {};
+
+  const encoded = String(match[2] || "").replace(/\s+/g, "");
+  if (!encoded || encoded.length > 40_000_000) return {};
+
+  const input = Buffer.from(encoded, "base64");
+  if (!input.length) return {};
+
+  const safeId = String(newsId || "news")
+    .replace(/[^a-z0-9_-]/gi, "-")
+    .slice(0, 80) || "news";
+  const digest = createHash("sha1").update(input).digest("hex").slice(0, 12);
+  const baseName = `news-${safeId}-${digest}`;
+  const variants = [
+    { key: "thumbnailUrl", suffix: "thumb", width: 320 },
+    { key: "mediumImageUrl", suffix: "medium", width: 640 },
+    { key: "largeImageUrl", suffix: "large", width: 1280 },
+  ];
+
+  await Promise.all(variants.map(async ({ suffix, width }) => {
+    const outputPath = path.join(newsMediaPath, `${baseName}-${suffix}.webp`);
+    if (!fs.existsSync(outputPath)) {
+      await sharp(input)
+        .rotate()
+        .resize({ width, withoutEnlargement: true })
+        .webp({ quality: 78 })
+        .toFile(outputPath);
+    }
+  }));
+
+  const baseUrl = newsMediaBaseUrl(req);
+  return Object.fromEntries(variants.map(({ key, suffix }) => [
+    key,
+    `${baseUrl}/${baseName}-${suffix}.webp`,
+  ]));
+}
+
 function slugifyNewsText(value = "") {
   return normalizeWhitespace(value)
     .toLowerCase()
@@ -2092,6 +2150,9 @@ function normalizeNewsItem(raw = {}) {
     aiGeneratedAt,
     aiCategory,
     imageUrl: normalizeNewsUrl(raw.imageUrl || raw.image_url || raw.thumbnailUrl || raw.thumbnail_url || raw.thumbnail || raw.image?.url || raw.enclosure?.url || raw.image || ""),
+    thumbnailUrl: normalizeNewsUrl(raw.thumbnailUrl || raw.thumbnail_url || raw.thumbnail || ""),
+    mediumImageUrl: normalizeNewsUrl(raw.mediumImageUrl || raw.medium_image_url || ""),
+    largeImageUrl: normalizeNewsUrl(raw.largeImageUrl || raw.large_image_url || ""),
     imageAlt: cleanNewsText(raw.imageAlt || "", 120),
     author: cleanNewsText(raw.author || "", 120),
     tags,
@@ -2118,6 +2179,15 @@ function toPublicNewsItem(raw = {}, viewerId = '') {
   delete publicItem.likedBy;
   publicItem.likedByViewer = Boolean(viewerId && likedBy.includes(String(viewerId)));
   return publicItem;
+}
+
+function toPublicNewsListItem(raw = {}, viewerId = '') {
+  const item = toPublicNewsItem(raw, viewerId);
+  delete item.content;
+  if (/^data:image\//i.test(String(item.imageUrl || ""))) {
+    item.imageUrl = "";
+  }
+  return item;
 }
 
 function toPublicNewsSections(sections = {}, viewerId = '') {
@@ -7017,13 +7087,45 @@ function resolveCorrectAnswerValue(rawCorrect, options) {
 
   const asString = String(rawCorrect || "").trim();
   if (!asString) return null;
-  const letterMatch = asString.match(/^([A-H])(?:[.)\s:\-]|$)/i);
+  const letterMatch = asString.match(/^([A-H])(?:\s*[.):\-]|\s*$)/i);
   if (letterMatch) {
     const letterIndex = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
     if (letterIndex >= 0 && letterIndex < options.length) return String(options[letterIndex]);
   }
   if (options.includes(asString)) return asString;
   return null;
+}
+
+function resolveSubmittedAnswerValue(rawSelected, options) {
+  if (!Array.isArray(options) || options.length === 0) return null;
+
+  const selected = String(rawSelected ?? "").trim();
+  if (!selected) return null;
+
+  // Single-choice questions submit the option text. Prefer an exact text
+  // match before interpreting numeric values as indexes.
+  const exact = options.find(
+    (option) => String(option ?? "").trim() === selected,
+  );
+  if (exact !== undefined) return String(exact);
+
+  const normalizedSelected = selected.toLowerCase().replace(/\s+/g, " ");
+  const normalizedMatch = options.find(
+    (option) =>
+      String(option ?? "").trim().toLowerCase().replace(/\s+/g, " ") ===
+      normalizedSelected,
+  );
+  if (normalizedMatch !== undefined) return String(normalizedMatch);
+
+  // Combo questions submit A/B/C letters. Convert the letter to the actual
+  // option text before comparing it with the stored correct answer.
+  const letterMatch = selected.match(/^([A-H])(?:\s*[.):\-]|\s*$)/i);
+  if (letterMatch) {
+    const index = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+    if (index >= 0 && index < options.length) return String(options[index]);
+  }
+
+  return selected;
 }
 
 function getActorId(req) {
@@ -7517,9 +7619,25 @@ function buildDailyLeaderboardSnapshot({
 
 function createCorsOptions() {
   if (process.env.NODE_ENV !== "production") {
+    const isAllowedLocalOrigin = (origin = "") => {
+      if (!origin) return true;
+      try {
+        const parsed = new URL(origin);
+        if (!/^https?:$/.test(parsed.protocol)) return false;
+        const hostname = String(parsed.hostname || "").toLowerCase();
+        if (["localhost", "127.0.0.1", "::1"].includes(hostname)) return true;
+        if (/^10\.(?:\d{1,3}\.){2}\d{1,3}$/.test(hostname)) return true;
+        if (/^192\.168\.(?:\d{1,3}\.)\d{1,3}$/.test(hostname)) return true;
+        const private172 = hostname.match(/^172\.(\d{1,3})\.(?:\d{1,3}\.)\d{1,3}$/);
+        return Boolean(private172 && Number(private172[1]) >= 16 && Number(private172[1]) <= 31);
+      } catch {
+        return false;
+      }
+    };
+
     return {
       origin(origin, callback) {
-        if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+        if (isAllowedLocalOrigin(origin)) {
           callback(null, true);
           return;
         }
@@ -7654,14 +7772,13 @@ app.use((req, res, next) => {
   });
 });
 
-// Law Library is premium content and must pass the active-subscription check.
-app.get("/law.html", requireActiveSubscription, (_req, res) => {
+// The Law Library is a free Extra feature, but remains sign-in protected.
+app.get("/law.html", requireAuth, (_req, res) => {
   res.sendFile(path.join(frontendPath, "law.html"));
 });
 
-// Calculator is premium content and must not be reachable by bypassing the
-// Extra-page subscription check.
-app.get("/calculator.html", requireActiveSubscription, (_req, res) => {
+// The calculator is a free Extra feature, but remains sign-in protected.
+app.get("/calculator.html", requireAuth, (_req, res) => {
   res.sendFile(path.join(frontendPath, "calculator.html"));
 });
 
@@ -7708,11 +7825,20 @@ app.use("/api/admin", (req, _res, next) => {
 });
 
 // API routes
-// Server-backed premium areas enforce the same expiry timestamp as the frontend.
-app.use("/api/community", requireActiveSubscription);
-app.use("/api/news", requireActiveSubscription);
-app.use("/api/medlens", requireActiveSubscription);
-app.use("/api/guidelines", requireActiveSubscription);
+// Free signed-in areas require authentication but not an active subscription.
+app.use("/api/community", requireAuth);
+app.use("/api/news", requireAuth);
+app.use("/api/medlens", requireAuth);
+app.use("/api/guidelines", requireAuth);
+app.use(
+  "/api/news-media",
+  requireAuth,
+  express.static(newsMediaPath, {
+    maxAge: "30d",
+    immutable: true,
+    fallthrough: false,
+  }),
+);
 app.use(createMedLensRouter({ config, frontendPath }));
 app.use(createMedLensDiseaseRouter({ config, frontendPath }));
 app.use(createMedLensInteractionRouter({ config, frontendPath }));
@@ -12187,9 +12313,12 @@ app.post(
         wrongQuestionIds.push(id);
         continue;
       }
-      const selected = String(answers[String(id)] || "").trim();
-      const correct = String(question.correct || "").trim();
-      if (selected && selected === correct) {
+      const options = Array.isArray(question.options) ? question.options : [];
+      const selected = resolveSubmittedAnswerValue(answers[String(id)], options);
+      const correct =
+        resolveCorrectAnswerValue(question.correct, options) ||
+        String(question.correct || "").trim();
+      if (selected && correct && selected === correct) {
         score += 1;
       } else {
         wrongQuestionIds.push(id);
@@ -14038,10 +14167,49 @@ const requests = [...paidRequests, ...trialRequests].sort(
     Date.parse(a.requestedAt || 0),
 );
 
+    const requestedStatus = String(req.query?.status || "all").trim().toLowerCase();
+    const allowedStatuses = new Set(["pending", "active", "rejected", "expired"]);
+    const statusFilter = allowedStatuses.has(requestedStatus) ? requestedStatus : "all";
+    const requestedLimit = Number.parseInt(String(req.query?.limit || "50"), 10);
+    const limit = Math.min(100, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 50));
+    const requestedPage = Number.parseInt(String(req.query?.page || "1"), 10);
+    const page = Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1);
+    const counts = {
+      request: requests.filter((entry) => getSubscriptionRequestStatus(entry) === "pending").length,
+      activated: requests.filter((entry) => getSubscriptionRequestStatus(entry) === "active").length,
+      rejected: requests.filter((entry) => getSubscriptionRequestStatus(entry) === "rejected").length,
+      expired: requests.filter((entry) => getSubscriptionRequestStatus(entry) === "expired").length,
+    };
+    const amountTotals = {
+      request: requests
+        .filter((entry) => getSubscriptionRequestStatus(entry) === "pending")
+        .reduce((sum, entry) => sum + (Number(entry?.priceGhs) || 0), 0),
+      activated: requests
+        .filter((entry) => getSubscriptionRequestStatus(entry) === "active")
+        .reduce((sum, entry) => sum + (Number(entry?.priceGhs) || 0), 0),
+      rejected: requests
+        .filter((entry) => getSubscriptionRequestStatus(entry) === "rejected")
+        .reduce((sum, entry) => sum + (Number(entry?.priceGhs) || 0), 0),
+      expired: requests
+        .filter((entry) => getSubscriptionRequestStatus(entry) === "expired")
+        .reduce((sum, entry) => sum + (Number(entry?.priceGhs) || 0), 0),
+    };
+    const filteredRequests = statusFilter === "all"
+      ? requests
+      : requests.filter((entry) => getSubscriptionRequestStatus(entry) === statusFilter);
+    const start = (page - 1) * limit;
+    const pageRequests = filteredRequests.slice(start, start + limit);
+
     res.json({
       ok: true,
-      pendingCount: requests.filter((entry) => getSubscriptionRequestStatus(entry) === "pending").length,
-      requests,
+      pendingCount: counts.request,
+      counts,
+      amountTotals,
+      page,
+      limit,
+      total: filteredRequests.length,
+      hasMore: start + pageRequests.length < filteredRequests.length,
+      requests: pageRequests,
     });
   }),
 );
@@ -14762,7 +14930,14 @@ const requestedCategory = requestedCategoryRaw
       .filter((item) => !requestedSourceId || item.sourceId === requestedSourceId)
       .slice(0, limit);
     const sources = (await readCollection("newsSources")).map(normalizeNewsSource).filter((source) => source.enabled !== false);
-    const sections = toPublicNewsSections(buildNewsFeedSections(allItems), viewerId);
+    const sections = Object.fromEntries(
+      Object.entries(buildNewsFeedSections(allItems)).map(([key, sectionItems]) => [
+        key,
+        Array.isArray(sectionItems)
+          ? sectionItems.map((item) => toPublicNewsListItem(item, viewerId))
+          : [],
+      ]),
+    );
     const categoryCounts = items.reduce((accumulator, item) => {
       const category = normalizeNewsCategory(item.category || "", "clinical-news");
       accumulator[category] = (accumulator[category] || 0) + 1;
@@ -14771,7 +14946,7 @@ const requestedCategory = requestedCategoryRaw
     res.json({
       ok: true,
       total: items.length,
-      items: items.map((item) => toPublicNewsItem(item, viewerId)),
+      items: items.map((item) => toPublicNewsListItem(item, viewerId)),
       sections,
       categories: categoryCounts,
       sources: sources.map((source) => ({
@@ -14846,11 +15021,20 @@ app.get(
       ? normalizeNewsStatus(requestedStatusRaw)
       : "";
     const requestedSourceId = String(req.query?.sourceId || "").trim();
+    const summaryOnly = String(req.query?.summary || "") === "1";
     const limit = Math.max(1, Math.min(200, Math.round(Number(req.query?.limit) || 100)));
-    const items = sortNewsItemsForAdmin((await readCollection("newsItems")).map(normalizeNewsItem))
+    const fullItems = sortNewsItemsForAdmin((await readCollection("newsItems")).map(normalizeNewsItem))
       .filter((item) => !requestedStatus || normalizeNewsStatus(item.status || "") === requestedStatus)
       .filter((item) => !requestedSourceId || item.sourceId === requestedSourceId)
       .slice(0, limit);
+    const items = summaryOnly
+      ? fullItems.map(({ content: _content, likedBy: _likedBy, ...summary }) => {
+          if (/^data:image\//i.test(String(summary.imageUrl || ""))) {
+            summary.imageUrl = "";
+          }
+          return summary;
+        })
+      : fullItems;
     const categories = await seedDefaultNewsCategories();
     const sources = (await readCollection("newsSources")).map(normalizeNewsSource);
     const runs = (await readCollection("newsCollectRuns")).map(normalizeNewsCollectRun);
@@ -15167,8 +15351,18 @@ app.post(
       updatedAt: now,
     });
 
+    let generatedVariants = {};
+    try {
+      generatedVariants = await createNewsImageVariants(baseItem.imageUrl, baseItem.id, req);
+    } catch (error) {
+      res.status(400).json({ error: "The news image could not be processed" });
+      return;
+    }
+
     const item = normalizeNewsItem({
       ...baseItem,
+      ...generatedVariants,
+      imageUrl: generatedVariants.largeImageUrl || baseItem.imageUrl,
       status: "pending_review",
       reviewNote,
       updatedAt: now,
@@ -15341,8 +15535,18 @@ if (requestedFeatured && !current.featured) {
     const currentStatus = normalizeNewsStatus(current.status || "");
     const wasRejected = currentStatus === "rejected";
     const now = new Date().toISOString();
+    let generatedVariants = {};
+    if (req.body?.imageUrl !== undefined) {
+      try {
+        generatedVariants = await createNewsImageVariants(req.body.imageUrl, newsId, req);
+      } catch (error) {
+        res.status(400).json({ error: "The news image could not be processed" });
+        return;
+      }
+    }
     const next = normalizeNewsItem({
       ...current,
+      ...generatedVariants,
       status: wasRejected ? "pending_review" : current.status,
       reviewRequired: wasRejected ? true : current.reviewRequired,
       reviewedAt: wasRejected ? "" : current.reviewedAt,
@@ -15361,7 +15565,12 @@ if (requestedFeatured && !current.featured) {
       sourceType: req.body?.sourceType !== undefined ? normalizeNewsSourceType(req.body.sourceType || "", current.sourceType) : current.sourceType,
       sourcePublishedAt: req.body?.sourcePublishedAt !== undefined ? cleanNewsText(req.body.sourcePublishedAt, 80) : current.sourcePublishedAt,
       sourcePublishedLabel: req.body?.sourcePublishedLabel !== undefined ? cleanNewsText(req.body.sourcePublishedLabel, 80) : current.sourcePublishedLabel,
-      imageUrl: req.body?.imageUrl !== undefined ? normalizeNewsUrl(req.body.imageUrl || "") : current.imageUrl,
+      imageUrl: req.body?.imageUrl !== undefined
+        ? generatedVariants.largeImageUrl || normalizeNewsUrl(req.body.imageUrl || "")
+        : current.imageUrl,
+      thumbnailUrl: req.body?.imageUrl !== undefined ? generatedVariants.thumbnailUrl || "" : current.thumbnailUrl,
+      mediumImageUrl: req.body?.imageUrl !== undefined ? generatedVariants.mediumImageUrl || "" : current.mediumImageUrl,
+      largeImageUrl: req.body?.imageUrl !== undefined ? generatedVariants.largeImageUrl || "" : current.largeImageUrl,
       imageAlt: req.body?.imageAlt !== undefined ? cleanNewsText(req.body.imageAlt, 120) : current.imageAlt,
       author: req.body?.author !== undefined ? cleanNewsText(req.body.author, 120) : current.author,
       tags: Array.isArray(req.body?.tags)

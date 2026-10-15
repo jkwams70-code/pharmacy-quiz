@@ -2531,7 +2531,7 @@ function getNewsStatusLabel(status = '') {
     relatedExpanded = false;
 
     if (articleHero) {
-      const heroImageUrl = String(story.imageUrl || storedStory.imageUrl || storedStory.heroBackgroundImage || '').trim();
+      const heroImageUrl = String(story.largeImageUrl || storedStory.largeImageUrl || story.imageUrl || storedStory.imageUrl || storedStory.heroBackgroundImage || '').trim();
       articleHero.hidden = !heroImageUrl;
       articleHero.setAttribute('aria-hidden', String(!heroImageUrl));
       articleHero.className = 'article-hero-image';

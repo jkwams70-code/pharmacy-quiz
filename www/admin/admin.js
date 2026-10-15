@@ -110,6 +110,15 @@ async function fetchAdmin(path, options = {}, { timeoutMs = ADMIN_REQUEST_TIMEOU
       let cachedSubscriptionRequests = [];
       let cachedMonetizationCounts = { request: 0, activated: 0, rejected: 0, expired: 0 };
       let cachedMonetizationAmountTotals = { request: 0, activated: 0, rejected: 0, expired: 0 };
+      const monetizationBucketRecords = {
+        request: [],
+        activated: [],
+        rejected: [],
+        expired: [],
+      };
+      const monetizationBucketPages = { request: 0, activated: 0, rejected: 0, expired: 0 };
+      const monetizationBucketHasMore = { request: false, activated: false, rejected: false, expired: false };
+      const monetizationBucketErrors = new Map();
       const monetizationLoadedBuckets = new Set();
       const monetizationLoadingBuckets = new Set();
       const subscriptionRequestsLoadingPromises = new Map();
@@ -1159,9 +1168,29 @@ function getMonetizationBucketMeta(bucket = "request") {
           root.innerHTML = '<div class="monetization-empty-state is-loading">Loading subscription records…</div>';
           return;
         }
+        const bucketError = monetizationBucketErrors.get(bucket);
+        if (!monetizationLoadedBuckets.has(bucket) && bucketError) {
+          const panelTitle = document.getElementById("monetization-panel-title");
+          const panelKicker = document.getElementById("monetization-panel-kicker");
+          const summaryCount = document.getElementById("monetization-summary-count");
+          const summaryTotal = document.getElementById("monetization-summary-total");
+          if (panelTitle) {
+            panelTitle.textContent = meta.title;
+            panelTitle.style.display = "";
+          }
+          if (panelKicker) panelKicker.textContent = bucket;
+          if (summaryCount) summaryCount.textContent = "Unable to load subscription records";
+          if (summaryTotal) summaryTotal.textContent = "";
+          root.innerHTML = `
+            <div class="monetization-empty-state">
+              <div>${escapeHtml(bucketError)}</div>
+              <button type="button" class="admin-secondary-btn" data-action="retry-monetization-bucket" data-bucket="${escapeHtml(bucket)}">Retry</button>
+            </div>
+          `;
+          return;
+        }
         const sortMultiplier = monetizationSortDirection === "asc" ? 1 : -1;
-        const items = cachedSubscriptionRequests
-          .filter((entry) => getMonetizationBucket(entry) === bucket)
+        const items = [...(monetizationBucketRecords[bucket] || [])]
           .sort((a, b) => {
             const aValue = getMonetizationRequestSortTimestamp(a, bucket);
             const bValue = getMonetizationRequestSortTimestamp(b, bucket);
@@ -1189,7 +1218,10 @@ function getMonetizationBucketMeta(bucket = "request") {
                 : bucket === "rejected"
                   ? "rejected requests"
                   : "expired subscriptions";
-          summaryCount.innerHTML = `Showing <strong>${filteredItems.length}</strong> ${summaryLabel}`;
+          const totalLabel = Number(counts[bucket]) > filteredItems.length
+            ? ` of <strong>${Number(counts[bucket])}</strong>`
+            : "";
+          summaryCount.innerHTML = `Showing <strong>${filteredItems.length}</strong>${totalLabel} ${summaryLabel}`;
         }
         if (summaryTotal) {
           summaryTotal.textContent = `Total: ${formatGhsAmount(bucketTotal)}`;
@@ -1203,6 +1235,9 @@ function getMonetizationBucketMeta(bucket = "request") {
         const headerHtml = buildMonetizationHeader(bucket, filteredItems.length);
         const rowsHtml = filteredItems.map((request) => buildMonetizationRequestRow(request, bucket)).join("");
         const columnCount = bucket === "activated" || bucket === "rejected" || bucket === "expired" ? 7 : 6;
+        const loadMoreMarkup = monetizationBucketHasMore[bucket]
+          ? `<div class="monetization-load-more"><button type="button" class="admin-secondary-btn" data-action="load-more-monetization" data-bucket="${escapeHtml(bucket)}">Load more</button></div>`
+          : "";
         root.innerHTML = `
           <div class="table-container monetization-table-container">
             <table class="user-table monetization-table">
@@ -1219,10 +1254,11 @@ function getMonetizationBucketMeta(bucket = "request") {
               </tbody>
             </table>
           </div>
+          ${loadMoreMarkup}
         `;
       }
 
-      async function loadMonetizationRequests(bucket = selectedMonetizationBucket) {
+      async function loadMonetizationRequests(bucket = selectedMonetizationBucket, page = 1) {
   const statusByBucket = {
     request: "pending",
     activated: "active",
@@ -1233,13 +1269,15 @@ function getMonetizationBucketMeta(bucket = "request") {
     ? bucket
     : "request";
   const requestStatus = statusByBucket[requestedBucket];
-  const existingPromise = subscriptionRequestsLoadingPromises.get(requestedBucket);
+  const requestedPage = Math.max(1, Number(page) || 1);
+  const promiseKey = `${requestedBucket}:${requestedPage}`;
+  const existingPromise = subscriptionRequestsLoadingPromises.get(promiseKey);
   if (existingPromise) return existingPromise;
 
   monetizationLoadingBuckets.add(requestedBucket);
   const loadingPromise = (async () => {
     try {
-      const query = new URLSearchParams({ status: requestStatus, page: "1", limit: "50" });
+      const query = new URLSearchParams({ status: requestStatus, page: String(requestedPage), limit: "50" });
       const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/subscription-requests?${query.toString()}`), {
         headers: getHeaders(),
         cache: "no-store",
@@ -1251,9 +1289,15 @@ function getMonetizationBucketMeta(bucket = "request") {
         throw new Error(data.error || "Failed to load subscription requests");
       }
 
-      const existingById = new Map(cachedSubscriptionRequests.map((entry) => [String(entry?.id || ""), entry]));
+      const existingById = new Map(
+        (requestedPage === 1 ? [] : monetizationBucketRecords[requestedBucket])
+          .map((entry) => [String(entry?.id || ""), entry]),
+      );
       data.requests.forEach((entry) => existingById.set(String(entry?.id || ""), entry));
-      cachedSubscriptionRequests = [...existingById.values()];
+      monetizationBucketRecords[requestedBucket] = [...existingById.values()];
+      monetizationBucketPages[requestedBucket] = requestedPage;
+      monetizationBucketHasMore[requestedBucket] = data.hasMore === true;
+      cachedSubscriptionRequests = Object.values(monetizationBucketRecords).flat();
       if (data.counts && typeof data.counts === "object") {
         cachedMonetizationCounts = {
           request: Number(data.counts.request) || 0,
@@ -1270,6 +1314,7 @@ function getMonetizationBucketMeta(bucket = "request") {
           expired: Number(data.amountTotals.expired) || 0,
         };
       }
+      monetizationBucketErrors.delete(requestedBucket);
       monetizationLoadedBuckets.add(requestedBucket);
 
       subscriptionRequestsLoaded = true;
@@ -1277,20 +1322,40 @@ function getMonetizationBucketMeta(bucket = "request") {
       return true;
     } catch (err) {
       console.error("Failed to load subscription requests:", err);
+      monetizationBucketErrors.set(requestedBucket, err.message || "Failed to load subscription records");
       showAlert("monetization-alerts", "Failed to load subscription requests", "error");
       return false;
     }
   })();
-  subscriptionRequestsLoadingPromises.set(requestedBucket, loadingPromise);
+  subscriptionRequestsLoadingPromises.set(promiseKey, loadingPromise);
 
   try {
     return await loadingPromise;
   } finally {
     monetizationLoadingBuckets.delete(requestedBucket);
-    subscriptionRequestsLoadingPromises.delete(requestedBucket);
+    subscriptionRequestsLoadingPromises.delete(promiseKey);
     if (selectedMonetizationBucket === requestedBucket) renderMonetizationPanel();
   }
 }
+
+      function invalidateMonetizationBuckets(bucketNames = []) {
+        for (const bucket of bucketNames) {
+          if (!monetizationBucketRecords[bucket]) continue;
+          monetizationBucketRecords[bucket] = [];
+          monetizationBucketPages[bucket] = 0;
+          monetizationBucketHasMore[bucket] = false;
+          monetizationBucketErrors.delete(bucket);
+          monetizationLoadedBuckets.delete(bucket);
+        }
+      }
+
+      async function refreshMonetizationBuckets(bucketNames = []) {
+        const uniqueBuckets = [...new Set(bucketNames)].filter((bucket) => monetizationBucketRecords[bucket]);
+        invalidateMonetizationBuckets(uniqueBuckets);
+        const loads = uniqueBuckets.map((bucket) => loadMonetizationRequests(bucket, 1));
+        renderMonetizationPanel();
+        await Promise.all(loads);
+      }
 
       function getPasswordResetRequestName(request = {}) {
         return String(request?.name || request?.user?.name || request?.username || request?.contact || "Password reset request").trim() || "Password reset request";
@@ -1822,7 +1887,7 @@ function getMonetizationBucketMeta(bucket = "request") {
             throw new Error(data.error || `Failed to ${promptLabel} subscription request`);
           }
           showAlert("monetization-alerts", `Subscription request ${promptLabel}d successfully`, "success");
-          await loadMonetizationRequests();
+          await refreshMonetizationBuckets(["request", "activated", "rejected"]);
           await loadStats();
           return true;
         } catch (err) {
@@ -5488,6 +5553,23 @@ function getAdminLoginScreen() {
         });
 
         document.addEventListener("click", (event) => {
+          const retryMonetizationBtn = event.target.closest("button[data-action='retry-monetization-bucket']");
+          if (retryMonetizationBtn?.dataset.bucket) {
+            const bucket = retryMonetizationBtn.dataset.bucket;
+            monetizationBucketErrors.delete(bucket);
+            monetizationLoadedBuckets.delete(bucket);
+            renderMonetizationPanel();
+            void loadMonetizationRequests(bucket, 1);
+            return;
+          }
+
+          const loadMoreMonetizationBtn = event.target.closest("button[data-action='load-more-monetization']");
+          if (loadMoreMonetizationBtn?.dataset.bucket) {
+            const bucket = loadMoreMonetizationBtn.dataset.bucket;
+            void loadMonetizationRequests(bucket, (monetizationBucketPages[bucket] || 0) + 1);
+            return;
+          }
+
           const sortToggle = event.target.closest("button[data-action='toggle-monetization-sort']");
           if (sortToggle) {
             event.preventDefault();

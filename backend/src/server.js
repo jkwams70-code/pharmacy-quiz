@@ -91,6 +91,11 @@ let cachedFfprobePath = "";
 const COMMUNITY_REALTIME_GLOBAL_TOPIC = "community:global";
 const COMMUNITY_REALTIME_PRESENCE_TOPIC = "community:presence";
 const communityCallSessionsByConversation = new Map();
+const adminSubscriptionSourceCache = {
+  expiresAt: 0,
+  value: null,
+  promise: null,
+};
 
 const AUTH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -5834,6 +5839,38 @@ function coerceCollectionArray(value) {
   return [];
 }
 
+function invalidateAdminSubscriptionSourceCache() {
+  adminSubscriptionSourceCache.expiresAt = 0;
+  adminSubscriptionSourceCache.value = null;
+}
+
+async function readAdminSubscriptionSources() {
+  const now = Date.now();
+  if (adminSubscriptionSourceCache.value && adminSubscriptionSourceCache.expiresAt > now) {
+    return adminSubscriptionSourceCache.value;
+  }
+  if (adminSubscriptionSourceCache.promise) {
+    return adminSubscriptionSourceCache.promise;
+  }
+
+  adminSubscriptionSourceCache.promise = Promise.all([
+    readCollection("users"),
+    readCollection("subscriptionRequests"),
+  ]).then(([rawUsers, rawRequests]) => {
+    const value = {
+      users: rawUsers.map(normalizeExistingUser),
+      rawRequests: coerceCollectionArray(rawRequests),
+    };
+    adminSubscriptionSourceCache.value = value;
+    adminSubscriptionSourceCache.expiresAt = Date.now() + 3000;
+    return value;
+  }).finally(() => {
+    adminSubscriptionSourceCache.promise = null;
+  });
+
+  return adminSubscriptionSourceCache.promise;
+}
+
 function normalizeLawDrillLevelStatus(levelStatus, index, currentLevelIndex, reviewLevelIndex) {
   const safeStatus = String(levelStatus || "").trim().toLowerCase();
   if (index < currentLevelIndex) return "completed";
@@ -8340,6 +8377,7 @@ app.post(
     };
 
     await writeCollection("subscriptionRequests", requests);
+    invalidateAdminSubscriptionSourceCache();
     await writeUsersSnapshot(usersSnapshot, users);
 
     res.status(existingPending ? 200 : 201).json({
@@ -14080,12 +14118,8 @@ app.get(
       return;
     }
 
-    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const { users, rawRequests } = await readAdminSubscriptionSources();
 const usersById = new Map(users.map((user) => [user.id, user]));
-
-const rawRequests = coerceCollectionArray(
-  await readCollection("subscriptionRequests"),
-);
 
 const syncedRequests = synchronizeSubscriptionRequestsWithUsers(
   users,
@@ -14309,6 +14343,7 @@ welcomeBonusAppliedAt:
     };
 
     await writeCollection("subscriptionRequests", requests);
+    invalidateAdminSubscriptionSourceCache();
     await writeUsersSnapshot(usersSnapshot, users);
 
     res.json({
@@ -14455,6 +14490,7 @@ app.post(
     };
 
     await writeCollection("subscriptionRequests", requests);
+    invalidateAdminSubscriptionSourceCache();
     await writeUsersSnapshot(usersSnapshot, users);
 
     res.json({
@@ -16011,6 +16047,7 @@ app.get(
     const syncedSubscriptionRequests = synchronizeSubscriptionRequestsWithUsers(users, rawSubscriptionRequests);
     if (syncedSubscriptionRequests.changed) {
       await writeCollection("subscriptionRequests", syncedSubscriptionRequests.requests);
+      invalidateAdminSubscriptionSourceCache();
     }
     const usersById = new Map(users.map((user) => [user.id, user]));
     const subscriptionRequests = syncedSubscriptionRequests.requests.map((request) =>

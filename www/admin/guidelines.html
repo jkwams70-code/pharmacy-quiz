@@ -1326,7 +1326,7 @@ html[data-theme="dark"] #previewModal .preview-section-body blockquote.attention
     }
     async function loadGuidelinesFromApi(){
       try{
-        const result=await guidelineApi('/admin/guidelines?status=all');
+        const result=await guidelineApi('/admin/guidelines?status=all&summary=1');
         guidelines=(result.items||[]).map(item=>({...item,status:item.status==='in_review'?'review':item.status,org:item.org||item.organization||item.source||'Unknown',activity:item.activity||item.updatedAt||item.createdAt||''}));
         if(window.renderGuidelinesLive)window.renderGuidelinesLive();else renderTable();
       }catch(error){tableBody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--danger);">Guideline API unavailable: '+String(error.message||'')+'</td></tr>'}

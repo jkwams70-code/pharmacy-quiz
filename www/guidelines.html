@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/table-scroll.js?v=20261015-table-scroll2"></script>
 <meta name="robots" content="noindex, nofollow" />
     <script src="/subscription-state.js?v=20260919-cache2"></script><script src="/subscription-route-lock.js?v=20261014-freeextras1"></script><script src="auth-lock.js" data-login-url="index.html"></script>
 <script src="standalone-back.js?v=20260919-back-target1" data-back-url="index.html?screen=extra-screen"></script>
@@ -2209,6 +2210,7 @@ body{padding-top:65px}
         let currentFilter = 'all';
         const THEME_KEY = 'ajix-guidelines-theme-v1';
         const themeToggleBtn = document.getElementById('themeToggleBtn');
+        let guidelinesApiBase = '';
         let guidelineById = Object.fromEntries(guidelines.map((guideline) => [guideline.id, guideline]));
 
         function escapeHtml(value) {
@@ -3967,8 +3969,8 @@ body{padding-top:65px}
         }
 
         // ===== NAVIGATION =====
-        function showDetail(id) {
-            const guideline = guidelineById[id] || guidelines.find((entry) => entry.id === id);
+        async function showDetail(id) {
+            let guideline = guidelineById[id] || guidelines.find((entry) => entry.id === id);
             const detailView = document.getElementById('detailView');
             const backBtn = document.getElementById('backBtn');
             const listView = document.getElementById('listView');
@@ -3976,6 +3978,25 @@ body{padding-top:65px}
             listView.classList.remove('active');
             detailView.classList.add('active');
             if (backBtn) backBtn.classList.add('visible');
+            detailView.innerHTML = '<div class="detail-loading">Loading guideline...</div>';
+            const builtInIds = new Set(['gina-asthma', 'aha-hypertension', 'ada-diabetes', 'gold-copd', 'idsa-pneumonia', 'esc-heart-failure']);
+            if (guideline && !builtInIds.has(String(guideline.id)) && guidelinesApiBase) {
+                try {
+                    const response = await fetch(guidelinesApiBase + '/guidelines/' + encodeURIComponent(id), {
+                        cache: 'no-store',
+                        headers: getGuidelinesAuthHeaders(),
+                    });
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.item) {
+                            guideline = result.item;
+                            guidelineById[id] = guideline;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Guideline detail could not be loaded', error);
+                }
+            }
             detailView.innerHTML = renderGuidelineDetail(guideline);
             refreshTocObserver();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4047,16 +4068,19 @@ body{padding-top:65px}
                 const productionApiBase = 'https://api.ajixpharmacy.online/api';
                 const candidates = [...new Set([window.GUIDELINES_API_BASE, storedApiBase, localApiBase, sameOriginApiBase, lanApiBase, productionApiBase].filter(Boolean).map(value => String(value).replace(/\/$/, '')))];
                 let response = null;
+                let selectedApiBase = '';
                 for (const apiBase of candidates) {
                     try {
-                        const candidate = await fetch(apiBase + '/guidelines', { cache: 'no-store', headers: getGuidelinesAuthHeaders() });
+                        const candidate = await fetch(apiBase + '/guidelines?summary=1', { cache: 'no-store', headers: getGuidelinesAuthHeaders() });
                         if (candidate.ok) {
                             response = candidate;
+                            selectedApiBase = apiBase;
                             break;
                         }
                     } catch (error) {}
                 }
                 if (!response) return;
+                guidelinesApiBase = selectedApiBase;
                 const result = await response.json();
                 const curatedIds = new Set(['gina-asthma', 'aha-hypertension', 'ada-diabetes', 'gold-copd', 'idsa-pneumonia', 'esc-heart-failure']);
                 const byId = new Map(guidelines.map(item => [item.id, item]));

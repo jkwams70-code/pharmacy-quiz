@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AjixPharmacy — Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#23344d; --muted:#5f7188; --faint:#91a1b4;
+    --paper:#eef3f8; --card:#ffffff; --line:#d8e3ef;
+    --emerald:#0f3f7f; --emerald-2:#082e5f; --emerald-tint:#d8e7fb;
+    --gold:#a8842c; --gold-tint:#f4ecd8;
+    --danger:#a6261c; --danger-tint:#f7e6e3;
+    --app-font-body:'Inter',sans-serif; --app-font-heading:'Fraunces',serif;
+    --radius:14px; --shadow:0 1px 2px rgba(22,21,18,.05), 0 8px 24px rgba(22,21,18,.06);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--app-font-body);background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased}
+  html{scrollbar-width:thin;scrollbar-color:rgba(95,113,136,.55) transparent}
+  body::-webkit-scrollbar{width:6px}
+  body::-webkit-scrollbar-track{background:transparent}
+  body::-webkit-scrollbar-thumb{background:rgba(95,113,136,.55);border-radius:999px}
+  body.theme-dark{--paper:#0d1820;--card:#17252d;--line:#3b4b52;--ink:#f2eee7;--muted:#b8b3aa;--faint:#8f9da3;--emerald:#087b8c;--emerald-2:#075b6a;--emerald-tint:rgba(8,123,140,.2);--gold:#f0b34a;--gold-tint:rgba(240,179,74,.16);--danger-tint:rgba(166,38,28,.2)}
+  body.theme-teal{--paper:#eef8f6;--card:#fff;--line:#cfe4df;--ink:#123438;--muted:#557377;--faint:#789294;--emerald:#075e60;--emerald-2:#087d7d;--emerald-tint:#e0f2ef;--gold:#ae7921;--gold-tint:#f7edd9}
+  body.theme-sunset{--paper:#fff6ee;--card:#fffdf9;--line:#eed8c9;--ink:#271915;--muted:#80665a;--faint:#aa8979;--emerald:#71351f;--emerald-2:#934a2a;--emerald-tint:#f8e8dc;--gold:#b97922;--gold-tint:#f8e8cc}
+  body.theme-yellow{--paper:#fbf7df;--card:#fffdf4;--line:#eedca8;--ink:#47371b;--muted:#7e6a45;--faint:#a18c62;--emerald:#a46f08;--emerald-2:#c79018;--emerald-tint:#f8e7b5;--gold:#a46f08;--gold-tint:#f9eac8}
+  body.theme-violet{--paper:#f7f0fb;--card:#fffaff;--line:#e4d0f3;--ink:#36224b;--muted:#715f8a;--faint:#9b86ad;--emerald:#733aa5;--emerald-2:#9353c6;--emerald-tint:#ecd9fb;--gold:#9353c6;--gold-tint:#f6d8f2}
+  body.font-neo{--app-font-body:'Trebuchet MS','Verdana','Segoe UI',sans-serif;--app-font-heading:'Trebuchet MS','Verdana','Segoe UI',sans-serif}
+  body.font-classic{--app-font-body:Georgia,'Times New Roman',serif;--app-font-heading:Georgia,'Times New Roman',serif}
+  body.font-editorial{--app-font-body:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive;--app-font-heading:'Brush Script MT','Segoe Script','Lucida Handwriting',cursive}
+  body.font-mono{--app-font-body:'Consolas','Courier New',monospace;--app-font-heading:'Consolas','Courier New',monospace}
+  body.font-condensed{--app-font-body:'Copperplate','Papyrus',fantasy;--app-font-heading:'Copperplate','Papyrus',fantasy}
+  body.font-hand{--app-font-body:'Comic Sans MS','Bradley Hand','Segoe Print',cursive;--app-font-heading:'Comic Sans MS','Bradley Hand','Segoe Print',cursive}
+  body.theme-dark .field input,body.theme-dark .field select,body.theme-dark .field textarea{background:#10232d;color:var(--ink)}
+  button{font:inherit;cursor:pointer} input,select,textarea{font:inherit}
+
+  .shell{display:flex;min-height:100vh}
+
+  /* ---------- Sidebar ---------- */
+  .side{width:264px;flex-shrink:0;background:var(--emerald);color:#f2ede0;display:flex;flex-direction:column;padding:28px 20px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:12px;padding:0 8px 28px;border-bottom:1px solid rgba(242,237,224,.16)}
+  .brand-mark{width:38px;height:38px;border-radius:11px;background:var(--gold);display:grid;place-items:center;color:var(--emerald);flex-shrink:0;overflow:hidden}
+  .brand-mark img{width:100%;height:100%;object-fit:cover;display:block}
+  .brand-name{font-family:var(--app-font-heading);font-size:19px;font-weight:600;letter-spacing:.01em}
+  .brand-sub{font-size:11.5px;color:rgba(242,237,224,.6);margin-top:2px}
+  .nav{display:flex;flex-direction:column;gap:4px;margin-top:24px;flex:1}
+  .nav-btn{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:0;border-radius:10px;background:transparent;color:rgba(242,237,224,.78);font-size:14.5px;text-align:left;transition:background .18s,color .18s}
+  .nav-btn svg{width:19px;height:19px;flex-shrink:0}
+  .nav-btn:hover{background:rgba(242,237,224,.08);color:#f2ede0}
+  .nav-btn.active{background:#f2ede0;color:var(--emerald);font-weight:500}
+  .side-foot{border-top:1px solid rgba(242,237,224,.16);padding-top:16px}
+  .member-mini{display:flex;align-items:center;gap:10px;padding:10px 8px}
+  .member-mini .dot{width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--emerald);display:grid;place-items:center;font-weight:600;font-size:13px;overflow:hidden;flex-shrink:0}
+  .member-mini .dot img{width:100%;height:100%;object-fit:cover;display:none}
+  .member-mini .dot.has-image img{display:block}
+  .member-mini .dot.has-image .member-initials{display:none}
+  .member-mini b{display:block;font-size:13px;font-weight:500}
+  .member-mini span{font-size:11.5px;color:rgba(242,237,224,.6)}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;padding:36px 44px 80px;max-width:960px}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:28px}
+  .page-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-left:auto;flex-shrink:0}
+  .app-back-btn{margin-top:14px}
+  .page-title{font-family:var(--app-font-heading);font-size:32px;font-weight:600;letter-spacing:.005em}
+  .page-sub{color:var(--muted);font-size:14px;margin-top:6px}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--gold-tint);color:var(--gold);border:1px solid #e5d7ae;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600}
+  .chip svg{width:13px;height:13px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 28px;margin-bottom:22px}
+  .card-title{font-family:var(--app-font-heading);font-size:18px;font-weight:600;margin-bottom:4px}
+  .card-desc{color:var(--muted);font-size:13.5px;margin-bottom:20px}
+
+  /* ---------- Avatar ---------- */
+  .avatar-row{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .avatar{position:relative;width:96px;height:96px;flex-shrink:0}
+  .avatar .ph{width:100%;height:100%;border-radius:50%;background:var(--emerald-tint);color:var(--emerald);display:grid;place-items:center;font-family:'Fraunces',serif;font-size:30px;font-weight:600;border:3px solid var(--card);outline:2px solid var(--gold)}
+  .avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--card);outline:2px solid var(--gold)}
+  .cam{position:absolute;right:-2px;bottom:-2px;width:32px;height:32px;border-radius:50%;border:2px solid var(--card);background:var(--emerald);color:#f2ede0;display:grid;place-items:center;transition:background .18s}
+  .cam[hidden]{display:none}
+  .cam:hover{background:var(--emerald-2)}
+  .cam svg{width:15px;height:15px}
+  .who b{font-family:var(--app-font-heading);font-size:19px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .verified{width:18px;height:18px;border-radius:50%;background:var(--emerald);color:#fff;display:grid;place-items:center;flex-shrink:0}
+  .verified svg{width:10px;height:10px}
+  .who p{color:var(--muted);font-size:13.5px;margin-top:4px}
+  .who .links{margin-top:8px;font-size:13px}
+  .link-btn{border:0;background:none;color:var(--emerald-2);font-weight:500;padding:0}
+  .link-btn:hover{text-decoration:underline}
+  .link-btn:disabled{color:var(--faint);cursor:default;text-decoration:none}
+  .strength{margin-left:auto;min-width:200px}
+  .strength small{color:var(--muted);font-size:12px}
+  .bar{height:6px;border-radius:99px;background:var(--line);margin:8px 0 6px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--emerald),var(--gold));transition:width .4s ease}
+
+  /* ---------- Forms ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px}
+  .field{display:flex;flex-direction:column;gap:7px}
+  .field.full{grid-column:1 / -1}
+  .field label{font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+  .field input,.field select,.field textarea{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 13px;font-size:14px;color:var(--ink);transition:border .18s, box-shadow .18s;width:100%}
+  .field textarea{resize:vertical;min-height:76px}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:0;border-color:var(--emerald);box-shadow:0 0 0 3px rgba(12,59,46,.12)}
+  .phone-input-row{display:grid;grid-template-columns:132px minmax(0,1fr) auto;gap:8px}
+  .phone-input-row select{min-width:0}
+  .contact-input-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+  .phone-input-row .contact-edit{min-width:58px}
+  .contact-edit{border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--muted);padding:0 12px;font-size:12px;font-weight:600}
+  .contact-edit:hover{border-color:var(--emerald);color:var(--emerald)}
+  .field .hint{font-size:12px;color:var(--faint)}
+  .other-field{margin-top:8px}
+  .select-wrap{position:relative}
+  .select-wrap select{appearance:none;padding-right:36px}
+  .select-wrap input{padding-right:42px}
+  .select-reopen{position:absolute;right:1px;top:1px;bottom:1px;width:38px;border:0;border-left:1px solid var(--line);border-radius:0 9px 9px 0;background:var(--card);color:var(--muted);font-size:16px;line-height:1;cursor:pointer}
+  .select-wrap::after{content:"";position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:1.8px solid var(--muted);border-bottom:1.8px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+  .card-foot{display:flex;justify-content:flex-end;gap:12px;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+
+  .btn{border-radius:10px;padding:11px 20px;font-size:14px;font-weight:500;border:1px solid transparent;transition:all .18s;display:inline-flex;align-items:center;gap:8px}
+  .btn svg{width:16px;height:16px}
+  .btn-primary{background:var(--emerald);color:#f2ede0}
+  .btn-primary:hover{background:var(--emerald-2)}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+  .btn-ghost:hover{background:#f3efe4}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-danger:hover{background:#8c1e15}
+  .btn-outline-danger{background:transparent;border-color:#e3b6b0;color:var(--danger)}
+  .btn-outline-danger:hover{background:var(--danger-tint)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* ---------- Security extras ---------- */
+  .pw-meter{display:flex;gap:5px;margin-top:9px}
+  .pw-meter i{height:4px;flex:1;border-radius:99px;background:var(--line);transition:background .25s}
+  .pw-label{font-size:12px;color:var(--muted);margin-top:6px}
+  .pw-wrap{position:relative}
+  .pw-wrap input{padding-right:58px}
+  .pw-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:12.5px;font-weight:500;padding:6px}
+  .pw-eye:hover{color:var(--ink)}
+  .pw-wrap input[data-masked="true"]{-webkit-text-security:disc}
+  .pw-wrap input[data-masked="false"]{-webkit-text-security:none}
+  .switch-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .switch-row b{font-size:14.5px;font-weight:500}
+  .switch-row p{color:var(--muted);font-size:13px;margin-top:3px;max-width:420px}
+  .switch{position:relative;width:46px;height:26px;flex-shrink:0}
+  .switch input{opacity:0;width:0;height:0;position:absolute}
+  .switch .track{position:absolute;inset:0;border-radius:99px;background:#d8d2c2;transition:background .2s;cursor:pointer}
+  .switch .track::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+  .switch input:checked + .track{background:var(--emerald)}
+  .switch input:checked + .track::after{transform:translateX(20px)}
+
+  .session{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+  .session:first-of-type{border-top:0}
+  .session .ic{width:38px;height:38px;border-radius:10px;background:var(--emerald-tint);color:var(--emerald);display:grid;place-items:center;flex-shrink:0}
+  .session .ic svg{width:18px;height:18px}
+  .session b{font-size:14px;font-weight:500;display:block}
+  .session span{font-size:12.5px;color:var(--muted)}
+  .tag{margin-left:auto;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--emerald-tint);color:var(--emerald);flex-shrink:0}
+
+  /* ---------- Membership ---------- */
+  .member-card{background:linear-gradient(120deg,var(--emerald) 0%,var(--emerald-2) 100%);color:#f2ede0;border:0}
+  .member-card .card-title{color:#f2ede0}
+  .member-top{display:flex;align-items:center;gap:16px}
+  .member-top .crest{width:52px;height:52px;border-radius:14px;background:var(--gold);color:var(--emerald);display:grid;place-items:center;flex-shrink:0}
+  .member-top .crest svg{width:24px;height:24px}
+  .member-top b{font-family:var(--app-font-heading);font-size:20px;font-weight:600;display:block}
+  .member-top span{font-size:13px;color:rgba(242,237,224,.75)}
+  .member-meta{display:flex;gap:36px;margin-top:22px;padding-top:18px;border-top:1px solid rgba(242,237,224,.18)}
+  .member-meta small{display:block;font-size:11.5px;color:rgba(242,237,224,.6);letter-spacing:.05em;text-transform:uppercase}
+  .member-meta b{font-size:14.5px;font-weight:500}
+
+  .rows .row-item{display:flex;align-items:center;gap:14px;padding:15px 0;border-top:1px solid var(--line);font-size:14px}
+  .rows .row-item:first-child{border-top:0}
+  .rows .row-item .ic{width:36px;height:36px;border-radius:9px;background:var(--emerald-tint);color:var(--emerald);display:grid;place-items:center;flex-shrink:0}
+  .rows .row-item .ic svg{width:17px;height:17px}
+  .rows .row-item span{color:var(--muted);font-size:12.5px;display:block;margin-top:2px}
+  .rows .row-item .go{margin-left:auto;color:var(--faint)}
+  .rows .row-item .go svg{width:16px;height:16px}
+  .preference-row{width:100%;border-left:0;border-right:0;border-bottom:0;background:transparent;text-align:left;color:var(--ink);cursor:pointer}
+  .preference-row:hover{background:var(--emerald-tint)}
+
+  .danger-zone{border-color:#e9c9c4;background:#fffdfb}
+  .danger-block{display:flex;align-items:center;gap:16px;padding:18px 0;border-top:1px solid var(--line)}
+  .danger-block:first-of-type{border-top:0;padding-top:4px}
+  .danger-block .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+  .danger-block .ic.warn{background:var(--gold-tint);color:var(--gold)}
+  .danger-block .ic.risk{background:var(--danger-tint);color:var(--danger)}
+  .danger-block .ic svg{width:19px;height:19px}
+  .danger-block b{font-size:14.5px;font-weight:500;display:block}
+  .danger-block p{color:var(--muted);font-size:12.5px;margin-top:3px;max-width:440px}
+  .danger-block .btn{margin-left:auto;flex-shrink:0}
+
+  /* ---------- Modals & toast ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(22,21,18,.45);display:grid;place-items:center;z-index:50;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .modal{width:100%;max-width:460px;background:var(--card);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.28);padding:28px;transform:translateY(10px);transition:transform .2s}
+  .tfa-setup-modal{max-width:410px;padding:20px;max-height:calc(100dvh - 24px);overflow:auto}
+  .tfa-qr{display:block;width:190px!important;height:190px!important;margin:8px auto;background:#fff;padding:7px;border-radius:10px}
+  .overlay.open .modal{transform:none}
+  .modal .m-ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;margin-bottom:16px}
+  .modal .m-ic.warn{background:var(--gold-tint);color:var(--gold)}
+  .modal .m-ic.risk{background:var(--danger-tint);color:var(--danger)}
+  .modal .m-ic svg{width:22px;height:22px}
+  .modal h3{font-family:var(--app-font-heading);font-size:20px;font-weight:600;margin-bottom:8px}
+  .modal p{color:var(--muted);font-size:13.5px;line-height:1.6}
+  .modal ul{margin:12px 0 0 18px;color:var(--muted);font-size:13px;line-height:1.7}
+  .modal .m-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+  .modal input{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;width:100%;font-size:14px}
+  .modal input:focus{outline:0;border-color:var(--danger);box-shadow:0 0 0 3px rgba(166,38,28,.12)}
+
+  .toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,16px);background:var(--ink);color:#f6f4ee;padding:12px 20px;border-radius:12px;font-size:13.5px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 32px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:all .28s;z-index:99}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast svg{width:16px;height:16px;color:#7fce9f}
+
+  @media (max-width:860px){
+    .shell{flex-direction:column}
+    .side{width:100vw;height:auto;position:fixed;top:0;left:0;right:auto;z-index:20;flex-direction:row;align-items:center;padding:14px 16px;gap:12px}
+    .brand{padding:0;border:0}
+    .brand-sub{display:none}
+    .nav{flex-direction:row;margin:0 0 0 auto;overflow-x:auto;flex:0 0 auto}
+    .nav-btn{width:auto;white-space:nowrap;justify-content:center;min-width:52px;padding:10px}
+    .nav-btn .nav-label{display:none}
+    .nav-btn svg{width:21px;height:21px}
+    .app-back-btn{margin:0 0 0 4px}
+    .side-foot{display:none}
+    .main{padding:90px 18px 60px}
+    .grid{grid-template-columns:1fr}
+    .strength{margin-left:0;width:100%}
+    .page-head{flex-direction:column;align-items:flex-start;gap:12px}
+    .page-head-actions{width:100%;justify-content:flex-end}
+  }
+  @media (max-width:600px){
+    .side{padding:8px 10px;gap:6px}
+    .brand{gap:7px;min-width:0}
+    .brand-mark{width:30px;height:30px;border-radius:8px}
+    .brand-name{font-size:15px;white-space:nowrap}
+    .nav{gap:2px}
+    .nav-btn{min-width:38px;padding:7px;border-radius:8px}
+    .nav-btn svg{width:18px;height:18px}
+    .app-back-btn{min-width:34px}
+    .main{padding:62px 10px 40px}
+    .page-head{margin-bottom:16px;gap:8px}
+    .page-title{font-size:26px}
+    .page-sub{font-size:12.5px;margin-top:3px}
+    .page-head-actions{gap:6px}
+    .chip{padding:6px 9px;font-size:11px}
+    .card{padding:17px 14px;margin-bottom:14px;border-radius:12px}
+    .card-title{font-size:16px}
+    .card-desc{font-size:12.5px;margin-bottom:14px}
+    .btn{padding:9px 13px;font-size:12.5px}
+    .avatar{width:76px;height:76px}
+    .avatar .ph{font-size:24px}
+    .who b{font-size:16px}
+    .who p,.session span{font-size:12px}
+    .switch-row{gap:8px}
+    .switch-row b{font-size:13px}
+    .switch-row p{font-size:12px}
+    .switch{width:40px;height:23px}
+    .switch .track::after{width:17px;height:17px}
+    .switch input:checked + .track::after{transform:translateX(17px)}
+    .session{gap:9px;padding:11px 0}
+    .session .ic{width:32px;height:32px}
+    .session b{font-size:12.5px}
+    .tag{font-size:10px;padding:3px 7px}
+    .overlay{padding:10px}
+    .modal{padding:19px;border-radius:13px}
+    .modal h3{font-size:18px}
+    .modal p{font-size:12.5px}
+    .tfa-setup-modal{padding:15px;max-height:calc(100dvh - 20px)}
+    .tfa-qr{width:165px!important;height:165px!important}
+    .modal .m-actions{gap:7px;margin-top:16px;flex-wrap:wrap}
+  }
+</style>
+<base target="_blank">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark"><img src="/images/app-logo.png?v=20260903-mascot" alt="AjiX mascot"></div>
+      <div>
+        <div class="brand-name">AjixPharmacy</div>
+        <div class="brand-sub">Practice Pharmacy with Precision.</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-btn active" data-panel="profile">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M11.9997 12.8779C16.0197 12.878 19.4393 15.3848 20.7048 18.8828C21.0812 19.9234 20.2782 20.8962 19.2038 21.0137L18.9861 21.0264H5.0134L4.79562 21.0137C3.7213 20.8961 2.91743 19.9233 3.29367 18.8828C4.55905 15.3847 7.9797 12.8781 11.9997 12.8779ZM11.9997 14.6777C8.84467 14.6779 6.17462 16.5794 5.09152 19.2256H18.9079C17.8248 16.5793 15.1549 14.6778 11.9997 14.6777ZM12.2312 3.00586C14.6088 3.1264 16.4997 5.09239 16.4997 7.5L16.4939 7.73145C16.3734 10.1091 14.4073 11.9999 11.9997 12C9.59225 11.9998 7.62604 10.109 7.50558 7.73145L7.49973 7.5C7.49973 5.01485 9.51462 3.00021 11.9997 3L12.2312 3.00586ZM11.9997 4.7998C10.5087 4.80001 9.29953 6.00896 9.29953 7.5C9.29953 8.99104 10.5087 10.2 11.9997 10.2002C13.4908 10.2001 14.6999 8.99112 14.6999 7.5C14.6999 6.00888 13.4908 4.79989 11.9997 4.7998Z" fill="currentColor"/></svg>
+        <span class="nav-label">Profile</span>
+      </button>
+      <button class="nav-btn" data-panel="security">
+        <svg viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M17 3.8H7C5.78497 3.8 4.8 4.78497 4.8 6V15.7647C4.8 16.574 5.24438 17.318 5.95698 17.7017L10.957 20.394C11.6081 20.7446 12.3919 20.7446 13.043 20.394L18.043 17.7017C18.7556 17.318 19.2 16.574 19.2 15.7647V6C19.2 4.78497 18.215 3.8 17 3.8ZM7 2C4.79086 2 3 3.79086 3 6V15.7647C3 17.2362 3.80796 18.5889 5.1036 19.2866L10.1036 21.9789C11.2875 22.6164 12.7125 22.6164 13.8964 21.9789L18.8964 19.2866C20.192 18.5889 21 17.2362 21 15.7647V6C21 3.79086 19.2091 2 17 2H7Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M16.7248 8.63051C17.0763 8.98198 17.0763 9.55183 16.7248 9.9033L11.7627 14.8654C11.4113 15.2169 10.8414 15.2169 10.4899 14.8654L7.81839 12.1939C7.46692 11.8424 7.46691 11.2726 7.81839 10.9211C8.16986 10.5696 8.7397 10.5696 9.09118 10.9211L11.1263 12.9562L15.4521 8.63051C15.8035 8.27904 16.3734 8.27904 16.7248 8.63051Z" fill="currentColor"/></svg>
+        <span class="nav-label">Security</span>
+      </button>
+      <button class="nav-btn" data-panel="account">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M16.0404 12C16.0404 9.76874 14.2313 7.9596 12.0001 7.9596C9.76883 7.9596 7.95972 9.76874 7.95972 12C7.95972 14.2313 9.76883 16.0404 12.0001 16.0404C14.2313 16.0404 16.0404 14.2313 16.0404 12ZM14.2222 12C14.2222 13.2271 13.2271 14.2222 12 14.2222C10.7729 14.2222 9.77783 13.2271 9.77783 12C9.77783 10.7729 10.7729 9.77778 12 9.77778C13.2271 9.77778 14.2222 10.7729 14.2222 12Z" fill="currentColor"/><path d="M12.0001 2.58569C12.4143 2.58569 12.7501 2.92148 12.7501 3.33569V4.17419C12.7501 4.5884 12.4143 4.92419 12.0001 4.92419C11.5859 4.92419 11.2501 4.5884 11.2501 4.17419V3.33569C11.2501 2.92148 11.5859 2.58569 12.0001 2.58569ZM18.4414 5.55863C18.7343 5.85153 18.7343 6.2264 18.4414 6.5193L17.8444 7.11634C17.5515 7.40923 17.1766 7.40923 16.8837 7.11634C16.5908 6.82344 16.5908 6.44857 16.8837 6.15567L17.4808 5.55863C17.7737 5.26574 18.1485 5.26574 18.4414 5.55863ZM21.4143 12C21.4143 12.4142 21.0785 12.75 20.6643 12.75H19.8258C19.4116 12.75 19.0758 12.4142 19.0758 12C19.0758 11.5858 19.4116 11.25 19.8258 11.25H20.6643C21.0785 11.25 21.4143 11.5858 21.4143 12ZM18.4414 17.4808C18.1485 17.7737 17.7737 17.7737 17.4808 17.4808L16.8837 16.8837C16.5908 16.5908 16.5908 16.2159 16.8837 15.923C17.1766 15.6301 17.5515 15.6301 17.8444 15.923L18.4414 16.5201C18.7343 16.813 18.7343 17.1879 18.4414 17.4808ZM12.0001 19.0758C12.4143 19.0758 12.7501 19.4116 12.7501 19.8258V20.6643C12.7501 21.0785 12.4143 21.4143 12.0001 21.4143C11.5859 21.4143 11.2501 21.0785 11.2501 20.6643V19.8258C11.2501 19.4116 11.5859 19.0758 12.0001 19.0758ZM7.11644 16.8837C7.40934 16.5908 7.78421 16.5908 8.07711 16.8837L8.67414 17.4808C8.96704 17.7737 8.96704 18.1485 8.67414 18.4414C8.38125 18.7343 8.00638 18.7343 7.71348 18.4414L7.11644 17.8444C6.82355 17.5515 6.82355 17.1766 7.11644 16.8837ZM4.92578 12C4.92578 12.4142 4.58999 12.75 4.17578 12.75H3.33728C2.92307 12.75 2.58728 12.4142 2.58728 12C2.58728 11.5858 2.92307 11.25 3.33728 11.25H4.17578C4.58999 11.25 4.92578 11.5858 4.92578 12ZM8.07711 7.11634C7.78421 6.82344 7.40934 6.82344 7.11644 7.11634L6.51941 7.71338C6.22651 8.00627 6.22651 8.38114 6.51941 8.67404C6.8123 8.96694 7.18717 8.96694 7.48007 8.67404L8.07711 8.07701C8.37 7.78411 8.37 7.40924 8.07711 7.11634Z" fill="currentColor"/></svg>
+        <span class="nav-label">Account</span>
+      </button>
+    </nav>
+    <button class="nav-btn app-back-btn" id="backToAppTop" type="button" aria-label="Back to AjixPharmacy" title="Back to AjixPharmacy">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="nav-label">Back</span>
+    </button>
+
+    <div class="side-foot">
+      <div class="member-mini">
+        <div class="dot" id="memberAvatar"><img id="memberAvatarImage" alt="Profile photo"><span class="member-initials" id="memberInitials">—</span></div>
+        <div><b id="memberDisplayName">Account</b><span id="memberStatus">Subscription status</span></div>
+      </div>
+      <button class="nav-btn" id="signOut" style="width:100%">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none"><path d="M10 4.5H6.5C5.11929 4.5 4 5.61929 4 7V17C4 18.3807 5.11929 19.5 6.5 19.5H10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 8L18 12L14 16M17.5 12H9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="nav-label">Sign out</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title" id="pageTitle">Profile</h1>
+        <p class="page-sub" id="pageSub">Manage your identity, institution and how you appear across AjixPharmacy.</p>
+      </div>
+      <div class="page-head-actions">
+      <div class="chip" id="chip" hidden>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L14.9 8.3L21.5 9.3L16.7 14.1L17.8 21L12 17.8L6.2 21L7.3 14.1L2.5 9.3L9.1 8.3L12 2Z" fill="currentColor"/></svg>
+        <span id="chipLabel">Subscription</span>
+      </div>
+      </div>
+    </div>
+
+    <!-- ===== PROFILE PANEL ===== -->
+    <section id="panel-profile">
+      <div class="card">
+        <div class="avatar-row">
+          <div class="avatar">
+            <div class="ph" id="avatarPh">?</div>
+            <img id="avatarImg" alt="Profile photo" hidden>
+            <button class="cam" id="camBtn" title="Change photo" type="button" hidden>
+              <svg viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.3636 3.36358C11.7151 3.01211 12.2849 3.01211 12.6364 3.36358L17.0808 7.80802C17.4323 8.1595 17.4323 8.72934 17.0808 9.08082C16.7293 9.43229 16.1595 9.43229 15.808 9.08082L12.9 6.17277V14.6666C12.9 15.1637 12.497 15.5666 12 15.5666C11.5029 15.5666 11.1 15.1637 11.1 14.6666V6.17277L8.19193 9.08082C7.84046 9.43229 7.27061 9.43229 6.91914 9.08082C6.56766 8.72934 6.56766 8.1595 6.91914 7.80802L11.3636 3.36358ZM3.99998 13.7666C4.49703 13.7666 4.89998 14.1696 4.89998 14.6666V18.2222C4.89998 18.455 4.99246 18.6783 5.15707 18.8429C5.32169 19.0075 5.54495 19.1 5.77775 19.1H18.2222C18.455 19.1 18.6783 19.0075 18.8429 18.8429C19.0075 18.6783 19.1 18.455 19.1 18.2222V14.6666C19.1 14.1696 19.5029 13.7666 20 13.7666C20.497 13.7666 20.9 14.1696 20.9 14.6666V18.2222C20.9 18.9324 20.6179 19.6135 20.1157 20.1157C19.6135 20.6179 18.9324 20.9 18.2222 20.9H5.77775C5.06756 20.9 4.38646 20.6179 3.88428 20.1157C3.3821 19.6135 3.09998 18.9324 3.09998 18.2222V14.6666C3.09998 14.1696 3.50292 13.7666 3.99998 13.7666Z" fill="currentColor"/></svg>
+            </button>
+            <input type="file" id="avatarInput" accept="image/*" hidden>
+          </div>
+          <div class="who">
+            <b id="profileDisplayName">Account
+              <span class="verified" title="Verified student"><svg viewBox="0 0 24 24" fill="none"><path d="M19.3027 5.9053C19.6542 5.55397 20.2247 5.55388 20.5761 5.9053C20.9273 6.25675 20.9273 6.82734 20.5761 7.17874L9.65911 18.0948C9.30773 18.4461 8.73814 18.446 8.38665 18.0948L3.42376 13.1328C3.0726 12.7814 3.07263 12.2118 3.42376 11.8604C3.77524 11.509 4.34575 11.5089 4.6972 11.8604L9.02239 16.1856L19.3027 5.9053Z" fill="currentColor"/></svg></span>
+            </b>
+            <p id="profileDisplayMeta">Profile details</p>
+            <p class="links">
+              <button class="link-btn" id="uploadLink" type="button">Upload photo</button>
+              <span style="color:var(--faint)"> · </span>
+              <button class="link-btn" id="removeLink" type="button" disabled>Remove</button>
+              <span style="color:var(--faint)"> · JPG or PNG, max 5&nbsp;MB</span>
+            </p>
+          </div>
+          <div class="strength">
+            <small>Profile strength</small>
+            <div class="bar"><i id="strengthBar" style="width:80%"></i></div>
+            <small id="strengthHint">80% — add a bio to reach 100%</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Personal information</div>
+        <p class="card-desc">Manage the information linked to your AjixPharmacy account.</p>
+        <div class="grid">
+          <div class="field">
+            <label for="fullName">Full name</label>
+            <input id="fullName" type="text" value="" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" type="text" value="" autocomplete="username">
+          </div>
+          <div class="field">
+            <label for="email">Email address</label>
+            <div class="contact-input-row">
+              <input id="email" type="email" value="" autocomplete="email">
+              <button class="contact-edit" id="editEmail" type="button" hidden>Edit</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="phone">Phone number</label>
+            <div class="phone-input-row">
+              <select id="phoneCountryCode" autocomplete="tel-country-code" aria-label="Country code">
+                <option value="+233">Ghana (+233)</option>
+                <option value="+234">Nigeria (+234)</option>
+                <option value="+254">Kenya (+254)</option>
+                <option value="+27">South Africa (+27)</option>
+                <option value="+44">United Kingdom (+44)</option>
+                <option value="+1">United States/Canada (+1)</option>
+                <option value="+91">India (+91)</option>
+                <option value="+971">United Arab Emirates (+971)</option>
+              </select>
+              <input id="phone" type="tel" inputmode="numeric" value="" autocomplete="tel">
+              <button class="contact-edit" id="editPhone" type="button" hidden>Edit</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="programme">Programme</label>
+            <div class="select-wrap">
+              <select id="programme">
+                <option value="">Select programme</option>
+                <option>Doctor of Pharmacy</option>
+                <option>Pharmacy Technician</option>
+                <option>MCA</option>
+                <option>Medicine (MBChB)</option>
+                <option>Nursing</option>
+                <option>Midwifery</option>
+                <option>Physician Assistant Studies</option>
+                <option>Medical Laboratory Science</option>
+                <option>Biomedical Science</option>
+                <option>Radiography</option>
+                <option>Medical Imaging</option>
+                <option>Physiotherapy</option>
+                <option>Occupational Therapy</option>
+                <option>Speech and Language Therapy</option>
+                <option>Optometry</option>
+                <option>Dentistry</option>
+                <option>Dental Therapy</option>
+                <option>Public Health</option>
+                <option>Nutrition and Dietetics</option>
+                <option>Health Information Management</option>
+                <option>Health Administration</option>
+                <option>Environmental Health</option>
+                <option>Community Health Nursing</option>
+                <option value="__other">Other</option>
+              </select>
+              <input id="programme-input" type="text" placeholder="Enter your health programme" hidden>
+              <button class="select-reopen" id="programme-reopen" type="button" aria-label="Choose programme from list" title="Choose from list" hidden>⌄</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="level">Level / year</label>
+            <div class="select-wrap">
+              <select id="level">
+                <option value="">Select level/year</option><option>100</option><option>200</option><option>300</option>
+                <option>400</option><option>500+</option><option>600</option><option>Graduate</option><option>Staff</option>
+              </select>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="institution">Institution</label>
+            <div class="select-wrap">
+              <select id="institution">
+                <option value="">Select your school…</option>
+                <option>Kwame Nkrumah University of Science and Technology (KNUST)</option>
+                <option>University of Ghana (UG), Legon</option>
+                <option>University of Cape Coast (UCC)</option>
+                <option>University for Development Studies (UDS)</option>
+                <option>University of Mines and Technology (UMaT)</option>
+                <option>University of Energy and Natural Resources (UENR)</option>
+                <option>University of Health and Allied Sciences (UHAS)</option>
+                <option>University of Professional Studies, Accra (UPSA)</option>
+                <option>Ghana Institute of Management and Public Administration (GIMPA)</option>
+                <option>Accra Technical University</option>
+                <option>Kumasi Technical University</option>
+                <option>Takoradi Technical University</option>
+                <option>Sunyani Technical University</option>
+                <option>Koforidua Technical University</option>
+                <option>Ho Technical University</option>
+                <option>Tamale Technical University</option>
+                <option>Accra College of Medicine</option>
+                <option>Family Health Medical School</option>
+                <option>Central University</option>
+                <option>Pentecost University</option>
+                <option>Valley View University</option>
+                <option>Methodist University</option>
+                <option>Presbyterian University College</option>
+                <option>Catholic University College of Ghana</option>
+                <option>Wisconsin International University College</option>
+                <option>Regent University College</option>
+                <option>Garden City University</option>
+                <option>All Nations University</option>
+                <option>Radford University College</option>
+                <option value="__other">Other (not listed)</option>
+              </select>
+              <input id="institution-input" type="text" placeholder="Enter your institution" hidden>
+              <button class="select-reopen" id="institution-reopen" type="button" aria-label="Choose institution from list" title="Choose from list" hidden>⌄</button>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="bio">Short bio <span style="font-weight:400;color:var(--faint)">(optional)</span></label>
+            <textarea id="bio" placeholder="Tell the community a little about your pharmacy journey…"></textarea>
+          </div>
+        </div>
+        <div class="card-foot">
+          <button class="btn btn-primary" id="editProfile" type="button">Edit profile</button>
+          <button class="btn btn-ghost" id="discardProfile" type="button" hidden>Discard</button>
+          <button class="btn btn-primary" id="saveProfile" type="button" hidden>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M19.3027 5.9053C19.6542 5.55397 20.2247 5.55388 20.5761 5.9053C20.9273 6.25675 20.9273 6.82734 20.5761 7.17874L9.65911 18.0948C9.30773 18.4461 8.73814 18.446 8.38665 18.0948L3.42376 13.1328C3.0726 12.7814 3.07263 12.2118 3.42376 11.8604C3.77524 11.509 4.34575 11.5089 4.6972 11.8604L9.02239 16.1856L19.3027 5.9053Z" fill="currentColor"/></svg>
+            Save changes
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SECURITY PANEL ===== -->
+    <section id="panel-security" hidden>
+      <div class="card">
+        <div class="card-title">Change password</div>
+        <p class="card-desc">Last changed <span id="passwordLastChanged">—</span>. Use at least 8 characters with a mix of letters, numbers and symbols.</p>
+        <div class="grid">
+          <div class="field full">
+            <label for="pwCurrent">Current password</label>
+            <div class="pw-wrap">
+              <input id="pwCurrent" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="-webkit-text-security: disc;">
+              <button class="pw-eye" type="button" data-eye="pwCurrent">Show</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="pwNew">New password</label>
+            <div class="pw-wrap">
+              <input id="pwNew" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="-webkit-text-security: disc;">
+              <button class="pw-eye" type="button" data-eye="pwNew">Show</button>
+            </div>
+            <div class="pw-meter" id="pwMeter"><i></i><i></i><i></i><i></i></div>
+            <div class="pw-label" id="pwLabel">Strength: enter a password</div>
+          </div>
+          <div class="field">
+            <label for="pwConfirm">Confirm new password</label>
+            <div class="pw-wrap">
+              <input id="pwConfirm" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="-webkit-text-security: disc;">
+              <button class="pw-eye" type="button" data-eye="pwConfirm">Show</button>
+            </div>
+            <span class="hint" id="pwMatch"></span>
+          </div>
+        </div>
+        <div class="card-foot">
+          <button class="btn btn-primary" id="savePw" type="button" style="margin-left:auto">Update password</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="switch-row">
+          <div>
+            <b>Two-step verification</b>
+            <p>Require a code from your authenticator app in addition to your password when signing in on a new device.</p>
+          </div>
+          <label class="switch"><input type="checkbox" id="tfa"><span class="track"></span></label>
+        </div>
+        <div class="card-foot" style="padding-top:0">
+          <button class="btn btn-ghost" id="regenerateTfaCodes" type="button">Regenerate recovery codes</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Login activity</div>
+        <p class="card-desc">Devices currently signed in to your account.</p>
+        <div id="loginSessions"><div class="session"><div class="ic">…</div><div><b>Loading sessions…</b><span>Checking your account</span></div></div></div>
+        <div class="card-foot" style="padding-top:12px">
+          <button class="btn btn-ghost" id="signOutOther" type="button">Sign out all other devices</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ACCOUNT PANEL ===== -->
+    <section id="panel-account" hidden>
+      <div class="card member-card">
+        <div class="member-top">
+          <div class="crest"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2L14.9 8.3L21.5 9.3L16.7 14.1L17.8 21L12 17.8L6.2 21L7.3 14.1L2.5 9.3L9.1 8.3L12 2Z" fill="currentColor"/></svg></div>
+          <div>
+            <b id="memberTierTitle">AjixPharmacy Subscription</b>
+            <span id="memberTierDescription">Your current membership details.</span>
+          </div>
+        </div>
+        <div class="member-meta">
+          <div><small>Status</small><b id="subscriptionStatus">—</b></div>
+          <div><small>Member since</small><b id="memberSince">—</b></div>
+          <div><small>Plan</small><b id="subscriptionPlan">—</b></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Preferences</div>
+        <div class="rows">
+          <button class="row-item preference-row" id="openNotificationPreferences" type="button">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3C12 3 5.5 9.6 5.5 14C5.5 17.0376 7.96243 19.5 11 19.5H13C16.0376 19.5 18.5 17.0376 18.5 14C18.5 9.6 12 3 12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+            <div>Community notifications<span>Alerts, previews, and community chat notifications</span></div>
+            <span class="go"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </button>
+          <button class="row-item preference-row" id="openPrivacyPreferences" type="button">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M17 10V8C17 5.23858 14.7614 3 12 3C9.23858 3 7 5.23858 7 8V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 14V17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+            <div>Community privacy<span>Control who can reach you and see your community activity</span></div>
+            <span class="go"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card danger-zone">
+        <div class="card-title">Account management</div>
+        <p class="card-desc">Careful — these actions affect your entire AjixPharmacy account.</p>
+
+        <div class="danger-block">
+          <div class="ic warn"><svg viewBox="0 0 24 24" fill="none"><path d="M20.0996 12C20.0996 7.52636 16.4736 3.90039 12 3.90039C7.52636 3.90039 3.90039 7.52636 3.90039 12C3.90039 16.4736 7.52636 20.0996 12 20.0996C16.4736 20.0996 20.0996 16.4736 20.0996 12ZM21.9004 12C21.9004 17.4678 17.4678 21.9004 12 21.9004C6.53224 21.9004 2.09961 17.4678 2.09961 12C2.09961 6.53224 6.53224 2.09961 12 2.09961C17.4678 2.09961 21.9004 6.53224 21.9004 12Z" fill="currentColor"/><path d="M15.4359 14.2906C15.7873 14.642 15.7878 15.2118 15.4366 15.5633C15.0852 15.9148 14.5148 15.9148 14.1633 15.5633L8.43668 9.83669C8.08521 9.48522 8.08521 8.91482 8.43668 8.56335C8.78817 8.21215 9.35795 8.21266 9.70933 8.56404L15.4359 14.2906Z" fill="currentColor"/></svg></div>
+          <div>
+            <b>Deactivate account</b>
+            <p>Your profile and app activity are hidden and paused. You can reactivate any time by signing back in.</p>
+          </div>
+          <button class="btn btn-outline-danger" type="button" onclick="openModal('mDeactivate')">Deactivate</button>
+        </div>
+
+        <div class="danger-block">
+          <div class="ic risk"><svg viewBox="0 0 24 24" fill="none"><path d="M8.10001 3C8.10001 2.50294 8.50295 2.1 9.00001 2.1H15C15.4971 2.1 15.9 2.50294 15.9 3C15.9 3.49706 15.4971 3.9 15 3.9H9.00001C8.50295 3.9 8.10001 3.49706 8.10001 3Z" fill="currentColor"/><path d="M10 15.9C9.50295 15.9 9.10001 15.4971 9.10001 15L9.10001 10C9.10001 9.50294 9.50295 9.1 10 9.1C10.4971 9.1 10.9 9.50294 10.9 10L10.9 15C10.9 15.4971 10.4971 15.9 10 15.9Z" fill="currentColor"/><path d="M13.1 15C13.1 15.4971 13.5029 15.9 14 15.9C14.4971 15.9 14.9 15.4971 14.9 15L14.9 10C14.9 9.50294 14.4971 9.1 14 9.1C13.5029 9.1 13.1 9.50294 13.1 10V15Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M2.10001 6C2.10001 5.50294 2.50295 5.1 3.00001 5.1H4.99152C4.99785 5.09993 5.00417 5.09993 5.01048 5.1H18.9895C18.9958 5.09993 19.0021 5.09993 19.0085 5.1H21C21.4971 5.1 21.9 5.50294 21.9 6C21.9 6.49706 21.4971 6.9 21 6.9H19.8281L18.8448 18.6993C18.7412 19.9432 17.7013 20.9 16.4531 20.9H7.54686C6.29865 20.9 5.25881 19.9432 5.15515 18.6993L4.17188 6.9H3.00001C2.50295 6.9 2.10001 6.49706 2.10001 6ZM5.97811 6.9L18.0219 6.9L17.0511 18.5498C17.0251 18.8608 16.7652 19.1 16.4531 19.1H7.54686C7.23481 19.1 6.97485 18.8608 6.94893 18.5498L5.97811 6.9Z" fill="currentColor"/></svg></div>
+          <div>
+            <b>Delete account</b>
+            <p>Permanently erase your account and saved data. This cannot be undone.</p>
+          </div>
+          <button class="btn btn-danger" type="button" onclick="openModal('mDelete')">Delete account</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== MODALS ===== -->
+<div class="overlay" id="mDeactivate">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <div class="m-ic warn"><svg viewBox="0 0 24 24" fill="none"><path d="M11.9996 7C11.5026 7 11.0996 7.36985 11.0996 7.82609V14.1739C11.0996 14.6301 11.5026 15 11.9996 15C12.4967 15 12.8996 14.6301 12.8996 14.1739V7.82609C12.8996 7.36985 12.4967 7 11.9996 7Z" fill="currentColor"/><path d="M12.8996 17.1006C12.8996 17.5974 12.4968 18.001 11.9992 18.001C11.5024 18.001 11.0996 17.5974 11.0996 17.1006C11.0996 16.6038 11.5024 16.2002 11.9992 16.2002C12.4968 16.2002 12.8996 16.6038 12.8996 17.1006Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M14.5108 3.5501C13.3946 1.61676 10.6041 1.61676 9.48786 3.5501L1.69363 17.0501C0.577423 18.9834 1.97269 21.4001 4.20511 21.4001H19.7936C22.026 21.4001 23.4212 18.9834 22.305 17.0501L14.5108 3.5501ZM11.0467 4.4501C11.4701 3.71676 12.5286 3.71676 12.952 4.4501L20.7462 17.9501C21.1696 18.6834 20.6403 19.6001 19.7936 19.6001H4.20511C3.35833 19.6001 2.82909 18.6834 3.25248 17.9501L11.0467 4.4501Z" fill="currentColor"/></svg></div>
+    <h3 id="dTitle">Deactivate your account?</h3>
+    <p>Your account will be paused immediately:</p>
+    <ul>
+      <li>Your profile and forum posts become hidden</li>
+      <li>Your account data remains saved while the account is paused</li>
+      <li>Sign in again to reactivate the account</li>
+    </ul>
+    <div class="m-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('mDeactivate')">Keep my account</button>
+      <button class="btn btn-outline-danger" type="button" onclick="confirmDeactivate()">Yes, deactivate</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mDelete">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <div class="m-ic risk"><svg viewBox="0 0 24 24" fill="none"><path d="M11.9996 7C11.5026 7 11.0996 7.36985 11.0996 7.82609V14.1739C11.0996 14.6301 11.5026 15 11.9996 15C12.4967 15 12.8996 14.6301 12.8996 14.1739V7.82609C12.8996 7.36985 12.4967 7 11.9996 7Z" fill="currentColor"/><path d="M12.8996 17.1006C12.8996 17.5974 12.4968 18.001 11.9992 18.001C11.5024 18.001 11.0996 17.5974 11.0996 17.1006C11.0996 16.6038 11.5024 16.2002 11.9992 16.2002C12.4968 16.2002 12.8996 16.6038 12.8996 17.1006Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M14.5108 3.5501C13.3946 1.61676 10.6041 1.61676 9.48786 3.5501L1.69363 17.0501C0.577423 18.9834 1.97269 21.4001 4.20511 21.4001H19.7936C22.026 21.4001 23.4212 18.9834 22.305 17.0501L14.5108 3.5501ZM11.0467 4.4501C11.4701 3.71676 12.5286 3.71676 12.952 4.4501L20.7462 17.9501C21.1696 18.6834 20.6403 19.6001 19.7936 19.6001H4.20511C3.35833 19.6001 2.82909 18.6834 3.25248 17.9501L11.0467 4.4501Z" fill="currentColor"/></svg></div>
+    <h3 id="delTitle">Delete your account forever?</h3>
+    <p>This permanently erases your AjixPharmacy account and saved data. There is no undo.</p>
+    <input id="delConfirm" type="text" placeholder='Type "DELETE" to confirm' autocomplete="off">
+    <div class="m-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('mDelete')">Cancel</button>
+      <button class="btn btn-danger" id="delBtn" type="button" disabled onclick="confirmDelete()">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mProfileSaved">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileSavedTitle">
+    <div class="m-ic" style="background:var(--emerald-tint);color:var(--emerald)">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M19.3027 5.9053C19.6542 5.55397 20.2247 5.55388 20.5761 5.9053C20.9273 6.25675 20.9273 6.82734 20.5761 7.17874L9.65911 18.0948C9.30773 18.4461 8.73814 18.446 8.38665 18.0948L3.42376 13.1328C3.0726 12.7814 3.07263 12.2118 3.42376 11.8604C3.77524 11.509 4.34575 11.5089 4.6972 11.8604L9.02239 16.1856L19.3027 5.9053Z" fill="currentColor"/></svg>
+    </div>
+    <h3 id="profileSavedTitle">Changes saved</h3>
+    <p>Your profile changes were saved successfully.</p>
+    <div class="m-actions"><button class="btn btn-primary" type="button" onclick="closeModal('mProfileSaved')">Done</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="mTwoFactorSetup">
+  <div class="modal tfa-setup-modal" role="dialog" aria-modal="true" aria-labelledby="twoFactorTitle">
+    <h3 id="twoFactorTitle">Set up two-step verification</h3>
+    <p>Scan this QR code with your authenticator app, or enter the setup key manually.</p>
+    <img id="tfaQrCode" class="tfa-qr" alt="Authenticator setup QR code">
+    <div class="field"><label for="tfaSecret">Manual setup key</label><input id="tfaSecret" type="text" readonly autocomplete="off"></div>
+    <div class="field"><label for="tfaCode">Authenticator code</label><input id="tfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter 6-digit code"></div>
+    <p class="hint" id="tfaRecoveryHint">After verification, you will receive recovery codes. Save them somewhere safe.</p>
+    <div class="m-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('mTwoFactorSetup'); document.getElementById('tfa').checked=false">Cancel</button>
+      <button class="btn btn-primary" type="button" id="verifyTfaSetup">Verify and enable</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mTwoFactorAuth">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="twoFactorAuthTitle">
+    <h3 id="twoFactorAuthTitle">Confirm security action</h3>
+    <p>Enter your current password and an authenticator or recovery code.</p>
+    <div class="field"><label for="tfaActionPassword">Current password</label><input id="tfaActionPassword" type="password" autocomplete="current-password"></div>
+    <div class="field" style="margin-top:12px"><label for="tfaActionCode">Authenticator or recovery code</label><input id="tfaActionCode" type="text" inputmode="numeric" autocomplete="one-time-code"></div>
+    <div class="m-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal('mTwoFactorAuth')">Cancel</button>
+      <button class="btn btn-primary" type="button" id="submitTfaAction">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mRecoveryCodes">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="recoveryCodesTitle">
+    <h3 id="recoveryCodesTitle">Save your recovery codes</h3>
+    <p>Each code can be used once if you cannot access your authenticator app.</p>
+    <pre id="recoveryCodesList" style="background:#f4f0e7;padding:14px;border-radius:8px;line-height:1.8;letter-spacing:.08em;text-align:center;user-select:text"></pre>
+    <div class="m-actions">
+      <button class="btn btn-ghost" type="button" id="copyRecoveryCodes">Copy codes</button>
+      <button class="btn btn-primary" type="button" onclick="closeModal('mRecoveryCodes')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none"><path d="M19.3027 5.9053C19.6542 5.55397 20.2247 5.55388 20.5761 5.9053C20.9273 6.25675 20.9273 6.82734 20.5761 7.17874L9.65911 18.0948C9.30773 18.4461 8.73814 18.446 8.38665 18.0948L3.42376 13.1328C3.0726 12.7814 3.07263 12.2118 3.42376 11.8604C3.77524 11.509 4.34575 11.5089 4.6972 11.8604L9.02239 16.1856L19.3027 5.9053Z" fill="currentColor"/></svg>
+  <span id="toastMsg">Saved</span>
+</div>
+
+<script>
+  function applyParentPreferences(prefs) {
+    var theme = String(prefs && prefs.theme || 'light');
+    var font = String(prefs && prefs.fontFamily || 'default');
+    document.body.classList.remove('theme-light','theme-dark','theme-teal','theme-sunset','theme-yellow','theme-violet');
+    document.body.classList.add('theme-' + (['light','dark','teal','sunset','yellow','violet'].indexOf(theme) >= 0 ? theme : 'light'));
+    document.body.classList.remove('font-neo','font-classic','font-editorial','font-mono','font-condensed','font-hand');
+    if (['neo','classic','editorial','mono','condensed','hand'].indexOf(font) >= 0) document.body.classList.add('font-' + font);
+  }
+  window.addEventListener('message', function(event) {
+    if (event.origin !== window.location.origin || event.data?.type !== 'ajix-ui-preferences') return;
+    applyParentPreferences(event.data);
+  });
+  try {
+    var storedPrefs = JSON.parse(localStorage.getItem('quizUiPrefsV1') || '{}');
+    applyParentPreferences({ theme: storedPrefs.theme === 'system' ? 'light' : storedPrefs.theme, fontFamily: storedPrefs.fontFamily });
+  } catch (error) {}
+  function goBackToApp(){ window.parent.postMessage({ type: 'ajix-profile-back' }, window.location.origin); }
+  document.getElementById('backToAppTop').addEventListener('click', goBackToApp);
+
+  /* ---------- Navigation ---------- */
+  var titles = {
+    profile:  ['Profile',  'Manage your identity, institution and how you appear across AjixPharmacy.'],
+    security: ['Security', 'Keep your account protected with a strong password and two-step verification.'],
+    account:  ['Account',  'Your membership, preferences and account-level actions.']
+  };
+  document.querySelectorAll('.nav-btn[data-panel]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.nav-btn[data-panel]').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      var p = btn.dataset.panel;
+      ['profile','security','account'].forEach(function(k){
+        document.getElementById('panel-' + k).hidden = (k !== p);
+      });
+      document.getElementById('pageTitle').textContent = titles[p][0];
+      document.getElementById('pageSub').textContent  = titles[p][1];
+      document.getElementById('chip').hidden = (p !== 'account');
+    });
+  });
+  document.getElementById('signOut').addEventListener('click', function(){ window.parent.postMessage({ type: 'ajix-profile-signout' }, window.location.origin); });
+
+  /* ---------- Toast ---------- */
+  var toastTimer;
+  function toast(msg){
+    var t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2800);
+  }
+
+  /* ---------- Avatar ---------- */
+  var avatarInput = document.getElementById('avatarInput'),
+      avatarImg   = document.getElementById('avatarImg'),
+      avatarPh    = document.getElementById('avatarPh'),
+      removeLink  = document.getElementById('removeLink');
+
+  function pickPhoto(){ avatarInput.click(); }
+  document.getElementById('camBtn').addEventListener('click', pickPhoto);
+  document.getElementById('uploadLink').addEventListener('click', pickPhoto);
+
+  avatarInput.addEventListener('change', function(){
+    var file = avatarInput.files[0];
+    if(!file) return;
+    if(file.size > 5 * 1024 * 1024){ toast('Photo must be under 5 MB.'); avatarInput.value=''; return; }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      avatarImg.src = e.target.result;
+      avatarImg.hidden = false;
+      avatarPh.hidden = true;
+      removeLink.disabled = false;
+      toast('Profile photo updated.');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removeLink.addEventListener('click', function(){
+    avatarImg.hidden = true; avatarImg.src = '';
+    avatarPh.hidden = false;
+    removeLink.disabled = true;
+    avatarInput.value = '';
+    toast('Profile photo removed.');
+  });
+
+  /* ---------- Institution "Other" ---------- */
+  var institution = document.getElementById('institution'),
+      institutionInput = document.getElementById('institution-input'),
+      institutionReopen = document.getElementById('institution-reopen'),
+      programme   = document.getElementById('programme'),
+      programmeInput = document.getElementById('programme-input'),
+      programmeReopen = document.getElementById('programme-reopen');
+
+  function getEditableSelectValue(select, input){
+    return select.value === '__other' ? input.value.trim() : select.value.trim();
+  }
+  function syncEditableSelect(select, input, reopen){
+    var isOther = select.value === '__other';
+    select.hidden = isOther;
+    input.hidden = !isOther;
+    reopen.hidden = !isOther;
+    if(isOther) input.focus();
+  }
+  function setEditableSelectValue(select, input, reopen, value){
+    var next = String(value || '').trim();
+    if(next === 'Other' || next === 'Other (not listed)') next = '';
+    var option = Array.prototype.find.call(select.options, function(item){ return item.value === next; });
+    if(option){ select.value = next; input.value = ''; }
+    else if(next){ select.value = '__other'; input.value = next; }
+    else { select.value = ''; input.value = ''; }
+    syncEditableSelect(select, input, reopen);
+  }
+  institution.addEventListener('change', function(){
+    if(institution.value === '__other') institutionInput.value = '';
+    syncEditableSelect(institution, institutionInput, institutionReopen);
+  });
+  programme.addEventListener('change', function(){
+    if(programme.value === '__other') programmeInput.value = '';
+    syncEditableSelect(programme, programmeInput, programmeReopen);
+    refreshStrength();
+  });
+  syncEditableSelect(institution, institutionInput, institutionReopen);
+  syncEditableSelect(programme, programmeInput, programmeReopen);
+  institutionReopen.addEventListener('click', function(){ institution.value = ''; syncEditableSelect(institution, institutionInput, institutionReopen); institution.focus(); });
+  programmeReopen.addEventListener('click', function(){ programme.value = ''; syncEditableSelect(programme, programmeInput, programmeReopen); programme.focus(); });
+
+  /* ---------- Profile strength + save ---------- */
+  function refreshStrength(){
+    var filled = ['fullName','email','phone','programme'].filter(function(id){
+      return document.getElementById(id).value.trim() !== '';
+    }).length;
+    var hasPhoto = !avatarImg.hidden, hasBio = document.getElementById('bio').value.trim() !== '';
+    var pct = Math.min(100, Math.round((filled / 5) * 70 + (hasPhoto ? 15 : 0) + (hasBio ? 15 : 0)));
+    document.getElementById('strengthBar').style.width = pct + '%';
+    document.getElementById('strengthHint').textContent = pct >= 100 ? '100% — looking great' : pct + '% — ' + (hasBio ? 'add a photo' : 'add a bio') + ' to reach 100%';
+  }
+  ['fullName','email','phone','programme','bio'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', refreshStrength);
+  });
+  refreshStrength();
+
+  document.getElementById('saveProfile').addEventListener('click', function(){
+    var institutionValue = getEditableSelectValue(institution, institutionInput);
+    var programmeValue = getEditableSelectValue(programme, programmeInput);
+    var phoneInputValue = document.getElementById('phone').value.trim().replace(/[\s()-]/g, '');
+    var phoneCountryCodeValue = document.getElementById('phoneCountryCode').value;
+    var prefixDigits = phoneCountryCodeValue.replace(/\D/g, '');
+    phoneInputValue = phoneInputValue.replace(new RegExp('^\\+?' + prefixDigits), '').replace(/^0+/, '');
+    var phoneValue = phoneInputValue ? phoneCountryCodeValue + phoneInputValue : '';
+    window.parent.postMessage({ type: 'ajix-profile-save', form: {
+      fullName: document.getElementById('fullName').value,
+      username: document.getElementById('username').value,
+      email: document.getElementById('email').value,
+      phone: phoneValue,
+      programme: programmeValue,
+      level: document.getElementById('level').value,
+      institution: institutionValue,
+      bio: document.getElementById('bio').value,
+      profileImage: document.getElementById('avatarImg').hidden ? '' : document.getElementById('avatarImg').src,
+    } }, window.location.origin);
+  });
+
+  /* ---------- Password ---------- */
+  document.querySelectorAll('.pw-eye').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var input = document.getElementById(btn.dataset.eye);
+      var show = input.dataset.masked !== 'false';
+      input.dataset.masked = show ? 'false' : 'true';
+      input.style.setProperty('-webkit-text-security', show ? 'none' : 'disc');
+      btn.textContent = show ? 'Hide' : 'Show';
+    });
+  });
+
+  var pwNew = document.getElementById('pwNew'), pwConfirm = document.getElementById('pwConfirm');
+  function scorePw(v){
+    var s = 0;
+    if(v.length >= 8) s++;
+    if(/[a-z]/.test(v) && /[A-Z]/.test(v)) s++;
+    if(/\d/.test(v)) s++;
+    if(/[^A-Za-z0-9]/.test(v)) s++;
+    return v.length ? Math.max(s, 1) : 0;
+  }
+  var pwNames = ['enter a password','weak','fair','good','strong'];
+  var pwColors = ['#d8d2c2','#a6261c','#c77700','#a8842c','#0c3b2e'];
+  pwNew.addEventListener('input', function(){
+    var s = scorePw(pwNew.value);
+    var segs = document.querySelectorAll('#pwMeter i');
+    segs.forEach(function(seg, i){ seg.style.background = i < s ? pwColors[s] : '#d8d2c2'; });
+    document.getElementById('pwLabel').textContent = 'Strength: ' + pwNames[s];
+    checkMatch();
+  });
+  function checkMatch(){
+    var m = document.getElementById('pwMatch');
+    if(!pwConfirm.value){ m.textContent = ''; return; }
+    m.textContent = pwConfirm.value === pwNew.value ? 'Passwords match' : 'Passwords do not match';
+    m.style.color = pwConfirm.value === pwNew.value ? '#0c3b2e' : '#a6261c';
+  }
+  pwConfirm.addEventListener('input', checkMatch);
+
+  document.getElementById('savePw').addEventListener('click', function(){
+    if(!document.getElementById('pwCurrent').value){ toast('Enter your current password.'); return; }
+    if(pwNew.value.length < 8){ toast('New password must be at least 8 characters.'); return; }
+    if(pwNew.value !== pwConfirm.value){ toast('Passwords do not match.'); return; }
+    window.parent.postMessage({ type: 'ajix-profile-password', currentPassword: document.getElementById('pwCurrent').value, newPassword: pwNew.value }, window.location.origin);
+  });
+  /* ---------- Modals ---------- */
+  function openModal(id){ document.getElementById(id).classList.add('open'); }
+  function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+  document.querySelectorAll('.overlay').forEach(function(ov){
+    ov.addEventListener('click', function(e){ if(e.target === ov) ov.classList.remove('open'); });
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(function(o){ o.classList.remove('open'); });
+  });
+
+  function confirmDeactivate(){
+    closeModal('mDeactivate');
+    window.parent.postMessage({ type: 'ajix-profile-deactivate' }, window.location.origin);
+  }
+  var delConfirm = document.getElementById('delConfirm'), delBtn = document.getElementById('delBtn');
+  delConfirm.addEventListener('input', function(){ delBtn.disabled = delConfirm.value.trim().toUpperCase() !== 'DELETE'; });
+  function confirmDelete(){
+    closeModal('mDelete');
+    window.parent.postMessage({ type: 'ajix-profile-delete' }, window.location.origin);
+  }
+
+  function sendProfileReady(){ window.parent.postMessage({ type: 'ajix-profile-ready' }, window.location.origin); }
+  function setProfileValue(id, value){ var el = document.getElementById(id); if(el) el.value = value == null ? '' : String(value); }
+  function formatProfileDate(value){
+    var parsed = new Date(value);
+    if(!value || isNaN(parsed.getTime())) return 'Not changed yet';
+    return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  var profileEditing = false, profileContactType = '';
+  function applyContactFieldState(){
+    var type = profileContactType;
+    var email = document.getElementById('email'), phone = document.getElementById('phone'), countryCode = document.getElementById('phoneCountryCode');
+    var editEmail = document.getElementById('editEmail'), editPhone = document.getElementById('editPhone');
+    email.disabled = !profileEditing || type === 'email'; phone.disabled = !profileEditing || type === 'phone'; countryCode.disabled = !profileEditing || type === 'phone';
+    editEmail.hidden = !profileEditing || type !== 'email'; editPhone.hidden = !profileEditing || type !== 'phone';
+    editEmail.onclick = function(){ email.disabled = false; editEmail.hidden = true; email.focus(); };
+    editPhone.onclick = function(){ phone.disabled = false; countryCode.disabled = false; editPhone.hidden = true; phone.focus(); };
+  }
+  function configureContactFields(user){
+    var contact = String(user.contact || '').trim();
+    profileContactType = String(user.contactType || (/@/.test(contact) ? 'email' : 'phone')).toLowerCase();
+    applyContactFieldState();
+  }
+  function setProfileEditing(enabled){
+    profileEditing = Boolean(enabled);
+    ['fullName','username','level','bio','programme','programme-input','institution','institution-input'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.disabled = !profileEditing;
+    });
+    ['programme-reopen','institution-reopen','uploadLink','avatarInput','removeLink','camBtn'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.disabled = !profileEditing;
+    });
+    ['camBtn'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.hidden = !profileEditing;
+    });
+    document.getElementById('editProfile').hidden = profileEditing;
+    document.getElementById('discardProfile').hidden = !profileEditing;
+    document.getElementById('saveProfile').hidden = !profileEditing;
+    applyContactFieldState();
+  }
+  var lastSavedForm = null;
+  function captureFormState(){
+    return {
+      fullName: document.getElementById('fullName').value,
+      username: document.getElementById('username').value,
+      email: document.getElementById('email').value,
+      phone: document.getElementById('phone').value,
+      phoneCountryCode: document.getElementById('phoneCountryCode').value,
+      programme: programme.value,
+      programmeInput: programmeInput.value,
+      level: document.getElementById('level').value,
+      institution: institution.value,
+      institutionInput: institutionInput.value,
+      bio: document.getElementById('bio').value,
+      avatarSrc: document.getElementById('avatarImg').src,
+      avatarHidden: document.getElementById('avatarImg').hidden
+    };
+  }
+  function restoreFormState(state){
+    if(!state) return;
+    setProfileValue('fullName', state.fullName); setProfileValue('username', state.username); setProfileValue('email', state.email); setProfileValue('phone', state.phone);
+    setProfileValue('phoneCountryCode', state.phoneCountryCode); setProfileValue('level', state.level); setProfileValue('bio', state.bio);
+    programme.value = state.programme; programmeInput.value = state.programmeInput; syncEditableSelect(programme, programmeInput, programmeReopen);
+    institution.value = state.institution; institutionInput.value = state.institutionInput; syncEditableSelect(institution, institutionInput, institutionReopen);
+    document.getElementById('avatarImg').src = state.avatarSrc || ''; document.getElementById('avatarImg').hidden = state.avatarHidden;
+    document.getElementById('avatarPh').hidden = !state.avatarHidden; removeLink.disabled = state.avatarHidden;
+    refreshStrength();
+  }
+  function applyRealProfile(user){
+    if(!user) return;
+    var first = String(user.firstName || '').trim(), last = String(user.lastName || user.surname || '').trim();
+    var displayName = [first, last].filter(Boolean).join(' ') || String(user.username || 'Account');
+    var contact = String(user.contact || user.email || '').trim();
+    var isEmail = /@/.test(contact);
+    var image = String(user.profileImage || '').trim();
+    var avatar = document.getElementById('memberAvatar');
+    var avatarImage = document.getElementById('memberAvatarImage');
+    var initials = [first, last].filter(Boolean).map(function(part){ return part.charAt(0); }).join('').toUpperCase() || String(user.username || 'A').charAt(0).toUpperCase();
+    document.getElementById('memberInitials').textContent = initials.slice(0, 2);
+    avatar.classList.toggle('has-image', Boolean(image));
+    avatarImage.src = image || '';
+    document.getElementById('tfa').checked = user.twoFactorEnabled === true;
+    document.getElementById('profileDisplayName').textContent = displayName;
+    document.getElementById('memberDisplayName').textContent = displayName;
+    configureContactFields(user);
+    document.getElementById('passwordLastChanged').textContent = formatProfileDate(user.passwordChangedAt || user.createdAt);
+    document.getElementById('profileDisplayMeta').textContent = [user.professionalType, user.institution, user.level].map(function(value){ return String(value || '').trim() || '—'; }).join(' · ');
+    var subscriptionStatus = String(user.subscriptionStatus || '').trim().toLowerCase();
+    var isPending = user.subscriptionPending === true || subscriptionStatus === 'pending';
+    var subscriptionLabel = user.subscriptionActive ? 'Active' : isPending ? 'Pending' : 'Expired';
+    var subscriptionPlan = (user.subscriptionActive || isPending) ? String(user.subscriptionPlan || 'Subscription') : 'Expired';
+    var tierTitle = subscriptionLabel === 'Expired' ? 'AjixPharmacy Subscription' : 'AjixPharmacy ' + subscriptionPlan;
+    var tierDescription = subscriptionLabel === 'Active' ? 'Your subscription is active.' : isPending ? 'Your subscription is awaiting approval.' : 'There is no active subscription on this account.';
+    document.getElementById('memberStatus').textContent = subscriptionLabel;
+    document.getElementById('subscriptionStatus').textContent = subscriptionLabel;
+    document.getElementById('subscriptionPlan').textContent = subscriptionPlan;
+    document.getElementById('chipLabel').textContent = subscriptionPlan;
+    document.getElementById('memberTierTitle').textContent = tierTitle;
+    document.getElementById('memberTierDescription').textContent = tierDescription;
+    document.getElementById('memberSince').textContent = String(user.createdAt || '—').slice(0, 10) || '—';
+    document.getElementById('profileDisplayMeta').textContent = [user.professionalType, user.institution, user.level].map(function(value){ return String(value || '').trim() || '—'; }).join(' · ');
+    document.getElementById('avatarPh').textContent = displayName.split(/\s+/).filter(Boolean).slice(0,2).map(function(part){ return part.charAt(0); }).join('').toUpperCase() || '?';
+    setProfileValue('fullName', displayName);
+    setProfileValue('username', user.username || '');
+    setProfileValue('email', user.email || (isEmail ? contact : ''));
+    var phoneCountryCode = document.getElementById('phoneCountryCode');
+    var phoneValue = user.phone || (isEmail ? '' : contact);
+    if(!isEmail){
+      var knownCodes = Array.prototype.map.call(phoneCountryCode.options, function(option){ return option.value; }).sort(function(a,b){ return b.length - a.length; });
+      var matchedCode = knownCodes.find(function(code){ return phoneValue.indexOf(code) === 0; });
+      if(matchedCode){
+        phoneCountryCode.value = matchedCode;
+        phoneValue = phoneValue.slice(matchedCode.length).replace(/^\s+/, '').replace(/^0+/, '');
+      }
+    }
+    setProfileValue('phone', phoneValue);
+    var programmeValue = String(user.professionalType || '').trim();
+    setEditableSelectValue(programme, programmeInput, programmeReopen, programmeValue);
+    setProfileValue('level', user.level || '');
+    var institutionValue = String(user.institution || '').trim();
+    if(/^(not set|not specified)$/i.test(institutionValue)) institutionValue = '';
+    setEditableSelectValue(institution, institutionInput, institutionReopen, institutionValue);
+    setProfileValue('bio', user.bio || '');
+    if(image){ document.getElementById('avatarImg').src = image; document.getElementById('avatarImg').hidden = false; document.getElementById('avatarPh').hidden = true; }
+    else { document.getElementById('avatarImg').src = ''; document.getElementById('avatarImg').hidden = true; document.getElementById('avatarPh').hidden = false; removeLink.disabled = true; }
+    refreshStrength();
+    setProfileEditing(false);
+    lastSavedForm = captureFormState();
+  }
+  function formatSessionDate(value){
+    var date = new Date(value || '');
+    return isNaN(date.getTime()) ? 'Recently active' : date.toLocaleString([], { dateStyle:'medium', timeStyle:'short' });
+  }
+  function renderLoginSessions(sessions){
+    var host = document.getElementById('loginSessions');
+    if(!host) return;
+    host.innerHTML = '';
+    if(!sessions || !sessions.length){ host.innerHTML = '<div class="session"><div><b>No active sessions found</b><span>Sign in again to create a session.</span></div></div>'; return; }
+    sessions.forEach(function(session){
+      var row = document.createElement('div'); row.className = 'session';
+      var icon = document.createElement('div'); icon.className = 'ic'; icon.textContent = /mobile/i.test(session.device || '') ? '▯' : '▣';
+      var details = document.createElement('div');
+      var title = document.createElement('b'); title.textContent = session.device || 'Web browser';
+      var meta = document.createElement('span'); meta.textContent = session.current ? 'Active now' : 'Last active ' + formatSessionDate(session.lastSeenAt);
+      details.append(title, meta); row.append(icon, details);
+      if(session.current){ var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = 'This device'; row.append(tag); }
+      else { var revoke = document.createElement('button'); revoke.className = 'link-btn'; revoke.type = 'button'; revoke.textContent = 'Sign out'; revoke.onclick = function(){ window.parent.postMessage({ type:'ajix-profile-session-revoke', sessionId:session.id }, window.location.origin); }; row.append(revoke); }
+      host.append(row);
+    });
+  }
+  document.getElementById('editProfile').addEventListener('click', function(){ setProfileEditing(true); });
+  document.getElementById('discardProfile').addEventListener('click', function(){ restoreFormState(lastSavedForm); setProfileEditing(false); toast('Changes discarded.'); });
+  window.addEventListener('message', function(event){
+    if(event.origin !== window.location.origin) return;
+    var data = event.data || {};
+    if(data.type === 'ajix-profile-data'){ applyRealProfile(data.user); }
+    if(data.type === 'ajix-profile-sessions-data'){ renderLoginSessions(data.sessions || []); if(data.message) toast(data.message); }
+    if(data.type === 'ajix-profile-sessions-error'){ toast(data.message || 'Could not update login sessions.'); }
+    if(data.type === 'ajix-profile-2fa-setup-result'){
+      if(!data.ok){ document.getElementById('tfa').checked = false; toast(data.message || 'Could not start two-step setup.'); }
+      else {
+        document.getElementById('tfaQrCode').src = data.qrCodeDataUrl || '';
+        document.getElementById('tfaSecret').value = data.secret || '';
+        document.getElementById('tfaCode').value = '';
+        openModal('mTwoFactorSetup');
+      }
+    }
+    if(data.type === 'ajix-profile-2fa-result'){
+      document.getElementById('verifyTfaSetup').disabled = false;
+      if(data.ok){ closeModal('mTwoFactorSetup'); if(data.user) applyRealProfile(data.user); if(data.recoveryCodes){ showRecoveryCodes(data.recoveryCodes); } else toast('Two-step verification updated.'); }
+      else { document.getElementById('tfa').checked = data.action === 'disable'; toast(data.message || 'Could not update two-step verification.'); }
+    }
+    if(data.type === 'ajix-profile-2fa-recovery-codes-result'){
+      if(data.ok) showRecoveryCodes(data.recoveryCodes || []);
+      else toast(data.message || 'Could not regenerate recovery codes.');
+    }
+    if(data.type === 'ajix-profile-save-result' || data.type === 'ajix-profile-action-result'){
+      if(data.ok){
+        if(data.user) applyRealProfile(data.user);
+        if(data.type === 'ajix-profile-save-result') openModal('mProfileSaved');
+        else toast(data.message || 'Saved.');
+      } else toast(data.message || 'Could not complete that action.');
+      if(data.ok && data.action === 'password') ['pwCurrent','pwNew','pwConfirm'].forEach(function(id){ document.getElementById(id).value=''; });
+    }
+  });
+  document.getElementById('signOutOther').addEventListener('click', function(){ window.parent.postMessage({ type: 'ajix-profile-session-revoke-others' }, window.location.origin); });
+  document.getElementById('openNotificationPreferences').addEventListener('click', function(){ window.parent.postMessage({ type:'ajix-profile-open-community-settings', target:'global-notifications' }, window.location.origin); });
+  document.getElementById('openPrivacyPreferences').addEventListener('click', function(){ window.parent.postMessage({ type:'ajix-profile-open-community-settings', target:'privacy' }, window.location.origin); });
+  document.getElementById('tfa').addEventListener('change', function(event){
+    if(event.target.checked){
+      window.parent.postMessage({ type: 'ajix-profile-2fa-setup' }, window.location.origin);
+      return;
+    }
+    openTfaAction('disable');
+  });
+  document.getElementById('verifyTfaSetup').addEventListener('click', function(){
+    var code = document.getElementById('tfaCode').value.trim();
+    if(!/^\d{6}$/.test(code)){ toast('Enter the six-digit code from your authenticator app.'); return; }
+    this.disabled = true;
+    window.parent.postMessage({ type: 'ajix-profile-2fa-verify', code: code }, window.location.origin);
+  });
+  function showRecoveryCodes(codes){
+    document.getElementById('recoveryCodesList').textContent = (codes || []).join('\n');
+    openModal('mRecoveryCodes');
+  }
+  document.getElementById('copyRecoveryCodes').addEventListener('click', function(){
+    navigator.clipboard && navigator.clipboard.writeText(document.getElementById('recoveryCodesList').textContent).then(function(){ toast('Recovery codes copied.'); });
+  });
+  var tfaAction = '';
+  function openTfaAction(action){
+    tfaAction = action;
+    document.getElementById('tfaActionPassword').value = '';
+    document.getElementById('tfaActionCode').value = '';
+    openModal('mTwoFactorAuth');
+  }
+  document.getElementById('regenerateTfaCodes').addEventListener('click', function(){ openTfaAction('recovery'); });
+  document.getElementById('submitTfaAction').addEventListener('click', function(){
+    var password = document.getElementById('tfaActionPassword').value;
+    var code = document.getElementById('tfaActionCode').value.trim();
+    if(!password || !code){ toast('Enter both fields.'); return; }
+    closeModal('mTwoFactorAuth');
+    if(tfaAction === 'disable') window.parent.postMessage({ type: 'ajix-profile-2fa-disable', password: password, code: code }, window.location.origin);
+    if(tfaAction === 'recovery') window.parent.postMessage({ type: 'ajix-profile-2fa-recovery-codes', password: password, code: code }, window.location.origin);
+  });
+  setProfileEditing(false);
+  sendProfileReady();
+</script>
+</body>
+</html>

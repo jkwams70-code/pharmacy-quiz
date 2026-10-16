@@ -22,7 +22,7 @@ export async function verifyPassword(password, hash) {
   }
 }
 
-export function createToken(user) {
+export function createToken(user, { sessionId = "" } = {}) {
   return jwt.sign(
     {
       sub: user.id,
@@ -30,6 +30,7 @@ export function createToken(user) {
       contact: user.contact,
       username: user.username,
       name: user.name,
+      ...(sessionId ? { sid: sessionId } : {}),
     },
     config.jwtSecret,
     { expiresIn: config.tokenTtl },

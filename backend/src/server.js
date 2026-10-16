@@ -11,6 +11,8 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import sharp from "sharp";
+import jwt from "jsonwebtoken";
+import QRCode from "qrcode";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -18,6 +20,7 @@ import agoraAccessTokenPackage from "agora-access-token";
 import {
   AUTH_COOKIE_NAME,
   createToken,
+  getAuthTokenFromRequest,
   hashPassword,
   optionalAuth,
   requireAuth,
@@ -57,6 +60,154 @@ app.use((_req, res, next) => {
 });
 const execFileAsync = promisify(execFile);
 const { RtcRole, RtcTokenBuilder } = agoraAccessTokenPackage;
+const TWO_FACTOR_STEP_SECONDS = 30;
+const TWO_FACTOR_CHALLENGE_TTL = "5m";
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+
+function getSessionDeviceLabel(req) {
+  const agent = String(req.headers?.["user-agent"] || "");
+  if (/mobile|android|iphone|ipad/i.test(agent)) return "Mobile device";
+  if (/edg/i.test(agent)) return "Microsoft Edge";
+  if (/chrome/i.test(agent)) return "Google Chrome";
+  if (/firefox/i.test(agent)) return "Firefox";
+  if (/safari/i.test(agent)) return "Safari";
+  return "Web browser";
+}
+
+async function createLoginSession(user, req) {
+  const now = new Date().toISOString();
+  const session = {
+    id: crypto.randomUUID(),
+    userId: user.id,
+    device: getSessionDeviceLabel(req),
+    userAgent: String(req.headers?.["user-agent"] || "").slice(0, 300),
+    ip: String(req.ip || req.socket?.remoteAddress || "").slice(0, 100),
+    createdAt: now,
+    lastSeenAt: now,
+    revokedAt: null,
+  };
+  await updateCollection("sessions", (current) => [...current, session]);
+  return session;
+}
+
+async function touchLoginSession(req) {
+  const sessionId = String(req.user?.sid || "").trim();
+  if (!sessionId || !req.user?.sub) return;
+  const now = Date.now();
+  const lastTouch = Number(req.user?.sessionTouchedAt || 0);
+  if (lastTouch && now - lastTouch < SESSION_TOUCH_INTERVAL_MS) return;
+  await updateCollection("sessions", (current) => current.map((entry) =>
+    entry.id === sessionId && entry.userId === req.user.sub && !entry.revokedAt
+      ? { ...entry, lastSeenAt: new Date(now).toISOString() }
+      : entry));
+}
+
+async function sessionGuard(req, res, next) {
+  if (!req.path.startsWith("/auth/") || ["/auth/login", "/auth/register", "/auth/2fa/verify-login"].includes(req.path)) {
+    next();
+    return;
+  }
+  const token = getAuthTokenFromRequest(req);
+  if (!token) { next(); return; }
+  try {
+    const payload = jwt.verify(token, config.jwtSecret);
+    if (payload?.sid) {
+      const sessions = await readCollection("sessions");
+      const session = sessions.find((entry) => entry.id === payload.sid && entry.userId === payload.sub);
+      if (!session || session.revokedAt) {
+        res.status(401).json({ error: "Session ended. Please sign in again." });
+        return;
+      }
+      req.user = { ...payload, sessionTouchedAt: Date.now() };
+      void touchLoginSession(req).catch(() => {});
+    }
+  } catch {}
+  next();
+}
+
+function base32Encode(buffer) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0;
+  let value = 0;
+  let output = "";
+  for (const byte of buffer) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += alphabet[(value << (5 - bits)) & 31];
+  return output;
+}
+
+function base32Decode(value) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0;
+  let buffer = 0;
+  const bytes = [];
+  for (const character of String(value || "").toUpperCase().replace(/=+$/g, "")) {
+    const index = alphabet.indexOf(character);
+    if (index < 0) continue;
+    buffer = (buffer << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((buffer >>> (bits - 8)) & 255);
+      bits -= 8;
+      // Discard bits already emitted. Keeping them causes the 32-bit
+      // JavaScript bitwise buffer to corrupt longer Base32 secrets.
+      buffer = bits > 0 ? buffer & ((1 << bits) - 1) : 0;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function generateTotpCode(secret, timestamp = Date.now()) {
+  const counter = Math.floor(timestamp / 1000 / TWO_FACTOR_STEP_SECONDS);
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigInt64BE(BigInt(counter));
+  const digest = crypto.createHmac("sha1", base32Decode(secret)).update(counterBuffer).digest();
+  const offset = digest[digest.length - 1] & 15;
+  const binary = ((digest[offset] & 127) << 24) |
+    ((digest[offset + 1] & 255) << 16) |
+    ((digest[offset + 2] & 255) << 8) |
+    (digest[offset + 3] & 255);
+  return String(binary % 1000000).padStart(6, "0");
+}
+
+function verifyTotpCode(secret, code) {
+  const normalized = String(code || "").replace(/\s+/g, "");
+  if (!/^\d{6}$/.test(normalized) || !secret) return false;
+  const now = Date.now();
+  // Allow a small amount of phone/server clock drift while keeping the
+  // verification window limited to roughly two minutes.
+  return [-2, -1, 0, 1, 2].some((offset) => generateTotpCode(secret, now + offset * TWO_FACTOR_STEP_SECONDS * 1000) === normalized);
+}
+
+function createRecoveryCodes() {
+  return Array.from({ length: 8 }, () => `${crypto.randomBytes(4).toString("hex").slice(0, 4)}-${crypto.randomBytes(4).toString("hex").slice(0, 4)}`.toUpperCase());
+}
+
+function hashRecoveryCode(code) {
+  return crypto.createHash("sha256").update(String(code || "").trim().toUpperCase()).digest("hex");
+}
+
+function consumeRecoveryCode(user, code) {
+  const hash = hashRecoveryCode(code);
+  const hashes = Array.isArray(user.twoFactorRecoveryCodeHashes) ? user.twoFactorRecoveryCodeHashes : [];
+  const index = hashes.indexOf(hash);
+  if (index < 0) return false;
+  user.twoFactorRecoveryCodeHashes = hashes.filter((_entry, entryIndex) => entryIndex !== index);
+  return true;
+}
+
+function isValidTwoFactorCode(user, code) {
+  if (verifyTotpCode(user.twoFactorSecret, code)) return { valid: true, recoveryUsed: false };
+  const copy = { ...user, twoFactorRecoveryCodeHashes: [...(user.twoFactorRecoveryCodeHashes || [])] };
+  if (consumeRecoveryCode(copy, code)) return { valid: true, recoveryUsed: true, hashes: copy.twoFactorRecoveryCodeHashes };
+  return { valid: false, recoveryUsed: false };
+}
 const ALLOWED_ROTATIONS = new Set([
   "Internal Medicine",
   "Paediatrics",
@@ -431,6 +582,7 @@ const PROFESSIONAL_TYPE_VALUES = new Set([
 ]);
 const RESET_CODE_TTL_HOURS = 24;
 const DEACTIVATE_MAX_DAYS = 30;
+const DELETED_CONTACT_HOLD_DAYS = 7;
 const DELETE_ACCOUNT_CONFIRM_TOKEN = "DELETE_MY_ACCOUNT_CONFIRMED";
 const DAILY_QUIZ_SEASON = {
   key: "2026-03",
@@ -823,6 +975,14 @@ function normalizePrivacySettings(raw = {}) {
       ? lastSeenVisibility
       : "friends",
     groupAddVisibility: REQUEST_VISIBILITY_VALUES.has(groupAddVisibility) ? groupAddVisibility : "friends",
+  };
+}
+
+function normalizeNotificationPreferences(raw = {}) {
+  return {
+    orderUpdates: raw?.orderUpdates !== false,
+    dosageReminders: raw?.dosageReminders !== false,
+    studyStreaks: raw?.studyStreaks !== false,
   };
 }
 
@@ -4725,6 +4885,12 @@ function detectContactType(contact) {
   return isValidEmail(contact) ? "email" : "phone";
 }
 
+function getUserLoginContacts(user = {}) {
+  return [user.contact, user.email, user.phone, user.alternateEmail, user.alternatePhone]
+    .map((value) => normalizeContactValue(value))
+    .filter(Boolean);
+}
+
 function maskEmailAddress(email) {
   const normalized = String(email || "").trim().toLowerCase();
   const atIndex = normalized.indexOf("@");
@@ -5294,11 +5460,16 @@ function normalizeExistingUser(rawUser = {}) {
     ? seededUsername
     : `user-${String(rawUser.id || crypto.randomUUID()).slice(0, 8).toLowerCase()}`;
   const normalizedContact = normalizeContactValue(rawUser.contact || rawUser.email);
-  const email = isValidEmail(rawUser.email)
-    ? normalizeContactValue(rawUser.email)
+  const rawEmail = normalizeContactValue(rawUser.email || rawUser.alternateEmail);
+  const rawPhone = normalizeContactValue(rawUser.phone || rawUser.alternatePhone);
+  const email = isValidEmail(rawEmail)
+    ? rawEmail
     : isValidEmail(normalizedContact)
       ? normalizedContact
       : "";
+  const phone = !isValidEmail(rawPhone)
+    ? rawPhone || (!isValidEmail(normalizedContact) ? normalizedContact : "")
+    : "";
   const contact = normalizedContact || email || "";
   const role = USER_ROLE_VALUES.has(String(rawUser.role || "").toLowerCase())
     ? String(rawUser.role).toLowerCase()
@@ -5306,11 +5477,10 @@ function normalizeExistingUser(rawUser = {}) {
   const subscriptionTier =
     normalizeSubscriptionTierValue(rawUser.subscriptionTier) || "free";
   const subscriptionState = computeSubscriptionState(rawUser);
-  const professionalType = PROFESSIONAL_TYPE_VALUES.has(rawUser.professionalType)
-    ? rawUser.professionalType
-    : "Other";
+  const professionalType = normalizeProfessionalTypeValue(rawUser.professionalType) || "Other";
   const createdAt = String(rawUser.createdAt || new Date().toISOString());
   const updatedAt = String(rawUser.updatedAt || createdAt);
+  const passwordChangedAt = String(rawUser.passwordChangedAt || createdAt);
   const lastSeenAt = rawUser.lastSeenAt ? String(rawUser.lastSeenAt) : updatedAt;
   const deactivatedUntil = rawUser.deactivatedUntil
     ? String(rawUser.deactivatedUntil)
@@ -5325,9 +5495,12 @@ function normalizeExistingUser(rawUser = {}) {
     surname: lastName,
     name: buildDisplayName(title, firstName, lastName, rawUser.name || safeUsername),
     username: safeUsername,
+    level: normalizeWhitespace(rawUser.level),
     contact,
     contactType: contact ? detectContactType(contact) : "",
     email: email || "",
+    phone: phone || "",
+    passwordChangedAt,
     role,
     subscriptionTier,
     subscriptionPlan: subscriptionState.plan,
@@ -5351,6 +5524,7 @@ function normalizeExistingUser(rawUser = {}) {
         ? rawUser.profileImage.trim()
         : "",
     privacy: normalizePrivacySettings(rawUser.privacy),
+    notificationPreferences: normalizeNotificationPreferences(rawUser.notificationPreferences),
     createdAt,
     updatedAt,
     lastSeenAt,
@@ -5358,6 +5532,13 @@ function normalizeExistingUser(rawUser = {}) {
     deactivatedUntil,
     resetCodeHash: rawUser.resetCodeHash || null,
     resetCodeExpiresAt: rawUser.resetCodeExpiresAt || null,
+    twoFactorEnabled: rawUser.twoFactorEnabled === true,
+    twoFactorSecret: String(rawUser.twoFactorSecret || "").trim(),
+    twoFactorPendingSecret: String(rawUser.twoFactorPendingSecret || "").trim(),
+    twoFactorRecoveryCodeHashes: Array.isArray(rawUser.twoFactorRecoveryCodeHashes)
+      ? rawUser.twoFactorRecoveryCodeHashes.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [],
+    twoFactorUpdatedAt: rawUser.twoFactorUpdatedAt ? String(rawUser.twoFactorUpdatedAt) : null,
     points: normalizePointsValue(rawUser.points),
     dailyQuiz: normalizeDailyQuizState(rawUser.dailyQuiz),
     setupPoints: normalizeSetupPointsValue(rawUser.setupPoints),
@@ -5376,9 +5557,12 @@ function toPublicUser(user) {
     surname: normalized.lastName,
     name: normalized.name,
     username: normalized.username,
+    level: normalized.level,
     contact: normalized.contact,
     contactType: normalized.contactType,
     email: normalized.email,
+    phone: normalized.phone,
+    passwordChangedAt: normalized.passwordChangedAt,
     role: normalized.role,
     subscriptionTier: normalized.subscriptionTier,
     subscriptionPlan: subscriptionState.plan,
@@ -5421,11 +5605,13 @@ welcomeBonusAppliedAt: normalized.welcomeBonusAppliedAt || null,
     bio: normalized.bio,
     profileImage: normalized.profileImage,
     privacy: normalized.privacy,
+    notificationPreferences: normalized.notificationPreferences,
     createdAt: normalized.createdAt,
     updatedAt: normalized.updatedAt,
     lastSeenAt: normalized.lastSeenAt,
     deactivatedAt: normalized.deactivatedAt,
     deactivatedUntil: normalized.deactivatedUntil,
+    twoFactorEnabled: normalized.twoFactorEnabled === true,
     points: normalizePointsValue(normalized.points),
     dailyQuiz: summarizeDailyQuizState(normalized.dailyQuiz),
     setupPoints: normalizeSetupPointsValue(normalized.setupPoints),
@@ -6587,11 +6773,12 @@ function findUserByIdentifier(users, identifierRaw) {
   return users.find((rawUser) => {
     const user = normalizeExistingUser(rawUser);
     if (normalizeIdentifier(user.username) === identifier) return true;
-    if (normalizeIdentifier(user.contact) === identifier) return true;
-    if (normalizeIdentifier(user.email) === identifier) return true;
+    if (getUserLoginContacts(user).some((contact) => normalizeIdentifier(contact) === identifier)) return true;
 
-    const userPhoneDigits = normalizePhoneComparable(user.contact);
-    if (identifierDigits && userPhoneDigits && identifierDigits === userPhoneDigits) {
+    const userPhoneContacts = getUserLoginContacts(user)
+      .filter((contact) => !isValidEmail(contact))
+      .map(normalizePhoneComparable);
+    if (identifierDigits && userPhoneContacts.some((digits) => digits === identifierDigits)) {
       return true;
     }
 
@@ -6605,8 +6792,7 @@ function findUserByRegisteredContact(users, contactRaw) {
 
   return users.find((rawUser) => {
     const user = normalizeExistingUser(rawUser);
-    const userContact = normalizeContactValue(user.contact);
-    return Boolean(userContact && userContact === contact);
+    return getUserLoginContacts(user).some((value) => value === contact);
   });
 }
 
@@ -6639,7 +6825,7 @@ function resolveSubscriptionTier(user) {
 
 function normalizeProfessionalTypeValue(value) {
   const clean = normalizeWhitespace(value);
-  return PROFESSIONAL_TYPE_VALUES.has(clean) ? clean : null;
+  return clean && clean.length <= 120 ? clean : null;
 }
 
 function dateKeyInTimeZone(dateInput = new Date(), timeZone = DAILY_QUIZ_SEASON.timezone) {
@@ -7848,6 +8034,8 @@ app.use(
   }),
 );
 
+app.use("/api", sessionGuard);
+
 // Audit admin endpoint access attempts.
 app.use("/api/admin", (req, _res, next) => {
   const row = {
@@ -7869,7 +8057,17 @@ app.use("/api/medlens", requireAuth);
 app.use("/api/guidelines", requireAuth);
 app.use(
   "/api/news-media",
-  requireAuth,
+  // Published news thumbnails are loaded by <img> elements. Those requests
+  // cannot attach the Bearer token stored in the browser's local storage, and
+  // the media files contain no private account data. Keep the News API
+  // authenticated, but serve its published image variants as public assets.
+  (req, res, next) => {
+    // The frontend and API use different local/proxy origins (for example
+    // localhost:8000 -> localhost:4000). Allow published News images to be
+    // embedded by the app while keeping the News API itself authenticated.
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  },
   express.static(newsMediaPath, {
     maxAge: "30d",
     immutable: true,
@@ -7954,14 +8152,27 @@ app.post(
     }
     if (
       users.some(
-        (u) =>
-          normalizeIdentifier(u.contact) === normalizeIdentifier(contact) ||
-          (contactDigits &&
-            normalizePhoneComparable(u.contact) &&
-            normalizePhoneComparable(u.contact) === contactDigits),
+        (u) => getUserLoginContacts(u).some((entryContact) =>
+          normalizeIdentifier(entryContact) === normalizeIdentifier(contact) ||
+          (contactDigits && normalizePhoneComparable(entryContact) === contactDigits)),
       )
     ) {
       res.status(409).json({ error: "contact already in use" });
+      return;
+    }
+    const deletedUsers = (await readCollection("deletedUsers")).map(normalizeDeletedUserArchive);
+    const deletedContactCutoff = Date.now() - DELETED_CONTACT_HOLD_DAYS * 24 * 60 * 60 * 1000;
+    if (deletedUsers.some((archive) => {
+      const deletedAt = Date.parse(String(archive.deletedAt || ""));
+      if (!Number.isFinite(deletedAt) || deletedAt <= deletedContactCutoff) return false;
+      return getUserLoginContacts(archive.user).some((entryContact) =>
+        normalizeIdentifier(entryContact) === normalizeIdentifier(contact) ||
+        (contactDigits && normalizePhoneComparable(entryContact) === contactDigits),
+      );
+    })) {
+      res.status(409).json({
+        error: `This contact was recently used on a deleted account. It can be registered again after ${DELETED_CONTACT_HOLD_DAYS} days.`,
+      });
       return;
     }
 
@@ -8002,6 +8213,7 @@ welcomeBonusAppliedAt: null,
       profileImage: "",
       privacy: normalizePrivacySettings({}),
       passwordHash: await hashPassword(password),
+      passwordChangedAt: createdAt,
       createdAt,
       updatedAt: createdAt,
       deactivatedAt: null,
@@ -8026,7 +8238,8 @@ welcomeBonusAppliedAt: null,
       return [...current, user];
     });
 
-    const token = createToken(user);
+    const session = await createLoginSession(user, req);
+    const token = createToken(user, { sessionId: session.id });
     res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
     res.status(201).json({
       token,
@@ -8063,18 +8276,23 @@ app.post(
       res.status(401).json({ error: "invalid credentials" });
       return;
     }
-    if (isUserCurrentlyDeactivated(user)) {
-      res.status(403).json({
-        error:
-          "This account is deactivated. Reactivation is not available in this window.",
-        deactivatedUntil: user.deactivatedUntil,
-      });
-      return;
-    }
-
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
       res.status(401).json({ error: "invalid credentials" });
+      return;
+    }
+
+    if (user.twoFactorEnabled === true) {
+      const challengeToken = jwt.sign(
+        { sub: user.id, kind: "two-factor-login" },
+        config.jwtSecret,
+        { expiresIn: TWO_FACTOR_CHALLENGE_TTL },
+      );
+      res.json({
+        twoFactorRequired: true,
+        challengeToken,
+        message: "Enter the code from your authenticator app or a recovery code.",
+      });
       return;
     }
 
@@ -8083,7 +8301,13 @@ app.post(
     try {
       const updatedUsers = await updateCollection("users", (current) =>
         current.map((entry) => entry.id === user.id
-          ? { ...entry, updatedAt: signedInAt, lastSeenAt: signedInAt }
+          ? {
+              ...entry,
+              deactivatedAt: null,
+              deactivatedUntil: null,
+              updatedAt: signedInAt,
+              lastSeenAt: signedInAt,
+            }
           : entry),
       );
       updatedUser = updatedUsers.find((entry) => entry.id === user.id) || user;
@@ -8091,7 +8315,8 @@ app.post(
       console.warn("Failed to persist login timestamp", writeError?.message || writeError);
     }
 
-    const token = createToken(updatedUser);
+    const session = await createLoginSession(updatedUser, req);
+    const token = createToken(updatedUser, { sessionId: session.id });
     res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
     res.json({
       token,
@@ -8123,9 +8348,209 @@ app.post(
 );
 
 app.post(
+  "/api/auth/2fa/verify-login",
+  asyncHandler(async (req, res) => {
+    const challengeToken = String(req.body?.challengeToken || "").trim();
+    const code = String(req.body?.code || "").trim();
+    let challenge;
+    try {
+      challenge = jwt.verify(challengeToken, config.jwtSecret);
+    } catch {
+      res.status(401).json({ error: "Two-step verification expired. Please sign in again." });
+      return;
+    }
+    if (challenge?.kind !== "two-factor-login" || !challenge?.sub || !code) {
+      res.status(400).json({ error: "A verification code is required." });
+      return;
+    }
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === challenge.sub);
+    if (!user || user.twoFactorEnabled !== true) {
+      res.status(401).json({ error: "Two-step verification is not available for this account." });
+      return;
+    }
+    const result = isValidTwoFactorCode(user, code);
+    if (!result.valid) {
+      res.status(401).json({ error: "Invalid verification or recovery code." });
+      return;
+    }
+    const signedInAt = new Date().toISOString();
+    const updatedUsers = await updateCollection("users", (current) => current.map((entry) => {
+      if (entry.id !== user.id) return entry;
+      return {
+        ...entry,
+        ...(result.recoveryUsed ? { twoFactorRecoveryCodeHashes: result.hashes } : {}),
+        deactivatedAt: null,
+        deactivatedUntil: null,
+        updatedAt: signedInAt,
+        lastSeenAt: signedInAt,
+      };
+    }));
+    const updatedUser = updatedUsers.find((entry) => entry.id === user.id) || user;
+    const session = await createLoginSession(updatedUser, req);
+    const token = createToken(updatedUser, { sessionId: session.id });
+    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions(req));
+    res.json({ token, user: toPublicUser(updatedUser), recoveryCodeUsed: result.recoveryUsed });
+  }),
+);
+
+app.post(
+  "/api/auth/2fa/setup",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user) {
+      res.status(404).json({ error: "user not found" });
+      return;
+    }
+    const secret = base32Encode(crypto.randomBytes(20));
+    await updateCollection("users", (current) => current.map((entry) => entry.id === user.id
+      ? { ...entry, twoFactorPendingSecret: secret, updatedAt: new Date().toISOString() }
+      : entry));
+    const label = encodeURIComponent(`AjixPharmacy:${user.username || user.contact || user.id}`);
+    const issuer = encodeURIComponent("AjixPharmacy");
+    const otpauthUri = `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
+    res.json({
+      secret,
+      otpauthUri,
+      qrCodeDataUrl: await QRCode.toDataURL(otpauthUri, { errorCorrectionLevel: "M", margin: 2, width: 240 }),
+      serverTime: new Date().toISOString(),
+      message: "Add this account in your authenticator app, then enter the six-digit code.",
+    });
+  }),
+);
+
+app.post(
+  "/api/auth/2fa/verify-setup",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const code = String(req.body?.code || "").trim();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user?.twoFactorPendingSecret || !verifyTotpCode(user.twoFactorPendingSecret, code)) {
+      res.status(400).json({ error: "That code is not valid. Check your authenticator and try again." });
+      return;
+    }
+    const recoveryCodes = createRecoveryCodes();
+    const now = new Date().toISOString();
+    await updateCollection("users", (current) => current.map((entry) => entry.id === user.id
+      ? {
+          ...entry,
+          twoFactorEnabled: true,
+          twoFactorSecret: user.twoFactorPendingSecret,
+          twoFactorPendingSecret: null,
+          twoFactorRecoveryCodeHashes: recoveryCodes.map(hashRecoveryCode),
+          twoFactorUpdatedAt: now,
+          updatedAt: now,
+        }
+      : entry));
+    res.json({ enabled: true, recoveryCodes });
+  }),
+);
+
+app.post(
+  "/api/auth/2fa/disable",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const password = String(req.body?.password || "");
+    const code = String(req.body?.code || "").trim();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      res.status(401).json({ error: "Current password is incorrect." });
+      return;
+    }
+    if (user.twoFactorEnabled && !isValidTwoFactorCode(user, code).valid) {
+      res.status(400).json({ error: "Enter a valid authenticator or recovery code to disable two-step verification." });
+      return;
+    }
+    await updateCollection("users", (current) => current.map((entry) => entry.id === user.id
+      ? { ...entry, twoFactorEnabled: false, twoFactorSecret: null, twoFactorPendingSecret: null, twoFactorRecoveryCodeHashes: [], twoFactorUpdatedAt: new Date().toISOString() }
+      : entry));
+    res.json({ enabled: false });
+  }),
+);
+
+app.post(
+  "/api/auth/2fa/recovery-codes",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const password = String(req.body?.password || "");
+    const code = String(req.body?.code || "").trim();
+    const users = (await readCollection("users")).map(normalizeExistingUser);
+    const user = users.find((entry) => entry.id === req.user.sub);
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      res.status(401).json({ error: "Current password is incorrect." });
+      return;
+    }
+    if (!user.twoFactorEnabled || !isValidTwoFactorCode(user, code).valid) {
+      res.status(400).json({ error: "Enter a valid authenticator or recovery code." });
+      return;
+    }
+    const recoveryCodes = createRecoveryCodes();
+    await updateCollection("users", (current) => current.map((entry) => entry.id === user.id
+      ? { ...entry, twoFactorRecoveryCodeHashes: recoveryCodes.map(hashRecoveryCode), twoFactorUpdatedAt: new Date().toISOString() }
+      : entry));
+    res.json({ recoveryCodes });
+  }),
+);
+
+app.post(
   "/api/auth/logout",
   asyncHandler(async (req, res) => {
+    const sessionId = String(req.user?.sid || "").trim();
+    if (sessionId) {
+      await updateCollection("sessions", (current) => current.map((entry) => entry.id === sessionId
+        ? { ...entry, revokedAt: new Date().toISOString() }
+        : entry));
+    }
     res.clearCookie(AUTH_COOKIE_NAME, { path: "/" });
+    res.json({ ok: true });
+  }),
+);
+
+app.get(
+  "/api/auth/sessions",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const sessions = (await readCollection("sessions"))
+      .filter((entry) => entry.userId === req.user.sub && !entry.revokedAt)
+      .sort((a, b) => String(b.lastSeenAt || b.createdAt).localeCompare(String(a.lastSeenAt || a.createdAt)))
+      .map((entry) => ({
+        id: entry.id,
+        device: entry.device || "Web browser",
+        createdAt: entry.createdAt,
+        lastSeenAt: entry.lastSeenAt || entry.createdAt,
+        current: entry.id === req.user.sid,
+      }));
+    res.json({ sessions });
+  }),
+);
+
+app.post(
+  "/api/auth/sessions/:sessionId/revoke",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const sessionId = String(req.params.sessionId || "").trim();
+    if (!sessionId || sessionId === req.user.sid) {
+      res.status(400).json({ error: "The current session cannot be revoked here." });
+      return;
+    }
+    await updateCollection("sessions", (current) => current.map((entry) => entry.id === sessionId && entry.userId === req.user.sub
+      ? { ...entry, revokedAt: new Date().toISOString() }
+      : entry));
+    res.json({ ok: true });
+  }),
+);
+
+app.post(
+  "/api/auth/sessions/revoke-others",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await updateCollection("sessions", (current) => current.map((entry) => entry.userId === req.user.sub && entry.id !== req.user.sid && !entry.revokedAt
+      ? { ...entry, revokedAt: new Date().toISOString() }
+      : entry));
     res.json({ ok: true });
   }),
 );
@@ -8632,6 +9057,7 @@ app.post(
         return {
           ...entry,
           passwordHash: await hashPassword(newPassword),
+          passwordChangedAt: new Date().toISOString(),
           resetCodeHash: null,
           resetCodeExpiresAt: null,
           updatedAt: new Date().toISOString(),
@@ -8821,10 +9247,9 @@ app.put(
         users.some(
           (entry, idx) =>
             idx !== userIndex &&
-            (normalizeIdentifier(entry.contact) === normalizeIdentifier(nextContact) ||
-              (contactDigits &&
-                normalizePhoneComparable(entry.contact) &&
-                normalizePhoneComparable(entry.contact) === contactDigits)),
+            getUserLoginContacts(entry).some((entryContact) =>
+              normalizeIdentifier(entryContact) === normalizeIdentifier(nextContact) ||
+              (contactDigits && normalizePhoneComparable(entryContact) === contactDigits)),
         )
       ) {
         res.status(409).json({ error: "contact already in use" });
@@ -8833,6 +9258,54 @@ app.put(
       nextUser.contact = nextContact;
       nextUser.contactType = detectContactType(nextContact);
       nextUser.email = isValidEmail(nextContact) ? nextContact : "";
+    }
+
+    const emailInput = normalizeWhitespace(req.body?.email);
+    if (emailInput) {
+      const nextEmail = normalizeContactValue(emailInput);
+      if (!nextEmail || !isValidEmail(nextEmail)) {
+        res.status(400).json({ error: "email must be a valid email address" });
+        return;
+      }
+      const emailTaken = users.some(
+        (entry, idx) => idx !== userIndex &&
+          getUserLoginContacts(entry).some((entryContact) =>
+            normalizeIdentifier(entryContact) === normalizeIdentifier(nextEmail)),
+      );
+      if (emailTaken) {
+        res.status(409).json({ error: "email already in use" });
+        return;
+      }
+      if (currentUser.contactType === "email" && normalizeIdentifier(currentUser.contact) === normalizeIdentifier(currentUser.email)) {
+        nextUser.contact = nextEmail;
+        nextUser.contactType = "email";
+      }
+      nextUser.email = nextEmail;
+    }
+
+    const phoneInput = normalizeWhitespace(req.body?.phone);
+    if (phoneInput) {
+      const nextPhone = normalizeContactValue(phoneInput);
+      if (!nextPhone || isValidEmail(nextPhone)) {
+        res.status(400).json({ error: "phone must be a valid phone number" });
+        return;
+      }
+      const phoneDigits = normalizePhoneComparable(nextPhone);
+      const phoneTaken = users.some(
+        (entry, idx) => idx !== userIndex &&
+          getUserLoginContacts(entry)
+            .filter((entryContact) => !isValidEmail(entryContact))
+            .some((entryContact) => normalizePhoneComparable(entryContact) === phoneDigits),
+      );
+      if (phoneTaken) {
+        res.status(409).json({ error: "phone number already in use" });
+        return;
+      }
+      if (currentUser.contactType === "phone" && normalizePhoneComparable(currentUser.contact) === normalizePhoneComparable(currentUser.phone)) {
+        nextUser.contact = nextPhone;
+        nextUser.contactType = "phone";
+      }
+      nextUser.phone = nextPhone;
     }
 
     if (req.body?.role !== undefined) {
@@ -8850,12 +9323,20 @@ app.put(
       );
       if (!nextProfessionalType) {
         res.status(400).json({
-          error:
-            "professionalType must be one of: Doctor of Pharmacy, Pharmacy Technician, MCA, Other",
+          error: "professionalType must be a valid programme name under 120 characters",
         });
         return;
       }
       nextUser.professionalType = nextProfessionalType;
+    }
+
+    if (req.body?.level !== undefined) {
+      const nextLevel = normalizeWhitespace(req.body?.level);
+      if (nextLevel && nextLevel.length > 30) {
+        res.status(400).json({ error: "level must be 30 characters or fewer" });
+        return;
+      }
+      if (nextLevel) nextUser.level = nextLevel;
     }
 
     if (req.body?.country !== undefined) {
@@ -8882,6 +9363,10 @@ app.put(
 
     if (req.body?.privacy !== undefined) {
       nextUser.privacy = normalizePrivacySettings(req.body?.privacy);
+    }
+
+    if (req.body?.notificationPreferences !== undefined) {
+      nextUser.notificationPreferences = normalizeNotificationPreferences(req.body?.notificationPreferences);
     }
 
     if (req.body?.profileImage !== undefined) {

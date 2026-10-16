@@ -1150,6 +1150,10 @@ function getMonetizationBucketMeta(bucket = "request") {
         updateCount("monetization-activated-count", counts.activated);
         updateCount("monetization-rejected-count", counts.rejected);
         updateCount("monetization-expired-count", counts.expired);
+        const monetizationDot = document.getElementById("monetization-tab-dot");
+        if (monetizationDot) {
+          monetizationDot.classList.toggle("hidden", Number(counts.request) <= 0);
+        }
 
         const bucket = selectedMonetizationBucket;
         const meta = getMonetizationBucketMeta(bucket);
@@ -1235,8 +1239,9 @@ function getMonetizationBucketMeta(bucket = "request") {
         const headerHtml = buildMonetizationHeader(bucket, filteredItems.length);
         const rowsHtml = filteredItems.map((request) => buildMonetizationRequestRow(request, bucket)).join("");
         const columnCount = bucket === "activated" || bucket === "rejected" || bucket === "expired" ? 7 : 6;
+        const isLoadingMore = monetizationLoadingBuckets.has(bucket);
         const loadMoreMarkup = monetizationBucketHasMore[bucket]
-          ? `<div class="monetization-load-more"><button type="button" class="admin-secondary-btn" data-action="load-more-monetization" data-bucket="${escapeHtml(bucket)}">Load more</button></div>`
+          ? `<div class="monetization-load-more"><button type="button" class="admin-secondary-btn" data-action="load-more-monetization" data-bucket="${escapeHtml(bucket)}"${isLoadingMore ? " disabled" : ""}>${isLoadingMore ? "Loading…" : "Load more"}</button></div>`
           : "";
         root.innerHTML = `
           <div class="table-container monetization-table-container">
@@ -1275,6 +1280,7 @@ function getMonetizationBucketMeta(bucket = "request") {
   if (existingPromise) return existingPromise;
 
   monetizationLoadingBuckets.add(requestedBucket);
+  if (selectedMonetizationBucket === requestedBucket) renderMonetizationPanel();
   const loadingPromise = (async () => {
     try {
       const query = new URLSearchParams({ status: requestStatus, page: String(requestedPage), limit: "50" });
@@ -1556,7 +1562,6 @@ function getMonetizationBucketMeta(bucket = "request") {
           summaryTotal.textContent = `Pending: ${pendingCount}`;
         }
         if (badge) {
-          badge.textContent = String(pendingCount);
           badge.classList.toggle("hidden", pendingCount === 0);
         }
 
@@ -3246,6 +3251,14 @@ function getAdminLoginScreen() {
           const monetizationExpiredCount = document.getElementById("monetization-expired-count");
           if (monetizationExpiredCount) {
             monetizationExpiredCount.textContent = String(monetizationCounts.expired ?? 0);
+          }
+          const monetizationDot = document.getElementById("monetization-tab-dot");
+          if (monetizationDot) {
+            monetizationDot.classList.toggle("hidden", Number(monetizationCounts.request ?? 0) <= 0);
+          }
+          const passwordResetDot = document.getElementById("password-reset-tab-badge");
+          if (passwordResetDot) {
+            passwordResetDot.classList.toggle("hidden", Number(data.passwordResetCounts?.pending ?? 0) <= 0);
           }
 
           const catPerf = document.getElementById("category-performance");
@@ -5087,7 +5100,38 @@ function getAdminLoginScreen() {
       }
 
       function enableTableDragScroll() {
-        // Native overflow scrolling now handles touch drag reliably on mobile.
+        // Keep native touch scrolling on phones, but explicitly route horizontal
+        // trackpad/shift-wheel gestures to the table that is under the pointer.
+        // Some desktop browsers dispatch those gestures as wheel events on the
+        // table itself instead of moving its overflow container.
+        if (document.documentElement.dataset.tableWheelScrollBound === "true") return;
+        document.documentElement.dataset.tableWheelScrollBound = "true";
+        document.addEventListener(
+          "wheel",
+          (event) => {
+            const target = event.target instanceof Element ? event.target : null;
+            const scrollContainer = target?.closest(
+              ".table-container, .ajx-table-scroll, .preview-table-scroll",
+            );
+            if (!(scrollContainer instanceof HTMLElement)) return;
+
+            const horizontalDelta = event.deltaX || (event.shiftKey ? event.deltaY : 0);
+            if (!horizontalDelta) return;
+
+            const maxScrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+            if (maxScrollLeft <= 0) return;
+
+            const nextScrollLeft = Math.max(
+              0,
+              Math.min(maxScrollLeft, scrollContainer.scrollLeft + horizontalDelta),
+            );
+            if (nextScrollLeft === scrollContainer.scrollLeft) return;
+
+            scrollContainer.scrollLeft = nextScrollLeft;
+            event.preventDefault();
+          },
+          { passive: false },
+        );
       }
 
       function setupEventBindings() {

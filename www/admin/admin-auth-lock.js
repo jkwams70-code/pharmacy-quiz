@@ -44,5 +44,10 @@
 
   if (!hasAdminKey()) {
     redirectToAdminLogin();
+  } else if (!document.querySelector('script[data-ajix-table-scroll]')) {
+    const tableScrollScript = document.createElement("script");
+    tableScrollScript.src = "/table-scroll.js?v=20261015-table-scroll4";
+    tableScrollScript.dataset.ajixTableScroll = "true";
+    document.head.appendChild(tableScrollScript);
   }
 })();

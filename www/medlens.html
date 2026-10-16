@@ -2109,9 +2109,7 @@ html[data-theme="dark"] .badge-success {
         </nav>
     </div>
 
-    <script src="medlens-interactions-database.js"></script>
-    <script src="medlens-disease-database.js"></script>
-    <script src="medlens-database.js"></script>
+    <script src="lazy-data.js?v=20261016-lazy1"></script>
     <script>
     const embeddedDrugs = [
         {
@@ -2304,6 +2302,18 @@ html[data-theme="dark"] .badge-success {
         return token ? { Accept: 'application/json', Authorization: 'Bearer ' + token } : { Accept: 'application/json' };
     }
 
+    async function loadMedLensRecord(kind, id) {
+        const storedApiBase = window.localStorage.getItem('quizApiBase')?.trim();
+        const localApiBase = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:4000/api' : '/api';
+        const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, '') : localApiBase;
+        const payload = await window.AJIX_LAZY_DATA.requestJson(
+            apiBase + '/medlens/' + encodeURIComponent(kind) + '/' + encodeURIComponent(id),
+            { headers: getMedLensAuthHeaders() },
+            { key: 'medlens:' + kind + ':' + id, ttl: 300000 },
+        );
+        return payload.item || null;
+    }
+
     let medLensDrugState = 'loading';
     let medLensDrugError = '';
     async function loadPublishedMedLensDrugs() {
@@ -2311,12 +2321,7 @@ html[data-theme="dark"] .badge-success {
             const storedApiBase = window.localStorage.getItem('quizApiBase')?.trim();
             const localApiBase = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:4000/api' : '/api';
             const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, '') : localApiBase;
-            const response = await fetch(apiBase + '/medlens/drugs', { headers: getMedLensAuthHeaders() });
-            if (!response.ok) {
-                medLensDrugState = response.status === 401 || response.status === 403 ? 'unauthorized' : 'error';
-                throw new Error('Published MedLens records unavailable');
-            }
-            const payload = await response.json();
+            const payload = await window.AJIX_LAZY_DATA.requestJson(apiBase + '/medlens/drugs?summary=1', { headers: getMedLensAuthHeaders() }, { key: 'medlens:drug-summaries', ttl: 30000 });
             drugs = Array.isArray(payload.items) ? payload.items : [];
             medLensDrugState = 'ready';
             medLensDrugError = '';
@@ -2411,9 +2416,7 @@ html[data-theme="dark"] .badge-success {
             const storedApiBase = window.localStorage.getItem("quizApiBase")?.trim();
             const localApiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:4000/api" : "/api";
             const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, "") : localApiBase;
-            const response = await fetch(apiBase + "/medlens/diseases", { headers: getMedLensAuthHeaders() });
-            if (!response.ok) throw new Error("Published MedLens diseases unavailable");
-            const payload = await response.json();
+            const payload = await window.AJIX_LAZY_DATA.requestJson(apiBase + "/medlens/diseases?summary=1", { headers: getMedLensAuthHeaders() }, { key: "medlens:disease-summaries", ttl: 30000 });
             diseases = Array.isArray(payload.items) ? payload.items : [];
             if (getActiveScreenId() === "disease-list") renderDiseaseList(diseases);
         } catch (error) {
@@ -2488,9 +2491,7 @@ html[data-theme="dark"] .badge-success {
             const storedApiBase = window.localStorage.getItem("quizApiBase")?.trim();
             const localApiBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "http://localhost:4000/api" : "/api";
             const apiBase = storedApiBase && !/localhost:8000/i.test(storedApiBase) ? storedApiBase.replace(/\/$/, "") : localApiBase;
-            const response = await fetch(apiBase + "/medlens/interactions", { headers: getMedLensAuthHeaders() });
-            if (!response.ok) throw new Error("Published MedLens interactions unavailable");
-            const payload = await response.json();
+            const payload = await window.AJIX_LAZY_DATA.requestJson(apiBase + "/medlens/interactions?summary=1", { headers: getMedLensAuthHeaders() }, { key: "medlens:interaction-summaries", ttl: 30000 });
             interactionData = mergeMedLensInteractionSources(
                 Array.isArray(payload.items) ? payload.items : [],
                 getMedLensExternalInteractions()
@@ -2509,6 +2510,26 @@ html[data-theme="dark"] .badge-success {
     let selectedInteractionDrugs = [];
     let currentDrugAgeView = 'adult';
     let medlensScreenHistory = [];
+    let drugListScrollY = 0;
+    let restoreDrugListScroll = false;
+
+    function rememberDrugListScroll() {
+        drugListScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        restoreDrugListScroll = true;
+    }
+
+    function restoreRememberedDrugListScroll() {
+        if (!restoreDrugListScroll) return;
+        const y = drugListScrollY;
+        restoreDrugListScroll = false;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            const root = document.documentElement;
+            const previousBehavior = root.style.scrollBehavior;
+            root.style.scrollBehavior = 'auto';
+            window.scrollTo(0, y);
+            root.style.scrollBehavior = previousBehavior;
+        }));
+    }
 
     function getActiveScreenId() {
         const activeScreen = document.querySelector('.screen.active');
@@ -2538,6 +2559,7 @@ html[data-theme="dark"] .badge-success {
     function showDrugList() {
         renderDrugList(drugs);
         showScreen('drug-list');
+        restoreRememberedDrugListScroll();
     }
 
     function showDiseaseList() {
@@ -2724,6 +2746,7 @@ html[data-theme="dark"] .badge-success {
         const previousScreenId = medlensScreenHistory.pop();
         if (previousScreenId) {
             showScreen(previousScreenId, { skipHistory: true });
+            if (previousScreenId === 'drug-list') restoreRememberedDrugListScroll();
             return;
         }
         showScreen('home', { skipHistory: true });
@@ -2982,9 +3005,26 @@ html[data-theme="dark"] .badge-success {
         }).join('');
     }
 
-    function showDrugDetail(drugId) {
-        const drug = drugs.find(d => d.id === drugId);
+    async function showDrugDetail(drugId) {
+        let drug = drugs.find(d => d.id === drugId);
         if (!drug) return;
+        if (getActiveScreenId() === 'drug-list') rememberDrugListScroll();
+        if (!drug.overview && !drug.monograph) {
+            const container = document.getElementById('drugDetailContainer');
+            if (container) container.innerHTML = '<div class="empty-state"><h3>Loading drug information…</h3><p>Please wait while the monograph is opened.</p></div>';
+            showScreen('drug-detail');
+            try {
+                drug = await loadMedLensRecord('drugs', drugId);
+                if (!drug) throw new Error('Drug information was not found.');
+                const index = drugs.findIndex((item) => item.id === drugId);
+                if (index >= 0) drugs[index] = drug;
+            } catch (error) {
+                if (container) container.innerHTML = '<div class="empty-state"><h3>Unable to load this drug</h3><p>' + escapeHtml(error.message) + '</p></div>';
+                return;
+            }
+        }
+        const detailContainer = document.getElementById('drugDetailContainer');
+        try {
         currentDrugAgeView = 'adult';
         const sections = buildDrugSections(drug);
         const monographSource = drug.monograph && drug.monograph.source ? drug.monograph.source : {};
@@ -3019,6 +3059,10 @@ html[data-theme="dark"] .badge-success {
         `;
         showScreen('drug-detail');
         setupDrugTabSwipe(drug.id, sections);
+        } catch (error) {
+            if (detailContainer) detailContainer.innerHTML = '<div class="empty-state"><h3>Unable to display this drug</h3><p>' + escapeHtml(error?.message || 'This record could not be displayed.') + '</p><button type="button" class="primary" onclick="showDrugList()">Back to drugs</button></div>';
+            console.error('MedLens drug rendering failed:', drugId, error);
+        }
     }
 
     function switchDrugAge(age, drugId) {
@@ -3153,10 +3197,23 @@ html[data-theme="dark"] .badge-success {
         }).join('');
     }
 
-    function showDiseaseDetail(diseaseId) {
-        const disease = diseases.find(d => d.id === diseaseId);
+    async function showDiseaseDetail(diseaseId) {
+        let disease = diseases.find(d => d.id === diseaseId);
         if (!disease) return;
         const container = document.getElementById('diseaseDetailContainer');
+        if (!disease.overview && !disease.sections) {
+            if (container) container.innerHTML = '<div class="empty-state"><h3>Loading disease information…</h3><p>Please wait while the clinical note is opened.</p></div>';
+            showScreen('disease-detail');
+            try {
+                disease = await loadMedLensRecord('diseases', diseaseId);
+                if (!disease) throw new Error('Disease information was not found.');
+                const index = diseases.findIndex((item) => item.id === diseaseId);
+                if (index >= 0) diseases[index] = disease;
+            } catch (error) {
+                if (container) container.innerHTML = '<div class="empty-state"><h3>Unable to load this disease</h3><p>' + escapeHtml(error.message) + '</p></div>';
+                return;
+            }
+        }
         container.innerHTML = `
             <div class="detail-shell detail-shell-disease">
                 <div class="detail-sidebar">
@@ -3300,15 +3357,24 @@ html[data-theme="dark"] .badge-success {
         return null;
     }
 
-    function runInteractionCheck() {
+    async function runInteractionCheck() {
         if (selectedInteractionDrugs.length < 2) return;
+        const resultsContainer = document.getElementById('interactionResults');
+        if (resultsContainer) resultsContainer.innerHTML = '<div class="empty-state"><h3>Checking interactions…</h3><p>Loading only the relevant interaction records.</p></div>';
         const results = [];
         const unknownPairs = [];
         for (let i = 0; i < selectedInteractionDrugs.length; i++) {
             for (let j = i + 1; j < selectedInteractionDrugs.length; j++) {
                 const drugA = selectedInteractionDrugs[i];
                 const drugB = selectedInteractionDrugs[j];
-                const found = findInteractionForPair(drugA, drugB);
+                let found = findInteractionForPair(drugA, drugB);
+                if (found && (!found.mechanism && !found.management && !found.clinicalConcern)) {
+                    try {
+                        found = await loadMedLensRecord('interactions', found.id);
+                    } catch {
+                        found = null;
+                    }
+                }
                 if (found) results.push(Object.assign({}, found, { pair: [drugA, drugB] }));
                 else unknownPairs.push([drugA, drugB]);
             }
@@ -3527,6 +3593,11 @@ html[data-theme="dark"] .badge-success {
             .replace(/\s+([:;,.])/g, '$1')
             .replace(/\s{2,}/g, ' ')
             .trim()));
+    }
+    function stripMedLensHtml(value) {
+        const holder = document.createElement('div');
+        holder.innerHTML = String(value || '');
+        return holder.textContent || holder.innerText || '';
     }
     function stripMedLensSourceHeadings(value) {
         let text = String(value || '');
@@ -3813,6 +3884,25 @@ html[data-theme="dark"] .badge-success {
         // Ignore storage access failures.
     }
 })();
+
+// Route desktop trackpad and Shift+wheel gestures to wide article tables.
+document.addEventListener('wheel', function (event) {
+    var target = event.target instanceof Element ? event.target : null;
+    var scrollContainer = target && target.closest('.medlens-table-scroll, .preview-table-scroll');
+    if (!(scrollContainer instanceof HTMLElement)) return;
+
+    var horizontalDelta = event.deltaX || (event.shiftKey ? event.deltaY : 0);
+    if (!horizontalDelta) return;
+
+    var maxScrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+    if (maxScrollLeft <= 0) return;
+
+    var nextScrollLeft = Math.max(0, Math.min(maxScrollLeft, scrollContainer.scrollLeft + horizontalDelta));
+    if (nextScrollLeft === scrollContainer.scrollLeft) return;
+
+    scrollContainer.scrollLeft = nextScrollLeft;
+    event.preventDefault();
+}, { passive: false });
 </script>
 </body>
 </html>

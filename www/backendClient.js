@@ -506,8 +506,47 @@ export const backendClient = {
     return data;
   },
 
+  logout() {
+    return post("/auth/logout");
+  },
+
+  verifyTwoFactorLogin(payload = {}) {
+    return post("/auth/2fa/verify-login", payload).then((data) => {
+      if (data?.token) this.setToken(data.token);
+      return data;
+    });
+  },
+
+  setupTwoFactor() {
+    return post("/auth/2fa/setup");
+  },
+
+  verifyTwoFactorSetup(payload = {}) {
+    return post("/auth/2fa/verify-setup", payload);
+  },
+
+  disableTwoFactor(payload = {}) {
+    return post("/auth/2fa/disable", payload);
+  },
+
+  regenerateTwoFactorRecoveryCodes(payload = {}) {
+    return post("/auth/2fa/recovery-codes", payload);
+  },
+
   fetchMe({ preferCache = false, allowStaleOnError = false } = {}) {
     return get("/auth/me", { preferCache, allowStaleOnError });
+  },
+
+  fetchSessions() {
+    return get("/auth/sessions", { preferCache: false });
+  },
+
+  revokeSession(sessionId) {
+    return post(`/auth/sessions/${encodeURIComponent(sessionId)}/revoke`);
+  },
+
+  revokeOtherSessions() {
+    return post("/auth/sessions/revoke-others");
   },
 
   fetchSubscriptionPlans({ preferCache = true } = {}) {

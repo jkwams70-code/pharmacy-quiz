@@ -98,7 +98,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20261015-content-performance1" />
+    <link rel="stylesheet" href="/styles.css?v=20261016-profile-exact2" />
     <style id="home-critical-fix">
       html,
       body {
@@ -328,6 +328,129 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
+      }
+
+      .menu-premium-lock {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 4px;
+        width: auto;
+        height: auto;
+        font-size: 0.72em;
+        line-height: 1;
+        opacity: 0.82;
+        transition: opacity 160ms ease;
+      }
+
+      .menu-premium-lock svg {
+        display: none;
+      }
+
+      .menu-premium-lock:not(.menu-premium-lock-inline)::after {
+        content: "🔒";
+      }
+
+      .menu-premium-lock.is-unlocked {
+        display: none;
+      }
+
+      .menu-modern-feature-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .subscription-feature-note {
+        margin: 0 0 18px;
+        padding: 15px;
+        border: 1px solid #d9e5ef;
+        border-radius: 18px;
+        background: #f8fbfe;
+        box-shadow: 0 8px 22px rgba(31, 61, 87, 0.07);
+        color: #28445d;
+      }
+
+      .subscription-feature-note-head {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+
+      .subscription-feature-note-kicker,
+      .subscription-feature-note-label {
+        color: #075ea8;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .subscription-feature-note-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .subscription-feature-note-panel {
+        min-width: 0;
+        padding: 13px 14px;
+        border: 1px solid transparent;
+        border-radius: 14px;
+      }
+
+      .subscription-feature-note-panel.is-premium {
+        border-color: #c8d8ff;
+        background: linear-gradient(135deg, #eef3ff, #f8faff);
+      }
+
+      .subscription-feature-note-panel.is-free {
+        border-color: #bfe9d8;
+        background: linear-gradient(135deg, #edfbf5, #f8fdfb);
+      }
+
+      .subscription-feature-note-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .subscription-feature-note-panel-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: #315fc4;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .subscription-feature-note-panel.is-free .subscription-feature-note-panel-icon {
+        background: #15966b;
+      }
+
+      .subscription-feature-note-grid p {
+        margin: 4px 0 0;
+        color: #536b80;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.5;
+      }
+
+      .subscription-feature-note-label.is-free {
+        color: #087f5b;
+      }
+
+      @media (max-width: 620px) {
+        .subscription-feature-note-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       #subscription-screen .subscription-section-row {
@@ -1960,6 +2083,17 @@
             </button>
           </div>
         </form>
+        <div id="auth-2fa-challenge" class="auth-form hidden">
+          <label class="auth-field">
+            <span>Authenticator or recovery code</span>
+            <input id="auth-2fa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="123456" />
+          </label>
+          <div id="auth-2fa-error" class="auth-error hidden"></div>
+          <div class="modal-actions">
+            <button id="auth-2fa-back-btn" type="button" class="modal-btn secondary">Back</button>
+            <button id="auth-2fa-submit-btn" type="button" class="modal-btn primary">Verify code</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="quiz-container">
@@ -2128,10 +2262,10 @@
 
             <section class="menu-modern-section menu-modern-hub-tabs-section">
               <div class="menu-modern-hub-tabs" role="tablist" aria-label="Menu sections">
-                <button id="menu-drills-tab" type="button" class="menu-modern-hub-tab is-active" data-menu-section="drills">Drills</button>
-                <button id="menu-law-tab" type="button" class="menu-modern-hub-tab" data-menu-section="law">Law</button>
-                <button id="menu-gppqe-tab" type="button" class="menu-modern-hub-tab" data-menu-section="gppqe">GPPQE</button>
-                <button id="menu-extra-tab" type="button" class="menu-modern-hub-tab" data-menu-section="extra">Extra</button>
+                <button id="menu-drills-tab" type="button" class="menu-modern-hub-tab is-active" data-menu-section="drills">Drills <span class="menu-premium-lock" data-premium-lock-feature="rapid" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 10h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm3-3v3h6V7a3 3 0 0 0-6 0Zm3 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg></span></button>
+                <button id="menu-law-tab" type="button" class="menu-modern-hub-tab" data-menu-section="law">Law <span class="menu-premium-lock" data-premium-lock-feature="law" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 10h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm3-3v3h6V7a3 3 0 0 0-6 0Zm3 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg></span></button>
+                <button id="menu-gppqe-tab" type="button" class="menu-modern-hub-tab" data-menu-section="gppqe">GPPQE <span class="menu-premium-lock" data-premium-lock-feature="gppqe" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 10h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm3-3v3h6V7a3 3 0 0 0-6 0Zm3 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg></span></button>
+                <button id="menu-eoy-tab" type="button" class="menu-modern-hub-tab" data-menu-section="eoy">EOY</button>
               </div>
             </section>
 
@@ -2172,7 +2306,7 @@
                   <span class="menu-modern-feature-art is-study" aria-hidden="true">
                     <img src="images/study-tool.png" alt="" class="menu-modern-art-image is-feature-art" />
                   </span>
-                  <span class="menu-modern-feature-title">Study</span>
+                  <span class="menu-modern-feature-title-row"><span class="menu-modern-feature-title">Study</span><span class="menu-premium-lock menu-premium-lock-inline" data-premium-lock-feature="study" aria-hidden="true">🔒</span></span>
                   <span class="menu-modern-feature-text">Learn with a steady question flow and resume where you left off.</span>
                 </button>
 
@@ -2188,7 +2322,7 @@
                   <span class="menu-modern-feature-art is-exam" aria-hidden="true">
                     <img src="images/exam.png" alt="" class="menu-modern-art-image is-feature-art" />
                   </span>
-                  <span class="menu-modern-feature-title">Exam</span>
+                  <span class="menu-modern-feature-title-row"><span class="menu-modern-feature-title">Exam</span><span class="menu-premium-lock menu-premium-lock-inline" data-premium-lock-feature="exam" aria-hidden="true">🔒</span></span>
                   <span class="menu-modern-feature-text">Sit for a timed assessment and track how you perform under pressure.</span>
                 </button>
               </div>
@@ -2234,20 +2368,19 @@
             </button>
 
             <button
-              id="open-topic-library-btn"
+              id="menu-explore-btn"
               type="button"
               class="menu-modern-tab"
-              data-open-topic-library="true"
-              data-menu-nav="library"
+              data-menu-nav="explore"
+              aria-label="Open Explore"
             >
               <span class="menu-modern-tab-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4H20v15.5a.5.5 0 0 1-.8.4L16.4 18H7.5A2.5 2.5 0 0 1 5 15.5Z"></path>
-                  <path d="M8.5 8.5h8"></path>
-                  <path d="M8.5 12h6"></path>
+                  <circle cx="12" cy="12" r="7.5"></circle>
+                  <path d="m14.8 9.2-2.1 4.5-4.5 2.1 2.1-4.5z"></path>
                 </svg>
               </span>
-              <span class="menu-modern-tab-label">Library</span>
+              <span class="menu-modern-tab-label">Explore</span>
             </button>
 
             <button
@@ -2523,7 +2656,7 @@
         <div class="study-fixed-header extra-fixed-header">
           <div class="study-reference-topbar">
             <img class="study-reference-logo-image" src="images/app-logo.png?v=20260903-mascot" alt="AjiX mascot" />
-            <div class="setup-page-title extra-page-title">Extra</div>
+            <div class="setup-page-title extra-page-title">Explore</div>
             <div class="study-reference-topbar-actions">
               <button id="extra-back-btn" class="study-reference-menu-btn quick-nav-trigger-btn" type="button" aria-label="Back">
                 <svg class="back-icon-glyph" viewBox="0 0 24 24" aria-hidden="true">
@@ -2713,7 +2846,7 @@
               #extra-screen .menu-extra-icon.is-guidelines {
                 background: linear-gradient(145deg, #b9e5cd 0%, #76c49b 52%, #43a978 100%) !important;
               }
-              #extra-screen .menu-extra-icon.is-articles {
+      #extra-screen .menu-extra-icon.is-library {
                 background: linear-gradient(145deg, #f8d29e 0%, #eaae68 52%, #d68d35 100%) !important;
               }
               #extra-screen .menu-extra-icon.is-medlens {
@@ -2726,14 +2859,14 @@
               /* WWW-only Extra bold opaque icon colors. */
               #extra-screen .menu-extra-icon.is-news { background: #c88d4f !important; }
               #extra-screen .menu-extra-icon.is-guidelines { background: #24ad79 !important; }
-              #extra-screen .menu-extra-icon.is-articles { background: #e89432 !important; }
+      #extra-screen .menu-extra-icon.is-library { background: #e89432 !important; }
               #extra-screen .menu-extra-icon.is-medlens { background: #269fbe !important; }
               #extra-screen .menu-extra-icon.is-calculator { background: #9c6db0 !important; }
 
               /* WWW-only Extra header-matched icon colors. */
               #extra-screen .menu-extra-icon.is-news { background: #1d4ed8 !important; }
               #extra-screen .menu-extra-icon.is-guidelines { background: #0f766e !important; }
-              #extra-screen .menu-extra-icon.is-articles { background: #d97706 !important; }
+      #extra-screen .menu-extra-icon.is-library { background: #d97706 !important; }
               #extra-screen .menu-extra-icon.is-medlens { background: #0d7377 !important; }
               #extra-screen .menu-extra-icon.is-calculator { background: #b45309 !important; }
 
@@ -2780,7 +2913,7 @@
               }
 </style>
             
-            <div id="menu-extra-grid" class="menu-extra-grid is-cards" aria-label="Extra resources">
+            <div id="menu-extra-grid" class="menu-extra-grid is-cards" aria-label="Explore resources">
               <button id="menu-news-btn" type="button" class="menu-extra-item is-news">
                 <span class="menu-extra-icon is-news" aria-hidden="true">&#128240;</span>
                 <span class="menu-extra-item-copy">
@@ -2798,12 +2931,12 @@
                 </span>
               </button>
 
-              <button type="button" class="menu-extra-item" data-coming-soon="true">
+              <button id="menu-library-btn" type="button" class="menu-extra-item is-library" data-open-topic-library="true" data-topic-library-return="extra-screen">
                 <span class="menu-extra-dot" aria-hidden="true"></span>
-                <span class="menu-extra-icon is-articles" aria-hidden="true">&#128218;</span>
+                <span class="menu-extra-icon is-library" aria-hidden="true">&#128218;</span>
                 <span class="menu-extra-item-copy">
-                  <span class="menu-extra-item-title">Articles</span>
-                  <span class="menu-extra-item-text">Deep reads for study and revision.</span>
+                  <span class="menu-extra-item-title">Library</span>
+                  <span class="menu-extra-item-text">Focused clinical study notes.</span>
                 </span>
               </button>
 
@@ -2858,6 +2991,29 @@
             </div>
             <button id="subscription-back-btn" class="subscription-close-btn" type="button">Close</button>
           </div>
+
+          <section class="subscription-feature-note" aria-label="Premium and free features">
+            <div class="subscription-feature-note-head">
+              <span class="subscription-feature-note-kicker">Access guide</span>
+              <strong>What is included?</strong>
+            </div>
+            <div class="subscription-feature-note-grid">
+              <div class="subscription-feature-note-panel is-premium">
+                <div class="subscription-feature-note-panel-title">
+                  <span class="subscription-feature-note-panel-icon" aria-hidden="true">&#128274;</span>
+                  <span class="subscription-feature-note-label">Premium access</span>
+                </div>
+                <p>Main Quiz · Study · Drills · Law Drill · GPPQE</p>
+              </div>
+              <div class="subscription-feature-note-panel is-free">
+                <div class="subscription-feature-note-panel-title">
+                  <span class="subscription-feature-note-panel-icon" aria-hidden="true">&#10003;</span>
+                  <span class="subscription-feature-note-label is-free">Free access</span>
+                </div>
+                <p>News · Guidelines · Library · Law · MedLens · Calculator · Chat · Performance · Daily Quiz</p>
+              </div>
+            </div>
+          </section>
 
           <div class="subscription-section-row">
             <div class="subscription-section-copy">
@@ -3444,6 +3600,54 @@
       </div>
       <div id="profile-screen" class="setup-page profile-page">
         <div class="study-scroll-content">
+          <div class="profile-prototype-shell">
+            <aside class="profile-prototype-side">
+              <div class="profile-prototype-brand">
+                <img src="/icons/icon-512-s3.png?v=20260324-applogo1" alt="AjixPharmacy" />
+                <div><strong>AjixPharmacy</strong><span>Pharmacy learning platform</span></div>
+              </div>
+              <nav class="profile-prototype-nav" aria-label="Profile sections">
+                <button type="button" class="profile-prototype-nav-btn is-active" data-profile-panel="profile">Profile</button>
+                <button type="button" class="profile-prototype-nav-btn" data-profile-panel="security">Security</button>
+                <button type="button" class="profile-prototype-nav-btn" data-profile-panel="account">Account</button>
+              </nav>
+              <div class="profile-prototype-side-foot">
+                <div class="profile-prototype-member"><span id="profile-prototype-initials">AJ</span><div><strong id="profile-prototype-member-name">Account</strong><small>AjixPharmacy member</small></div></div>
+              </div>
+            </aside>
+
+            <main class="profile-prototype-main">
+              <header class="profile-prototype-head">
+                <div><h1 id="profile-prototype-page-title">Profile</h1><p id="profile-prototype-page-copy">Manage your personal details, study identity, and security settings.</p></div>
+                <div class="profile-prototype-head-actions"><button id="profile-save-btn" type="button" class="profile-prototype-btn is-primary">Save</button><button id="profile-back-btn" type="button" class="profile-prototype-back" aria-label="Back to menu">‹</button></div>
+              </header>
+
+              <section class="profile-prototype-panel" data-profile-panel-content="profile">
+                <article class="profile-prototype-card profile-prototype-photo-card">
+                  <div class="profile-prototype-avatar-wrap"><img id="profile-avatar-preview" alt="Profile picture" class="profile-avatar" /><span class="profile-prototype-avatar-status"></span></div>
+                  <div class="profile-prototype-photo-copy"><h2>Profile image</h2><p>Add a clear profile image and keep your account details current.</p><div class="profile-prototype-actions"><button id="profile-photo-camera-btn" type="button" class="profile-prototype-btn is-light">Take Photo</button><button id="profile-photo-gallery-btn" type="button" class="profile-prototype-btn is-light">Upload</button><button id="profile-photo-delete-btn" type="button" class="profile-prototype-btn is-light hidden">Remove</button></div><input id="profile-photo-file-camera" class="hidden" type="file" accept="image/*" capture="environment" /><input id="profile-photo-file-gallery" class="hidden" type="file" accept="image/*" /></div>
+                </article>
+                <article class="profile-prototype-card"><div class="profile-prototype-card-title"><h2>Personal information</h2></div><div class="profile-prototype-grid">
+                  <label><span>Title</span><select id="profile-title"><option value="">Select title</option><option value="Mr">Mr</option><option value="Mrs">Mrs</option><option value="Ms">Ms</option><option value="Dr">Dr</option><option value="Pharm">Pharm</option></select></label>
+                  <label><span>First name</span><input id="profile-first-name" type="text" /></label><label><span>Surname</span><input id="profile-last-name" type="text" /></label><label><span>Username</span><input id="profile-username" type="text" /></label>
+                  <label class="is-wide"><span>Contact</span><div class="profile-prototype-contact"><select id="profile-contact-country-code" aria-label="Country code"></select><input id="profile-contact-phone" type="tel" inputmode="numeric" placeholder="Enter mobile number" /><select id="profile-contact-format" aria-label="Contact type"><option value="phone">Phone</option><option value="email">Email</option></select></div></label>
+                  <div class="profile-prototype-role is-wide"><span>Role</span><label><input type="radio" name="profile-role" value="student" /> Student</label><label><input type="radio" name="profile-role" value="worker" /> Worker</label></div>
+                </div></article>
+                <article class="profile-prototype-card"><div class="profile-prototype-card-title"><h2>Training information</h2></div><div class="profile-prototype-grid"><label><span>Professional type</span><select id="profile-professional-type"><option value="Doctor of Pharmacy">Doctor of Pharmacy</option><option value="Pharmacy Technician">Pharmacy Technician</option><option value="MCA">MCA</option><option value="Other">Other</option></select></label><label><span>Country</span><select id="profile-country"><option value="">Select country</option><option value="Ghana">Ghana</option><option value="Nigeria">Nigeria</option><option value="United Kingdom">United Kingdom</option><option value="United States">United States</option><option value="Other">Other</option></select></label><label class="is-wide"><span>Institution</span><input id="profile-institution" type="text" /></label><label class="is-wide"><span>Bio</span><textarea id="profile-bio" rows="4" maxlength="280" placeholder="Say a little about your study focus or professional interests."></textarea></label></div></article>
+              </section>
+
+              <section class="profile-prototype-panel" data-profile-panel-content="security" hidden>
+                <article class="profile-prototype-card"><div class="profile-prototype-card-title"><div><h2>Password</h2><p>Keep your account protected with a strong password.</p></div><button id="profile-password-toggle-btn" type="button" class="profile-prototype-btn is-light" aria-expanded="false">Change Password</button></div><div id="profile-password-panel" class="profile-prototype-collapsible hidden"><div class="profile-prototype-grid"><label><span>Current password</span><input id="profile-current-password" type="password" autocomplete="current-password" /></label><label><span>New password</span><input id="profile-new-password" type="password" autocomplete="new-password" /></label></div><div class="profile-prototype-actions"><button id="profile-change-password-btn" type="button" class="profile-prototype-btn is-primary">Change Password</button></div></div></article>
+                <article class="profile-prototype-card"><div class="profile-prototype-card-title"><div><h2>Security settings</h2><p>Password reset and account protection are managed through your Ajix account.</p></div></div></article>
+              </section>
+
+              <section class="profile-prototype-panel" data-profile-panel-content="account" hidden>
+                <article class="profile-prototype-card profile-prototype-account-card"><div><strong>AjixPharmacy account</strong><span>Your profile, study identity, and saved progress.</span></div></article>
+                <article class="profile-prototype-card profile-prototype-danger"><div class="profile-prototype-card-title"><div><h2>Account management</h2><p>These actions affect your entire AjixPharmacy account.</p></div><button id="profile-danger-toggle-btn" type="button" class="profile-prototype-btn is-light" aria-expanded="false">Account Actions</button></div><div id="profile-danger-panel" class="profile-prototype-collapsible hidden"><label><span>Deactivate for days</span><input id="profile-deactivate-days" type="number" min="1" max="30" value="30" /></label><div class="profile-prototype-actions"><button id="profile-deactivate-btn" type="button" class="profile-prototype-btn is-danger-outline">Deactivate</button><button id="profile-delete-btn" type="button" class="profile-prototype-btn is-danger">Delete account</button></div></div></article>
+              </section>
+              <div id="profile-feedback" class="auth-info hidden"></div>
+            </main>
+          </div>
           <div class="profile-shell">
             <div class="profile-page-header">
               <button id="profile-save-btn" type="button" class="modal-btn primary profile-save-btn">Save</button>
@@ -3653,7 +3857,7 @@
                       </label>
                       <label class="auth-field">
                         <span>New password</span>
-                        <input id="profile-new-password" type="password" autocomplete="new-password" />
+                        <input id="profile-legacy-new-password" type="password" autocomplete="new-password" />
                       </label>
                     </div>
                     <div class="modal-actions">
@@ -3699,6 +3903,41 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div id="profile-new-screen" class="setup-page profile-new-page">
+        <div class="profile-new-shell">
+          <aside class="profile-new-side">
+            <div class="profile-new-brand">
+              <img src="/icons/icon-512-s3.png?v=20260324-applogo1" alt="AjixPharmacy" />
+              <div><strong>AjixPharmacy</strong><span>Pharmacy learning platform</span></div>
+            </div>
+            <nav class="profile-new-nav" aria-label="Profile sections">
+              <button type="button" class="profile-new-nav-btn is-active" data-profile-new-panel="profile">Profile</button>
+              <button type="button" class="profile-new-nav-btn" data-profile-new-panel="security">Security</button>
+              <button type="button" class="profile-new-nav-btn" data-profile-new-panel="account">Account</button>
+            </nav>
+            <div class="profile-new-member"><span id="profile-new-initials">AJ</span><div><strong id="profile-new-member-name">Account</strong><small>AjixPharmacy member</small></div></div>
+          </aside>
+          <main class="profile-new-main">
+            <header class="profile-new-head">
+              <div><h1 id="profile-new-title">Profile</h1><p id="profile-new-copy">Manage your personal details, study identity, and security settings.</p></div>
+              <div class="profile-new-head-actions"><button id="profile-new-save-btn" type="button" class="profile-new-btn is-primary">Save</button><button id="profile-new-back-btn" type="button" class="profile-new-back" aria-label="Back to menu">‹</button></div>
+            </header>
+            <section class="profile-new-panel" data-profile-new-panel-content="profile">
+              <article class="profile-new-card profile-new-photo-card"><div class="profile-new-avatar-wrap"><img id="profile-new-avatar" alt="Profile picture" /></div><div><h2>Profile image</h2><p>Add a clear profile image and keep your account details current.</p><div class="profile-new-actions"><button id="profile-new-photo-camera-btn" type="button" class="profile-new-btn is-light">Take Photo</button><button id="profile-new-photo-gallery-btn" type="button" class="profile-new-btn is-light">Upload</button><button id="profile-new-photo-delete-btn" type="button" class="profile-new-btn is-light">Remove</button></div></div></article>
+              <article class="profile-new-card"><h2>Personal information</h2><div class="profile-new-grid"><label><span>Title</span><select id="profile-new-title-field"><option value="">Select title</option><option>Mr</option><option>Mrs</option><option>Ms</option><option>Dr</option><option>Pharm</option></select></label><label><span>First name</span><input id="profile-new-first-name" type="text" /></label><label><span>Surname</span><input id="profile-new-last-name" type="text" /></label><label><span>Username</span><input id="profile-new-username" type="text" /></label><label class="is-wide"><span>Contact</span><input id="profile-new-contact" type="text" /></label><div class="profile-new-role is-wide"><span>Role</span><label><input type="radio" name="profile-new-role" value="student" /> Student</label><label><input type="radio" name="profile-new-role" value="worker" /> Worker</label></div></div></article>
+              <article class="profile-new-card"><h2>Training information</h2><div class="profile-new-grid"><label><span>Professional type</span><input id="profile-new-professional-type" type="text" /></label><label><span>Country</span><input id="profile-new-country" type="text" /></label><label class="is-wide"><span>Institution</span><input id="profile-new-institution" type="text" /></label><label class="is-wide"><span>Bio</span><textarea id="profile-new-bio" rows="4" maxlength="280"></textarea></label></div></article>
+            </section>
+            <section class="profile-new-panel" data-profile-new-panel-content="security" hidden><article class="profile-new-card"><div class="profile-new-card-title"><div><h2>Password</h2><p>Keep your account protected with a strong password.</p></div><button id="profile-new-password-toggle-btn" type="button" class="profile-new-btn is-light" aria-expanded="false">Change Password</button></div><div id="profile-new-password-panel" class="profile-new-collapsible" hidden><div class="profile-new-grid"><label><span>Current password</span><input id="profile-new-current-password" type="password" /></label><label><span>New password</span><input id="profile-new-new-password" type="password" /></label></div><div class="profile-new-actions"><button id="profile-new-change-password-btn" type="button" class="profile-new-btn is-primary">Change Password</button></div></div></article><article class="profile-new-card"><h2>Security settings</h2><p>Password reset and account protection are managed through your Ajix account.</p></article></section>
+            <section class="profile-new-panel" data-profile-new-panel-content="account" hidden><article class="profile-new-card profile-new-account-card"><strong>AjixPharmacy account</strong><span>Your profile, study identity, and saved progress.</span></article><article class="profile-new-card profile-new-danger"><div class="profile-new-card-title"><div><h2>Account management</h2><p>These actions affect your entire AjixPharmacy account.</p></div><button id="profile-new-danger-toggle-btn" type="button" class="profile-new-btn is-light" aria-expanded="false">Account Actions</button></div><div id="profile-new-danger-panel" class="profile-new-collapsible" hidden><label><span>Deactivate for days</span><input id="profile-new-deactivate-days" type="number" min="1" max="30" value="30" /></label><div class="profile-new-actions"><button id="profile-new-deactivate-btn" type="button" class="profile-new-btn is-danger-outline">Deactivate</button><button id="profile-new-delete-btn" type="button" class="profile-new-btn is-danger">Delete account</button></div></div></article></section>
+            <div id="profile-new-feedback" class="auth-info" hidden></div>
+          </main>
+        </div>
+      </div>
+
+      <div id="profile-exact-screen" class="setup-page profile-exact-page">
+        <iframe class="profile-exact-frame" src="/profile-new.html?v=20261016-profile-exact3" title="AjixPharmacy Profile"></iframe>
       </div>
 
       <div id="community-screen" class="setup-page community-page">
@@ -4822,7 +5061,7 @@
                 <section class="tour-slide" data-tour-step="4">
                   <div class="tour-slide-copy">
                     <h3 class="tour-slide-heading">GPPQE</h3>
-                    <p class="tour-slide-text">GPPQE splits written-paper practice into Study and Exam sessions by year and category.</p>
+                    <p class="tour-slide-text">GPPQE splits practice into Study and Exam sessions by sample set and category.</p>
                   </div>
                   <div class="tour-article">
                     <section class="tour-article-section">
@@ -6001,7 +6240,7 @@
           <div class="global-quick-nav-links">
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="home">Home</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="menu">Menu</button>
-            <button class="global-quick-nav-link" type="button" data-quick-nav-destination="extra">Extra</button>
+            <button class="global-quick-nav-link" type="button" data-quick-nav-destination="extra">Explore</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="community">Chat</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="settings">Settings</button>
             <button class="global-quick-nav-link" type="button" data-quick-nav-destination="profile">Profile</button>
@@ -6074,11 +6313,11 @@
         }
       };
     </script>
-    <script src="/subscription-state.js?v=20260919-cache2"></script><script type="module" src="/engine.js?v=20261015-content-performance1"></script>
+    <script src="/subscription-state.js?v=20260919-cache2"></script><script src="/ui-preferences.js?v=20261016-text-size1"></script><script type="module" src="/engine.js?v=20261016-profile-exact2"></script>
     <script>
-      const APP_BUILD_ID = "20260903-extra-layout-v2";
+      const APP_BUILD_ID = "20261016-profile-exact-v1";
       const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
-      const APP_NATIVE_VERSION = "1.1.14";
+      const APP_NATIVE_VERSION = "1.1.15";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;
       document.documentElement.dataset.nativeAppVersion = APP_NATIVE_VERSION;
 
@@ -6143,7 +6382,7 @@
     <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=20261015-content-performance1").catch((error) => {
+      navigator.serviceWorker.register("./sw.js?v=20261016-profile-exact2").catch((error) => {
         console.warn("Service worker registration failed", error);
       });
     });

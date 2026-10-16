@@ -39,6 +39,7 @@ const defaults = {
   statuses: [],
   subscriptionRequests: [],
   passwordResetRequests: [],
+  sessions: [],
   newsCategories: [],
   newsSources: [],
   newsItems: [],

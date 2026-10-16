@@ -182,9 +182,16 @@ function updateItem(items, id, mutate) {
 export function createGuidelineRouter({ config }) {
   const router = express.Router();
 
-  router.get("/api/guidelines", async (_req, res) => {
+  router.get("/api/guidelines", async (req, res) => {
     const items = sortGuidelinesNewestFirst((await getQueue()).filter((item) => item.status === "published"));
-    res.json({ ok: true, total: items.length, items });
+    const summaryOnly = String(req.query.summary || "") === "1";
+    res.json({ ok: true, total: items.length, items: summaryOnly ? items.map(toGuidelineSummary) : items });
+  });
+
+  router.get("/api/guidelines/:id", async (req, res) => {
+    const item = (await getQueue()).find((entry) => entry.id === String(req.params.id) && entry.status === "published");
+    if (!item) return res.status(404).json({ error: "Guideline not found" });
+    res.json({ ok: true, item });
   });
 
   router.get("/api/admin/guidelines", async (req, res) => {

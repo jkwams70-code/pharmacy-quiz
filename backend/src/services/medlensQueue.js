@@ -63,6 +63,19 @@ async function getQueue(frontendPath) {
     return stored;
   }
 }
+const toSummary = (item) => ({
+  id: item.id,
+  name: item.name,
+  generic: item.generic,
+  brand: item.brand,
+  class: item.class,
+  route: item.route,
+  source: item.source,
+  sourceUrl: item.sourceUrl,
+  status: item.status,
+  createdAt: item.createdAt,
+  updatedAt: item.updatedAt,
+});
 function runAiEditor({ id, drugName, command, args, cwd }) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env: process.env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
@@ -117,9 +130,21 @@ export function createMedLensRouter({ config, frontendPath }) {
     const progress = aiProgress.get(id) || (await readPersistedProgress()).find((entry) => entry.id === id);
     res.json({ ok: true, progress: progress || { status: "idle", percent: 0, completed: 0, total: aiSections.length, step: "Not running", error: "" } });
   }));
-  router.get("/api/medlens/drugs", wrap(async (_req, res) => {
+  router.get("/api/medlens/drugs", wrap(async (req, res) => {
     const items = (await getQueue(frontendPath)).map((x) => normalize(x)).filter((x) => x.status === "published");
-    res.json({ ok: true, total: items.length, items });
+    const summary = String(req.query.summary || "") === "1";
+    res.json({ ok: true, total: items.length, items: summary ? items.map(toSummary) : items });
+  }));
+  router.get("/api/medlens/drugs/:drugId", wrap(async (req, res) => {
+    const item = (await getQueue(frontendPath)).map((x) => normalize(x)).find((x) => x.status === "published" && x.id === String(req.params.drugId));
+    if (!item) return res.status(404).json({ error: "Drug not found" });
+    res.json({ ok: true, item });
+  }));
+  router.get("/api/admin/medlens/drugs/:drugId", wrap(async (req, res) => {
+    if (!admin(req, config)) return res.status(403).json({ error: "Forbidden" });
+    const item = (await getQueue(frontendPath)).map((x) => normalize(x)).find((x) => x.id === String(req.params.drugId));
+    if (!item) return res.status(404).json({ error: "Drug not found" });
+    res.json({ ok: true, item });
   }));
   router.get("/api/admin/medlens/drugs", wrap(async (req, res) => {
     if (!admin(req, config)) return res.status(403).json({ error: "Forbidden" });
@@ -127,9 +152,7 @@ export function createMedLensRouter({ config, frontendPath }) {
     const filter = String(req.query.status || "all").toLowerCase();
     const items = all.filter((x) => filter === "all" || x.status === filter);
     const summaryOnly = String(req.query.summary || "") === "1";
-    const responseItems = summaryOnly
-      ? items.map(({ monograph: _monograph, sections: _sections, ...summary }) => summary)
-      : items;
+    const responseItems = summaryOnly ? items.map(toSummary) : items;
     res.json({ ok: true, total: items.length, items: responseItems, summary: Object.fromEntries(statuses.map((s) => [s, all.filter((x) => x.status === s).length])) });
   }));
   router.post("/api/admin/medlens/drugs/fetch", wrap(async (req, res) => {

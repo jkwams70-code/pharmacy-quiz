@@ -2419,6 +2419,7 @@ if (window.AJIXSubscription?.subscribe) {
     if (!snapshot) return;
     subscriptionStatusSnapshot = snapshot;
     scheduleSubscriptionExpiryTimer();
+    syncPremiumMenuLocks();
     if (typeof renderAuthState === "function") renderAuthState();
     if (getActiveScreenId() === "subscription-screen") renderSubscriptionScreen();
   });
@@ -3429,7 +3430,9 @@ const communityBackBtn = document.getElementById("community-back-btn");
 const menuDrillsTab = document.getElementById("menu-drills-tab");
 const menuLawTab = document.getElementById("menu-law-tab");
 const menuGppqeTab = document.getElementById("menu-gppqe-tab");
+const menuEoyTab = document.getElementById("menu-eoy-tab");
 const menuExtraTab = document.getElementById("menu-extra-tab");
+const menuExploreBtn = document.getElementById("menu-explore-btn");
 const drillsScreen = document.getElementById("drills-screen");
 const drillsBackBtn = document.getElementById("drills-back-btn");
 const drillsMenuBtn = document.getElementById("drills-menu-btn");
@@ -3446,6 +3449,16 @@ const extraMenuBtn = document.getElementById("extra-menu-btn");
 const menuExtraGrid = document.getElementById("menu-extra-grid");
 const menuNewsBtn = document.getElementById("menu-news-btn");
 const menuGuidelinesBtn = document.getElementById("menu-guidelines-btn");
+
+function syncPremiumMenuLocks() {
+  const access = resolveSubscriptionAccess();
+  const isActive = access?.isActive === true;
+  document.querySelectorAll("[data-premium-lock-feature]").forEach((lock) => {
+    lock.classList.toggle("is-unlocked", isActive);
+  });
+}
+
+syncPremiumMenuLocks();
 const comingSoonModal = document.getElementById("coming-soon-modal");
 const comingSoonOkBtn = document.getElementById("coming-soon-ok-btn");
 const rapidDrillBtn = document.getElementById("rapid-drill-btn");
@@ -3536,7 +3549,7 @@ function setMenuHubActiveTab(section = "drills") {
     [menuDrillsTab, "drills"],
     [menuLawTab, "law"],
     [menuGppqeTab, "gppqe"],
-    [menuExtraTab, "extra"],
+    [menuEoyTab, "eoy"],
   ];
 
   tabs.forEach(([tab, value]) => {
@@ -3715,7 +3728,7 @@ function gppqeEnhancePickerFields(root) {
     head.className = 'gppqe-picker-head';
     const title = document.createElement('h3');
     title.className = 'gppqe-picker-title';
-    title.textContent = field === 'year' ? 'Select year' : 'Select category';
+    title.textContent = field === 'year' ? 'Select sample set' : 'Select category';
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'gppqe-picker-close';
@@ -4003,10 +4016,15 @@ function gppqeCloseHistoryModal() {
 
 function gppqeGetYearLabel(year = []) {
   const years = gppqeGetSelectedYears(year);
-  if (!years.length) return "Select year";
-  if (years.includes("all")) return "All years";
-  if (years.length === 1) return String(years[0]);
-  return years.length + " years selected";
+  if (!years.length) return "Select sample set";
+  if (years.includes("all")) return "All sample sets";
+  if (years.length === 1) return `Sample ${String(years[0]).slice(-2)}`;
+  return years.length + " sample sets selected";
+}
+
+function gppqeGetSampleLabel(year) {
+  const numericYear = Number(year);
+  return Number.isFinite(numericYear) ? `Sample ${String(numericYear).slice(-2)}` : "Sample";
 }
 
 function gppqeGetBankQuestions() {
@@ -4215,13 +4233,13 @@ function gppqeStartSession(mode = "study", { sample = false } = {}) {
   const normalizedMode = String(mode || "").toLowerCase() === "exam" ? "exam" : "study";
   const selectedYears = gppqeGetSelectedYears();
   if (!selectedYears.length) {
-    gppqeState.notice = "Select a year to begin.";
+    gppqeState.notice = "Select a sample set to begin.";
     gppqeState.view = "hub";
     renderGppqeScreen();
     return;
   }
   if (normalizedMode === "exam" && (selectedYears.length !== 1 || selectedYears.includes("all"))) {
-    gppqeState.notice = "Exam mode requires one full year. Select one year only.";
+    gppqeState.notice = "Exam mode requires one full sample set. Select one sample set only.";
     gppqeState.view = "hub";
     renderGppqeScreen();
     return;
@@ -4530,7 +4548,7 @@ function gppqeHandleAction(event) {
     gppqeState.selectedYear = [];
     gppqeState.selectedCategories = [];
     gppqeState.selectedMode = "exam";
-    gppqeState.notice = "Select one full year before starting Exam mode.";
+    gppqeState.notice = "Select one full sample set before starting Exam mode.";
     gppqeState.view = "hub";
     renderGppqeScreen();
     return;
@@ -4627,7 +4645,7 @@ function gppqeBuildHubMarkup() {
     : selectedYears.length > 0;
   const selectedCategory = gppqeState.selectedCategories[0] || "";
   const selectedCategoryCount = gppqeState.selectedCategories.length;
-  const startLabel = canStart ? "Start Quiz" : "Select year to begin";
+  const startLabel = canStart ? "Start Quiz" : "Select sample set to begin";
   const availableQuestions = gppqeGetPool().length;
   const availabilityLabel =
     availableQuestions === 1
@@ -4647,13 +4665,13 @@ function gppqeBuildHubMarkup() {
           <div class="gppqe-setup-grid">
             <label class="gppqe-setup-field">
               <span class="gppqe-setup-label-row">
-                <span class="gppqe-setup-label">Year</span>
-                ${gppqeState.selectedMode === "exam" ? '<span class="gppqe-exam-year-note">Exam uses the full year</span>' : ""}
+              <span class="gppqe-setup-label">Sample set</span>
+              ${gppqeState.selectedMode === "exam" ? '<span class="gppqe-exam-year-note">Exam uses the full sample set</span>' : ""}
               </span>
               <select multiple class="gppqe-setup-select" data-gppqe-field="year" aria-label="Years">
-                  <option value="" ${selectedYears.length ? "" : "selected"}>Select year</option>
-                  <option value="all" ${selectedYears.includes("all") ? "selected" : ""}>All years</option>
-                  ${gppqeGetYears().map((year) => `<option value="${year}" ${selectedYears.includes(year) ? "selected" : ""}>${year}</option>`).join("")}
+                  <option value="" ${selectedYears.length ? "" : "selected"}>Select sample set</option>
+                  <option value="all" ${selectedYears.includes("all") ? "selected" : ""}>All sample sets</option>
+                  ${gppqeGetYears().map((year) => `<option value="${year}" ${selectedYears.includes(year) ? "selected" : ""}>${gppqeGetSampleLabel(year)}</option>`).join("")}
               </select>
             </label>
 
@@ -4769,14 +4787,14 @@ function gppqeBuildYearMarkup() {
   const yearLabel = gppqeGetYearLabel(year);
   const pool = gppqeGetPool();
   const availableYears = gppqeGetYears();
-  const activeYearYears = year === "all" ? `${availableYears.length} written years` : `Written paper ${year}`;
+  const activeYearYears = year === "all" ? `${availableYears.length} sample sets` : gppqeGetSampleLabel(year);
   const categories = gppqeGetCategoriesForYear(year);
 
   return `
     <div class="gppqe-shell">
       <section class="gppqe-hero is-compact">
         <div class="gppqe-hero-copy">
-          <div class="gppqe-kicker">Selected year</div>
+          <div class="gppqe-kicker">Selected sample set</div>
           <h2 class="gppqe-title">${escapeHtml(yearLabel)}</h2>
           <p class="gppqe-subtitle">
             ${pool.length} questions are available in this lane. Filter by subject, then start study or exam mode.
@@ -4797,7 +4815,7 @@ function gppqeBuildYearMarkup() {
           </article>
           <article class="gppqe-metric-card">
             <div class="gppqe-metric-value">${year === "all" ? availableYears.length : 1}</div>
-            <div class="gppqe-metric-label">Written year${year === "all" ? "s" : ""}</div>
+            <div class="gppqe-metric-label">Sample set${year === "all" ? "s" : ""}</div>
           </article>
         </div>
       </section>
@@ -4914,7 +4932,7 @@ function gppqeBuildSessionMarkup() {
 
       <section class="gppqe-question-card">
         <div class="gppqe-question-head">
-          <span class="gppqe-question-year">${escapeHtml(String(question.year))}</span>
+            <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(question.year))}</span>
           <span class="gppqe-question-category">${escapeHtml(question.category)}</span>
           ${revealAnswer ? `<span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + question.answer)}</span>` : ""}
         </div>
@@ -5048,7 +5066,7 @@ function gppqeBuildReviewMarkup() {
                 </div>
                 <section class="gppqe-question-card gppqe-review-detail-card ${activeReviewState?.isCorrect ? "is-correct" : "is-wrong"}">
                   <div class="gppqe-question-head">
-                    <span class="gppqe-question-year">${escapeHtml(String(activeReviewQuestion.year))}</span>
+                    <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(activeReviewQuestion.year))}</span>
                     <span class="gppqe-question-category">${escapeHtml(activeReviewQuestion.category)}</span>
                     <span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + activeReviewQuestion.answer)}</span>
                   </div>
@@ -5133,7 +5151,6 @@ function setExtraViewMode(mode = "cards", { persist = true } = {}) {
   }
 }
 function openExtraScreen() {
-  setMenuHubActiveTab("extra");
   showScreen("extra-screen");
   setExtraViewMode(extraViewMode, { persist: false });
 }
@@ -5284,6 +5301,12 @@ const authResetCodePreviewEl = document.getElementById("auth-reset-code-preview"
 const authErrorEl = document.getElementById("auth-error");
 const authSubmitBtn = document.getElementById("auth-submit-btn");
 const authCancelBtn = document.getElementById("auth-cancel-btn");
+const authTwoFactorChallengeEl = document.getElementById("auth-2fa-challenge");
+const authTwoFactorCodeInput = document.getElementById("auth-2fa-code");
+const authTwoFactorErrorEl = document.getElementById("auth-2fa-error");
+const authTwoFactorSubmitBtn = document.getElementById("auth-2fa-submit-btn");
+const authTwoFactorBackBtn = document.getElementById("auth-2fa-back-btn");
+let pendingTwoFactorChallengeToken = "";
 const authUserLabel = document.getElementById("quiz-auth-user");
 const profileBtn = document.getElementById("quiz-profile-btn");
 const welcomeRegisterCtaBtns = Array.from(
@@ -5364,6 +5387,34 @@ const profileDangerPanel = document.getElementById("profile-danger-panel");
 const profileDeactivateBtn = document.getElementById("profile-deactivate-btn");
 const profileDeleteBtn = document.getElementById("profile-delete-btn");
 const profileFeedbackEl = document.getElementById("profile-feedback");
+const profileNewScreenEl = document.getElementById("profile-new-screen");
+const profileExactFrameEl = document.querySelector("#profile-exact-screen .profile-exact-frame");
+const profileNewBackBtn = document.getElementById("profile-new-back-btn");
+const profileNewSaveBtn = document.getElementById("profile-new-save-btn");
+const profileNewAvatarEl = document.getElementById("profile-new-avatar");
+const profileNewPhotoCameraBtn = document.getElementById("profile-new-photo-camera-btn");
+const profileNewPhotoGalleryBtn = document.getElementById("profile-new-photo-gallery-btn");
+const profileNewPhotoDeleteBtn = document.getElementById("profile-new-photo-delete-btn");
+const profileNewFeedbackEl = document.getElementById("profile-new-feedback");
+const profileNewTitleField = document.getElementById("profile-new-title-field");
+const profileNewFirstNameInput = document.getElementById("profile-new-first-name");
+const profileNewLastNameInput = document.getElementById("profile-new-last-name");
+const profileNewUsernameInput = document.getElementById("profile-new-username");
+const profileNewContactInput = document.getElementById("profile-new-contact");
+const profileNewProfessionalTypeInput = document.getElementById("profile-new-professional-type");
+const profileNewCountryInput = document.getElementById("profile-new-country");
+const profileNewInstitutionInput = document.getElementById("profile-new-institution");
+const profileNewBioInput = document.getElementById("profile-new-bio");
+const profileNewCurrentPasswordInput = document.getElementById("profile-new-current-password");
+const profileNewNewPasswordInput = document.getElementById("profile-new-new-password");
+const profileNewPasswordToggleBtn = document.getElementById("profile-new-password-toggle-btn");
+const profileNewPasswordPanel = document.getElementById("profile-new-password-panel");
+const profileNewChangePasswordBtn = document.getElementById("profile-new-change-password-btn");
+const profileNewDangerToggleBtn = document.getElementById("profile-new-danger-toggle-btn");
+const profileNewDangerPanel = document.getElementById("profile-new-danger-panel");
+const profileNewDeactivateDaysInput = document.getElementById("profile-new-deactivate-days");
+const profileNewDeactivateBtn = document.getElementById("profile-new-deactivate-btn");
+const profileNewDeleteBtn = document.getElementById("profile-new-delete-btn");
 const profileAvatarPreviewEl = document.getElementById("profile-avatar-preview");
 const profilePhotoCameraBtn = document.getElementById("profile-photo-camera-btn");
 const profilePhotoGalleryBtn = document.getElementById("profile-photo-gallery-btn");
@@ -19464,7 +19515,7 @@ function renderCommunityFriendActionSelection() {
   const relationship = String(state.relationship || user.relationship || "none").trim().toLowerCase();
   const displayName = getCommunityUiDisplayName(user);
   const handle = String(user.username || user.handle || "user").trim() || "user";
-  const subtitle = String(user.institution || user.country || "Learner").trim() || "Learner";
+  const subtitle = [user.institution, user.level].map((value) => String(value || "").trim()).filter(Boolean).join(" · ") || String(user.country || "Learner").trim() || "Learner";
   const isAppAdmin = isCommunityAppAdminUser(user);
   if (communityFriendActionsTitleEl) {
     communityFriendActionsTitleEl.innerHTML = `<span class="community-actions-title-pill">${escapeHtml(displayName)}</span>`;
@@ -20461,6 +20512,7 @@ function renderCommunityProfileView() {
         ["Bio", getProfileFieldValue(profile.bio)],
         ["Institution", getProfileFieldValue(profile.institution)],
         ["Role", getProfileFieldValue(profile.professionalType)],
+        ["Level / year", getProfileFieldValue(profile.level)],
         ["Country", getProfileFieldValue(profile.country)],
         ["Contact", getProfileFieldValue(profile.contact)],
       ];
@@ -24259,6 +24311,7 @@ function applyUiPrefs() {
   document.body.classList.toggle("font-condensed", uiPrefs.fontFamily === "condensed");
   document.body.classList.toggle("font-hand", uiPrefs.fontFamily === "hand");
   document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
+  syncProfileExactFramePreferences();
   const activeScreen = document.querySelector(".screen-active");
   if (activeScreen) {
     syncViewportBackground(activeScreen);
@@ -24268,6 +24321,241 @@ function applyUiPrefs() {
     enhanceTopicViewerSectionNavigation();
   }
 }
+
+function syncProfileExactFramePreferences() {
+  if (!profileExactFrameEl?.contentWindow) return;
+  profileExactFrameEl.contentWindow.postMessage(
+    {
+      type: "ajix-ui-preferences",
+      theme: uiPrefs.theme === "system" ? resolveEffectiveTheme() : uiPrefs.theme,
+      fontFamily: uiPrefs.fontFamily,
+      textSize: uiPrefs.textSize,
+    },
+    window.location.origin,
+  );
+}
+
+function syncProfileExactFrameState() {
+  syncProfileExactFramePreferences();
+  if (profileExactFrameEl?.contentWindow) {
+    profileExactFrameEl.contentWindow.postMessage(
+      { type: "ajix-profile-data", user: getProfileFrameUserPayload() },
+      window.location.origin,
+    );
+    void backendClient.fetchSessions().then((response) => {
+      postProfileFrameMessage(profileExactFrameEl.contentWindow, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [] });
+    }).catch((error) => {
+      postProfileFrameMessage(profileExactFrameEl.contentWindow, { type: "ajix-profile-sessions-data", sessions: [], message: authErrorMessage(error) });
+    });
+  }
+}
+
+profileExactFrameEl?.addEventListener("load", syncProfileExactFrameState);
+function postProfileFrameMessage(source, message) {
+  if (source && typeof source.postMessage === "function") {
+    source.postMessage(message, window.location.origin);
+  }
+}
+
+function getProfileFrameUserPayload() {
+  if (!currentUser) return null;
+  const access = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot) ||
+    subscriptionStatusSnapshot?.subscription ||
+    currentUser?.subscriptionAccess ||
+    {};
+  const latestSubscriptionRequest = subscriptionStatusSnapshot?.request ||
+    (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null) ||
+    currentUser?.subscriptionRequest ||
+    {};
+  const requestState = String(latestSubscriptionRequest.status || "").trim().toLowerCase();
+  const hasPendingRequest = requestState === "pending";
+  const planKey = String(
+    (hasPendingRequest ? latestSubscriptionRequest.plan : null) ||
+      access.plan || access.subscriptionPlan || latestSubscriptionRequest.plan || currentUser.subscriptionPlan || ""
+  ).trim().toLowerCase();
+  const subscriptionActive = access.isActive === true && !hasPendingRequest;
+  const subscriptionState = String(
+    hasPendingRequest ? "pending" : access.status || latestSubscriptionRequest.status || currentUser.subscriptionStatus || ""
+  ).trim().toLowerCase();
+  const subscriptionPending = hasPendingRequest || (!subscriptionActive && subscriptionState === "pending");
+  const institution = String(currentUser.institution || "").trim();
+  const subscriptionPlan = subscriptionActive || subscriptionPending
+    ? ({
+        trial: "7-day plan",
+        weekly: "7-day plan",
+        monthly: "Monthly",
+        yearly: "1 year",
+      }[planKey] || "Subscription")
+    : "Expired";
+  return {
+    ...currentUser,
+    institution: /^(not set|not specified)$/i.test(institution) ? "" : institution,
+    subscriptionActive,
+    subscriptionStatus: subscriptionActive ? "Active" : subscriptionPending ? "Pending" : "Expired",
+    subscriptionPending,
+    subscriptionPlan,
+    subscriptionPlanKey: planKey,
+    twoFactorEnabled: currentUser.twoFactorEnabled === true,
+    privacy: currentUser.privacy || {},
+    notificationPreferences: currentUser.notificationPreferences || {},
+  };
+}
+
+async function handleProfileFrameMessage(event) {
+  if (event.origin !== window.location.origin || event.source !== profileExactFrameEl?.contentWindow) return;
+  const type = String(event.data?.type || "");
+  if (type === "ajix-profile-back") {
+    goToPreviousScreen("quiz-menu");
+    return;
+  }
+  if (type === "ajix-profile-open-community-settings") {
+    const target = String(event.data?.target || "main").trim() || "main";
+    await openCommunityScreen();
+    if (getActiveScreenId() !== "community-screen") return;
+    setCommunitySettingsOpen(true);
+    setCommunitySettingsView(target);
+    updateCommunityTabState();
+    renderCommunityView();
+    return;
+  }
+  if (type === "ajix-profile-ready") {
+    syncProfileExactFrameState();
+    try {
+      const response = await backendClient.fetchSessions();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [] });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: [], message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-session-revoke") {
+    try {
+      await backendClient.revokeSession(String(event.data?.sessionId || ""));
+      const response = await backendClient.fetchSessions();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [], message: "Session signed out." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-error", message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-session-revoke-others") {
+    try {
+      await backendClient.revokeOtherSessions();
+      const response = await backendClient.fetchSessions();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [], message: "Other sessions signed out." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-error", message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-save") {
+    const form = event.data?.form || {};
+    const nameParts = String(form.fullName || "").trim().split(/\s+/).filter(Boolean);
+    const payload = {
+      firstName: nameParts.shift() || currentUser?.firstName || "",
+      lastName: nameParts.join(" ") || currentUser?.lastName || "",
+      username: String(form.username || currentUser?.username || "").trim(),
+      contact: String(currentUser?.contact || currentUser?.email || form.email || form.phone || "").trim(),
+      email: String(form.email || "").trim(),
+      phone: String(form.phone || "").trim(),
+      level: String(form.level || "").trim(),
+      professionalType: String(form.programme || "").trim(),
+      country: String(currentUser?.country || "Other").trim(),
+      institution: String(form.institution || "").trim(),
+      bio: String(form.bio || "").trim(),
+      profileImage: String(form.profileImage || "").trim(),
+    };
+    if (!payload.institution) delete payload.institution;
+    if (!payload.professionalType) delete payload.professionalType;
+    if (!payload.level) delete payload.level;
+    if (!payload.country) delete payload.country;
+    try {
+      const response = await backendClient.updateProfile(payload);
+      currentUser = response?.user || (await backendClient.fetchMe());
+      renderAuthState();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-save-result", ok: true, user: getProfileFrameUserPayload(), message: "Profile updated successfully." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-save-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-preferences-save") {
+    try {
+      const response = await backendClient.updateProfile({
+        privacy: event.data?.privacy || {},
+        notificationPreferences: event.data?.notificationPreferences || {},
+      });
+      currentUser = response?.user || (await backendClient.fetchMe());
+      postProfileFrameMessage(event.source, { type: "ajix-profile-preferences-result", ok: true, user: getProfileFrameUserPayload(), message: "Preferences saved." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-preferences-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-password") {
+    try {
+      await backendClient.changePassword({
+        currentPassword: String(event.data?.currentPassword || ""),
+        newPassword: String(event.data?.newPassword || ""),
+      });
+      postProfileFrameMessage(event.source, { type: "ajix-profile-action-result", ok: true, action: "password", message: "Password changed successfully." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-action-result", ok: false, action: "password", message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-setup") {
+    try {
+      const response = await backendClient.setupTwoFactor();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-setup-result", ok: true, ...response });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-setup-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-verify") {
+    try {
+      const response = await backendClient.verifyTwoFactorSetup({ code: String(event.data?.code || "") });
+      currentUser = await backendClient.fetchMe();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "setup", ok: true, ...response, user: getProfileFrameUserPayload() });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "setup", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-disable") {
+    try {
+      const response = await backendClient.disableTwoFactor({ password: String(event.data?.password || ""), code: String(event.data?.code || "") });
+      currentUser = await backendClient.fetchMe();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "disable", ok: true, ...response, user: getProfileFrameUserPayload() });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "disable", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-recovery-codes") {
+    try {
+      const response = await backendClient.regenerateTwoFactorRecoveryCodes({ password: String(event.data?.password || ""), code: String(event.data?.code || "") });
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-recovery-codes-result", ok: true, ...response });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-recovery-codes-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-deactivate") {
+    await deactivateProfileAccount();
+    return;
+  }
+  if (type === "ajix-profile-delete") {
+    await deleteProfileAccount();
+    return;
+  }
+  if (type === "ajix-profile-signout") {
+    if (logoutConfirmBtn) logoutConfirmBtn.click();
+    else logoutBtn?.click();
+  }
+}
+window.addEventListener("message", (event) => { void handleProfileFrameMessage(event); });
 
 function getTopicViewerThemePalette() {
   const theme = resolveEffectiveTheme();
@@ -24576,7 +24864,7 @@ async function handleGlobalQuickNavDestination(destination) {
     return;
   }
   if (destination === "extra") {
-    showScreen("home-screen");
+    openExtraScreen();
     return;
   }
 
@@ -24597,8 +24885,10 @@ function getActiveScreenId() {
 function updateMenuBottomNavState(screenId = "") {
   const targetKey =screenId === "community-screen" || screenId === "community-profile-screen" || screenId === "community-chat-screen"
         ? "community"
-        : screenId === "topic-library" || screenId === "topic-viewer"
-          ? "library"
+        : screenId === "extra-screen"
+          ? "explore"
+          : screenId === "topic-library" || screenId === "topic-viewer"
+            ? "explore"
           : screenId === "settings-screen"
             ? "settings"
             : "home";
@@ -24651,7 +24941,7 @@ function getScreenBackFallback(screenId = "") {
   if (currentId === "subscription-screen") return subscriptionScreenState.returnScreen || "quiz-menu";
   if (currentId === "topic-viewer") return topicViewerReturnScreen || "topic-library";
   if (currentId === "topic-library") return topicLibraryReturnScreen || "quiz-menu";
-  if (currentId === "settings-screen" || currentId === "profile-screen" || currentId === "tour-screen") return "quiz-menu";
+  if (currentId === "settings-screen" || currentId === "profile-screen" || currentId === "profile-new-screen" || currentId === "profile-exact-screen" || currentId === "tour-screen") return "quiz-menu";
   if (currentId === "news-screen") return "quiz-menu";
   if (currentId === "study-setup" || currentId === "exam-setup" || currentId === "daily-setup") return "quiz-menu";
   if (currentId === "quiz-menu") return "home-screen";
@@ -26158,7 +26448,7 @@ if (topicLibraryBtns.length) {
   topicLibraryBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       closeMenuUserHub();
-      void openTopicLibrary("quiz-menu");
+      void openTopicLibrary(btn.dataset.topicLibraryReturn || "quiz-menu");
     });
   });
 }
@@ -30783,6 +31073,7 @@ if (appTextSizeSelect) {
     uiPrefs.textSize = String(appTextSizeSelect.value || "default");
     saveUiPrefs();
     applyUiPrefs();
+    window.AjixUiPreferences?.applyTextSize?.();
     setSettingsFeedback("Text size updated.");
   });
 }
@@ -32696,8 +32987,13 @@ function getMenuPointsValue() {
 let profileFeedbackTimer = null;
 
 function setProfileFeedback(message = "", isError = false) {
-  if (!profileFeedbackEl) return;
   const text = String(message || "").trim();
+  if (profileNewFeedbackEl) {
+    profileNewFeedbackEl.textContent = text;
+    profileNewFeedbackEl.hidden = !text;
+    profileNewFeedbackEl.classList.toggle("auth-error", Boolean(isError));
+  }
+  if (!profileFeedbackEl) return;
   if (profileFeedbackTimer) {
     clearTimeout(profileFeedbackTimer);
     profileFeedbackTimer = null;
@@ -32785,7 +33081,120 @@ function fillProfileForm() {
   setProfileAvatarPreview(pendingProfileImage);
   updateProfileButtonAvatar(pendingProfileImage);
   refreshProfilePhotoDeleteVisibility();
+  syncProfilePrototypeIdentity();
 }
+
+function syncProfilePrototypeIdentity() {
+  const first = String(currentUser?.firstName || profileFirstNameInput?.value || "").trim();
+  const last = String(currentUser?.lastName || profileLastNameInput?.value || "").trim();
+  const username = String(currentUser?.username || profileUsernameInput?.value || "").trim();
+  const displayName = [first, last].filter(Boolean).join(" ") || username || "Account";
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "AJ";
+  const nameEl = document.getElementById("profile-prototype-member-name");
+  const initialsEl = document.getElementById("profile-prototype-initials");
+  if (nameEl) nameEl.textContent = displayName;
+  if (initialsEl) initialsEl.textContent = initials;
+}
+
+function syncProfileNewIdentity() {
+  const first = String(currentUser?.firstName || profileNewFirstNameInput?.value || "").trim();
+  const last = String(currentUser?.lastName || profileNewLastNameInput?.value || "").trim();
+  const username = String(currentUser?.username || profileNewUsernameInput?.value || "").trim();
+  const displayName = [first, last].filter(Boolean).join(" ") || username || "Account";
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "AJ";
+  const nameEl = document.getElementById("profile-new-member-name");
+  const initialsEl = document.getElementById("profile-new-initials");
+  if (nameEl) nameEl.textContent = displayName;
+  if (initialsEl) initialsEl.textContent = initials;
+  if (profileNewAvatarEl) {
+    profileNewAvatarEl.src = String(currentUser?.profileImage || "").trim() || "/images/app-logo.png?v=20260831-ajix-profile";
+  }
+}
+
+function fillProfileNewForm() {
+  if (!currentUser) return;
+  if (profileNewTitleField) profileNewTitleField.value = currentUser.title || "";
+  if (profileNewFirstNameInput) profileNewFirstNameInput.value = currentUser.firstName || "";
+  if (profileNewLastNameInput) profileNewLastNameInput.value = currentUser.lastName || "";
+  if (profileNewUsernameInput) profileNewUsernameInput.value = currentUser.username || "";
+  if (profileNewContactInput) profileNewContactInput.value = currentUser.contact || currentUser.email || "";
+  if (profileNewProfessionalTypeInput) profileNewProfessionalTypeInput.value = currentUser.professionalType || "Other";
+  if (profileNewCountryInput) profileNewCountryInput.value = currentUser.country || "";
+  if (profileNewInstitutionInput) profileNewInstitutionInput.value = currentUser.institution || "";
+  if (profileNewBioInput) profileNewBioInput.value = currentUser.bio || "";
+  setSelectedRadioValue("profile-new-role", currentUser.role || "student");
+  syncProfileNewIdentity();
+}
+
+function copyProfileNewFormToLegacy() {
+  if (profileTitleInput) profileTitleInput.value = profileNewTitleField?.value || "";
+  if (profileFirstNameInput) profileFirstNameInput.value = profileNewFirstNameInput?.value || "";
+  if (profileLastNameInput) profileLastNameInput.value = profileNewLastNameInput?.value || "";
+  if (profileUsernameInput) profileUsernameInput.value = profileNewUsernameInput?.value || "";
+  if (profileProfessionalTypeInput) profileProfessionalTypeInput.value = profileNewProfessionalTypeInput?.value || "";
+  if (profileCountryInput) profileCountryInput.value = profileNewCountryInput?.value || "";
+  if (profileInstitutionInput) profileInstitutionInput.value = profileNewInstitutionInput?.value || "";
+  if (profileBioInput) profileBioInput.value = profileNewBioInput?.value || "";
+  setSelectedRadioValue("profile-role", readSelectedRadioValue("profile-new-role", "student"));
+  const contact = String(profileNewContactInput?.value || "").trim();
+  const isEmail = EMAIL_INPUT_REGEX.test(contact.toLowerCase());
+  if (profileContactFormatInput) profileContactFormatInput.value = isEmail ? CONTACT_FORMAT_EMAIL : "phone";
+  if (profileContactEmailInput) profileContactEmailInput.value = isEmail ? contact : "";
+  if (profileContactPhoneInput) profileContactPhoneInput.value = isEmail ? "" : contact.replace(/\D/g, "");
+}
+
+document.querySelectorAll(".profile-new-nav-btn[data-profile-new-panel]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const panel = String(button.dataset.profileNewPanel || "profile");
+    document.querySelectorAll(".profile-new-nav-btn[data-profile-new-panel]").forEach((item) => item.classList.toggle("is-active", item === button));
+    document.querySelectorAll("[data-profile-new-panel-content]").forEach((section) => { section.hidden = section.dataset.profileNewPanelContent !== panel; });
+    const copy = { profile: ["Profile", "Manage your personal details, study identity, and security settings."], security: ["Security", "Keep your account protected with a strong password."], account: ["Account", "Manage account-level actions and your AjixPharmacy identity."] }[panel] || ["Profile", "Manage your personal details, study identity, and security settings."];
+    const title = document.getElementById("profile-new-title");
+    const description = document.getElementById("profile-new-copy");
+    if (title) title.textContent = copy[0];
+    if (description) description.textContent = copy[1];
+  });
+});
+
+async function openProfileNewScreen() {
+  const ok = await ensureAuthenticated({ nextScreen: "profile-exact-screen" });
+  if (!ok) return;
+  showScreen("profile-exact-screen", { skipSubscriptionGate: true });
+  syncProfileExactFrameState();
+  window.setTimeout(syncProfileExactFrameState, 0);
+}
+
+if (profileNewSaveBtn) profileNewSaveBtn.onclick = () => { copyProfileNewFormToLegacy(); void saveProfile(); };
+if (profileNewBackBtn) profileNewBackBtn.onclick = () => goToPreviousScreen("quiz-menu");
+if (profileNewPhotoCameraBtn) profileNewPhotoCameraBtn.onclick = () => profilePhotoCameraBtn?.click();
+if (profileNewPhotoGalleryBtn) profileNewPhotoGalleryBtn.onclick = () => profilePhotoGalleryBtn?.click();
+if (profileNewPhotoDeleteBtn) profileNewPhotoDeleteBtn.onclick = () => profilePhotoDeleteBtn?.click();
+if (profileNewPasswordToggleBtn) profileNewPasswordToggleBtn.onclick = () => { const open = Boolean(profileNewPasswordPanel?.hidden); if (profileNewPasswordPanel) profileNewPasswordPanel.hidden = !open; profileNewPasswordToggleBtn.setAttribute("aria-expanded", open ? "true" : "false"); profileNewPasswordToggleBtn.textContent = open ? "Hide Password" : "Change Password"; };
+if (profileNewChangePasswordBtn) profileNewChangePasswordBtn.onclick = () => { if (profileCurrentPasswordInput) profileCurrentPasswordInput.value = profileNewCurrentPasswordInput?.value || ""; if (profileNewPasswordInput) profileNewPasswordInput.value = profileNewNewPasswordInput?.value || ""; void changeProfilePassword(); };
+if (profileNewDangerToggleBtn) profileNewDangerToggleBtn.onclick = () => { const open = Boolean(profileNewDangerPanel?.hidden); if (profileNewDangerPanel) profileNewDangerPanel.hidden = !open; profileNewDangerToggleBtn.setAttribute("aria-expanded", open ? "true" : "false"); profileNewDangerToggleBtn.textContent = open ? "Hide Actions" : "Account Actions"; };
+if (profileNewDeactivateBtn) profileNewDeactivateBtn.onclick = () => { if (profileDeactivateDaysInput) profileDeactivateDaysInput.value = profileNewDeactivateDaysInput?.value || "30"; void deactivateProfileAccount(); };
+if (profileNewDeleteBtn) profileNewDeleteBtn.onclick = deleteProfileAccount;
+
+document.querySelectorAll(".profile-prototype-nav-btn[data-profile-panel]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const panel = String(button.dataset.profilePanel || "profile");
+    document.querySelectorAll(".profile-prototype-nav-btn[data-profile-panel]").forEach((item) => {
+      item.classList.toggle("is-active", item === button);
+    });
+    document.querySelectorAll("[data-profile-panel-content]").forEach((section) => {
+      section.hidden = section.dataset.profilePanelContent !== panel;
+    });
+    const title = document.getElementById("profile-prototype-page-title");
+    const copy = document.getElementById("profile-prototype-page-copy");
+    const content = {
+      profile: ["Profile", "Manage your personal details, study identity, and security settings."],
+      security: ["Security", "Keep your account protected with a strong password."],
+      account: ["Account", "Manage account-level actions and your AjixPharmacy identity."],
+    }[panel] || ["Profile", "Manage your personal details, study identity, and security settings."];
+    if (title) title.textContent = content[0];
+    if (copy) copy.textContent = content[1];
+  });
+});
 
 function closeMenuUserHub() {
   if (menuUserHubPanel) {
@@ -32992,6 +33401,8 @@ function renderAuthState() {
 function setAuthMode(nextMode = "login") {
   const allowedModes = new Set(["login", "register", "forgot", "reset"]);
   authMode = allowedModes.has(nextMode) ? nextMode : "login";
+  authTwoFactorChallengeEl?.classList.add("hidden");
+  authForm?.classList.remove("hidden");
 
   const isLogin = authMode === "login";
   const isRegister = authMode === "register";
@@ -33056,6 +33467,47 @@ function setAuthMode(nextMode = "login") {
   }
 }
 
+function showTwoFactorChallenge(challengeToken = "") {
+  pendingTwoFactorChallengeToken = String(challengeToken || "").trim();
+  if (!pendingTwoFactorChallengeToken) return;
+  authForm?.classList.add("hidden");
+  authTwoFactorChallengeEl?.classList.remove("hidden");
+  authTwoFactorErrorEl?.classList.add("hidden");
+  if (authTwoFactorCodeInput) authTwoFactorCodeInput.value = "";
+  authTwoFactorCodeInput?.focus();
+}
+
+function setTwoFactorError(message = "") {
+  if (!authTwoFactorErrorEl) return;
+  authTwoFactorErrorEl.textContent = message;
+  authTwoFactorErrorEl.classList.toggle("hidden", !message);
+}
+
+async function verifyPendingTwoFactorLogin() {
+  const code = String(authTwoFactorCodeInput?.value || "").trim();
+  if (!code) {
+    setTwoFactorError("Enter the code from your authenticator app or a recovery code.");
+    return;
+  }
+  if (authTwoFactorSubmitBtn) authTwoFactorSubmitBtn.disabled = true;
+  setTwoFactorError("");
+  try {
+    const response = await backendClient.verifyTwoFactorLogin({ challengeToken: pendingTwoFactorChallengeToken, code });
+    currentUser = response?.user || (await backendClient.fetchMe());
+    pendingTwoFactorChallengeToken = "";
+    closeAuthModal();
+    showScreen(authPostSuccessScreenId || "quiz-menu");
+    authPostSuccessScreenId = "quiz-menu";
+    renderAuthState();
+    syncPointsFromCurrentUser();
+    scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+  } catch (error) {
+    setTwoFactorError(authErrorMessage(error) || "Invalid verification code.");
+  } finally {
+    if (authTwoFactorSubmitBtn) authTwoFactorSubmitBtn.disabled = false;
+  }
+}
+
 function openAuthModal(nextMode = "login", nextScreenId = "quiz-menu") {
   if (!authModal) return;
   authPostSuccessScreenId = String(nextScreenId || "quiz-menu").trim() || "quiz-menu";
@@ -33095,7 +33547,7 @@ function closeAuthModal() {
 function authErrorMessage(error) {
   const message = String(error?.message || "");
   if (message.includes("invalid credentials") || message.includes("(401)")) {
-    return "Invalid username/contact/email or password.";
+    return "We couldn’t sign you in. Check your details and try again.";
   }
   if (message.includes("deactivated") || message.includes("(403)")) {
     return message.replace(/\s+\(\d+\)\s*$/, "");
@@ -33568,6 +34020,7 @@ async function refreshSharedAccountState({
     subscriptionStatusSnapshot = window.AJIXSubscription?.getState?.() || subscriptionStatusSnapshot;
     communityAccessDenied = false;
     scheduleSubscriptionExpiryTimer();
+    syncPremiumMenuLocks();
     renderAuthState();
     syncPointsFromCurrentUser();
     writeCurrentSetupPoints(readCurrentSetupPoints(), {
@@ -33605,6 +34058,7 @@ async function refreshSubscriptionAccessForAction() {
       void window.AJIXSubscription?.get?.({ fresh: true }).then((snapshot) => {
         if (!snapshot) return;
         subscriptionStatusSnapshot = snapshot;
+        syncPremiumMenuLocks();
         void cacheSubscriptionEntitlement(snapshot.subscription || null);
         scheduleSubscriptionExpiryTimer();
       }).catch(() => {});
@@ -33805,6 +34259,10 @@ async function handleAuthSubmit(event) {
   try {
     if (authMode === "login") {
       const response = await backendClient.login({ identifier, password });
+      if (response?.twoFactorRequired) {
+        showTwoFactorChallenge(response.challengeToken);
+        return;
+      }
       currentUser = response?.user || (await backendClient.fetchMe());
       closeAuthModal();
       showScreen(authPostSuccessScreenId || "quiz-menu");
@@ -33910,6 +34368,23 @@ if (authForm) {
   authForm.addEventListener("submit", handleAuthSubmit);
 }
 
+if (authTwoFactorSubmitBtn) authTwoFactorSubmitBtn.onclick = () => void verifyPendingTwoFactorLogin();
+if (authTwoFactorCodeInput) {
+  authTwoFactorCodeInput.onkeydown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void verifyPendingTwoFactorLogin();
+    }
+  };
+}
+if (authTwoFactorBackBtn) {
+  authTwoFactorBackBtn.onclick = () => {
+    pendingTwoFactorChallengeToken = "";
+    setTwoFactorError("");
+    setAuthMode("login");
+  };
+}
+
 if (authPasswordToggleBtn) {
   authPasswordToggleBtn.onclick = toggleAuthPasswordVisibility;
 }
@@ -34002,6 +34477,7 @@ if (logoutBtn) {
       logoutConfirmBox.classList.remove("hidden");
       return;
     }
+    void backendClient.logout().catch(() => {});
     closeMenuUserHub();
     backendClient.clearToken();
     teardownCommunityRealtime();
@@ -34030,6 +34506,7 @@ if (logoutCancelBtn) {
 
 if (logoutConfirmBtn) {
   logoutConfirmBtn.onclick = () => {
+    void backendClient.logout().catch(() => {});
     closeMenuUserHub();
     backendClient.clearToken();
     teardownCommunityRealtime();
@@ -34199,8 +34676,7 @@ async function saveProfile() {
       "Not Set",
     institution:
       String(profileInstitutionInput?.value || "").trim() ||
-      String(currentUser.institution || "").trim() ||
-      "Not Set",
+      String(currentUser.institution || "").trim(),
     bio: String(profileBioInput?.value || "").trim(),
     privacy: {
       profileVisibility:
@@ -34336,7 +34812,7 @@ async function deactivateProfileAccount() {
 
   if (
     !confirm(
-      `Deactivate this account for ${days} day(s)? It will be auto-deleted after that window.`,
+      `Deactivate this account for ${days} day(s)? You can reactivate it by signing in again.`,
     )
   ) {
     return;
@@ -34353,7 +34829,7 @@ async function deactivateProfileAccount() {
     resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
-    alert("Account deactivated. It will be deleted automatically after the selected period.");
+    alert("Account deactivated. Sign in again with your password to reactivate it.");
   } catch (error) {
     setProfileFeedback(authErrorMessage(error), true);
   }
@@ -34382,33 +34858,13 @@ async function deleteProfileAccount() {
 }
 
 async function openProfileScreen() {
-  const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
-  if (!ok || !currentUser) return;
-  setProfileFeedback("");
-  fillProfileForm();
-  setProfilePanelOpen(
-    profilePasswordPanel,
-    profilePasswordToggleBtn,
-    false,
-    "Change Password",
-    "Hide Password",
-  );
-  setProfilePanelOpen(
-    profileDangerPanel,
-    profileDangerToggleBtn,
-    false,
-    "Account Actions",
-    "Hide Actions",
-  );
-  showScreen("profile-screen");
+  return openProfileNewScreen();
 }
 
 if (profileBtn) {
   profileBtn.onclick = async () => {
-    const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
-    if (!ok) return;
     closeMenuUserHub();
-    openProfileScreen();
+    await openProfileScreen();
   };
 }
 
@@ -35592,9 +36048,16 @@ if (menuGppqeTab) {
   };
 }
 
-if (menuExtraTab) {
-  menuExtraTab.onclick = () => {
+if (menuExploreBtn) {
+  menuExploreBtn.onclick = () => {
     openExtraScreen();
+  };
+}
+
+if (menuEoyTab) {
+  menuEoyTab.onclick = () => {
+    setMenuHubActiveTab("eoy");
+    openComingSoonModal();
   };
 }
 
@@ -40128,6 +40591,8 @@ function showScreen(id, options = {}) {
     "gppqe-screen",
     "extra-screen",
     "profile-screen",
+    "profile-new-screen",
+    "profile-exact-screen",
     "study-setup",
     "exam-setup",
     "daily-setup",
@@ -40667,8 +41132,8 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  if (activeId === "profile-screen") {
-    goBackByHistory("profile-screen", "quiz-menu");
+  if (activeId === "profile-screen" || activeId === "profile-new-screen" || activeId === "profile-exact-screen") {
+    goBackByHistory(activeId, "quiz-menu");
     return;
   }
 

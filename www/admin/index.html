@@ -297,6 +297,21 @@
         display: none;
       }
 
+      .tab-btn .admin-tab-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        margin-left: 7px;
+        border-radius: 50%;
+        background: #ef233c;
+        box-shadow: 0 0 0 2px rgba(239, 35, 60, 0.14);
+        vertical-align: middle;
+      }
+
+      .tab-btn .admin-tab-dot.hidden {
+        display: none;
+      }
+
       #reports-tab-badge {
         display: none !important;
       }
@@ -3774,20 +3789,34 @@
         }
       }
 
-      /* Hide native scrollbars while preserving scroll behavior. */
+      /* Keep native scrollbars thin and visible for wide tables. */
       html,
       body,
       * {
-        -ms-overflow-style: none !important;
-        scrollbar-width: none !important;
+        -ms-overflow-style: auto !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #8da1b2 transparent !important;
       }
 
       html::-webkit-scrollbar,
       body::-webkit-scrollbar,
       *::-webkit-scrollbar {
-        width: 0 !important;
-        height: 0 !important;
-        display: none !important;
+        width: 4px !important;
+        height: 4px !important;
+        display: block !important;
+      }
+
+      html::-webkit-scrollbar-track,
+      body::-webkit-scrollbar-track,
+      *::-webkit-scrollbar-track {
+        background: transparent !important;
+      }
+
+      html::-webkit-scrollbar-thumb,
+      body::-webkit-scrollbar-thumb,
+      *::-webkit-scrollbar-thumb {
+        background: #8da1b2 !important;
+        border-radius: 999px !important;
       }
           .extra-workspace{margin-top:18px;padding:24px;border:1px solid #d8e0eb;border-radius:18px;background:linear-gradient(145deg,#ffffff,#f4f8fc);box-shadow:0 16px 36px rgba(20,48,78,.12)}
       .extra-workspace-head{margin-bottom:20px}.extra-kicker{display:block;color:#087f82;font-size:11px;font-weight:800;letter-spacing:.12em;margin-bottom:7px}.extra-workspace h2{margin:0;color:#172b45;font-size:27px}.extra-workspace p{margin:6px 0 0;color:#64758b}
@@ -3866,9 +3895,11 @@
         <button class="tab-btn" data-tab="reports">Reports <span id="reports-tab-badge" class="admin-tab-badge hidden">0</span></button>
         <button class="tab-btn" data-tab="broadcast">Broadcast</button>
         <a class="tab-btn" href="./question-review.html">Question Review</a>
-        <button class="tab-btn" data-tab="monetization">Monetization</button>
+        <button class="tab-btn" data-tab="monetization">
+          Monetization <span id="monetization-tab-dot" class="admin-tab-dot hidden" aria-label="Pending subscription requests"></span>
+        </button>
         <button class="tab-btn" data-tab="password-resets">
-          Password Resets <span id="password-reset-tab-badge" class="admin-tab-badge hidden">0</span>
+          Password Resets <span id="password-reset-tab-badge" class="admin-tab-dot hidden" aria-label="Pending password reset requests"></span>
         </button>
 <button class="tab-btn" data-tab="settings">
           Settings
@@ -5005,7 +5036,8 @@
       </div>
     </div>
 
-    <script src="admin.js?v=20261015-monetization-state3"></script>
+    <script src="table-scroll.js?v=20261015-table-scroll4"></script>
+    <script src="admin.js?v=20261015-monetization-state4"></script>
     <script>
       const adminWorkspacePlaceholderModal = document.getElementById("admin-workspace-placeholder-modal");
       const adminWorkspacePlaceholderCopy = document.getElementById("admin-workspace-placeholder-copy");

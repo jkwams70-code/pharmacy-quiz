@@ -49,7 +49,10 @@
       if (scale === 1) {
         element.style.removeProperty("font-size");
       } else {
-        element.style.setProperty("font-size", String(baseSize * scale) + "px");
+        // Some screens, especially the subscription page, use fixed sizes with
+        // !important. Use the same priority so the user's preference applies
+        // consistently to every text element, not only buttons.
+        element.style.setProperty("font-size", String(baseSize * scale) + "px", "important");
       }
     });
   }

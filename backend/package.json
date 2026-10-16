@@ -47,7 +47,11 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pg": "^8.22.0",
+    "pharmacy-quiz-backend": "file:..",
     "qrcode": "^1.5.4",
     "sharp": "^0.35.5"
+  },
+  "overrides": {
+    "qs": "6.16.1"
   }
 }

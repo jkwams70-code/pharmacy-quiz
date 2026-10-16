@@ -76,8 +76,9 @@
   /* ---------- Avatar ---------- */
   .avatar-row{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
   .avatar{position:relative;width:96px;height:96px;flex-shrink:0}
-  .avatar .ph{width:100%;height:100%;border-radius:50%;background:var(--emerald-tint);color:var(--emerald);display:grid;place-items:center;font-family:'Fraunces',serif;font-size:30px;font-weight:600;border:3px solid var(--card);outline:2px solid var(--gold)}
-  .avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--card);outline:2px solid var(--gold)}
+  .avatar .ph,.avatar img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;}
+  .avatar .ph{background:var(--emerald-tint);color:var(--emerald);display:grid;place-items:center;font-family:'Fraunces',serif;font-size:30px;font-weight:600;border:3px solid var(--card);outline:2px solid var(--gold)}
+  .avatar img{object-fit:cover;border:3px solid var(--card);outline:2px solid var(--gold)}
   .cam{position:absolute;right:-2px;bottom:-2px;width:32px;height:32px;border-radius:50%;border:2px solid var(--card);background:var(--emerald);color:#f2ede0;display:grid;place-items:center;transition:background .18s}
   .cam[hidden]{display:none}
   .cam:hover{background:var(--emerald-2)}

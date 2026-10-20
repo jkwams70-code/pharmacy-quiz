@@ -1,4 +1,4 @@
-const CACHE_VERSION = "ajix-app-shell-v137-profile-exact-direct";
+const CACHE_VERSION = "ajix-app-shell-v138-deployment-refresh1";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 

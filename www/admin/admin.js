@@ -1365,7 +1365,7 @@ function getMonetizationBucketMeta(bucket = "request") {
   if (selectedMonetizationBucket === requestedBucket) renderMonetizationPanel();
   const loadingPromise = (async () => {
     try {
-      const query = new URLSearchParams({ status: requestStatus, page: String(requestedPage), limit: "50" });
+      const query = new URLSearchParams({ status: requestStatus, page: String(requestedPage), limit: "100" });
       const res = await fetchAdmin(withNoCache(`${API_BASE}/admin/subscription-requests?${query.toString()}`), {
         headers: getHeaders(),
         cache: "no-store",
@@ -5290,6 +5290,7 @@ function getAdminLoginScreen() {
         const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
         if (adminActivityState.from) params.set("from", adminActivityState.from);
         if (adminActivityState.to) params.set("to", adminActivityState.to);
+        if (!adminActivityState.from && !adminActivityState.to) params.set("days", String(adminActivityState.days || 7));
         if (adminActivityState.search) params.set("search", adminActivityState.search);
         if (adminActivityState.type) params.set("type", adminActivityState.type);
         if (adminActivityState.status) params.set("status", adminActivityState.status);
@@ -5383,7 +5384,7 @@ function getAdminLoginScreen() {
       }
 
       async function loadMoreAdminActivity() {
-        const response = await fetch(withNoCache(adminActivityQuery(adminActivityState.events.length, 40)), { headers: getHeaders(), cache: "no-store" });
+        const response = await fetch(withNoCache(adminActivityQuery(adminActivityState.events.length, 100)), { headers: getHeaders(), cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
         adminActivityState.events = adminActivityState.events.concat(Array.isArray(data.events) ? data.events : []);
@@ -5460,6 +5461,7 @@ function getAdminLoginScreen() {
           if (row) openAdminActivityDetail(adminActivityState.events[Number(row.dataset.activityIndex)]);
         });
         document.getElementById("admin-activity-close")?.addEventListener("click", closeAdminActivityDetail);
+        document.getElementById("admin-activity-cancel")?.addEventListener("click", closeAdminActivityDetail);
         document.getElementById("admin-activity-overlay")?.addEventListener("click", closeAdminActivityDetail);
       }
 

@@ -15222,7 +15222,7 @@ const requests = [...paidRequests, ...trialRequests].sort(
     const requestedStatus = String(req.query?.status || "all").trim().toLowerCase();
     const allowedStatuses = new Set(["pending", "active", "rejected", "expired"]);
     const statusFilter = allowedStatuses.has(requestedStatus) ? requestedStatus : "all";
-    const requestedLimit = Number.parseInt(String(req.query?.limit || "50"), 10);
+    const requestedLimit = Number.parseInt(String(req.query?.limit || "100"), 10);
     const limit = Math.min(100, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 50));
     const requestedPage = Number.parseInt(String(req.query?.page || "1"), 10);
     const page = Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1);
@@ -17221,7 +17221,7 @@ function buildAdminActivityEvents({
   });
 
   (Array.isArray(reports) ? reports : []).forEach((report) => {
-    const user = userFor(report.userId || report.reporterId || report.createdBy);
+    const user = userFor(report.userId || report.reporterId || report.reporterUserId || report.createdBy);
     const resolved = Boolean(report.resolvedAt || report.status === "resolved" || report.status === "closed");
     add({
       id: `report-${report.id || report.createdAt}`,
@@ -17405,7 +17405,9 @@ app.get(
     const now = Date.now();
     const requestedFrom = String(req.query.from || "").trim();
     const requestedTo = String(req.query.to || "").trim();
-    const defaultFrom = now - 7 * 24 * 60 * 60 * 1000;
+    const requestedDays = Number.parseInt(req.query.days || "7", 10);
+    const activityDays = Number.isFinite(requestedDays) ? Math.min(90, Math.max(1, requestedDays)) : 7;
+    const defaultFrom = now - activityDays * 24 * 60 * 60 * 1000;
     const from = requestedFrom ? Date.parse(requestedFrom) : defaultFrom;
     const to = requestedTo ? Date.parse(`${requestedTo}T23:59:59.999`) : now;
     const periodFrom = Number.isFinite(from) ? from : defaultFrom;
@@ -17422,7 +17424,7 @@ app.get(
       return [event.user?.name, event.user?.username, event.user?.contact, event.ip, event.sessionId, event.title, event.subtitle]
         .some((value) => String(value || "").toLowerCase().includes(search));
     });
-    const limit = Math.min(200, Math.max(1, Number.parseInt(req.query.limit || "40", 10) || 40));
+    const limit = Math.min(200, Math.max(1, Number.parseInt(req.query.limit || "100", 10) || 100));
     const offset = Math.max(0, Number.parseInt(req.query.offset || "0", 10) || 0);
     const summary = {
       newUsers: filtered.filter((event) => event.type === "registration").length,

@@ -4203,6 +4203,11 @@
       .admin-activity-clear{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;padding:0!important;display:grid!important;place-items:center;border:1px solid var(--admin-line)!important;border-radius:8px!important;background:var(--admin-sage)!important;color:var(--admin-forest)!important;text-decoration:none!important}
       .admin-activity-clear-label{display:none}
       .admin-activity-clear-icon{display:block;font-size:20px;line-height:1;font-weight:500}
+      .admin-activity-custom{width:100%;box-sizing:border-box;display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) 34px;gap:4px!important;align-items:center;padding:0!important}
+      .admin-activity-custom.hidden{display:none!important}
+      .admin-activity-custom input{width:100%!important;min-width:0!important;box-sizing:border-box;padding:7px 4px!important;font-size:11px!important}
+      .admin-activity-custom span{font-size:11px!important;color:var(--admin-muted)!important}
+      #admin-activity-apply{width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;font-size:11px!important}
     }
     /* Broadcast redesign: calm camo-green messaging workspace. */
     #broadcast.content.active{background:transparent!important;color:var(--admin-ink)!important}
@@ -6513,6 +6518,18 @@
         }
       }
     </style>
+    <style>
+      .admin-activity-drawer-actions { display:flex; justify-content:flex-end; margin-top:22px; padding-top:14px; border-top:1px solid var(--admin-line); }
+      .admin-activity-drawer-head { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; }
+      .admin-activity-drawer-head strong { margin:0; }
+      .admin-activity-drawer-head #admin-activity-close { margin-left:auto; width:32px; height:32px; padding:0; display:grid; place-items:center; border:1px solid var(--admin-line); border-radius:8px; background:transparent; color:var(--admin-forest); font:inherit; font-size:20px; line-height:1; cursor:pointer; }
+      #admin-activity-cancel { min-width:96px; padding:9px 16px; border:1px solid var(--admin-line); border-radius:8px; background:var(--admin-sage); color:var(--admin-forest); font:inherit; font-weight:700; cursor:pointer; }
+      #admin-activity-cancel:hover { background:var(--admin-khaki); }
+      @media (max-width:760px) {
+        .admin-activity-overlay { top:64px; }
+        .admin-activity-drawer { top:64px; height:calc(100% - 64px); max-height:calc(100% - 64px); padding-bottom:24px; }
+      }
+    </style>
   </head>
   <body>
     <!-- LOGIN SCREEN -->
@@ -6652,14 +6669,14 @@
           <div id="admin-activity-error" class="admin-activity-error hidden"></div>
           <div class="admin-activity-head">
             <div><h2>Activity</h2><p id="admin-activity-period-label">Complete platform activity for the last 7 days</p></div>
-            <div><div class="admin-activity-periods" id="admin-activity-periods"><button data-days="1">24h</button><button class="active" data-days="7">7 days</button><button data-days="30">30 days</button><button data-days="90">90 days</button><button data-days="custom">Custom</button></div><div class="admin-activity-custom hidden" id="admin-activity-custom"><input type="date" id="admin-activity-from"><span>to</span><input type="date" id="admin-activity-to"><button class="toolbar-button" id="admin-activity-apply">Apply</button></div></div>
+            <div><div class="admin-activity-periods" id="admin-activity-periods"><button data-days="1">24h</button><button class="active" data-days="7">7 days</button><button data-days="30">30 days</button><button data-days="90">90 days</button><button data-days="custom">Custom</button></div><div class="admin-activity-custom hidden" id="admin-activity-custom"><input type="date" id="admin-activity-from"><span>to</span><input type="date" id="admin-activity-to"><button class="toolbar-button" id="admin-activity-apply">OK</button></div></div>
           </div>
           <div class="admin-activity-cards" id="admin-activity-cards"></div>
           <div class="admin-activity-filters"><input id="admin-activity-search" type="search" placeholder="Search by user, contact, IP, or session"><select id="admin-activity-type"><option value="">All activity types</option><option value="registration">Registrations</option><option value="login">Logins</option><option value="session_active">Active sessions</option><option value="session_expired">Ended sessions</option><option value="quiz_attempt">Quiz attempts</option><option value="quiz_completed">Completed quizzes</option><option value="perf_update">Performance updates</option><option value="password_reset_request">Password-reset requests</option><option value="profile_update">Profile updates</option><option value="subscription_request">Subscription requests</option><option value="subscription_approved">Subscription approvals</option><option value="subscription_rejected">Subscription rejections</option><option value="report_submitted">Reports submitted</option><option value="report_resolved">Reports resolved</option></select><select id="admin-activity-status"><option value="">All statuses</option><option value="success">Success</option><option value="pending">Pending</option><option value="failed">Failed</option><option value="rejected">Rejected</option><option value="security">Security-sensitive</option></select><button class="admin-activity-clear" id="admin-activity-clear" type="button" aria-label="Clear activity filters"><span class="admin-activity-clear-label">Clear filters</span><span class="admin-activity-clear-icon" aria-hidden="true">×</span></button></div>
           <div class="admin-activity-chart"><h3>Activity volume per day</h3><div class="admin-activity-bars" id="admin-activity-bars"></div></div>
           <div class="admin-activity-table"><div class="admin-activity-scroll"><table><thead><tr><th>User</th><th>Activity</th><th>Status</th><th>Date and time</th><th>Device / session</th></tr></thead><tbody id="admin-activity-rows"></tbody></table></div><div id="admin-activity-footer"></div></div>
         </div>
-        <div class="admin-activity-overlay" id="admin-activity-overlay"></div><aside class="admin-activity-drawer" id="admin-activity-drawer"><div class="admin-activity-drawer-head"><strong>Activity record</strong><button type="button" id="admin-activity-close">x</button></div><div id="admin-activity-detail"></div></aside>
+        <div class="admin-activity-overlay" id="admin-activity-overlay"></div><aside class="admin-activity-drawer" id="admin-activity-drawer"><div class="admin-activity-drawer-head"><strong>Activity record</strong><button type="button" id="admin-activity-close" aria-label="Close activity details">×</button></div><div id="admin-activity-detail"></div><div class="admin-activity-drawer-actions"><button type="button" id="admin-activity-cancel">Cancel</button></div></aside>
       </div>
 
       <!-- USERS TAB -->
@@ -7585,7 +7602,7 @@
     </div>
 
     <script src="table-scroll.js?v=20261015-table-scroll4"></script>
-    <script src="admin.js?v=20261020-light-only-card90"></script>
+    <script src="admin.js?v=20261020-light-only-card92"></script>
     <script>
       const adminWorkspacePlaceholderModal = document.getElementById("admin-workspace-placeholder-modal");
       const adminWorkspacePlaceholderCopy = document.getElementById("admin-workspace-placeholder-copy");

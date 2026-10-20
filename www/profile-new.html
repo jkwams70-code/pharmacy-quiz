@@ -371,6 +371,19 @@
         <p class="card-desc">Manage the information linked to your AjixPharmacy account.</p>
         <div class="grid">
           <div class="field">
+            <label for="title">Title</label>
+            <div class="select-wrap">
+              <select id="title">
+                <option value="">Select title</option>
+                <option>Mr</option><option>Mrs</option><option>Ms</option><option>Miss</option>
+                <option>Dr</option><option>Prof</option><option>Rev</option><option>Engr</option>
+                <option>Pharm</option><option>Nurse</option><option value="__other">Other</option>
+              </select>
+              <input id="title-input" type="text" placeholder="Enter your title" hidden>
+              <button class="select-reopen" id="title-reopen" type="button" aria-label="Choose title from list" title="Choose from list" hidden>⌄</button>
+            </div>
+          </div>
+          <div class="field">
             <label for="fullName">Full name</label>
             <input id="fullName" type="text" value="" autocomplete="name">
           </div>
@@ -791,7 +804,10 @@
   });
 
   /* ---------- Institution "Other" ---------- */
-  var institution = document.getElementById('institution'),
+  var title = document.getElementById('title'),
+      titleInput = document.getElementById('title-input'),
+      titleReopen = document.getElementById('title-reopen'),
+      institution = document.getElementById('institution'),
       institutionInput = document.getElementById('institution-input'),
       institutionReopen = document.getElementById('institution-reopen'),
       programme   = document.getElementById('programme'),
@@ -817,6 +833,11 @@
     else { select.value = ''; input.value = ''; }
     syncEditableSelect(select, input, reopen);
   }
+  title.addEventListener('change', function(){
+    if(title.value === '__other') titleInput.value = '';
+    syncEditableSelect(title, titleInput, titleReopen);
+  });
+  titleReopen.addEventListener('click', function(){ title.value = ''; syncEditableSelect(title, titleInput, titleReopen); title.focus(); });
   institution.addEventListener('change', function(){
     if(institution.value === '__other') institutionInput.value = '';
     syncEditableSelect(institution, institutionInput, institutionReopen);
@@ -826,6 +847,7 @@
     syncEditableSelect(programme, programmeInput, programmeReopen);
     refreshStrength();
   });
+  syncEditableSelect(title, titleInput, titleReopen);
   syncEditableSelect(institution, institutionInput, institutionReopen);
   syncEditableSelect(programme, programmeInput, programmeReopen);
   institutionReopen.addEventListener('click', function(){ institution.value = ''; syncEditableSelect(institution, institutionInput, institutionReopen); institution.focus(); });
@@ -856,6 +878,7 @@
     var phoneValue = phoneInputValue ? phoneCountryCodeValue + phoneInputValue : '';
     window.parent.postMessage({ type: 'ajix-profile-save', form: {
       fullName: document.getElementById('fullName').value,
+      title: getEditableSelectValue(title, titleInput),
       username: document.getElementById('username').value,
       email: document.getElementById('email').value,
       phone: phoneValue,
@@ -955,10 +978,10 @@
   }
   function setProfileEditing(enabled){
     profileEditing = Boolean(enabled);
-    ['fullName','username','level','bio','programme','programme-input','institution','institution-input'].forEach(function(id){
+    ['fullName','username','level','bio','title','title-input','programme','programme-input','institution','institution-input'].forEach(function(id){
       var el = document.getElementById(id); if(el) el.disabled = !profileEditing;
     });
-    ['programme-reopen','institution-reopen','uploadLink','avatarInput','removeLink','camBtn'].forEach(function(id){
+    ['title-reopen','programme-reopen','institution-reopen','uploadLink','avatarInput','removeLink','camBtn'].forEach(function(id){
       var el = document.getElementById(id); if(el) el.disabled = !profileEditing;
     });
     ['camBtn'].forEach(function(id){
@@ -977,6 +1000,8 @@
       email: document.getElementById('email').value,
       phone: document.getElementById('phone').value,
       phoneCountryCode: document.getElementById('phoneCountryCode').value,
+      title: title.value,
+      titleInput: titleInput.value,
       programme: programme.value,
       programmeInput: programmeInput.value,
       level: document.getElementById('level').value,
@@ -990,6 +1015,7 @@
   function restoreFormState(state){
     if(!state) return;
     setProfileValue('fullName', state.fullName); setProfileValue('username', state.username); setProfileValue('email', state.email); setProfileValue('phone', state.phone);
+    title.value = state.title; titleInput.value = state.titleInput; syncEditableSelect(title, titleInput, titleReopen);
     setProfileValue('phoneCountryCode', state.phoneCountryCode); setProfileValue('level', state.level); setProfileValue('bio', state.bio);
     programme.value = state.programme; programmeInput.value = state.programmeInput; syncEditableSelect(programme, programmeInput, programmeReopen);
     institution.value = state.institution; institutionInput.value = state.institutionInput; syncEditableSelect(institution, institutionInput, institutionReopen);
@@ -1033,6 +1059,7 @@
     document.getElementById('avatarPh').textContent = displayName.split(/\s+/).filter(Boolean).slice(0,2).map(function(part){ return part.charAt(0); }).join('').toUpperCase() || '?';
     setProfileValue('fullName', displayName);
     setProfileValue('username', user.username || '');
+    setEditableSelectValue(title, titleInput, titleReopen, user.title || '');
     setProfileValue('email', user.email || (isEmail ? contact : ''));
     var phoneCountryCode = document.getElementById('phoneCountryCode');
     var phoneValue = user.phone || (isEmail ? '' : contact);

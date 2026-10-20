@@ -846,11 +846,16 @@ async function getCommunityConversationForMember(conversationId = "", memberId =
 function getCommunityConversationMergeKey(conversation = {}) {
   const normalized = normalizeConversation(conversation);
   if (normalized.type === "notice") {
+    const threadKey = normalizeWhitespace(normalized.noticeThreadKey || "").toLowerCase();
+    const originType = normalizeWhitespace(normalized.noticeOriginType || "").toLowerCase();
+    const originId = normalizeWhitespace(normalized.noticeOriginId || "").toLowerCase();
+    if (threadKey === "broadcast" || originType === "broadcast" || originId === "all-users") {
+      return "notice-thread:broadcast";
+    }
     const recipientId = String(normalized.memberIds?.[0] || "").trim();
     if (recipientId) {
       return `notice:${recipientId}`;
     }
-    const threadKey = normalizeWhitespace(normalized.noticeThreadKey || "");
     if (threadKey) {
       return `notice-thread:${threadKey}`;
     }
@@ -1066,6 +1071,12 @@ function normalizeConversation(raw = {}) {
   const noticeSenderName = normalizeWhitespace(raw.noticeSenderName).slice(0, 80);
   const noticeThreadKey = normalizeWhitespace(raw.noticeThreadKey || "").slice(0, 120);
   const noticeBatchId = String(raw.noticeBatchId || "").trim();
+  const requestedNoticeReplyMode = normalizeWhitespace(raw.noticeReplyMode).toLowerCase();
+  const noticeReplyMode = requestedNoticeReplyMode === "enabled"
+    ? "enabled"
+    : requestedNoticeReplyMode === "admin_only"
+      ? "admin_only"
+      : "enabled";
   const hiddenForUserIds = Array.isArray(raw.hiddenForUserIds)
     ? [...new Set(raw.hiddenForUserIds.map((value) => String(value || "").trim()).filter(Boolean))].sort(
         (a, b) => a.localeCompare(b),
@@ -1095,6 +1106,7 @@ function normalizeConversation(raw = {}) {
     noticeSenderName,
     noticeThreadKey,
     noticeBatchId,
+    noticeReplyMode,
     hiddenForUserIds,
     lastMessageId: String(raw.lastMessageId || ""),
     lastMessageAt: String(raw.lastMessageAt || createdAt),
@@ -1202,9 +1214,35 @@ function getAdminNoticeThreadKeyFromMessage(message = {}, conversation = {}) {
   return getAdminNoticeThreadKeyFromConversation(conversation);
 }
 
+// Resolve the thread using the message sender when a user replied through the
+// shared broadcast conversation. This keeps legacy and newly-created replies
+// in the same individual admin chat.
+function getEffectiveAdminNoticeThreadKey(message = {}, conversation = {}) {
+  const rawThreadKey = getAdminNoticeThreadKeyFromMessage(message, conversation);
+  const senderUserId = String(message.senderUserId || "").trim();
+  if (
+    conversation?.type === "notice" &&
+    senderUserId &&
+    senderUserId !== ADMIN_NOTICE_SENDER_ID &&
+    rawThreadKey === ADMIN_BROADCAST_THREAD_KEY
+  ) {
+    const memberId = Array.isArray(conversation.memberIds)
+      ? String(conversation.memberIds[0] || "").trim()
+      : "";
+    return buildAdminNoticeThreadKey("user", memberId || senderUserId);
+  }
+  return rawThreadKey;
+}
+
 function getAdminNoticeThreadBatchIdFromMessage(message = {}, conversation = {}) {
   const explicitBatchId = String(message.noticeBatchId || "").trim();
   if (explicitBatchId) return explicitBatchId;
+  // A user's reply is always its own chat event. Never inherit the notice
+  // batch ID stored on the conversation, because that ID belongs to the last
+  // admin delivery and would collapse multiple user messages into one row.
+  if (String(message.senderUserId || "").trim() !== ADMIN_NOTICE_SENDER_ID) {
+    return String(message.id || crypto.randomUUID()).trim();
+  }
   const conversationBatchId = String(conversation.noticeBatchId || "").trim();
   if (conversationBatchId) return conversationBatchId;
   return String(message.id || crypto.randomUUID()).trim();
@@ -1250,6 +1288,7 @@ function buildAdminNoticeMessagePayload(message = {}, { uploads = [] } = {}) {
 function buildAdminBroadcastThreadCollections({
   conversations = [],
   messages = [],
+  users = [],
   uploads = [],
   broadcastMessages = [],
   broadcastRecipientCount = 0,
@@ -1260,6 +1299,9 @@ function buildAdminBroadcastThreadCollections({
     : [];
   const normalizedReports = Array.isArray(reports)
     ? reports.map((report) => normalizeAdminReport(report))
+    : [];
+  const normalizedUsers = Array.isArray(users)
+    ? users.map((user) => normalizeExistingUser(user))
     : [];
   const existingThreadKeys = new Set(
     normalizedConversations
@@ -1340,13 +1382,26 @@ function buildAdminBroadcastThreadCollections({
   const fallbackBroadcastMessages = normalizedMessages
     .filter(
       (message) =>
+        String(message.senderUserId || "") === ADMIN_NOTICE_SENDER_ID &&
         getAdminNoticeThreadKeyFromMessage(message, conversationById.get(message.conversationId) || {}) ===
         ADMIN_BROADCAST_THREAD_KEY,
-    )
-    .map(normalizeAdminBroadcastMessage);
+    );
   const normalizedBroadcastMessages = archivedBroadcastMessages.length
     ? archivedBroadcastMessages
     : [...new Map(fallbackBroadcastMessages.map((message) => [message.noticeBatchId || message.id, message])).values()];
+  const adminThreadMessages = normalizedMessages.map((message) => {
+    const conversation = conversationById.get(message.conversationId);
+    const effectiveThreadKey = getEffectiveAdminNoticeThreadKey(message, conversation || {});
+    if (effectiveThreadKey !== getAdminNoticeThreadKeyFromMessage(message, conversation || {})) {
+      return {
+        ...message,
+        noticeThreadKey: effectiveThreadKey,
+      };
+    }
+    return message;
+  });
+  const broadcastThreadMessages = [...normalizedBroadcastMessages]
+    .sort((left, right) => String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
 
   const thread = {
     threadKey: ADMIN_BROADCAST_THREAD_KEY,
@@ -1355,9 +1410,17 @@ function buildAdminBroadcastThreadCollections({
     batchMap: new Map(),
     latestAt: "",
     latestConversationId: ADMIN_BROADCAST_CONVERSATION_ID,
-    broadcastMessages: normalizedBroadcastMessages,
+    broadcastMessages: broadcastThreadMessages,
+    unreadUserMessageCount: 0,
+    noticeConversation: null,
   };
-  normalizedBroadcastMessages.forEach((message) => {
+  broadcastThreadMessages.forEach((message) => {
+    if (
+      String(message.senderUserId || "") !== ADMIN_NOTICE_SENDER_ID &&
+      !String(message.readAt || "").trim()
+    ) {
+      thread.unreadUserMessageCount += 1;
+    }
     const batchId = getAdminNoticeThreadBatchIdFromMessage(message, {
       noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
       noticeBatchId: message.noticeBatchId,
@@ -1370,7 +1433,11 @@ function buildAdminBroadcastThreadCollections({
       firstAt: "",
     };
     batch.messageIds.add(message.id);
-    batch.conversationIds.add(ADMIN_BROADCAST_CONVERSATION_ID);
+    batch.conversationIds.add(
+      String(message.senderUserId || "") === ADMIN_NOTICE_SENDER_ID
+        ? ADMIN_BROADCAST_CONVERSATION_ID
+        : message.conversationId,
+    );
     batch.latestAt = [batch.latestAt, message.createdAt].filter(Boolean).sort().slice(-1)[0] || message.createdAt;
     batch.firstAt = batch.firstAt ? [batch.firstAt, message.createdAt].filter(Boolean).sort()[0] : message.createdAt;
     thread.batchMap.set(batchId, batch);
@@ -1380,15 +1447,15 @@ function buildAdminBroadcastThreadCollections({
   });
   threads.set(ADMIN_BROADCAST_THREAD_KEY, thread);
 
-  normalizedMessages
+  adminThreadMessages
     .filter((message) => {
       const conversation = conversationById.get(message.conversationId);
       return conversation && conversation.type === "notice";
     })
-    .filter((message) => getAdminNoticeThreadKeyFromMessage(message, conversationById.get(message.conversationId) || {}) !== ADMIN_BROADCAST_THREAD_KEY)
+    .filter((message) => getEffectiveAdminNoticeThreadKey(message, conversationById.get(message.conversationId) || {}) !== ADMIN_BROADCAST_THREAD_KEY)
     .forEach((message) => {
       const conversation = conversationById.get(message.conversationId) || {};
-      const threadKey = getAdminNoticeThreadKeyFromMessage(message, conversation);
+      const threadKey = getEffectiveAdminNoticeThreadKey(message, conversation);
       if (!threadKey) return;
       const thread = threads.get(threadKey) || {
         threadKey,
@@ -1397,11 +1464,52 @@ function buildAdminBroadcastThreadCollections({
         batchMap: new Map(),
         latestAt: "",
         latestConversationId: "",
+        unreadUserMessageCount: 0,
+        noticeConversation: null,
       };
+      if (
+        String(message.senderUserId || "") !== ADMIN_NOTICE_SENDER_ID &&
+        !String(message.readAt || "").trim()
+      ) {
+        thread.unreadUserMessageCount += 1;
+      }
       thread.conversationIds.add(message.conversationId);
-      const conversationMemberId = Array.isArray(conversation.memberIds) ? conversation.memberIds[0] : "";
+      const conversationMemberId = Array.isArray(conversation.memberIds) && conversation.memberIds.length
+        ? conversation.memberIds[0]
+        : String(message.senderUserId || "").trim() !== ADMIN_NOTICE_SENDER_ID && threadKey.startsWith("notice:user:")
+          ? String(message.senderUserId || "").trim()
+          : "";
       if (conversationMemberId) {
         thread.recipientIds.add(conversationMemberId);
+      }
+      const parsedThread = parseAdminNoticeThreadKey(threadKey);
+      if (threadKey.startsWith("notice:user:") && conversationMemberId) {
+        const recipient = normalizedUsers.find((entry) => entry.id === conversationMemberId);
+        if (recipient) {
+          thread.noticeConversation = {
+            ...conversation,
+            noticeTitle: recipient.name || recipient.username || "User",
+            noticeSubtitle: `User: ${recipient.name || recipient.username || "User"}`,
+            noticeOriginType: "user",
+            noticeOriginId: recipient.id,
+            noticeOriginName: recipient.name || recipient.username || recipient.id,
+            noticeThreadKey: threadKey,
+          };
+        }
+      } else if (parsedThread?.originType === "report" && parsedThread.originId) {
+        const report = normalizedReports.find((entry) => entry.id === parsedThread.originId);
+        if (report) {
+          const targetName = normalizeWhitespace(report.targetName || report.targetUsername || report.targetId || "");
+          thread.noticeConversation = {
+            ...conversation,
+            noticeTitle: targetName || "Report notice",
+            noticeSubtitle: targetName ? `Warning for ${targetName}` : "Warning notice",
+            noticeOriginType: "report",
+            noticeOriginId: report.id,
+            noticeOriginName: targetName,
+            noticeThreadKey: threadKey,
+          };
+        }
       }
       const batchId = getAdminNoticeThreadBatchIdFromMessage(message, conversation);
       const batch = thread.batchMap.get(batchId) || {
@@ -1435,8 +1543,8 @@ function buildAdminBroadcastThreadCollections({
         .map((batch) => {
           const sourceMessages =
             thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
-              ? normalizedBroadcastMessages
-              : normalizedMessages;
+              ? broadcastThreadMessages
+              : adminThreadMessages;
           const batchMessages = [...batch.messageIds]
             .map((messageId) => sourceMessages.find((entry) => String(entry.id || "") === String(messageId)) || null)
             .filter(Boolean)
@@ -1469,11 +1577,11 @@ function buildAdminBroadcastThreadCollections({
       const latestBatch = batches[0] || null;
       const latestConversation = thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
         ? null
-        : latestBatch?.representativeConversationId
-        ? conversationById.get(latestBatch.representativeConversationId)
-        : thread.latestConversationId
-          ? conversationById.get(thread.latestConversationId)
-          : null;
+        : thread.noticeConversation || (latestBatch?.representativeConversationId
+          ? conversationById.get(latestBatch.representativeConversationId)
+          : thread.latestConversationId
+            ? conversationById.get(thread.latestConversationId)
+            : null);
       const recipientCount = thread.threadKey === ADMIN_BROADCAST_THREAD_KEY ? broadcastRecipientCount : thread.recipientIds.size;
       const title = thread.threadKey === ADMIN_BROADCAST_THREAD_KEY
         ? "Announcement"
@@ -1504,6 +1612,8 @@ function buildAdminBroadcastThreadCollections({
         previewText: latestBatch?.text || latestBatch?.attachment?.fileName || latestBatch?.attachment?.kind || (
           thread.threadKey === ADMIN_BROADCAST_THREAD_KEY ? "Broadcast to everyone" : ""
         ),
+        unreadMessageCount: thread.unreadUserMessageCount || 0,
+        hasUnreadMessages: (thread.unreadUserMessageCount || 0) > 0,
         lastMessage: latestBatch,
         batches,
       };
@@ -1735,7 +1845,10 @@ function normalizeStatus(raw = {}) {
     caption: normalizeWhitespace(raw.caption).slice(0, 140),
     durationSeconds: videoTrimSpan,
     visibility: STATUS_VISIBILITY_VALUES.has(visibility) ? visibility : "friends",
-    allowReplies: raw?.allowReplies !== false,
+    allowReplies:
+      raw?.isAdminBroadcast === true || String(raw?.isAdminBroadcast || "").trim().toLowerCase() === "true"
+        ? true
+        : raw?.allowReplies !== false,
     isAdminBroadcast: raw?.isAdminBroadcast === true || String(raw?.isAdminBroadcast || "").trim().toLowerCase() === "true",
     viewers: normalizeStatusActorEntries(raw.viewers, createdAt),
     likes: normalizeStatusActorEntries(raw.likes, createdAt),
@@ -3225,6 +3338,8 @@ function normalizeMessageReply(raw = null) {
   return {
     type: type === "status" ? "status" : "message",
     sourceId: String(raw.sourceId || raw.messageId || raw.statusId || "").trim(),
+    conversationId: String(raw.conversationId || "").trim(),
+    senderUserId: String(raw.senderUserId || raw.ownerId || "").trim(),
     senderName: normalizeWhitespace(raw.senderName || raw.ownerName || raw.title || "").slice(0, 80),
     text: normalizeWhitespace(raw.text || raw.caption || "").slice(0, 240),
     imageDataUrl: String(raw.imageDataUrl || "").trim().slice(0, 5_000_000),
@@ -3813,6 +3928,7 @@ async function persistCommunityConversationMessage({
   const conversations = (await readCollection("conversations")).map(normalizeConversation);
   const messages = (await readCollection("messages")).map(normalizeMessage);
   const blocks = (await readCollection("blocks")).map(normalizeBlock);
+  const users = (await readCollection("users")).map(normalizeExistingUser);
   const conversationIndex = conversations.findIndex((entry) => entry.id === safeConversationId);
   if (conversationIndex < 0 || !conversations[conversationIndex].memberIds.includes(viewerId)) {
     throw new Error("conversation not found");
@@ -3825,7 +3941,7 @@ async function persistCommunityConversationMessage({
   if (conversation.type === "direct" && isBlocked(blocks, viewerId, partnerId)) {
     throw new Error("unblock user first");
   }
-  if (conversation.type === "notice") {
+  if (conversation.type === "notice" && conversation.noticeReplyMode !== "enabled") {
     throw new Error("admin notices are read only");
   }
   if (!safeText && !upload) {
@@ -3840,6 +3956,15 @@ async function persistCommunityConversationMessage({
     throw new Error("only admins can send messages in this group");
   }
   assertSafeCommunityText(safeText, "message");
+  // Broadcast notices are shown to everyone, but each user's reply belongs
+  // to that user's individual admin conversation.
+  const noticeThreadKey =
+    conversation.type === "notice" &&
+    getAdminNoticeThreadKeyFromConversation(conversation) === ADMIN_BROADCAST_THREAD_KEY
+      ? buildAdminNoticeThreadKey("user", viewerId)
+      : conversation.type === "notice"
+        ? conversation.noticeThreadKey
+        : "";
   const uploadRecords = upload ? (await readCollection("uploads")).map(normalizeUpload) : [];
   const persistedUploadResult = upload ? persistUploadRecord(uploadRecords, upload) : { uploads: [], upload: null };
   const storedUpload = persistedUploadResult.upload;
@@ -3848,6 +3973,7 @@ async function persistCommunityConversationMessage({
   const message = normalizeMessage({
     conversationId: safeConversationId,
     senderUserId: viewerId,
+    senderName: users.find((entry) => entry.id === viewerId)?.name || users.find((entry) => entry.id === viewerId)?.username || "User",
     type: storedUpload ? getMessageTypeFromUpload(storedUpload) : "text",
     text: safeText.slice(0, 2000),
     attachment: storedUpload
@@ -3887,6 +4013,7 @@ async function persistCommunityConversationMessage({
 
 async function persistAdminNoticeMessage({
   recipientId = "",
+  conversationId = "",
   text = "",
   title = "Admin Notice",
   subtitle = "Messages from the admin team",
@@ -3898,6 +4025,7 @@ async function persistAdminNoticeMessage({
   storedUpload = null,
   noticeThreadKey = "",
   noticeBatchId = "",
+  replyTo = null,
 } = {}) {
   const safeRecipientId = String(recipientId || "").trim();
   const safeText = String(text || "").trim();
@@ -3928,20 +4056,27 @@ async function persistAdminNoticeMessage({
     throw new Error("message text or attachment is required");
   }
   const nowIso = new Date().toISOString();
+  const requestedConversationId = String(conversationId || "").trim();
+  const requestedConversationIndex = requestedConversationId
+    ? conversations.findIndex((entry) => entry.id === requestedConversationId && entry.memberIds.includes(safeRecipientId))
+    : -1;
   const matchingConversations = conversations
     .map((entry, index) => ({ entry, index }))
     .filter(
       ({ entry }) =>
         entry.type === "notice" &&
         entry.memberIds.length === 1 &&
-        entry.memberIds.includes(safeRecipientId),
+        entry.memberIds.includes(safeRecipientId) &&
+        (!safeThreadKey || entry.noticeThreadKey === safeThreadKey),
     )
     .sort((left, right) => {
       const createdDiff = String(left.entry.createdAt || "").localeCompare(String(right.entry.createdAt || ""));
       if (createdDiff !== 0) return createdDiff;
       return String(left.entry.id || "").localeCompare(String(right.entry.id || ""));
     });
-  let conversationIndex = matchingConversations[0]?.index ?? -1;
+  let conversationIndex = requestedConversationIndex >= 0
+    ? requestedConversationIndex
+    : (matchingConversations[0]?.index ?? -1);
   const currentConversation = conversationIndex >= 0 ? conversations[conversationIndex] : null;
   const nextConversation = normalizeConversation({
     ...(currentConversation || {}),
@@ -3976,6 +4111,7 @@ async function persistAdminNoticeMessage({
     senderName: safeSenderName,
     type: nextStoredUpload ? getMessageTypeFromUpload(nextStoredUpload) : "text",
     text: safeText.slice(0, 2000),
+    replyTo: normalizeMessageReply(replyTo),
     deliveredAt: nowIso,
     readAt: null,
     seenByUserIds: [],
@@ -4122,7 +4258,7 @@ async function persistCommunityStatus({
     videoTrimStart: Number(style?.videoTrimStart || 0) || 0,
     videoTrimEnd: Number(style?.videoTrimEnd || 0) || 0,
     durationSeconds: Math.max(1, Math.min(30, Number(style?.durationSeconds || 30) || 30)),
-    allowReplies: isAdminBroadcast ? false : style?.allowReplies !== false,
+    allowReplies: isAdminBroadcast ? true : style?.allowReplies !== false,
     caption,
     visibility: isAdminBroadcast
       ? "everyone"
@@ -4639,13 +4775,20 @@ function getConversationDisplayPayload(conversation, {
     const noticeSubtitle = normalizedConversation.noticeSubtitle || (isBroadcastNotice
       ? "Announcement sent to all users"
       : "Messages from the admin team");
+    const noticeOriginType = String(normalizedConversation.noticeOriginType || "").trim().toLowerCase();
+    const noticeOriginName = normalizeWhitespace(normalizedConversation.noticeOriginName || "").slice(0, 120);
+    const noticeDisplayName = isBroadcastNotice
+      ? "Announcement"
+      : ((noticeOriginType === "user" || noticeOriginType === "group" || noticeOriginType === "report") && noticeOriginName
+        ? noticeOriginName
+        : (normalizedConversation.noticeTitle || "Admin Notice"));
     return {
       id: normalizedConversation.id,
       kind: "notice",
       type: "notice",
-      name: normalizedConversation.noticeTitle || "Admin Notice",
-      displayName: normalizedConversation.noticeTitle || "Admin Notice",
-      title: normalizedConversation.noticeTitle || "Admin Notice",
+      name: noticeDisplayName,
+      displayName: noticeDisplayName,
+      title: noticeDisplayName,
       username: "",
       profileImage: avatarUpload ? resolveUploadPublicView(avatarUpload).dataUrl : ADMIN_NOTICE_PROFILE_IMAGE,
       institution: noticeSubtitle,
@@ -4659,7 +4802,7 @@ function getConversationDisplayPayload(conversation, {
       onlineNow: false,
       isGroup: false,
       isNotice: true,
-      isReadOnly: true,
+      isReadOnly: normalizedConversation.noticeReplyMode !== "enabled",
       ownerUserId: normalizedConversation.ownerUserId,
       adminIds: [],
       memberIds: normalizedConversation.memberIds,
@@ -4669,11 +4812,12 @@ function getConversationDisplayPayload(conversation, {
       noticeTitle: normalizedConversation.noticeTitle || "Admin Notice",
       noticeSubtitle,
       noticeBody: normalizedConversation.noticeBody || "",
-      noticeOriginType: normalizedConversation.noticeOriginType || "",
+      noticeOriginType,
       noticeOriginId: normalizedConversation.noticeOriginId || "",
-      noticeOriginName: normalizedConversation.noticeOriginName || "",
+      noticeOriginName,
       noticeSenderId: normalizedConversation.noticeSenderId || ADMIN_NOTICE_SENDER_ID,
       noticeSenderName: normalizedConversation.noticeSenderName || ADMIN_NOTICE_SENDER_NAME,
+      noticeReplyMode: normalizedConversation.noticeReplyMode,
       conversationType: "notice",
     };
   }
@@ -6321,6 +6465,7 @@ async function sendAdminNoticeToRecipients(
     upload = null,
     noticeThreadKey = "",
     noticeBatchId = "",
+    replyTo = null,
   } = {},
 ) {
   const uniqueRecipientIds = [...new Set(
@@ -6355,6 +6500,7 @@ async function sendAdminNoticeToRecipients(
     // eslint-disable-next-line no-await-in-loop
     results.push(await persistAdminNoticeMessage({
       recipientId,
+      conversationId: String(replyTo?.conversationId || "").trim(),
       text,
       title,
       subtitle,
@@ -6365,6 +6511,7 @@ async function sendAdminNoticeToRecipients(
       storedUpload,
       noticeThreadKey: safeThreadKey,
       noticeBatchId: safeBatchId,
+      replyTo,
     }));
   }
   return results;
@@ -6540,6 +6687,8 @@ function buildAdminBroadcastThreadOverview(thread = {}) {
     latestAt: thread.latestAt,
     recipientCount: thread.recipientCount || 0,
     batchCount: thread.batchCount || 0,
+    unreadMessageCount: thread.unreadMessageCount || 0,
+    hasUnreadMessages: thread.hasUnreadMessages === true || (thread.unreadMessageCount || 0) > 0,
     previewText: thread.previewText || "",
     lastMessage: latestMessage,
   };
@@ -6557,6 +6706,18 @@ function normalizeAdminReport(rawReport = {}) {
     reporterUserId: String(rawReport.reporterUserId || ""),
     reporterName: normalizeWhitespace(rawReport.reporterName),
     reason: normalizeWhitespace(rawReport.reason),
+    description: normalizeMultilineText(rawReport.description).slice(0, 2000),
+    evidence: Array.isArray(rawReport.evidence)
+      ? rawReport.evidence.slice(0, 5).map((entry) => ({
+          uploadId: String(entry?.uploadId || entry?.id || "").trim(),
+          fileName: normalizeWhitespace(entry?.fileName).slice(0, 160),
+          mimeType: normalizeUploadMimeType(entry?.mimeType || ""),
+          size: Math.max(0, Number(entry?.size) || 0),
+          // Keep legacy evidence URLs so reports created before upload records
+          // were introduced remain viewable in the admin case modal.
+          url: String(entry?.url || entry?.dataUrl || entry?.publicUrl || entry?.remoteUrl || "").trim(),
+        })).filter((entry) => entry.uploadId || entry.url)
+      : [],
     warningMessage: normalizeMultilineText(rawReport.warningMessage),
     warningPreset: normalizeWhitespace(rawReport.warningPreset),
     warningById: String(rawReport.warningById || ""),
@@ -6610,8 +6771,31 @@ function buildAdminReportSnapshot(
           profileImage: "",
         };
   }
+  const evidence = report.evidence.map((entry) => {
+    const upload = uploads.find((candidate) => String(candidate?.id || "") === entry.uploadId);
+    if (!upload) {
+      return entry.url
+        ? {
+            uploadId: entry.uploadId,
+            fileName: entry.fileName || "Evidence",
+            mimeType: entry.mimeType || "",
+            size: entry.size || 0,
+            url: entry.url,
+          }
+        : null;
+    }
+    const view = resolveUploadPublicView(upload);
+    return {
+      uploadId: upload.id,
+      fileName: entry.fileName || upload.originalName || upload.fileName || "Evidence",
+      mimeType: entry.mimeType || upload.mimeType || "",
+      size: entry.size || upload.size || 0,
+      url: includeTargetDetails ? (view.remoteUrl || view.dataUrl || "") : "",
+    };
+  }).filter(Boolean);
   return {
     ...report,
+    evidence,
     reporter: reporter
       ? toPublicUser(reporter)
       : {
@@ -6622,6 +6806,40 @@ function buildAdminReportSnapshot(
         },
     target,
   };
+}
+
+async function createCommunityReportEvidence(rawEvidence = [], ownerUserId = "") {
+  const evidence = [];
+  const uploads = [];
+  const entries = Array.isArray(rawEvidence) ? rawEvidence.slice(0, 5) : [];
+  let totalBytes = 0;
+  for (const entry of entries) {
+    const dataUrl = String(entry?.dataUrl || "").trim();
+    if (!dataUrl) continue;
+    const parsed = parseDataUrlByMime(dataUrl);
+    if (!parsed || (!ALLOWED_IMAGE_MIME_TYPES.has(parsed.mimeType) && !ALLOWED_VIDEO_MIME_TYPES.has(parsed.mimeType) && !ALLOWED_DOCUMENT_MIME_TYPES.has(parsed.mimeType))) {
+      throw new Error("Evidence must be an image, video, PDF, DOC, DOCX, PPT, PPTX or TXT file.");
+    }
+    totalBytes += parsed.bytes;
+    if (parsed.bytes > 8 * 1024 * 1024 || totalBytes > 24 * 1024 * 1024) {
+      throw new Error("Evidence files must be under 8MB each and 24MB in total.");
+    }
+    await moderateCommunityUploadBuffer(Buffer.from(parsed.dataUrl.split(";base64,")[1] || "", "base64"), parsed.mimeType);
+    const upload = await createStoredUploadFromDataUrl({
+      ownerUserId,
+      kind: "report-evidence",
+      fileName: normalizeWhitespace(entry?.fileName || "report-evidence").slice(0, 160),
+      dataUrl: parsed.dataUrl,
+    });
+    uploads.push(upload);
+    evidence.push({
+      uploadId: upload.id,
+      fileName: normalizeWhitespace(entry?.fileName || upload.originalName || "Evidence").slice(0, 160),
+      mimeType: upload.mimeType || parsed.mimeType,
+      size: upload.size || parsed.bytes,
+    });
+  }
+  return { evidence, uploads };
 }
 
 async function archiveDeletedUser(user, metadata = {}) {
@@ -9654,7 +9872,7 @@ app.get(
             textItalic: entry.textItalic === true,
             textUnderline: entry.textUnderline === true,
             caption: entry.caption,
-            allowReplies: false,
+            allowReplies: true,
             isAdminBroadcast: true,
             imageFit: entry.imageFit,
             imageFilter: entry.imageFilter,
@@ -9854,6 +10072,7 @@ app.post(
     await touchUserLastSeen(viewerId);
     const targetId = String(req.params.userId || "").trim();
     const reason = normalizeWhitespace(req.body?.reason || "").slice(0, 240);
+    const description = normalizeMultilineText(req.body?.details || req.body?.description || "").slice(0, 2000);
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const target = users.find((entry) => entry.id === targetId);
     if (!target) {
@@ -9861,6 +10080,16 @@ app.post(
       return;
     }
     const reporter = users.find((entry) => entry.id === viewerId) || null;
+    let reportEvidence;
+    try {
+      reportEvidence = await createCommunityReportEvidence(req.body?.evidence, viewerId);
+    } catch (error) {
+      res.status(400).json({ error: String(error?.message || "Invalid report evidence.") });
+      return;
+    }
+    if (reportEvidence.uploads.length) {
+      await updateCollection("uploads", async (items) => [...items, ...reportEvidence.uploads]);
+    }
     await appendAdminReportRecord({
       id: crypto.randomUUID(),
       type: "user",
@@ -9871,6 +10100,8 @@ app.post(
       reporterUserId: viewerId,
       reporterName: reporter?.name || reporter?.username || "",
       reason: reason || "reported from community",
+      description,
+      evidence: reportEvidence.evidence,
       warningMessage: "",
       warningPreset: "",
       warningById: "",
@@ -11309,6 +11540,7 @@ app.post(
     await touchUserLastSeen(viewerId);
     const groupId = String(req.params.groupId || "").trim();
     const reason = normalizeWhitespace(req.body?.reason || "").slice(0, 240);
+    const description = normalizeMultilineText(req.body?.details || req.body?.description || "").slice(0, 2000);
     const conversations = (await readCollection("conversations")).map(normalizeConversation);
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const group = conversations.find((entry) => entry.id === groupId && entry.type === "group");
@@ -11317,6 +11549,16 @@ app.post(
       return;
     }
     const reporter = users.find((entry) => entry.id === viewerId) || null;
+    let reportEvidence;
+    try {
+      reportEvidence = await createCommunityReportEvidence(req.body?.evidence, viewerId);
+    } catch (error) {
+      res.status(400).json({ error: String(error?.message || "Invalid report evidence.") });
+      return;
+    }
+    if (reportEvidence.uploads.length) {
+      await updateCollection("uploads", async (items) => [...items, ...reportEvidence.uploads]);
+    }
     await appendAdminReportRecord({
       id: crypto.randomUUID(),
       type: "group",
@@ -11326,6 +11568,8 @@ app.post(
       reporterUserId: viewerId,
       reporterName: reporter?.name || reporter?.username || "",
       reason: reason || "reported from community",
+      description,
+      evidence: reportEvidence.evidence,
       warningMessage: "",
       warningPreset: "",
       warningById: "",
@@ -11962,7 +12206,7 @@ app.get(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const conversationId = String(req.params.conversationId || "");
+    let conversationId = String(req.params.conversationId || "");
     const markRead = String(req.query?.markRead || "true").trim().toLowerCase() !== "false";
     const [conversations, messages, users, friendships, blocks, uploads] = await Promise.all([
       readCollection("conversations"),
@@ -11978,6 +12222,45 @@ app.get(
     const normalizedFriendships = friendships.map(normalizeFriendship);
     const normalizedBlocks = blocks.map(normalizeBlock);
     const normalizedUploads = uploads.map(normalizeUpload);
+    if (conversationId === ADMIN_BROADCAST_CONVERSATION_ID) {
+      conversationId = `${ADMIN_BROADCAST_CONVERSATION_ID}:${viewerId}`;
+      if (!normalizedConversations.some((entry) => entry.id === conversationId)) {
+        const broadcastMessages = (await readCollection("adminBroadcastMessages"))
+          .map(normalizeAdminBroadcastMessage)
+          .sort((left, right) => String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
+        const firstBroadcastMessage = broadcastMessages[0] || null;
+        const lastBroadcastMessage = broadcastMessages[broadcastMessages.length - 1] || null;
+        normalizedConversations.push(normalizeConversation({
+          id: conversationId,
+          type: "notice",
+          memberIds: [viewerId],
+          ownerUserId: ADMIN_NOTICE_SENDER_ID,
+          noticeTitle: "Announcement",
+          noticeSubtitle: "Broadcast to everyone",
+          noticeOriginType: "broadcast",
+          noticeOriginId: "all-users",
+          noticeOriginName: "All users",
+          noticeSenderId: ADMIN_NOTICE_SENDER_ID,
+          noticeSenderName: ADMIN_NOTICE_SENDER_NAME,
+          noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+          noticeReplyMode: "enabled",
+          lastMessageId: lastBroadcastMessage?.id || "",
+          lastMessageAt: lastBroadcastMessage?.createdAt || "",
+          updatedAt: lastBroadcastMessage?.createdAt || "",
+          createdAt: firstBroadcastMessage?.createdAt || new Date().toISOString(),
+        }));
+        broadcastMessages.forEach((entry) => {
+          normalizedMessages.push(normalizeMessage({
+            ...entry,
+            conversationId,
+            senderUserId: ADMIN_NOTICE_SENDER_ID,
+            senderName: ADMIN_NOTICE_SENDER_NAME,
+            noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+            noticeBatchId: entry.noticeBatchId || entry.id,
+          }));
+        });
+      }
+    }
     const conversation = normalizedConversations.find((entry) => entry.id === conversationId);
     if (!conversation || !conversation.memberIds.includes(viewerId)) {
       res.status(404).json({ error: "conversation not found" });
@@ -12091,7 +12374,11 @@ app.post(
   asyncHandler(async (req, res) => {
     const viewerId = String(req.user.sub || "");
     await touchUserLastSeen(viewerId);
-    const conversationId = String(req.params.conversationId || "");
+    const requestedConversationId = String(req.params.conversationId || "");
+    const isBroadcastConversationRequest = requestedConversationId === ADMIN_BROADCAST_CONVERSATION_ID;
+    let conversationId = isBroadcastConversationRequest
+      ? `${ADMIN_BROADCAST_CONVERSATION_ID}:${viewerId}`
+      : requestedConversationId;
     const text = String(req.body?.text || "").trim();
     const replyTo = normalizeMessageReply(req.body?.replyTo || null);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
@@ -12102,16 +12389,130 @@ app.post(
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const blocks = (await readCollection("blocks")).map(normalizeBlock);
     const uploads = (await readCollection("uploads")).map(normalizeUpload);
-    const conversationIndex = conversations.findIndex((entry) => entry.id === conversationId);
+    const reports = (await readCollection("reports")).map(normalizeAdminReport);
+    let conversationIndex = conversations.findIndex((entry) => entry.id === conversationId);
+    if (conversationIndex < 0 && isBroadcastConversationRequest) {
+      const broadcastMessages = (await readCollection("adminBroadcastMessages"))
+        .map(normalizeAdminBroadcastMessage)
+        .sort((left, right) => String(left.createdAt || "").localeCompare(String(right.createdAt || "")));
+      const firstBroadcastMessage = broadcastMessages[0] || null;
+      const lastBroadcastMessage = broadcastMessages[broadcastMessages.length - 1] || null;
+      conversations.push(normalizeConversation({
+        id: conversationId,
+        type: "notice",
+        memberIds: [viewerId],
+        ownerUserId: ADMIN_NOTICE_SENDER_ID,
+        adminIds: [],
+        lastMessageId: lastBroadcastMessage?.id || "",
+        lastMessageAt: lastBroadcastMessage?.createdAt || "",
+        updatedAt: lastBroadcastMessage?.createdAt || "",
+        createdAt: firstBroadcastMessage?.createdAt || new Date().toISOString(),
+        noticeTitle: "Announcement",
+        noticeSubtitle: "Broadcast to everyone",
+        noticeBody: "",
+        noticeOriginType: "broadcast",
+        noticeOriginId: "all-users",
+        noticeOriginName: "All users",
+        noticeSenderId: ADMIN_NOTICE_SENDER_ID,
+        noticeSenderName: ADMIN_NOTICE_SENDER_NAME,
+        noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+        noticeReplyMode: "enabled",
+      }));
+      const existingMessageIds = new Set(messages.map((entry) => String(entry.id || "")));
+      broadcastMessages.forEach((entry) => {
+        if (existingMessageIds.has(String(entry.id || ""))) return;
+        messages.push(normalizeMessage({
+          ...entry,
+          conversationId,
+          senderUserId: ADMIN_NOTICE_SENDER_ID,
+          senderName: ADMIN_NOTICE_SENDER_NAME,
+          noticeThreadKey: ADMIN_BROADCAST_THREAD_KEY,
+          noticeBatchId: entry.noticeBatchId || entry.id,
+        }));
+      });
+      conversationIndex = conversations.length - 1;
+    }
+    if (conversationIndex < 0 && conversationId.startsWith("__admin_notice_report_")) {
+      const reportId = conversationId.slice("__admin_notice_report_".length);
+      const report = reports.find((entry) => String(entry.id || "") === reportId);
+      if (report && String(report.targetId || "") === viewerId && String(report.warningMessage || "").trim()) {
+        const createdAt = String(report.warningIssuedAt || report.updatedAt || report.createdAt || new Date().toISOString());
+        const targetLabel = normalizeWhitespace(report.targetName || report.targetUsername || report.targetId || "").slice(0, 120);
+        const warningPreset = normalizeWhitespace(report.warningPreset || "Community rules reminder") || "Community rules reminder";
+        const noticeThreadKey = buildAdminNoticeThreadKey("report", report.id);
+        const noticeBatchId = String(report.warningIssuedAt || report.updatedAt || report.createdAt || report.id || "");
+        conversations.push(normalizeConversation({
+          id: conversationId,
+          type: "notice",
+          memberIds: [viewerId],
+          ownerUserId: ADMIN_NOTICE_SENDER_ID,
+          adminIds: [],
+          lastMessageId: `__admin_notice_report_message_${report.id}`,
+          lastMessageAt: createdAt,
+          updatedAt: createdAt,
+          createdAt,
+          noticeTitle: warningPreset,
+          noticeSubtitle: report.type === "group"
+            ? `Report warning for group ${targetLabel || "this group"}`
+            : `Report warning for ${targetLabel || "this account"}`,
+          noticeBody: String(report.warningMessage || "").trim(),
+          noticeOriginType: "report",
+          noticeOriginId: report.id,
+          noticeOriginName: targetLabel,
+          noticeSenderId: ADMIN_NOTICE_SENDER_ID,
+          noticeSenderName: ADMIN_NOTICE_SENDER_NAME,
+          noticeThreadKey,
+          noticeBatchId,
+          noticeReplyMode: "enabled",
+        }));
+        messages.push(normalizeMessage({
+          id: `__admin_notice_report_message_${report.id}`,
+          conversationId,
+          senderUserId: ADMIN_NOTICE_SENDER_ID,
+          senderName: ADMIN_NOTICE_SENDER_NAME,
+          text: String(report.warningMessage || "").trim(),
+          type: "text",
+          deliveredAt: createdAt,
+          readAt: "",
+          seenByUserIds: [],
+          hiddenForUserIds: [],
+          noticeThreadKey,
+          noticeBatchId,
+          createdAt,
+          updatedAt: createdAt,
+        }));
+        conversationIndex = conversations.length - 1;
+      }
+    }
     if (conversationIndex < 0 || !conversations[conversationIndex].memberIds.includes(viewerId)) {
       res.status(404).json({ error: "conversation not found" });
       return;
     }
-    const conversation = conversations[conversationIndex];
-    if (conversation.type === "notice") {
+    let conversation = conversations[conversationIndex];
+    if (conversation.type === "notice" && conversation.noticeReplyMode !== "enabled") {
       res.status(403).json({ error: "admin notices are read only" });
       return;
     }
+    if (
+      conversation.type === "notice" &&
+      getAdminNoticeThreadKeyFromConversation(conversation) === ADMIN_BROADCAST_THREAD_KEY
+    ) {
+      conversation = {
+        ...conversation,
+        noticeThreadKey: buildAdminNoticeThreadKey("user", viewerId),
+        noticeOriginType: "user",
+        noticeOriginId: viewerId,
+        noticeOriginName: users.find((entry) => entry.id === viewerId)?.name || viewerId,
+      };
+      conversations[conversationIndex] = conversation;
+    }
+    const noticeThreadKey =
+      conversation.type === "notice" &&
+      getAdminNoticeThreadKeyFromConversation(conversation) === ADMIN_BROADCAST_THREAD_KEY
+        ? buildAdminNoticeThreadKey("user", viewerId)
+        : conversation.type === "notice"
+          ? conversation.noticeThreadKey
+          : "";
     const partnerId =
       conversation.type === "direct"
         ? conversations[conversationIndex].memberIds.find((memberId) => memberId !== viewerId) || ""
@@ -12186,6 +12587,7 @@ app.post(
           }
         : null,
       replyTo,
+      noticeThreadKey,
       deliveredAt: null,
       readAt: null,
       seenByUserIds: [viewerId],
@@ -12201,9 +12603,10 @@ app.post(
     if (upload) {
       await writeCollection("uploads", uploads);
     }
+    const sender = users.find((entry) => entry.id === viewerId) || null;
+    message.senderName = sender?.name || sender?.username || "User";
     await writeCollection("messages", messages);
     await writeCollection("conversations", conversations);
-    const sender = users.find((entry) => entry.id === viewerId) || null;
     fireCommunityRealtimeMessages(
       buildCommunityConversationRealtimeMessages(conversationId, {
         reason: "message-created",
@@ -14189,6 +14592,7 @@ app.get(
     const threads = buildAdminBroadcastThreadCollections({
       conversations,
       messages,
+      users: activeUsers,
       uploads,
       broadcastMessages,
       broadcastRecipientCount: activeUsers.length,
@@ -14215,7 +14619,7 @@ app.get(
           textItalic: entry.textItalic === true,
           textUnderline: entry.textUnderline === true,
           caption: entry.caption,
-          allowReplies: false,
+          allowReplies: true,
           isAdminBroadcast: true,
           imageFit: entry.imageFit,
           imageFilter: entry.imageFilter,
@@ -14257,13 +14661,15 @@ app.get(
     const broadcastMessages = (await readCollection("adminBroadcastMessages")).map(normalizeAdminBroadcastMessage);
     const reports = (await readCollection("reports")).map(normalizeAdminReport);
     const uploads = (await readCollection("uploads")).map(normalizeUpload);
+    const users = (await readCollection("users")).map(normalizeExistingUser);
     const thread = buildAdminBroadcastThreadDetail(threadKey, {
       conversations,
       messages,
+      users,
       uploads,
       broadcastMessages,
       reports,
-      broadcastRecipientCount: (await readCollection("users")).map(normalizeExistingUser).filter((entry) => !isUserCurrentlyDeactivated(entry)).length,
+      broadcastRecipientCount: users.filter((entry) => !isUserCurrentlyDeactivated(entry)).length,
     });
 
     if (!thread) {
@@ -14280,6 +14686,52 @@ app.get(
 );
 
 app.post(
+  "/api/admin/broadcast/threads/:threadKey/read",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const threadKey = String(req.params.threadKey || "").trim();
+    if (!threadKey) {
+      res.status(400).json({ error: "threadKey is required" });
+      return;
+    }
+    const [conversations, messages] = await Promise.all([
+      readCollection("conversations"),
+      readCollection("messages"),
+    ]);
+    const normalizedConversations = conversations.map(normalizeConversation);
+    const conversationById = new Map(normalizedConversations.map((entry) => [entry.id, entry]));
+    const nowIso = new Date().toISOString();
+    let changed = false;
+    const nextMessages = messages.map((rawMessage) => {
+      const message = normalizeMessage(rawMessage);
+      const conversation = conversationById.get(message.conversationId);
+      const messageThreadKey = getEffectiveAdminNoticeThreadKey(message, conversation || {});
+      if (
+        messageThreadKey !== threadKey ||
+        String(message.senderUserId || "") === ADMIN_NOTICE_SENDER_ID ||
+        String(message.readAt || "").trim()
+      ) {
+        return message;
+      }
+      changed = true;
+      return {
+        ...message,
+        readAt: nowIso,
+        deliveredAt: message.deliveredAt || nowIso,
+        updatedAt: nowIso,
+      };
+    });
+    if (changed) {
+      await writeCollection("messages", nextMessages);
+    }
+    res.json({ ok: true, changed });
+  }),
+);
+
+app.post(
   "/api/admin/broadcast/threads/:threadKey/message",
   asyncHandler(async (req, res) => {
     if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
@@ -14289,6 +14741,7 @@ app.post(
 
     const threadKey = String(req.params.threadKey || "").trim();
     const message = normalizeWhitespace(req.body?.message || "").slice(0, 2000);
+    const replyTo = normalizeMessageReply(req.body?.replyTo || null);
     const attachmentDataUrl = String(req.body?.attachmentDataUrl || "").trim();
     const attachmentFileName = String(req.body?.attachmentFileName || "").trim();
     if (!threadKey) {
@@ -14302,6 +14755,7 @@ app.post(
 
     const users = (await readCollection("users")).map(normalizeExistingUser);
     const conversations = (await readCollection("conversations")).map(normalizeConversation);
+    const messages = (await readCollection("messages")).map(normalizeMessage);
     const reports = (await readCollection("reports")).map(normalizeAdminReport);
     const metadata = getAdminNoticeThreadSendMetadata(threadKey, {
       users,
@@ -14311,6 +14765,23 @@ app.post(
     if (!metadata) {
       res.status(404).json({ error: "Thread not found" });
       return;
+    }
+
+    let replyRecipientIds = metadata.recipientIds;
+    if (metadata.threadKey === ADMIN_BROADCAST_THREAD_KEY && replyTo) {
+      const targetConversation = conversations.find((entry) => entry.id === replyTo.conversationId);
+      const targetMessage = messages.find((entry) => String(entry.id || "") === String(replyTo.sourceId || ""));
+      const targetRecipientId =
+        targetConversation?.memberIds?.find((entry) => entry && entry !== ADMIN_NOTICE_SENDER_ID) ||
+        (replyTo.senderUserId && replyTo.senderUserId !== ADMIN_NOTICE_SENDER_ID ? replyTo.senderUserId : "") ||
+        (targetMessage?.senderUserId && targetMessage.senderUserId !== ADMIN_NOTICE_SENDER_ID
+          ? targetMessage.senderUserId
+          : "");
+      if (!targetRecipientId) {
+        res.status(400).json({ error: "Choose a user message to reply to." });
+        return;
+      }
+      replyRecipientIds = [targetRecipientId];
     }
 
     let upload = null;
@@ -14327,6 +14798,29 @@ app.post(
     }
 
     if (metadata.threadKey === ADMIN_BROADCAST_THREAD_KEY) {
+      if (replyTo) {
+        const results = await sendAdminNoticeToRecipients(replyRecipientIds, {
+          text: message,
+          title: "Admin Message",
+          subtitle: "",
+          originType: "user",
+          originId: replyRecipientIds[0],
+          originName: users.find((entry) => entry.id === replyRecipientIds[0])?.name || replyRecipientIds[0],
+          senderName: ADMIN_NOTICE_SENDER_NAME,
+          upload,
+          noticeThreadKey: buildAdminNoticeThreadKey("user", replyRecipientIds[0]),
+          replyTo,
+        });
+        res.json({
+          ok: true,
+          deliveredTo: results.length,
+          threadKey: metadata.threadKey,
+          conversationIds: results.map((entry) => entry.conversation?.id || "").filter(Boolean),
+          messageId: results[0]?.message?.id || "",
+          sentAt: results[0]?.message?.createdAt || new Date().toISOString(),
+        });
+        return;
+      }
       const noticeBatchId = crypto.randomUUID();
       const deliveryResults = await sendAdminNoticeToRecipients(
         users.filter((entry) => !isUserCurrentlyDeactivated(entry)).map((entry) => entry.id),
@@ -14355,6 +14849,7 @@ app.post(
         threadKey: metadata.threadKey,
         conversationIds: deliveryResults.map((entry) => entry.conversation?.id || "").filter(Boolean),
         messageId: storedMessage.id,
+        sentAt: storedMessage.createdAt || new Date().toISOString(),
       });
       return;
     }
@@ -14369,6 +14864,7 @@ app.post(
       senderName: ADMIN_NOTICE_SENDER_NAME,
       upload,
       noticeThreadKey: metadata.threadKey,
+      replyTo,
     });
 
     res.json({
@@ -14377,6 +14873,7 @@ app.post(
       threadKey: metadata.threadKey,
       conversationIds: results.map((entry) => entry.conversation?.id || "").filter(Boolean),
       messageId: results[0]?.message?.id || "",
+      sentAt: results[0]?.message?.createdAt || new Date().toISOString(),
     });
   }),
 );
@@ -14439,6 +14936,42 @@ app.get(
       ok: true,
       report: buildAdminReportSnapshot(report, { users, conversations, uploads }),
     });
+  }),
+);
+
+app.post(
+  "/api/admin/reports/:reportId/status",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const reportId = String(req.params.reportId || "").trim();
+    const requestedStatus = String(req.body?.status || "").trim().toLowerCase();
+    const requestedWarningTime = String(req.body?.warningIssuedAt || "").trim();
+    if (!["opened", "warned"].includes(requestedStatus)) {
+      res.status(400).json({ error: "Unsupported report status" });
+      return;
+    }
+    const reports = (await readCollection("reports")).map(normalizeAdminReport);
+    const reportIndex = reports.findIndex((entry) => entry.id === reportId);
+    if (reportIndex < 0) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+    if (requestedStatus === "warned") {
+      reports[reportIndex] = {
+        ...reports[reportIndex],
+        status: "warned",
+        warningIssuedAt: reports[reportIndex].warningIssuedAt || (Number.isNaN(new Date(requestedWarningTime).getTime()) ? new Date().toISOString() : requestedWarningTime),
+        updatedAt: new Date().toISOString(),
+      };
+      await writeCollection("reports", reports);
+    } else if (reports[reportIndex].status !== "warned") {
+      reports[reportIndex] = { ...reports[reportIndex], status: "opened", updatedAt: new Date().toISOString() };
+      await writeCollection("reports", reports);
+    }
+    res.json({ ok: true, report: reports[reportIndex] });
   }),
 );
 
@@ -16514,6 +17047,209 @@ function buildAdminActivityAnalytics({
   };
 }
 
+function buildAdminActivityEvent({
+  id = "",
+  type = "",
+  status = "success",
+  security = false,
+  user = null,
+  at = "",
+  title = "",
+  subtitle = "",
+  details = [],
+  device = "",
+  ip = "",
+  userAgent = "",
+  sessionId = "",
+  actor = null,
+} = {}) {
+  const safeUser = user && typeof user === "object"
+    ? {
+        id: String(user.id || "").trim(),
+        name: String(user.name || user.username || user.contact || "User").trim(),
+        username: String(user.username || "").trim(),
+        contact: String(user.contact || user.email || "").trim(),
+        profileImage: String(user.profileImage || "").trim(),
+      }
+    : { id: "", name: "System", username: "", contact: "", profileImage: "" };
+  const safeAt = String(at || "").trim();
+  if (!safeAt || !Number.isFinite(Date.parse(safeAt))) return null;
+  return {
+    id: String(id || `${type}-${safeAt}-${safeUser.id}`).trim(),
+    type: String(type || "activity").trim(),
+    status: String(status || "success").trim().toLowerCase(),
+    security: Boolean(security),
+    user: safeUser,
+    title: String(title || type || "Activity").trim(),
+    subtitle: String(subtitle || "").trim(),
+    at: safeAt,
+    device: String(device || "").trim(),
+    ip: String(ip || "").trim(),
+    userAgent: String(userAgent || "").trim(),
+    sessionId: String(sessionId || "").trim(),
+    actor: actor && typeof actor === "object"
+      ? { name: String(actor.name || "Admin").trim(), contact: String(actor.contact || actor.email || "").trim() }
+      : null,
+    details: Array.isArray(details) ? details.map((value) => String(value || "").trim()).filter(Boolean) : [],
+  };
+}
+
+function buildAdminActivityEvents({
+  users = [],
+  sessions = [],
+  attempts = [],
+  passwordResetRequests = [],
+  subscriptionRequests = [],
+  reports = [],
+  syncPerformance = [],
+} = {}) {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const usersById = new Map(safeUsers.map((user) => [String(user?.id || "").trim(), user]));
+  const events = [];
+  const add = (event) => {
+    const normalized = buildAdminActivityEvent(event);
+    if (normalized) events.push(normalized);
+  };
+  const userFor = (id) => usersById.get(String(id || "").trim()) || null;
+
+  safeUsers.forEach((user) => {
+    add({
+      id: `registration-${user.id}`,
+      type: "registration",
+      user,
+      at: user.createdAt,
+      title: "New account registration",
+      subtitle: "Account created",
+      details: ["Account created", `Username: ${user.username || "Not provided"}`],
+    });
+    if (user.updatedAt && user.createdAt && user.updatedAt !== user.createdAt) {
+      add({
+        id: `profile-update-${user.id}-${user.updatedAt}`,
+        type: "profile_update",
+        user,
+        at: user.updatedAt,
+        title: "Profile updated",
+        subtitle: "Account information changed",
+        details: ["Profile or account fields were updated"],
+      });
+    }
+  });
+
+  (Array.isArray(sessions) ? sessions : []).forEach((session) => {
+    const user = userFor(session.userId);
+    const isRevoked = Boolean(session.revokedAt);
+    add({
+      id: `session-${session.id || session.createdAt}`,
+      type: isRevoked ? "session_expired" : "login",
+      status: isRevoked ? "success" : "success",
+      user,
+      at: session.createdAt,
+      title: isRevoked ? "Session ended" : "User login",
+      subtitle: session.device || "Web browser",
+      device: session.device,
+      ip: session.ip,
+      userAgent: session.userAgent,
+      sessionId: session.id,
+      details: [isRevoked ? "Session was revoked or ended" : "New login session created"],
+    });
+    if (session.lastSeenAt && session.lastSeenAt !== session.createdAt) {
+      add({
+        id: `presence-${session.id || session.lastSeenAt}`,
+        type: "session_active",
+        user,
+        at: session.lastSeenAt,
+        title: "Active session",
+        subtitle: session.device || "Web browser",
+        device: session.device,
+        ip: session.ip,
+        userAgent: session.userAgent,
+        sessionId: session.id,
+        details: ["Session activity recorded"],
+      });
+    }
+  });
+
+  (Array.isArray(attempts) ? attempts : []).forEach((attempt) => {
+    const user = userFor(attempt.userId || attempt.actorId);
+    const finished = Boolean(attempt.finishedAt);
+    const score = Number(attempt.score) || 0;
+    const total = Number(attempt.total) || 0;
+    add({
+      id: `attempt-${attempt.id || attempt.finishedAt || attempt.startedAt}`,
+      type: finished ? "quiz_completed" : "quiz_attempt",
+      user,
+      at: attempt.finishedAt || attempt.startedAt,
+      title: finished ? "Quiz completed" : "Quiz attempt",
+      subtitle: [attempt.mode || "Practice", total ? `${score}/${total}` : ""].filter(Boolean).join(" - "),
+      details: [
+        attempt.category || attempt.mode || "Quiz activity",
+        finished && attempt.percent != null ? `Score: ${attempt.percent}%` : "Attempt in progress",
+      ],
+    });
+  });
+
+  (Array.isArray(passwordResetRequests) ? passwordResetRequests : []).forEach((request) => {
+    const user = userFor(request.userId) || { id: "", name: request.name || request.username || request.contact, username: request.username, contact: request.contact };
+    const status = getPasswordResetRequestStatus(request);
+    add({
+      id: `reset-${request.id || request.requestedAt || request.createdAt}`,
+      type: "password_reset_request",
+      status,
+      security: true,
+      user,
+      at: request.requestedAt || request.createdAt,
+      title: "Password-reset request",
+      subtitle: status,
+      details: ["Password reset requested", `Status: ${status}`],
+    });
+  });
+
+  (Array.isArray(subscriptionRequests) ? subscriptionRequests : []).forEach((request) => {
+    const user = userFor(request.userId) || { id: "", name: request.name || request.username || "User", username: request.username, contact: request.contact };
+    const status = getSubscriptionRequestStatus(request);
+    const type = status === "active" ? "subscription_approved" : status === "rejected" ? "subscription_rejected" : "subscription_request";
+    add({
+      id: `subscription-${request.id || request.requestedAt || request.createdAt}`,
+      type,
+      status: status === "pending" ? "pending" : status === "rejected" ? "rejected" : "success",
+      user,
+      at: request.requestedAt || request.createdAt || request.updatedAt,
+      title: type === "subscription_approved" ? "Subscription approved" : type === "subscription_rejected" ? "Subscription rejected" : "Subscription requested",
+      subtitle: request.planLabel || request.plan || status,
+      details: [`Plan: ${request.planLabel || request.plan || "Not specified"}`, `Status: ${status}`],
+    });
+  });
+
+  (Array.isArray(reports) ? reports : []).forEach((report) => {
+    const user = userFor(report.userId || report.reporterId || report.createdBy);
+    const resolved = Boolean(report.resolvedAt || report.status === "resolved" || report.status === "closed");
+    add({
+      id: `report-${report.id || report.createdAt}`,
+      type: resolved ? "report_resolved" : "report_submitted",
+      status: resolved ? "success" : "pending",
+      user,
+      at: report.resolvedAt || report.createdAt || report.updatedAt,
+      title: resolved ? "Report resolved" : "Report submitted",
+      subtitle: report.reason || report.type || "Community report",
+      details: [String(report.reason || report.description || "Report recorded")],
+    });
+  });
+
+  (Array.isArray(syncPerformance) ? syncPerformance : []).forEach((entry, index) => {
+    add({
+      id: `performance-${entry.id || entry.eventId || index}-${entry.timestamp || entry.createdAt}`,
+      type: "perf_update",
+      user: userFor(entry.userId || entry.actorId),
+      at: entry.timestamp || entry.createdAt || entry.updatedAt,
+      title: "Performance update",
+      subtitle: entry.category || entry.rotation || "Learning activity",
+      details: [entry.questionId ? `Question: ${entry.questionId}` : "Performance event recorded"],
+    });
+  });
+
+  return events.sort((left, right) => Date.parse(right.at) - Date.parse(left.at));
+}
+
 // Admin: Get platform statistics
 app.get(
   "/api/admin/stats",
@@ -16629,6 +17365,79 @@ app.get(
         syncSessions: syncSessions.length,
         aiUsage: aiUsage.length,
       },
+    });
+  }),
+);
+
+// Admin: Get the detailed platform activity feed.
+app.get(
+  "/api/admin/activity",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const users = coerceCollectionArray(await readCollection("users")).map(normalizeExistingUser);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    const rawSubscriptionRequests = coerceCollectionArray(await readCollection("subscriptionRequests"));
+    const syncedSubscriptionRequests = synchronizeSubscriptionRequestsWithUsers(users, rawSubscriptionRequests);
+    const subscriptionRequests = syncedSubscriptionRequests.requests.map((request) =>
+      toPublicSubscriptionRequest(request, usersById),
+    );
+    const [sessions, attempts, passwordResetRequests, reports, syncPerformance] = await Promise.all([
+      readCollection("sessions"),
+      readCollection("attempts"),
+      readCollection("passwordResetRequests"),
+      readCollection("reports"),
+      readCollection("syncPerformance"),
+    ]);
+    const allEvents = buildAdminActivityEvents({
+      users,
+      sessions,
+      attempts,
+      passwordResetRequests: passwordResetRequests.map(normalizePasswordResetRequest),
+      subscriptionRequests,
+      reports,
+      syncPerformance,
+    });
+
+    const now = Date.now();
+    const requestedFrom = String(req.query.from || "").trim();
+    const requestedTo = String(req.query.to || "").trim();
+    const defaultFrom = now - 7 * 24 * 60 * 60 * 1000;
+    const from = requestedFrom ? Date.parse(requestedFrom) : defaultFrom;
+    const to = requestedTo ? Date.parse(`${requestedTo}T23:59:59.999`) : now;
+    const periodFrom = Number.isFinite(from) ? from : defaultFrom;
+    const periodTo = Number.isFinite(to) ? to : now;
+    const type = String(req.query.type || "").trim().toLowerCase();
+    const status = String(req.query.status || "").trim().toLowerCase();
+    const search = String(req.query.search || "").trim().toLowerCase();
+    const filtered = allEvents.filter((event) => {
+      const timestamp = Date.parse(event.at);
+      if (!Number.isFinite(timestamp) || timestamp < periodFrom || timestamp > periodTo) return false;
+      if (type && event.type !== type) return false;
+      if (status === "security" ? !event.security : status && event.status !== status) return false;
+      if (!search) return true;
+      return [event.user?.name, event.user?.username, event.user?.contact, event.ip, event.sessionId, event.title, event.subtitle]
+        .some((value) => String(value || "").toLowerCase().includes(search));
+    });
+    const limit = Math.min(200, Math.max(1, Number.parseInt(req.query.limit || "40", 10) || 40));
+    const offset = Math.max(0, Number.parseInt(req.query.offset || "0", 10) || 0);
+    const summary = {
+      newUsers: filtered.filter((event) => event.type === "registration").length,
+      activeUsers: new Set(filtered.filter((event) => event.user?.id).map((event) => event.user.id)).size,
+      sessions: filtered.filter((event) => ["login", "session_active", "session_expired"].includes(event.type)).length,
+      quizActivity: filtered.filter((event) => ["quiz_attempt", "quiz_completed", "perf_update"].includes(event.type)).length,
+      passwordResets: filtered.filter((event) => event.type === "password_reset_request").length,
+      subscriptionEvents: filtered.filter((event) => event.type.startsWith("subscription_")).length,
+      securityEvents: filtered.filter((event) => event.security).length,
+    };
+    res.json({
+      events: filtered.slice(offset, offset + limit),
+      total: filtered.length,
+      summary,
+      period: { from: new Date(periodFrom).toISOString(), to: new Date(periodTo).toISOString() },
     });
   }),
 );

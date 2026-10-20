@@ -98,7 +98,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20261016-profile-exact2" />
+    <link rel="stylesheet" href="/styles.css?v=20261019-community-rows2" />
     <style id="home-critical-fix">
       html,
       body {
@@ -1948,9 +1948,13 @@
     <div id="auth-modal" class="modal hidden">
       <div class="modal-card auth-modal-card">
         <div class="auth-modal-hero">
-          <div class="auth-modal-kicker">Ajix Pharmacy</div>
-          <div class="modal-title auth-modal-title">Account Access</div>
-          <div class="modal-text auth-modal-text">
+          <div class="auth-brand-lockup">
+            <span class="auth-brand-mark"><img src="images/app-logo.png?v=20260903-mascot" alt="" aria-hidden="true"></span>
+            <span class="auth-brand-name">AjixPharmacy</span>
+          </div>
+          <div class="auth-modal-kicker">Secure learning account</div>
+          <div id="auth-modal-title" class="modal-title auth-modal-title">Welcome back</div>
+          <div id="auth-modal-copy" class="modal-text auth-modal-text">
             Sign in or create an account to access quiz modules and save progress.
           </div>
         </div>
@@ -1990,11 +1994,21 @@
           </label>
 
           <div id="auth-contact-wrap" class="auth-field hidden">
-            <span>Contact</span>
+            <div class="auth-contact-label-row">
+              <span>Contact</span>
+              <div class="auth-contact-type-toggle" role="group" aria-label="Contact type">
+                <button id="auth-contact-phone-toggle" type="button" class="is-active" aria-pressed="true">Phone</button>
+                <button id="auth-contact-email-toggle" type="button" aria-pressed="false">Email</button>
+              </div>
+            </div>
             <div class="auth-phone-grid auth-contact-grid">
               <div class="auth-icon-select auth-country-picker">
-                <select id="auth-contact-country-code" autocomplete="tel-country-code" aria-label="Country code"></select>
-                <span class="auth-icon-select-icon" aria-hidden="true"></span>
+                <select id="auth-contact-country-code" class="auth-country-native" autocomplete="tel-country-code" aria-label="Country code"></select>
+                <button id="auth-country-trigger" class="auth-country-trigger" type="button" aria-label="Choose country" aria-expanded="false">
+                  <span id="auth-country-flag" aria-hidden="true">🇬🇭</span>
+                  <span class="auth-country-trigger-chevron" aria-hidden="true">⌄</span>
+                </button>
+                <div id="auth-country-menu" class="auth-country-menu hidden" role="listbox" aria-label="Choose country"></div>
               </div>
               <div class="auth-contact-phone-field">
                 <span id="auth-contact-prefix" class="auth-contact-prefix" aria-hidden="true"></span>
@@ -2007,14 +2021,11 @@
                   placeholder="Enter mobile number"
                 />
               </div>
-              <div class="auth-icon-select auth-format-picker">
-                <select id="auth-contact-format" aria-label="Contact type">
-                  <option value="phone" selected>Phone</option>
-                  <option value="email">Email</option>
-                </select>
-                <span class="auth-icon-select-icon" aria-hidden="true"></span>
-              </div>
             </div>
+            <select id="auth-contact-format" class="auth-contact-format-input" aria-label="Contact type">
+              <option value="phone" selected>Phone</option>
+              <option value="email">Email</option>
+            </select>
           </div>
 
           <label id="auth-reset-code-wrap" class="auth-field hidden">
@@ -3937,7 +3948,7 @@
       </div>
 
       <div id="profile-exact-screen" class="setup-page profile-exact-page">
-        <iframe class="profile-exact-frame" src="/profile-new.html?v=20261016-profile-exact4" title="AjixPharmacy Profile"></iframe>
+        <iframe class="profile-exact-frame" src="/profile-new.html?v=20261019-profile-title1" title="AjixPharmacy Profile"></iframe>
       </div>
 
       <div id="community-screen" class="setup-page community-page">
@@ -5715,15 +5726,17 @@
       <div id="community-report-modal" class="modal hidden">
         <div class="modal-card community-report-modal-card">
           <button id="community-report-cancel-btn" type="button" class="dashboard-close-btn community-avatar-close-btn" aria-label="Close report">&times;</button>
-          <div id="community-report-title" class="modal-title">Report user</div>
+          <div class="community-report-hero">
+            <div id="community-report-title" class="modal-title">Report user</div>
+          </div>
           <div id="community-report-target" class="community-report-target">
             <div id="community-report-target-avatar" class="community-report-target-avatar"></div>
             <div class="community-report-target-copy">
               <div id="community-report-target-label" class="community-report-target-label">User to report</div>
               <div id="community-report-target-name" class="community-report-target-name">User</div>
+                <div id="community-report-target-username" class="community-report-target-username hidden"></div>
             </div>
           </div>
-          <div id="community-report-hint" class="modal-text">Pick the closest reason and add any context that helps the review.</div>
           <label class="community-report-field">
             <span class="community-report-field-label">Reason</span>
             <select id="community-report-reason-select" class="community-report-select">
@@ -5735,10 +5748,19 @@
               <option value="Other">Other</option>
             </select>
           </label>
+          <input id="community-report-other-reason" class="community-report-text-input hidden" type="text" maxlength="240" placeholder="Write the reason" autocomplete="off" />
           <label class="community-report-field">
             <span class="community-report-field-label">Details</span>
             <textarea id="community-report-details" class="community-report-textarea" rows="4" maxlength="240" placeholder="Add details (optional)"></textarea>
           </label>
+            <div class="community-report-field community-report-evidence-field">
+              <div class="community-report-evidence-heading">
+                <span class="community-report-field-label">Evidence <small>(optional)</small></span>
+                <button id="community-report-add-evidence-btn" class="community-report-add-evidence" type="button">＋ Add evidence</button>
+              </div>
+              <input id="community-report-evidence" class="community-report-file-input hidden" type="file" multiple accept="image/*,video/*,.pdf,.txt,.doc,.docx" />
+              <div id="community-report-evidence-list" class="community-report-evidence-list"></div>
+            </div>
           <div class="modal-actions">
             <button id="community-report-submit-btn" type="button" class="modal-btn primary">Send report</button>
           </div>
@@ -6313,7 +6335,7 @@
         }
       };
     </script>
-    <script src="/subscription-state.js?v=20260919-cache2"></script><script src="/ui-preferences.js?v=20261016-text-size1"></script><script type="module" src="/engine.js?v=20261016-profile-exact2"></script>
+    <script src="/subscription-state.js?v=20260919-cache2"></script><script src="/ui-preferences.js?v=20261016-text-size1"></script><script type="module" src="/engine.js?v=20261019-community-rows2"></script>
     <script>
       const APP_BUILD_ID = "20261016-profile-exact-v1";
       const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";

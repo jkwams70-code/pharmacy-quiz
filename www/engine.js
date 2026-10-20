@@ -2596,6 +2596,12 @@ async function flushCommunityOfflineQueue() {
         }
         const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
         if (savedMessage) {
+          if (communityState.activeConversation && savedMessage.conversationId) {
+            communityState.activeConversation = {
+              ...communityState.activeConversation,
+              id: savedMessage.conversationId,
+            };
+          }
           communityState.messages = Array.isArray(communityState.messages)
             ? communityState.messages.filter((message) => !Array.isArray(payload.optimisticIds) || !payload.optimisticIds.includes(String(message?.id || "")))
             : [];
@@ -5281,12 +5287,17 @@ const authUsernameWrap = document.getElementById("auth-username-wrap");
 const authUsernameInput = document.getElementById("auth-username");
 const authContactWrap = document.getElementById("auth-contact-wrap");
 const authContactFormatInput = document.getElementById("auth-contact-format");
+const authContactPhoneToggle = document.getElementById("auth-contact-phone-toggle");
+const authContactEmailToggle = document.getElementById("auth-contact-email-toggle");
 const authContactEmailWrap = document.getElementById("auth-contact-email-wrap");
 const authContactEmailInput = document.getElementById("auth-contact-email");
 const authContactPhoneWrap = document.getElementById("auth-contact-phone-wrap");
 const authContactCountryCodeInput = document.getElementById("auth-contact-country-code");
 const authContactPrefixInput = document.getElementById("auth-contact-prefix");
 const authContactPhoneInput = document.getElementById("auth-contact-phone");
+const authCountryTrigger = document.getElementById("auth-country-trigger");
+const authCountryFlag = document.getElementById("auth-country-flag");
+const authCountryMenu = document.getElementById("auth-country-menu");
 const authResetCodeWrap = document.getElementById("auth-reset-code-wrap");
 const authResetCodeInput = document.getElementById("auth-reset-code");
 const authPasswordWrap = document.getElementById("auth-password-wrap");
@@ -5790,9 +5801,14 @@ const communityReportTitleEl = document.getElementById("community-report-title")
 const communityReportTargetEl = document.getElementById("community-report-target");
 const communityReportTargetAvatarEl = document.getElementById("community-report-target-avatar");
 const communityReportTargetNameEl = document.getElementById("community-report-target-name");
+const communityReportTargetUsernameEl = document.getElementById("community-report-target-username");
 const communityReportTargetLabelEl = document.getElementById("community-report-target-label");
 const communityReportReasonSelectEl = document.getElementById("community-report-reason-select");
+const communityReportOtherReasonEl = document.getElementById("community-report-other-reason");
 const communityReportDetailsEl = document.getElementById("community-report-details");
+const communityReportEvidenceEl = document.getElementById("community-report-evidence");
+const communityReportEvidenceListEl = document.getElementById("community-report-evidence-list");
+const communityReportAddEvidenceBtn = document.getElementById("community-report-add-evidence-btn");
 const communityReportHintEl = document.getElementById("community-report-hint");
 const communityReportCancelBtn = document.getElementById("community-report-cancel-btn");
 const communityReportSubmitBtn = document.getElementById("community-report-submit-btn");
@@ -9300,6 +9316,14 @@ function isCommunityNoticeConversation(partner = null) {
 
 function getCommunityChatReadonlyReason(partner = null) {
   if (isCommunityNoticeConversation(partner)) {
+    const activePartner = partner && typeof partner === "object" ? partner : communityState.activeConversationPartner || {};
+    const replyMode = String(activePartner?.noticeReplyMode || "").trim().toLowerCase();
+    const isBroadcastNotice =
+      String(activePartner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+      String(activePartner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast";
+    if (replyMode === "enabled" || (!replyMode && !isBroadcastNotice)) {
+      return "";
+    }
     return "Admin notices are read only.";
   }
   const activePartner = partner && typeof partner === "object" ? partner : communityState.activeConversationPartner || {};
@@ -9974,13 +9998,8 @@ function updateCommunityChatHeader(partner = {}) {
     const conversationId = String(communityState.activeConversation?.id || "").trim();
     const typingUsers = getCommunityConversationTypingUsers(conversationId);
     const isTyping = Boolean(communitySettingsPrefs.chatTypingIndicators && Array.isArray(typingUsers) && typingUsers.length);
-    const isBroadcastNotice =
-      String(partner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
-      String(partner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast";
     const subtitleText = partner?.isNotice
-      ? isBroadcastNotice
-        ? ""
-        : String(partner?.noticeSubtitle || "Messages from the admin team").trim() || "Messages from the admin team"
+      ? ""
       : partner?.isGroup
         ? getCommunityGroupTypingSubtitle(partner || {}, typingUsers)
         : getCommunityDirectTypingSubtitle(partner || {}, typingUsers);
@@ -14582,9 +14601,9 @@ function renderCommunityReplyDraft() {
 
 function startCommunityReplyToMessage(message = {}) {
   const readOnlyReason = getCommunityChatReadonlyReason();
-  if (readOnlyReason || isCommunityAdminMessage(message)) {
+  if (readOnlyReason) {
     closeCommunityMessageActions();
-    setCommunityFeedback(readOnlyReason || "Admin notices are read only.", true);
+    setCommunityFeedback(readOnlyReason, true);
     return;
   }
   if (isCommunityMessageDeletedForEveryone(message)) {
@@ -17249,14 +17268,13 @@ function openCommunityMessageActions(message = {}, anchorEl = null, { toggleSele
   const canReplyToMessage =
     !multiSelect &&
     !isDeletedForEveryone &&
-    !getCommunityChatReadonlyReason() &&
-    !isCommunityAdminMessage(anchorMessage);
+    !getCommunityChatReadonlyReason();
 
   if (communityMessageReplyBtn) {
     communityMessageReplyBtn.classList.toggle("hidden", !canReplyToMessage);
   }
   if (communityMessageReadonlyLabelEl) {
-    const showReadonly = !multiSelect && !isDeletedForEveryone && isCommunityAdminMessage(anchorMessage);
+    const showReadonly = !multiSelect && !isDeletedForEveryone && Boolean(getCommunityChatReadonlyReason());
     communityMessageReadonlyLabelEl.classList.toggle("hidden", !showReadonly);
     communityMessageReadonlyLabelEl.setAttribute("aria-hidden", showReadonly ? "false" : "true");
   }
@@ -18965,8 +18983,6 @@ function getCommunityConversationCardMarkup(row = {}) {
   const isGroup = Boolean(partner?.isGroup);
   const isNotice = Boolean(partner?.isNotice);
   const draft = getCommunityChatDraftForConversation(row?.id || "");
-  const isWarningNotice =
-    isNotice && String(partner?.noticeOriginType || "").trim().toLowerCase() === "report";
   const noticeSenderName = isNotice
     ? String(partner?.noticeSenderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin"
     : "";
@@ -18993,7 +19009,6 @@ function getCommunityConversationCardMarkup(row = {}) {
           isNotice
             ? `<div class="community-chat-row-head is-notice">
                 <button type="button" class="community-name-link community-chat-name-link" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}">${escapeHtml(truncateWithEllipsis(noticeSenderName, 26))}</button>
-                ${isWarningNotice ? '<span class="community-chat-warning-badge">Warning</span>' : ""}
               </div>`
             : isGroup
             ? `<button type="button" class="community-name-link community-chat-name-link" data-community-action="open-group-profile" data-group-id="${escapeHtml(row.id || partner.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(partner), 26))}</button>`
@@ -19197,7 +19212,8 @@ function renderCommunityChats() {
       )
       .join("");
   const allChats = Array.isArray(communityState.overview?.chats)
-    ? [...communityState.overview.chats].sort((a, b) => {
+    ? [...communityState.overview.chats]
+      .sort((a, b) => {
         const aDraft = getCommunityChatDraftForConversation(a?.id || "");
         const bDraft = getCommunityChatDraftForConversation(b?.id || "");
         if (aDraft && !bDraft) return -1;
@@ -19210,6 +19226,29 @@ function renderCommunityChats() {
         const aTime = new Date(a?.updatedAt || a?.lastMessage?.createdAt || 0).getTime() || 0;
         const bTime = new Date(b?.updatedAt || b?.lastMessage?.createdAt || 0).getTime() || 0;
         return bTime - aTime;
+      })
+      .filter((row, index, rows) => {
+        const partner = row?.partner || {};
+        const partnerName = String(partner?.displayName || partner?.name || partner?.title || "").trim().toLowerCase();
+        const isAnnouncementNotice = (
+          String(partner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+          String(partner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+          String(partner?.noticeOriginId || "").trim().toLowerCase() === "all-users" ||
+          String(partner?.noticeSubtitle || "").trim().toLowerCase() === "broadcast to everyone" ||
+          partnerName === "announcement"
+        );
+        if (!isAnnouncementNotice) return true;
+        return rows.findIndex((candidate) => {
+          const candidatePartner = candidate?.partner || {};
+          const candidateName = String(candidatePartner?.displayName || candidatePartner?.name || candidatePartner?.title || "").trim().toLowerCase();
+          return (
+            String(candidatePartner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+            String(candidatePartner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+            String(candidatePartner?.noticeOriginId || "").trim().toLowerCase() === "all-users" ||
+            String(candidatePartner?.noticeSubtitle || "").trim().toLowerCase() === "broadcast to everyone" ||
+            candidateName === "announcement"
+          );
+        }) === index;
       })
     : [];
   const groups = Array.isArray(communityState.overview?.groups)
@@ -21483,9 +21522,7 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
   communityState.messageMetaSignature = getCommunityMessageMetaSignature(visibleMessages);
   const noticePartner = communityState.activeConversationPartner || {};
   const isNoticeThread = Boolean(noticePartner?.isNotice);
-  const isWarningNotice =
-    isNoticeThread && String(noticePartner?.noticeOriginType || "").trim().toLowerCase() === "report";
-  const noticeTitle = String(noticePartner?.noticeTitle || noticePartner?.name || "Admin Notice").trim() || "Admin Notice";
+  const noticeSenderName = String(noticePartner?.noticeSenderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin";
   communityChatMessagesEl.innerHTML = visibleMessages
     .map((message, index) => {
       const previousMessage = visibleMessages[index - 1] || null;
@@ -21517,8 +21554,7 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
       const senderMarkup = showSender
         ? isNoticeThread
           ? `
-              ${isWarningNotice ? '<div class="community-message-notice-label">Warning</div>' : ""}
-              <div class="community-message-sender is-notice-title">${escapeHtml(truncateWithEllipsis(noticeTitle, 26))}</div>
+              <div class="community-message-sender is-notice-title">${escapeHtml(truncateWithEllipsis(noticeSenderName, 26))}</div>
             `
           : `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || "Member"), 18))}</div>`
         : "";
@@ -21848,6 +21884,12 @@ async function sendCommunityMessage() {
       const optimisticId = String(pendingDrafts[0]?.id || "").trim();
       const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
       if (savedMessage) {
+        if (communityState.activeConversation && savedMessage.conversationId) {
+          communityState.activeConversation = {
+            ...communityState.activeConversation,
+            id: savedMessage.conversationId,
+          };
+        }
         communityState.messages = Array.isArray(communityState.messages)
           ? communityState.messages.filter((entry) => String(entry?.id || "") !== optimisticId)
           : [];
@@ -22081,7 +22123,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           textX: 0.5,
           textY: 0.5,
           durationSeconds: COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-          allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+          allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
         },
         {
           isAdminBroadcast: isAdminBroadcastStatus,
@@ -22112,7 +22154,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
               videoTrimStart: Math.max(0, trim.start),
               videoTrimEnd: Math.max(0, trim.end),
               durationSeconds: clipDuration,
-              allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+              allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
             },
             {
               isAdminBroadcast: isAdminBroadcastStatus,
@@ -22167,7 +22209,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
             payload.type === "video"
               ? getCommunityStatusVideoDurationSeconds(payload)
               : COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-          allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+          allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
         };
       const shouldUseOriginalStatusFile =
         payload.originalFile instanceof Blob &&
@@ -22680,23 +22722,54 @@ async function submitCommunityAdminBroadcast() {
   }
 }
 
+function renderCommunityReportEvidence() {
+  if (!communityReportEvidenceListEl) return;
+  const evidence = Array.isArray(communityState.reportModal?.evidence)
+    ? communityState.reportModal.evidence
+    : [];
+  communityReportEvidenceListEl.innerHTML = Array.from({ length: 5 }, (_, index) => {
+    const item = evidence[index];
+    if (!item) {
+      return `<button type="button" class="community-report-evidence-slot" data-community-report-evidence-slot="${index}" aria-label="Add evidence"><span class="community-report-evidence-slot-icon">＋</span></button>`;
+    }
+    const mimeType = String(item?.mimeType || "").toLowerCase();
+    const fileName = escapeHtml(String(item?.fileName || "Evidence"));
+    const preview = mimeType.startsWith("image/") && item?.dataUrl
+      ? `<img class="community-report-evidence-thumb" src="${escapeHtml(item.dataUrl)}" alt="${fileName}" />`
+      : mimeType.startsWith("video/") && item?.dataUrl
+        ? `<video class="community-report-evidence-thumb" src="${escapeHtml(item.dataUrl)}" muted preload="metadata"></video>`
+        : `<span class="community-report-evidence-file-icon">${escapeHtml((mimeType.split("/").pop() || "file").slice(0, 5))}</span>`;
+    return `<div class="community-report-evidence-slot is-filled" data-community-report-evidence-slot="${index}">
+      ${preview}
+      <span class="community-report-evidence-name">${fileName}</span>
+      <button type="button" class="community-report-evidence-remove" data-community-report-remove-evidence="${index}" aria-label="Remove evidence">&times;</button>
+    </div>`;
+  }).join("");
+}
+
 function renderCommunityReportModal() {
   if (!communityReportModalEl) return;
   const state = communityState.reportModal || {};
   const targetType = String(state.targetType || "").trim().toLowerCase();
   const targetName = String(state.targetName || "").trim() || (targetType === "group" ? "Study Group" : "User");
+  const targetUsername = String(state.targetUsername || "").trim();
   const targetLabel = String(state.targetLabel || "").trim() || (targetType === "group" ? "Group" : "User");
   const isSending = Boolean(state.sending);
   const reason = String(state.reason || "");
+  const otherReason = String(state.otherReason || "");
   const details = String(state.details || "");
   if (communityReportTitleEl) {
     communityReportTitleEl.textContent = `Report ${targetLabel.toLowerCase()}`;
   }
   if (communityReportTargetLabelEl) {
-    communityReportTargetLabelEl.textContent = `${targetLabel} to report`;
+    communityReportTargetLabelEl.textContent = targetType === "user" ? "Reported user" : "Reported group";
   }
   if (communityReportTargetNameEl) {
     communityReportTargetNameEl.textContent = targetName;
+  }
+  if (communityReportTargetUsernameEl) {
+    communityReportTargetUsernameEl.textContent = targetUsername ? `@${targetUsername}` : "";
+    communityReportTargetUsernameEl.classList.toggle("hidden", !targetUsername);
   }
   if (communityReportTargetAvatarEl) {
     communityReportTargetAvatarEl.innerHTML =
@@ -22706,21 +22779,26 @@ function renderCommunityReportModal() {
   if (communityReportReasonSelectEl) {
     communityReportReasonSelectEl.value = reason;
   }
+  if (communityReportOtherReasonEl) {
+    communityReportOtherReasonEl.value = otherReason;
+    communityReportOtherReasonEl.classList.toggle("hidden", reason !== "Other");
+  }
   if (communityReportDetailsEl) {
     communityReportDetailsEl.value = details;
   }
+  renderCommunityReportEvidence();
   if (communityReportHintEl) {
     communityReportHintEl.textContent =
       targetType === "group"
-        ? "Pick the closest reason and add a short note if it helps us review the group faster."
-        : "Pick the closest reason and add any context that helps the review.";
+        ? "Choose a reason and add helpful context."
+        : "Choose a reason and add helpful context.";
   }
   if (communityReportSubmitBtn) {
     communityReportSubmitBtn.textContent = isSending ? "Sending..." : "Send report";
     communityReportSubmitBtn.disabled =
       isSending ||
       !String(reason || "").trim() ||
-      (String(reason || "") === "Other" && !String(details || "").trim());
+      (String(reason || "") === "Other" && !String(otherReason || "").trim());
   }
   if (communityReportCancelBtn) {
     communityReportCancelBtn.disabled = isSending;
@@ -22732,6 +22810,7 @@ function openCommunityReportModal({
   targetType = "user",
   targetId = "",
   targetName = "",
+  targetUsername = "",
   targetLabel = "",
   targetAvatar = "",
 } = {}) {
@@ -22743,10 +22822,13 @@ function openCommunityReportModal({
     targetType: safeTargetType,
     targetId: String(targetId || "").trim(),
     targetName: String(targetName || "").trim(),
+    targetUsername: String(targetUsername || "").trim(),
     targetLabel: String(targetLabel || (safeTargetType === "group" ? "Group" : "User")).trim(),
     targetAvatar: String(targetAvatar || "").trim(),
     reason: "",
+    otherReason: "",
     details: "",
+    evidence: [],
   };
   renderCommunityReportModal();
 }
@@ -22766,8 +22848,11 @@ async function submitCommunityReportModal() {
   const targetType = String(state.targetType || "").trim().toLowerCase();
   const targetId = String(state.targetId || "").trim();
   if (!targetId) return;
-  const reasonText = getCommunityReportSubmissionText();
-  if (!reasonText) {
+   const selectedReason = String(communityReportReasonSelectEl?.value || state.reason || "").trim();
+   const otherReasonText = String(communityReportOtherReasonEl?.value || state.otherReason || "").trim();
+   const reasonText = selectedReason === "Other" ? otherReasonText : selectedReason;
+   const detailsText = String(communityReportDetailsEl?.value || state.details || "").trim();
+   if (!reasonText) {
     setCommunityFeedback("Please choose a report reason and add details for the custom option.", true);
     return;
   }
@@ -22775,9 +22860,9 @@ async function submitCommunityReportModal() {
   renderCommunityReportModal();
   try {
     if (targetType === "group") {
-      await backendClient.reportCommunityGroup(targetId, reasonText);
+       await backendClient.reportCommunityGroup(targetId, reasonText, detailsText, state.evidence || []);
     } else {
-      await backendClient.reportCommunityUser(targetId, reasonText);
+       await backendClient.reportCommunityUser(targetId, reasonText, detailsText, state.evidence || []);
     }
     closeCommunityReportModal();
     setCommunityFeedback(`${String(state.targetLabel || targetType || "Item")} reported. Thanks for helping keep the community safe.`);
@@ -22999,11 +23084,13 @@ async function reportCommunityGroup(groupId = "") {
 async function reportCommunityUser(userId = "") {
   const safeUserId = String(userId || "").trim();
   if (!safeUserId) return;
-  const profile = communityState.profile || {};
+  const targetUserResponse = await backendClient.fetchCommunityProfile(safeUserId, { preferCache: true }).catch(() => null);
+  const profile = targetUserResponse?.profile || targetUserResponse?.user || targetUserResponse || {};
   openCommunityReportModal({
     targetType: "user",
     targetId: safeUserId,
     targetName: String(profile.name || profile.username || "User").trim() || "User",
+    targetUsername: String(profile.username || "").trim(),
     targetLabel: "User",
     targetAvatar: getCommunityPlainAvatarMarkup(profile, "community-report-avatar-image"),
   });
@@ -24454,6 +24541,7 @@ async function handleProfileFrameMessage(event) {
     const payload = {
       firstName: nameParts.shift() || currentUser?.firstName || "",
       lastName: nameParts.join(" ") || currentUser?.lastName || "",
+      title: String(form.title || currentUser?.title || "").trim(),
       username: String(form.username || currentUser?.username || "").trim(),
       contact: String(currentUser?.contact || currentUser?.email || form.email || form.phone || "").trim(),
       email: String(form.email || "").trim(),
@@ -30770,7 +30858,16 @@ if (communityReportReasonSelectEl) {
       communityReportDetailsEl.placeholder = nextReason
         ? `Add context about ${nextReason.toLowerCase()}`
         : "Add details (optional)";
+    } else if (communityReportDetailsEl) {
+      communityReportDetailsEl.placeholder = "Add extra details (optional)";
     }
+    renderCommunityReportModal();
+  });
+}
+
+if (communityReportOtherReasonEl) {
+  communityReportOtherReasonEl.addEventListener("input", () => {
+    communityState.reportModal.otherReason = String(communityReportOtherReasonEl.value || "");
     renderCommunityReportModal();
   });
 }
@@ -30778,6 +30875,82 @@ if (communityReportReasonSelectEl) {
 if (communityReportDetailsEl) {
   communityReportDetailsEl.addEventListener("input", () => {
     communityState.reportModal.details = String(communityReportDetailsEl.value || "");
+  });
+}
+
+function readCommunityReportFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Evidence could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
+if (communityReportEvidenceEl) {
+  communityReportEvidenceEl.addEventListener("change", async () => {
+    const files = Array.from(communityReportEvidenceEl.files || []);
+    const current = Array.isArray(communityState.reportModal?.evidence)
+      ? communityState.reportModal.evidence
+      : [];
+    const allowedDocuments = new Set([
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ]);
+    const remaining = Math.max(0, 5 - current.length);
+    const additions = [];
+    for (const file of files.slice(0, remaining)) {
+      const type = String(file.type || "").toLowerCase();
+      const allowed = type.startsWith("image/") || type.startsWith("video/") || allowedDocuments.has(type);
+      if (!allowed || file.size > 8 * 1024 * 1024) {
+        setCommunityFeedback("Evidence must be an image, video, PDF, DOC, DOCX or TXT file under 8MB.", true);
+        continue;
+      }
+      try {
+        additions.push({
+          fileName: String(file.name || "Evidence").slice(0, 160),
+          mimeType: type,
+          size: file.size,
+          dataUrl: await readCommunityReportFileAsDataUrl(file),
+        });
+      } catch (error) {
+        setCommunityFeedback(String(error?.message || "Evidence could not be read."), true);
+      }
+    }
+    communityState.reportModal.evidence = [...current, ...additions].slice(0, 5);
+    communityReportEvidenceEl.value = "";
+    renderCommunityReportModal();
+  });
+}
+
+if (communityReportAddEvidenceBtn) {
+  communityReportAddEvidenceBtn.addEventListener("click", () => {
+    communityReportEvidenceEl?.click();
+  });
+}
+
+if (communityReportEvidenceListEl) {
+  communityReportEvidenceListEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-community-report-remove-evidence]");
+    const slot = event.target.closest("[data-community-report-evidence-slot]");
+    if (button) {
+      event.stopPropagation();
+      const index = Number(button.dataset.communityReportRemoveEvidence);
+      const evidence = Array.isArray(communityState.reportModal?.evidence)
+        ? communityState.reportModal.evidence
+        : [];
+      if (Number.isInteger(index) && index >= 0) {
+        evidence.splice(index, 1);
+        communityState.reportModal.evidence = evidence;
+        renderCommunityReportModal();
+      }
+      return;
+    }
+    if (!slot || slot.classList.contains("is-filled")) return;
+    communityReportEvidenceEl?.click();
+    return;
   });
 }
 
@@ -32565,15 +32738,18 @@ const CONTACT_COUNTRY_OPTIONS = (() => {
     byCode.set(code, entry);
   });
 
-  return Array.from(byCode.values()).map((entry) => {
-    const primaryCountry = entry.countries[0] || "";
-    const visual = CONTACT_COUNTRY_VISUALS[primaryCountry] || CONTACT_COUNTRY_VISUALS.Other;
-    return {
-      code: entry.code,
-      label: `${visual.shortCode}`,
-      title: `${primaryCountry || "International"} ${entry.code}`,
-    };
-  });
+  return Array.from(byCode.values())
+    .map((entry) => {
+      const primaryCountry = entry.countries[0] || "";
+      const visual = CONTACT_COUNTRY_VISUALS[primaryCountry] || CONTACT_COUNTRY_VISUALS.Other;
+      return {
+        code: entry.code,
+        country: primaryCountry,
+        label: `${visual.shortCode}`,
+        title: `${primaryCountry || "International"} ${entry.code}`,
+      };
+    })
+    .sort((left, right) => String(left.country || "").localeCompare(String(right.country || "")));
 })();
 const CONTACT_CODE_PRIORITY = Array.from(
   new Set(CONTACT_COUNTRY_OPTIONS.map((option) => option.code)),
@@ -32582,6 +32758,23 @@ const DEFAULT_CONTACT_CODE =
   CONTACT_COUNTRY_OPTIONS.find((option) => option.code === "+233")?.code ||
   CONTACT_COUNTRY_OPTIONS[0]?.code ||
   "+233";
+
+const CONTACT_FLAG_BY_CODE = {
+  "+1": "\u{1F1FA}\u{1F1F8}",
+  "+44": "\u{1F1EC}\u{1F1E7}",
+  "+234": "\u{1F1F3}\u{1F1EC}",
+  "+233": "\u{1F1EC}\u{1F1ED}",
+  "+254": "\u{1F1F0}\u{1F1EA}",
+  "+91": "\u{1F1EE}\u{1F1F3}",
+  "+92": "\u{1F1F5}\u{1F1F0}",
+  "+63": "\u{1F1F5}\u{1F1ED}",
+  "+61": "\u{1F1E6}\u{1F1FA}",
+  "+27": "\u{1F1FF}\u{1F1E6}",
+};
+
+function getContactFlagClass(code = "") {
+  return `flag-${String(code || "intl").replace(/[^a-z0-9]/gi, "") || "intl"}`;
+}
 
 function populateContactCountrySelect(selectEl) {
   if (!selectEl || selectEl.dataset.populated === "1") return;
@@ -32601,6 +32794,55 @@ function populateContactCountrySelect(selectEl) {
     ? currentValue
     : DEFAULT_CONTACT_CODE;
   selectEl.dataset.populated = "1";
+  if (selectEl === authContactCountryCodeInput) renderAuthCountryMenu();
+}
+
+function getAuthCountryOption(code = "") {
+  const selectedCode = String(code || DEFAULT_CONTACT_CODE).trim() || DEFAULT_CONTACT_CODE;
+  return CONTACT_COUNTRY_OPTIONS.find((option) => option.code === selectedCode) || CONTACT_COUNTRY_OPTIONS[0];
+}
+
+function updateAuthCountryTrigger() {
+  if (!authCountryFlag || !authContactCountryCodeInput) return;
+  const option = getAuthCountryOption(authContactCountryCodeInput.value);
+  authCountryFlag.className = `auth-country-flag ${getContactFlagClass(option?.code)}`;
+  authCountryFlag.textContent = "";
+  authCountryTrigger?.setAttribute("aria-label", `Choose country: ${option?.country || "International"}`);
+}
+
+function renderAuthCountryMenu() {
+  if (!authCountryMenu) return;
+  authCountryMenu.replaceChildren();
+  CONTACT_COUNTRY_OPTIONS.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "auth-country-option";
+    button.dataset.countryCode = option.code;
+    button.setAttribute("role", "option");
+    const isSelected = option.code === authContactCountryCodeInput?.value;
+    button.setAttribute("aria-selected", isSelected ? "true" : "false");
+    button.innerHTML = `<span class="auth-country-option-flag auth-country-flag ${getContactFlagClass(option.code)}" aria-hidden="true"></span><span class="auth-country-option-name">${option.country || "International"}</span><span class="auth-country-option-code">${option.code || "International"}</span>`;
+    button.addEventListener("click", () => {
+      if (!authContactCountryCodeInput) return;
+      authContactCountryCodeInput.value = option.code;
+      authContactCountryCodeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      closeAuthCountryMenu();
+    });
+    authCountryMenu.appendChild(button);
+  });
+  updateAuthCountryTrigger();
+}
+
+function setAuthCountryMenuOpen(open = false) {
+  if (!authCountryMenu || !authCountryTrigger) return;
+  const nextOpen = Boolean(open);
+  authCountryMenu.classList.toggle("hidden", !nextOpen);
+  authCountryTrigger.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+  authCountryMenu.querySelector(`[data-country-code="${CSS.escape(String(authContactCountryCodeInput?.value || DEFAULT_CONTACT_CODE))}"]`)?.scrollIntoView({ block: "nearest" });
+}
+
+function closeAuthCountryMenu() {
+  setAuthCountryMenuOpen(false);
 }
 
 function getContactFormatValue(selectEl) {
@@ -32620,21 +32862,34 @@ function updateContactPhonePrefix(prefixEl, countryCodeInput) {
   const code = String(countryCodeInput?.value || DEFAULT_CONTACT_CODE).trim() || DEFAULT_CONTACT_CODE;
   prefixEl.textContent = code;
   prefixEl.title = `Country code ${code}`;
+  if (countryCodeInput === authContactCountryCodeInput) updateAuthCountryTrigger();
   return code;
+}
+
+function normalizeContactPhoneDigits(value, countryCodeInput) {
+  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+  let digits = normalizeDigits(value);
+  const maxDigits = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+
+  // Accept the familiar local format as well as the international subscriber
+  // format. For example, Ghana accepts 0241234567 and 241234567 equally.
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  return digits.slice(0, maxDigits);
 }
 
 function normalizeContactPhoneField(phoneInput, countryCodeInput) {
   if (!phoneInput) return "";
-  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
-  const maxDigits = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
-  const digits = normalizeDigits(phoneInput.value).slice(0, maxDigits);
+  const digits = normalizeContactPhoneDigits(phoneInput.value, countryCodeInput);
   if (phoneInput.value !== digits) phoneInput.value = digits;
   return digits;
 }
 
 function getPhoneContactError(phoneValue, countryCodeInput) {
   const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
-  const digits = normalizeDigits(phoneValue);
+  const digits = normalizeContactPhoneDigits(phoneValue, countryCodeInput);
   if (!digits) return "Contact number is required.";
   if (digits.length < rule.min || digits.length > rule.max) {
     const range = rule.min === rule.max ? `${rule.min}-digit` : `${rule.min}-${rule.max}-digit`;
@@ -32693,7 +32948,7 @@ function buildContactValueFromFields({
   }
 
   const countryCode = String(countryCodeInput?.value || "").trim() || DEFAULT_CONTACT_CODE;
-  const phone = normalizeDigits(contactInput?.value || "");
+  const phone = normalizeContactPhoneDigits(contactInput?.value || "", countryCodeInput);
   return phone ? `${countryCode}${phone}` : "";
 }
 
@@ -32742,6 +32997,14 @@ function syncContactFieldMode({
     wrap.classList.toggle("is-contact-phone", mode === CONTACT_FORMAT_PHONE);
   }
 
+  if (authContactPhoneToggle && wrap === authContactWrap) {
+    const isPhone = mode === CONTACT_FORMAT_PHONE;
+    authContactPhoneToggle.classList.toggle("is-active", isPhone);
+    authContactEmailToggle?.classList.toggle("is-active", !isPhone);
+    authContactPhoneToggle.setAttribute("aria-pressed", isPhone ? "true" : "false");
+    authContactEmailToggle?.setAttribute("aria-pressed", isPhone ? "false" : "true");
+  }
+
   if (emailWrap) emailWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_EMAIL);
   if (phoneWrap) phoneWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_PHONE);
 
@@ -32758,7 +33021,9 @@ function syncContactFieldMode({
     contactInput.inputMode = mode === CONTACT_FORMAT_EMAIL ? "email" : "numeric";
     if (mode === CONTACT_FORMAT_PHONE) {
       const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
-      contactInput.maxLength = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+      // Allow one optional local leading zero, which is removed by the
+      // normalizer before the value is sent to the backend.
+      contactInput.maxLength = Math.max(Number(rule.max) || 14, Number(rule.min) || 6) + 1;
       normalizeContactPhoneField(contactInput, countryCodeInput);
     } else {
       contactInput.removeAttribute("maxlength");
@@ -33401,6 +33666,8 @@ function renderAuthState() {
 function setAuthMode(nextMode = "login") {
   const allowedModes = new Set(["login", "register", "forgot", "reset"]);
   authMode = allowedModes.has(nextMode) ? nextMode : "login";
+  const authCard = authModal?.querySelector(".auth-modal-card");
+  if (authCard) authCard.scrollTop = 0;
   authTwoFactorChallengeEl?.classList.add("hidden");
   authForm?.classList.remove("hidden");
 
@@ -33408,6 +33675,28 @@ function setAuthMode(nextMode = "login") {
   const isRegister = authMode === "register";
   const isForgot = authMode === "forgot";
   const isReset = authMode === "reset";
+  authCard?.classList.toggle("auth-compact", isForgot || isReset);
+  const authModalTitleEl = document.getElementById("auth-modal-title");
+  const authModalCopyEl = document.getElementById("auth-modal-copy");
+
+  if (authModalTitleEl) {
+    authModalTitleEl.textContent = isRegister
+      ? "Create your account"
+      : isForgot
+        ? "Recover your account"
+        : isReset
+          ? "Set a new password"
+          : "Welcome back";
+  }
+  if (authModalCopyEl) {
+    authModalCopyEl.textContent = isRegister
+      ? "Create your AjixPharmacy account and keep your learning progress in one place."
+      : isForgot
+        ? "Request a secure reset code using a contact linked to your account."
+        : isReset
+          ? "Enter the reset code and choose a new password for your account."
+          : "Sign in to continue your pharmacy practice and pick up where you left off.";
+  }
 
   if (authTabLoginBtn) {
     authTabLoginBtn.classList.toggle("active", isLogin);
@@ -33502,7 +33791,7 @@ async function verifyPendingTwoFactorLogin() {
     syncPointsFromCurrentUser();
     scheduleSharedAccountHydration({ silent: true, deferHydration: true });
   } catch (error) {
-    setTwoFactorError(authErrorMessage(error) || "Invalid verification code.");
+    setTwoFactorError("Invalid authenticator or recovery code.");
   } finally {
     if (authTwoFactorSubmitBtn) authTwoFactorSubmitBtn.disabled = false;
   }
@@ -33547,7 +33836,7 @@ function closeAuthModal() {
 function authErrorMessage(error) {
   const message = String(error?.message || "");
   if (message.includes("invalid credentials") || message.includes("(401)")) {
-    return "We couldn’t sign you in. Check your details and try again.";
+    return "Incorrect username, email, phone, or password.";
   }
   if (message.includes("deactivated") || message.includes("(403)")) {
     return message.replace(/\s+\(\d+\)\s*$/, "");
@@ -34434,12 +34723,53 @@ if (authContactFormatInput) {
     });
 }
 
+function setAuthContactFormat(format) {
+  if (!authContactFormatInput) return;
+  const nextFormat = format === CONTACT_FORMAT_EMAIL ? CONTACT_FORMAT_EMAIL : CONTACT_FORMAT_PHONE;
+  if (authContactFormatInput.value === nextFormat) {
+    syncContactFieldMode({
+      wrap: authContactWrap,
+      formatSelect: authContactFormatInput,
+      emailWrap: authContactEmailWrap,
+      emailInput: authContactEmailInput,
+      phoneWrap: authContactPhoneWrap,
+      countryCodeInput: authContactCountryCodeInput,
+      phoneInput: authContactPhoneInput,
+      prefixEl: authContactPrefixInput,
+      locked: authMode === "forgot" && authForgotRequestLocked,
+    });
+    return;
+  }
+  authContactFormatInput.value = nextFormat;
+  authContactFormatInput.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+authContactPhoneToggle?.addEventListener("click", () => setAuthContactFormat(CONTACT_FORMAT_PHONE));
+authContactEmailToggle?.addEventListener("click", () => setAuthContactFormat(CONTACT_FORMAT_EMAIL));
+
 if (authContactCountryCodeInput) {
   authContactCountryCodeInput.onchange = () => {
     updateContactPhonePrefix(authContactPrefixInput, authContactCountryCodeInput);
+    renderAuthCountryMenu();
     normalizeContactPhoneField(authContactPhoneInput, authContactCountryCodeInput);
     clearFieldValidation(authContactWrap);
   };
+}
+
+authCountryTrigger?.addEventListener("click", (event) => {
+  event.preventDefault();
+  setAuthCountryMenuOpen(authCountryMenu?.classList.contains("hidden"));
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target && !target.closest(".auth-country-picker")) closeAuthCountryMenu();
+});
+
+if (authContactPhoneInput) {
+  authContactPhoneInput.addEventListener("input", () => {
+    normalizeContactPhoneField(authContactPhoneInput, authContactCountryCodeInput);
+  });
 }
 
 if (profileContactFormatInput) {

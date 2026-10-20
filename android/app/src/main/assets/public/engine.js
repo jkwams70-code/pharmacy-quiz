@@ -1,25 +1,11 @@
-import { backendClient } from "./backendClient.js?v=20260619-cross-device-sync-fix3";
+import { backendClient } from "./backendClient.js?v=20260913-entitlement-live1";
 import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js?v=20260907-idb-recovery-v1";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
+import { CANONICAL_CATEGORIES } from "./category-taxonomy.js?v=20260916-taxonomy1";
+
 const QUESTION_BANK_MODULE_URL = "./data.js?v=20260613-manufacturing-set2";
 
-const MAJOR_CATEGORIES = [
-  "Cardiovascular Disorders",
-  "Infectious Diseases",
-  "Endocrinology",
-  "Respiratory Disorders",
-  "Renal & Electrolyte Disorders",
-  "Gastrointestinal Disorders",
-  "Neurology & Psychiatry",
-  "Hematology",
-  "Oncology",
-  "Rheumatology & Pain",
-  "Women's & Men's Health",
-  "Immunizations",
-  "Pharmacy Practice",
-  "Manufacturing and Calculation",
-  "Pharmacy Law & Ethics",
-];
+const MAJOR_CATEGORIES = CANONICAL_CATEGORIES;
 
 const ROTATION_OPTIONS = [
   "Internal Medicine",
@@ -273,6 +259,7 @@ ensureQuestionBankSchemaVersion();
 function normalizeMajorCategory(category, context = "") {
   const raw = String(category || "").trim();
   if (LEGACY_CATEGORY_MAP[raw]) return LEGACY_CATEGORY_MAP[raw];
+  if (raw) return raw;
 
   const combined = `${raw} ${String(context || "")}`.toLowerCase();
   if (combined.includes("cardio") || combined.includes("hypertens")) {
@@ -766,6 +753,7 @@ function buildLawDrillStackMarkup(levelIndex = null, eyebrowLabel = null) {
 
 function normalizeLawDrillState(rawState = null) {
   if (!rawState || typeof rawState !== "object") return null;
+  if (Number(rawState.version || 1) < 2) return null;
 
   const levels = cloneLawDrillLevels(rawState.levels);
   if (levels.length === 0) return null;
@@ -884,7 +872,7 @@ function createLawDrillState(sourceQuestions = questionBank) {
   const levels = buildLawDrillLevels(sourceQuestions);
   if (!levels.length) return null;
   return {
-    version: 1,
+    version: 2,
     totalLevels: LAW_DRILL_TOTAL_LEVELS,
     questionsPerLevel: LAW_DRILL_QUESTIONS_PER_LEVEL,
     currentLevelIndex: 0,
@@ -1213,10 +1201,16 @@ function readCurrentLawDrillSession() {
   const ownerKey = getLawDrillSessionOwnerKey();
   const local = state.owners?.[ownerKey] || null;
   const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
-  if (currentUser?.id && backendClient.isAuthenticated()) {
-    return remote;
+  const merged = mergeLawDrillSessions(local, remote);
+  if (
+    merged &&
+    currentUser?.id &&
+    backendClient.isAuthenticated() &&
+    getLawDrillSessionProgress(local) > getLawDrillSessionProgress(remote)
+  ) {
+    scheduleLawDrillSessionSync(0);
   }
-  return mergeLawDrillSessions(local, remote);
+  return merged;
 }
 
 function writeCurrentLawDrillSession(nextValue = {}, { scheduleSync = true } = {}) {
@@ -1229,6 +1223,18 @@ function writeCurrentLawDrillSession(nextValue = {}, { scheduleSync = true } = {
     scheduleLawDrillSessionSync();
   }
   return normalized;
+}
+
+function hydrateCurrentLawDrillSessionFromAccount() {
+  const state = readLawDrillSessionState();
+  const ownerKey = getLawDrillSessionOwnerKey();
+  const local = normalizeStoredLawDrillSession(state.owners?.[ownerKey] || null);
+  const remote = normalizeStoredLawDrillSession(currentUser?.lawDrillSession || null);
+  const merged = mergeLawDrillSessions(local, remote);
+  writeCurrentLawDrillSession(merged, {
+    scheduleSync: getLawDrillSessionProgress(merged) > getLawDrillSessionProgress(remote),
+  });
+  return merged;
 }
 
 let lawDrillSessionSyncHandle = null;
@@ -1843,11 +1849,6 @@ function showLawDrillLevelResult(levelIndex = 0, { final = false } = {}) {
     lawDrillCloseBtn.title = "Return to the law drill ladder";
     lawDrillCloseBtn.onclick = returnToLawLadder;
   }
-  if (lawDrillMenuBtn) {
-    lawDrillMenuBtn.textContent = "Menu";
-    lawDrillMenuBtn.onclick = goToMenu;
-  }
-
   showScreen("law-drill-result-screen");
   renderPoints();
   renderSessionPointsDisplay();
@@ -2364,6 +2365,8 @@ let topicCatalog = { topics: [], categories: [] };
 let topicCatalogLoaded = false;
 let subscriptionPlansCache = [];
 let subscriptionStatusSnapshot = null;
+const SHARED_SUBSCRIPTION_REFRESH_COOLDOWN_MS = 20_000;
+const SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS = 15_000;
 const SUBSCRIPTION_ENTITLEMENT_CACHE_KEY =
   "subscriptionEntitlementCacheV1";
 const OFFLINE_SUBSCRIPTION_GRACE_MS =
@@ -2371,6 +2374,8 @@ const OFFLINE_SUBSCRIPTION_GRACE_MS =
 let subscriptionEntitlement = null;
 let subscriptionEntitlementHydrated = false;
 let subscriptionEntitlementHydrationPromise = null;
+let subscriptionExpiryTimerHandle = null;
+const SUBSCRIPTION_EXPIRY_TIMER_MAX_MS = 2_147_000_000;
 
 function getSubscriptionEntitlementValue(entry) {
   return entry?.value && typeof entry.value === "object"
@@ -2409,6 +2414,17 @@ async function hydrateSubscriptionEntitlement() {
 
 void hydrateSubscriptionEntitlement();
 
+if (window.AJIXSubscription?.subscribe) {
+  window.AJIXSubscription.subscribe((snapshot) => {
+    if (!snapshot) return;
+    subscriptionStatusSnapshot = snapshot;
+    scheduleSubscriptionExpiryTimer();
+    syncPremiumMenuLocks();
+    if (typeof renderAuthState === "function") renderAuthState();
+    if (getActiveScreenId() === "subscription-screen") renderSubscriptionScreen();
+  });
+}
+
 async function cacheSubscriptionEntitlement(access = null) {
   if (!access || typeof access !== "object") return false;
 
@@ -2445,6 +2461,39 @@ async function cacheSubscriptionEntitlement(access = null) {
   }
 }
 
+function stopSubscriptionExpiryTimer() {
+  if (subscriptionExpiryTimerHandle) {
+    clearTimeout(subscriptionExpiryTimerHandle);
+    subscriptionExpiryTimerHandle = null;
+  }
+}
+
+function handleSubscriptionExpiry() {
+  void window.AJIXSubscription?.refresh?.().then((snapshot) => {
+    subscriptionStatusSnapshot = snapshot || null;
+    renderAuthState();
+    if (getActiveScreenId() === "subscription-screen") renderSubscriptionScreen();
+  }).catch(() => {});
+}
+
+function scheduleSubscriptionExpiryTimer() {
+  stopSubscriptionExpiryTimer();
+  const access = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
+  const expirationAt = access?.expirationAt || "";
+  const expirationTime = Date.parse(String(expirationAt || ""));
+  if (!Number.isFinite(expirationTime)) return;
+
+  const delay = expirationTime - Date.now();
+  if (delay <= 0) {
+    handleSubscriptionExpiry();
+    return;
+  }
+
+  subscriptionExpiryTimerHandle = window.setTimeout(
+    handleSubscriptionExpiry,
+    Math.min(delay, SUBSCRIPTION_EXPIRY_TIMER_MAX_MS),
+  );
+}
 function hasUsableOfflineSubscriptionEntitlement() {
   const entitlement = subscriptionEntitlement;
   if (!entitlement) return false;
@@ -2467,6 +2516,7 @@ let subscriptionScreenState = {
   returnScreen: "quiz-menu",
   paymentModalOpen: false,
   paymentProofOpen: false,
+  loading: false,
 };
 let topicLibraryReturnScreen = "quiz-menu";
 let topicViewerReturnScreen = "topic-library";
@@ -2546,6 +2596,12 @@ async function flushCommunityOfflineQueue() {
         }
         const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
         if (savedMessage) {
+          if (communityState.activeConversation && savedMessage.conversationId) {
+            communityState.activeConversation = {
+              ...communityState.activeConversation,
+              id: savedMessage.conversationId,
+            };
+          }
           communityState.messages = Array.isArray(communityState.messages)
             ? communityState.messages.filter((message) => !Array.isArray(payload.optimisticIds) || !payload.optimisticIds.includes(String(message?.id || "")))
             : [];
@@ -2615,7 +2671,7 @@ async function ensureQuestionBankLoaded() {
     const cached = await getOfflineEntry(QUESTION_BANK_CACHE_KEY);
 
     if (Array.isArray(cached?.value) && cached.value.length > 0) {
-      questionBank = [...cached.value];
+      questionBank = cached.value.map((question) => ({ ...question, correct: normalizeQuestionCorrectValue(question, question) }));
       localTopicQuestionBank = [...questionBank];
       normalizedLocalQuestions = [...questionBank];
 
@@ -2687,6 +2743,43 @@ async function ensureQuestionBankLoaded() {
   return questionBankBootstrapPromise;
 }
 
+function normalizeQuestionCorrectValue(q = {}, fallback = {}) {
+  const rawValue = q.correct ?? fallback.correct ?? "";
+  const raw = String(rawValue).trim();
+  const answer = Number(q.answer ?? fallback.answer);
+  if (Number.isInteger(answer) && answer >= 0 && answer < 26) return String.fromCharCode(65 + answer);
+  const correctIndex = Number(rawValue);
+  if (Number.isInteger(correctIndex) && correctIndex >= 0 && correctIndex < 26) {
+    return String.fromCharCode(65 + correctIndex);
+  }
+  const kind = String(q.type || fallback.type || "").toLowerCase();
+  if (kind !== "combo") return raw;
+  if (/^[A-E](?:\s*[:.)-]|$)/i.test(raw)) return raw.charAt(0).toUpperCase();
+  const options = Array.isArray(q.options) && q.options.length ? q.options : (Array.isArray(fallback.options) ? fallback.options : []);
+  const clean = value => String(value || "").replace(/^\s*[A-E](?:\s*[:.)-]\s*)/i, "").trim().toLowerCase();
+  const target = clean(raw);
+  const index = options.findIndex(option => clean(option) === target);
+  return index >= 0 ? String.fromCharCode(65 + index) : raw;
+}
+
+function normalizeQuestionAnswerIndex(q = {}, fallback = {}) {
+  const options = Array.isArray(q.options) && q.options.length
+    ? q.options
+    : Array.isArray(fallback.options)
+      ? fallback.options
+      : [];
+  const numeric = Number(q.answer ?? fallback.answer);
+  if (Number.isInteger(numeric) && numeric >= 0 && numeric < options.length) return numeric;
+  const normalizedCorrect = normalizeQuestionCorrectValue(q, fallback);
+  const letter = String(normalizedCorrect || "").trim().match(/^([A-Z])(?:$|[.:) -])/i);
+  if (letter) {
+    const index = letter[1].toUpperCase().charCodeAt(0) - 65;
+    if (index >= 0 && index < options.length) return index;
+  }
+  const raw = String(q.correct ?? fallback.correct ?? "").trim().toLowerCase();
+  const exactIndex = options.findIndex((option) => String(option || "").trim().toLowerCase() === raw);
+  return exactIndex >= 0 ? exactIndex : -1;
+}
 function mapBackendQuestionToLocal(q = {}) {
   const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
   return {
@@ -2704,11 +2797,13 @@ function mapBackendQuestionToLocal(q = {}) {
       question: q.question || q.text || fallback.question || fallback.text || "",
       explanation: q.explanation || fallback.explanation || "",
     }),
-    options: Array.isArray(q.options)
+    options: Array.isArray(q.options) && q.options.length
       ? q.options
-      : Array.isArray(fallback.options)
+      : Array.isArray(fallback.options) && fallback.options.length
         ? fallback.options
-        : [],
+        : ((String(q.type || fallback.type || '').toLowerCase() === 'combo' || String(q.type || fallback.type || '').toLowerCase() === 'three-statement') && Array.isArray(q.statements || fallback.statements) && (q.statements || fallback.statements).length === 3
+          ? ['I, II, III', 'I, II', 'II, III', 'I only', 'III only']
+          : []),
     statements: Array.isArray(q.statements)
       ? q.statements
       : Array.isArray(fallback.statements)
@@ -2716,8 +2811,8 @@ function mapBackendQuestionToLocal(q = {}) {
         : [],
     caseId: q.caseId || fallback.caseId || "",
     caseBlock: q.caseBlock || fallback.caseBlock || "",
-    correct: q.correct || fallback.correct,
-    answer: Number.isFinite(Number(q.answer)) ? Number(q.answer) : Number(fallback.answer) || undefined,
+    correct: normalizeQuestionCorrectValue(q, fallback),
+    answer: normalizeQuestionAnswerIndex(q, fallback) >= 0 ? normalizeQuestionAnswerIndex(q, fallback) : undefined,
     explanation: q.explanation || fallback.explanation || "",
     explainCorrect: q.explainCorrect || fallback.explainCorrect || "",
     wrongOptionExplanations:
@@ -2742,11 +2837,11 @@ function mapBackendQuestionToLocal(q = {}) {
 }
 
 const COMBO_THREE_STATEMENT_CHOICES = [
-  { letter: "A", text: "A: 1, 2 and 3" },
-  { letter: "B", text: "B: 1 and 2 only" },
-  { letter: "C", text: "C: 2 and 3 only" },
-  { letter: "D", text: "D: 1 only" },
-  { letter: "E", text: "E: 3 only" },
+  { letter: "A", text: "A: I, II and III" },
+  { letter: "B", text: "B: I and II only" },
+  { letter: "C", text: "C: II and III only" },
+  { letter: "D", text: "D: I only" },
+  { letter: "E", text: "E: III only" },
 ];
 
 const COMBO_PAIR_RELATION_CHOICES = [
@@ -2783,6 +2878,25 @@ const COMBO_ASSERTION_CHOICES = [
   { letter: "E", text: "E: Both statements are FALSE" },
 ];
 
+function displayOptionText(value, question = {}) {
+  let text = String(value || "").replace(/^\s*[A-E](?:\s*[:.)-]\s*)/i, "").trim();
+  const type = String(question.type || "").toLowerCase();
+  const variant = String(question.comboVariant || "").toLowerCase();
+  if (type === "combo" && variant === "three-statement") {
+    text = text.replace(/\b1\b/g, "I").replace(/\b2\b/g, "II").replace(/\b3\b/g, "III").replace(/\b4\b/g, "IV");
+  }
+  return text;
+}
+
+function formatComboStatement(statement, index, question = {}) {
+  const raw = String(statement || "").replace(/^\s*(?:\d+|[IVX]+)[.)-]\s*/i, "").trim();
+  const variant = String(question.comboVariant || "").toLowerCase();
+  const count = Array.isArray(question.statements) ? question.statements.length : 0;
+  const labels = variant === "assertion-5" ? ["Assertion", "Reason"] : count >= 3 ? ["I", "II", "III", "IV"] : [];
+  const label = labels[index] || String(index + 1);
+  return `<strong>${escapeHtml(label)}.</strong> ${escapeHtml(raw)}`;
+}
+
 function getComboChoiceRows(question = {}) {
   const explicitOptions = Array.isArray(question?.options)
     ? question.options.map((option) => String(option || "").trim()).filter(Boolean)
@@ -2791,7 +2905,7 @@ function getComboChoiceRows(question = {}) {
   if (explicitOptions.length > 0) {
     return explicitOptions.map((text, index) => {
       const letter = String.fromCharCode(65 + index);
-      const renderedText = /^[A-E][\s:.)-]/i.test(text) ? text : `${letter}: ${text}`;
+      const renderedText = displayOptionText(text);
       return { letter, text: renderedText };
     });
   }
@@ -2851,7 +2965,6 @@ function startBackendBootstrap() {
   if (backendBootstrapStarted) return;
   backendBootstrapStarted = true;
   const runBootstrap = () => {
-    void loadQuestionsFromBackend();
     backendClient
       .warmup()
       .then(() => {
@@ -3323,7 +3436,9 @@ const communityBackBtn = document.getElementById("community-back-btn");
 const menuDrillsTab = document.getElementById("menu-drills-tab");
 const menuLawTab = document.getElementById("menu-law-tab");
 const menuGppqeTab = document.getElementById("menu-gppqe-tab");
+const menuEoyTab = document.getElementById("menu-eoy-tab");
 const menuExtraTab = document.getElementById("menu-extra-tab");
+const menuExploreBtn = document.getElementById("menu-explore-btn");
 const drillsScreen = document.getElementById("drills-screen");
 const drillsBackBtn = document.getElementById("drills-back-btn");
 const drillsMenuBtn = document.getElementById("drills-menu-btn");
@@ -3340,6 +3455,16 @@ const extraMenuBtn = document.getElementById("extra-menu-btn");
 const menuExtraGrid = document.getElementById("menu-extra-grid");
 const menuNewsBtn = document.getElementById("menu-news-btn");
 const menuGuidelinesBtn = document.getElementById("menu-guidelines-btn");
+
+function syncPremiumMenuLocks() {
+  const access = resolveSubscriptionAccess();
+  const isActive = access?.isActive === true;
+  document.querySelectorAll("[data-premium-lock-feature]").forEach((lock) => {
+    lock.classList.toggle("is-unlocked", isActive);
+  });
+}
+
+syncPremiumMenuLocks();
 const comingSoonModal = document.getElementById("coming-soon-modal");
 const comingSoonOkBtn = document.getElementById("coming-soon-ok-btn");
 const rapidDrillBtn = document.getElementById("rapid-drill-btn");
@@ -3430,7 +3555,7 @@ function setMenuHubActiveTab(section = "drills") {
     [menuDrillsTab, "drills"],
     [menuLawTab, "law"],
     [menuGppqeTab, "gppqe"],
-    [menuExtraTab, "extra"],
+    [menuEoyTab, "eoy"],
   ];
 
   tabs.forEach(([tab, value]) => {
@@ -3468,40 +3593,41 @@ async function openGppqeScreen() {
   gppqeState.view = "hub";
   gppqeState.historyModalOpen = false;
   showScreen("gppqe-screen");
+const root = gppqeGetRoot();
+const hasMountedHub =
+  root?.dataset.gppqeMounted === "true" &&
+  root?.dataset.gppqeView === "hub";
 
-  await ensureQuestionBankLoaded().catch(() => []);
-
-  // Render immediately from the local question cache.
+if (!hasMountedHub) {
+  // Render the GPPQE page immediately.
   renderGppqeScreen();
 
-  // Refresh account and subscription state without blocking the screen.
-  void Promise.all([
-    refreshSharedAccountState({
-      force: true,
-      silent: true,
-      deferHydration: true,
-    }).catch(() => false),
-
-    loadSubscriptionScreenData({
-      force: true,
-    }).catch(() => false),
-  ]).then(() => {
-    if (!gppqeScreen || gppqeScreen.classList.contains("hidden")) {
-      return;
-    }
-
-    if (!requireSubscriptionAccess("gppqe")) {
-      return;
-    }
-
-    renderGppqeScreen();
-
-    gppqePromptResumeForStudyStart(() => {
-      gppqeState.view = "hub";
-      gppqeState.notice = "";
-      gppqeState.historyModalOpen = false;
-      renderGppqeScreen();
+  // Load questions in the background, then refresh the page.
+  void ensureQuestionBankLoaded()
+    .catch(() => [])
+    .then(() => {
+      if (
+        gppqeScreen &&
+        !gppqeScreen.classList.contains("hidden") &&
+        gppqeState.view === "hub"
+      ) {
+        renderGppqeScreen();
+      }
     });
+}
+
+  // Use the current entitlement immediately; subscription expiry is timer-driven.
+  if (!requireSubscriptionAccess("gppqe")) {
+    return;
+  }
+
+  renderGppqeScreen();
+
+  gppqePromptResumeForStudyStart(() => {
+    gppqeState.view = "hub";
+    gppqeState.notice = "";
+    gppqeState.historyModalOpen = false;
+    renderGppqeScreen();
   });
 }
 
@@ -3608,7 +3734,7 @@ function gppqeEnhancePickerFields(root) {
     head.className = 'gppqe-picker-head';
     const title = document.createElement('h3');
     title.className = 'gppqe-picker-title';
-    title.textContent = field === 'year' ? 'Select year' : 'Select category';
+    title.textContent = field === 'year' ? 'Select sample set' : 'Select category';
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'gppqe-picker-close';
@@ -3896,10 +4022,15 @@ function gppqeCloseHistoryModal() {
 
 function gppqeGetYearLabel(year = []) {
   const years = gppqeGetSelectedYears(year);
-  if (!years.length) return "Select year";
-  if (years.includes("all")) return "All years";
-  if (years.length === 1) return String(years[0]);
-  return years.length + " years selected";
+  if (!years.length) return "Select sample set";
+  if (years.includes("all")) return "All sample sets";
+  if (years.length === 1) return `Sample ${String(years[0]).slice(-2)}`;
+  return years.length + " sample sets selected";
+}
+
+function gppqeGetSampleLabel(year) {
+  const numericYear = Number(year);
+  return Number.isFinite(numericYear) ? `Sample ${String(numericYear).slice(-2)}` : "Sample";
 }
 
 function gppqeGetBankQuestions() {
@@ -4108,13 +4239,13 @@ function gppqeStartSession(mode = "study", { sample = false } = {}) {
   const normalizedMode = String(mode || "").toLowerCase() === "exam" ? "exam" : "study";
   const selectedYears = gppqeGetSelectedYears();
   if (!selectedYears.length) {
-    gppqeState.notice = "Select a year to begin.";
+    gppqeState.notice = "Select a sample set to begin.";
     gppqeState.view = "hub";
     renderGppqeScreen();
     return;
   }
   if (normalizedMode === "exam" && (selectedYears.length !== 1 || selectedYears.includes("all"))) {
-    gppqeState.notice = "Exam mode requires one full year. Select one year only.";
+    gppqeState.notice = "Exam mode requires one full sample set. Select one sample set only.";
     gppqeState.view = "hub";
     renderGppqeScreen();
     return;
@@ -4172,7 +4303,6 @@ function gppqeFinishSession({ persistResult = true } = {}) {
           setupPoints: mergeSetupPoints(currentUser?.setupPoints || {}, currentSetupPoints),
         };
       }
-      scheduleSetupPointsSync(0);
     }
 
     if (gppqeState.selectedMode === "exam") {
@@ -4424,7 +4554,7 @@ function gppqeHandleAction(event) {
     gppqeState.selectedYear = [];
     gppqeState.selectedCategories = [];
     gppqeState.selectedMode = "exam";
-    gppqeState.notice = "Select one full year before starting Exam mode.";
+    gppqeState.notice = "Select one full sample set before starting Exam mode.";
     gppqeState.view = "hub";
     renderGppqeScreen();
     return;
@@ -4521,7 +4651,7 @@ function gppqeBuildHubMarkup() {
     : selectedYears.length > 0;
   const selectedCategory = gppqeState.selectedCategories[0] || "";
   const selectedCategoryCount = gppqeState.selectedCategories.length;
-  const startLabel = canStart ? "Start Quiz" : "Select year to begin";
+  const startLabel = canStart ? "Start Quiz" : "Select sample set to begin";
   const availableQuestions = gppqeGetPool().length;
   const availabilityLabel =
     availableQuestions === 1
@@ -4541,13 +4671,13 @@ function gppqeBuildHubMarkup() {
           <div class="gppqe-setup-grid">
             <label class="gppqe-setup-field">
               <span class="gppqe-setup-label-row">
-                <span class="gppqe-setup-label">Year</span>
-                ${gppqeState.selectedMode === "exam" ? '<span class="gppqe-exam-year-note">Exam uses the full year</span>' : ""}
+              <span class="gppqe-setup-label">Sample set</span>
+              ${gppqeState.selectedMode === "exam" ? '<span class="gppqe-exam-year-note">Exam uses the full sample set</span>' : ""}
               </span>
               <select multiple class="gppqe-setup-select" data-gppqe-field="year" aria-label="Years">
-                  <option value="" ${selectedYears.length ? "" : "selected"}>Select year</option>
-                  <option value="all" ${selectedYears.includes("all") ? "selected" : ""}>All years</option>
-                  ${gppqeGetYears().map((year) => `<option value="${year}" ${selectedYears.includes(year) ? "selected" : ""}>${year}</option>`).join("")}
+                  <option value="" ${selectedYears.length ? "" : "selected"}>Select sample set</option>
+                  <option value="all" ${selectedYears.includes("all") ? "selected" : ""}>All sample sets</option>
+                  ${gppqeGetYears().map((year) => `<option value="${year}" ${selectedYears.includes(year) ? "selected" : ""}>${gppqeGetSampleLabel(year)}</option>`).join("")}
               </select>
             </label>
 
@@ -4663,14 +4793,14 @@ function gppqeBuildYearMarkup() {
   const yearLabel = gppqeGetYearLabel(year);
   const pool = gppqeGetPool();
   const availableYears = gppqeGetYears();
-  const activeYearYears = year === "all" ? `${availableYears.length} written years` : `Written paper ${year}`;
+  const activeYearYears = year === "all" ? `${availableYears.length} sample sets` : gppqeGetSampleLabel(year);
   const categories = gppqeGetCategoriesForYear(year);
 
   return `
     <div class="gppqe-shell">
       <section class="gppqe-hero is-compact">
         <div class="gppqe-hero-copy">
-          <div class="gppqe-kicker">Selected year</div>
+          <div class="gppqe-kicker">Selected sample set</div>
           <h2 class="gppqe-title">${escapeHtml(yearLabel)}</h2>
           <p class="gppqe-subtitle">
             ${pool.length} questions are available in this lane. Filter by subject, then start study or exam mode.
@@ -4691,7 +4821,7 @@ function gppqeBuildYearMarkup() {
           </article>
           <article class="gppqe-metric-card">
             <div class="gppqe-metric-value">${year === "all" ? availableYears.length : 1}</div>
-            <div class="gppqe-metric-label">Written year${year === "all" ? "s" : ""}</div>
+            <div class="gppqe-metric-label">Sample set${year === "all" ? "s" : ""}</div>
           </article>
         </div>
       </section>
@@ -4808,7 +4938,7 @@ function gppqeBuildSessionMarkup() {
 
       <section class="gppqe-question-card">
         <div class="gppqe-question-head">
-          <span class="gppqe-question-year">${escapeHtml(String(question.year))}</span>
+            <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(question.year))}</span>
           <span class="gppqe-question-category">${escapeHtml(question.category)}</span>
           ${revealAnswer ? `<span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + question.answer)}</span>` : ""}
         </div>
@@ -4942,7 +5072,7 @@ function gppqeBuildReviewMarkup() {
                 </div>
                 <section class="gppqe-question-card gppqe-review-detail-card ${activeReviewState?.isCorrect ? "is-correct" : "is-wrong"}">
                   <div class="gppqe-question-head">
-                    <span class="gppqe-question-year">${escapeHtml(String(activeReviewQuestion.year))}</span>
+                    <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(activeReviewQuestion.year))}</span>
                     <span class="gppqe-question-category">${escapeHtml(activeReviewQuestion.category)}</span>
                     <span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + activeReviewQuestion.answer)}</span>
                   </div>
@@ -5000,6 +5130,8 @@ function renderGppqeScreen() {
   const root = gppqeGetRoot();
   if (!root) return;
   root.innerHTML = gppqeRenderMarkup();
+  root.dataset.gppqeMounted = "true";
+  root.dataset.gppqeView = gppqeState.view;
   if (gppqeState.view === 'hub') gppqeEnhancePickerFields(root);
   if (gppqeState.view === "session" && gppqeState.selectedMode === "exam" && !gppqeState.examTimerId) {
     gppqeStartTimer();
@@ -5025,7 +5157,6 @@ function setExtraViewMode(mode = "cards", { persist = true } = {}) {
   }
 }
 function openExtraScreen() {
-  setMenuHubActiveTab("extra");
   showScreen("extra-screen");
   setExtraViewMode(extraViewMode, { persist: false });
 }
@@ -5091,7 +5222,6 @@ const lawDrillResultScoreEl = document.getElementById("law-drill-result-score");
 const lawDrillResultFeedbackEl = document.getElementById("law-drill-result-feedback");
 const lawDrillNextLevelBtn = document.getElementById("law-drill-next-level-btn");
 const lawDrillCloseBtn = document.getElementById("law-drill-close-btn");
-const lawDrillMenuBtn = document.getElementById("law-drill-menu-btn");
 const resultBadgeEl = document.getElementById("result-badge");
 const backReviewBtn = document.getElementById("back-review-btn");
 const quizMenu = document.getElementById("quiz-menu");
@@ -5157,12 +5287,17 @@ const authUsernameWrap = document.getElementById("auth-username-wrap");
 const authUsernameInput = document.getElementById("auth-username");
 const authContactWrap = document.getElementById("auth-contact-wrap");
 const authContactFormatInput = document.getElementById("auth-contact-format");
+const authContactPhoneToggle = document.getElementById("auth-contact-phone-toggle");
+const authContactEmailToggle = document.getElementById("auth-contact-email-toggle");
 const authContactEmailWrap = document.getElementById("auth-contact-email-wrap");
 const authContactEmailInput = document.getElementById("auth-contact-email");
 const authContactPhoneWrap = document.getElementById("auth-contact-phone-wrap");
 const authContactCountryCodeInput = document.getElementById("auth-contact-country-code");
 const authContactPrefixInput = document.getElementById("auth-contact-prefix");
 const authContactPhoneInput = document.getElementById("auth-contact-phone");
+const authCountryTrigger = document.getElementById("auth-country-trigger");
+const authCountryFlag = document.getElementById("auth-country-flag");
+const authCountryMenu = document.getElementById("auth-country-menu");
 const authResetCodeWrap = document.getElementById("auth-reset-code-wrap");
 const authResetCodeInput = document.getElementById("auth-reset-code");
 const authPasswordWrap = document.getElementById("auth-password-wrap");
@@ -5177,6 +5312,12 @@ const authResetCodePreviewEl = document.getElementById("auth-reset-code-preview"
 const authErrorEl = document.getElementById("auth-error");
 const authSubmitBtn = document.getElementById("auth-submit-btn");
 const authCancelBtn = document.getElementById("auth-cancel-btn");
+const authTwoFactorChallengeEl = document.getElementById("auth-2fa-challenge");
+const authTwoFactorCodeInput = document.getElementById("auth-2fa-code");
+const authTwoFactorErrorEl = document.getElementById("auth-2fa-error");
+const authTwoFactorSubmitBtn = document.getElementById("auth-2fa-submit-btn");
+const authTwoFactorBackBtn = document.getElementById("auth-2fa-back-btn");
+let pendingTwoFactorChallengeToken = "";
 const authUserLabel = document.getElementById("quiz-auth-user");
 const profileBtn = document.getElementById("quiz-profile-btn");
 const welcomeRegisterCtaBtns = Array.from(
@@ -5191,6 +5332,36 @@ const menuProfileSubtitleEl = document.getElementById("menu-profile-subtitle");
 const menuPointsBtn = document.getElementById("menu-points-btn");
 const newsMenuBtn = document.getElementById("news-feed-btn");
 const menuPointsValueEl = document.getElementById("menu-points-value");
+const menuWelcomeTrialBtn =
+  document.getElementById("menu-welcome-trial-btn");
+const menuWelcomeTrialTimeEl =
+  document.getElementById("menu-welcome-trial-time");
+let welcomeTrialTimerHandle = null;
+if (menuWelcomeTrialBtn) {
+  menuWelcomeTrialBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    openSubscriptionScreen({
+      intent: "general",
+      returnScreen: "quiz-menu",
+    });
+  });
+
+  menuWelcomeTrialBtn.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    openSubscriptionScreen({
+      intent: "general",
+      returnScreen: "quiz-menu",
+    });
+  });
+}
 const menuStreakCardBtn = document.getElementById("menu-streak-card");
 const menuPointsCardBtn = document.getElementById("menu-points-card");
 const menuRankCardBtn = document.getElementById("menu-rank-card");
@@ -5227,6 +5398,34 @@ const profileDangerPanel = document.getElementById("profile-danger-panel");
 const profileDeactivateBtn = document.getElementById("profile-deactivate-btn");
 const profileDeleteBtn = document.getElementById("profile-delete-btn");
 const profileFeedbackEl = document.getElementById("profile-feedback");
+const profileNewScreenEl = document.getElementById("profile-new-screen");
+const profileExactFrameEl = document.querySelector("#profile-exact-screen .profile-exact-frame");
+const profileNewBackBtn = document.getElementById("profile-new-back-btn");
+const profileNewSaveBtn = document.getElementById("profile-new-save-btn");
+const profileNewAvatarEl = document.getElementById("profile-new-avatar");
+const profileNewPhotoCameraBtn = document.getElementById("profile-new-photo-camera-btn");
+const profileNewPhotoGalleryBtn = document.getElementById("profile-new-photo-gallery-btn");
+const profileNewPhotoDeleteBtn = document.getElementById("profile-new-photo-delete-btn");
+const profileNewFeedbackEl = document.getElementById("profile-new-feedback");
+const profileNewTitleField = document.getElementById("profile-new-title-field");
+const profileNewFirstNameInput = document.getElementById("profile-new-first-name");
+const profileNewLastNameInput = document.getElementById("profile-new-last-name");
+const profileNewUsernameInput = document.getElementById("profile-new-username");
+const profileNewContactInput = document.getElementById("profile-new-contact");
+const profileNewProfessionalTypeInput = document.getElementById("profile-new-professional-type");
+const profileNewCountryInput = document.getElementById("profile-new-country");
+const profileNewInstitutionInput = document.getElementById("profile-new-institution");
+const profileNewBioInput = document.getElementById("profile-new-bio");
+const profileNewCurrentPasswordInput = document.getElementById("profile-new-current-password");
+const profileNewNewPasswordInput = document.getElementById("profile-new-new-password");
+const profileNewPasswordToggleBtn = document.getElementById("profile-new-password-toggle-btn");
+const profileNewPasswordPanel = document.getElementById("profile-new-password-panel");
+const profileNewChangePasswordBtn = document.getElementById("profile-new-change-password-btn");
+const profileNewDangerToggleBtn = document.getElementById("profile-new-danger-toggle-btn");
+const profileNewDangerPanel = document.getElementById("profile-new-danger-panel");
+const profileNewDeactivateDaysInput = document.getElementById("profile-new-deactivate-days");
+const profileNewDeactivateBtn = document.getElementById("profile-new-deactivate-btn");
+const profileNewDeleteBtn = document.getElementById("profile-new-delete-btn");
 const profileAvatarPreviewEl = document.getElementById("profile-avatar-preview");
 const profilePhotoCameraBtn = document.getElementById("profile-photo-camera-btn");
 const profilePhotoGalleryBtn = document.getElementById("profile-photo-gallery-btn");
@@ -5349,6 +5548,7 @@ const subscriptionForm = document.getElementById("subscription-form");
 const subscriptionPlanInput = document.getElementById("subscription-plan-input");
 const subscriptionTransactionInput = document.getElementById("subscription-transaction-input");
 const subscriptionProofInput = document.getElementById("subscription-proof-input");
+let subscriptionProofDataUrl = "";
 const subscriptionProofPreview = document.getElementById("subscription-proof-preview");
 const subscriptionProofPreviewContent = document.getElementById("subscription-proof-preview-content");
 const subscriptionSubmitBtn = document.getElementById("subscription-submit-btn");
@@ -5601,9 +5801,14 @@ const communityReportTitleEl = document.getElementById("community-report-title")
 const communityReportTargetEl = document.getElementById("community-report-target");
 const communityReportTargetAvatarEl = document.getElementById("community-report-target-avatar");
 const communityReportTargetNameEl = document.getElementById("community-report-target-name");
+const communityReportTargetUsernameEl = document.getElementById("community-report-target-username");
 const communityReportTargetLabelEl = document.getElementById("community-report-target-label");
 const communityReportReasonSelectEl = document.getElementById("community-report-reason-select");
+const communityReportOtherReasonEl = document.getElementById("community-report-other-reason");
 const communityReportDetailsEl = document.getElementById("community-report-details");
+const communityReportEvidenceEl = document.getElementById("community-report-evidence");
+const communityReportEvidenceListEl = document.getElementById("community-report-evidence-list");
+const communityReportAddEvidenceBtn = document.getElementById("community-report-add-evidence-btn");
 const communityReportHintEl = document.getElementById("community-report-hint");
 const communityReportCancelBtn = document.getElementById("community-report-cancel-btn");
 const communityReportSubmitBtn = document.getElementById("community-report-submit-btn");
@@ -7566,6 +7771,7 @@ let communityOverviewRefreshPromise = null;
 let communityOverviewPollHandle = null;
 let communityOverviewPollInFlight = false;
 let communityOverviewBackgroundPollingEnabled = false;
+let communityAccessDenied = false;
 let communityTypingBroadcastHandle = null;
 let communityTypingInactiveHandle = null;
 let communityAdminBroadcastAttachment = null;
@@ -8077,12 +8283,10 @@ function readCurrentSetupPoints({ scope = "normal" } = {}) {
   const state = readSetupPointsState();
   const ownerKey = getSetupPointsOwnerKey();
   const local = sanitizeSetupPoints(state.owners?.[ownerKey] || createEmptySetupPoints());
-  const remote = sanitizeSetupPoints(currentUser?.setupPoints || {});
-  const merged = mergeSetupPoints(local, remote);
   const filtered = createEmptySetupPoints();
   const keys = getSetupPointKeys(scope);
   keys.forEach((key) => {
-    filtered[key] = Math.max(0, Math.round(Number(merged[key]) || 0));
+    filtered[key] = Math.max(0, Math.round(Number(local[key]) || 0));
   });
   return filtered;
 }
@@ -8097,9 +8301,6 @@ function writeCurrentSetupPoints(nextValue = {}, { scheduleSync = true, scope = 
   });
   state.owners[ownerKey] = current;
   writeSetupPointsState(state);
-  if (scheduleSync && currentUser?.id && backendClient.isAuthenticated()) {
-    scheduleSetupPointsSync();
-  }
   return state.owners[ownerKey];
 }
 
@@ -8175,8 +8376,9 @@ function scheduleSetupPointsSync(delayMs = 450) {
   }, delayMs);
 }
 
-function shouldCountCorrectAnswerTowardLeaderboard() {
-  return isLawStudyMode() || !(mode === "study" || isTopicQuizMode());
+function shouldCountCorrectAnswerTowardLeaderboard(setupPointsBucket = "") {
+  const bucket = String(setupPointsBucket || "").trim().toLowerCase();
+  return bucket !== "study" && bucket !== "gppqestudy";
 }
 
 function formatMenuCardPointsBadge(value) {
@@ -8450,6 +8652,7 @@ function commitFinishedSessionPoints({
   const safeScore = Math.max(0, Math.round(Number(score) || 0));
   const sessionId = String(sessionKey || latestSavedSession?.sessionId || "").trim();
   const scope = String(setupPointsBucket || "").startsWith("gppqe") ? "gppqe" : "normal";
+  const shouldAwardTotal = awardTotal && shouldCountCorrectAnswerTowardLeaderboard(setupPointsBucket);
 
   if (!sessionId || safeScore <= 0) {
     if (setupPointsBucket) {
@@ -8474,7 +8677,7 @@ function commitFinishedSessionPoints({
     writeCurrentSetupPoints(currentSetupPoints, { scheduleSync: true, scope });
   }
 
-  if (awardTotal) {
+  if (shouldAwardTotal) {
     const nextStoredPoints = writeStoredPoints(readStoredPoints() + safeScore);
     writePendingPoints(readPendingPoints() + safeScore);
 
@@ -9113,6 +9316,14 @@ function isCommunityNoticeConversation(partner = null) {
 
 function getCommunityChatReadonlyReason(partner = null) {
   if (isCommunityNoticeConversation(partner)) {
+    const activePartner = partner && typeof partner === "object" ? partner : communityState.activeConversationPartner || {};
+    const replyMode = String(activePartner?.noticeReplyMode || "").trim().toLowerCase();
+    const isBroadcastNotice =
+      String(activePartner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+      String(activePartner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast";
+    if (replyMode === "enabled" || (!replyMode && !isBroadcastNotice)) {
+      return "";
+    }
     return "Admin notices are read only.";
   }
   const activePartner = partner && typeof partner === "object" ? partner : communityState.activeConversationPartner || {};
@@ -9787,13 +9998,8 @@ function updateCommunityChatHeader(partner = {}) {
     const conversationId = String(communityState.activeConversation?.id || "").trim();
     const typingUsers = getCommunityConversationTypingUsers(conversationId);
     const isTyping = Boolean(communitySettingsPrefs.chatTypingIndicators && Array.isArray(typingUsers) && typingUsers.length);
-    const isBroadcastNotice =
-      String(partner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
-      String(partner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast";
     const subtitleText = partner?.isNotice
-      ? isBroadcastNotice
-        ? ""
-        : String(partner?.noticeSubtitle || "Messages from the admin team").trim() || "Messages from the admin team"
+      ? ""
       : partner?.isGroup
         ? getCommunityGroupTypingSubtitle(partner || {}, typingUsers)
         : getCommunityDirectTypingSubtitle(partner || {}, typingUsers);
@@ -10337,7 +10543,14 @@ function scheduleCommunityRealtimeOverviewRefresh() {
   }, 140);
 }
 
+function handleCommunityAccessDenied() {
+  communityAccessDenied = true;
+  teardownCommunityRealtime();
+  stopCommunityPresenceHeartbeat();
+}
+
 function refreshCommunityOverviewIfNeeded() {
+  if (communityAccessDenied) return;
   if (communityOverviewPollInFlight) return;
   if (!backendClient.isAuthenticated()) return;
   const activeScreenId = getActiveScreenId();
@@ -10351,6 +10564,7 @@ function refreshCommunityOverviewIfNeeded() {
 }
 
 function startCommunityOverviewPolling({ background = false } = {}) {
+  if (communityAccessDenied) return;
   if (background && !isCommunityScreenId(getActiveScreenId())) {
     return;
   }
@@ -10648,7 +10862,8 @@ async function pingCommunityPresence() {
   if (!currentUser?.id || !backendClient.isAuthenticated() || document.visibilityState === "hidden") return;
   try {
     await backendClient.pingCommunityPresence();
-  } catch {
+  } catch (error) {
+    if (Number(error?.status) === 403) handleCommunityAccessDenied();
     // Presence ping should stay silent.
   }
 }
@@ -11602,6 +11817,11 @@ async function joinCommunityConversationActiveCall(callPayload = null) {
 async function refreshCommunityConversationActiveCall({ silent = true, force = false } = {}) {
   const activeScreen = String(getActiveScreenId() || "").trim();
   const chatScreenOpen = activeScreen === "community-chat-screen";
+  const conversationType = String(communityState.activeConversation?.type || "").trim().toLowerCase();
+  if (conversationType && conversationType !== "direct") {
+    setCommunityChatActiveCallBar(null);
+    return null;
+  }
   const safeConversationId =
     String(communityState.activeConversation?.id || "").trim() ||
     String(communityState.activeCall?.conversationId || "").trim();
@@ -14381,9 +14601,9 @@ function renderCommunityReplyDraft() {
 
 function startCommunityReplyToMessage(message = {}) {
   const readOnlyReason = getCommunityChatReadonlyReason();
-  if (readOnlyReason || isCommunityAdminMessage(message)) {
+  if (readOnlyReason) {
     closeCommunityMessageActions();
-    setCommunityFeedback(readOnlyReason || "Admin notices are read only.", true);
+    setCommunityFeedback(readOnlyReason, true);
     return;
   }
   if (isCommunityMessageDeletedForEveryone(message)) {
@@ -17048,14 +17268,13 @@ function openCommunityMessageActions(message = {}, anchorEl = null, { toggleSele
   const canReplyToMessage =
     !multiSelect &&
     !isDeletedForEveryone &&
-    !getCommunityChatReadonlyReason() &&
-    !isCommunityAdminMessage(anchorMessage);
+    !getCommunityChatReadonlyReason();
 
   if (communityMessageReplyBtn) {
     communityMessageReplyBtn.classList.toggle("hidden", !canReplyToMessage);
   }
   if (communityMessageReadonlyLabelEl) {
-    const showReadonly = !multiSelect && !isDeletedForEveryone && isCommunityAdminMessage(anchorMessage);
+    const showReadonly = !multiSelect && !isDeletedForEveryone && Boolean(getCommunityChatReadonlyReason());
     communityMessageReadonlyLabelEl.classList.toggle("hidden", !showReadonly);
     communityMessageReadonlyLabelEl.setAttribute("aria-hidden", showReadonly ? "false" : "true");
   }
@@ -18764,8 +18983,6 @@ function getCommunityConversationCardMarkup(row = {}) {
   const isGroup = Boolean(partner?.isGroup);
   const isNotice = Boolean(partner?.isNotice);
   const draft = getCommunityChatDraftForConversation(row?.id || "");
-  const isWarningNotice =
-    isNotice && String(partner?.noticeOriginType || "").trim().toLowerCase() === "report";
   const noticeSenderName = isNotice
     ? String(partner?.noticeSenderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin"
     : "";
@@ -18792,7 +19009,6 @@ function getCommunityConversationCardMarkup(row = {}) {
           isNotice
             ? `<div class="community-chat-row-head is-notice">
                 <button type="button" class="community-name-link community-chat-name-link" data-community-action="open-conversation" data-conversation-id="${escapeHtml(row.id || "")}">${escapeHtml(truncateWithEllipsis(noticeSenderName, 26))}</button>
-                ${isWarningNotice ? '<span class="community-chat-warning-badge">Warning</span>' : ""}
               </div>`
             : isGroup
             ? `<button type="button" class="community-name-link community-chat-name-link" data-community-action="open-group-profile" data-group-id="${escapeHtml(row.id || partner.id || "")}">${escapeHtml(truncateWithEllipsis(getCommunityUiDisplayName(partner), 26))}</button>`
@@ -18996,7 +19212,8 @@ function renderCommunityChats() {
       )
       .join("");
   const allChats = Array.isArray(communityState.overview?.chats)
-    ? [...communityState.overview.chats].sort((a, b) => {
+    ? [...communityState.overview.chats]
+      .sort((a, b) => {
         const aDraft = getCommunityChatDraftForConversation(a?.id || "");
         const bDraft = getCommunityChatDraftForConversation(b?.id || "");
         if (aDraft && !bDraft) return -1;
@@ -19009,6 +19226,29 @@ function renderCommunityChats() {
         const aTime = new Date(a?.updatedAt || a?.lastMessage?.createdAt || 0).getTime() || 0;
         const bTime = new Date(b?.updatedAt || b?.lastMessage?.createdAt || 0).getTime() || 0;
         return bTime - aTime;
+      })
+      .filter((row, index, rows) => {
+        const partner = row?.partner || {};
+        const partnerName = String(partner?.displayName || partner?.name || partner?.title || "").trim().toLowerCase();
+        const isAnnouncementNotice = (
+          String(partner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+          String(partner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+          String(partner?.noticeOriginId || "").trim().toLowerCase() === "all-users" ||
+          String(partner?.noticeSubtitle || "").trim().toLowerCase() === "broadcast to everyone" ||
+          partnerName === "announcement"
+        );
+        if (!isAnnouncementNotice) return true;
+        return rows.findIndex((candidate) => {
+          const candidatePartner = candidate?.partner || {};
+          const candidateName = String(candidatePartner?.displayName || candidatePartner?.name || candidatePartner?.title || "").trim().toLowerCase();
+          return (
+            String(candidatePartner?.noticeOriginType || "").trim().toLowerCase() === "broadcast" ||
+            String(candidatePartner?.noticeThreadKey || "").trim().toLowerCase() === "broadcast" ||
+            String(candidatePartner?.noticeOriginId || "").trim().toLowerCase() === "all-users" ||
+            String(candidatePartner?.noticeSubtitle || "").trim().toLowerCase() === "broadcast to everyone" ||
+            candidateName === "announcement"
+          );
+        }) === index;
       })
     : [];
   const groups = Array.isArray(communityState.overview?.groups)
@@ -19314,7 +19554,7 @@ function renderCommunityFriendActionSelection() {
   const relationship = String(state.relationship || user.relationship || "none").trim().toLowerCase();
   const displayName = getCommunityUiDisplayName(user);
   const handle = String(user.username || user.handle || "user").trim() || "user";
-  const subtitle = String(user.institution || user.country || "Learner").trim() || "Learner";
+  const subtitle = [user.institution, user.level].map((value) => String(value || "").trim()).filter(Boolean).join(" · ") || String(user.country || "Learner").trim() || "Learner";
   const isAppAdmin = isCommunityAppAdminUser(user);
   if (communityFriendActionsTitleEl) {
     communityFriendActionsTitleEl.innerHTML = `<span class="community-actions-title-pill">${escapeHtml(displayName)}</span>`;
@@ -19990,7 +20230,8 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
           communityOverviewRefreshPromise = null;
         }
       })().catch((error) => {
-        if (Number(error?.status) === 401) {
+        if (Number(error?.status) === 401 || Number(error?.status) === 403) {
+          if (Number(error?.status) === 403) handleCommunityAccessDenied();
           communityState.overview = null;
           communityState.statuses = [];
           communityState.searchResults = null;
@@ -20029,6 +20270,7 @@ async function loadCommunityOverview({ silent = false, preferCache = false } = {
       refreshBlocked: communityState.tab === "friends" && communityState.friendsView === "blocked",
     });
   } catch (error) {
+    if (Number(error?.status) === 403) return null;
     setCommunityFeedback(generalApiErrorMessage(error, "Community could not load right now."), true);
     renderCommunityNotificationBadges();
     communityState.resultsRenderSignature = "";
@@ -20309,6 +20551,7 @@ function renderCommunityProfileView() {
         ["Bio", getProfileFieldValue(profile.bio)],
         ["Institution", getProfileFieldValue(profile.institution)],
         ["Role", getProfileFieldValue(profile.professionalType)],
+        ["Level / year", getProfileFieldValue(profile.level)],
         ["Country", getProfileFieldValue(profile.country)],
         ["Contact", getProfileFieldValue(profile.contact)],
       ];
@@ -20483,11 +20726,24 @@ async function openCommunityProfile(userId = "") {
     }
     void (async () => {
       try {
-        const freshProfile = await backendClient.fetchCommunityProfile(userId, { preferCache: true });
-        const nextProfile = await ensureCommunityProfileLeaderboardStats(freshProfile, userId);
-        communityState.profile = nextProfile;
-        void setOfflineEntry(`community-profile:${safeUserId}`, nextProfile);
-        renderCommunityProfileView();
+        const freshProfile = await backendClient.fetchCommunityProfile(userId);
+
+let nextProfile = freshProfile;
+
+try {
+  nextProfile =
+    (await ensureCommunityProfileLeaderboardStats(freshProfile, userId)) ||
+    freshProfile;
+} catch (error) {
+  console.warn(
+    "Profile leaderboard enrichment failed; rendering base profile:",
+    error,
+  );
+}
+
+communityState.profile = nextProfile;
+void setOfflineEntry(`community-profile:${safeUserId}`, nextProfile);
+renderCommunityProfileView();
         requestAnimationFrame(() => {
           const communityProfileScrollEl = getCommunityProfileScrollEl();
           if (communityProfileScrollEl instanceof HTMLElement) {
@@ -20495,9 +20751,17 @@ async function openCommunityProfile(userId = "") {
           }
           syncCommunityGroupProfileHeaderOffset();
         });
-      } catch {
-        // Keep cached or loading state visible.
-      }
+      } catch (error) {
+  console.error("Learner profile failed after API response:", error);
+
+  if (communityProfileCardEl) {
+    communityProfileCardEl.innerHTML = `
+      <div class="community-empty-state is-chat">
+        Profile could not be displayed.
+      </div>
+    `;
+  }
+}
     })();
   } catch (error) {
     setCommunityFeedback(generalApiErrorMessage(error, "Profile could not load right now."), true);
@@ -21258,9 +21522,7 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
   communityState.messageMetaSignature = getCommunityMessageMetaSignature(visibleMessages);
   const noticePartner = communityState.activeConversationPartner || {};
   const isNoticeThread = Boolean(noticePartner?.isNotice);
-  const isWarningNotice =
-    isNoticeThread && String(noticePartner?.noticeOriginType || "").trim().toLowerCase() === "report";
-  const noticeTitle = String(noticePartner?.noticeTitle || noticePartner?.name || "Admin Notice").trim() || "Admin Notice";
+  const noticeSenderName = String(noticePartner?.noticeSenderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin";
   communityChatMessagesEl.innerHTML = visibleMessages
     .map((message, index) => {
       const previousMessage = visibleMessages[index - 1] || null;
@@ -21292,8 +21554,7 @@ function renderCommunityMessages(messages = [], { scrollToBottom = false } = {})
       const senderMarkup = showSender
         ? isNoticeThread
           ? `
-              ${isWarningNotice ? '<div class="community-message-notice-label">Warning</div>' : ""}
-              <div class="community-message-sender is-notice-title">${escapeHtml(truncateWithEllipsis(noticeTitle, 26))}</div>
+              <div class="community-message-sender is-notice-title">${escapeHtml(truncateWithEllipsis(noticeSenderName, 26))}</div>
             `
           : `<div class="community-message-sender">${escapeHtml(truncateWithEllipsis(String(message.senderName || "Member"), 18))}</div>`
         : "";
@@ -21623,6 +21884,12 @@ async function sendCommunityMessage() {
       const optimisticId = String(pendingDrafts[0]?.id || "").trim();
       const savedMessage = response?.message && typeof response.message === "object" ? response.message : null;
       if (savedMessage) {
+        if (communityState.activeConversation && savedMessage.conversationId) {
+          communityState.activeConversation = {
+            ...communityState.activeConversation,
+            id: savedMessage.conversationId,
+          };
+        }
         communityState.messages = Array.isArray(communityState.messages)
           ? communityState.messages.filter((entry) => String(entry?.id || "") !== optimisticId)
           : [];
@@ -21856,7 +22123,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           textX: 0.5,
           textY: 0.5,
           durationSeconds: COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-          allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+          allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
         },
         {
           isAdminBroadcast: isAdminBroadcastStatus,
@@ -21887,7 +22154,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
               videoTrimStart: Math.max(0, trim.start),
               videoTrimEnd: Math.max(0, trim.end),
               durationSeconds: clipDuration,
-              allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+              allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
             },
             {
               isAdminBroadcast: isAdminBroadcastStatus,
@@ -21942,7 +22209,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
             payload.type === "video"
               ? getCommunityStatusVideoDurationSeconds(payload)
               : COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-          allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+          allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
         };
       const shouldUseOriginalStatusFile =
         payload.originalFile instanceof Blob &&
@@ -22455,23 +22722,54 @@ async function submitCommunityAdminBroadcast() {
   }
 }
 
+function renderCommunityReportEvidence() {
+  if (!communityReportEvidenceListEl) return;
+  const evidence = Array.isArray(communityState.reportModal?.evidence)
+    ? communityState.reportModal.evidence
+    : [];
+  communityReportEvidenceListEl.innerHTML = Array.from({ length: 5 }, (_, index) => {
+    const item = evidence[index];
+    if (!item) {
+      return `<button type="button" class="community-report-evidence-slot" data-community-report-evidence-slot="${index}" aria-label="Add evidence"><span class="community-report-evidence-slot-icon">＋</span></button>`;
+    }
+    const mimeType = String(item?.mimeType || "").toLowerCase();
+    const fileName = escapeHtml(String(item?.fileName || "Evidence"));
+    const preview = mimeType.startsWith("image/") && item?.dataUrl
+      ? `<img class="community-report-evidence-thumb" src="${escapeHtml(item.dataUrl)}" alt="${fileName}" />`
+      : mimeType.startsWith("video/") && item?.dataUrl
+        ? `<video class="community-report-evidence-thumb" src="${escapeHtml(item.dataUrl)}" muted preload="metadata"></video>`
+        : `<span class="community-report-evidence-file-icon">${escapeHtml((mimeType.split("/").pop() || "file").slice(0, 5))}</span>`;
+    return `<div class="community-report-evidence-slot is-filled" data-community-report-evidence-slot="${index}">
+      ${preview}
+      <span class="community-report-evidence-name">${fileName}</span>
+      <button type="button" class="community-report-evidence-remove" data-community-report-remove-evidence="${index}" aria-label="Remove evidence">&times;</button>
+    </div>`;
+  }).join("");
+}
+
 function renderCommunityReportModal() {
   if (!communityReportModalEl) return;
   const state = communityState.reportModal || {};
   const targetType = String(state.targetType || "").trim().toLowerCase();
   const targetName = String(state.targetName || "").trim() || (targetType === "group" ? "Study Group" : "User");
+  const targetUsername = String(state.targetUsername || "").trim();
   const targetLabel = String(state.targetLabel || "").trim() || (targetType === "group" ? "Group" : "User");
   const isSending = Boolean(state.sending);
   const reason = String(state.reason || "");
+  const otherReason = String(state.otherReason || "");
   const details = String(state.details || "");
   if (communityReportTitleEl) {
     communityReportTitleEl.textContent = `Report ${targetLabel.toLowerCase()}`;
   }
   if (communityReportTargetLabelEl) {
-    communityReportTargetLabelEl.textContent = `${targetLabel} to report`;
+    communityReportTargetLabelEl.textContent = targetType === "user" ? "Reported user" : "Reported group";
   }
   if (communityReportTargetNameEl) {
     communityReportTargetNameEl.textContent = targetName;
+  }
+  if (communityReportTargetUsernameEl) {
+    communityReportTargetUsernameEl.textContent = targetUsername ? `@${targetUsername}` : "";
+    communityReportTargetUsernameEl.classList.toggle("hidden", !targetUsername);
   }
   if (communityReportTargetAvatarEl) {
     communityReportTargetAvatarEl.innerHTML =
@@ -22481,21 +22779,26 @@ function renderCommunityReportModal() {
   if (communityReportReasonSelectEl) {
     communityReportReasonSelectEl.value = reason;
   }
+  if (communityReportOtherReasonEl) {
+    communityReportOtherReasonEl.value = otherReason;
+    communityReportOtherReasonEl.classList.toggle("hidden", reason !== "Other");
+  }
   if (communityReportDetailsEl) {
     communityReportDetailsEl.value = details;
   }
+  renderCommunityReportEvidence();
   if (communityReportHintEl) {
     communityReportHintEl.textContent =
       targetType === "group"
-        ? "Pick the closest reason and add a short note if it helps us review the group faster."
-        : "Pick the closest reason and add any context that helps the review.";
+        ? "Choose a reason and add helpful context."
+        : "Choose a reason and add helpful context.";
   }
   if (communityReportSubmitBtn) {
     communityReportSubmitBtn.textContent = isSending ? "Sending..." : "Send report";
     communityReportSubmitBtn.disabled =
       isSending ||
       !String(reason || "").trim() ||
-      (String(reason || "") === "Other" && !String(details || "").trim());
+      (String(reason || "") === "Other" && !String(otherReason || "").trim());
   }
   if (communityReportCancelBtn) {
     communityReportCancelBtn.disabled = isSending;
@@ -22507,6 +22810,7 @@ function openCommunityReportModal({
   targetType = "user",
   targetId = "",
   targetName = "",
+  targetUsername = "",
   targetLabel = "",
   targetAvatar = "",
 } = {}) {
@@ -22518,10 +22822,13 @@ function openCommunityReportModal({
     targetType: safeTargetType,
     targetId: String(targetId || "").trim(),
     targetName: String(targetName || "").trim(),
+    targetUsername: String(targetUsername || "").trim(),
     targetLabel: String(targetLabel || (safeTargetType === "group" ? "Group" : "User")).trim(),
     targetAvatar: String(targetAvatar || "").trim(),
     reason: "",
+    otherReason: "",
     details: "",
+    evidence: [],
   };
   renderCommunityReportModal();
 }
@@ -22541,8 +22848,11 @@ async function submitCommunityReportModal() {
   const targetType = String(state.targetType || "").trim().toLowerCase();
   const targetId = String(state.targetId || "").trim();
   if (!targetId) return;
-  const reasonText = getCommunityReportSubmissionText();
-  if (!reasonText) {
+   const selectedReason = String(communityReportReasonSelectEl?.value || state.reason || "").trim();
+   const otherReasonText = String(communityReportOtherReasonEl?.value || state.otherReason || "").trim();
+   const reasonText = selectedReason === "Other" ? otherReasonText : selectedReason;
+   const detailsText = String(communityReportDetailsEl?.value || state.details || "").trim();
+   if (!reasonText) {
     setCommunityFeedback("Please choose a report reason and add details for the custom option.", true);
     return;
   }
@@ -22550,9 +22860,9 @@ async function submitCommunityReportModal() {
   renderCommunityReportModal();
   try {
     if (targetType === "group") {
-      await backendClient.reportCommunityGroup(targetId, reasonText);
+       await backendClient.reportCommunityGroup(targetId, reasonText, detailsText, state.evidence || []);
     } else {
-      await backendClient.reportCommunityUser(targetId, reasonText);
+       await backendClient.reportCommunityUser(targetId, reasonText, detailsText, state.evidence || []);
     }
     closeCommunityReportModal();
     setCommunityFeedback(`${String(state.targetLabel || targetType || "Item")} reported. Thanks for helping keep the community safe.`);
@@ -22774,11 +23084,13 @@ async function reportCommunityGroup(groupId = "") {
 async function reportCommunityUser(userId = "") {
   const safeUserId = String(userId || "").trim();
   if (!safeUserId) return;
-  const profile = communityState.profile || {};
+  const targetUserResponse = await backendClient.fetchCommunityProfile(safeUserId, { preferCache: true }).catch(() => null);
+  const profile = targetUserResponse?.profile || targetUserResponse?.user || targetUserResponse || {};
   openCommunityReportModal({
     targetType: "user",
     targetId: safeUserId,
     targetName: String(profile.name || profile.username || "User").trim() || "User",
+    targetUsername: String(profile.username || "").trim(),
     targetLabel: "User",
     targetAvatar: getCommunityPlainAvatarMarkup(profile, "community-report-avatar-image"),
   });
@@ -23495,10 +23807,6 @@ async function executeCommunityAction(action = "", payload = {}) {
 async function openCommunityScreen() {
   const ok = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!ok) return;
-  await refreshSubscriptionAccessForAction();
-  if (!requireSubscriptionAccess("community")) {
-    return;
-  }
   const unlocked = await ensureCommunityLockAccess({
     fallbackScreen: getActiveScreenId() || "quiz-menu",
     redirectOnCancel: false,
@@ -24090,6 +24398,7 @@ function applyUiPrefs() {
   document.body.classList.toggle("font-condensed", uiPrefs.fontFamily === "condensed");
   document.body.classList.toggle("font-hand", uiPrefs.fontFamily === "hand");
   document.body.classList.toggle("reduce-motion", Boolean(uiPrefs.reduceMotion));
+  syncProfileExactFramePreferences();
   const activeScreen = document.querySelector(".screen-active");
   if (activeScreen) {
     syncViewportBackground(activeScreen);
@@ -24099,6 +24408,242 @@ function applyUiPrefs() {
     enhanceTopicViewerSectionNavigation();
   }
 }
+
+function syncProfileExactFramePreferences() {
+  if (!profileExactFrameEl?.contentWindow) return;
+  profileExactFrameEl.contentWindow.postMessage(
+    {
+      type: "ajix-ui-preferences",
+      theme: uiPrefs.theme === "system" ? resolveEffectiveTheme() : uiPrefs.theme,
+      fontFamily: uiPrefs.fontFamily,
+      textSize: uiPrefs.textSize,
+    },
+    window.location.origin,
+  );
+}
+
+function syncProfileExactFrameState() {
+  syncProfileExactFramePreferences();
+  if (profileExactFrameEl?.contentWindow) {
+    profileExactFrameEl.contentWindow.postMessage(
+      { type: "ajix-profile-data", user: getProfileFrameUserPayload() },
+      window.location.origin,
+    );
+    void backendClient.fetchSessions().then((response) => {
+      postProfileFrameMessage(profileExactFrameEl.contentWindow, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [] });
+    }).catch((error) => {
+      postProfileFrameMessage(profileExactFrameEl.contentWindow, { type: "ajix-profile-sessions-data", sessions: [], message: authErrorMessage(error) });
+    });
+  }
+}
+
+profileExactFrameEl?.addEventListener("load", syncProfileExactFrameState);
+function postProfileFrameMessage(source, message) {
+  if (source && typeof source.postMessage === "function") {
+    source.postMessage(message, window.location.origin);
+  }
+}
+
+function getProfileFrameUserPayload() {
+  if (!currentUser) return null;
+  const access = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot) ||
+    subscriptionStatusSnapshot?.subscription ||
+    currentUser?.subscriptionAccess ||
+    {};
+  const latestSubscriptionRequest = subscriptionStatusSnapshot?.request ||
+    (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null) ||
+    currentUser?.subscriptionRequest ||
+    {};
+  const requestState = String(latestSubscriptionRequest.status || "").trim().toLowerCase();
+  const hasPendingRequest = requestState === "pending";
+  const planKey = String(
+    (hasPendingRequest ? latestSubscriptionRequest.plan : null) ||
+      access.plan || access.subscriptionPlan || latestSubscriptionRequest.plan || currentUser.subscriptionPlan || ""
+  ).trim().toLowerCase();
+  const subscriptionActive = access.isActive === true && !hasPendingRequest;
+  const subscriptionState = String(
+    hasPendingRequest ? "pending" : access.status || latestSubscriptionRequest.status || currentUser.subscriptionStatus || ""
+  ).trim().toLowerCase();
+  const subscriptionPending = hasPendingRequest || (!subscriptionActive && subscriptionState === "pending");
+  const institution = String(currentUser.institution || "").trim();
+  const subscriptionPlan = subscriptionActive || subscriptionPending
+    ? ({
+        trial: "7-day plan",
+        weekly: "7-day plan",
+        monthly: "Monthly",
+        yearly: "1 year",
+      }[planKey] || "Subscription")
+    : "Expired";
+  return {
+    ...currentUser,
+    institution: /^(not set|not specified)$/i.test(institution) ? "" : institution,
+    subscriptionActive,
+    subscriptionStatus: subscriptionActive ? "Active" : subscriptionPending ? "Pending" : "Expired",
+    subscriptionPending,
+    subscriptionPlan,
+    subscriptionPlanKey: planKey,
+    twoFactorEnabled: currentUser.twoFactorEnabled === true,
+    privacy: currentUser.privacy || {},
+    notificationPreferences: currentUser.notificationPreferences || {},
+  };
+}
+
+async function handleProfileFrameMessage(event) {
+  if (event.origin !== window.location.origin || event.source !== profileExactFrameEl?.contentWindow) return;
+  const type = String(event.data?.type || "");
+  if (type === "ajix-profile-back") {
+    goToPreviousScreen("quiz-menu");
+    return;
+  }
+  if (type === "ajix-profile-open-community-settings") {
+    const target = String(event.data?.target || "main").trim() || "main";
+    await openCommunityScreen();
+    if (getActiveScreenId() !== "community-screen") return;
+    setCommunitySettingsOpen(true);
+    setCommunitySettingsView(target);
+    updateCommunityTabState();
+    renderCommunityView();
+    return;
+  }
+  if (type === "ajix-profile-ready") {
+    syncProfileExactFrameState();
+    try {
+      const response = await backendClient.fetchSessions();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [] });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: [], message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-session-revoke") {
+    try {
+      await backendClient.revokeSession(String(event.data?.sessionId || ""));
+      const response = await backendClient.fetchSessions();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [], message: "Session signed out." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-error", message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-session-revoke-others") {
+    try {
+      await backendClient.revokeOtherSessions();
+      const response = await backendClient.fetchSessions();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-data", sessions: response?.sessions || [], message: "Other sessions signed out." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-sessions-error", message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-save") {
+    const form = event.data?.form || {};
+    const nameParts = String(form.fullName || "").trim().split(/\s+/).filter(Boolean);
+    const payload = {
+      firstName: nameParts.shift() || currentUser?.firstName || "",
+      lastName: nameParts.join(" ") || currentUser?.lastName || "",
+      title: String(form.title || currentUser?.title || "").trim(),
+      username: String(form.username || currentUser?.username || "").trim(),
+      contact: String(currentUser?.contact || currentUser?.email || form.email || form.phone || "").trim(),
+      email: String(form.email || "").trim(),
+      phone: String(form.phone || "").trim(),
+      level: String(form.level || "").trim(),
+      professionalType: String(form.programme || "").trim(),
+      country: String(currentUser?.country || "Other").trim(),
+      institution: String(form.institution || "").trim(),
+      bio: String(form.bio || "").trim(),
+      profileImage: String(form.profileImage || "").trim(),
+    };
+    if (!payload.institution) delete payload.institution;
+    if (!payload.professionalType) delete payload.professionalType;
+    if (!payload.level) delete payload.level;
+    if (!payload.country) delete payload.country;
+    try {
+      const response = await backendClient.updateProfile(payload);
+      currentUser = response?.user || (await backendClient.fetchMe());
+      renderAuthState();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-save-result", ok: true, user: getProfileFrameUserPayload(), message: "Profile updated successfully." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-save-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-preferences-save") {
+    try {
+      const response = await backendClient.updateProfile({
+        privacy: event.data?.privacy || {},
+        notificationPreferences: event.data?.notificationPreferences || {},
+      });
+      currentUser = response?.user || (await backendClient.fetchMe());
+      postProfileFrameMessage(event.source, { type: "ajix-profile-preferences-result", ok: true, user: getProfileFrameUserPayload(), message: "Preferences saved." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-preferences-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-password") {
+    try {
+      await backendClient.changePassword({
+        currentPassword: String(event.data?.currentPassword || ""),
+        newPassword: String(event.data?.newPassword || ""),
+      });
+      postProfileFrameMessage(event.source, { type: "ajix-profile-action-result", ok: true, action: "password", message: "Password changed successfully." });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-action-result", ok: false, action: "password", message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-setup") {
+    try {
+      const response = await backendClient.setupTwoFactor();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-setup-result", ok: true, ...response });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-setup-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-verify") {
+    try {
+      const response = await backendClient.verifyTwoFactorSetup({ code: String(event.data?.code || "") });
+      currentUser = await backendClient.fetchMe();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "setup", ok: true, ...response, user: getProfileFrameUserPayload() });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "setup", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-disable") {
+    try {
+      const response = await backendClient.disableTwoFactor({ password: String(event.data?.password || ""), code: String(event.data?.code || "") });
+      currentUser = await backendClient.fetchMe();
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "disable", ok: true, ...response, user: getProfileFrameUserPayload() });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-result", action: "disable", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-2fa-recovery-codes") {
+    try {
+      const response = await backendClient.regenerateTwoFactorRecoveryCodes({ password: String(event.data?.password || ""), code: String(event.data?.code || "") });
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-recovery-codes-result", ok: true, ...response });
+    } catch (error) {
+      postProfileFrameMessage(event.source, { type: "ajix-profile-2fa-recovery-codes-result", ok: false, message: authErrorMessage(error) });
+    }
+    return;
+  }
+  if (type === "ajix-profile-deactivate") {
+    await deactivateProfileAccount();
+    return;
+  }
+  if (type === "ajix-profile-delete") {
+    await deleteProfileAccount();
+    return;
+  }
+  if (type === "ajix-profile-signout") {
+    if (logoutConfirmBtn) logoutConfirmBtn.click();
+    else logoutBtn?.click();
+  }
+}
+window.addEventListener("message", (event) => { void handleProfileFrameMessage(event); });
 
 function getTopicViewerThemePalette() {
   const theme = resolveEffectiveTheme();
@@ -24372,7 +24917,7 @@ function persistSessionForQuickNavigation() {
     return;
   }
 
-  if (mode === "exam" || mode === "smart" || isPausableDrillSession()) {
+  if (isPausableDrillSession()) {
     saveExamSession();
   }
 }
@@ -24403,14 +24948,11 @@ async function handleGlobalQuickNavDestination(destination) {
   }
 
   if (destination === "news") {
-    if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
-      return;
-    }
     openNewsScreen();
     return;
   }
   if (destination === "extra") {
-    showScreen("home-screen");
+    openExtraScreen();
     return;
   }
 
@@ -24431,8 +24973,10 @@ function getActiveScreenId() {
 function updateMenuBottomNavState(screenId = "") {
   const targetKey =screenId === "community-screen" || screenId === "community-profile-screen" || screenId === "community-chat-screen"
         ? "community"
-        : screenId === "topic-library" || screenId === "topic-viewer"
-          ? "library"
+        : screenId === "extra-screen"
+          ? "explore"
+          : screenId === "topic-library" || screenId === "topic-viewer"
+            ? "explore"
           : screenId === "settings-screen"
             ? "settings"
             : "home";
@@ -24485,7 +25029,7 @@ function getScreenBackFallback(screenId = "") {
   if (currentId === "subscription-screen") return subscriptionScreenState.returnScreen || "quiz-menu";
   if (currentId === "topic-viewer") return topicViewerReturnScreen || "topic-library";
   if (currentId === "topic-library") return topicLibraryReturnScreen || "quiz-menu";
-  if (currentId === "settings-screen" || currentId === "profile-screen" || currentId === "tour-screen") return "quiz-menu";
+  if (currentId === "settings-screen" || currentId === "profile-screen" || currentId === "profile-new-screen" || currentId === "profile-exact-screen" || currentId === "tour-screen") return "quiz-menu";
   if (currentId === "news-screen") return "quiz-menu";
   if (currentId === "study-setup" || currentId === "exam-setup" || currentId === "daily-setup") return "quiz-menu";
   if (currentId === "quiz-menu") return "home-screen";
@@ -25022,15 +25566,13 @@ function selectNewsSearchQuery(query = "") {
 }
 
 async function openNewsScreen({ refresh = false } = {}) {
-  if (!requireSubscriptionAccess("news", getActiveScreenId() || "quiz-menu")) {
-    return;
-  }
-  window.location.href = "./news.html";
   closeMenuUserHub();
   closeGlobalQuickNav();
   closeNewsSearch();
   closeNewsMobileMenu();
   resetNewsScrollPosition();
+
+  window.location.href = "./news.html";
 }
 
 function clearDeviceLocalCache() {
@@ -25992,10 +26534,9 @@ if (topicLibrarySearchInput) {
 
 if (topicLibraryBtns.length) {
   topicLibraryBtns.forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
+    btn.addEventListener("click", () => {
       closeMenuUserHub();
-      void openTopicLibrary("quiz-menu");
+      void openTopicLibrary(btn.dataset.topicLibraryReturn || "quiz-menu");
     });
   });
 }
@@ -30317,7 +30858,16 @@ if (communityReportReasonSelectEl) {
       communityReportDetailsEl.placeholder = nextReason
         ? `Add context about ${nextReason.toLowerCase()}`
         : "Add details (optional)";
+    } else if (communityReportDetailsEl) {
+      communityReportDetailsEl.placeholder = "Add extra details (optional)";
     }
+    renderCommunityReportModal();
+  });
+}
+
+if (communityReportOtherReasonEl) {
+  communityReportOtherReasonEl.addEventListener("input", () => {
+    communityState.reportModal.otherReason = String(communityReportOtherReasonEl.value || "");
     renderCommunityReportModal();
   });
 }
@@ -30325,6 +30875,82 @@ if (communityReportReasonSelectEl) {
 if (communityReportDetailsEl) {
   communityReportDetailsEl.addEventListener("input", () => {
     communityState.reportModal.details = String(communityReportDetailsEl.value || "");
+  });
+}
+
+function readCommunityReportFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Evidence could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
+if (communityReportEvidenceEl) {
+  communityReportEvidenceEl.addEventListener("change", async () => {
+    const files = Array.from(communityReportEvidenceEl.files || []);
+    const current = Array.isArray(communityState.reportModal?.evidence)
+      ? communityState.reportModal.evidence
+      : [];
+    const allowedDocuments = new Set([
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ]);
+    const remaining = Math.max(0, 5 - current.length);
+    const additions = [];
+    for (const file of files.slice(0, remaining)) {
+      const type = String(file.type || "").toLowerCase();
+      const allowed = type.startsWith("image/") || type.startsWith("video/") || allowedDocuments.has(type);
+      if (!allowed || file.size > 8 * 1024 * 1024) {
+        setCommunityFeedback("Evidence must be an image, video, PDF, DOC, DOCX or TXT file under 8MB.", true);
+        continue;
+      }
+      try {
+        additions.push({
+          fileName: String(file.name || "Evidence").slice(0, 160),
+          mimeType: type,
+          size: file.size,
+          dataUrl: await readCommunityReportFileAsDataUrl(file),
+        });
+      } catch (error) {
+        setCommunityFeedback(String(error?.message || "Evidence could not be read."), true);
+      }
+    }
+    communityState.reportModal.evidence = [...current, ...additions].slice(0, 5);
+    communityReportEvidenceEl.value = "";
+    renderCommunityReportModal();
+  });
+}
+
+if (communityReportAddEvidenceBtn) {
+  communityReportAddEvidenceBtn.addEventListener("click", () => {
+    communityReportEvidenceEl?.click();
+  });
+}
+
+if (communityReportEvidenceListEl) {
+  communityReportEvidenceListEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-community-report-remove-evidence]");
+    const slot = event.target.closest("[data-community-report-evidence-slot]");
+    if (button) {
+      event.stopPropagation();
+      const index = Number(button.dataset.communityReportRemoveEvidence);
+      const evidence = Array.isArray(communityState.reportModal?.evidence)
+        ? communityState.reportModal.evidence
+        : [];
+      if (Number.isInteger(index) && index >= 0) {
+        evidence.splice(index, 1);
+        communityState.reportModal.evidence = evidence;
+        renderCommunityReportModal();
+      }
+      return;
+    }
+    if (!slot || slot.classList.contains("is-filled")) return;
+    communityReportEvidenceEl?.click();
+    return;
   });
 }
 
@@ -30620,6 +31246,7 @@ if (appTextSizeSelect) {
     uiPrefs.textSize = String(appTextSizeSelect.value || "default");
     saveUiPrefs();
     applyUiPrefs();
+    window.AjixUiPreferences?.applyTextSize?.();
     setSettingsFeedback("Text size updated.");
   });
 }
@@ -30801,49 +31428,9 @@ function getQuestionExplanationSections(question) {
 
 function renderQuestionExplanation(question) {
   if (!explanationEl) return;
-  const sections = getQuestionExplanationSections(question);
-  const hasContent =
-    Boolean(sections.base) ||
-    Boolean(sections.explainCorrect) ||
-    (Array.isArray(sections.wrongLines) && sections.wrongLines.length > 0);
-
-  if (!hasContent) {
-    explanationEl.classList.add("hidden");
-    explanationEl.innerHTML = "";
-    return;
-  }
-
-  const blocks = [];
-  if (sections.base) {
-    blocks.push(
-      `<section class="explain-section explain-main"><h4 class="explain-label">Explanation</h4><div class="explain-body">${formatExplanationTextForHtml(sections.base)}</div></section>`,
-    );
-  }
-
-  if (sections.explainCorrect) {
-    blocks.push(
-      `<section class="explain-section explain-correct"><h4 class="explain-label">Why Correct</h4><div class="explain-body">${formatExplanationTextForHtml(sections.explainCorrect)}</div></section>`,
-    );
-  }
-
-  if (Array.isArray(sections.wrongLines) && sections.wrongLines.length > 0) {
-    const items = sections.wrongLines
-      .map((line) => {
-        const splitAt = line.indexOf(":");
-        if (splitAt <= 0) {
-          return `<li class="explain-item">${formatExplanationTextForHtml(line)}</li>`;
-        }
-        const option = line.slice(0, splitAt).trim();
-        const reason = line.slice(splitAt + 1).trim();
-        return `<li class="explain-item"><span class="explain-option">${escapeHtml(option)}:</span> ${formatExplanationTextForHtml(reason)}</li>`;
-      })
-      .join("");
-    blocks.push(
-      `<section class="explain-section explain-wrong"><h4 class="explain-label">Why Others Are Wrong</h4><ul class="explain-list">${items}</ul></section>`,
-    );
-  }
-
-  explanationEl.innerHTML = blocks.join("");
+  const base = String(question?.explanation || "").trim();
+  if (!base) { explanationEl.classList.add("hidden"); explanationEl.innerHTML = ""; return; }
+  explanationEl.innerHTML = '<section class="explain-section explain-main"><h4 class="explain-label">Explanation</h4><div class="explain-body">' + formatExplanationTextForHtml(base) + '</div></section>';
   explanationEl.classList.remove("hidden");
 }
 
@@ -31078,14 +31665,19 @@ async function ensureTopicCatalogLoaded() {
 }
 
 async function openTopicLibrary(returnScreen = "quiz-menu") {
-  await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
   topicLibraryReturnScreen = returnScreen;
+
+  // Show the Library immediately.
   showScreen("topic-library");
+
   if (getActiveScreenId() !== "topic-library") {
     return;
   }
-  ensureTopicCatalogLoaded();
+
+  // Render cached/current data immediately.
   renderTopicLibrary();
+
+  void ensureTopicCatalogLoaded();
 }
 
 function enforceTopicViewerMobileLayout() {
@@ -31822,6 +32414,7 @@ await ensureQuestionBankLoaded();
     showScreen("quiz-area");
     showQuestion();
     restoreStreakUI();
+    saveTopicQuizProgress();
   } catch (error) {
     console.error("Topic quiz launch failed:", error);
     alert(`Topic quiz launch failed: ${error?.message || error}`);
@@ -32145,15 +32738,18 @@ const CONTACT_COUNTRY_OPTIONS = (() => {
     byCode.set(code, entry);
   });
 
-  return Array.from(byCode.values()).map((entry) => {
-    const primaryCountry = entry.countries[0] || "";
-    const visual = CONTACT_COUNTRY_VISUALS[primaryCountry] || CONTACT_COUNTRY_VISUALS.Other;
-    return {
-      code: entry.code,
-      label: `${visual.shortCode}`,
-      title: `${primaryCountry || "International"} ${entry.code}`,
-    };
-  });
+  return Array.from(byCode.values())
+    .map((entry) => {
+      const primaryCountry = entry.countries[0] || "";
+      const visual = CONTACT_COUNTRY_VISUALS[primaryCountry] || CONTACT_COUNTRY_VISUALS.Other;
+      return {
+        code: entry.code,
+        country: primaryCountry,
+        label: `${visual.shortCode}`,
+        title: `${primaryCountry || "International"} ${entry.code}`,
+      };
+    })
+    .sort((left, right) => String(left.country || "").localeCompare(String(right.country || "")));
 })();
 const CONTACT_CODE_PRIORITY = Array.from(
   new Set(CONTACT_COUNTRY_OPTIONS.map((option) => option.code)),
@@ -32162,6 +32758,23 @@ const DEFAULT_CONTACT_CODE =
   CONTACT_COUNTRY_OPTIONS.find((option) => option.code === "+233")?.code ||
   CONTACT_COUNTRY_OPTIONS[0]?.code ||
   "+233";
+
+const CONTACT_FLAG_BY_CODE = {
+  "+1": "\u{1F1FA}\u{1F1F8}",
+  "+44": "\u{1F1EC}\u{1F1E7}",
+  "+234": "\u{1F1F3}\u{1F1EC}",
+  "+233": "\u{1F1EC}\u{1F1ED}",
+  "+254": "\u{1F1F0}\u{1F1EA}",
+  "+91": "\u{1F1EE}\u{1F1F3}",
+  "+92": "\u{1F1F5}\u{1F1F0}",
+  "+63": "\u{1F1F5}\u{1F1ED}",
+  "+61": "\u{1F1E6}\u{1F1FA}",
+  "+27": "\u{1F1FF}\u{1F1E6}",
+};
+
+function getContactFlagClass(code = "") {
+  return `flag-${String(code || "intl").replace(/[^a-z0-9]/gi, "") || "intl"}`;
+}
 
 function populateContactCountrySelect(selectEl) {
   if (!selectEl || selectEl.dataset.populated === "1") return;
@@ -32181,6 +32794,55 @@ function populateContactCountrySelect(selectEl) {
     ? currentValue
     : DEFAULT_CONTACT_CODE;
   selectEl.dataset.populated = "1";
+  if (selectEl === authContactCountryCodeInput) renderAuthCountryMenu();
+}
+
+function getAuthCountryOption(code = "") {
+  const selectedCode = String(code || DEFAULT_CONTACT_CODE).trim() || DEFAULT_CONTACT_CODE;
+  return CONTACT_COUNTRY_OPTIONS.find((option) => option.code === selectedCode) || CONTACT_COUNTRY_OPTIONS[0];
+}
+
+function updateAuthCountryTrigger() {
+  if (!authCountryFlag || !authContactCountryCodeInput) return;
+  const option = getAuthCountryOption(authContactCountryCodeInput.value);
+  authCountryFlag.className = `auth-country-flag ${getContactFlagClass(option?.code)}`;
+  authCountryFlag.textContent = "";
+  authCountryTrigger?.setAttribute("aria-label", `Choose country: ${option?.country || "International"}`);
+}
+
+function renderAuthCountryMenu() {
+  if (!authCountryMenu) return;
+  authCountryMenu.replaceChildren();
+  CONTACT_COUNTRY_OPTIONS.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "auth-country-option";
+    button.dataset.countryCode = option.code;
+    button.setAttribute("role", "option");
+    const isSelected = option.code === authContactCountryCodeInput?.value;
+    button.setAttribute("aria-selected", isSelected ? "true" : "false");
+    button.innerHTML = `<span class="auth-country-option-flag auth-country-flag ${getContactFlagClass(option.code)}" aria-hidden="true"></span><span class="auth-country-option-name">${option.country || "International"}</span><span class="auth-country-option-code">${option.code || "International"}</span>`;
+    button.addEventListener("click", () => {
+      if (!authContactCountryCodeInput) return;
+      authContactCountryCodeInput.value = option.code;
+      authContactCountryCodeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      closeAuthCountryMenu();
+    });
+    authCountryMenu.appendChild(button);
+  });
+  updateAuthCountryTrigger();
+}
+
+function setAuthCountryMenuOpen(open = false) {
+  if (!authCountryMenu || !authCountryTrigger) return;
+  const nextOpen = Boolean(open);
+  authCountryMenu.classList.toggle("hidden", !nextOpen);
+  authCountryTrigger.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+  authCountryMenu.querySelector(`[data-country-code="${CSS.escape(String(authContactCountryCodeInput?.value || DEFAULT_CONTACT_CODE))}"]`)?.scrollIntoView({ block: "nearest" });
+}
+
+function closeAuthCountryMenu() {
+  setAuthCountryMenuOpen(false);
 }
 
 function getContactFormatValue(selectEl) {
@@ -32200,21 +32862,34 @@ function updateContactPhonePrefix(prefixEl, countryCodeInput) {
   const code = String(countryCodeInput?.value || DEFAULT_CONTACT_CODE).trim() || DEFAULT_CONTACT_CODE;
   prefixEl.textContent = code;
   prefixEl.title = `Country code ${code}`;
+  if (countryCodeInput === authContactCountryCodeInput) updateAuthCountryTrigger();
   return code;
+}
+
+function normalizeContactPhoneDigits(value, countryCodeInput) {
+  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
+  let digits = normalizeDigits(value);
+  const maxDigits = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+
+  // Accept the familiar local format as well as the international subscriber
+  // format. For example, Ghana accepts 0241234567 and 241234567 equally.
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  return digits.slice(0, maxDigits);
 }
 
 function normalizeContactPhoneField(phoneInput, countryCodeInput) {
   if (!phoneInput) return "";
-  const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
-  const maxDigits = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
-  const digits = normalizeDigits(phoneInput.value).slice(0, maxDigits);
+  const digits = normalizeContactPhoneDigits(phoneInput.value, countryCodeInput);
   if (phoneInput.value !== digits) phoneInput.value = digits;
   return digits;
 }
 
 function getPhoneContactError(phoneValue, countryCodeInput) {
   const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
-  const digits = normalizeDigits(phoneValue);
+  const digits = normalizeContactPhoneDigits(phoneValue, countryCodeInput);
   if (!digits) return "Contact number is required.";
   if (digits.length < rule.min || digits.length > rule.max) {
     const range = rule.min === rule.max ? `${rule.min}-digit` : `${rule.min}-${rule.max}-digit`;
@@ -32273,7 +32948,7 @@ function buildContactValueFromFields({
   }
 
   const countryCode = String(countryCodeInput?.value || "").trim() || DEFAULT_CONTACT_CODE;
-  const phone = normalizeDigits(contactInput?.value || "");
+  const phone = normalizeContactPhoneDigits(contactInput?.value || "", countryCodeInput);
   return phone ? `${countryCode}${phone}` : "";
 }
 
@@ -32322,6 +32997,14 @@ function syncContactFieldMode({
     wrap.classList.toggle("is-contact-phone", mode === CONTACT_FORMAT_PHONE);
   }
 
+  if (authContactPhoneToggle && wrap === authContactWrap) {
+    const isPhone = mode === CONTACT_FORMAT_PHONE;
+    authContactPhoneToggle.classList.toggle("is-active", isPhone);
+    authContactEmailToggle?.classList.toggle("is-active", !isPhone);
+    authContactPhoneToggle.setAttribute("aria-pressed", isPhone ? "true" : "false");
+    authContactEmailToggle?.setAttribute("aria-pressed", isPhone ? "false" : "true");
+  }
+
   if (emailWrap) emailWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_EMAIL);
   if (phoneWrap) phoneWrap.classList.toggle("hidden", mode !== CONTACT_FORMAT_PHONE);
 
@@ -32338,7 +33021,9 @@ function syncContactFieldMode({
     contactInput.inputMode = mode === CONTACT_FORMAT_EMAIL ? "email" : "numeric";
     if (mode === CONTACT_FORMAT_PHONE) {
       const rule = getContactRuleByCode(countryCodeInput?.value || DEFAULT_CONTACT_CODE) || { min: 6, max: 14 };
-      contactInput.maxLength = Math.max(Number(rule.max) || 14, Number(rule.min) || 6);
+      // Allow one optional local leading zero, which is removed by the
+      // normalizer before the value is sent to the backend.
+      contactInput.maxLength = Math.max(Number(rule.max) || 14, Number(rule.min) || 6) + 1;
       normalizeContactPhoneField(contactInput, countryCodeInput);
     } else {
       contactInput.removeAttribute("maxlength");
@@ -32519,6 +33204,8 @@ function buildMenuSnapshotFromUser(user = null) {
     contact: String(user.contact || "").trim(),
     professionalType: String(user.professionalType || "").trim(),
     profileImage: String(user.profileImage || "").trim(),
+    welcomeTrialEndsAt: user.welcomeTrialEndsAt || null,
+welcomeBonusUsed: user.welcomeBonusUsed === true,
     points,
     dailyQuiz: {
       streak: dailyStreak,
@@ -32565,8 +33252,13 @@ function getMenuPointsValue() {
 let profileFeedbackTimer = null;
 
 function setProfileFeedback(message = "", isError = false) {
-  if (!profileFeedbackEl) return;
   const text = String(message || "").trim();
+  if (profileNewFeedbackEl) {
+    profileNewFeedbackEl.textContent = text;
+    profileNewFeedbackEl.hidden = !text;
+    profileNewFeedbackEl.classList.toggle("auth-error", Boolean(isError));
+  }
+  if (!profileFeedbackEl) return;
   if (profileFeedbackTimer) {
     clearTimeout(profileFeedbackTimer);
     profileFeedbackTimer = null;
@@ -32654,7 +33346,120 @@ function fillProfileForm() {
   setProfileAvatarPreview(pendingProfileImage);
   updateProfileButtonAvatar(pendingProfileImage);
   refreshProfilePhotoDeleteVisibility();
+  syncProfilePrototypeIdentity();
 }
+
+function syncProfilePrototypeIdentity() {
+  const first = String(currentUser?.firstName || profileFirstNameInput?.value || "").trim();
+  const last = String(currentUser?.lastName || profileLastNameInput?.value || "").trim();
+  const username = String(currentUser?.username || profileUsernameInput?.value || "").trim();
+  const displayName = [first, last].filter(Boolean).join(" ") || username || "Account";
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "AJ";
+  const nameEl = document.getElementById("profile-prototype-member-name");
+  const initialsEl = document.getElementById("profile-prototype-initials");
+  if (nameEl) nameEl.textContent = displayName;
+  if (initialsEl) initialsEl.textContent = initials;
+}
+
+function syncProfileNewIdentity() {
+  const first = String(currentUser?.firstName || profileNewFirstNameInput?.value || "").trim();
+  const last = String(currentUser?.lastName || profileNewLastNameInput?.value || "").trim();
+  const username = String(currentUser?.username || profileNewUsernameInput?.value || "").trim();
+  const displayName = [first, last].filter(Boolean).join(" ") || username || "Account";
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "AJ";
+  const nameEl = document.getElementById("profile-new-member-name");
+  const initialsEl = document.getElementById("profile-new-initials");
+  if (nameEl) nameEl.textContent = displayName;
+  if (initialsEl) initialsEl.textContent = initials;
+  if (profileNewAvatarEl) {
+    profileNewAvatarEl.src = String(currentUser?.profileImage || "").trim() || "/images/app-logo.png?v=20260831-ajix-profile";
+  }
+}
+
+function fillProfileNewForm() {
+  if (!currentUser) return;
+  if (profileNewTitleField) profileNewTitleField.value = currentUser.title || "";
+  if (profileNewFirstNameInput) profileNewFirstNameInput.value = currentUser.firstName || "";
+  if (profileNewLastNameInput) profileNewLastNameInput.value = currentUser.lastName || "";
+  if (profileNewUsernameInput) profileNewUsernameInput.value = currentUser.username || "";
+  if (profileNewContactInput) profileNewContactInput.value = currentUser.contact || currentUser.email || "";
+  if (profileNewProfessionalTypeInput) profileNewProfessionalTypeInput.value = currentUser.professionalType || "Other";
+  if (profileNewCountryInput) profileNewCountryInput.value = currentUser.country || "";
+  if (profileNewInstitutionInput) profileNewInstitutionInput.value = currentUser.institution || "";
+  if (profileNewBioInput) profileNewBioInput.value = currentUser.bio || "";
+  setSelectedRadioValue("profile-new-role", currentUser.role || "student");
+  syncProfileNewIdentity();
+}
+
+function copyProfileNewFormToLegacy() {
+  if (profileTitleInput) profileTitleInput.value = profileNewTitleField?.value || "";
+  if (profileFirstNameInput) profileFirstNameInput.value = profileNewFirstNameInput?.value || "";
+  if (profileLastNameInput) profileLastNameInput.value = profileNewLastNameInput?.value || "";
+  if (profileUsernameInput) profileUsernameInput.value = profileNewUsernameInput?.value || "";
+  if (profileProfessionalTypeInput) profileProfessionalTypeInput.value = profileNewProfessionalTypeInput?.value || "";
+  if (profileCountryInput) profileCountryInput.value = profileNewCountryInput?.value || "";
+  if (profileInstitutionInput) profileInstitutionInput.value = profileNewInstitutionInput?.value || "";
+  if (profileBioInput) profileBioInput.value = profileNewBioInput?.value || "";
+  setSelectedRadioValue("profile-role", readSelectedRadioValue("profile-new-role", "student"));
+  const contact = String(profileNewContactInput?.value || "").trim();
+  const isEmail = EMAIL_INPUT_REGEX.test(contact.toLowerCase());
+  if (profileContactFormatInput) profileContactFormatInput.value = isEmail ? CONTACT_FORMAT_EMAIL : "phone";
+  if (profileContactEmailInput) profileContactEmailInput.value = isEmail ? contact : "";
+  if (profileContactPhoneInput) profileContactPhoneInput.value = isEmail ? "" : contact.replace(/\D/g, "");
+}
+
+document.querySelectorAll(".profile-new-nav-btn[data-profile-new-panel]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const panel = String(button.dataset.profileNewPanel || "profile");
+    document.querySelectorAll(".profile-new-nav-btn[data-profile-new-panel]").forEach((item) => item.classList.toggle("is-active", item === button));
+    document.querySelectorAll("[data-profile-new-panel-content]").forEach((section) => { section.hidden = section.dataset.profileNewPanelContent !== panel; });
+    const copy = { profile: ["Profile", "Manage your personal details, study identity, and security settings."], security: ["Security", "Keep your account protected with a strong password."], account: ["Account", "Manage account-level actions and your AjixPharmacy identity."] }[panel] || ["Profile", "Manage your personal details, study identity, and security settings."];
+    const title = document.getElementById("profile-new-title");
+    const description = document.getElementById("profile-new-copy");
+    if (title) title.textContent = copy[0];
+    if (description) description.textContent = copy[1];
+  });
+});
+
+async function openProfileNewScreen() {
+  const ok = await ensureAuthenticated({ nextScreen: "profile-exact-screen" });
+  if (!ok) return;
+  showScreen("profile-exact-screen", { skipSubscriptionGate: true });
+  syncProfileExactFrameState();
+  window.setTimeout(syncProfileExactFrameState, 0);
+}
+
+if (profileNewSaveBtn) profileNewSaveBtn.onclick = () => { copyProfileNewFormToLegacy(); void saveProfile(); };
+if (profileNewBackBtn) profileNewBackBtn.onclick = () => goToPreviousScreen("quiz-menu");
+if (profileNewPhotoCameraBtn) profileNewPhotoCameraBtn.onclick = () => profilePhotoCameraBtn?.click();
+if (profileNewPhotoGalleryBtn) profileNewPhotoGalleryBtn.onclick = () => profilePhotoGalleryBtn?.click();
+if (profileNewPhotoDeleteBtn) profileNewPhotoDeleteBtn.onclick = () => profilePhotoDeleteBtn?.click();
+if (profileNewPasswordToggleBtn) profileNewPasswordToggleBtn.onclick = () => { const open = Boolean(profileNewPasswordPanel?.hidden); if (profileNewPasswordPanel) profileNewPasswordPanel.hidden = !open; profileNewPasswordToggleBtn.setAttribute("aria-expanded", open ? "true" : "false"); profileNewPasswordToggleBtn.textContent = open ? "Hide Password" : "Change Password"; };
+if (profileNewChangePasswordBtn) profileNewChangePasswordBtn.onclick = () => { if (profileCurrentPasswordInput) profileCurrentPasswordInput.value = profileNewCurrentPasswordInput?.value || ""; if (profileNewPasswordInput) profileNewPasswordInput.value = profileNewNewPasswordInput?.value || ""; void changeProfilePassword(); };
+if (profileNewDangerToggleBtn) profileNewDangerToggleBtn.onclick = () => { const open = Boolean(profileNewDangerPanel?.hidden); if (profileNewDangerPanel) profileNewDangerPanel.hidden = !open; profileNewDangerToggleBtn.setAttribute("aria-expanded", open ? "true" : "false"); profileNewDangerToggleBtn.textContent = open ? "Hide Actions" : "Account Actions"; };
+if (profileNewDeactivateBtn) profileNewDeactivateBtn.onclick = () => { if (profileDeactivateDaysInput) profileDeactivateDaysInput.value = profileNewDeactivateDaysInput?.value || "30"; void deactivateProfileAccount(); };
+if (profileNewDeleteBtn) profileNewDeleteBtn.onclick = deleteProfileAccount;
+
+document.querySelectorAll(".profile-prototype-nav-btn[data-profile-panel]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const panel = String(button.dataset.profilePanel || "profile");
+    document.querySelectorAll(".profile-prototype-nav-btn[data-profile-panel]").forEach((item) => {
+      item.classList.toggle("is-active", item === button);
+    });
+    document.querySelectorAll("[data-profile-panel-content]").forEach((section) => {
+      section.hidden = section.dataset.profilePanelContent !== panel;
+    });
+    const title = document.getElementById("profile-prototype-page-title");
+    const copy = document.getElementById("profile-prototype-page-copy");
+    const content = {
+      profile: ["Profile", "Manage your personal details, study identity, and security settings."],
+      security: ["Security", "Keep your account protected with a strong password."],
+      account: ["Account", "Manage account-level actions and your AjixPharmacy identity."],
+    }[panel] || ["Profile", "Manage your personal details, study identity, and security settings."];
+    if (title) title.textContent = content[0];
+    if (copy) copy.textContent = content[1];
+  });
+});
 
 function closeMenuUserHub() {
   if (menuUserHubPanel) {
@@ -32726,8 +33531,50 @@ function openTourScreen() {
   showScreen("tour-screen");
 }
 
+function renderWelcomeTrialChip() {
+  if (!menuWelcomeTrialBtn || !menuWelcomeTrialTimeEl) return;
+
+ const trialUser = currentUser || getMenuSnapshotUser();
+
+const eligible =
+  trialUser &&
+  trialUser.welcomeBonusUsed !== true &&
+  trialUser.welcomeTrialEndsAt;
+
+const remainingMs = eligible
+  ? Math.max(0, Date.parse(trialUser.welcomeTrialEndsAt) - Date.now())
+  : 0;
+
+  if (remainingMs <= 0) {
+    menuWelcomeTrialBtn.hidden = true;
+
+    if (welcomeTrialTimerHandle) {
+      clearInterval(welcomeTrialTimerHandle);
+      welcomeTrialTimerHandle = null;
+    }
+
+    return;
+  }
+
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  menuWelcomeTrialTimeEl.textContent =
+    `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  menuWelcomeTrialBtn.hidden = false;
+
+  if (!welcomeTrialTimerHandle) {
+    welcomeTrialTimerHandle = setInterval(renderWelcomeTrialChip, 1000);
+  }
+}
+
 function renderAuthState() {
   if (!authUserLabel || !logoutBtn || !profileBtn) return;
+
+  renderWelcomeTrialChip();
 
   const menuUser = getMenuSnapshotUser();
   const isAuthHydrating = backendClient.isAuthenticated() && !currentUser;
@@ -32788,7 +33635,7 @@ function renderAuthState() {
         : menuUser.professionalType || "Signed in";
     authUserLabel.textContent = isAdmin ? displayName : username ? `@${username}` : fallbackLabel;
     authUserLabel.classList.remove("hidden");
-    logoutBtn.classList.add("hidden");
+    logoutBtn.classList.toggle("hidden", !backendClient.isAuthenticated());
     profileBtn.classList.remove("hidden");
     if (menuProfileNameEl) menuProfileNameEl.textContent = displayName;
     if (menuProfileSubtitleEl) menuProfileSubtitleEl.textContent = displaySubtitle;
@@ -32819,11 +33666,37 @@ function renderAuthState() {
 function setAuthMode(nextMode = "login") {
   const allowedModes = new Set(["login", "register", "forgot", "reset"]);
   authMode = allowedModes.has(nextMode) ? nextMode : "login";
+  const authCard = authModal?.querySelector(".auth-modal-card");
+  if (authCard) authCard.scrollTop = 0;
+  authTwoFactorChallengeEl?.classList.add("hidden");
+  authForm?.classList.remove("hidden");
 
   const isLogin = authMode === "login";
   const isRegister = authMode === "register";
   const isForgot = authMode === "forgot";
   const isReset = authMode === "reset";
+  authCard?.classList.toggle("auth-compact", isForgot || isReset);
+  const authModalTitleEl = document.getElementById("auth-modal-title");
+  const authModalCopyEl = document.getElementById("auth-modal-copy");
+
+  if (authModalTitleEl) {
+    authModalTitleEl.textContent = isRegister
+      ? "Create your account"
+      : isForgot
+        ? "Recover your account"
+        : isReset
+          ? "Set a new password"
+          : "Welcome back";
+  }
+  if (authModalCopyEl) {
+    authModalCopyEl.textContent = isRegister
+      ? "Create your AjixPharmacy account and keep your learning progress in one place."
+      : isForgot
+        ? "Request a secure reset code using a contact linked to your account."
+        : isReset
+          ? "Enter the reset code and choose a new password for your account."
+          : "Sign in to continue your pharmacy practice and pick up where you left off.";
+  }
 
   if (authTabLoginBtn) {
     authTabLoginBtn.classList.toggle("active", isLogin);
@@ -32883,6 +33756,47 @@ function setAuthMode(nextMode = "login") {
   }
 }
 
+function showTwoFactorChallenge(challengeToken = "") {
+  pendingTwoFactorChallengeToken = String(challengeToken || "").trim();
+  if (!pendingTwoFactorChallengeToken) return;
+  authForm?.classList.add("hidden");
+  authTwoFactorChallengeEl?.classList.remove("hidden");
+  authTwoFactorErrorEl?.classList.add("hidden");
+  if (authTwoFactorCodeInput) authTwoFactorCodeInput.value = "";
+  authTwoFactorCodeInput?.focus();
+}
+
+function setTwoFactorError(message = "") {
+  if (!authTwoFactorErrorEl) return;
+  authTwoFactorErrorEl.textContent = message;
+  authTwoFactorErrorEl.classList.toggle("hidden", !message);
+}
+
+async function verifyPendingTwoFactorLogin() {
+  const code = String(authTwoFactorCodeInput?.value || "").trim();
+  if (!code) {
+    setTwoFactorError("Enter the code from your authenticator app or a recovery code.");
+    return;
+  }
+  if (authTwoFactorSubmitBtn) authTwoFactorSubmitBtn.disabled = true;
+  setTwoFactorError("");
+  try {
+    const response = await backendClient.verifyTwoFactorLogin({ challengeToken: pendingTwoFactorChallengeToken, code });
+    currentUser = response?.user || (await backendClient.fetchMe());
+    pendingTwoFactorChallengeToken = "";
+    closeAuthModal();
+    showScreen(authPostSuccessScreenId || "quiz-menu");
+    authPostSuccessScreenId = "quiz-menu";
+    renderAuthState();
+    syncPointsFromCurrentUser();
+    scheduleSharedAccountHydration({ silent: true, deferHydration: true });
+  } catch (error) {
+    setTwoFactorError("Invalid authenticator or recovery code.");
+  } finally {
+    if (authTwoFactorSubmitBtn) authTwoFactorSubmitBtn.disabled = false;
+  }
+}
+
 function openAuthModal(nextMode = "login", nextScreenId = "quiz-menu") {
   if (!authModal) return;
   authPostSuccessScreenId = String(nextScreenId || "quiz-menu").trim() || "quiz-menu";
@@ -32922,7 +33836,7 @@ function closeAuthModal() {
 function authErrorMessage(error) {
   const message = String(error?.message || "");
   if (message.includes("invalid credentials") || message.includes("(401)")) {
-    return "Invalid username/contact/email or password.";
+    return "Incorrect username, email, phone, or password.";
   }
   if (message.includes("deactivated") || message.includes("(403)")) {
     return message.replace(/\s+\(\d+\)\s*$/, "");
@@ -33287,7 +34201,10 @@ async function restoreAuthSession({ deferHydration = false } = {}) {
     return false;
   }
   try {
-    currentUser = await backendClient.fetchMe({ preferCache: true });
+    currentUser = await backendClient.fetchMe({ preferCache: false });
+    await window.AJIXSubscription?.get({ fresh: true });
+    subscriptionStatusSnapshot = window.AJIXSubscription?.getState?.() || null;
+    scheduleSubscriptionExpiryTimer();
     renderAuthState();
     scheduleSharedAccountHydration({ silent: true, deferHydration });
     return true;
@@ -33310,6 +34227,7 @@ let sharedAccountHydrationHandle = null;
 let sharedAccountHydrationInFlight = null;
 
 function stopSharedAccountStatePolling() {
+  stopSubscriptionExpiryTimer();
   if (sharedAccountStatePollingHandle) {
     clearInterval(sharedAccountStatePollingHandle);
     sharedAccountStatePollingHandle = null;
@@ -33318,15 +34236,13 @@ function stopSharedAccountStatePolling() {
 
 function startSharedAccountStatePolling() {
   stopSharedAccountStatePolling();
-  if (!currentUser || !backendClient.isAuthenticated()) {
-    return;
-  }
-  sharedAccountStatePollingHandle = setInterval(() => {
-    if (document.hidden || !currentUser || !backendClient.isAuthenticated()) {
-      return;
+  if (!currentUser || !backendClient.isAuthenticated()) return;
+  sharedAccountStatePollingHandle = window.setTimeout(() => {
+    sharedAccountStatePollingHandle = null;
+    if (document.visibilityState === "visible") {
+      void refreshSharedAccountState({ silent: true, deferHydration: true });
     }
-    void refreshSharedAccountState({ force: false, silent: true }).catch(() => false);
-  }, 20_000);
+  }, SHARED_SUBSCRIPTION_REFRESH_COOLDOWN_MS);
 }
 
 function scheduleSharedAccountHydration({ silent = true, deferHydration = false } = {}) {
@@ -33374,7 +34290,7 @@ async function refreshSharedAccountState({
   }
 
   const now = Date.now();
-  if (!force && now - sharedAccountStateRefreshAt < 12_000) {
+  if (!force && now - sharedAccountStateRefreshAt < SHARED_SUBSCRIPTION_REFRESH_COOLDOWN_MS) {
     return true;
   }
 
@@ -33384,43 +34300,70 @@ async function refreshSharedAccountState({
 
   sharedAccountStateRefreshAt = now;
   sharedAccountStateRefreshInFlight = (async () => {
-    const freshUser = await backendClient.fetchMe();
+    let timeoutHandle;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutHandle = window.setTimeout(() => reject(new Error("Subscription verification timed out.")), SHARED_SUBSCRIPTION_REFRESH_TIMEOUT_MS);
+    });
+    const freshUser = await Promise.race([backendClient.fetchMe({ preferCache: false }), timeoutPromise]).finally(() => window.clearTimeout(timeoutHandle));
     currentUser = freshUser;
+    subscriptionStatusSnapshot = window.AJIXSubscription?.getState?.() || subscriptionStatusSnapshot;
+    communityAccessDenied = false;
+    scheduleSubscriptionExpiryTimer();
+    syncPremiumMenuLocks();
     renderAuthState();
     syncPointsFromCurrentUser();
     writeCurrentSetupPoints(readCurrentSetupPoints(), {
       scheduleSync: false,
     });
-    writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-      scheduleSync: false,
-    });
+    hydrateCurrentLawDrillSessionFromAccount();
     renderPoints();
     scheduleSharedAccountHydration({ silent, deferHydration });
     renderMenuDashboardStats();
     renderSetupPoints();
-    void loadDashboardTrendData({ force: false });
     renderDailyQuizUi();
     if (getActiveScreenId() === "subscription-screen") {
       renderSubscriptionScreen();
     }
     startSharedAccountStatePolling();
+    scheduleSubscriptionExpiryTimer();
     return true;
-  })().finally(() => {
-      sharedAccountStateRefreshInFlight = null;
-    });
+  })().catch((error) => {
+    console.warn("Subscription refresh skipped", error?.message || error);
+    return false;
+  }).finally(() => {
+    sharedAccountStateRefreshInFlight = null;
+  });
 
   return sharedAccountStateRefreshInFlight;
 }
 
 async function refreshSubscriptionAccessForAction() {
-  if (!backendClient.isAuthenticated() || !currentUser) {
+  try {
+    const cached = window.AJIXSubscription?.getCached?.() || window.AJIXSubscription?.getState?.();
+    if (cached?.subscription) {
+      subscriptionStatusSnapshot = cached;
+      scheduleSubscriptionExpiryTimer();
+      // Keep the shared state current without blocking the button action.
+      void window.AJIXSubscription?.get?.({ fresh: true }).then((snapshot) => {
+        if (!snapshot) return;
+        subscriptionStatusSnapshot = snapshot;
+        syncPremiumMenuLocks();
+        void cacheSubscriptionEntitlement(snapshot.subscription || null);
+        scheduleSubscriptionExpiryTimer();
+      }).catch(() => {});
+      return cached.subscription.isActive === true;
+    }
+
+    const snapshot = await window.AJIXSubscription?.get?.({ fresh: true });
+    subscriptionStatusSnapshot = snapshot || null;
+    const access = snapshot?.subscription || null;
+    if (access) await cacheSubscriptionEntitlement(access);
+    scheduleSubscriptionExpiryTimer();
+    return access?.isActive === true;
+  } catch (error) {
+    console.warn("Subscription refresh before navigation failed:", error);
     return false;
   }
-  await Promise.allSettled([
-    refreshSharedAccountState({ force: true, silent: true, deferHydration: true }),
-    loadSubscriptionScreenData({ force: true }),
-  ]);
-  return true;
 }
 
 async function ensureAuthenticated({ nextScreen = "quiz-menu" } = {}) {
@@ -33456,13 +34399,20 @@ function openWelcomeRegisterFlow(event) {
 }
 
 async function handlePortalEntry() {
-  if (currentUser || backendClient.isAuthenticated()) {
+  if (backendClient.isAuthenticated()) {
+    // The portal shell is not premium content. Open it immediately, then
+    // reconcile the account and entitlement state in the background.
     showScreen("quiz-menu");
-    void restoreAuthSession({ deferHydration: true });
     startQuestionBankBootstrap();
     startBackendBootstrap();
+    const restored = await restoreAuthSession({ deferHydration: true });
+    if (!restored && !backendClient.isAuthenticated()) {
+      showScreen("home-screen", { recordHistory: false });
+      openAuthModal("login", "quiz-menu");
+    }
     return;
   }
+
   const allowed = await ensureAuthenticated({ nextScreen: "quiz-menu" });
   if (!allowed) return;
   showScreen("quiz-menu");
@@ -33598,6 +34548,10 @@ async function handleAuthSubmit(event) {
   try {
     if (authMode === "login") {
       const response = await backendClient.login({ identifier, password });
+      if (response?.twoFactorRequired) {
+        showTwoFactorChallenge(response.challengeToken);
+        return;
+      }
       currentUser = response?.user || (await backendClient.fetchMe());
       closeAuthModal();
       showScreen(authPostSuccessScreenId || "quiz-menu");
@@ -33608,12 +34562,9 @@ async function handleAuthSubmit(event) {
         writeCurrentSetupPoints(readCurrentSetupPoints(), {
           scheduleSync: false,
         });
-        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-          scheduleSync: false,
-        });
+        hydrateCurrentLawDrillSessionFromAccount();
         renderPoints();
         scheduleSharedAccountHydration({ silent: true, deferHydration: true });
-        void loadDashboardTrendData({ force: false });
       } catch (postAuthHydrationError) {
         console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
       }
@@ -33638,13 +34589,10 @@ async function handleAuthSubmit(event) {
         writeCurrentSetupPoints(readCurrentSetupPoints(), {
           scheduleSync: false,
         });
-        writeCurrentLawDrillSession(currentUser?.lawDrillSession || null, {
-          scheduleSync: false,
-        });
+        hydrateCurrentLawDrillSessionFromAccount();
         renderPoints();
         scheduleSharedAccountHydration({ silent: true, deferHydration: true });
-        void loadDashboardTrendData({ force: false });
-      } catch (postAuthHydrationError) {
+          } catch (postAuthHydrationError) {
         console.warn("Post-auth hydration failed; session remains active.", postAuthHydrationError);
       }
       return;
@@ -33709,6 +34657,23 @@ if (authForm) {
   authForm.addEventListener("submit", handleAuthSubmit);
 }
 
+if (authTwoFactorSubmitBtn) authTwoFactorSubmitBtn.onclick = () => void verifyPendingTwoFactorLogin();
+if (authTwoFactorCodeInput) {
+  authTwoFactorCodeInput.onkeydown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void verifyPendingTwoFactorLogin();
+    }
+  };
+}
+if (authTwoFactorBackBtn) {
+  authTwoFactorBackBtn.onclick = () => {
+    pendingTwoFactorChallengeToken = "";
+    setTwoFactorError("");
+    setAuthMode("login");
+  };
+}
+
 if (authPasswordToggleBtn) {
   authPasswordToggleBtn.onclick = toggleAuthPasswordVisibility;
 }
@@ -33758,12 +34723,53 @@ if (authContactFormatInput) {
     });
 }
 
+function setAuthContactFormat(format) {
+  if (!authContactFormatInput) return;
+  const nextFormat = format === CONTACT_FORMAT_EMAIL ? CONTACT_FORMAT_EMAIL : CONTACT_FORMAT_PHONE;
+  if (authContactFormatInput.value === nextFormat) {
+    syncContactFieldMode({
+      wrap: authContactWrap,
+      formatSelect: authContactFormatInput,
+      emailWrap: authContactEmailWrap,
+      emailInput: authContactEmailInput,
+      phoneWrap: authContactPhoneWrap,
+      countryCodeInput: authContactCountryCodeInput,
+      phoneInput: authContactPhoneInput,
+      prefixEl: authContactPrefixInput,
+      locked: authMode === "forgot" && authForgotRequestLocked,
+    });
+    return;
+  }
+  authContactFormatInput.value = nextFormat;
+  authContactFormatInput.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+authContactPhoneToggle?.addEventListener("click", () => setAuthContactFormat(CONTACT_FORMAT_PHONE));
+authContactEmailToggle?.addEventListener("click", () => setAuthContactFormat(CONTACT_FORMAT_EMAIL));
+
 if (authContactCountryCodeInput) {
   authContactCountryCodeInput.onchange = () => {
     updateContactPhonePrefix(authContactPrefixInput, authContactCountryCodeInput);
+    renderAuthCountryMenu();
     normalizeContactPhoneField(authContactPhoneInput, authContactCountryCodeInput);
     clearFieldValidation(authContactWrap);
   };
+}
+
+authCountryTrigger?.addEventListener("click", (event) => {
+  event.preventDefault();
+  setAuthCountryMenuOpen(authCountryMenu?.classList.contains("hidden"));
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target && !target.closest(".auth-country-picker")) closeAuthCountryMenu();
+});
+
+if (authContactPhoneInput) {
+  authContactPhoneInput.addEventListener("input", () => {
+    normalizeContactPhoneField(authContactPhoneInput, authContactCountryCodeInput);
+  });
 }
 
 if (profileContactFormatInput) {
@@ -33801,6 +34807,7 @@ if (logoutBtn) {
       logoutConfirmBox.classList.remove("hidden");
       return;
     }
+    void backendClient.logout().catch(() => {});
     closeMenuUserHub();
     backendClient.clearToken();
     teardownCommunityRealtime();
@@ -33829,6 +34836,7 @@ if (logoutCancelBtn) {
 
 if (logoutConfirmBtn) {
   logoutConfirmBtn.onclick = () => {
+    void backendClient.logout().catch(() => {});
     closeMenuUserHub();
     backendClient.clearToken();
     teardownCommunityRealtime();
@@ -33998,8 +35006,7 @@ async function saveProfile() {
       "Not Set",
     institution:
       String(profileInstitutionInput?.value || "").trim() ||
-      String(currentUser.institution || "").trim() ||
-      "Not Set",
+      String(currentUser.institution || "").trim(),
     bio: String(profileBioInput?.value || "").trim(),
     privacy: {
       profileVisibility:
@@ -34135,7 +35142,7 @@ async function deactivateProfileAccount() {
 
   if (
     !confirm(
-      `Deactivate this account for ${days} day(s)? It will be auto-deleted after that window.`,
+      `Deactivate this account for ${days} day(s)? You can reactivate it by signing in again.`,
     )
   ) {
     return;
@@ -34152,7 +35159,7 @@ async function deactivateProfileAccount() {
     resetDailyQuizRuntimeState();
     renderAuthState();
     showScreen("home-screen");
-    alert("Account deactivated. It will be deleted automatically after the selected period.");
+    alert("Account deactivated. Sign in again with your password to reactivate it.");
   } catch (error) {
     setProfileFeedback(authErrorMessage(error), true);
   }
@@ -34181,33 +35188,13 @@ async function deleteProfileAccount() {
 }
 
 async function openProfileScreen() {
-  const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
-  if (!ok || !currentUser) return;
-  setProfileFeedback("");
-  fillProfileForm();
-  setProfilePanelOpen(
-    profilePasswordPanel,
-    profilePasswordToggleBtn,
-    false,
-    "Change Password",
-    "Hide Password",
-  );
-  setProfilePanelOpen(
-    profileDangerPanel,
-    profileDangerToggleBtn,
-    false,
-    "Account Actions",
-    "Hide Actions",
-  );
-  showScreen("profile-screen");
+  return openProfileNewScreen();
 }
 
 if (profileBtn) {
   profileBtn.onclick = async () => {
-    const ok = await ensureAuthenticated({ nextScreen: "profile-screen" });
-    if (!ok) return;
     closeMenuUserHub();
-    openProfileScreen();
+    await openProfileScreen();
   };
 }
 
@@ -35052,6 +36039,7 @@ if (subscriptionProofInput) {
   subscriptionProofInput.addEventListener("change", async () => {
     const file = subscriptionProofInput.files?.[0] || null;
     if (!file) {
+      subscriptionProofDataUrl = "";
       renderSubscriptionProofPreview();
       return;
     }
@@ -35062,6 +36050,7 @@ if (subscriptionProofInput) {
         reader.onerror = () => reject(reader.error || new Error("Failed to read payment screenshot."));
         reader.readAsDataURL(file);
       });
+      subscriptionProofDataUrl = dataUrl;
       renderSubscriptionProofPreview({ dataUrl });
     } catch {
       renderSubscriptionProofPreview();
@@ -35118,7 +36107,7 @@ if (subscriptionForm) {
       (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
     const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
     const currentSubscriptionStatus = String(
-      currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+      currentSubscriptionAccess?.status || "",
     )
       .trim()
       .toLowerCase();
@@ -35148,19 +36137,13 @@ if (subscriptionForm) {
 
     try {
       const file = subscriptionProofInput?.files?.[0] || null;
-      let proofDataUrl = "";
+      let proofDataUrl = subscriptionProofDataUrl;
       let proofFileName = "";
       let proofMimeType = "";
 
       if (file) {
         proofFileName = file.name || "payment-proof";
         proofMimeType = file.type || "image/*";
-        proofDataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ""));
-          reader.onerror = () => reject(reader.error || new Error("Failed to read proof image."));
-          reader.readAsDataURL(file);
-        });
       }
 
       const response = await backendClient.submitSubscriptionRequest({
@@ -35179,13 +36162,14 @@ if (subscriptionForm) {
       currentUser = response?.user || currentUser;
       renderAuthState();
       subscriptionPlansCache = Array.isArray(response?.plans) ? response.plans : subscriptionPlansCache;
-      subscriptionStatusSnapshot = response || subscriptionStatusSnapshot;
+      subscriptionStatusSnapshot = await window.AJIXSubscription.refresh();
       if (subscriptionFormFeedback) {
         subscriptionFormFeedback.textContent =
           "Payment proof submitted. Admin review can take up to 24 hours.";
         subscriptionFormFeedback.dataset.persist = "1";
       }
       if (subscriptionTransactionInput) subscriptionTransactionInput.value = "";
+      subscriptionProofDataUrl = "";
       if (subscriptionProofInput) subscriptionProofInput.value = "";
       renderSubscriptionProofPreview();
       renderSubscriptionScreen();
@@ -35316,7 +36300,7 @@ async function startMenuDrill(variant = "rapid") {
 
 if (rapidDrillBtn) {
   rapidDrillBtn.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("rapid")) {
       return;
     }
@@ -35354,7 +36338,7 @@ if (clinicalDrillBtn) {
 
 if (lawDrillBtn) {
   lawDrillBtn.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("law")) {
       return;
     }
@@ -35371,28 +36355,39 @@ if (menuDrillsTab) {
 
 if (menuLawTab) {
   menuLawTab.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+    setMenuHubActiveTab("law");
+
+    refreshSubscriptionAccessForAction();
+
     if (!requireSubscriptionAccess("law")) {
       return;
     }
-    setMenuHubActiveTab("law");
+
     const savedSession = getSavedLawDrillSession();
-    void startLawDrillSession(savedSession ? { resumeState: savedSession } : {});
+
+    void startLawDrillSession(
+      savedSession ? { resumeState: savedSession } : {},
+    );
   };
 }
 
 if (menuGppqeTab) {
-  menuGppqeTab.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+  menuGppqeTab.onclick = () => {
     setMenuHubActiveTab("gppqe");
     void openGppqeScreen();
   };
 }
 
-if (menuExtraTab) {
-  menuExtraTab.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
+if (menuExploreBtn) {
+  menuExploreBtn.onclick = () => {
     openExtraScreen();
+  };
+}
+
+if (menuEoyTab) {
+  menuEoyTab.onclick = () => {
+    setMenuHubActiveTab("eoy");
+    openComingSoonModal();
   };
 }
 
@@ -35419,7 +36414,7 @@ if (drillsLobbyTabs.length) {
   drillsLobbyTabs.forEach((tab) => {
     tab.onclick = async () => {
       const variant = String(tab.dataset.drillVariant || "rapid").toLowerCase();
-      await refreshSubscriptionAccessForAction();
+      refreshSubscriptionAccessForAction();
       if (!requireSubscriptionAccess(variant)) {
         return;
       }
@@ -35446,10 +36441,6 @@ if (menuNewsBtn) {
 
 if (menuGuidelinesBtn) {
   menuGuidelinesBtn.onclick = async () => {
-    await refreshSubscriptionAccessForAction();
-    if (!requireSubscriptionAccess("extra-content")) {
-      return;
-    }
     window.location.href = "guidelines.html";
   };
 }
@@ -35458,22 +36449,18 @@ if (extraScreen) {
   extraScreen.addEventListener("click", async (event) => {
     const target =
       event.target instanceof HTMLElement
-        ? event.target.closest("[data-coming-soon='true'], [data-medlens='true'], [data-calculator='true']")
+        ? event.target.closest("[data-coming-soon=\x27true\x27], [data-law=\x27true\x27], [data-medlens=\x27true\x27], [data-calculator=\x27true\x27]")
         : null;
     if (!(target instanceof HTMLElement)) return;
+    if (target.hasAttribute("data-law")) {
+      window.location.href = "law.html";
+      return;
+    }
     if (target.hasAttribute("data-medlens")) {
-      await refreshSubscriptionAccessForAction();
-      if (!requireSubscriptionAccess("extra-content")) {
-        return;
-      }
       window.location.href = "/medlens.html";
       return;
     }
     if (target.hasAttribute("data-calculator")) {
-      await refreshSubscriptionAccessForAction();
-      if (!requireSubscriptionAccess("extra-content")) {
-        return;
-      }
       window.location.href = "./calculator.html";
       return;
     }
@@ -35531,12 +36518,14 @@ inReview = false; // reset properly
 };
 
 if (studyBtn) {
-  studyBtn.onclick = async () => {
-    await refreshSharedAccountState({ force: true, silent: true, deferHydration: true }).catch(() => false);
+  studyBtn.onclick = () => {
+    showScreen("study-setup");
+
     updateStudyBestStreakDisplay();
     renderModeHistory("Study", "study-history");
-    showScreen("study-setup");
+
     const modalState = buildResumeStudySessionModalState();
+
     if (modalState) {
       openSessionResumeModal(modalState);
     }
@@ -35556,6 +36545,11 @@ document.addEventListener(
     if (!(target instanceof HTMLElement)) return;
 
     if (target.id === "start-study-btn") {
+      if (!requireSubscriptionAccess("study", "study-setup")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       const modalState = buildResumeStudySessionModalState();
       if (!modalState) return;
       event.preventDefault();
@@ -35759,6 +36753,9 @@ function saveSession(mode, score, total, duration = null) {
 
   localStorage.setItem("quizSessionHistory", JSON.stringify(sessionHistory));
   localStorage.setItem(RECENT_RESULTS_STORAGE_KEY, JSON.stringify(recentSessionResults));
+  if (currentUser && backendClient.isAuthenticated()) {
+    backendClient.syncSession(entry);
+  }
   renderModeHistory("Study", "study-history");
   renderModeHistory("Exam", "exam-history");
 }
@@ -36335,8 +37332,8 @@ function updateModeIndicator(studyType = null) {
     if (!compactHeaderMode) headerInlineMeta.innerHTML = "";
   }
 }
-function resolveSubscriptionAccess(user = currentUser, snapshot = subscriptionStatusSnapshot) {
-  return snapshot?.subscription || user?.subscriptionAccess || null;
+function resolveSubscriptionAccess() {
+  return window.AJIXSubscription?.getAccess?.() || null;
 }
 
 function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptionStatusSnapshot) {
@@ -36376,12 +37373,12 @@ function getSubscriptionAccessSummary(user = currentUser, snapshot = subscriptio
 
   if (!access) {
     return {
-      title: "Free Trial",
-      subtitle: "7 days after signup",
-      note: "You are currently on the trial access path.",
-      pill: "active",
-      locked: false,
-      isActive: true,
+      title: "Subscription unavailable",
+      subtitle: "Please try again",
+      note: "Your subscription could not be verified.",
+      pill: "expired",
+      locked: true,
+      isActive: false,
     };
   }
 
@@ -36448,9 +37445,9 @@ function formatSubscriptionExpiryLabel(value) {
 
 function getSubscriptionPlanList() {
   const defaultPlans = [
-        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock everything for 7 days." },
-        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 10, durationDays: 30, description: "Unlock everything for 30 days." },
-        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 100, durationDays: 365, description: "Unlock everything for 365 days." },
+        { key: "weekly", label: "Weekly Access", shortLabel: "Week Pass", priceGhs: 5, durationDays: 7, description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 7 days." },
+        { key: "monthly", label: "Monthly Access", shortLabel: "Month Pass", priceGhs: 10, durationDays: 30, description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 30 days." },
+        { key: "yearly", label: "Annual Access", shortLabel: "Annual Pass", priceGhs: 100, durationDays: 365, description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 365 days." },
       ];
   if (Array.isArray(subscriptionPlansCache) && subscriptionPlansCache.length) {
     return normalizeSubscriptionPlans(subscriptionPlansCache);
@@ -36466,7 +37463,7 @@ function normalizeSubscriptionPlans(plans = []) {
       shortLabel: "Week Pass",
       priceGhs: 5,
       durationDays: 7,
-      description: "Unlock everything for 7 days.",
+      description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 7 days.",
     },
     monthly: {
       key: "monthly",
@@ -36474,7 +37471,7 @@ function normalizeSubscriptionPlans(plans = []) {
       shortLabel: "Month Pass",
       priceGhs: 10,
       durationDays: 30,
-      description: "Unlock everything for 30 days.",
+      description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 30 days.",
     },
     yearly: {
       key: "yearly",
@@ -36482,7 +37479,7 @@ function normalizeSubscriptionPlans(plans = []) {
       shortLabel: "Annual Pass",
       priceGhs: 100,
       durationDays: 365,
-      description: "Unlock everything for 365 days.",
+      description: "Unlock premium quizzes, drills, Law Drill, and GPPQE for 365 days.",
     },
   };
   return ["weekly", "monthly", "yearly"].map((key) => {
@@ -36542,6 +37539,7 @@ function openSubscriptionScreen({ intent = "general", returnScreen = "quiz-menu"
   subscriptionScreenState.intent = String(intent || "general").trim().toLowerCase() || "general";
   subscriptionScreenState.returnScreen = String(returnScreen || "quiz-menu").trim() || "quiz-menu";
   subscriptionScreenState.paymentModalOpen = false;
+  subscriptionScreenState.loading = true;
   void loadSubscriptionScreenData({ force: true }).catch(() => false);
   showScreen("subscription-screen");
   window.requestAnimationFrame(() => {
@@ -36579,8 +37577,8 @@ function isSubscriptionPurchaseBlocked(user = currentUser, snapshot = subscripti
     user?.subscriptionRequest ||
     null;
   const currentAccess = resolveSubscriptionAccess(user, snapshot);
-  const currentStatus = String(currentAccess?.status || user?.subscriptionStatus || "").trim().toLowerCase();
-  const currentPlan = String(currentAccess?.plan || user?.subscriptionPlan || "").trim().toLowerCase();
+  const currentStatus = String(currentAccess?.status || "").trim().toLowerCase();
+  const currentPlan = String(currentAccess?.plan || "").trim().toLowerCase();
   const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
   const requestIsBlocking = latestRequestStatus === "pending";
   const activePaidAccess = currentStatus === "active" && currentPlan !== "trial";
@@ -36604,6 +37602,7 @@ function buildSubscriptionProofPlaceholderMarkup() {
 }
 
 function clearSubscriptionProofSelection() {
+  subscriptionProofDataUrl = "";
   if (subscriptionProofInput) {
     subscriptionProofInput.value = "";
   }
@@ -36704,6 +37703,7 @@ function renderSubscriptionScreen() {
   const sectionTitleEl = document.getElementById("subscription-section-title");
   const sectionNoteEl = document.getElementById("subscription-section-note");
   const statusBadgesEl = document.getElementById("subscription-status-badges");
+  const trialStatusLineEl = document.getElementById("subscription-trial-status");
   const selectedTitleEl = document.getElementById("subscription-selected-plan-title");
   const selectedCopyEl = document.getElementById("subscription-selected-plan-copy");
   const modalTitleEl = subscriptionPaymentModalTitleEl;
@@ -36716,51 +37716,76 @@ function renderSubscriptionScreen() {
   const feedbackEl = document.getElementById("subscription-form-feedback");
   const requestStatusEl = document.getElementById("subscription-request-status");
   const isMobileLayout = window.matchMedia("(max-width: 720px)").matches;
+  const subscriptionDataLoading = subscriptionScreenState.loading === true;
   const latestRequest =
     subscriptionStatusSnapshot?.request ||
     (Array.isArray(subscriptionStatusSnapshot?.requests) ? subscriptionStatusSnapshot.requests[0] : null);
   const currentSubscriptionAccess = resolveSubscriptionAccess(currentUser, subscriptionStatusSnapshot);
   const currentSubscriptionStatus = String(
-    currentSubscriptionAccess?.status || subscriptionStatusSnapshot?.user?.subscriptionStatus || currentUser?.subscriptionStatus || "",
+    currentSubscriptionAccess?.status || "",
   )
     .trim()
     .toLowerCase();
-  const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || currentUser?.subscriptionPlan || "").trim().toLowerCase();
-  const currentSubscriptionExpiryLabel = formatSubscriptionExpiryLabel(
-    currentSubscriptionAccess?.expirationAt ||
-      currentUser?.subscriptionExpirationAt ||
-      currentUser?.subscriptionEndsAt ||
-      "",
-  );
-  const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
-  const subscriptionReviewing =
-    latestRequestStatus === "pending" ||
-    currentSubscriptionStatus === "pending";
-  const subscriptionActive =
-    currentSubscriptionStatus === "active" && currentSubscriptionPlan !== "trial";
-  const subscriptionActionDisabled = subscriptionReviewing || subscriptionActive;
-  const subscriptionActionDisabledReason = subscriptionActionDisabled
-    ? subscriptionActive
-      ? "Your subscription is already active."
-      : "A subscription request is already under review."
+  const currentSubscriptionPlan = String(currentSubscriptionAccess?.plan || "").trim().toLowerCase();
+ const latestRequestStatus = String(latestRequest?.status || "").trim().toLowerCase();
+const subscriptionReviewing =
+  latestRequestStatus === "pending" ||
+  currentSubscriptionStatus === "pending";
+
+const pendingTrialEndsAt =
+  subscriptionReviewing &&
+  (currentSubscriptionAccess?.trialEndsAt ||
+    "");
+
+const pendingTrialExpiryLabel =
+  pendingTrialEndsAt &&
+  Date.parse(pendingTrialEndsAt) > Date.now()
+    ? formatSubscriptionExpiryLabel(pendingTrialEndsAt)
     : "";
+
+const currentSubscriptionExpiryLabel =
+  pendingTrialExpiryLabel ||
+  (subscriptionReviewing
+    ? ""
+    : formatSubscriptionExpiryLabel(
+        currentSubscriptionAccess?.expirationAt ||
+          currentSubscriptionAccess?.expirationAt || "",
+      ));
+  const subscriptionActive =
+  currentSubscriptionAccess?.isActive === true ||
+  ((currentSubscriptionStatus === "active" ||
+    currentSubscriptionStatus === "trial") &&
+    !subscriptionReviewing);
+  const subscriptionActionDisabled = subscriptionDataLoading || subscriptionReviewing || subscriptionActive;
+  const subscriptionActionDisabledReason = subscriptionActionDisabled
+    ? subscriptionDataLoading
+      ? "Checking your current subscription..."
+      : subscriptionActive
+        ? "Your subscription is already active."
+        : "A subscription request is already under review."
+    : "";
+   const subscriptionUser = currentUser || getMenuSnapshotUser();
+
+const welcomeBonusEligible =
+  Boolean(subscriptionUser?.welcomeTrialEndsAt) &&
+  subscriptionUser?.welcomeBonusUsed !== true;
   const plans = getSubscriptionPlanList();
   const selectedPlan = planInputEl?.value || plans.find((plan) => plan.key !== "trial")?.key || "weekly";
   const selectedPlanData = plans.find((plan) => plan.key === selectedPlan) || plans[0];
   const featureSets = {
     weekly: [
       "Unlock all drill modes",
-      "Unlock exams, library, and community",
+      "Unlock Study, Main Quiz, Law Drill, and GPPQE",
       "Perfect for short study bursts",
     ],
     monthly: [
       "Unlock all drill modes",
-      "Unlock exams, library, and community",
+      "Unlock Study, Main Quiz, Law Drill, and GPPQE",
       "Best value for ongoing practice",
     ],
     yearly: [
       "Unlock all drill modes",
-      "Unlock exams, library, and community",
+      "Unlock Study, Main Quiz, Law Drill, and GPPQE",
       "Best value for long-term access",
       "Priority renewal path",
     ],
@@ -36789,11 +37814,47 @@ function renderSubscriptionScreen() {
   const durationText = Number(selectedPlanData?.durationDays) === 1 ? "1 day" : `${selectedPlanData?.durationDays} days`;
   const proofReference = getSubscriptionProofReference(selectedPlan);
 
-  if (titleEl) titleEl.textContent = `Subscription: ${state.title}`;
-  if (subtitleEl) subtitleEl.textContent = state.subtitle;
-  if (noteEl) noteEl.textContent = state.note;
-  if (pillEl) pillEl.textContent = state.pill || (state.isActive ? "active" : "inactive");
-  if (modalTitleEl) modalTitleEl.textContent = displayName;
+  const subscriptionDisplayUser = currentUser || getMenuSnapshotUser();
+const freeTrialEndsAt =
+  currentSubscriptionAccess?.trialEndsAt ||
+  subscriptionDisplayUser?.welcomeTrialEndsAt ||
+  subscriptionDisplayUser?.trialEndsAt ||
+  "";
+
+const freeTrialAvailable =
+  Boolean(freeTrialEndsAt) &&
+  subscriptionDisplayUser?.welcomeBonusUsed !== true;
+
+const freeTrialActive =
+  freeTrialAvailable &&
+  Number.isFinite(Date.parse(freeTrialEndsAt)) &&
+  Date.parse(freeTrialEndsAt) > Date.now();
+
+const freeTrialExpiryTime = Date.parse(String(freeTrialEndsAt || ""));
+const freeTrialExpiredNoticeGraceEndsAt = Number.isFinite(freeTrialExpiryTime)
+  ? freeTrialExpiryTime + 60 * 60 * 1000
+  : NaN;
+const showFreeTrialStatus =
+  freeTrialAvailable &&
+  (!Number.isFinite(freeTrialExpiredNoticeGraceEndsAt) ||
+    Date.now() < freeTrialExpiredNoticeGraceEndsAt);
+const freeTrialExpiryLabel = showFreeTrialStatus
+  ? formatSubscriptionExpiryLabel(freeTrialEndsAt)
+  : "";
+
+ if (trialStatusLineEl) {
+  if (showFreeTrialStatus) {
+    trialStatusLineEl.hidden = false;
+    trialStatusLineEl.textContent = freeTrialExpiryLabel
+      ? `${freeTrialActive ? "ACTIVE" : "EXPIRED"} FREE TRIAL · ${
+          freeTrialActive ? "Expires" : "Expired"
+        } ${freeTrialExpiryLabel}`
+      : `${freeTrialActive ? "ACTIVE" : "EXPIRED"} FREE TRIAL`;
+  } else {
+    trialStatusLineEl.hidden = true;
+    trialStatusLineEl.textContent = "";
+  }
+}
   if (modalCopyEl) modalCopyEl.textContent = selectedPlanData?.description || "Pick a payment pass to continue.";
   if (amountEl) amountEl.textContent = priceText;
   if (requestStatusEl) {
@@ -36814,16 +37875,32 @@ function renderSubscriptionScreen() {
     sectionNoteEl.textContent = "";
   }
   if (statusBadgesEl) {
-    const currentBadgeState = subscriptionReviewing
-      ? "pending"
+   const pendingPlanKey = String(
+  latestRequest?.plan || currentSubscriptionPlan || "",
+)
+  .trim()
+  .toLowerCase();
+
+const pendingPaidSubscription =
+  subscriptionReviewing && pendingPlanKey !== "trial";
+
+const currentBadgeState = subscriptionDataLoading
+  ? "loading"
+  : pendingPaidSubscription
+    ? "pending"
+    : showFreeTrialStatus && freeTrialActive
+      ? "active"
       : subscriptionActive
         ? "active"
         : "expired";
-    statusBadgesEl.innerHTML = [
-      { key: "active", label: "Active", active: currentBadgeState === "active" },
-      { key: "pending", label: "Pending", active: currentBadgeState === "pending" },
-      { key: "expired", label: "Expired", active: currentBadgeState === "expired" },
-    ]
+    const statusBadges = subscriptionDataLoading
+      ? [{ key: "loading", label: "Checking...", active: true }]
+      : [
+          { key: "active", label: "Active", active: currentBadgeState === "active" },
+          { key: "pending", label: "Pending", active: currentBadgeState === "pending" },
+          { key: "expired", label: "Expired", active: currentBadgeState === "expired" },
+        ];
+    statusBadgesEl.innerHTML = statusBadges
       .map(
         (badge) => `
           <span class="subscription-status-badge ${badge.active ? `is-${badge.key} is-current` : ""}">
@@ -36841,6 +37918,14 @@ function renderSubscriptionScreen() {
         const active = String(plan.key) === String(selectedPlan);
         const planName = plan.label || plan.shortLabel || "Plan";
         const planMeta = planCardMeta[plan.key] || planCardMeta.monthly;
+        const welcomeBonusDays =
+        Number(plan.durationDays) === 7
+          ? 3
+          : Number(plan.durationDays) === 30
+            ? 7
+            : Number(plan.durationDays) === 365
+              ? 30
+              : 0;
         const priceLabel = Number(plan.priceGhs) === 0 ? "Free" : `GHS ${plan.priceGhs}`;
         const periodLabel =
           Number(plan.durationDays) === 7
@@ -36851,10 +37936,27 @@ function renderSubscriptionScreen() {
         const bullets = featureSets[plan.key] || featureSets.monthly;
         return `
           <article class="subscription-plan-tile ${active ? "is-active" : ""} ${planMeta.featured ? "is-popular" : ""} ${subscriptionActionDisabled ? "is-disabled" : ""} ${plan.key === currentSubscriptionPlan ? "is-current-subscription" : ""}" data-subscription-plan-card="${escapeHtml(plan.key)}" aria-disabled="${subscriptionActionDisabled ? "true" : "false"}">
+         ${welcomeBonusEligible && welcomeBonusDays > 0 ? `
+  <div class="subscription-welcome-bonus" aria-label="Welcome bonus">
+    <span class="subscription-welcome-sparkle sparkle-one" aria-hidden="true">✦</span>
+    <span class="subscription-welcome-sparkle sparkle-two" aria-hidden="true">✦</span>
+    <span class="subscription-welcome-sparkle sparkle-three" aria-hidden="true">✦</span>
+    <span class="subscription-welcome-sparkle sparkle-four" aria-hidden="true">✦</span>
+    <div class="subscription-welcome-bonus-label">WELCOME BONUS</div>
+    <div class="subscription-welcome-bonus-value">
+      <strong>+${welcomeBonusDays}</strong> bonus days on your first subscription
+    </div>
+  </div>
+` : ""}
             ${planMeta.featured ? '<div class="subscription-plan-popular-badge">POPULAR</div>' : ""}
             <div class="subscription-plan-name-row">
               <div class="subscription-plan-name">${escapeHtml(planMeta.title)}</div>
-              ${plan.key === currentSubscriptionPlan && currentSubscriptionExpiryLabel ? `<div class="subscription-plan-expiry">Expires ${escapeHtml(currentSubscriptionExpiryLabel)}</div>` : ""}
+              ${plan.key === currentSubscriptionPlan &&
+subscriptionActive &&
+!subscriptionReviewing &&
+currentSubscriptionExpiryLabel
+  ? `<div class="subscription-plan-expiry">Expires ${escapeHtml(currentSubscriptionExpiryLabel)}</div>`
+  : ""}
             </div>
             <div class="subscription-plan-desc">${escapeHtml(plan.description || planMeta.subtitle)}</div>
             <div class="subscription-plan-price">
@@ -36943,52 +38045,47 @@ function renderSubscriptionScreen() {
 }
 
 async function loadSubscriptionScreenData({ force = false } = {}) {
-  if (!backendClient.isAuthenticated() || !currentUser) {
+  subscriptionScreenState.loading = true;
+  if (!backendClient.isAuthenticated()) {
     subscriptionStatusSnapshot = null;
+    subscriptionScreenState.loading = false;
     renderSubscriptionScreen();
     return true;
   }
   try {
-    const plansPromise = subscriptionPlansCache.length && !force
-      ? Promise.resolve({ plans: subscriptionPlansCache })
-      : backendClient.fetchSubscriptionPlans({ preferCache: !force });
-    const [plansResponse, meResponse] = await Promise.all([
-      plansPromise,
-      backendClient.fetchMySubscription({ preferCache: !force }),
-    ]);
-    if (plansResponse?.plans) {
-      subscriptionPlansCache = normalizeSubscriptionPlans(plansResponse.plans);
+    const entitlementSnapshot = await window.AJIXSubscription.get({ fresh: true });
+    subscriptionStatusSnapshot = entitlementSnapshot || null;
+    if (Array.isArray(entitlementSnapshot?.plans)) {
+      subscriptionPlansCache = normalizeSubscriptionPlans(entitlementSnapshot.plans);
     }
-    subscriptionStatusSnapshot = meResponse || null;
-    await cacheSubscriptionEntitlement(
-  meResponse?.subscription || currentUser?.subscriptionAccess || null,
-);
-    renderSubscriptionScreen();
+    const sharedAccess = entitlementSnapshot?.subscription || null;
+    await cacheSubscriptionEntitlement(sharedAccess);
+    scheduleSubscriptionExpiryTimer();
     return true;
   } catch (error) {
     console.warn("Failed to load subscription screen:", error);
-    renderSubscriptionScreen();
     return false;
+  } finally {
+    subscriptionScreenState.loading = false;
+    if (getActiveScreenId() === "subscription-screen") renderSubscriptionScreen();
   }
 }
 
 const SUBSCRIPTION_LOCKED_FEATURES = new Set([
   "exam",
-  "topic-library",
-  "community",
-  "news",
+  "study",
   "rapid",
   "sudden",
   "clinical",
   "law",
   "gppqe",
-  "extra-content",
 ]);
 
 function getSubscriptionGateFeature(feature = "") {
   const normalized = String(feature || "").trim().toLowerCase();
   if (!normalized) return "";
   if (["exam-setup", "exam", "exams", "smart"].includes(normalized)) return "exam";
+  if (["study-setup", "study"].includes(normalized)) return "study";
   if (["topic-viewer", "topic-library", "library"].includes(normalized)) return "topic-library";
   if (
     ["community-screen", "community-profile-screen", "community-group-storage-screen", "community-chat-screen", "community"].includes(
@@ -37004,98 +38101,54 @@ function getSubscriptionGateFeature(feature = "") {
 
 function isSubscriptionLockedForFeature(feature = "") {
   const gateFeature = getSubscriptionGateFeature(feature);
-
-  if (!SUBSCRIPTION_LOCKED_FEATURES.has(gateFeature)) {
-    return false;
-  }
-
-  const access = resolveSubscriptionAccess(
-    currentUser,
-    subscriptionStatusSnapshot,
-  );
-
-  const currentStatus = String(
-    access?.status ||
-      subscriptionStatusSnapshot?.user?.subscriptionStatus ||
-      currentUser?.subscriptionStatus ||
-      "",
-  )
-    .trim()
-    .toLowerCase();
-
-  const isOnline = navigator.onLine !== false;
-
-  if (isOnline) {
-    if (
-      currentStatus === "active" ||
-      currentStatus === "trial"
-    ) {
-      return false;
-    }
-
-    if (
-      currentStatus === "pending" ||
-      currentStatus === "expired" ||
-      currentStatus === "rejected"
-    ) {
-      return true;
-    }
-
-    return Boolean(access?.isLocked);
-  }
-
-  // Offline premium access is limited by the cached 72-hour entitlement.
-  if (hasUsableOfflineSubscriptionEntitlement()) {
-    return false;
-  }
-
-  return true;
+  if (!SUBSCRIPTION_LOCKED_FEATURES.has(gateFeature)) return false;
+  return window.AJIXSubscription?.getAccess?.()?.isActive !== true;
 }
 
 let subscriptionRevalidationInFlight = false;
 
-async function revalidateSubscriptionEntitlement() {
-  if (
-    navigator.onLine === false ||
-    !backendClient.isAuthenticated() ||
-    !currentUser ||
-    subscriptionRevalidationInFlight
-  ) {
-    return false;
-  }
-
-  subscriptionRevalidationInFlight = true;
-
-  try {
-    await loadSubscriptionScreenData({ force: true });
-    return true;
-  } catch (error) {
-    console.warn("Subscription entitlement revalidation failed:", error);
-    return false;
-  } finally {
-    subscriptionRevalidationInFlight = false;
-  }
+function revalidateSubscriptionEntitlement() {
+  if (!backendClient.isAuthenticated() || !currentUser) return false;
+  scheduleSubscriptionExpiryTimer();
+  return true;
 }
 
 window.addEventListener("online", () => {
   void revalidateSubscriptionEntitlement();
+  void refreshSharedAccountState({ silent: true, deferHydration: true });
 });
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     void revalidateSubscriptionEntitlement();
+    void refreshSharedAccountState({ silent: true, deferHydration: true });
   }
 });
 
-function requireSubscriptionAccess(feature = "feature", returnScreen = getActiveScreenId() || "quiz-menu") {
+function requireSubscriptionAccess(
+  feature = "feature",
+  returnScreen = getActiveScreenId() || "quiz-menu",
+) {
   const gateFeature = getSubscriptionGateFeature(feature);
-  if (!isSubscriptionLockedForFeature(gateFeature)) {
+  const isPremiumFeature = isSubscriptionLockedForFeature(gateFeature);
+  if (!isPremiumFeature) {
     return true;
   }
+
+  // Unknown subscription state must not unlock premium content.
+  if (!resolveSubscriptionAccess()) {
+    openSubscriptionScreen({
+      intent: gateFeature || feature,
+      returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",
+    });
+    return false;
+  }
+
   openSubscriptionScreen({
     intent: gateFeature || feature,
     returnScreen: String(returnScreen || "quiz-menu").trim() || "quiz-menu",
   });
+
   return false;
 }
 /* ==============================
@@ -37103,6 +38156,11 @@ function requireSubscriptionAccess(feature = "feature", returnScreen = getActive
                         ================================= */
 
 async function startStudy() {
+  await hydrateSubscriptionEntitlement();
+  if (!requireSubscriptionAccess("study", "study-setup")) {
+    return;
+  }
+
   studySessionEnded = false;
   clearAiExplainStateSession();
   examVariant = "normal";
@@ -37116,7 +38174,7 @@ async function startStudy() {
 
   const studyType = getCurrentStudyType();
   if (studyType === "law") {
-    await refreshSubscriptionAccessForAction();
+    refreshSubscriptionAccessForAction();
     if (!requireSubscriptionAccess("law")) {
       return;
     }
@@ -37236,6 +38294,7 @@ async function startStudy() {
   prevBtn.onclick = previousQuestion;
 
   showQuestion();
+  saveStudyProgress();
 }
 
 async function startExam(count, requestedVariant = null) {
@@ -37243,7 +38302,7 @@ async function startExam(count, requestedVariant = null) {
     .trim()
     .toLowerCase();
   const gateFeature = ["rapid", "sudden", "clinical", "law"].includes(variant) ? variant : "exam";
-  await refreshSubscriptionAccessForAction();
+  refreshSubscriptionAccessForAction();
   if (!requireSubscriptionAccess(gateFeature)) {
     return;
   }
@@ -37592,7 +38651,7 @@ function showQuestion() {
   if (q.type === "match" || q.type === "single") {
     optionList.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
       btn.dataset.value = opt;
       btn.disabled = lockSelection;
       if (lockSelection) {
@@ -37607,10 +38666,10 @@ function showQuestion() {
         btn.classList.add("selected-live");
       }
       if (lockSelection) {
-        if (opt === q.correct) {
+        if (isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("correct");
         }
-        if (savedAnswer === opt && opt !== q.correct) {
+        if (savedAnswer === opt && !isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -37623,19 +38682,14 @@ function showQuestion() {
     statementList.forEach((s, index) => {
       const p = document.createElement("p");
 
-      // Auto-number if not already numbered
-      if (!/^\d+\./.test(s.trim())) {
-        p.innerText = `${index + 1}. ${s}`;
-      } else {
-        p.innerText = s;
-      }
+      p.innerHTML = formatComboStatement(s, index, q);
 
       comboBlock.appendChild(p);
     });
 
     comboChoices.forEach((option) => {
       const btn = document.createElement("button");
-      btn.innerText = option.text;
+      btn.innerText = displayOptionText(option.text, q);
       btn.dataset.value = option.letter;
       btn.disabled = lockSelection;
       if (lockSelection) {
@@ -37650,10 +38704,10 @@ function showQuestion() {
         btn.classList.add("selected-live");
       }
       if (lockSelection) {
-        if (option.letter === q.correct) {
+        if (isQuestionAnswerCorrect(option.letter, q)) {
           btn.classList.add("correct");
         }
-        if (savedAnswer === option.letter && option.letter !== q.correct) {
+        if (savedAnswer === option.letter && !isQuestionAnswerCorrect(option.letter, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -37692,7 +38746,7 @@ function showQuestion() {
 function selectAnswer(value, q) {
   if (inDetailedReview) return;
   userAnswers[q.id] = value;
-  const isCorrect = String(value) === String(q.correct || "");
+  const isCorrect = isQuestionAnswerCorrect(value, q);
   const studyType = getCurrentStudyType();
 
   if (isPreSubmitReviewMode()) {
@@ -37856,7 +38910,7 @@ function selectAnswer(value, q) {
       btn.style.pointerEvents = "none";
       btn.classList.remove("selected-live", "correct", "wrong");
 
-      if (btnValue === String(q.correct || "")) {
+      if (isQuestionAnswerCorrect(btnValue, q)) {
         btn.classList.add("correct");
       }
 
@@ -37938,7 +38992,7 @@ function selectAnswer(value, q) {
       ? btn.innerText[0]
       : btn.innerText;
 
-    if (btnValue === q.correct) {
+    if (isQuestionAnswerCorrect(btnValue, q)) {
       btn.classList.add("correct");
     }
 
@@ -38027,7 +39081,7 @@ function nextQuestion() {
           ? btn.innerText[0]
           : btn.innerText;
 
-        if (btnValue === q.correct) {
+        if (isQuestionAnswerCorrect(btnValue, q)) {
           btn.classList.add("correct");
         }
       });
@@ -38091,11 +39145,11 @@ function restoreSelection(q) {
       btn.removeAttribute("onclick");
       btn.style.pointerEvents = "none";
 
-      if (btnValue === q.correct) {
+      if (isQuestionAnswerCorrect(btnValue, q)) {
         btn.classList.add("correct");
       }
 
-      if (btnValue === saved && saved !== q.correct) {
+      if (btnValue === saved && !isQuestionAnswerCorrect(saved, q)) {
         btn.classList.add("wrong");
       }
     }
@@ -38104,11 +39158,11 @@ function restoreSelection(q) {
       if (inReview) {
         btn.disabled = true;
 
-        if (btnValue === q.correct) {
+        if (isQuestionAnswerCorrect(btnValue, q)) {
           btn.classList.add("correct");
         }
 
-        if (btnValue === saved && saved !== q.correct) {
+        if (btnValue === saved && !isQuestionAnswerCorrect(saved, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -38137,7 +39191,7 @@ function calculateScore() {
 
   Object.keys(userAnswers).forEach((id) => {
     const q = active.find((q) => q.id == id);
-    if (q && userAnswers[id] === q.correct) total++;
+    if (q && isQuestionAnswerCorrect(userAnswers[id], q)) total++;
   });
 
   return total;
@@ -38522,7 +39576,7 @@ async function finishDailyQuizSession() {
 
     active.forEach((q) => {
       const selected = String(userAnswers?.[q.id] || "").trim();
-      const isCorrect = selected === String(q.correct || "");
+      const isCorrect = isQuestionAnswerCorrect(selected, q);
       updatePerformance(q.id, isCorrect, selected || "Skipped");
     });
 
@@ -38640,7 +39694,7 @@ async function finishExam() {
   clearDailyResultEnhancements();
 
   active.forEach((q) => {
-    const isCorrect = userAnswers[q.id] === q.correct;
+    const isCorrect = isQuestionAnswerCorrect(userAnswers[q.id], q);
     if (isCorrect) finalScore++;
 
     answers[q.id] = userAnswers[q.id];
@@ -39171,7 +40225,7 @@ function showDetailedReview() {
 
   active.forEach((q, index) => {
     const user = userAnswers[q.id] || "Not Answered";
-    const isCorrect = user === q.correct;
+    const isCorrect = isQuestionAnswerCorrect(user, q);
 
     const card = document.createElement("div");
     card.className =
@@ -39281,7 +40335,7 @@ function renderDetailedQuestion() {
   if (q.type === "match" || q.type === "single") {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
       btn.dataset.value = opt;
       btn.disabled = !editableReview;
       if (editableReview) {
@@ -39293,11 +40347,11 @@ function renderDetailedQuestion() {
       }
 
       if (!editableReview) {
-        if (opt === q.correct) {
+        if (isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("correct");
         }
 
-        if (savedAnswer === opt && opt !== q.correct) {
+        if (savedAnswer === opt && !isQuestionAnswerCorrect(savedAnswer, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -39318,18 +40372,14 @@ function renderDetailedQuestion() {
     q.statements.forEach((s, index) => {
       const p = document.createElement("p");
 
-      if (!/^\d+\./.test(s.trim())) {
-        p.innerText = `${index + 1}. ${s}`;
-      } else {
-        p.innerText = s;
-      }
+      p.innerHTML = formatComboStatement(s, index, q);
 
       comboBlock.appendChild(p);
     });
 
     comboChoices.forEach((option) => {
       const btn = document.createElement("button");
-      btn.innerText = option.text;
+      btn.innerText = displayOptionText(option.text, q);
       btn.dataset.value = option.letter;
       btn.disabled = !editableReview;
       if (editableReview) {
@@ -39341,11 +40391,11 @@ function renderDetailedQuestion() {
       }
 
       if (!editableReview) {
-        if (option.letter === q.correct) {
+        if (isQuestionAnswerCorrect(option.letter, q)) {
           btn.classList.add("correct");
         }
 
-        if (savedAnswer === option.letter && option.letter !== q.correct) {
+        if (savedAnswer === option.letter && !isQuestionAnswerCorrect(savedAnswer, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -39360,7 +40410,7 @@ function renderDetailedQuestion() {
   else if (q.options) {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
       btn.dataset.value = opt;
       btn.disabled = !editableReview;
       if (editableReview) {
@@ -39372,11 +40422,11 @@ function renderDetailedQuestion() {
       }
 
       if (!editableReview) {
-        if (opt === q.correct) {
+        if (isQuestionAnswerCorrect(opt, q)) {
           btn.classList.add("correct");
         }
 
-        if (savedAnswer === opt && opt !== q.correct) {
+        if (savedAnswer === opt && !isQuestionAnswerCorrect(savedAnswer, q)) {
           btn.classList.add("wrong");
         }
       }
@@ -39414,13 +40464,13 @@ function showQuestionDetailedMode() {
   if (q.type === "match" || q.type === "single") {
     q.options.forEach((opt) => {
       const btn = document.createElement("button");
-      btn.innerText = opt;
+      btn.innerText = displayOptionText(opt);
 
-      if (opt === q.correct) {
+      if (isQuestionAnswerCorrect(opt, q)) {
         btn.classList.add("correct");
       }
 
-      if (userAnswers[q.id] === opt && opt !== q.correct) {
+      if (userAnswers[q.id] === opt && !isQuestionAnswerCorrect(userAnswers[q.id], q)) {
         btn.classList.add("wrong");
       }
 
@@ -39431,9 +40481,9 @@ function showQuestionDetailedMode() {
   }
 
   if (q.type === "combo") {
-    q.statements.forEach((s) => {
+    q.statements.forEach((s, index) => {
       const p = document.createElement("p");
-      p.innerText = s;
+      p.innerHTML = formatComboStatement(s, index, q);
       answersEl.appendChild(p);
     });
 
@@ -39443,11 +40493,11 @@ function showQuestionDetailedMode() {
       const btn = document.createElement("button");
       btn.innerText = letter;
 
-      if (letter === q.correct) {
+      if (isQuestionAnswerCorrect(letter, q)) {
         btn.classList.add("correct");
       }
 
-      if (userAnswers[q.id] === letter && letter !== q.correct) {
+      if (userAnswers[q.id] === letter && !isQuestionAnswerCorrect(userAnswers[q.id], q)) {
         btn.classList.add("wrong");
       }
 
@@ -39582,7 +40632,9 @@ function saveStudyProgress() {
 
 window.addEventListener("load", function () {
   const pendingTopicQuizLaunch = hasPendingTopicQuizLaunch();
-  const pendingScreenLaunch = String(new URLSearchParams(window.location.search || "").get("screen") || "").trim().length > 0;
+  const pageParams = new URLSearchParams(window.location.search || "");
+  const pendingScreenLaunch = String(pageParams.get("screen") || "").trim().length > 0;
+  const pendingAuthMode = String(pageParams.get("auth") || "").trim().toLowerCase();
   setAuthMode("login");
   profileImageMarkedForDeletion = false;
   setProfileAvatarPreview("");
@@ -39595,6 +40647,13 @@ window.addEventListener("load", function () {
   window.setTimeout(() => {
     void checkForNativeAppUpdate();
   }, 900);
+
+  if (pendingAuthMode === "register") {
+    openAuthModal("register");
+    pageParams.delete("auth");
+    const cleanQuery = pageParams.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ""}${window.location.hash || ""}`);
+  }
 
   if (pendingTopicQuizLaunch) {
     consumePendingTopicQuizLaunch();
@@ -39715,7 +40774,7 @@ function showStudyReviewPalette() {
     btn.className = "review-btn";
     btn.innerText = index + 1;
 
-    if (userAnswers[q.id] === q.correct) {
+    if (isQuestionAnswerCorrect(userAnswers[q.id], q)) {
       btn.classList.add("review-correct");
     } else if (userAnswers[q.id] === "Skipped") {
       btn.classList.add("review-skipped");
@@ -39830,101 +40889,30 @@ function toggleModeHistory(containerId) {
   el.classList.toggle("hidden");
 }
 
-let globalLoadingTimer = null;
 
-function getGlobalLoadingOverlay() {
-  let overlay = document.getElementById("global-loading-overlay");
-
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "global-loading-overlay";
-    overlay.setAttribute("role", "status");
-    overlay.setAttribute("aria-live", "polite");
-    overlay.textContent = "Loading...";
-   Object.assign(overlay.style, {
-  position: "fixed",
-  top: "50%",
-  left: "50%",
-  zIndex: "99999",
-  transform: "translate(-50%, -50%)",
-  padding: "16px 24px",
-  minWidth: "120px",
-  textAlign: "center",
-  borderRadius: "12px",
-  background: "#ffffff",
-  color: "#0b2948",
-  border: "1px solid rgba(11, 41, 72, 0.14)",
-  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.18)",
-  fontSize: "15px",
-  fontWeight: "700",
-  opacity: "0",
-  pointerEvents: "none",
-  transition: "opacity 120ms ease",
-});
-    document.body.appendChild(overlay);
-  }
-
-  return overlay;
-}
-
-function beginGlobalLoading(label = "Loading...") {
-  const overlay = getGlobalLoadingOverlay();
-  overlay.textContent = label;
-
-  clearTimeout(globalLoadingTimer);
-
-  globalLoadingTimer = setTimeout(() => {
-    overlay.style.opacity = "1";
-  }, 0);
-
-}
-
-function endGlobalLoading() {
-  clearTimeout(globalLoadingTimer);
-
-  const overlay = document.getElementById("global-loading-overlay");
-  if (overlay) overlay.style.opacity = "0";
-}
-
-document.addEventListener("pointerdown", (event) => {
-  const target = event.target.closest("button, a, [role='button']");
-  if (!target) return;
-
-  // Do not show navigation loading for answer choices or small UI controls.
-  if (
-    target.matches(
-      ".answer-option, .option-button, .drills-lobby-tab, input, select, textarea"
-    )
-  ) {
-    return;
-  }
-
-  beginGlobalLoading("Loading...");
-}, true);
 
 function showScreen(id, options = {}) {
-  const { recordHistory = true, skipSubscriptionGate = false } = options;
+  const {
+    recordHistory = true,
+    skipSubscriptionGate = false,
+  } = options;
+
   const normalizedId = String(id || "").trim();
-  if (!skipSubscriptionGate && isSubscriptionLockedForFeature(normalizedId)) {
-    if (currentUser && backendClient.isAuthenticated()) {
-      void refreshSubscriptionAccessForAction().then(() => {
-        if (isSubscriptionLockedForFeature(normalizedId)) {
-          openSubscriptionScreen({
-            intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
-            returnScreen: getActiveScreenId() || "quiz-menu",
-          });
-          return;
-        }
-        showScreen(normalizedId, { ...options, skipSubscriptionGate: true });
-      });
-      return;
-    }
+
+  const isCommunityScreen = isCommunityScreenId(normalizedId);
+
+  if (
+    !skipSubscriptionGate &&
+    !isCommunityScreen &&
+    isSubscriptionLockedForFeature(normalizedId)
+  ) {
     openSubscriptionScreen({
       intent: getSubscriptionGateFeature(normalizedId) || normalizedId,
       returnScreen: getActiveScreenId() || "quiz-menu",
     });
     return;
   }
+
   const screens = [
     "welcome-screen",
     "home-screen",
@@ -39933,6 +40921,8 @@ function showScreen(id, options = {}) {
     "gppqe-screen",
     "extra-screen",
     "profile-screen",
+    "profile-new-screen",
+    "profile-exact-screen",
     "study-setup",
     "exam-setup",
     "daily-setup",
@@ -39951,6 +40941,9 @@ function showScreen(id, options = {}) {
   ];
 
   const currentActiveId = getActiveScreenId();
+  if (currentActiveId === "quiz-area" && normalizedId !== "quiz-area") {
+    persistSessionForQuickNavigation();
+  }
   if (currentActiveId === "gppqe-screen" && normalizedId !== "gppqe-screen") {
     gppqeStopTimer();
   }
@@ -39980,6 +40973,9 @@ function showScreen(id, options = {}) {
     target.classList.add("screen-active");
     syncViewportBackground(target);
   }
+  if (normalizedId === "quiz-menu" || normalizedId === "home-screen") {
+  renderWelcomeTrialChip();
+}
   if (id === "gppqe-screen") {
   setMenuHubActiveTab("gppqe");
 }
@@ -40001,6 +40997,7 @@ function showScreen(id, options = {}) {
   }
 
   if (id === "quiz-menu") {
+    scheduleSubscriptionExpiryTimer();
     closeMenuUserHub();
     closeGlobalQuickNav();
     closeLeaderboardModal?.({ useHistory: false });
@@ -40011,9 +41008,6 @@ function showScreen(id, options = {}) {
     closeCommunityConfirmModal?.();
     closeCommunityConversationActions?.();
     closeCommunityFriendActions?.();
-    window.setTimeout(() => {
-      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-    }, 0);
   }
 
   if (id === "drills-screen" || id === "gppqe-screen" || id === "extra-screen") {
@@ -40022,9 +41016,6 @@ function showScreen(id, options = {}) {
   }
 
   if (["daily-setup", "study-setup", "exam-setup"].includes(id)) {
-    window.setTimeout(() => {
-      void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-    }, 0);
   }
 
   if (nextCommunityScreen && !wasCommunityScreen && isCommunityLockEnabled() && !communityState.communityLockSessionUnlocked) {
@@ -40094,19 +41085,15 @@ function showScreen(id, options = {}) {
       history.replaceState({ screen: id }, "", "");
     }
   }
-  endGlobalLoading();
+
 }
 
 window.addEventListener("focus", () => {
-  if (currentUser && backendClient.isAuthenticated()) {
-    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-  }
+  if (currentUser && backendClient.isAuthenticated()) scheduleSubscriptionExpiryTimer();
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && currentUser && backendClient.isAuthenticated()) {
-    void refreshSharedAccountState({ force: false, silent: true, deferHydration: true }).catch(() => false);
-  }
+  if (!document.hidden && currentUser && backendClient.isAuthenticated()) scheduleSubscriptionExpiryTimer();
 });
 function restoreStreakUI() {
   const streakBox = document.getElementById("streak-box");
@@ -40202,6 +41189,9 @@ document.addEventListener("keydown", function (e) {
 // ==============================
 
 window.addEventListener("beforeunload", function () {
+  if (mode === "study" && active.length > 0 && !studySessionEnded) {
+    saveStudyProgress();
+  }
   if ((mode === "exam" || mode === "smart") && active.length > 0) {
     saveExamSession();
     if (isPausableDrillSession()) {
@@ -40430,6 +41420,16 @@ window.addEventListener("popstate", function (event) {
   }
 
   if (activeId === "quiz-area") {
+    if (isLawStudyMode()) {
+      persistLawDrillSession();
+      const lawView = getLawDrillView();
+      if (lawView === "review" || lawView === "result" || lawView === "level") {
+        returnToLawLadder();
+      } else {
+        goToMenu();
+      }
+      return;
+    }
     if (mode === "study") {
       saveStudyProgress();
       returnToParentScreen("study-setup");
@@ -40462,8 +41462,8 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 
-  if (activeId === "profile-screen") {
-    goBackByHistory("profile-screen", "quiz-menu");
+  if (activeId === "profile-screen" || activeId === "profile-new-screen" || activeId === "profile-exact-screen") {
+    goBackByHistory(activeId, "quiz-menu");
     return;
   }
 
@@ -40512,4 +41512,30 @@ window.addEventListener("popstate", function (event) {
     return;
   }
 });
+
+function isQuestionAnswerCorrect(value, question = {}) {
+  const normalize = (candidate) =>
+    String(candidate ?? "")
+      .replace(/^\s*[A-E](?:\s*[:.)-]\s*)/i, "")
+      .trim()
+      .toLowerCase();
+  const selected = String(value ?? "").trim();
+  const correct = String(question.correct ?? "").trim();
+  if (!selected || !correct) return false;
+  if (selected === correct || normalize(selected) === normalize(correct)) return true;
+  const options = Array.isArray(question.options) ? question.options : [];
+  const answerIndex = Number(question.answer);
+  if (Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex < options.length) {
+    if (selected.toUpperCase() === String.fromCharCode(65 + answerIndex)) return true;
+    if (normalize(selected) === normalize(options[answerIndex])) return true;
+  }
+  const correctLetter = correct.match(/^([A-E])(?:$|\s*[:.)-])/i);
+  if (correctLetter) {
+    const correctIndex = correctLetter[1].toUpperCase().charCodeAt(0) - 65;
+    if (correctIndex >= 0 && correctIndex < options.length) {
+      return normalize(selected) === normalize(options[correctIndex]);
+    }
+  }
+  return false;
+}
 

@@ -723,12 +723,12 @@ export const backendClient = {
     return del(`/community/groups/${encodeURIComponent(groupId)}`);
   },
 
-  reportCommunityGroup(groupId, reason = "") {
-    return post(`/community/groups/${encodeURIComponent(groupId)}/report`, { reason });
+  reportCommunityGroup(groupId, reason = "", details = "", evidence = []) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/report`, { reason, details, evidence });
   },
 
-  reportCommunityUser(userId, reason = "") {
-    return post(`/community/users/${encodeURIComponent(userId)}/report`, { reason });
+  reportCommunityUser(userId, reason = "", details = "", evidence = []) {
+    return post(`/community/users/${encodeURIComponent(userId)}/report`, { reason, details, evidence });
   },
 
   uploadCommunityGroupAvatarFile(groupId, file = null) {

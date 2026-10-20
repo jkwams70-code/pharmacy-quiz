@@ -349,6 +349,7 @@ async function requestCached(
       "/community/",
       "/sync/",
     ].some((prefix) => path.startsWith(prefix))),
+    allowStaleOnError = true,
   } = {},
 ) {
   const cached = cacheable ? readCachedResponse(cacheKey) : null;
@@ -371,7 +372,7 @@ async function requestCached(
     }
     return response;
   } catch (error) {
-    if (cached?.value !== undefined) {
+    if (allowStaleOnError && cached?.value !== undefined) {
       return cached.value;
     }
     throw error;
@@ -475,11 +476,14 @@ export const backendClient = {
   setToken(token) {
     const cleaned = String(token || "").trim();
     if (!cleaned) return;
+    const previous = String(localStorage.getItem(AUTH_TOKEN_KEY) || "").trim();
+    if (previous && previous !== cleaned) window.AJIXSubscription?.clear?.();
     localStorage.setItem(AUTH_TOKEN_KEY, cleaned);
   },
 
   clearToken() {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.AJIXSubscription?.clear?.();
   },
 
   isAuthenticated() {
@@ -502,8 +506,47 @@ export const backendClient = {
     return data;
   },
 
-  fetchMe({ preferCache = false } = {}) {
-    return get("/auth/me", { preferCache });
+  logout() {
+    return post("/auth/logout");
+  },
+
+  verifyTwoFactorLogin(payload = {}) {
+    return post("/auth/2fa/verify-login", payload).then((data) => {
+      if (data?.token) this.setToken(data.token);
+      return data;
+    });
+  },
+
+  setupTwoFactor() {
+    return post("/auth/2fa/setup");
+  },
+
+  verifyTwoFactorSetup(payload = {}) {
+    return post("/auth/2fa/verify-setup", payload);
+  },
+
+  disableTwoFactor(payload = {}) {
+    return post("/auth/2fa/disable", payload);
+  },
+
+  regenerateTwoFactorRecoveryCodes(payload = {}) {
+    return post("/auth/2fa/recovery-codes", payload);
+  },
+
+  fetchMe({ preferCache = false, allowStaleOnError = false } = {}) {
+    return get("/auth/me", { preferCache, allowStaleOnError });
+  },
+
+  fetchSessions() {
+    return get("/auth/sessions", { preferCache: false });
+  },
+
+  revokeSession(sessionId) {
+    return post(`/auth/sessions/${encodeURIComponent(sessionId)}/revoke`);
+  },
+
+  revokeOtherSessions() {
+    return post("/auth/sessions/revoke-others");
   },
 
   fetchSubscriptionPlans({ preferCache = true } = {}) {
@@ -680,12 +723,12 @@ export const backendClient = {
     return del(`/community/groups/${encodeURIComponent(groupId)}`);
   },
 
-  reportCommunityGroup(groupId, reason = "") {
-    return post(`/community/groups/${encodeURIComponent(groupId)}/report`, { reason });
+  reportCommunityGroup(groupId, reason = "", details = "", evidence = []) {
+    return post(`/community/groups/${encodeURIComponent(groupId)}/report`, { reason, details, evidence });
   },
 
-  reportCommunityUser(userId, reason = "") {
-    return post(`/community/users/${encodeURIComponent(userId)}/report`, { reason });
+  reportCommunityUser(userId, reason = "", details = "", evidence = []) {
+    return post(`/community/users/${encodeURIComponent(userId)}/report`, { reason, details, evidence });
   },
 
   uploadCommunityGroupAvatarFile(groupId, file = null) {

@@ -628,6 +628,57 @@
     html.calc-theme-dark .header-title .brand-core { color: #f3f4f6; }
     html.calc-theme-dark .header-title .brand-calx { color: #fbbf24; }</style>
 <script src="ui-preferences.js?v=20260915-global-text-size"></script>
+  <style>
+    .calc-panel-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    .calc-understand-btn { width:auto; margin-top:0; padding:10px 14px; background:var(--kimi-color-surface-strong); color:var(--kimi-color-accent-strong); box-shadow:none; border:1px solid var(--kimi-color-border); }
+    .calc-understand-btn:hover { background:var(--kimi-color-bg-accent); color:var(--kimi-color-accent); }
+    .calc-pharmacy-heading { margin-bottom:16px; }
+    .calc-pharmacy-heading h2 { margin:0 0 5px; color:var(--kimi-color-text-primary); font-size:20px; }
+    .calc-pharmacy-heading p { margin:0; color:var(--kimi-color-text-secondary); line-height:1.5; }
+    .calc-learning-backdrop { position:fixed; inset:0; z-index:79; border:0; background:rgba(15,23,42,.42); cursor:default; }
+    .calc-learning-backdrop[hidden] { display:none; }
+    .calc-learning-view { position:fixed; inset:0 0 0 auto; z-index:80; display:block; width:min(620px,100vw); max-width:100%; margin:0; padding:24px 26px 30px; overflow-y:auto; border:0; border-left:1px solid var(--kimi-color-border); border-radius:0; background:var(--kimi-color-surface-raised); box-shadow:-22px 0 60px rgba(15,23,42,.18); }
+    .calc-learning-view[hidden] { display:none; }
+    .calc-learning-topline { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-bottom:16px; border-bottom:1px solid var(--kimi-color-border); }
+    .calc-learning-back { border:0; padding:0; background:transparent; color:var(--kimi-color-accent-strong); font:inherit; font-weight:700; cursor:pointer; }
+    .calc-learning-close { width:34px; height:34px; display:grid; place-items:center; border:1px solid var(--kimi-color-border); border-radius:8px; background:var(--kimi-color-surface); color:var(--kimi-color-text-primary); font-size:20px; line-height:1; cursor:pointer; }
+    .calc-learning-kicker { color:var(--kimi-color-text-tertiary); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .calc-learning-view h2 { margin:22px 0 6px; color:var(--kimi-color-text-primary); font-size:24px; }
+    .calc-learning-intro { margin:0 0 14px; color:var(--kimi-color-text-secondary); line-height:1.6; }
+    .calc-learning-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .calc-learning-card { margin-top:12px; padding:14px; border:1px solid var(--kimi-color-border); border-radius:14px; background:var(--kimi-color-surface); color:var(--kimi-color-text-secondary); line-height:1.6; }
+    .calc-learning-card h3 { margin:0 0 8px; color:var(--kimi-color-text-primary); font-size:14px; }
+    .calc-learning-card ol { margin:0; padding-left:20px; }
+    .calc-learning-mistakes { border-left:3px solid var(--kimi-color-accent); }
+    .calc-learning-mistakes p { margin:0; }
+    .calc-learning-actions { display:flex; justify-content:flex-end; margin-top:14px; }
+    .calc-practice-btn { width:auto; margin-top:0; }
+    .calc-practice-modal { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:18px; background:rgba(15,23,42,.48); }
+    .calc-practice-modal[hidden] { display:none; }
+    .calc-practice-card { width:min(560px,100%); max-height:min(720px,calc(100vh - 36px)); overflow:auto; padding:20px; border:1px solid var(--kimi-color-border); border-radius:20px; background:var(--kimi-color-surface); color:var(--kimi-color-text-primary); box-shadow:0 22px 60px rgba(15,23,42,.24); }
+    .calc-practice-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .calc-practice-head h2 { margin:0; font-size:20px; }
+    .calc-practice-progress { margin-top:4px; color:var(--kimi-color-text-tertiary); font-size:12px; }
+    .calc-practice-close { width:32px; height:32px; border:1px solid var(--kimi-color-border); border-radius:8px; background:transparent; color:var(--kimi-color-text-primary); font-size:20px; line-height:1; cursor:pointer; }
+    .calc-practice-question { margin:18px 0 14px; font-size:16px; line-height:1.55; }
+    .calc-practice-options { display:grid; gap:8px; }
+    .calc-practice-option { display:flex; gap:9px; align-items:flex-start; padding:11px 12px; border:1px solid var(--kimi-color-border); border-radius:10px; background:var(--kimi-color-surface-raised); color:var(--kimi-color-text-primary); cursor:pointer; }
+    .calc-practice-option input { width:16px; min-width:16px; height:16px; flex:0 0 16px; margin:2px 0 0; }
+    .calc-practice-option:has(input:checked) { border-color:var(--kimi-color-accent); background:var(--kimi-color-surface-strong); }
+    .calc-practice-feedback { margin-top:14px; padding:12px; border-radius:10px; background:var(--kimi-color-bg-accent); color:var(--kimi-color-text-secondary); line-height:1.5; }
+    .calc-practice-feedback[hidden] { display:none; }
+    .calc-practice-actions { display:flex; gap:8px; margin-top:14px; }
+    .calc-practice-actions .btn { margin-top:0; }
+    html.calc-theme-dark .calc-practice-modal { background:rgba(2,8,23,.72); }
+    @media (max-width:620px) {
+      .calc-learning-grid { grid-template-columns:1fr; }
+      .calc-learning-view { width:100vw; padding:18px 16px 24px; }
+      .calc-learning-view h2 { font-size:21px; }
+      .calc-practice-card { padding:16px; }
+    }
+  </style>
+  <style>
+  </style>
 </head>
 <body>
 
@@ -644,6 +695,9 @@
         </div>
       </div>
       <div class="calc-header-actions">
+        <a id="calc-workspace-preview-btn" class="icon-btn" href="calculator-workspace.html" aria-label="Preview new calculator workspace" title="Preview new calculator workspace">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"></rect><rect x="14" y="4" width="6" height="6" rx="1"></rect><rect x="4" y="14" width="6" height="6" rx="1"></rect><rect x="14" y="14" width="6" height="6" rx="1"></rect></svg>
+        </a>
         <button id="calc-theme-btn" class="icon-btn theme-toggle-btn" type="button" aria-label="Switch to dark theme" title="Switch theme">
           <svg class="theme-icon is-light" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="4"></circle>
@@ -677,8 +731,7 @@
   </div>
 
   <div class="tabbar">
-    <button class="tab" data-tab="scientific">Normal</button>
-    <button class="tab" data-tab="dosage">Dosage</button>
+    <button class="tab active" data-tab="scientific">Normal</button>
     <button class="tab" data-tab="tts">4Ts</button>
     <button class="tab" data-tab="aagrad">A-a grad</button>
     <button class="tab" data-tab="abcd2">ABCD2</button>
@@ -686,9 +739,9 @@
     <button class="tab" data-tab="aniongap">Anion gap</button>
     <button class="tab" data-tab="apache">APACHE II</button>
     <button class="tab" data-tab="apgar">APGAR</button>
-    <button class="tab active" data-tab="ascvd">ASCVD risk</button>
-    <button class="tab" data-tab="bode">BODE</button>
+    <button class="tab" data-tab="ascvd">ASCVD risk</button>
     <button class="tab" data-tab="bmi">BMI</button>
+    <button class="tab" data-tab="bode">BODE</button>
     <button class="tab" data-tab="bsa">BSA</button>
     <button class="tab" data-tab="calcium">Ca corr</button>
     <button class="tab" data-tab="centor">Centor</button>
@@ -696,6 +749,9 @@
     <button class="tab" data-tab="child">Child-Pugh</button>
     <button class="tab" data-tab="crcl">CrCl</button>
     <button class="tab" data-tab="curb">CURB-65</button>
+    <button class="tab" data-tab="dilution">Dilution</button>
+    <button class="tab" data-tab="dosage">Dosage</button>
+    <button class="tab" data-tab="dose-calculation">Dose calculation</button>
     <button class="tab" data-tab="egfr">eGFR</button>
     <button class="tab" data-tab="fena">FENa</button>
     <button class="tab" data-tab="fib4">FIB-4</button>
@@ -708,18 +764,23 @@
     <button class="tab" data-tab="mascc">MASCC</button>
     <button class="tab" data-tab="mdrd">MDRD</button>
     <button class="tab" data-tab="meldna">MELD-Na</button>
+    <button class="tab" data-tab="milliequivalents">Milliequivalents</button>
     <button class="tab" data-tab="sodium">Na corr</button>
     <button class="tab" data-tab="nihss">NIHSS</button>
     <button class="tab" data-tab="osmo">Osmolality</button>
-    <button class="tab" data-tab="perc">PERC</button>
+    <button class="tab" data-tab="parts-calculation">Parts</button>
     <button class="tab" data-tab="pgcs">Ped GCS</button>
+    <button class="tab" data-tab="percentage-strength">Percentage strength</button>
+    <button class="tab" data-tab="perc">PERC</button>
     <button class="tab" data-tab="phq9">PHQ-9</button>
     <button class="tab" data-tab="qsofa">qSOFA</button>
     <button class="tab" data-tab="qtc">QTc</button>
     <button class="tab" data-tab="qtici">qTICI</button>
+    <button class="tab" data-tab="ratio-strength">Ratio strength</button>
     <button class="tab" data-tab="rockall">Rockall</button>
     <button class="tab" data-tab="sofa">SOFA</button>
     <button class="tab" data-tab="timi">TIMI</button>
+    <button class="tab" data-tab="unit-conversion">Unit conversion</button>
     <button class="tab" data-tab="waterdef">Water deficit</button>
     <button class="tab" data-tab="welldvt">Wells DVT</button>
     <button class="tab" data-tab="wellspe">Wells PE</button>
@@ -729,8 +790,48 @@
     <p>Use the list to switch tools in the same view. Most values here are estimates, so clinical judgment still comes first.</p>
   </div>
 
+  <button class="calc-learning-backdrop" id="calc-learning-backdrop" type="button" aria-label="Close learning note" hidden></button>
+  <section class="calc-learning-view" id="calc-learning-view" aria-live="polite" hidden>
+    <div class="calc-learning-topline">
+      <button class="calc-learning-back" id="calc-learning-back" type="button">← Back to calculator</button>
+      <span class="calc-learning-kicker">Understand this calculation</span>
+      <button class="calc-learning-close" id="calc-learning-close" type="button" aria-label="Close learning note">×</button>
+    </div>
+    <h2 id="calc-learning-title"></h2>
+    <p class="calc-learning-intro" id="calc-learning-intro"></p>
+    <div class="calc-learning-grid">
+      <article class="calc-learning-card"><h3>Formula</h3><div id="calc-learning-formula"></div></article>
+      <article class="calc-learning-card"><h3>Real-life example</h3><div id="calc-learning-example"></div></article>
+    </div>
+    <article class="calc-learning-card"><h3>How to solve it</h3><ol id="calc-learning-steps"></ol></article>
+    <article class="calc-learning-card calc-learning-mistakes"><h3>Common mistake</h3><p id="calc-learning-mistake"></p></article>
+    <div class="calc-learning-actions"><button class="btn calc-practice-btn" id="calc-practice-btn" type="button">Practice this formula</button></div>
+  </section>
+
+  <div class="panel" id="panel-unit-conversion">
+    <div class="calc-pharmacy-heading"><h2>Unit conversion</h2><p>Convert common metric and pharmacy units before starting a calculation.</p></div>
+    <div class="grid2"><div class="field"><label>Value</label><input id="unit-value" type="number" step="any" value="1"></div><div class="field"><label>From</label><select id="unit-from"><option value="mg">mg</option><option value="g">g</option><option value="mcg">mcg</option><option value="mL">mL</option><option value="L">L</option></select></div><div class="field"><label>To</label><select id="unit-to"><option value="g">g</option><option value="mg">mg</option><option value="mcg">mcg</option><option value="L">L</option><option value="mL">mL</option></select></div></div>
+    <button class="btn" type="button" onclick="calcUnitConversion()">Convert</button><div class="result-box"><div class="result-value" id="unit-result">1 g</div></div>
+  </div>
+
+  <div class="panel" id="panel-dose-calculation">
+    <div class="calc-pharmacy-heading"><h2>Dose calculation</h2><p>Find the amount of medicine required from the prescribed and available strengths.</p></div>
+    <div class="grid2"><div class="field"><label>Desired dose</label><input id="dose-desired" type="number" step="any" value="500"></div><div class="field"><label>Available dose</label><input id="dose-available" type="number" step="any" value="250"></div><div class="field"><label>Quantity supplied</label><input id="dose-quantity" type="number" step="any" value="1"></div><div class="field"><label>Unit</label><input id="dose-unit" value="mg"></div></div>
+    <button class="btn" type="button" onclick="calcDoseCalculation()">Calculate dose</button><div class="result-box"><div class="result-value" id="dose-result">2 units</div></div>
+  </div>
+
+  <div class="panel" id="panel-percentage-strength"><div class="calc-pharmacy-heading"><h2>Percentage strength</h2><p>Calculate the amount of solute in a percentage preparation.</p></div><div class="grid2"><div class="field"><label>Percentage strength</label><input id="percent-strength" type="number" step="any" value="5"></div><div class="field"><label>Total quantity (g or mL)</label><input id="percent-total" type="number" step="any" value="100"></div></div><button class="btn" type="button" onclick="calcPercentageStrength()">Calculate amount</button><div class="result-box"><div class="result-value" id="percent-result">5 g</div></div></div>
+
+  <div class="panel" id="panel-ratio-strength"><div class="calc-pharmacy-heading"><h2>Ratio strength</h2><p>Find the amount of solute represented by a ratio such as 1:100.</p></div><div class="grid2"><div class="field"><label>Solute parts</label><input id="ratio-solute" type="number" step="any" value="1"></div><div class="field"><label>Total parts</label><input id="ratio-total" type="number" step="any" value="100"></div><div class="field"><label>Total quantity</label><input id="ratio-quantity" type="number" step="any" value="500"></div><div class="field"><label>Unit</label><input id="ratio-unit" value="mg"></div></div><button class="btn" type="button" onclick="calcRatioStrength()">Calculate amount</button><div class="result-box"><div class="result-value" id="ratio-result">5 mg</div></div></div>
+
+  <div class="panel" id="panel-parts-calculation"><div class="calc-pharmacy-heading"><h2>Parts calculation</h2><p>Scale a formula made from parts to the total quantity you need.</p></div><div class="grid2"><div class="field"><label>Part value</label><input id="parts-value" type="number" step="any" value="2"></div><div class="field"><label>Total parts</label><input id="parts-total" type="number" step="any" value="5"></div><div class="field"><label>Final quantity</label><input id="parts-quantity" type="number" step="any" value="100"></div><div class="field"><label>Unit</label><input id="parts-unit" value="g"></div></div><button class="btn" type="button" onclick="calcPartsCalculation()">Calculate part</button><div class="result-box"><div class="result-value" id="parts-result">40 g</div></div></div>
+
+  <div class="panel" id="panel-dilution"><div class="calc-pharmacy-heading"><h2>Dilution</h2><p>Use C1V1 = C2V2 to find the volume of a stock solution required.</p></div><div class="grid2"><div class="field"><label>Stock concentration (C1)</label><input id="dilution-c1" type="number" step="any" value="10"></div><div class="field"><label>Required concentration (C2)</label><input id="dilution-c2" type="number" step="any" value="2"></div><div class="field"><label>Final volume (V2)</label><input id="dilution-v2" type="number" step="any" value="100"></div><div class="field"><label>Volume unit</label><input id="dilution-unit" value="mL"></div></div><button class="btn" type="button" onclick="calcDilution()">Calculate stock volume</button><div class="result-box"><div class="result-value" id="dilution-result">20 mL</div></div></div>
+
+  <div class="panel" id="panel-milliequivalents"><div class="calc-pharmacy-heading"><h2>Milliequivalents</h2><p>Convert millimoles to milliequivalents using the ion valence.</p></div><div class="grid2"><div class="field"><label>Millimoles</label><input id="meq-mmol" type="number" step="any" value="10"></div><div class="field"><label>Valence</label><input id="meq-valence" type="number" step="any" value="2"></div></div><button class="btn" type="button" onclick="calcMilliequivalents()">Calculate mEq</button><div class="result-box"><div class="result-value" id="meq-result">20 mEq</div></div></div>
+
   <!-- ASCVD Panel -->
-  <div class="panel active" id="panel-ascvd">
+  <div class="panel" id="panel-ascvd">
     <div class="grid2">
       <div class="field"><label>Age (years)</label><input type="number" id="ascvd-age" min="40" max="79" value="55"></div>
       <div class="field">
@@ -1373,7 +1474,7 @@
         <input type="number" id="apache-hct" step="0.1" value="40">
       </div>
       <div class="field">
-        <label>WBC (10^3/ÂµL)</label>
+         <label>WBC (10^3/µL)</label>
         <input type="number" id="apache-wbc" step="0.1" value="10">
       </div>
       <div class="field">
@@ -1456,7 +1557,7 @@
       <div class="field"><label>Bands (%)</label><input type="number" id="anc-bands" step="0.1" value="0"></div>
     </div>
     <button class="btn" onclick="calcANC()">Calculate ANC</button>
-    <div class="calc-note"><strong>Meaning:</strong> infection-fighting neutrophils. ANC = WBC Ã— (neutrophils + bands) / 100.</div>
+     <div class="calc-note"><strong>Meaning:</strong> infection-fighting neutrophils. ANC = WBC × (neutrophils + bands) / 100.</div>
     <div class="result-box" id="anc-result" style="display:none;">
       <div class="result-value" id="anc-value">--</div>
       <div class="result-label" id="anc-label">--</div>
@@ -1946,7 +2047,7 @@
   <!-- Centor Panel -->
   <div class="panel" id="panel-centor">
     <div class="grid2">
-      <div class="field"><label>Fever &gt;38Â°C</label><select id="centor-fever"><option value="0">No</option><option value="1">Yes</option></select></div>
+     <div class="field"><label>Fever &gt;38°C</label><select id="centor-fever"><option value="0">No</option><option value="1">Yes</option></select></div>
       <div class="field"><label>Tonsillar exudate</label><select id="centor-exudate"><option value="0">No</option><option value="1">Yes</option></select></div>
       <div class="field"><label>Tender anterior nodes</label><select id="centor-nodes"><option value="0">No</option><option value="1">Yes</option></select></div>
       <div class="field"><label>Cough</label><select id="centor-cough"><option value="1">Absent</option><option value="0">Present</option></select></div>
@@ -1972,6 +2073,7 @@
   <div class="panel" id="panel-dosage">
     <div class="field">
       <label>Select drug</label>
+      <input type="search" id="dosage-search" placeholder="Search medicines..." oninput="filterDosageList()" autocomplete="off">
       <select id="dosage-drug" onchange="updateDosage()">
         <option value="custom">Custom / Manual entry</option>
         <option value="amoxicillin">Amoxicillin (20-40 mg/kg/day divided q8h)</option>
@@ -1983,6 +2085,7 @@
         <option value="atorvastatin">Atorvastatin (10-80 mg once daily)</option>
         <option value="lisinopril">Lisinopril (5-40 mg once daily)</option>
       </select>
+      <small id="dosage-search-status" style="display:none;color:#b45309;margin-top:6px;">No matching medicine found.</small>
     </div>
     <div class="grid2">
       <div class="field"><label>Patient weight (kg)</label><input type="number" id="dosage-wt" value="70"></div>
@@ -2010,21 +2113,21 @@
   </div>
 
   <!-- Scientific Panel -->
-  <div class="panel" id="panel-scientific">
+  <div class="panel active" id="panel-scientific">
     <div class="calc-display" id="sci-display">0</div>
     <div class="calc-grid">
       <button class="calc-btn op" onclick="sciClear()">AC</button>
       <button class="calc-btn op" onclick="sciOp('(')">(</button>
       <button class="calc-btn op" onclick="sciOp(')')">)</button>
-      <button class="calc-btn op" onclick="sciOp('/')">Ã·</button>
+       <button class="calc-btn op" onclick="sciOp('/')">÷</button>
       <button class="calc-btn" onclick="sciNum('7')">7</button>
       <button class="calc-btn" onclick="sciNum('8')">8</button>
       <button class="calc-btn" onclick="sciNum('9')">9</button>
-      <button class="calc-btn op" onclick="sciOp('*')">Ã—</button>
+       <button class="calc-btn op" onclick="sciOp('*')">×</button>
       <button class="calc-btn" onclick="sciNum('4')">4</button>
       <button class="calc-btn" onclick="sciNum('5')">5</button>
       <button class="calc-btn" onclick="sciNum('6')">6</button>
-      <button class="calc-btn op" onclick="sciOp('-')">âˆ’</button>
+       <button class="calc-btn op" onclick="sciOp('-')">−</button>
       <button class="calc-btn" onclick="sciNum('1')">1</button>
       <button class="calc-btn" onclick="sciNum('2')">2</button>
       <button class="calc-btn" onclick="sciNum('3')">3</button>
@@ -2035,7 +2138,7 @@
       <button class="calc-btn op" onclick="sciEval()">=</button>
     </div>
     <div class="calc-grid" style="margin-top:8px;">
-      <button class="calc-btn op" onclick="sciFunc('sqrt')">âˆš</button>
+       <button class="calc-btn op" onclick="sciFunc('sqrt')">√</button>
       <button class="calc-btn op" onclick="sciFunc('log')">log</button>
       <button class="calc-btn op" onclick="sciFunc('ln')">ln</button>
       <button class="calc-btn op" onclick="sciFunc('sin')">sin</button>
@@ -2121,6 +2224,277 @@
     if (calcSearchClear) calcSearchClear.hidden = !query;
   }
 
+  const pharmacyLearningNotes = {
+    scientific: {
+      title: 'Understanding the Normal Calculator',
+      intro: 'The Normal calculator helps you work through everyday arithmetic and scientific expressions while keeping the order of operations clear.',
+      formula: '<strong>Order of operations:</strong> brackets → powers → multiplication/division → addition/subtraction.',
+      example: 'For 8 + 4 × 3, multiply first: 4 × 3 = 12, then add 8. The answer is <strong>20</strong>.',
+      steps: ['Write the complete expression.', 'Resolve brackets first.', 'Evaluate powers or roots.', 'Complete multiplication and division from left to right.', 'Complete addition and subtraction from left to right.'],
+      mistake: 'Do not automatically calculate from left to right when multiplication or division appears before addition.',
+      practiceQuestions: [
+        { question: 'What is 12 + 6 ÷ 3 × 2?', options: ['8', '14', '16', '20'], correct: 'C', explanation: 'Division and multiplication come first from left to right: 6 ÷ 3 × 2 = 4; 12 + 4 = 16.' },
+        { question: 'What is (18 − 6) ÷ 3?', options: ['2', '4', '6', '12'], correct: 'B', explanation: 'Resolve the brackets first: 18 − 6 = 12; 12 ÷ 3 = 4.' },
+        { question: 'What is 5² − 3 × 4?', options: ['13', '16', '28', '64'], correct: 'A', explanation: '5² = 25 and 3 × 4 = 12; 25 − 12 = 13.' },
+        { question: 'What is √81 + 2?', options: ['9', '10', '11', '18'], correct: 'C', explanation: '√81 = 9; 9 + 2 = 11.' },
+        { question: 'What is 24 ÷ (2 + 4)?', options: ['4', '6', '12', '16'], correct: 'A', explanation: '2 + 4 = 6; 24 ÷ 6 = 4.' }
+      ]
+    },
+    tts: {
+      title: 'Understanding the 4Ts Score',
+      intro: 'The 4Ts score estimates the likelihood of heparin-induced thrombocytopenia using four areas: thrombocytopenia, timing, thrombosis, and other causes.',
+      formula: '<strong>Total 4Ts score = Thrombocytopenia + Timing + Thrombosis + Other causes</strong><br>0–3 low probability · 4–5 intermediate · 6–8 high',
+      example: 'A platelet fall of more than 50%, onset on days 5–10, no thrombosis, and a possible alternative cause may score 2 + 2 + 0 + 1 = <strong>5</strong>.',
+      steps: ['Assess the size of the platelet fall.', 'Assess the timing after heparin exposure.', 'Check for thrombosis or skin necrosis.', 'Consider other explanations for the platelet fall.', 'Add the four domain scores and interpret the range.'],
+      mistake: 'Do not use the score alone to diagnose HIT; clinical review and appropriate laboratory testing are still required.',
+      practiceQuestions: [
+        { question: 'Which four areas make up the 4Ts score?', options: ['Temperature, tachycardia, tension, treatment', 'Thrombocytopenia, timing, thrombosis, other causes', 'Therapy, toxicity, testing, treatment', 'Thrombin, tissue factor, timing, temperature'], correct: 'B', explanation: 'The 4Ts are thrombocytopenia, timing, thrombosis, and other causes.' },
+        { question: 'A platelet fall greater than 50% with a nadir of at least 20 × 10⁹/L generally scores how many points for thrombocytopenia?', options: ['0', '1', '2', '3'], correct: 'C', explanation: 'A fall greater than 50% with an appropriate nadir is the 2-point thrombocytopenia category.' },
+        { question: 'Which 4Ts total indicates low probability of HIT?', options: ['0–3', '4–5', '6–7', '8–10'], correct: 'A', explanation: 'A total score of 0–3 indicates low pretest probability.' },
+        { question: 'A score of 4–5 on the 4Ts tool is usually interpreted as:', options: ['Low probability', 'Intermediate probability', 'High probability', 'No risk'], correct: 'B', explanation: 'A score of 4–5 indicates intermediate probability.' },
+        { question: 'A patient scores 2 for thrombocytopenia, 2 for timing, 2 for thrombosis, and 1 for other causes. What is the total?', options: ['5', '6', '7', '8'], correct: 'C', explanation: '2 + 2 + 2 + 1 = 7.' }
+      ]
+    },
+    aagrad: {
+      title: 'Understanding the A–a Gradient',
+      intro: 'The alveolar–arterial oxygen gradient compares the oxygen estimated in the alveoli with the oxygen measured in arterial blood.',
+      formula: '<strong>A–a gradient = PAO₂ − PaO₂</strong><br>PAO₂ is estimated with the alveolar gas equation.',
+      example: 'At sea level on room air, PAO₂ may be about 100 mmHg. If PaO₂ is 85 mmHg, the A–a gradient is about <strong>15 mmHg</strong>.',
+      steps: ['Confirm the inspired oxygen fraction and atmospheric pressure.', 'Estimate alveolar oxygen with the alveolar gas equation.', 'Subtract measured arterial PaO₂ from PAO₂.', 'Interpret the result in the patient’s clinical context and age.'],
+      mistake: 'Always check the oxygen concentration and units; a result on supplemental oxygen cannot be interpreted like a room-air result.',
+      practiceQuestions: [
+        { question: 'If PAO₂ is 100 mmHg and PaO₂ is 80 mmHg, what is the A–a gradient?', options: ['20 mmHg', '80 mmHg', '100 mmHg', '180 mmHg'], correct: 'A', explanation: 'A–a gradient = PAO₂ − PaO₂ = 100 − 80 = 20 mmHg.' },
+        { question: 'The A–a gradient compares which two values?', options: ['PaCO₂ and bicarbonate', 'PAO₂ and PaO₂', 'Sodium and chloride', 'pH and PaCO₂'], correct: 'B', explanation: 'It compares estimated alveolar oxygen (PAO₂) with measured arterial oxygen (PaO₂).' },
+        { question: 'If PAO₂ is 120 mmHg and PaO₂ is 90 mmHg, what is the gradient?', options: ['30 mmHg', '90 mmHg', '120 mmHg', '210 mmHg'], correct: 'A', explanation: '120 − 90 = 30 mmHg.' },
+        { question: 'A widened A–a gradient can be seen with:', options: ['Ventilation–perfusion mismatch', 'A normal oxygen transfer process only', 'Isolated low inspired oxygen only', 'A low blood glucose level'], correct: 'A', explanation: 'V/Q mismatch, shunt, and diffusion limitation can widen the A–a gradient.' },
+        { question: 'Which value must be considered when estimating PAO₂?', options: ['Inspired oxygen fraction', 'Platelet count', 'Serum albumin only', 'Body temperature only'], correct: 'A', explanation: 'Inspired oxygen fraction is a key input in the alveolar gas equation.' }
+      ]
+    },
+    abcd2: {
+      title: 'Understanding the ABCD² Score',
+      intro: 'The ABCD² score estimates early stroke risk after a transient ischemic attack using age, blood pressure, clinical features, duration, and diabetes.',
+      formula: '<strong>A</strong>ge ≥60 (1) + <strong>B</strong>lood pressure ≥140/90 (1) + <strong>C</strong>linical features (0–2) + <strong>D</strong>uration (0–2) + <strong>D</strong>iabetes (1).',
+      example: 'Age 68, BP 150/90, speech impairment without weakness, symptoms for 20 minutes, and diabetes gives 1 + 1 + 1 + 1 + 1 = <strong>5</strong>.',
+      steps: ['Score age.', 'Score the initial blood pressure.', 'Score weakness or speech disturbance.', 'Score the duration of symptoms.', 'Add one point if diabetes is present.'],
+      mistake: 'The ABCD² score supports risk assessment; it does not replace urgent evaluation of a possible TIA or stroke.',
+      practiceQuestions: [
+        { question: 'A patient is 68 years old, has BP 150/90, speech impairment without weakness, symptoms for 20 minutes, and diabetes. What is the ABCD² score?', options: ['3', '4', '5', '6'], correct: 'C', explanation: 'Age 1 + BP 1 + speech without weakness 1 + duration 1 + diabetes 1 = 5.' },
+        { question: 'What does the first “A” in ABCD² represent?', options: ['Arterial pressure', 'Age', 'Arrhythmia', 'Alertness'], correct: 'B', explanation: 'The first A represents Age.' },
+        { question: 'In the ABCD² score, unilateral weakness receives how many clinical-feature points?', options: ['0', '1', '2', '3'], correct: 'C', explanation: 'Unilateral weakness receives 2 points.' },
+        { question: 'A patient is 55, has BP 130/80, unilateral weakness, symptoms for 70 minutes, and no diabetes. What is the score?', options: ['2', '3', '4', '5'], correct: 'C', explanation: 'Age 0 + BP 0 + weakness 2 + duration 2 + diabetes 0 = 4.' },
+        { question: 'Which factor is not part of ABCD²?', options: ['Age', 'Blood pressure', 'Diabetes', 'Serum sodium'], correct: 'D', explanation: 'ABCD² does not include serum sodium.' }
+      ]
+    },
+    anc: {
+      title: 'Understanding the Absolute Neutrophil Count',
+      intro: 'ANC estimates the number of circulating neutrophils and bands available to help fight infection.',
+      formula: '<strong>ANC = WBC × (neutrophil percentage + band percentage) ÷ 100</strong>',
+      example: 'With WBC 3,000 cells/µL, neutrophils 30%, and bands 10%: ANC = 3,000 × 40 ÷ 100 = <strong>1,200 cells/µL</strong>.',
+      steps: ['Record the WBC count.', 'Add the neutrophil and band percentages.', 'Multiply WBC by the combined percentage.', 'Divide by 100 and report the units.'],
+      mistake: 'Do not use the neutrophil percentage alone when band cells are reported separately.',
+      practiceQuestions: [
+        { question: 'WBC is 4,000 cells/µL, neutrophils are 40%, and bands are 5%. What is the ANC?', options: ['180 cells/µL', '450 cells/µL', '1,800 cells/µL', '4,000 cells/µL'], correct: 'C', explanation: '4,000 × (40 + 5) ÷ 100 = 1,800 cells/µL.' },
+        { question: 'What is the ANC formula?', options: ['WBC × neutrophil % ÷ 100 only', 'WBC × (neutrophil % + band %) ÷ 100', 'WBC ÷ (neutrophil % + band %)', 'WBC + neutrophil % + band %'], correct: 'B', explanation: 'ANC = WBC × (neutrophil percentage + band percentage) ÷ 100.' },
+        { question: 'WBC is 3,000 cells/µL, neutrophils 30%, and bands 10%. What is the ANC?', options: ['300 cells/µL', '900 cells/µL', '1,200 cells/µL', '3,000 cells/µL'], correct: 'C', explanation: '3,000 × 40 ÷ 100 = 1,200 cells/µL.' },
+        { question: 'Why are bands included in the ANC?', options: ['They are immature neutrophils', 'They are red blood cells', 'They measure platelet size', 'They represent lymphocytes'], correct: 'A', explanation: 'Bands are immature neutrophils and contribute to the neutrophil count.' },
+        { question: 'An ANC below 500 cells/µL is commonly classified as:', options: ['Mild neutropenia', 'Moderate neutropenia', 'Severe neutropenia', 'Normal'], correct: 'C', explanation: 'An ANC below 500 cells/µL is commonly described as severe neutropenia.' }
+      ]
+    },
+    'unit-conversion': {
+      title: 'Understanding Unit Conversion',
+      intro: 'Pharmacy calculations often fail because the units do not match. Convert every value into the unit required by the formula before calculating.',
+      formula: '<strong>1 g = 1,000 mg</strong><br>1 mg = 1,000 micrograms (mcg)<br>1 L = 1,000 mL',
+      example: 'A prescription needs 0.5 g. In milligrams, that is 0.5 × 1,000 = <strong>500 mg</strong>.',
+      steps: ['Write the value and its current unit.', 'Choose the required unit.', 'Multiply or divide by the conversion factor.', 'Check that the final unit matches the question.'],
+      mistake: 'Do not move the decimal point without writing the direction of the conversion.',
+      practiceQuestions: [{ question: 'How many milligrams are in 2.5 g?', options: ['25 mg', '250 mg', '2,500 mg', '25,000 mg'], correct: 'C', explanation: '1 g equals 1,000 mg, so 2.5 × 1,000 = 2,500 mg.' }]
+    },
+    'dose-calculation': {
+      title: 'Understanding Dose Calculation',
+      intro: 'This calculation finds how much medicine to give when the prescribed dose and available strength are different.',
+      formula: '<strong>Dose to give = Desired dose ÷ Available dose × Quantity</strong>',
+      example: 'The prescription is 500 mg. The available tablets contain 250 mg each.<br>500 ÷ 250 × 1 = <strong>2 tablets</strong>.',
+      steps: ['Identify the desired dose.', 'Identify the dose available in one tablet, capsule, or volume.', 'Multiply by the quantity connected to the available dose.', 'Check the final unit and whether the answer is practical.'],
+      mistake: 'Make sure the desired dose and available dose use the same unit before dividing.',
+      practiceQuestions: [{ question: 'A patient needs 750 mg. Tablets contain 250 mg each. How many tablets are needed?', options: ['1 tablet', '2 tablets', '3 tablets', '4 tablets'], correct: 'C', explanation: '750 ÷ 250 × 1 = 3 tablets.' }]
+    },
+    'percentage-strength': {
+      title: 'Understanding Percentage Strength',
+      intro: 'Percentage strength describes how much solute is present in every 100 parts of a preparation.',
+      formula: '<strong>Amount of solute = Percentage ÷ 100 × Total quantity</strong>',
+      example: 'A 5% w/v preparation contains 5 g in every 100 mL. A 200 mL preparation therefore contains 10 g.',
+      steps: ['Identify the percentage.', 'Divide it by 100.', 'Multiply by the total preparation quantity.', 'Keep the correct w/w, w/v, or v/v unit.'],
+      mistake: 'Do not confuse 5% with 5 times the total quantity; percentage means parts per 100.',
+      practiceQuestions: [{ question: 'How much solute is in 250 mL of a 4% w/v preparation?', options: ['1 g', '4 g', '10 g', '100 g'], correct: 'C', explanation: '4 ÷ 100 × 250 = 10 g.' }]
+    },
+    'ratio-strength': {
+      title: 'Understanding Ratio Strength',
+      intro: 'Ratio strength expresses one part of solute in a stated number of total parts of preparation.',
+      formula: '<strong>Amount of solute = Solute parts ÷ Total parts × Total quantity</strong>',
+      example: 'For 1:100 in 500 mg of preparation: 1 ÷ 100 × 500 = <strong>5 mg</strong>.',
+      steps: ['Identify the solute parts.', 'Identify the total parts.', 'Multiply the ratio by the final quantity.', 'Confirm that the final unit is appropriate.'],
+      mistake: 'Always clarify whether the ratio is w/w, w/v, or v/v.',
+      practiceQuestions: [{ question: 'How much solute is present in 1:200 strength and 1,000 mL total volume?', options: ['2 mL', '5 mL', '20 mL', '200 mL'], correct: 'B', explanation: '1 ÷ 200 × 1,000 = 5 mL.' }]
+    },
+    'parts-calculation': {
+      title: 'Understanding Parts Calculations',
+      intro: 'Parts allow a formula to be scaled while preserving the same proportions between ingredients.',
+      formula: '<strong>Ingredient quantity = Ingredient parts ÷ Total parts × Final quantity</strong>',
+      example: 'If an ingredient is 2 parts in a 5-part formula and the final quantity is 100 g, it contributes 2 ÷ 5 × 100 = <strong>40 g</strong>.',
+      steps: ['Add all ingredient parts to find total parts.', 'Identify the parts for the ingredient you need.', 'Divide ingredient parts by total parts.', 'Multiply by the final quantity.'],
+      mistake: 'The denominator is the total number of parts, not just the parts of one ingredient.',
+      practiceQuestions: [{ question: 'An ingredient is 3 parts in a 12-part formula. How much is needed for 240 g?', options: ['20 g', '40 g', '60 g', '80 g'], correct: 'C', explanation: '3 ÷ 12 × 240 = 60 g.' }]
+    },
+    'dilution': {
+      title: 'Understanding Dilution',
+      intro: 'Dilution reduces concentration by adding a compatible diluent while keeping the amount of solute constant.',
+      formula: '<strong>C1V1 = C2V2</strong><br>V1 = C2 × V2 ÷ C1',
+      example: 'To prepare 100 mL of 2% solution from 10% stock: V1 = 2 × 100 ÷ 10 = <strong>20 mL stock</strong>. Add diluent to make 100 mL.',
+      steps: ['Write the stock concentration (C1).', 'Write the required concentration (C2).', 'Write the final volume (V2).', 'Solve for the unknown stock volume (V1).', 'Add diluent until the final volume is reached.'],
+      mistake: 'The final volume includes the stock solution and the added diluent together.',
+      practiceQuestions: [{ question: 'How much 5% stock is needed to prepare 200 mL of a 1% solution?', options: ['10 mL', '20 mL', '40 mL', '100 mL'], correct: 'C', explanation: 'V1 = 1 × 200 ÷ 5 = 40 mL.' }]
+    },
+    'milliequivalents': {
+      title: 'Understanding Milliequivalents',
+      intro: 'Milliequivalents account for both the amount of a substance and the electrical charge of its ion.',
+      formula: '<strong>mEq = mmol × valence</strong>',
+      example: '10 mmol of a divalent ion gives 10 × 2 = <strong>20 mEq</strong>.',
+      steps: ['Identify the millimoles.', 'Identify the ion valence.', 'Multiply millimoles by valence.', 'Write the answer in milliequivalents.'],
+      mistake: 'Do not use molecular weight in the mEq = mmol × valence formula unless you are converting from mass.',
+      practiceQuestions: [{ question: 'How many mEq are in 15 mmol of a monovalent ion?', options: ['7.5 mEq', '15 mEq', '30 mEq', '150 mEq'], correct: 'B', explanation: '15 mmol × 1 = 15 mEq.' }]
+    }
+  };
+
+  let activeLearningKey = '';
+  let practiceState = { questions: [], index: 0, submitted: false };
+
+  function learningNoteFor(key, tab) {
+    return pharmacyLearningNotes[key] || {
+      title: `Understanding ${tab?.textContent?.trim() || 'this calculator'}`,
+      intro: 'This note explains what the calculator is estimating, what each input means, and how to interpret the result safely.',
+      formula: '<strong>Use the fields below carefully and keep all units consistent.</strong>',
+      example: 'Enter a realistic example, calculate it, and compare the result with the expected clinical range or reference guidance.',
+      steps: ['Read the purpose of the calculator.', 'Enter the required values with their correct units.', 'Review the result and its interpretation.', 'Verify the result against appropriate guidance.'],
+      mistake: 'A calculator result is an estimate and should not replace clinical judgement or a verified reference.',
+      practiceQuestions: []
+    };
+  }
+
+  function showCalculatorPanel(tab) {
+    const selectedTab = tab || calcTabs.find(item => item.classList.contains('active')) || calcTabs[0];
+    calcTabs.forEach(item => item.classList.toggle('active', item === selectedTab));
+    document.querySelectorAll('#ajix-calc .panel').forEach(panel => panel.classList.toggle('active', panel.id === `panel-${selectedTab?.dataset.tab}`));
+    const learningView = document.getElementById('calc-learning-view');
+    const learningBackdrop = document.getElementById('calc-learning-backdrop');
+    if (learningView) learningView.hidden = true;
+    if (learningBackdrop) learningBackdrop.hidden = true;
+    document.body.style.overflow = '';
+    syncCalcActiveLabel(selectedTab);
+  }
+
+  function showLearningNote(key) {
+    const tab = calcTabs.find(item => item.dataset.tab === key);
+    const note = learningNoteFor(key, tab);
+    activeLearningKey = key;
+    document.querySelectorAll('#ajix-calc .panel').forEach(panel => panel.classList.remove('active'));
+    const view = document.getElementById('calc-learning-view');
+    if (!view) return;
+    document.getElementById('calc-learning-title').textContent = note.title;
+    document.getElementById('calc-learning-intro').textContent = note.intro;
+    document.getElementById('calc-learning-formula').innerHTML = note.formula;
+    document.getElementById('calc-learning-example').innerHTML = note.example;
+    document.getElementById('calc-learning-steps').innerHTML = note.steps.map(step => `<li>${step}</li>`).join('');
+    document.getElementById('calc-learning-mistake').textContent = note.mistake;
+    const practiceButton = document.getElementById('calc-practice-btn');
+    practiceButton.disabled = !note.practiceQuestions.length;
+    practiceButton.textContent = note.practiceQuestions.length ? 'Practice this formula' : 'Practice questions coming soon';
+    view.hidden = false;
+    const learningBackdrop = document.getElementById('calc-learning-backdrop');
+    if (learningBackdrop) learningBackdrop.hidden = false;
+    document.body.style.overflow = 'hidden';
+    syncCalcActiveLabel(tab);
+    view.scrollTop = 0;
+  }
+
+  function ensureLearningActions() {
+    document.querySelectorAll('#ajix-calc .panel').forEach(panel => {
+      if (panel.querySelector('.calc-panel-actions')) return;
+      const key = panel.id.replace(/^panel-/, '');
+      const actions = document.createElement('div');
+      actions.className = 'calc-panel-actions';
+      actions.innerHTML = `<button class="btn calc-understand-btn" type="button" data-understand-key="${key}">Understand this</button>`;
+      panel.appendChild(actions);
+    });
+  }
+
+  function ensurePracticeModal() {
+    if (document.getElementById('calc-practice-modal')) return;
+    document.body.insertAdjacentHTML('beforeend', `<div class="calc-practice-modal" id="calc-practice-modal" hidden><div class="calc-practice-card" role="dialog" aria-modal="true" aria-labelledby="calc-practice-title"><div class="calc-practice-head"><div><h2 id="calc-practice-title">Practice this formula</h2><div class="calc-practice-progress" id="calc-practice-progress"></div></div><button class="calc-practice-close" id="calc-practice-close" type="button" aria-label="Close practice">×</button></div><div id="calc-practice-body"></div></div></div>`);
+    document.getElementById('calc-practice-close').addEventListener('click', closePracticeModal);
+    document.getElementById('calc-practice-modal').addEventListener('click', event => { if (event.target.id === 'calc-practice-modal') closePracticeModal(); });
+  }
+
+  function renderPracticeQuestion() {
+    const body = document.getElementById('calc-practice-body');
+    const question = practiceState.questions[practiceState.index];
+    if (!body || !question) return;
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+    document.getElementById('calc-practice-progress').textContent = `Question ${practiceState.index + 1} of ${practiceState.questions.length} · Score ${practiceState.score}`;
+    body.innerHTML = `<div class="calc-practice-question">${question.question}</div><div class="calc-practice-options">${question.options.map((option, index) => `<label class="calc-practice-option"><input type="radio" name="calc-practice-answer" value="${letters[index]}"><span><strong>${letters[index]}.</strong> ${option}</span></label>`).join('')}</div><div class="calc-practice-feedback" id="calc-practice-feedback" hidden></div><div class="calc-practice-actions"><button class="btn" id="calc-practice-submit" type="button">Check answer</button></div>`;
+    document.getElementById('calc-practice-submit').addEventListener('click', () => {
+      if (practiceState.submitted) {
+        if (practiceState.index < practiceState.questions.length - 1) {
+          practiceState.index += 1;
+          practiceState.submitted = false;
+          renderPracticeQuestion();
+        } else {
+          closePracticeModal();
+        }
+        return;
+      }
+      const selected = document.querySelector('input[name="calc-practice-answer"]:checked');
+      const feedback = document.getElementById('calc-practice-feedback');
+      if (!selected) { feedback.textContent = 'Choose an answer first.'; feedback.hidden = false; return; }
+      const correct = selected.value === question.correct;
+      practiceState.submitted = true;
+      if (correct) practiceState.score += 1;
+      feedback.innerHTML = `<strong>${correct ? 'Correct' : 'Review this one'}</strong><br>${question.explanation}`;
+      feedback.hidden = false;
+      document.getElementById('calc-practice-progress').textContent = `Question ${practiceState.index + 1} of ${practiceState.questions.length} · Score ${practiceState.score}`;
+      document.getElementById('calc-practice-submit').textContent = practiceState.index < practiceState.questions.length - 1 ? 'Next question' : 'Finish';
+    });
+  }
+
+  function openPracticeModal() {
+    const note = learningNoteFor(activeLearningKey, calcTabs.find(item => item.dataset.tab === activeLearningKey));
+    if (!note.practiceQuestions.length) return;
+    ensurePracticeModal();
+    practiceState = { questions: note.practiceQuestions, index: 0, submitted: false, score: 0 };
+    renderPracticeQuestion();
+    document.getElementById('calc-practice-modal').hidden = false;
+  }
+
+  function closePracticeModal() {
+    const modal = document.getElementById('calc-practice-modal');
+    if (modal) modal.hidden = true;
+  }
+
+  function calcUnitConversion() {
+    const factors = { mcg: { value: 1, group: 'mass' }, mg: { value: 1000, group: 'mass' }, g: { value: 1000000, group: 'mass' }, mL: { value: 1, group: 'volume' }, L: { value: 1000, group: 'volume' } };
+    const value = Number(document.getElementById('unit-value').value) || 0;
+    const from = document.getElementById('unit-from').value;
+    const to = document.getElementById('unit-to').value;
+    if (factors[from].group !== factors[to].group) { document.getElementById('unit-result').textContent = 'Choose matching units'; return; }
+    const result = value * factors[from].value / factors[to].value;
+    document.getElementById('unit-result').textContent = `${Number(result.toFixed(6))} ${to}`;
+  }
+  function calcDoseCalculation() { const desired = Number(document.getElementById('dose-desired').value) || 0; const available = Number(document.getElementById('dose-available').value) || 0; const quantity = Number(document.getElementById('dose-quantity').value) || 0; document.getElementById('dose-result').textContent = available ? `${Number((desired / available * quantity).toFixed(4))} units` : 'Enter available dose'; }
+  function calcPercentageStrength() { const strength = Number(document.getElementById('percent-strength').value) || 0; const total = Number(document.getElementById('percent-total').value) || 0; document.getElementById('percent-result').textContent = `${Number((strength / 100 * total).toFixed(4))} g or mL`; }
+  function calcRatioStrength() { const solute = Number(document.getElementById('ratio-solute').value) || 0; const total = Number(document.getElementById('ratio-total').value) || 0; const quantity = Number(document.getElementById('ratio-quantity').value) || 0; document.getElementById('ratio-result').textContent = total ? `${Number((solute / total * quantity).toFixed(4))} ${document.getElementById('ratio-unit').value}` : 'Enter total parts'; }
+  function calcPartsCalculation() { const part = Number(document.getElementById('parts-value').value) || 0; const total = Number(document.getElementById('parts-total').value) || 0; const quantity = Number(document.getElementById('parts-quantity').value) || 0; document.getElementById('parts-result').textContent = total ? `${Number((part / total * quantity).toFixed(4))} ${document.getElementById('parts-unit').value}` : 'Enter total parts'; }
+  function calcDilution() { const c1 = Number(document.getElementById('dilution-c1').value) || 0; const c2 = Number(document.getElementById('dilution-c2').value) || 0; const v2 = Number(document.getElementById('dilution-v2').value) || 0; document.getElementById('dilution-result').textContent = c1 ? `${Number((c2 * v2 / c1).toFixed(4))} ${document.getElementById('dilution-unit').value}` : 'Enter stock concentration'; }
+  function calcMilliequivalents() { const mmol = Number(document.getElementById('meq-mmol').value) || 0; const valence = Number(document.getElementById('meq-valence').value) || 0; document.getElementById('meq-result').textContent = `${Number((mmol * valence).toFixed(4))} mEq`; }
+
   document.getElementById('calc-back-btn')?.addEventListener('click', goBackFromCalculator);
   calcThemeBtn?.addEventListener('click', () => {
     const isDark = document.documentElement.classList.contains('calc-theme-dark');
@@ -2134,14 +2508,41 @@
     applyCalcTabFilter();
   });
 
+  ensureLearningActions();
+  document.addEventListener('click', event => {
+    const understandButton = event.target.closest('[data-understand-key]');
+    if (understandButton) {
+      showLearningNote(understandButton.dataset.understandKey);
+      return;
+    }
+    if (event.target.closest('#calc-learning-back')) {
+      showCalculatorPanel(calcTabs.find(tab => tab.dataset.tab === activeLearningKey));
+      return;
+    }
+    if (event.target.closest('#calc-learning-backdrop')) {
+      showCalculatorPanel(calcTabs.find(tab => tab.dataset.tab === activeLearningKey));
+      return;
+    }
+    if (event.target.closest('#calc-practice-btn')) openPracticeModal();
+  });
+  document.getElementById('calc-learning-close')?.addEventListener('click', () => {
+    showCalculatorPanel(calcTabs.find(tab => tab.dataset.tab === activeLearningKey));
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !document.getElementById('calc-practice-modal')?.hidden) {
+      closePracticeModal();
+      return;
+    }
+    if (event.key === 'Escape' && !document.getElementById('calc-learning-view')?.hidden) {
+      showCalculatorPanel(calcTabs.find(tab => tab.dataset.tab === activeLearningKey));
+    }
+  });
+
   // Tab switching
   document.querySelectorAll('#ajix-calc .tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('#ajix-calc .tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('#ajix-calc .panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-      syncCalcActiveLabel(tab);
+      showCalculatorPanel(tab);
     });
   });
   syncCalcActiveLabel(document.querySelector('#ajix-calc .tab.active') || calcTabs[0]);
@@ -2375,7 +2776,7 @@
     const tbwFactor = sex === 'male' ? (age >= 65 ? 0.5 : 0.6) : (age >= 65 ? 0.45 : 0.5);
     const tbw = wt * tbwFactor;
     const deficit = Math.max(0, tbw * (na / 140 - 1));
-    showResult('wdef', deficit.toFixed(2) + ' L', na > 145 ? 'Hypernatremia' : 'No deficit', 'TBW factor Ã— [Na/140 - 1].', deficit > 0 ? 'risk-borderline' : 'risk-low');
+     showResult('wdef', deficit.toFixed(2) + ' L', na > 145 ? 'Hypernatremia' : 'No deficit', 'TBW factor × [Na/140 - 1].', deficit > 0 ? 'risk-borderline' : 'risk-low');
   }
 
   // Corrected calcium
@@ -2385,7 +2786,7 @@
     if (!ca || !alb) return;
     const corrected = ca + 0.8 * (4 - alb);
     const label = corrected < 8.5 ? 'Low' : corrected > 10.5 ? 'High' : 'Normal';
-    showResult('cca', corrected.toFixed(1) + ' mg/dL', label, 'Corrected Ca = measured Ca + 0.8 Ã— (4 - albumin).', corrected < 8.5 ? 'risk-low' : corrected > 10.5 ? 'risk-high' : 'risk-borderline');
+     showResult('cca', corrected.toFixed(1) + ' mg/dL', label, 'Corrected Ca = measured Ca + 0.8 × (4 - albumin).', corrected < 8.5 ? 'risk-low' : corrected > 10.5 ? 'risk-high' : 'risk-borderline');
   }
 
   // GCS
@@ -2439,7 +2840,7 @@
     if (!wbc || !neut) return;
     const anc = wbc * ((neut + bands) / 100);
     const label = anc < 500 ? 'Severe neutropenia' : anc < 1000 ? 'Moderate neutropenia' : anc < 1500 ? 'Mild neutropenia' : 'Normal';
-    showResult('anc', anc.toFixed(0) + '/ÂµL', label, 'Infection-fighting neutrophil count.', anc < 500 ? 'risk-high' : anc < 1500 ? 'risk-borderline' : 'risk-low');
+     showResult('anc', anc.toFixed(0) + '/µL', label, 'Infection-fighting neutrophil count.', anc < 500 ? 'risk-high' : anc < 1500 ? 'risk-borderline' : 'risk-low');
   }
 
   // 4Ts
@@ -2801,6 +3202,30 @@
   function updateDosage() {
     const drug = document.getElementById('dosage-drug').value;
     document.getElementById('dosage-custom-row').style.display = drug === 'custom' ? 'block' : 'none';
+  }
+
+  function filterDosageList() {
+    const query = (document.getElementById('dosage-search')?.value || '').toLowerCase().trim();
+    const select = document.getElementById('dosage-drug');
+    const status = document.getElementById('dosage-search-status');
+    if (!select) return;
+    select.disabled = false;
+    [...select.options].forEach(option => {
+      option.hidden = Boolean(query) && !option.textContent.toLowerCase().includes(query);
+    });
+    const visible = [...select.options].filter(option => !option.hidden);
+    const selected = select.options[select.selectedIndex];
+    if (!visible.length) {
+      select.selectedIndex = -1;
+      select.disabled = true;
+      if (status) status.style.display = 'block';
+      return;
+    }
+    if (status) status.style.display = 'none';
+    if (selected?.hidden || select.selectedIndex < 0) {
+      select.value = visible[0].value;
+      updateDosage();
+    }
   }
 
   function calcDosage() {

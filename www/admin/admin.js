@@ -202,7 +202,16 @@ async function fetchAdmin(path, options = {}, { timeoutMs = ADMIN_REQUEST_TIMEOU
       let pendingBroadcastWarningReportId = "";
       let broadcastMessageGesture = null;
       let broadcastStatusAttachment = null;
+      let broadcastStatusMode = "text";
       let broadcastStatusBackground = "#2f80d0";
+      let broadcastStatusTextColor = "#ffffff";
+      let broadcastStatusFont = "system";
+      let broadcastStatusImageFilter = "none";
+      let broadcastStatusImageRotate = 0;
+      let broadcastStatusTextHistory = [""];
+      let broadcastStatusTextHistoryIndex = 0;
+      let broadcastStatusImageHistory = [{ rotate: 0, filter: "none" }];
+      let broadcastStatusImageHistoryIndex = 0;
       let cachedBroadcastThreads = [];
       let cachedBroadcastStatuses = [];
       let cachedBroadcastThreadDetail = new Map();
@@ -4650,19 +4659,37 @@ function getAdminLoginScreen() {
             const title = String(status?.caption || status?.text || "Status").trim();
             const createdAt = formatBroadcastDateTime(status?.createdAt);
             return `
-              <button type="button" class="broadcast-status-card" data-status-id="${escapeHtml(status.id || "")}">
+              <button type="button" class="broadcast-status-card" data-status-id="${escapeHtml(status.id || "")}" aria-label="Open status">
                 <div class="broadcast-status-card-title">${escapeHtml(title)}</div>
                 <div class="broadcast-status-card-meta">${escapeHtml(createdAt)}</div>
               </button>
             `;
           }),
         ].join("");
-        document.getElementById("broadcast-status-add-tile")?.addEventListener("click", openBroadcastStatusComposer);
-        stripEl.querySelectorAll("[data-status-id]").forEach((button) => {
-          button.addEventListener("click", () => {
-            openBroadcastStatusViewer(button.dataset.statusId || "");
-          });
-        });
+        const addStatusButton = document.getElementById("broadcast-status-add-tile");
+        if (addStatusButton) {
+          addStatusButton.onclick = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openBroadcastStatusComposer();
+          };
+        }
+        stripEl.onclick = (event) => {
+          const target = event.target instanceof Element ? event.target : null;
+          const addButton = target?.closest("#broadcast-status-add-tile");
+          if (addButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            openBroadcastStatusComposer();
+            return;
+          }
+          const statusButton = target?.closest("[data-status-id]");
+          if (statusButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            openBroadcastStatusViewer(statusButton.dataset.statusId || "");
+          }
+        };
       }
 
       function renderBroadcastThreadList() {
@@ -4708,7 +4735,7 @@ function getAdminLoginScreen() {
           .map((thread) => {
             const title = String(thread.title || "Admin Notice").trim();
             const preview = String(thread.previewText || thread.subtitle || "No messages yet").trim();
-            const time = formatBroadcastTime(thread.latestAt);
+            const time = formatBroadcastDateTime(thread.latestAt);
             const badgeMarkup =
               thread.threadKey === "broadcast"
                 ? `<span class="broadcast-thread-row-badge is-logo" aria-hidden="true"></span>`
@@ -4787,7 +4814,7 @@ function getAdminLoginScreen() {
           .map((batch) => {
             const text = String(batch.text || "").trim();
             const attachmentHtml = buildBroadcastAttachmentMarkup(batch.attachment, { compact: true });
-            const metaTime = formatBroadcastTime(batch.createdAt);
+            const metaTime = formatBroadcastDateTime(batch.createdAt);
             const senderName = String(batch.senderName || "AJIXPHARMACY Admin").trim() || "AJIXPHARMACY Admin";
             const isAdminSender = senderName.toLowerCase() === "ajixpharmacy admin";
             const senderMarkup = isAdminSender
@@ -5006,16 +5033,407 @@ function getAdminLoginScreen() {
       }
 
       function openBroadcastStatusComposer() {
+        ensureBroadcastStatusComposerUi();
+        resetBroadcastStatusComposer();
         syncBroadcastAttachmentUi("status");
         const backgroundEl = document.getElementById("broadcast-status-background");
         if (backgroundEl instanceof HTMLInputElement) {
           backgroundEl.value = broadcastStatusBackground || "#2f80d0";
         }
-        document.getElementById("broadcast-status-modal")?.classList.add("active");
+        const modal = document.getElementById("broadcast-status-modal");
+        if (modal) {
+          modal.classList.add("active");
+          modal.style.display = "flex";
+        }
+      }
+
+      function resetBroadcastStatusComposer() {
+        broadcastStatusAttachment = null;
+        broadcastStatusMode = "text";
+        broadcastStatusBackground = "#2f80d0";
+        broadcastStatusTextColor = "#ffffff";
+        broadcastStatusFont = "system";
+        broadcastStatusImageFilter = "none";
+        broadcastStatusImageRotate = 0;
+        broadcastStatusTextHistory = [""];
+        broadcastStatusTextHistoryIndex = 0;
+        broadcastStatusImageHistory = [{ rotate: 0, filter: "none" }];
+        broadcastStatusImageHistoryIndex = 0;
+        const composerInput = document.getElementById("broadcast-status-composer-input");
+        if (composerInput) {
+          composerInput.textContent = "Write your status";
+          composerInput.classList.add("is-empty");
+          composerInput.style.removeProperty("color");
+        }
+        const messageEl = document.getElementById("broadcast-status-message");
+        if (messageEl instanceof HTMLTextAreaElement) messageEl.value = "";
+        const fileInput = document.getElementById("broadcast-status-file");
+        if (fileInput instanceof HTMLInputElement) fileInput.value = "";
+        const backgroundEl = document.getElementById("broadcast-status-background");
+        if (backgroundEl instanceof HTMLInputElement) backgroundEl.value = "#2f80d0";
+        const textColorEl = document.getElementById("broadcast-status-text-color");
+        if (textColorEl instanceof HTMLInputElement) textColorEl.value = "#ffffff";
+        const fontEl = document.getElementById("broadcast-status-font");
+        if (fontEl instanceof HTMLSelectElement) fontEl.value = "system";
+        const filterEl = document.getElementById("broadcast-status-filter");
+        if (filterEl instanceof HTMLSelectElement) filterEl.value = "none";
+        setBroadcastStatusMode("text");
+        syncBroadcastStatusHistoryButtons();
+      }
+
+      function ensureBroadcastStatusComposerUi() {
+        const modal = document.getElementById("broadcast-status-modal");
+        const content = modal?.querySelector(".modal-content");
+        if (!modal || !content) return;
+        if (content.dataset.composerReady === "true") return;
+        content.dataset.composerReady = "true";
+        content.className = "modal-content broadcast-status-modal broadcast-status-composer";
+        content.innerHTML = `
+          <div class="broadcast-status-composer-header">
+            <div><span class="broadcast-status-eyebrow">ADMIN BROADCAST</span><h2 class="modal-title">Create status</h2><p class="modal-subtitle">Publish a polished status to every user.</p></div>
+            <button id="broadcast-status-close-btn" type="button" class="broadcast-status-close" aria-label="Close status composer">×</button>
+          </div>
+          <div id="broadcast-status-mode" class="broadcast-status-mode-switch" role="tablist">
+            <button type="button" data-status-mode="text" class="active">Text status</button><button type="button" data-status-mode="image">Image status</button>
+          </div>
+          <div class="broadcast-status-preview-shell">
+            <div class="broadcast-status-editor-toolbar">
+              <button id="broadcast-status-editor-back" type="button" class="broadcast-status-preview-tool" title="Back" aria-label="Back">&#8249;</button>
+              <button id="broadcast-status-undo-btn" type="button" class="broadcast-status-preview-tool" title="Undo" aria-label="Undo">&#8636;</button>
+              <button id="broadcast-status-redo-btn" type="button" class="broadcast-status-preview-tool is-muted" title="Redo" aria-label="Redo">&#8637;</button>
+              <button id="broadcast-status-align-btn" type="button" class="broadcast-status-preview-tool" title="Text alignment" aria-label="Text alignment">&#8801;</button>
+            </div>
+            <div class="broadcast-status-preview-tools broadcast-status-text-tools">
+              <button id="broadcast-status-bg-tool-btn" type="button" class="broadcast-status-preview-tool" title="Background colour" aria-label="Background colour">●</button>
+              <button id="broadcast-status-font-tool-btn" type="button" class="broadcast-status-preview-tool" title="Change font" aria-label="Change font">Aa</button>
+              <button id="broadcast-status-color-tool-btn" type="button" class="broadcast-status-preview-tool" title="Text colour" aria-label="Text colour">A</button>
+            </div>
+            <div class="broadcast-status-preview-tools broadcast-status-image-tools hidden">
+              <button id="broadcast-status-attach-btn" type="button" class="broadcast-status-preview-tool" title="Upload image" aria-label="Upload image">↑</button>
+              <button id="broadcast-status-rotate-btn" type="button" class="broadcast-status-preview-tool" title="Rotate image" aria-label="Rotate image">↻</button>
+              <button id="broadcast-status-filter-btn" type="button" class="broadcast-status-preview-tool" title="Change filter" aria-label="Change filter">◐</button>
+            </div>
+            <div id="broadcast-status-text-preview" class="broadcast-status-live-preview is-empty" aria-hidden="true"></div>
+            <div id="broadcast-status-image-preview" class="broadcast-status-image-preview hidden"></div>
+          </div>
+          <div class="broadcast-status-editor-input">
+            <button id="broadcast-status-emoji-btn" type="button" class="broadcast-status-editor-emoji" title="Add emoji" aria-label="Add emoji">&#9786;</button>
+            <div id="broadcast-status-emoji-picker" class="broadcast-status-emoji-picker hidden" role="menu">${["😀","😂","😍","😊","😎","🤍","❤️","👍","👏","🙏","🎉","✨","💊","✅","⚠️","📢","🔥","💡"].map((emoji) => `<button type="button" data-emoji="${emoji}" role="menuitem">${emoji}</button>`).join("")}</div>
+            <div id="broadcast-status-composer-input" class="broadcast-status-composer-input is-empty" contenteditable="true" role="textbox" aria-label="Type status text">Write your status</div>
+            <button id="broadcast-status-send-btn" type="button" class="broadcast-status-editor-send" title="Publish status" aria-label="Publish status">&#10148;</button>
+          </div>
+          <input id="broadcast-status-background" type="color" value="#2f80d0" hidden>
+          <input id="broadcast-status-text-color" type="color" value="#ffffff" hidden>
+          <select id="broadcast-status-font" hidden><option value="system">Modern</option><option value="serif">Serif</option><option value="mono">Mono</option></select>
+          <select id="broadcast-status-filter" hidden><option value="none">Original</option><option value="warm">Warm</option><option value="cool">Cool</option><option value="grayscale">Grayscale</option></select>
+          <input id="broadcast-status-file" type="file" accept="image/*,video/*" hidden>
+          <div id="broadcast-status-image-controls" class="broadcast-status-image-controls hidden"><div id="broadcast-status-attachment-name" class="broadcast-status-attachment-name">No image selected.</div><button id="broadcast-status-clear-btn" type="button" class="broadcast-status-clear hidden">Remove image</button></div>
+        `;
+        setBroadcastStatusEditorIcon("broadcast-status-editor-back", "back");
+        setBroadcastStatusEditorIcon("broadcast-status-undo-btn", "undo");
+        setBroadcastStatusEditorIcon("broadcast-status-redo-btn", "redo");
+        setBroadcastStatusEditorIcon("broadcast-status-align-btn", "left");
+        content.querySelector("#broadcast-status-attach-btn")?.remove();
+        content.querySelector("#broadcast-status-image-controls")?.remove();
+        syncBroadcastStatusHistoryButtons();
+        content.querySelector("#broadcast-status-emoji-btn")?.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          content.querySelector("#broadcast-status-emoji-picker")?.classList.toggle("hidden");
+        });
+        content.querySelectorAll("#broadcast-status-emoji-picker [data-emoji]").forEach((button) => button.addEventListener("click", () => {
+          insertBroadcastStatusEmoji(button.dataset.emoji || "");
+          content.querySelector("#broadcast-status-emoji-picker")?.classList.add("hidden");
+        }));
+        content.querySelectorAll("#broadcast-status-mode [data-status-mode]").forEach((button) => button.addEventListener("click", () => {
+          const mode = button.dataset.statusMode || "text";
+          setBroadcastStatusMode(mode);
+          if (mode === "image") content.querySelector("#broadcast-status-file")?.click();
+        }));
+        content.querySelector("#broadcast-status-close-btn")?.addEventListener("click", closeBroadcastStatusComposer);
+        content.querySelector("#broadcast-status-cancel-btn")?.addEventListener("click", closeBroadcastStatusComposer);
+        content.querySelector("#broadcast-status-send-btn")?.addEventListener("click", () => void sendAdminBroadcastStatus());
+        content.querySelector("#broadcast-status-attach-btn")?.addEventListener("click", () => content.querySelector("#broadcast-status-file")?.click());
+        content.querySelector("#broadcast-status-file")?.addEventListener("change", async (event) => {
+          const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : null;
+          broadcastStatusAttachment = file instanceof File ? { dataUrl: await readFileAsDataUrl(file), fileName: file.name || "media", mimeType: String(file.type || "").toLowerCase() } : null;
+          broadcastStatusImageRotate = 0;
+          broadcastStatusImageFilter = "none";
+          broadcastStatusImageHistory = [{ rotate: 0, filter: "none" }];
+          broadcastStatusImageHistoryIndex = 0;
+          syncBroadcastAttachmentUi("status");
+          setBroadcastStatusMode("image");
+          if (event.target instanceof HTMLInputElement) event.target.value = "";
+        });
+        content.querySelector("#broadcast-status-clear-btn")?.addEventListener("click", () => {
+          broadcastStatusAttachment = null;
+          syncBroadcastAttachmentUi("status");
+          setBroadcastStatusMode("image");
+        });
+        content.querySelector("#broadcast-status-background")?.addEventListener("input", (event) => { broadcastStatusBackground = event.target.value || "#2f80d0"; updateBroadcastStatusPreview(); });
+        content.querySelector("#broadcast-status-text-color")?.addEventListener("input", (event) => { broadcastStatusTextColor = event.target.value || "#ffffff"; updateBroadcastStatusPreview(); });
+        content.querySelector("#broadcast-status-text-color")?.addEventListener("change", (event) => { broadcastStatusTextColor = event.target.value || "#ffffff"; updateBroadcastStatusPreview(); });
+        content.querySelector("#broadcast-status-font")?.addEventListener("change", (event) => { broadcastStatusFont = event.target.value || "system"; updateBroadcastStatusPreview(); });
+        content.querySelector("#broadcast-status-filter")?.addEventListener("change", (event) => { broadcastStatusImageFilter = event.target.value || "none"; recordBroadcastStatusImageHistory(); updateBroadcastStatusPreview(); });
+        content.querySelector("#broadcast-status-rotate-btn")?.addEventListener("click", () => { broadcastStatusImageRotate = (broadcastStatusImageRotate + 90) % 360; recordBroadcastStatusImageHistory(); updateBroadcastStatusPreview(); });
+        content.querySelector("#broadcast-status-message")?.addEventListener("input", updateBroadcastStatusPreview);
+        content.querySelector("#broadcast-status-composer-input")?.addEventListener("focus", (event) => {
+          const preview = event.currentTarget;
+          if (preview.classList.contains("is-empty")) {
+            preview.textContent = "";
+            preview.classList.remove("is-empty");
+          }
+        });
+        content.querySelector("#broadcast-status-composer-input")?.addEventListener("blur", (event) => {
+          const preview = event.currentTarget;
+          if (!String(preview.innerText || "").trim()) {
+            preview.textContent = broadcastStatusMode === "image" ? "Add a caption..." : "Write your status";
+            preview.classList.add("is-empty");
+          }
+          updateBroadcastStatusPreview();
+        });
+        content.querySelector("#broadcast-status-composer-input")?.addEventListener("input", () => {
+          recordBroadcastStatusTextHistory();
+          updateBroadcastStatusPreview();
+        });
+        content.querySelector("#broadcast-status-bg-tool-btn")?.addEventListener("click", () => content.querySelector("#broadcast-status-background")?.click());
+        content.querySelector("#broadcast-status-color-tool-btn")?.addEventListener("click", () => {
+          const colorInput = content.querySelector("#broadcast-status-text-color");
+          if (!(colorInput instanceof HTMLInputElement)) return;
+          colorInput.click();
+          try { colorInput.showPicker?.(); } catch {}
+        });
+        content.querySelector("#broadcast-status-font-tool-btn")?.addEventListener("click", () => {
+          const fontEl = content.querySelector("#broadcast-status-font");
+          if (!(fontEl instanceof HTMLSelectElement)) return;
+          fontEl.selectedIndex = (fontEl.selectedIndex + 1) % fontEl.options.length;
+          broadcastStatusFont = fontEl.value || "system";
+          updateBroadcastStatusPreview();
+        });
+        content.querySelector("#broadcast-status-filter-btn")?.addEventListener("click", () => {
+          const filterEl = content.querySelector("#broadcast-status-filter");
+          if (!(filterEl instanceof HTMLSelectElement)) return;
+          filterEl.selectedIndex = (filterEl.selectedIndex + 1) % filterEl.options.length;
+          broadcastStatusImageFilter = filterEl.value || "none";
+          updateBroadcastStatusPreview();
+        });
+        content.querySelector("#broadcast-status-editor-back")?.addEventListener("click", closeBroadcastStatusComposer);
+        content.querySelector("#broadcast-status-undo-btn")?.addEventListener("click", () => broadcastStatusMode === "image" ? stepBroadcastStatusImageHistory(-1) : stepBroadcastStatusTextHistory(-1));
+        content.querySelector("#broadcast-status-redo-btn")?.addEventListener("click", () => broadcastStatusMode === "image" ? stepBroadcastStatusImageHistory(1) : stepBroadcastStatusTextHistory(1));
+        content.querySelector("#broadcast-status-align-btn")?.addEventListener("click", () => {
+          const preview = content.querySelector("#broadcast-status-text-preview");
+          if (!preview) return;
+          const current = preview.style.textAlign || "left";
+          const next = current === "left" ? "center" : current === "center" ? "right" : "left";
+          preview.style.textAlign = next;
+          setBroadcastStatusEditorIcon("broadcast-status-align-btn", next);
+        });
+      }
+
+      function setBroadcastStatusEditorIcon(buttonId, icon = "left") {
+        const button = document.getElementById(buttonId);
+        if (!button) return;
+        const paths = {
+          back: '<path d="M19 12H5m6-6-6 6 6 6"/>',
+          undo: '<path d="M9 7 4 12l5 5"/><path d="M4 12h9a6 6 0 0 1 6 6"/>',
+          redo: '<path d="m15 7 5 5-5 5"/><path d="M20 12h-9a6 6 0 0 0-6 6"/>',
+          left: '<path d="M5 7h14M5 12h10M5 17h14"/>',
+          center: '<path d="M7 7h10M5 12h14M7 17h10"/>',
+          right: '<path d="M5 7h14M9 12h10M5 17h14"/>',
+        };
+        button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[icon] || paths.left}</svg>`;
+      }
+
+      function insertBroadcastStatusEmoji(emoji) {
+        if (!emoji) return;
+        const input = document.getElementById("broadcast-status-composer-input");
+        if (!input) return;
+        input.focus();
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount && input.contains(selection.anchorNode)) {
+          document.execCommand("insertText", false, emoji);
+        } else {
+          input.textContent = `${String(input.innerText || "").replace("Write your status", "").replace("Add a caption...", "")}${emoji}`;
+        }
+        input.classList.remove("is-empty");
+        recordBroadcastStatusTextHistory();
+        updateBroadcastStatusPreview();
+      }
+
+      function syncBroadcastStatusHistoryButtons() {
+        const undo = document.getElementById("broadcast-status-undo-btn");
+        const redo = document.getElementById("broadcast-status-redo-btn");
+        const history = broadcastStatusMode === "image" ? broadcastStatusImageHistory : broadcastStatusTextHistory;
+        const index = broadcastStatusMode === "image" ? broadcastStatusImageHistoryIndex : broadcastStatusTextHistoryIndex;
+        if (undo) {
+          const active = index > 0;
+          undo.disabled = !active;
+          undo.classList.toggle("is-muted", !active);
+        }
+        if (redo) {
+          const active = index < history.length - 1;
+          redo.disabled = !active;
+          redo.classList.toggle("is-muted", !active);
+        }
+      }
+
+      function recordBroadcastStatusImageHistory() {
+        const current = { rotate: broadcastStatusImageRotate, filter: broadcastStatusImageFilter };
+        const previous = broadcastStatusImageHistory[broadcastStatusImageHistoryIndex];
+        if (previous && previous.rotate === current.rotate && previous.filter === current.filter) return;
+        broadcastStatusImageHistory = broadcastStatusImageHistory.slice(0, broadcastStatusImageHistoryIndex + 1);
+        broadcastStatusImageHistory.push(current);
+        broadcastStatusImageHistoryIndex = broadcastStatusImageHistory.length - 1;
+        syncBroadcastStatusHistoryButtons();
+      }
+
+      function stepBroadcastStatusImageHistory(direction = -1) {
+        const nextIndex = Math.max(0, Math.min(broadcastStatusImageHistory.length - 1, broadcastStatusImageHistoryIndex + direction));
+        if (nextIndex === broadcastStatusImageHistoryIndex) return;
+        broadcastStatusImageHistoryIndex = nextIndex;
+        const state = broadcastStatusImageHistory[nextIndex];
+        broadcastStatusImageRotate = state.rotate;
+        broadcastStatusImageFilter = state.filter;
+        const filterEl = document.getElementById("broadcast-status-filter");
+        if (filterEl instanceof HTMLSelectElement) filterEl.value = state.filter;
+        updateBroadcastStatusPreview();
+        syncBroadcastStatusHistoryButtons();
+      }
+
+      function setBroadcastStatusMode(mode = "text") {
+        broadcastStatusMode = mode === "image" ? "image" : "text";
+        if (broadcastStatusMode === "text" && broadcastStatusAttachment) {
+          broadcastStatusAttachment = null;
+          const fileInput = document.getElementById("broadcast-status-file");
+          if (fileInput) fileInput.value = "";
+          const attachmentName = document.getElementById("broadcast-status-attachment-name");
+          if (attachmentName) {
+            attachmentName.textContent = "No media selected.";
+            attachmentName.classList.add("hidden");
+          }
+          document.getElementById("broadcast-status-clear-btn")?.classList.add("hidden");
+        }
+        const messageEl = document.getElementById("broadcast-status-message");
+        const attachRow = document.getElementById("broadcast-status-file")?.closest(".broadcast-file-row");
+        const backgroundEl = document.getElementById("broadcast-status-background")?.closest(".form-group");
+        const preview = document.getElementById("broadcast-status-image-preview");
+        const textPreview = document.getElementById("broadcast-status-text-preview");
+        const captionField = document.getElementById("broadcast-status-caption-field");
+        const editorInput = document.querySelector(".broadcast-status-editor-input");
+        const composerInput = document.getElementById("broadcast-status-composer-input");
+        const textTools = document.querySelector(".broadcast-status-text-tools");
+        const imageTools = document.querySelector(".broadcast-status-image-tools");
+        const alignButton = document.getElementById("broadcast-status-align-btn");
+        const textControls = document.getElementById("broadcast-status-text-controls");
+        const imageControls = document.getElementById("broadcast-status-image-controls");
+        document.querySelectorAll("#broadcast-status-mode [data-status-mode]").forEach((button) => {
+          const active = button.dataset.statusMode === broadcastStatusMode;
+          button.classList.toggle("active", active);
+          button.style.cssText = "";
+        });
+        if (messageEl) messageEl.placeholder = "Add a caption for this image...";
+        if (attachRow) attachRow.classList.toggle("hidden", broadcastStatusMode !== "image");
+        if (backgroundEl) backgroundEl.classList.toggle("hidden", broadcastStatusMode === "image");
+        textControls?.classList.toggle("hidden", broadcastStatusMode !== "text");
+        imageControls?.classList.toggle("hidden", broadcastStatusMode !== "image");
+        captionField?.classList.toggle("hidden", broadcastStatusMode !== "image");
+        editorInput?.classList.remove("hidden");
+        textTools?.classList.toggle("hidden", broadcastStatusMode !== "text");
+        imageTools?.classList.toggle("hidden", broadcastStatusMode !== "image");
+        alignButton?.classList.toggle("hidden", broadcastStatusMode === "image");
+        textPreview?.classList.toggle("hidden", broadcastStatusMode !== "text");
+        if (composerInput && composerInput.classList.contains("is-empty")) {
+          composerInput.textContent = broadcastStatusMode === "image" ? "Add a caption..." : "Write your status";
+        }
+        if (preview) {
+          const attachment = broadcastStatusAttachment;
+          const isVideo = String(attachment?.mimeType || "").toLowerCase().startsWith("video/");
+          preview.innerHTML = attachment?.dataUrl
+            ? (isVideo
+              ? `<video src="${escapeHtml(attachment.dataUrl)}" controls playsinline preload="metadata" aria-label="Selected status video"></video>`
+              : `<img src="${escapeHtml(attachment.dataUrl)}" alt="Selected status image">`)
+            : "";
+          const media = preview.querySelector("img, video");
+          if (media) media.style.cssText = "display:block;width:auto;max-width:100%;height:auto;max-height:100%;object-fit:contain;";
+          preview.classList.toggle("hidden", broadcastStatusMode !== "image" || !attachment?.dataUrl);
+        }
+        updateBroadcastStatusPreview();
+        syncBroadcastStatusHistoryButtons();
+      }
+
+      function updateBroadcastStatusPreview() {
+        const textPreview = document.getElementById("broadcast-status-text-preview");
+        const composerInput = document.getElementById("broadcast-status-composer-input");
+        const messageEl = document.getElementById("broadcast-status-message");
+        const text = broadcastStatusMode === "text"
+          ? String(composerInput?.innerText || "").replace("Write your status", "").trim()
+          : String(composerInput?.innerText || "").replace("Add a caption...", "").trim();
+        if (messageEl && broadcastStatusMode === "image") messageEl.value = text;
+        composerInput?.classList.toggle("is-empty", !text);
+        const mediaPreview = document.getElementById("broadcast-status-image-preview");
+        const previewShell = textPreview?.closest(".broadcast-status-preview-shell");
+        if (textPreview) {
+          if (broadcastStatusMode === "text") {
+            if (text) {
+              textPreview.textContent = text;
+              textPreview.classList.remove("is-empty");
+            } else if (document.activeElement === composerInput) {
+              textPreview.textContent = "";
+              textPreview.classList.add("is-empty");
+            } else if (document.activeElement !== composerInput) {
+              textPreview.textContent = "";
+              textPreview.classList.add("is-empty");
+            }
+          }
+          if (previewShell) previewShell.style.background = broadcastStatusMode === "text"
+            ? `linear-gradient(135deg, ${broadcastStatusBackground || "#2f80d0"} 0%, #665df2 100%)`
+            : "#050708";
+          textPreview.style.background = "transparent";
+          textPreview.style.setProperty("color", broadcastStatusTextColor || "#ffffff", "important");
+          if (composerInput) {
+            if (text) composerInput.style.color = broadcastStatusTextColor || "#ffffff";
+            else composerInput.style.removeProperty("color");
+          }
+          textPreview.style.fontFamily = broadcastStatusFont === "serif" ? "Georgia, serif" : broadcastStatusFont === "mono" ? "ui-monospace, monospace" : "system-ui, sans-serif";
+          textPreview.classList.toggle("is-empty", !text);
+          textPreview.classList.toggle("hidden", broadcastStatusMode !== "text");
+        }
+        if (mediaPreview) {
+          mediaPreview.style.filter = broadcastStatusImageFilter === "grayscale" ? "grayscale(1)" : broadcastStatusImageFilter === "warm" ? "sepia(.35) saturate(1.25)" : broadcastStatusImageFilter === "cool" ? "hue-rotate(12deg) saturate(.9)" : "none";
+          mediaPreview.style.transform = `rotate(${Number(broadcastStatusImageRotate) || 0}deg)`;
+        }
+      }
+
+      function recordBroadcastStatusTextHistory() {
+        const input = document.getElementById("broadcast-status-composer-input");
+        if (!input) return;
+        const value = String(input.innerText || "").replace("Write your status", "").replace("Add a caption...", "").trim();
+        if (broadcastStatusTextHistory[broadcastStatusTextHistoryIndex] === value) return;
+        broadcastStatusTextHistory = broadcastStatusTextHistory.slice(0, broadcastStatusTextHistoryIndex + 1);
+        broadcastStatusTextHistory.push(value);
+        broadcastStatusTextHistoryIndex = broadcastStatusTextHistory.length - 1;
+        syncBroadcastStatusHistoryButtons();
+      }
+
+      function stepBroadcastStatusTextHistory(direction = -1) {
+        const input = document.getElementById("broadcast-status-composer-input");
+        if (!input) return;
+        const nextIndex = Math.max(0, Math.min(broadcastStatusTextHistory.length - 1, broadcastStatusTextHistoryIndex + direction));
+        if (nextIndex === broadcastStatusTextHistoryIndex) return;
+        broadcastStatusTextHistoryIndex = nextIndex;
+        const value = broadcastStatusTextHistory[nextIndex];
+        input.textContent = value || (broadcastStatusMode === "image" ? "Add a caption..." : "Write your status");
+        input.classList.toggle("is-empty", !value);
+        updateBroadcastStatusPreview();
+        syncBroadcastStatusHistoryButtons();
+        input.focus();
       }
 
       function closeBroadcastStatusComposer() {
-        document.getElementById("broadcast-status-modal")?.classList.remove("active");
+        resetBroadcastStatusComposer();
+        const modal = document.getElementById("broadcast-status-modal");
+        modal?.classList.remove("active");
+        if (modal) modal.style.display = "none";
       }
 
       function openBroadcastStatusViewer(statusId = "") {
@@ -5025,16 +5443,20 @@ function getAdminLoginScreen() {
         const titleEl = document.getElementById("broadcast-status-viewer-title");
         const subtitleEl = document.getElementById("broadcast-status-viewer-subtitle");
         const bodyEl = document.getElementById("broadcast-status-viewer-body");
+        const closeEl = document.getElementById("broadcast-status-viewer-close-btn");
+        if (closeEl) closeEl.textContent = "\u00D7";
         if (titleEl) titleEl.textContent = String(status.caption || status.text || "Status").trim() || "Status";
         if (subtitleEl) subtitleEl.textContent = formatBroadcastDateTime(status.createdAt);
         if (bodyEl) {
           const attachmentHtml = buildBroadcastAttachmentMarkup(status.upload || {}, { compact: false });
+          const contentText = status.upload ? String(status.caption || "").trim() : String(status.text || status.caption || "").trim();
+          const contentStyle = status.upload
+            ? "background:#050708;color:#f4fbfc;"
+            : `background:linear-gradient(135deg, ${escapeHtml(status.background || "#2f80d0")} 0%, #665df2 100%);color:${escapeHtml(status.style?.textColor || "#ffffff")};`;
           bodyEl.innerHTML = `
-            <div class="broadcast-status-viewer-card" style="background: linear-gradient(180deg, ${escapeHtml(status.background || "#2f80d0")}1f, #ffffff);">
-              <div class="broadcast-status-card-title">${escapeHtml(status.caption || status.text || "Status")}</div>
-              <div class="broadcast-status-card-meta" style="margin-bottom: 12px;">${escapeHtml(formatBroadcastDateTime(status.createdAt))}</div>
-              ${status.text ? `<div class="broadcast-message-text">${escapeHtml(status.text)}</div>` : ""}
-              ${attachmentHtml ? `<div class="broadcast-message-attachment" style="margin-top: 12px;">${attachmentHtml}</div>` : ""}
+            <div class="broadcast-status-viewer-content" style="${contentStyle}">
+              ${attachmentHtml ? `<div class="broadcast-message-attachment">${attachmentHtml}</div>` : escapeHtml(contentText || "Status")}
+              ${status.upload && contentText ? `<div class="broadcast-status-viewer-caption">${escapeHtml(contentText)}</div>` : ""}
             </div>
           `;
         }
@@ -5116,10 +5538,17 @@ function getAdminLoginScreen() {
 
       async function sendAdminBroadcastStatus() {
         const messageEl = document.getElementById("broadcast-status-message");
+        const composerInput = document.getElementById("broadcast-status-composer-input");
         const backgroundEl = document.getElementById("broadcast-status-background");
-        const text = String(messageEl?.value || "").trim();
+        const text = broadcastStatusMode === "text"
+          ? String(composerInput?.innerText || "").replace("Write your status", "").trim()
+          : String(composerInput?.innerText || "").replace("Add a caption...", "").trim();
         const background = String(backgroundEl?.value || broadcastStatusBackground || "#2f80d0").trim() || "#2f80d0";
-        if (!text && !broadcastStatusAttachment) {
+        if (broadcastStatusMode === "image" && !broadcastStatusAttachment) {
+          showAlert("broadcast-alerts", "Select an image first", "error");
+          return;
+        }
+        if (broadcastStatusMode === "text" && !text) {
           showAlert("broadcast-alerts", "Write a status or attach media first", "error");
           return;
         }
@@ -5128,9 +5557,16 @@ function getAdminLoginScreen() {
             method: "POST",
             headers: getHeaders(),
             body: JSON.stringify({
-              text: broadcastStatusAttachment ? "" : text,
-              caption: broadcastStatusAttachment ? text : "",
+              text: broadcastStatusMode === "image" ? "" : text,
+              caption: broadcastStatusMode === "image" ? text : "",
               background,
+              style: {
+                textColor: broadcastStatusTextColor,
+                textStyle: broadcastStatusFont,
+                imageFilter: broadcastStatusImageFilter,
+                imageRotate: broadcastStatusImageRotate,
+                type: broadcastStatusMode === "image" ? "image" : "text",
+              },
               attachmentDataUrl: broadcastStatusAttachment?.dataUrl || "",
               attachmentFileName: broadcastStatusAttachment?.fileName || "",
             }),
@@ -5140,9 +5576,26 @@ function getAdminLoginScreen() {
             throw new Error(data.error || "Failed to publish status");
           }
           if (messageEl) messageEl.value = "";
+          if (composerInput) {
+            composerInput.textContent = "Write your status";
+            composerInput.classList.add("is-empty");
+          }
+          broadcastStatusTextHistory = [""];
+          broadcastStatusTextHistoryIndex = 0;
           broadcastStatusBackground = "#2f80d0";
+          broadcastStatusTextColor = "#ffffff";
+          broadcastStatusFont = "system";
+          broadcastStatusImageFilter = "none";
+          broadcastStatusImageRotate = 0;
           if (backgroundEl) backgroundEl.value = "#2f80d0";
+          const textColorEl = document.getElementById("broadcast-status-text-color");
+          if (textColorEl instanceof HTMLInputElement) textColorEl.value = "#ffffff";
+          const fontEl = document.getElementById("broadcast-status-font");
+          if (fontEl instanceof HTMLSelectElement) fontEl.value = "system";
+          const filterEl = document.getElementById("broadcast-status-filter");
+          if (filterEl instanceof HTMLSelectElement) filterEl.value = "none";
           broadcastStatusAttachment = null;
+          broadcastStatusMode = "text";
           const fileInput = document.getElementById("broadcast-status-file");
           if (fileInput) fileInput.value = "";
           syncBroadcastAttachmentUi("status");
@@ -6169,6 +6622,7 @@ function getAdminLoginScreen() {
               broadcastStatusAttachment = null;
             }
             syncBroadcastAttachmentUi("status");
+            setBroadcastStatusMode("image");
             if (event.target instanceof HTMLInputElement) {
               event.target.value = "";
             }
@@ -6178,6 +6632,7 @@ function getAdminLoginScreen() {
           ?.addEventListener("click", () => {
             broadcastStatusAttachment = null;
             syncBroadcastAttachmentUi("status");
+            setBroadcastStatusMode("image");
           });
         document
           .getElementById("broadcast-status-send-btn")
@@ -6228,8 +6683,38 @@ function getAdminLoginScreen() {
           ?.addEventListener("input", (event) => {
             if (event.target instanceof HTMLInputElement) {
               broadcastStatusBackground = String(event.target.value || "#2f80d0").trim() || "#2f80d0";
+              updateBroadcastStatusPreview();
             }
           });
+        document
+          .getElementById("broadcast-status-text-color")
+          ?.addEventListener("input", (event) => {
+            if (event.target instanceof HTMLInputElement) {
+              broadcastStatusTextColor = String(event.target.value || "#ffffff").trim() || "#ffffff";
+              updateBroadcastStatusPreview();
+            }
+          });
+        document
+          .getElementById("broadcast-status-font")
+          ?.addEventListener("change", (event) => {
+            broadcastStatusFont = String(event.target?.value || "system").trim() || "system";
+            updateBroadcastStatusPreview();
+          });
+        document
+          .getElementById("broadcast-status-filter")
+          ?.addEventListener("change", (event) => {
+            broadcastStatusImageFilter = String(event.target?.value || "none").trim() || "none";
+            updateBroadcastStatusPreview();
+          });
+        document
+          .getElementById("broadcast-status-rotate-btn")
+          ?.addEventListener("click", () => {
+            broadcastStatusImageRotate = (Number(broadcastStatusImageRotate) + 90) % 360;
+            updateBroadcastStatusPreview();
+          });
+        document
+          .getElementById("broadcast-status-message")
+          ?.addEventListener("input", updateBroadcastStatusPreview);
         document
           .getElementById("report-details-close-btn")
           ?.addEventListener("click", closeReportDetailsModal);
@@ -6617,6 +7102,21 @@ function getAdminLoginScreen() {
 
         setAdminKeyVisibility(false);
       }
+
+      window.addEventListener("message", (event) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data?.type === "ajix-admin-status-published") {
+          void loadBroadcastOverview();
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target?.closest("#broadcast-status-add-tile")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        openBroadcastStatusComposer();
+      }, true);
 
       // Initialize
       setupEventBindings();

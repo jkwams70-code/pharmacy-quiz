@@ -1,4 +1,4 @@
-import { backendClient } from "./backendClient.js?v=20260913-entitlement-live1";
+import { backendClient } from "./backendClient.js?v=20261031-admin-status-composer2";
 import { enqueueAction as enqueueOfflineAction, flushQueue as flushOfflineQueue, getEntry as getOfflineEntry, setEntry as setOfflineEntry } from "./offlineStore.js?v=20260907-idb-recovery-v1";
 import { inferQuestionRotation } from "./rotationTaxonomy.js";
 import { CANONICAL_CATEGORIES } from "./category-taxonomy.js?v=20260916-taxonomy1";
@@ -2787,6 +2787,7 @@ function mapBackendQuestionToLocal(q = {}) {
     bank: String(q.bank || fallback.bank || "main").trim().toLowerCase() || "main",
     comboVariant: String(q.comboVariant || fallback.comboVariant || "").trim().toLowerCase() || "",
     year: Number.isFinite(Number(q.year)) ? Number(q.year) : Number(fallback.year) || undefined,
+    sitting: String(q.sitting || fallback.sitting || "").trim().toLowerCase() || undefined,
     displayNumber: Number.isFinite(Number(q.displayNumber))
       ? Number(q.displayNumber)
       : Number(fallback.displayNumber) || undefined,
@@ -3697,7 +3698,21 @@ let gppqeSessionCommitKey = "";
 
 function gppqeGetSelectedYears(value = gppqeState.selectedYear) {
   const values = Array.isArray(value) ? value : value === "" || value == null ? [] : [value];
-  return [...new Set(values.map((item) => String(item).trim()).filter(Boolean).map((item) => item === "all" ? "all" : Number(item)).filter((item) => item === "all" || Number.isFinite(item)))];
+  return [...new Set(values.map((item) => String(item).trim()).filter(Boolean).map((item) => {
+    if (item === "all") return "all";
+    const numericYear = Number(item.split("|")[0]);
+    return Number.isFinite(numericYear) ? numericYear : null;
+  }).filter((item) => item === "all" || Number.isFinite(item)))];
+}
+
+function gppqeGetSelectedSampleKeys(value = gppqeState.selectedYear) {
+  const values = Array.isArray(value) ? value : value === "" || value == null ? [] : [value];
+  return [...new Set(values.map((item) => String(item).trim()).filter(Boolean).map((item) => {
+    if (item === "all") return "all";
+    if (item.includes("|")) return item;
+    const numericYear = Number(item);
+    return Number.isFinite(numericYear) ? `${numericYear}|` : "";
+  }).filter(Boolean))];
 }
 
 function gppqeGetSelectedCategoryLabel() {
@@ -3866,7 +3881,7 @@ function gppqeRestoreProgress(saved) {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   gppqeState.selectedMode = String(saved.selectedMode || "study").toLowerCase() === "exam" ? "exam" : "study";
-  gppqeState.selectedYear = gppqeGetSelectedYears(saved.selectedYear);
+  gppqeState.selectedYear = gppqeGetSelectedSampleKeys(saved.selectedYear);
   gppqeState.selectedCategories = Array.isArray(saved.selectedCategories)
     ? saved.selectedCategories.map((value) => String(value || "").trim()).filter(Boolean)
     : [];
@@ -4021,16 +4036,28 @@ function gppqeCloseHistoryModal() {
 }
 
 function gppqeGetYearLabel(year = []) {
-  const years = gppqeGetSelectedYears(year);
-  if (!years.length) return "Select sample set";
-  if (years.includes("all")) return "All sample sets";
-  if (years.length === 1) return `Sample ${String(years[0]).slice(-2)}`;
-  return years.length + " sample sets selected";
+  const samples = gppqeGetSelectedSampleKeys(year);
+  if (!samples.length) return "Select sample set";
+  if (samples.includes("all")) return "All sample sets";
+  if (samples.length === 1) return gppqeGetSampleLabel(samples[0]);
+  return samples.length + " sample sets selected";
 }
 
-function gppqeGetSampleLabel(year) {
-  const numericYear = Number(year);
-  return Number.isFinite(numericYear) ? `Sample ${String(numericYear).slice(-2)}` : "Sample";
+function gppqeGetSampleKey(question = {}) {
+  const numericYear = Number(question?.year);
+  if (!Number.isFinite(numericYear)) return "";
+  const rawSitting = String(question?.sitting || "").trim().toLowerCase();
+  const sitting = ["july", "jul", "a"].includes(rawSitting) ? "" : rawSitting;
+  return `${numericYear}|${sitting}`;
+}
+
+function gppqeGetSampleLabel(sample) {
+  const raw = String(sample ?? "").trim();
+  const [yearPart, sittingPart = ""] = raw.split("|");
+  const numericYear = Number(yearPart);
+  if (!Number.isFinite(numericYear)) return "Sample";
+  const suffix = ["december", "dec", "b"].includes(sittingPart.toLowerCase()) ? "B" : "";
+  return `Sample ${String(numericYear).slice(-2)}${suffix}`;
 }
 
 function gppqeGetBankQuestions() {
@@ -4043,15 +4070,18 @@ function gppqeGetBankQuestions() {
 }
 
 function gppqeGetYears() {
-  return [...new Set(gppqeGetBankQuestions().map((question) => Number(question.year)).filter((year) => Number.isFinite(year)))].sort((a, b) => b - a);
+  return [...new Set(gppqeGetBankQuestions().map(gppqeGetSampleKey).filter(Boolean))].sort((a, b) => {
+    const yearDiff = Number(b.split("|")[0]) - Number(a.split("|")[0]);
+    return yearDiff || a.localeCompare(b);
+  });
 }
 
 function gppqeGetCategoriesForYear(year = []) {
   const pool = gppqeGetBankQuestions();
-  const years = gppqeGetSelectedYears(year);
-  const filtered = !years.length || years.includes("all")
+  const samples = gppqeGetSelectedSampleKeys(year);
+  const filtered = !samples.length || samples.includes("all")
     ? pool
-    : pool.filter((question) => years.includes(Number(question.year)));
+    : pool.filter((question) => samples.includes(gppqeGetSampleKey(question)));
   return [...new Set(filtered.map((question) => String(question.category || "").trim()).filter(Boolean))].sort();
 }
 
@@ -4103,9 +4133,9 @@ function gppqeGetDisplayNumber(question, fallbackIndex = 0) {
 
 function gppqeGetPool() {
   let pool = gppqeGetBankQuestions();
-  const years = gppqeGetSelectedYears();
-  if (years.length > 0 && !years.includes("all")) {
-    pool = pool.filter((question) => years.includes(Number(question.year)));
+  const samples = gppqeGetSelectedSampleKeys();
+  if (samples.length > 0 && !samples.includes("all")) {
+    pool = pool.filter((question) => samples.includes(gppqeGetSampleKey(question)));
   }
   if (gppqeState.selectedCategories.length > 0) {
     pool = pool.filter((question) => gppqeState.selectedCategories.includes(question.category));
@@ -4154,18 +4184,17 @@ function gppqeSaveQuestionResult(question, selectedIndex) {
 
 function gppqeSelectYear(year) {
   const value = String(year || "").trim();
-  const currentYears = gppqeGetSelectedYears();
+  const currentSamples = gppqeGetSelectedSampleKeys();
   if (gppqeState.selectedMode === "exam") {
-    gppqeState.selectedYear = value ? [value === "all" ? "all" : Number(value)] : [];
+    gppqeState.selectedYear = value ? [value === "all" ? "all" : value] : [];
   } else if (!value) {
     gppqeState.selectedYear = [];
   } else if (value === "all") {
     gppqeState.selectedYear = ["all"];
   } else {
-    const numericYear = Number(value);
-    gppqeState.selectedYear = currentYears.includes(numericYear)
-      ? currentYears.filter((item) => item !== numericYear)
-      : [...currentYears.filter((item) => item !== "all"), numericYear];
+    gppqeState.selectedYear = currentSamples.includes(value)
+      ? currentSamples.filter((item) => item !== value)
+      : [...currentSamples.filter((item) => item !== "all"), value];
   }
   const availableCategories = new Set(gppqeGetCategoriesForYear(gppqeState.selectedYear));
   gppqeState.selectedCategories = gppqeState.selectedCategories.filter((category) => availableCategories.has(category));
@@ -4244,7 +4273,8 @@ function gppqeStartSession(mode = "study", { sample = false } = {}) {
     renderGppqeScreen();
     return;
   }
-  if (normalizedMode === "exam" && (selectedYears.length !== 1 || selectedYears.includes("all"))) {
+  const selectedSamples = gppqeGetSelectedSampleKeys();
+  if (normalizedMode === "exam" && (selectedSamples.length !== 1 || selectedSamples.includes("all"))) {
     gppqeState.notice = "Exam mode requires one full sample set. Select one sample set only.";
     gppqeState.view = "hub";
     renderGppqeScreen();
@@ -4386,7 +4416,7 @@ function gppqeRestartSession() {
     return;
   }
   const currentMode = gppqeState.selectedMode;
-  const currentYear = [...gppqeGetSelectedYears()];
+  const currentYear = [...gppqeGetSelectedSampleKeys()];
   const currentCategories = [...gppqeState.selectedCategories];
   gppqeState.selectedYear = currentYear;
   gppqeState.selectedCategories = currentCategories;
@@ -4677,7 +4707,7 @@ function gppqeBuildHubMarkup() {
               <select multiple class="gppqe-setup-select" data-gppqe-field="year" aria-label="Years">
                   <option value="" ${selectedYears.length ? "" : "selected"}>Select sample set</option>
                   <option value="all" ${selectedYears.includes("all") ? "selected" : ""}>All sample sets</option>
-                  ${gppqeGetYears().map((year) => `<option value="${year}" ${selectedYears.includes(year) ? "selected" : ""}>${gppqeGetSampleLabel(year)}</option>`).join("")}
+                  ${gppqeGetYears().map((sample) => `<option value="${sample}" ${gppqeGetSelectedSampleKeys().includes(sample) ? "selected" : ""}>${gppqeGetSampleLabel(sample)}</option>`).join("")}
               </select>
             </label>
 
@@ -4793,7 +4823,7 @@ function gppqeBuildYearMarkup() {
   const yearLabel = gppqeGetYearLabel(year);
   const pool = gppqeGetPool();
   const availableYears = gppqeGetYears();
-  const activeYearYears = year === "all" ? `${availableYears.length} sample sets` : gppqeGetSampleLabel(year);
+  const activeYearYears = gppqeGetSelectedSampleKeys(year).includes("all") ? `${availableYears.length} sample sets` : yearLabel;
   const categories = gppqeGetCategoriesForYear(year);
 
   return `
@@ -4820,8 +4850,8 @@ function gppqeBuildYearMarkup() {
             <div class="gppqe-metric-label">Categories</div>
           </article>
           <article class="gppqe-metric-card">
-            <div class="gppqe-metric-value">${year === "all" ? availableYears.length : 1}</div>
-            <div class="gppqe-metric-label">Sample set${year === "all" ? "s" : ""}</div>
+            <div class="gppqe-metric-value">${gppqeGetSelectedSampleKeys(year).includes("all") ? availableYears.length : 1}</div>
+            <div class="gppqe-metric-label">Sample set${gppqeGetSelectedSampleKeys(year).includes("all") ? "s" : ""}</div>
           </article>
         </div>
       </section>
@@ -4938,7 +4968,7 @@ function gppqeBuildSessionMarkup() {
 
       <section class="gppqe-question-card">
         <div class="gppqe-question-head">
-            <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(question.year))}</span>
+            <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(gppqeGetSampleKey(question)))}</span>
           <span class="gppqe-question-category">${escapeHtml(question.category)}</span>
           ${revealAnswer ? `<span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + question.answer)}</span>` : ""}
         </div>
@@ -5072,7 +5102,7 @@ function gppqeBuildReviewMarkup() {
                 </div>
                 <section class="gppqe-question-card gppqe-review-detail-card ${activeReviewState?.isCorrect ? "is-correct" : "is-wrong"}">
                   <div class="gppqe-question-head">
-                    <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(activeReviewQuestion.year))}</span>
+                    <span class="gppqe-question-year">${escapeHtml(gppqeGetSampleLabel(gppqeGetSampleKey(activeReviewQuestion)))}</span>
                     <span class="gppqe-question-category">${escapeHtml(activeReviewQuestion.category)}</span>
                     <span class="gppqe-question-answer">Answer ${String.fromCharCode(65 + activeReviewQuestion.answer)}</span>
                   </div>
@@ -22108,11 +22138,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
         setCommunityFeedback("Write something for the status.", true);
         return;
       }
-      await backendClient.uploadStatusText(
-        text,
-        String(payload.background || "#2f80d0"),
-        statusVisibility,
-        {
+      const textStyle = {
           textColor: String(payload.textColor || "#ffffff"),
           textStyle: String(payload.textStyle || "default"),
           textAlign: String(layout.align || "center"),
@@ -22123,12 +22149,23 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           textX: 0.5,
           textY: 0.5,
           durationSeconds: COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-          allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
-        },
-        {
-          isAdminBroadcast: isAdminBroadcastStatus,
-        },
-      );
+          allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+        };
+      if (isAdminBroadcastStatus) {
+        await backendClient.uploadAdminBroadcastStatus({
+          text,
+          background: String(payload.background || "#2f80d0"),
+          style: textStyle,
+        });
+      } else {
+        await backendClient.uploadStatusText(
+          text,
+          String(payload.background || "#2f80d0"),
+          statusVisibility,
+          textStyle,
+          { isAdminBroadcast: false },
+        );
+      }
     } else {
       if (payload.type === "video") {
         const duration = Math.max(0, Number(payload.videoDuration) || 0);
@@ -22141,7 +22178,7 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           1,
           Math.min(COMMUNITY_STATUS_MAX_VIDEO_SECONDS, trim.end - trim.start || duration || COMMUNITY_STATUS_MAX_VIDEO_SECONDS),
         );
-        if (payload.originalFile instanceof Blob) {
+        if (payload.originalFile instanceof Blob && !isAdminBroadcastStatus) {
           await backendClient.uploadStatusVideoFile(
             payload.originalFile,
             captionDraft,
@@ -22194,10 +22231,10 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
         payload.cropBaseDataUrl = String(payload.dataUrl || payload.cropBaseDataUrl || "");
         payload.mediaView = { scale: 1, offsetX: 0, offsetY: 0, frameWidth: 0, frameHeight: 0 };
       }
-        const statusStyle = {
-          imageFit: String(payload.imageFit || "contain"),
-          imageFilter: String(payload.imageFilter || "none"),
-          imageRotate: 0,
+      const statusStyle = {
+        imageFit: String(payload.imageFit || "contain"),
+        imageFilter: String(payload.imageFilter || "none"),
+        imageRotate: 0,
         type: String(payload.type || "image"),
         videoTrimStart: payload.type === "video"
           ? Math.max(0, Number(payload.videoTrim?.start || 0) || 0)
@@ -22205,12 +22242,12 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
         videoTrimEnd: payload.type === "video"
           ? Math.max(0, Number(payload.videoTrim?.end || 0) || 0)
           : 0,
-          durationSeconds:
-            payload.type === "video"
-              ? getCommunityStatusVideoDurationSeconds(payload)
-              : COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
-          allowReplies: isAdminBroadcastStatus ? true : Boolean(communitySettingsPrefs.statusReplies),
-        };
+        durationSeconds:
+          payload.type === "video"
+            ? getCommunityStatusVideoDurationSeconds(payload)
+            : COMMUNITY_STATUS_DEFAULT_DURATION_MS / 1000,
+        allowReplies: isAdminBroadcastStatus ? false : Boolean(communitySettingsPrefs.statusReplies),
+      };
       const shouldUseOriginalStatusFile =
         payload.originalFile instanceof Blob &&
         (
@@ -22226,7 +22263,17 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
           String(payload.fileName || "status.jpg").trim() || "status.jpg",
         );
       }
-      if (binaryFile instanceof Blob) {
+      if (isAdminBroadcastStatus) {
+        const adminDataUrl = binaryFile instanceof Blob
+          ? await readBlobAsDataUrl(binaryFile)
+          : String(payload.dataUrl || "");
+        await backendClient.uploadAdminBroadcastStatus({
+          caption: captionDraft,
+          attachmentDataUrl: adminDataUrl,
+          attachmentFileName: String(payload.fileName || (payload.type === "video" ? "status.mp4" : "status.jpg")),
+          style: statusStyle,
+        });
+      } else if (binaryFile instanceof Blob) {
         const statusFile = binaryFile instanceof File
           ? binaryFile
           : new File([binaryFile], String(payload.fileName || (payload.type === "video" ? "status.mp4" : "status.jpg")), {
@@ -22257,6 +22304,10 @@ async function uploadPendingCommunityStatus(payloadOverride = null, captionOverr
     communityState.statusUploadError = "";
     if (!isBackgroundUpload) closeCommunityStatusCompose();
     setCommunityFeedback("Status uploaded successfully.");
+    if (isAdminBroadcastStatus && window.opener && !window.opener.closed) {
+      window.opener.postMessage({ type: "ajix-admin-status-published" }, window.location.origin);
+      window.setTimeout(() => window.close(), 250);
+    }
     void loadCommunityOverview({ silent: true, preferCache: true });
   } catch (error) {
     const message = rawApiErrorMessage(error, "Status upload failed.");
@@ -36461,7 +36512,7 @@ if (extraScreen) {
       return;
     }
     if (target.hasAttribute("data-calculator")) {
-      window.location.href = "./calculator.html";
+      window.location.href = "./calculator-workspace.html";
       return;
     }
     if (target.hasAttribute("data-coming-soon")) {

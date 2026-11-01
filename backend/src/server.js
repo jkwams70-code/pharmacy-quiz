@@ -7453,6 +7453,13 @@ function normalizeSlugValue(value) {
 
 const QUESTION_REVIEW_STATUSES = new Set(["needs_review", "corrected", "quarantined"]);
 function normalizeQuestionReviewStatus(value, fallback = "needs_review") { const status = String(value || "").trim().toLowerCase().replace(/-/g, "_"); return QUESTION_REVIEW_STATUSES.has(status) ? status : fallback; }
+function parseGppqeSampleSet(value) {
+  const match = String(value || "").trim().match(/^(?:sample\s*)?(\d{2}|\d{4})(b)?$/i);
+  if (!match) return null;
+  const year = Number(match[1].length === 2 ? `20${match[1]}` : match[1]);
+  const isDecember = Boolean(match[2]);
+  return { year, sitting: isDecember ? "december" : "", sampleSet: `Sample ${String(year).slice(-2)}${isDecember ? "B" : ""}` };
+}
 
 function normalizeQuestionForApi(rawQuestion) {
   const text = String(rawQuestion?.text ?? rawQuestion?.question ?? "").trim();
@@ -7460,13 +7467,19 @@ function normalizeQuestionForApi(rawQuestion) {
   const sectionId = normalizeSlugValue(rawQuestion?.sectionId);
   const bank = String(rawQuestion?.bank || "main").trim().toLowerCase() || "main";
   const comboVariant = String(rawQuestion?.comboVariant || "").trim().toLowerCase();
+  const sitting = String(rawQuestion?.sitting || "").trim().toLowerCase();
   const yearValue = Number(rawQuestion?.year);
   const displayNumberValue = Number(rawQuestion?.displayNumber);
+  const rawCategory = String(rawQuestion?.category || "").trim();
+  const derivedSampleSet = bank === "gppqe" && Number.isFinite(yearValue)
+    ? `Sample ${String(yearValue).slice(-2)}${["december", "dec", "b"].includes(sitting) ? "B" : ""}`
+    : "";
+  const sampleSet = String(rawQuestion?.sampleSet || "").trim() || (/^sample\s+\d{2,4}[a-z]?$/i.test(rawCategory) ? rawCategory : derivedSampleSet);
   const drillTags = Array.isArray(rawQuestion?.drillTags)
     ? rawQuestion.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
     : [];
-  const normalizedCategory = String(rawQuestion?.category || "").trim() || normalizeMajorCategory(
-    rawQuestion?.category,
+  const normalizedCategory = (sampleSet ? "" : rawCategory) || normalizeMajorCategory(
+    sampleSet ? "" : rawCategory,
     [
       text,
       String(rawQuestion?.explanation || ""),
@@ -7485,6 +7498,7 @@ function normalizeQuestionForApi(rawQuestion) {
     text,
     question: text,
     category: normalizedCategory,
+    sampleSet: sampleSet || undefined,
     bank,
     type: String(rawQuestion?.type || "").trim().toLowerCase() || undefined,
     reviewStatus: normalizeQuestionReviewStatus(rawQuestion?.reviewStatus ?? rawQuestion?.status, "corrected"),
@@ -7493,6 +7507,7 @@ function normalizeQuestionForApi(rawQuestion) {
     caseBlock: String(rawQuestion?.caseBlock || "").trim() || undefined,
     statements: Array.isArray(rawQuestion?.statements) ? rawQuestion.statements : [],
     comboVariant: comboVariant || undefined,
+    sitting: sitting || undefined,
     year: Number.isFinite(yearValue) ? yearValue : undefined,
     displayNumber: Number.isFinite(displayNumberValue) ? displayNumberValue : undefined,
     options: Array.isArray(rawQuestion?.options) ? rawQuestion.options : [],
@@ -12953,6 +12968,7 @@ app.get(
     const category = String(req.query.category || "").trim();
     const bank = String(req.query.bank || "").trim().toLowerCase();
     const year = safeNumber(req.query.year);
+    const sitting = String(req.query.sitting || "").trim().toLowerCase();
     const idsRaw = String(req.query.ids || "").trim();
     const start = safeNumber(req.query.start);
     const limit = safeNumber(req.query.limit);
@@ -12967,6 +12983,10 @@ app.get(
 
     if (Number.isFinite(year)) {
       questions = questions.filter((q) => Number(q.year) === year);
+    }
+
+    if (sitting) {
+      questions = questions.filter((q) => String(q.sitting || "").trim().toLowerCase() === sitting);
     }
 
     if (category && category !== "all") {
@@ -15549,8 +15569,8 @@ const questions = (await readCollection("questions"))
     if (String(req.query?.summary || "") === "1") {
       res.json({
         total: questions.length,
-        questions: questions.map(({ id, text, question, type, comboVariant, category, year, caseId, reviewStatus, statements, options }) => ({
-          id, text, question, type, comboVariant, category, year, caseId, reviewStatus,
+        questions: questions.map(({ id, text, question, type, comboVariant, category, sampleSet, year, sitting, caseId, reviewStatus, statements, options }) => ({
+          id, text, question, type, comboVariant, category, sampleSet, year, sitting, caseId, reviewStatus,
           statementCount: Array.isArray(statements) ? statements.length : 0,
           optionCount: Array.isArray(options) ? options.length : 0,
         })),
@@ -15576,7 +15596,10 @@ app.post(
     const requestedId = String(req.body?.id || "").trim();
     const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
     const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
-    const year = Number(req.body?.year);
+    const parsedSampleSet = bank === "gppqe" ? parseGppqeSampleSet(req.body?.sampleSet || (typeof req.body?.year === "string" ? req.body.year : "")) : null;
+    const year = parsedSampleSet?.year ?? Number(req.body?.year);
+    const sitting = parsedSampleSet?.sitting ?? String(req.body?.sitting || "").trim().toLowerCase();
+    const sampleSet = parsedSampleSet?.sampleSet || String(req.body?.sampleSet || "").trim() || (bank === "gppqe" && Number.isFinite(year) ? `Sample ${String(year).slice(-2)}${["december", "dec", "b"].includes(sitting) ? "B" : ""}` : "");
     const displayNumber = Number(req.body?.displayNumber);
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionId = normalizeSlugValue(req.body?.sectionId);
@@ -15659,8 +15682,12 @@ app.post(
       });
       return;
     }
-    if (req.body?.year !== undefined && req.body?.year !== "" && !Number.isFinite(year)) {
+    if (!parsedSampleSet && req.body?.year !== undefined && req.body?.year !== "" && !Number.isFinite(year)) {
       res.status(400).json({ error: "year must be a valid number" });
+      return;
+    }
+    if (req.body?.sitting !== undefined && req.body?.sitting !== "" && !/^[a-z0-9_-]+$/.test(sitting)) {
+      res.status(400).json({ error: "sitting must contain only letters, numbers, underscores, or hyphens" });
       return;
     }
     if (
@@ -15697,6 +15724,8 @@ app.post(
       statements: statements.length ? statements : undefined,
       comboVariant: comboVariant || undefined,
       year: Number.isFinite(year) ? year : undefined,
+      sitting: sitting || undefined,
+      sampleSet: sampleSet || undefined,
       displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
       text,
       question: text,
@@ -15748,8 +15777,14 @@ app.put(
     const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
     const comboVariantProvided = req.body?.comboVariant !== undefined;
     const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
-    const yearProvided = req.body?.year !== undefined;
-    const year = Number(req.body?.year);
+    const requestedBank = req.body?.bank !== undefined ? String(req.body?.bank || "main").trim().toLowerCase() : "main";
+    const parsedSampleSet = requestedBank === "gppqe" ? parseGppqeSampleSet(req.body?.sampleSet || (typeof req.body?.year === "string" ? req.body.year : "")) : null;
+    const sampleSetProvided = req.body?.sampleSet !== undefined || parsedSampleSet !== null;
+    const yearProvided = req.body?.year !== undefined || parsedSampleSet !== null;
+    const year = parsedSampleSet?.year ?? Number(req.body?.year);
+    const sittingProvided = req.body?.sitting !== undefined || parsedSampleSet !== null;
+    const sitting = parsedSampleSet?.sitting ?? String(req.body?.sitting || "").trim().toLowerCase();
+    const sampleSet = parsedSampleSet?.sampleSet || String(req.body?.sampleSet || "").trim();
     const displayNumberProvided = req.body?.displayNumber !== undefined;
     const displayNumber = Number(req.body?.displayNumber);
     const optionsProvided = Array.isArray(req.body?.options);
@@ -15786,6 +15821,8 @@ app.put(
       res.status(404).json({ error: "Question not found" });
       return;
     }
+    const legacySampleSet = String(questions[idx]?.sampleSet || "").trim() || (/^sample\s+\d{2,4}[a-z]?$/i.test(String(questions[idx]?.category || "").trim()) ? String(questions[idx].category).trim() : "");
+    if (legacySampleSet && !questions[idx].sampleSet) questions[idx].sampleSet = legacySampleSet;
     if (idProvided) {
       if (!/^\d+$/.test(nextQuestionId)) {
         res.status(400).json({ error: "id must contain numbers only" });
@@ -15830,8 +15867,12 @@ app.put(
       });
       return;
     }
-    if (yearProvided && req.body?.year !== "" && !Number.isFinite(year)) {
+    if (!parsedSampleSet && yearProvided && req.body?.year !== "" && !Number.isFinite(year)) {
       res.status(400).json({ error: "year must be a valid number" });
+      return;
+    }
+    if (sittingProvided && req.body?.sitting !== "" && !/^[a-z0-9_-]+$/.test(sitting)) {
+      res.status(400).json({ error: "sitting must contain only letters, numbers, underscores, or hyphens" });
       return;
     }
     if (displayNumberProvided && req.body?.displayNumber !== "" && !Number.isFinite(displayNumber)) {
@@ -15921,6 +15962,14 @@ app.put(
     }
     if (yearProvided) {
       questions[idx].year = Number.isFinite(year) ? year : undefined;
+    }
+    if (sittingProvided) {
+      questions[idx].sitting = sitting || undefined;
+    }
+    if (sampleSetProvided) {
+      questions[idx].sampleSet = sampleSet || undefined;
+    } else if ((questions[idx].bank || bank) === "gppqe" && Number.isFinite(Number(questions[idx].year))) {
+      questions[idx].sampleSet = `Sample ${String(questions[idx].year).slice(-2)}${String(questions[idx].sitting || "").toLowerCase() === "december" ? "B" : ""}`;
     }
     if (displayNumberProvided) {
       questions[idx].displayNumber = Number.isFinite(displayNumber) ? displayNumber : undefined;

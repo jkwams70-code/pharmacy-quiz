@@ -331,16 +331,42 @@
       }
 
       .menu-premium-lock {
+        position: static;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         margin-left: 4px;
         width: auto;
         height: auto;
-        font-size: 0.72em;
+        font-size: 0;
+        font-weight: 800;
+        letter-spacing: 0.04em;
         line-height: 1;
-        opacity: 0.82;
+        color: #b7791f;
+        opacity: 0.46;
         transition: opacity 160ms ease;
+      }
+
+      .menu-modern-hub-tab {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding-right: 8px;
+        padding-left: 8px;
+      }
+      .menu-modern-hub-tab > .menu-premium-lock {
+        position: static;
+        margin-left: 0;
+        transform: none;
+      }
+      #quiz-menu .menu-modern-hub-tab.is-active > .menu-premium-lock {
+        opacity: 0.9;
+      }
+      #quiz-menu .menu-modern-hub-tab.is-active > .menu-premium-lock::after {
+        color: #ffe8a3;
       }
 
       .menu-premium-lock svg {
@@ -348,7 +374,14 @@
       }
 
       .menu-premium-lock:not(.menu-premium-lock-inline)::after {
-        content: "🔒";
+        content: "LOCKED";
+        font-size: 7px;
+      }
+
+      .menu-premium-lock.menu-premium-lock-inline::after {
+        content: "LOCKED";
+        font-size: 7px;
+        color: #b7791f;
       }
 
       .menu-premium-lock.is-unlocked {
@@ -2276,7 +2309,7 @@
                 <button id="menu-drills-tab" type="button" class="menu-modern-hub-tab is-active" data-menu-section="drills">Drills <span class="menu-premium-lock" data-premium-lock-feature="rapid" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 10h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm3-3v3h6V7a3 3 0 0 0-6 0Zm3 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg></span></button>
                 <button id="menu-law-tab" type="button" class="menu-modern-hub-tab" data-menu-section="law">Law <span class="menu-premium-lock" data-premium-lock-feature="law" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 10h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm3-3v3h6V7a3 3 0 0 0-6 0Zm3 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg></span></button>
                 <button id="menu-gppqe-tab" type="button" class="menu-modern-hub-tab" data-menu-section="gppqe">GPPQE <span class="menu-premium-lock" data-premium-lock-feature="gppqe" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M6 10h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Zm3-3v3h6V7a3 3 0 0 0-6 0Zm3 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path></svg></span></button>
-                <button id="menu-eoy-tab" type="button" class="menu-modern-hub-tab" data-menu-section="eoy">EOY</button>
+                <button id="menu-eoy-tab" type="button" class="menu-modern-hub-tab" data-menu-section="eoy">EOY <span class="menu-premium-lock" data-premium-lock-feature="eoy" aria-hidden="true">LOCKED</span></button>
               </div>
             </section>
 
@@ -6337,7 +6370,7 @@
     </script>
     <script src="/subscription-state.js?v=20260919-cache2"></script><script src="/ui-preferences.js?v=20261016-text-size1"></script><script type="module" src="/engine.js?v=20261019-community-rows2"></script>
     <script>
-      const APP_BUILD_ID = "20261016-profile-exact-v1";
+      const APP_BUILD_ID = "20261101-question-sample-calculator1";
       const APP_STANDALONE_BUILD = "20260616-community-group-chat-fix6";
       const APP_NATIVE_VERSION = "1.1.15";
       window.__AJIX_NATIVE_APP_VERSION__ = APP_NATIVE_VERSION;

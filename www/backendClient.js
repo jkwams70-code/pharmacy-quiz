@@ -862,6 +862,17 @@ export const backendClient = {
     });
   },
 
+  uploadAdminBroadcastStatus(payload = {}) {
+    return post("/admin/broadcast/status", {
+      text: String(payload?.text || ""),
+      caption: String(payload?.caption || ""),
+      background: String(payload?.background || "#2f80d0"),
+      style: payload?.style && typeof payload.style === "object" ? payload.style : {},
+      attachmentDataUrl: String(payload?.attachmentDataUrl || ""),
+      attachmentFileName: String(payload?.attachmentFileName || ""),
+    });
+  },
+
   markStatusViewed(statusId) {
     return post(`/community/statuses/${encodeURIComponent(statusId)}/view`);
   },

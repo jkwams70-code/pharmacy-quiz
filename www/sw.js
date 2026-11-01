@@ -1,12 +1,12 @@
-const CACHE_VERSION = "ajix-app-shell-v138-deployment-refresh1";
+const CACHE_VERSION = "ajix-app-shell-v156-question-sample-calculator1";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-"/engine.js?v=20261016-profile-exact2",
-  "/backendClient.js?v=20260913-entitlement-live1",
+"/engine.js?v=20261031-admin-status-composer3",
+  "/backendClient.js?v=20261031-admin-status-composer2",
   "/offlineStore.js?v=20260907-idb-recovery-v1",
   "/subscription-state.js?v=20260919-cache2",
   "/subscription-route-lock.js?v=20261014-freeextras1",

@@ -36,3 +36,19 @@
 
 
 
+
+(() => {
+  const applySampleSetField = () => {
+    const field = document.getElementById("gppqeYearField");
+    const input = document.getElementById("fYear");
+    if (!field || !input) return;
+    const label = field.querySelector("label");
+    if (label) label.textContent = "GPPQE sample set";
+    input.type = "text";
+    input.removeAttribute("min");
+    input.removeAttribute("max");
+    input.placeholder = "e.g. 25B";
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applySampleSetField, { once: true });
+  else applySampleSetField();
+})();

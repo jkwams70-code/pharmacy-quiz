@@ -1,7 +1,14 @@
 (function () {
   "use strict";
 
-  const apiBase = String(localStorage.getItem("quizApiBase") || "/api").replace(/\/+$/, "");
+  const storedBase = String(localStorage.getItem("quizApiBase") || "").trim();
+  const isLocalHost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const apiBase = String(
+    storedBase ||
+      (isLocalHost
+        ? (location.port === "4100" ? location.origin + "/api" : "http://localhost:4000/api")
+        : "https://api.ajixpharmacy.online/api")
+  ).replace(/\/+$/, "");
 
   fetch(apiBase + "/health", { cache: "no-store" })
     .then(function (response) {

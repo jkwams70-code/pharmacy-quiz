@@ -224,6 +224,110 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendPath = path.join(__dirname, "..", "..", "www");
 const newsMediaPath = path.join(__dirname, "..", "data", "news-media");
+const caseRegistryPath = path.join(__dirname, "..", "data", "cases.json");
+let caseRegistryCache;
+
+function readCaseRegistrySync() {
+  if (Array.isArray(caseRegistryCache)) return caseRegistryCache;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(caseRegistryPath, "utf8"));
+    caseRegistryCache = Array.isArray(parsed?.cases) ? parsed.cases : [];
+    return caseRegistryCache;
+  } catch {
+    caseRegistryCache = [];
+    return caseRegistryCache;
+  }
+}
+
+function normalizeCaseId(value) {
+  const match = String(value || "").trim().match(/^case\s*(\d{1,3})$/i);
+  if (!match) return "";
+  const number = Number(match[1]);
+  return Number.isInteger(number) && number > 0 ? `Case ${String(number).padStart(3, "0")}` : "";
+}
+
+function nextCaseId(cases = readCaseRegistrySync()) {
+  return `Case ${String(cases.length + 1).padStart(3, "0")}`;
+}
+
+function writeCaseRegistry(cases) {
+  caseRegistryCache = cases;
+  fs.writeFileSync(caseRegistryPath, JSON.stringify({ version: 1, cases }, null, 2) + "\n", "utf8");
+}
+
+function resolveCaseFields(rawCaseId, rawCaseBlock, { allowCreate = true, allowContextUpdate = false } = {}) {
+  const caseIdInput = String(rawCaseId || "").trim();
+  const caseBlockInput = String(rawCaseBlock || "").trim();
+  if (!caseIdInput && !caseBlockInput) return { caseId: undefined, caseBlock: undefined };
+  const caseId = normalizeCaseId(caseIdInput);
+  if (!caseId) return { error: "caseId must use the format Case 001" };
+  const cases = readCaseRegistrySync();
+  const existing = cases.find((item) => normalizeCaseId(item.id) === caseId);
+  if (existing) {
+    const canonicalBlock = String(existing.context || existing.caseBlock || "").trim();
+    if (caseBlockInput && caseBlockInput.replace(/\s+/g, " ") !== canonicalBlock.replace(/\s+/g, " ")) {
+      if (!allowContextUpdate) {
+        return { error: `${caseId} is already assigned to a different case context` };
+      }
+      return { caseId, caseBlock: caseBlockInput, updateExisting: true };
+    }
+    return { caseId, caseBlock: canonicalBlock };
+  }
+  const expected = nextCaseId(cases);
+  if (!allowCreate || caseId !== expected) {
+    return { error: `The next new case is ${expected}; future case IDs cannot be skipped` };
+  }
+  if (!caseBlockInput) return { error: `${caseId} needs a case context` };
+  return { caseId, caseBlock: caseBlockInput, isNew: true };
+}
+
+function registerCase(resolvedCase) {
+  if (!resolvedCase?.isNew) return;
+  const cases = readCaseRegistrySync();
+  if (cases.some((item) => normalizeCaseId(item.id) === resolvedCase.caseId)) return;
+  if (nextCaseId(cases) !== resolvedCase.caseId) throw new Error(`The next new case is ${nextCaseId(cases)}`);
+  cases.push({ id: resolvedCase.caseId, context: resolvedCase.caseBlock, questionIds: [] });
+  writeCaseRegistry(cases);
+}
+
+function removeUnusedCase(caseId) {
+  const normalized = normalizeCaseId(caseId);
+  if (!normalized) return;
+  const cases = readCaseRegistrySync();
+  const index = cases.findIndex((item) => normalizeCaseId(item.id) === normalized);
+  if (index < 0 || (cases[index].questionIds || []).length > 0) return;
+  cases.splice(index, 1);
+  writeCaseRegistry(cases);
+}
+
+function syncCaseQuestionLink(questionId, previousCaseId, nextCaseIdValue) {
+  const cases = readCaseRegistrySync();
+  const previous = normalizeCaseId(previousCaseId);
+  const next = normalizeCaseId(nextCaseIdValue);
+  for (const item of cases) {
+    item.questionIds = Array.isArray(item.questionIds)
+      ? item.questionIds.filter((id) => String(id) !== String(questionId))
+      : [];
+  }
+  const target = cases.find((item) => normalizeCaseId(item.id) === next);
+  if (target) target.questionIds = [...new Set([...target.questionIds, questionId])];
+  if (previous || next) writeCaseRegistry(cases);
+}
+
+function updateCaseContext(caseId, context, questions = []) {
+  const normalized = normalizeCaseId(caseId);
+  const nextContext = String(context || "").trim();
+  if (!normalized || !nextContext) return;
+  const cases = readCaseRegistrySync();
+  const target = cases.find((item) => normalizeCaseId(item.id) === normalized);
+  if (!target) throw new Error(`${normalized} was not found in the case registry`);
+  target.context = nextContext;
+  target.caseBlock = nextContext;
+  for (const question of questions) {
+    if (normalizeCaseId(question.caseId) === normalized) question.caseBlock = nextContext;
+  }
+  writeCaseRegistry(cases);
+}
 fs.mkdirSync(newsMediaPath, { recursive: true });
 const logPath = path.join(__dirname, "..", config.logDir);
 fs.mkdirSync(logPath, { recursive: true });
@@ -7457,8 +7561,23 @@ function parseGppqeSampleSet(value) {
   const match = String(value || "").trim().match(/^(?:sample\s*)?(\d{2}|\d{4})(b)?$/i);
   if (!match) return null;
   const year = Number(match[1].length === 2 ? `20${match[1]}` : match[1]);
-  const isDecember = Boolean(match[2]);
-  return { year, sitting: isDecember ? "december" : "", sampleSet: `Sample ${String(year).slice(-2)}${isDecember ? "B" : ""}` };
+  const setLetter = match[2] ? match[2].toUpperCase() : "";
+  return { year, setLetter, sampleSet: `Sample ${String(year).slice(-2)}${setLetter}` };
+}
+
+function normalizeGppqeSetLetter(value, fallback = "") {
+  const letter = String(value || fallback || "").trim().toUpperCase();
+  return /^[A-Z]$/.test(letter) ? letter : "";
+}
+
+function normalizeGppqeSitting(rawQuestion, year, rawSitting, legacySetLetter, legacySampleSet) {
+  const explicit = String(rawSitting || "").trim().toLowerCase();
+  if (explicit === "main" || explicit === "resit") return explicit;
+  if (explicit === "december") return "main";
+  if (legacySetLetter === "B" || /B$/i.test(String(legacySampleSet || ""))) return "resit";
+  // Legacy records without a sitting are the resit set for 2025.
+  if (Number(year) === 2025) return "resit";
+  return "";
 }
 
 function normalizeQuestionForApi(rawQuestion) {
@@ -7471,10 +7590,21 @@ function normalizeQuestionForApi(rawQuestion) {
   const yearValue = Number(rawQuestion?.year);
   const displayNumberValue = Number(rawQuestion?.displayNumber);
   const rawCategory = String(rawQuestion?.category || "").trim();
+  const legacySampleSet = String(rawQuestion?.sampleSet || rawCategory || "").trim();
+  const parsedLegacySet = parseGppqeSampleSet(legacySampleSet);
+  const legacySetLetter = normalizeGppqeSetLetter(
+    rawQuestion?.setLetter,
+    parsedLegacySet?.setLetter || (sitting === "december" ? "B" : ""),
+  );
+  const canonicalSitting = bank === "gppqe"
+    ? normalizeGppqeSitting(rawQuestion, yearValue, sitting, legacySetLetter, legacySampleSet)
+    : sitting;
   const derivedSampleSet = bank === "gppqe" && Number.isFinite(yearValue)
-    ? `Sample ${String(yearValue).slice(-2)}${["december", "dec", "b"].includes(sitting) ? "B" : ""}`
+    ? `Sample ${String(yearValue).slice(-2)}${canonicalSitting === "resit" ? "B" : ""}`
     : "";
-  const sampleSet = String(rawQuestion?.sampleSet || "").trim() || (/^sample\s+\d{2,4}[a-z]?$/i.test(rawCategory) ? rawCategory : derivedSampleSet);
+  const sampleSet = bank === "gppqe" && derivedSampleSet
+    ? derivedSampleSet
+    : String(rawQuestion?.sampleSet || "").trim() || (/^sample\s+\d{2,4}[a-z]?$/i.test(rawCategory) ? rawCategory : derivedSampleSet);
   const drillTags = Array.isArray(rawQuestion?.drillTags)
     ? rawQuestion.drillTags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
     : [];
@@ -7491,6 +7621,7 @@ function normalizeQuestionForApi(rawQuestion) {
       .filter(Boolean)
       .join(" "),
   );
+  const resolvedCase = resolveCaseFields(rawQuestion?.caseId, rawQuestion?.caseBlock, { allowCreate: false });
 
   return {
     ...rawQuestion,
@@ -7499,15 +7630,16 @@ function normalizeQuestionForApi(rawQuestion) {
     question: text,
     category: normalizedCategory,
     sampleSet: sampleSet || undefined,
+    setLetter: undefined,
     bank,
     type: String(rawQuestion?.type || "").trim().toLowerCase() || undefined,
     reviewStatus: normalizeQuestionReviewStatus(rawQuestion?.reviewStatus ?? rawQuestion?.status, "corrected"),
     reviewNotes: String(rawQuestion?.reviewNotes ?? rawQuestion?.notes ?? ""),
-    caseId: String(rawQuestion?.caseId || "").trim() || undefined,
-    caseBlock: String(rawQuestion?.caseBlock || "").trim() || undefined,
+    caseId: resolvedCase.caseId || undefined,
+    caseBlock: resolvedCase.caseBlock || undefined,
     statements: Array.isArray(rawQuestion?.statements) ? rawQuestion.statements : [],
     comboVariant: comboVariant || undefined,
-    sitting: sitting || undefined,
+    sitting: canonicalSitting || undefined,
     year: Number.isFinite(yearValue) ? yearValue : undefined,
     displayNumber: Number.isFinite(displayNumberValue) ? displayNumberValue : undefined,
     options: Array.isArray(rawQuestion?.options) ? rawQuestion.options : [],
@@ -15541,6 +15673,18 @@ app.post(
 
 // Admin: Get all questions
 app.get(
+  "/api/admin/cases",
+  asyncHandler(async (req, res) => {
+    if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const cases = readCaseRegistrySync();
+    res.json({ total: cases.length, nextCaseId: nextCaseId(cases), cases });
+  }),
+);
+
+app.get(
   "/api/admin/questions",
   asyncHandler(async (req, res) => {
     if (!config.adminKey || req.headers["x-admin-key"] !== config.adminKey) {
@@ -15569,8 +15713,8 @@ const questions = (await readCollection("questions"))
     if (String(req.query?.summary || "") === "1") {
       res.json({
         total: questions.length,
-        questions: questions.map(({ id, text, question, type, comboVariant, category, sampleSet, year, sitting, caseId, reviewStatus, statements, options }) => ({
-          id, text, question, type, comboVariant, category, sampleSet, year, sitting, caseId, reviewStatus,
+        questions: questions.map(({ id, text, question, type, comboVariant, category, sampleSet, setLetter, year, sitting, caseId, reviewStatus, statements, options }) => ({
+          id, text, question, type, comboVariant, category, sampleSet, setLetter, year, sitting, caseId, reviewStatus,
           statementCount: Array.isArray(statements) ? statements.length : 0,
           optionCount: Array.isArray(options) ? options.length : 0,
         })),
@@ -15596,10 +15740,16 @@ app.post(
     const requestedId = String(req.body?.id || "").trim();
     const bank = String(req.body?.bank || "main").trim().toLowerCase() || "main";
     const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
-    const parsedSampleSet = bank === "gppqe" ? parseGppqeSampleSet(req.body?.sampleSet || (typeof req.body?.year === "string" ? req.body.year : "")) : null;
+    const parsedSampleSet = bank === "gppqe" ? parseGppqeSampleSet(req.body?.sampleSet || "") : null;
     const year = parsedSampleSet?.year ?? Number(req.body?.year);
-    const sitting = parsedSampleSet?.sitting ?? String(req.body?.sitting || "").trim().toLowerCase();
-    const sampleSet = parsedSampleSet?.sampleSet || String(req.body?.sampleSet || "").trim() || (bank === "gppqe" && Number.isFinite(year) ? `Sample ${String(year).slice(-2)}${["december", "dec", "b"].includes(sitting) ? "B" : ""}` : "");
+    const sitting = String(req.body?.sitting || "").trim().toLowerCase();
+    const setLetter = normalizeGppqeSetLetter(req.body?.setLetter, parsedSampleSet?.setLetter || (sitting === "december" ? "B" : ""));
+    const canonicalSitting = bank === "gppqe"
+      ? normalizeGppqeSitting(req.body, year, sitting, setLetter, req.body?.sampleSet || rawCategory)
+      : sitting;
+    const sampleSet = bank === "gppqe" && Number.isFinite(year)
+      ? `Sample ${String(year).slice(-2)}${canonicalSitting === "resit" ? "B" : ""}`
+      : "";
     const displayNumber = Number(req.body?.displayNumber);
     const topicSlug = normalizeSlugValue(req.body?.topicSlug);
     const sectionId = normalizeSlugValue(req.body?.sectionId);
@@ -15690,6 +15840,10 @@ app.post(
       res.status(400).json({ error: "sitting must contain only letters, numbers, underscores, or hyphens" });
       return;
     }
+    if (req.body?.setLetter !== undefined && req.body?.setLetter !== "" && !/^[A-Za-z]$/.test(String(req.body.setLetter))) {
+      res.status(400).json({ error: "setLetter must be a single letter" });
+      return;
+    }
     if (
       req.body?.displayNumber !== undefined &&
       req.body?.displayNumber !== "" &&
@@ -15712,6 +15866,8 @@ app.post(
     if (!["single", "match", "combo"].includes(questionType)) { res.status(400).json({ error: "type must be single, match, or combo" }); return; }
     if (requestedId && !/^\d+$/.test(requestedId)) { res.status(400).json({ error: "id must contain numbers only" }); return; }
     if (requestedId && questions.some((question) => String(question.id) === requestedId)) { res.status(409).json({ error: "A question with that ID already exists" }); return; }
+    const resolvedCase = resolveCaseFields(caseId, caseBlock);
+    if (resolvedCase.error) { res.status(400).json({ error: resolvedCase.error }); return; }
     const newId = requestedId || (questions.length > 0 ? Math.max(...questions.map((q) => Number(q.id))) + 1 : 1);
 
     const newQuestion = {
@@ -15719,13 +15875,12 @@ app.post(
       bank,
       type: questionType,
       reviewStatus,
-      caseId: caseId || undefined,
-      caseBlock: caseBlock || undefined,
+      caseId: resolvedCase.caseId,
+      caseBlock: resolvedCase.caseBlock,
       statements: statements.length ? statements : undefined,
       comboVariant: comboVariant || undefined,
       year: Number.isFinite(year) ? year : undefined,
-      sitting: sitting || undefined,
-      sampleSet: sampleSet || undefined,
+       sitting: canonicalSitting || undefined,
       displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
       text,
       question: text,
@@ -15749,7 +15904,14 @@ app.post(
     newQuestion.rotation = rotation || inferQuestionRotation(newQuestion) || undefined;
 
     questions.push(newQuestion);
-    await writeCollection("questions", questions);
+    try {
+      registerCase(resolvedCase);
+      await writeCollection("questions", questions);
+      syncCaseQuestionLink(newId, "", resolvedCase.caseId);
+    } catch (error) {
+      removeUnusedCase(resolvedCase.caseId);
+      throw error;
+    }
 
     res.status(201).json({ ok: true, question: newQuestion });
   }),
@@ -15778,13 +15940,16 @@ app.put(
     const comboVariantProvided = req.body?.comboVariant !== undefined;
     const comboVariant = String(req.body?.comboVariant || "").trim().toLowerCase();
     const requestedBank = req.body?.bank !== undefined ? String(req.body?.bank || "main").trim().toLowerCase() : "main";
-    const parsedSampleSet = requestedBank === "gppqe" ? parseGppqeSampleSet(req.body?.sampleSet || (typeof req.body?.year === "string" ? req.body.year : "")) : null;
-    const sampleSetProvided = req.body?.sampleSet !== undefined || parsedSampleSet !== null;
+    const parsedSampleSet = requestedBank === "gppqe" ? parseGppqeSampleSet(req.body?.sampleSet || "") : null;
+    const setLetterProvided = req.body?.setLetter !== undefined || parsedSampleSet !== null;
     const yearProvided = req.body?.year !== undefined || parsedSampleSet !== null;
     const year = parsedSampleSet?.year ?? Number(req.body?.year);
     const sittingProvided = req.body?.sitting !== undefined || parsedSampleSet !== null;
     const sitting = parsedSampleSet?.sitting ?? String(req.body?.sitting || "").trim().toLowerCase();
-    const sampleSet = parsedSampleSet?.sampleSet || String(req.body?.sampleSet || "").trim();
+    const setLetter = normalizeGppqeSetLetter(req.body?.setLetter, parsedSampleSet?.setLetter || (sitting === "december" ? "B" : ""));
+    const canonicalSitting = requestedBank === "gppqe"
+      ? normalizeGppqeSitting(req.body, year, sitting, setLetter, req.body?.sampleSet || rawCategory)
+      : sitting;
     const displayNumberProvided = req.body?.displayNumber !== undefined;
     const displayNumber = Number(req.body?.displayNumber);
     const optionsProvided = Array.isArray(req.body?.options);
@@ -15821,8 +15986,11 @@ app.put(
       res.status(404).json({ error: "Question not found" });
       return;
     }
-    const legacySampleSet = String(questions[idx]?.sampleSet || "").trim() || (/^sample\s+\d{2,4}[a-z]?$/i.test(String(questions[idx]?.category || "").trim()) ? String(questions[idx].category).trim() : "");
-    if (legacySampleSet && !questions[idx].sampleSet) questions[idx].sampleSet = legacySampleSet;
+    const previousCaseId = String(questions[idx].caseId || "").trim();
+    const requestedCaseId = caseIdProvided ? String(req.body?.caseId || "").trim() : previousCaseId;
+    const requestedCaseBlock = caseBlockProvided ? String(req.body?.caseBlock || "").trim() : String(questions[idx].caseBlock || "").trim();
+    const resolvedCase = resolveCaseFields(requestedCaseId, requestedCaseBlock, { allowContextUpdate: caseBlockProvided });
+    if (resolvedCase.error) { res.status(400).json({ error: resolvedCase.error }); return; }
     if (idProvided) {
       if (!/^\d+$/.test(nextQuestionId)) {
         res.status(400).json({ error: "id must contain numbers only" });
@@ -15873,6 +16041,10 @@ app.put(
     }
     if (sittingProvided && req.body?.sitting !== "" && !/^[a-z0-9_-]+$/.test(sitting)) {
       res.status(400).json({ error: "sitting must contain only letters, numbers, underscores, or hyphens" });
+      return;
+    }
+    if (req.body?.setLetter !== undefined && req.body?.setLetter !== "" && !/^[A-Za-z]$/.test(String(req.body.setLetter))) {
+      res.status(400).json({ error: "setLetter must be a single letter" });
       return;
     }
     if (displayNumberProvided && req.body?.displayNumber !== "" && !Number.isFinite(displayNumber)) {
@@ -15952,8 +16124,10 @@ app.put(
       questions[idx].explanation = explanation;
     }
     if (memoryTrickProvided) questions[idx].memoryTrick = memoryTrick || undefined;
-    if (caseIdProvided) questions[idx].caseId = String(req.body?.caseId || "").trim() || undefined;
-    if (caseBlockProvided) questions[idx].caseBlock = String(req.body?.caseBlock || "").trim() || undefined;
+    if (caseIdProvided || caseBlockProvided) {
+      questions[idx].caseId = resolvedCase.caseId;
+      questions[idx].caseBlock = resolvedCase.caseBlock;
+    }
     if (statementsProvided) questions[idx].statements = statements || [];
     if (reviewStatusProvided) questions[idx].reviewStatus = reviewStatus;
     if (reviewNotesProvided) questions[idx].reviewNotes = reviewNotes;
@@ -15964,12 +16138,11 @@ app.put(
       questions[idx].year = Number.isFinite(year) ? year : undefined;
     }
     if (sittingProvided) {
-      questions[idx].sitting = sitting || undefined;
+      questions[idx].sitting = canonicalSitting || undefined;
+      delete questions[idx].setLetter;
     }
-    if (sampleSetProvided) {
-      questions[idx].sampleSet = sampleSet || undefined;
-    } else if ((questions[idx].bank || bank) === "gppqe" && Number.isFinite(Number(questions[idx].year))) {
-      questions[idx].sampleSet = `Sample ${String(questions[idx].year).slice(-2)}${String(questions[idx].sitting || "").toLowerCase() === "december" ? "B" : ""}`;
+    if (setLetterProvided) {
+      delete questions[idx].setLetter;
     }
     if (displayNumberProvided) {
       questions[idx].displayNumber = Number.isFinite(displayNumber) ? displayNumber : undefined;
@@ -15988,7 +16161,17 @@ app.put(
       inferQuestionRotation(questions[idx]) ||
       undefined;
 
-    await writeCollection("questions", questions);
+    try {
+      registerCase(resolvedCase);
+      if (resolvedCase.updateExisting) {
+        updateCaseContext(resolvedCase.caseId, resolvedCase.caseBlock, questions);
+      }
+      await writeCollection("questions", questions);
+      syncCaseQuestionLink(questions[idx].id, previousCaseId, resolvedCase.caseId);
+    } catch (error) {
+      removeUnusedCase(resolvedCase.caseId);
+      throw error;
+    }
     res.json({ ok: true, question: questions[idx] });
   }),
 );

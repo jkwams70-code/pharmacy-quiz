@@ -217,6 +217,8 @@ function buildQuestionSignature(question = {}) {
     id: Number(question?.id),
     bank: String(question?.bank || "main").trim().toLowerCase() || "main",
     comboVariant: String(question?.comboVariant || "").trim().toLowerCase() || "",
+    setLetter: String(question?.setLetter || "").trim().toUpperCase() || "",
+    sitting: String(question?.sitting || "").trim().toLowerCase() || "",
     year: Number(question?.year) || null,
     displayNumber: Number(question?.displayNumber) || null,
     type: question?.type || "single",
@@ -251,6 +253,8 @@ function normalizeQuestion(q) {
   const explanationText = String(q.explanation || "");
   const bank = String(q.bank || "main").trim().toLowerCase() || "main";
   const comboVariant = String(q.comboVariant || "").trim().toLowerCase();
+  const setLetter = String(q.setLetter || "").trim().toUpperCase();
+  const sitting = String(q.sitting || "").trim().toLowerCase();
   const year = Number(q.year);
   const displayNumber = Number(q.displayNumber);
   const answer = Number(q.answer);
@@ -259,6 +263,8 @@ function normalizeQuestion(q) {
     id: Number(q.id),
     bank,
     comboVariant: comboVariant || undefined,
+    setLetter: /^[A-Z]$/.test(setLetter) ? setLetter : undefined,
+    sitting: ["main", "resit"].includes(sitting) ? sitting : undefined,
     year: Number.isFinite(year) ? year : undefined,
     displayNumber: Number.isFinite(displayNumber) ? displayNumber : undefined,
     type: q.type || "single",

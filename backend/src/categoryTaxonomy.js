@@ -282,10 +282,13 @@ export function normalizeMajorCategory(category, context = "") {
       "adverse drug",
     ])
   ) {
-    return "Pharmacy Law & Ethics";
+    return "Pharmacy Practice";
   }
 
-  return "Pharmacy Law & Ethics";
+  // Do not silently classify an unrecognised question as law. The admin
+  // selection remains authoritative, while imports without a usable topic
+  // should land in the broader practice bucket for review.
+  return "Pharmacy Practice";
 }
 
 export function isMajorCategory(value) {

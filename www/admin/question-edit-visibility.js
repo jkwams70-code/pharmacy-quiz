@@ -9,8 +9,34 @@
     el.style.height=el.scrollHeight+'px';
   }
   function bindAutosize(){
+    document.querySelectorAll('.ajx-opt-row input[data-opt]').forEach(function(input){
+      const area=document.createElement('textarea');
+      area.className='ajx-textarea ajx-option-textarea';
+      area.style.minHeight='42px';
+      area.style.resize='none';
+      area.style.overflowY='hidden';
+      area.dataset.opt=input.dataset.opt;
+      area.value=input.value;
+      area.readOnly=input.readOnly;
+      input.replaceWith(area);
+    });
     document.querySelectorAll('.ajx-editor-col textarea').forEach(function(el){
-      el.oninput=function(){ autoResize(el); };
+      el.oninput=function(){
+        autoResize(el);
+        if(el.matches('[data-opt]')){
+          const correct=document.getElementById('fCorrect'),selected=correct?.value;
+          if(correct){
+            correct.innerHTML='';
+            document.querySelectorAll('#optList [data-opt]').forEach(function(option,index){
+              const item=document.createElement('option');
+              item.value=String(index);
+              item.textContent=String.fromCharCode(65+index)+(option.value.trim()?'. '+option.value.trim():'');
+              correct.appendChild(item);
+            });
+            if([...correct.options].some(option=>option.value===selected)) correct.value=selected;
+          }
+        }
+      };
       autoResize(el);
     });
   }
@@ -21,10 +47,10 @@
   }
   function init(){const type=document.getElementById('fType'),variant=document.getElementById('fComboVariant'),caseToggle=document.getElementById('fCaseToggle'),caseCard=document.getElementById('caseContextCard'),gppqe=document.getElementById('fGppqe'),year=document.getElementById('gppqeYearField'),add=document.getElementById('btnAddFourth');if(!type)return;const sync=()=>{caseCard.style.display=caseToggle.checked?'':'none';year.hidden=!gppqe.checked;render()};type.addEventListener('change',()=>{extraStatement=false;sync()});variant.addEventListener('change',sync);caseToggle.addEventListener('change',sync);gppqe.addEventListener('change',sync);add.addEventListener('click',()=>{extraStatement=!extraStatement;render()});const editor=document.querySelector('.ajx-editor-col');if(editor&&window.MutationObserver){new MutationObserver(bindAutosize).observe(editor,{childList:true,subtree:true})}sync();bindAutosize();window.addEventListener('load',bindAutosize);for(let i=1;i<=8;i++)window.setTimeout(bindAutosize,i*250);window.setTimeout(setupDraft,500)}
   const draftKey=()=>{const p=new URLSearchParams(location.search);return 'ajix-question-draft:'+ (p.get('id')||'new')};
-  const draftFields=['fId','fCategory','fType','fComboVariant','fYear','fCaseId','fCase','fText','fExplain','fNotes','fCorrect'];
-  function collectDraft(){const d={savedAt:Date.now(),fields:{},caseChecked:!!document.getElementById('fCaseToggle')?.checked,gppqeChecked:!!document.getElementById('fGppqe')?.checked,statements:[...document.querySelectorAll('[data-stmt]')].map(x=>x.value),options:[...document.querySelectorAll('[data-opt]')].map(x=>x.value)};draftFields.forEach(id=>{const e=document.getElementById(id);if(e)d.fields[id]=e.value});return d}
-  function hasDraftContent(d){const f=d.fields||{};return ['fCategory','fYear','fCaseId','fCase','fText','fExplain','fNotes'].some(k=>String(f[k]||'').trim()!=='')||String(f.fType||'single')!=='single'||d.caseChecked||d.gppqeChecked||d.statements.some(Boolean)||d.options.some(Boolean)}
-  function restoreDraft(d){const type=document.getElementById('fType');if(type&&d.fields.fType){type.value=d.fields.fType;type.dispatchEvent(new Event('change'))}setTimeout(()=>{draftFields.forEach(id=>{const e=document.getElementById(id);if(e&&d.fields[id]!=null)e.value=d.fields[id]});const c=document.getElementById('fCaseToggle'),g=document.getElementById('fGppqe');if(c){c.checked=!!d.caseChecked;c.dispatchEvent(new Event('change'))}if(g){g.checked=!!d.gppqeChecked;g.dispatchEvent(new Event('change'))}if(d.statements.length===4&&document.getElementById('btnAddFourth')&&!document.getElementById('btnAddFourth').classList.contains('is-remove'))document.getElementById('btnAddFourth').click();setTimeout(()=>{document.querySelectorAll('[data-stmt]').forEach((e,i)=>{if(d.statements[i]!=null)e.value=d.statements[i]});document.querySelectorAll('[data-opt]').forEach((e,i)=>{if(d.options[i]!=null&&!e.readOnly)e.value=d.options[i]});bindAutosize()},50)},80)}
+  const draftFields=['fId','fCategory','fType','fComboVariant','fYear','fSetLetterB','fCaseId','fCase','fText','fExplain','fNotes','fCorrect'];
+  function collectDraft(){const d={savedAt:Date.now(),fields:{},caseChecked:!!document.getElementById('fCaseToggle')?.checked,gppqeChecked:!!document.getElementById('fGppqe')?.checked,setLetterB:!!document.getElementById('fSetLetterB')?.checked,statements:[...document.querySelectorAll('[data-stmt]')].map(x=>x.value),options:[...document.querySelectorAll('[data-opt]')].map(x=>x.value)};draftFields.forEach(id=>{const e=document.getElementById(id);if(e)d.fields[id]=e.value});return d}
+  function hasDraftContent(d){const f=d.fields||{};return ['fCategory','fYear','fCaseId','fCase','fText','fExplain','fNotes'].some(k=>String(f[k]||'').trim()!=='')||String(f.fType||'single')!=='single'||d.caseChecked||d.gppqeChecked||d.setLetterB||d.statements.some(Boolean)||d.options.some(Boolean)}
+  function restoreDraft(d){const type=document.getElementById('fType');if(type&&d.fields.fType){type.value=d.fields.fType;type.dispatchEvent(new Event('change'))}setTimeout(()=>{draftFields.forEach(id=>{const e=document.getElementById(id);if(e&&d.fields[id]!=null)e.value=d.fields[id]});const c=document.getElementById('fCaseToggle'),g=document.getElementById('fGppqe'),b=document.getElementById('fSetLetterB');if(c){c.checked=!!d.caseChecked;c.dispatchEvent(new Event('change'))}if(g){g.checked=!!d.gppqeChecked;g.dispatchEvent(new Event('change'))}if(b)b.checked=!!d.setLetterB;if(d.statements.length===4&&document.getElementById('btnAddFourth')&&!document.getElementById('btnAddFourth').classList.contains('is-remove'))document.getElementById('btnAddFourth').click();setTimeout(()=>{document.querySelectorAll('[data-stmt]').forEach((e,i)=>{if(d.statements[i]!=null)e.value=d.statements[i]});document.querySelectorAll('[data-opt]').forEach((e,i)=>{if(d.options[i]!=null&&!e.readOnly)e.value=d.options[i]});bindAutosize()},50)},80)}
   function showDraftPrompt(d){if(document.getElementById('ajxDraftOverlay'))return;const o=document.createElement('div');o.id='ajxDraftOverlay';o.className='ajx-draft-overlay';o.innerHTML='<div class="ajx-draft-modal" role="dialog" aria-modal="true"><h3>Recover unfinished draft?</h3><p>An unfinished version of this question was saved on this device.</p><div class="ajx-draft-actions"><button type="button" class="ajx-btn ghost" data-draft-discard>Discard draft</button><button type="button" class="ajx-btn primary" data-draft-recover>Recover draft</button></div></div>';(document.querySelector('.ajx')||document.body).appendChild(o);o.querySelector('[data-draft-recover]').onclick=()=>{restoreDraft(d);localStorage.removeItem(draftKey());o.remove()};o.querySelector('[data-draft-discard]').onclick=()=>{localStorage.removeItem(draftKey());o.remove()}}
   let draftSetup=false;function setupDraft(){if(draftSetup)return;draftSetup=true;let timer,skip=false;const write=()=>{const d=collectDraft();if(hasDraftContent(d))localStorage.setItem(draftKey(),JSON.stringify(d))};const save=()=>{clearTimeout(timer);timer=setTimeout(write,700)};document.addEventListener('input',e=>{if(e.target.closest('.ajx-editor-col,.ajx-details-card'))save()});document.addEventListener('change',e=>{if(e.target.closest('.ajx-editor-col,.ajx-details-card'))save()});document.addEventListener('click',e=>{const link=e.target.closest('a[href]');if(link&&link.closest('.ajx-topnav,.ajx-footer'))write()});['btnSave','btnCorrect','btnQuarantine'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>{skip=true;clearTimeout(timer);localStorage.removeItem(draftKey())}));window.addEventListener('pagehide',()=>{if(!skip)write()});let raw=null;try{raw=JSON.parse(localStorage.getItem(draftKey())||'null')}catch{}if(raw&&hasDraftContent(raw))showDraftPrompt(raw)}
   function confirmAction(status,action){if(document.getElementById('ajxConfirmOverlay'))return;const o=document.createElement('div');o.id='ajxConfirmOverlay';o.className='ajx-draft-overlay';const word=status==='corrected'?'Correct':'Quarantine';o.innerHTML='<div class="ajx-draft-modal ajx-confirm-modal" role="dialog" aria-modal="true"><h3>'+word+' question?</h3><p>'+(status==='corrected'?'This will publish the question to the Question Bank and user feed.':'This will remove the question from the user feed and place it in Quarantine.')+'</p><div class="ajx-draft-actions"><button type="button" class="ajx-btn ghost" data-confirm-cancel>Cancel</button><button type="button" class="ajx-btn '+(status==='corrected'?'primary':'red')+'" data-confirm-ok>'+word+'</button></div></div>';(document.querySelector('.ajx')||document.body).appendChild(o);o.querySelector('[data-confirm-cancel]').onclick=()=>o.remove();o.querySelector('[data-confirm-ok]').onclick=()=>{o.remove();action()}}
@@ -34,21 +60,44 @@
 })();
 
 
+(()=>{const apiBase=()=>String(localStorage.getItem('quizApiBase')||(location.hostname==='localhost'||location.hostname==='127.0.0.1'?(location.port==='4100'?location.origin+'/api':'http://localhost:4000/api'):'https://api.ajixpharmacy.online/api')).replace(/\/+$/,'');let cases=[],loaded=false;const idOf=v=>{const m=String(v||'').trim().match(/^case\s*(\d{1,3})$/i);return m?`Case ${String(Number(m[1])).padStart(3,'0')}`:''};const load=async()=>{try{const r=await fetch(`${apiBase()}/admin/cases`,{headers:{'x-admin-key':localStorage.getItem('adminKey')||''},cache:'no-store'});const data=await r.json();cases=Array.isArray(data.cases)?data.cases:[];loaded=true;sync()}catch{loaded=false}};const sync=()=>{const toggle=document.getElementById('fCaseToggle'),idInput=document.getElementById('fCaseId'),context=document.getElementById('fCase');if(!toggle||!idInput||!context||!toggle.checked)return;const raw=idOf(idInput.value);if(raw&&idInput.value!==raw)idInput.value=raw;const current=cases.find(c=>idOf(c.id)===raw),next=`Case ${String(cases.length+1).padStart(3,'0')}`;if(!raw){idInput.value=next;context.value='';context.readOnly=false;return}if(current){context.value=String(current.context||'');context.readOnly=true;idInput.setCustomValidity('');}else if(raw===next){context.readOnly=false;idInput.setCustomValidity('');}else{idInput.setCustomValidity(`Use an existing case or the next new case, ${next}.`);context.readOnly=true}};document.addEventListener('DOMContentLoaded',()=>{const toggle=document.getElementById('fCaseToggle'),idInput=document.getElementById('fCaseId');if(!toggle)return;toggle.addEventListener('change',sync);idInput?.addEventListener('input',sync);idInput?.addEventListener('blur',sync);window.addEventListener('question-editor-data-ready',()=>setTimeout(sync,50));load()})})();
+(()=>{const apiBase=()=>String(localStorage.getItem('quizApiBase')||(location.hostname==='localhost'||location.hostname==='127.0.0.1'?(location.port==='4100'?location.origin+'/api':'http://localhost:4000/api'):'https://api.ajixpharmacy.online/api')).replace(/\/+$/,'');let cases=[];const idOf=v=>{const m=String(v||'').trim().match(/^case\s*(\d{1,3})$/i);return m?`Case ${String(Number(m[1])).padStart(3,'0')}`:''};const replaceIdField=()=>{const input=document.getElementById('fCaseId');if(!input||input.tagName==='SELECT')return input;const select=document.createElement('select');select.id='fCaseId';select.className='ajx-select';select.setAttribute('aria-label','Case ID');select.innerHTML='<option value="">Select case</option>';select.value=idOf(input.value);input.replaceWith(select);return select};const syncContext=()=>{const select=replaceIdField(),context=document.getElementById('fCase'),toggle=document.getElementById('fCaseToggle');if(!select||!context||!toggle||!toggle.checked)return;const chosen=cases.find(c=>idOf(c.id)===select.value),next=`Case ${String(cases.length+1).padStart(3,'0')}`;if(chosen){context.value=String(chosen.context||'');context.readOnly=true}else if(select.value===next){context.readOnly=false}else{context.value='';context.readOnly=true}};const load=async()=>{try{const r=await fetch(`${apiBase()}/admin/cases`,{headers:{'x-admin-key':localStorage.getItem('adminKey')||''},cache:'no-store'});const data=await r.json();cases=Array.isArray(data.cases)?data.cases:[];const select=replaceIdField();if(!select)return;const current=select.value;select.innerHTML='<option value="">Select case</option>'+cases.map(c=>`<option value="${idOf(c.id)}">${idOf(c.id)}</option>`).join('')+`<option value="Case ${String(cases.length+1).padStart(3,'0')}">Case ${String(cases.length+1).padStart(3,'0')} (new)</option>`;if(current)select.value=current;select.addEventListener('change',syncContext);document.getElementById('fCaseToggle')?.addEventListener('change',syncContext);syncContext()}catch{}};document.addEventListener('DOMContentLoaded',()=>{replaceIdField();load()});window.addEventListener('question-editor-data-ready',()=>setTimeout(()=>{const select=replaceIdField();if(select&&!select.dataset.caseBound){select.dataset.caseBound='1';select.addEventListener('change',syncContext)}syncContext()},100))})();
+(()=>{const setDefault=()=>{const toggle=document.getElementById('fCaseToggle'),select=document.getElementById('fCaseId');if(toggle?.checked&&select?.tagName==='SELECT'&&!select.value&&select.options.length>1){select.value=select.options[select.options.length-1].value;select.dispatchEvent(new Event('change',{bubbles:true}))}};document.addEventListener('DOMContentLoaded',()=>setTimeout(setDefault,700));window.addEventListener('question-editor-data-ready',()=>setTimeout(setDefault,200))})();
 
-
-
-(() => {
-  const applySampleSetField = () => {
-    const field = document.getElementById("gppqeYearField");
-    const input = document.getElementById("fYear");
-    if (!field || !input) return;
-    const label = field.querySelector("label");
-    if (label) label.textContent = "GPPQE sample set";
-    input.type = "text";
-    input.removeAttribute("min");
-    input.removeAttribute("max");
-    input.placeholder = "e.g. 25B";
+// Case context is shared registry data. It must remain editable so an
+// administrator can correct the context and have every linked question use it.
+(()=>{
+  const enableCaseContextEditing=()=>{
+    const toggle=document.getElementById('fCaseToggle');
+    const context=document.getElementById('fCase');
+    if(!toggle||!context)return;
+    context.readOnly=!toggle.checked;
+    context.setAttribute('aria-label','Shared case context');
+    context.title=toggle.checked?'Changes are applied to every question using this case.':'';
   };
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applySampleSetField, { once: true });
-  else applySampleSetField();
+  document.addEventListener('DOMContentLoaded',()=>{
+    enableCaseContextEditing();
+    document.getElementById('fCaseToggle')?.addEventListener('change',enableCaseContextEditing);
+    document.getElementById('fCaseId')?.addEventListener('change',()=>setTimeout(enableCaseContextEditing,100));
+  });
+  window.addEventListener('question-editor-data-ready',()=>setTimeout(enableCaseContextEditing,120));
+})();
+
+// Stable autosize pass for editor fields after question data is loaded.
+(()=>{
+  const resize=()=>{
+    document.querySelectorAll('.ajx-editor-col textarea').forEach((field)=>{
+      field.style.height='auto';
+      field.style.overflowY='hidden';
+      field.style.height=Math.max(field.classList.contains('ajx-option-textarea')?42:110,field.scrollHeight)+'px';
+    });
+  };
+  document.addEventListener('DOMContentLoaded',()=>{
+    resize();
+    document.addEventListener('input',(event)=>{
+      if(event.target.matches('.ajx-editor-col textarea'))resize();
+    });
+  });
+  window.addEventListener('question-editor-data-ready',()=>setTimeout(resize,40));
+  window.addEventListener('load',()=>setTimeout(resize,40));
 })();

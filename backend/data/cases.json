@@ -1,0 +1,1074 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "Case 001",
+      "context": "AX is a 72-year-old male with rheumatoid arthritis flare-up (3-week history of fever and painful joints, swelling/warmth in hands, wrists and ankles). PMH: rheumatoid arthritis, peptic ulceration, colonic polyps. DH includes fluvastatin 20 mg nocte, methotrexate 15 mg weekly, folic acid 10 mg weekly, paracetamol 1 g every 8 hours prn. Drug allergies: leflunomide; prior gold injections caused reversible renal impairment. On admission, methylprednisolone 500 mg was given by slow IV infusion for one day.",
+      "questionIds": [
+        "1",
+        "45",
+        "194",
+        "252",
+        "373",
+        "456",
+        "458",
+        "533",
+        "621"
+      ]
+    },
+    {
+      "id": "Case 002",
+      "context": "AB is a 74-year-old male admitted to a medical ward. PMH: diabetes mellitus controlled by diet, hypertension, congestive heart failure. DH: bumetanide 1 mg daily, potassium chloride 600 mg bd, isosorbide dinitrate 10 mg tds, atenolol 100 mg bd, aspirin 75 mg daily, lorazepam 1 mg tds, metoclopramide 10 mg prn. PC: increasing shortness of breath, dyspnoea, cyanosis, tachycardia. O/E: BP 160/100 mmHg, pulse 100 bpm. Diagnosis: congestive heart failure. Labs: sodium 130 mmol/l, potassium 3.2 mmol/l, chloride 95 mmol/l, fasting blood glucose 15.6 mmol/l. Discharge treatment: bumetanide 1 mg daily, isosorbide dinitrate 10 mg tds, enalapril 5 mg nocte, aspirin 75 mg daily, lorazepam 1 mg tds, metoclopramide 10 mg prn.",
+      "questionIds": [
+        "2",
+        "219",
+        "261",
+        "300",
+        "319",
+        "363",
+        "386",
+        "475",
+        "517",
+        "523",
+        "626",
+        "654"
+      ]
+    },
+    {
+      "id": "Case 003",
+      "context": "CA is a 77-year-old patient admitted with infected multiple sores and complaints of polyuria and weakness. She presents with reduced skin turgor, dehydration, tremor and confusion. Past medical history includes diabetes managed by diet alone. On admission she is started on glibenclamide 2.5 mg daily, ciprofloxacin 500 mg bd, sodium chloride 0.9% IV infusion and haloperidol 0.5 mg bd. Random blood glucose: 12 mmol/L. Blood pressure: 125/78 mmHg.",
+      "questionIds": [
+        "3",
+        "18",
+        "403",
+        "430",
+        "608",
+        "638",
+        "713"
+      ]
+    },
+    {
+      "id": "Case 004",
+      "context": "BC is a 9-year-old female on holiday at a seaside resort. She presents with itchy red scaly areas on both elbows with a golden-yellow crust. She has atopic eczema.",
+      "questionIds": [
+        "20",
+        "134",
+        "368"
+      ]
+    },
+    {
+      "id": "Case 005",
+      "context": "SN is a 25-year-old female admitted with exacerbation of asthma. PMH: asthma. DH: salbutamol inhaler and beclometasone inhaler. On admission she had chest tightness, exhaustion, pulse >110 bpm, and respiratory rate >25 breaths/min. Initial hospital therapy included oxygen 60%, salbutamol nebuliser, IV hydrocortisone, IV cefuroxime, clarithromycin tablets, and beclometasone inhaler. After 24 hours, hydrocortisone was stopped, prednisolone tablets started, and salbutamol nebuliser frequency reduced.",
+      "questionIds": [
+        "35",
+        "66",
+        "173",
+        "200",
+        "221",
+        "226",
+        "257",
+        "267",
+        "323",
+        "348",
+        "444",
+        "468",
+        "567",
+        "613",
+        "642",
+        "661",
+        "723"
+      ]
+    },
+    {
+      "id": "Case 006",
+      "context": "FG is an 83-year-old female with sudden shortness of breath and retrosternal chest pain, with occasional cough and whitish sputum. PMH: diet-controlled diabetes mellitus, hypertension, congestive heart failure, depression. DH includes paroxetine, potassium chloride, verapamil, dipyridamole, bumetanide, and multivitamins. Investigations suggest pulmonary oedema secondary to myocardial infarction with chest infection.",
+      "questionIds": [
+        "54",
+        "68",
+        "87",
+        "183",
+        "326",
+        "420",
+        "603"
+      ]
+    },
+    {
+      "id": "Case 007",
+      "context": "KB is a 36-year-old female presenting with dysuria, urinary urgency, and increased urinary frequency.",
+      "questionIds": [
+        "95",
+        "128",
+        "276",
+        "316"
+      ]
+    },
+    {
+      "id": "Case 008",
+      "context": "LX is an 82-year-old female admitted with infection in the right toe. On admission: dipyridamole 100 mg tds, aspirin 75 mg daily, glibenclamide 5 mg bd. Fasting blood glucose was 12 mmol/l. She was started on cefuroxime 750 mg IV 8-hourly, metronidazole 500 mg IV 8-hourly, and insulin according to blood glucose levels. Glibenclamide was stopped.",
+      "questionIds": [
+        "127",
+        "671"
+      ]
+    },
+    {
+      "id": "Case 009",
+      "context": "SP is a 64-year-old patient admitted with tiredness, shortness of breath and ankle oedema. She has a history of congestive heart failure. SP was intolerant to enalapril due to cough. Current medications: spironolactone 12.5 mg daily and losartan 25 mg daily.",
+      "questionIds": [
+        "30",
+        "74",
+        "141",
+        "283",
+        "289",
+        "436"
+      ]
+    },
+    {
+      "id": "Case 010",
+      "context": "CP is a 28-year-old male with weakness, dizziness, and sweating. Gastroscopy revealed a duodenal ulcer. Helicobacter pylori urea breath test was negative. Lab tests confirmed anaemia. Admission medication: gliclazide 40 mg daily, esomeprazole 20 mg daily, aluminium-magnesium antacid 10 ml qid.",
+      "questionIds": [
+        "90",
+        "156",
+        "365"
+      ]
+    },
+    {
+      "id": "Case 011",
+      "context": "HG is a 46-year-old female with troublesome nocturnal cough, nasal congestion, and nasal itchiness for weeks, with longstanding nasal allergy that has deteriorated. She has used oxymetazoline spray (two puffs three times daily) for two weeks.",
+      "questionIds": [
+        "42",
+        "180",
+        "228",
+        "416",
+        "563"
+      ]
+    },
+    {
+      "id": "Case 012",
+      "context": "QR is a 75-year-old male whose current medication is co-codamol 2 tablets qid, paracetamol 1 g qid, gliclazide 80 mg bd, ferrous sulphate 800 mg tds, dipyridamole 25 mg tds, and isosorbide dinitrate 20 mg tds.",
+      "questionIds": [
+        "32",
+        "184",
+        "205",
+        "472",
+        "722"
+      ]
+    },
+    {
+      "id": "Case 013",
+      "context": "GX is an 80-year-old female living alone. Current medications: glibenclamide 10 mg in the morning and 15 mg midday, isosorbide mononitrate 60 mg daily, aspirin enteric-coated 75 mg daily, perindopril 8 mg daily, calcium 600 mg daily, and cod liver oil once daily.",
+      "questionIds": [
+        "113",
+        "229",
+        "577"
+      ]
+    },
+    {
+      "id": "Case 014",
+      "context": "MR is an 82-year-old female hospitalised in the ophthalmic ward. Current medication: framycetin eye drops both eyes tds, dorzolamide eye drops left eye bd, acetazolamide 125 mg bd, timolol 0.5% eye drops left eye bd, ranitidine 150 mg nocte, bisacodyl 5 mg daily.",
+      "questionIds": [
+        "235",
+        "462",
+        "697",
+        "714"
+      ]
+    },
+    {
+      "id": "Case 015",
+      "context": "MA is a 71-year-old male diagnosed with shingles about 3 months ago. During active disease he received famciclovir 250 mg three times daily for 7 days. The rash has cleared but he continues to complain of pain.",
+      "questionIds": [
+        "92",
+        "265",
+        "393",
+        "414",
+        "488",
+        "522",
+        "596"
+      ]
+    },
+    {
+      "id": "Case 016",
+      "context": "MG is a 64-year-old male admitted with stroke. Admission medicines included slow-release nifedipine 20 mg three times daily and aspirin 75 mg. PMH includes hypertension. Dipyridamole 100 mg three times daily was started.",
+      "questionIds": [
+        "190",
+        "317",
+        "432",
+        "565",
+        "712"
+      ]
+    },
+    {
+      "id": "Case 017",
+      "context": "HG is a 71-year-old female with Sjogren's syndrome presenting with dry eyes and dry mouth. Her medicines include aspirin, dipyridamole, glimepiride, and atenolol. She was recently diagnosed with hypothyroidism and started on thyroxine 50 micrograms daily; metformin 500 mg daily and simvastatin 10 mg nocte were added at follow-up.",
+      "questionIds": [
+        "63",
+        "71",
+        "318",
+        "455",
+        "583",
+        "707"
+      ]
+    },
+    {
+      "id": "Case 018",
+      "context": "FS has been prescribed morphine sulphate 50 mg in the morning and 100 mg at night. Preferred route is oral tablets; available strengths are 10 mg, 30 mg, and 60 mg.",
+      "questionIds": [
+        "294",
+        "330"
+      ]
+    },
+    {
+      "id": "Case 019",
+      "context": "LB is a 55-year-old male patient who developed unilateral vesicles around his waist and complained of stabbing irritation in the area. LB is prescribed aciclovir 800 mg five times daily for 5 days.",
+      "questionIds": [
+        "47",
+        "343",
+        "489",
+        "657"
+      ]
+    },
+    {
+      "id": "Case 020",
+      "context": "GM is a 28-year-old female with tension headache seeking medication stronger than paracetamol.",
+      "questionIds": [
+        "22",
+        "396",
+        "463",
+        "545",
+        "552"
+      ]
+    },
+    {
+      "id": "Case 021",
+      "context": "BD is a 34-year-old patient admitted with an overdose of promethazine and alcohol withdrawal symptoms. The patient has a history of alcohol abuse.",
+      "questionIds": [
+        "137",
+        "421",
+        "487"
+      ]
+    },
+    {
+      "id": "Case 022",
+      "context": "MB is a 55-year-old male presenting with palpitations and blood pressure 150/110 mmHg. He had previous hypertension and had been taking moxonidine 200 micrograms twice daily but stopped after running out of tablets.",
+      "questionIds": [
+        "244",
+        "277",
+        "425",
+        "530"
+      ]
+    },
+    {
+      "id": "Case 023",
+      "context": "XY is a 49-year-old patient allergic to penicillin. She was prescribed erythromycin for cellulitis, developed a rash, and erythromycin was withdrawn.",
+      "questionIds": [
+        "435",
+        "516"
+      ]
+    },
+    {
+      "id": "Case 024",
+      "context": "SC is a 34-year-old female in her first month of pregnancy with blood pressure 140/100 mmHg and otherwise normal investigations. She was started on labetalol 100 mg daily.",
+      "questionIds": [
+        "441",
+        "453",
+        "558",
+        "594",
+        "615"
+      ]
+    },
+    {
+      "id": "Case 025",
+      "context": "GD is a 72-year-old female whose current medication is: aspirin 75 mg daily; dipyridamole 100 mg three times daily; timolol 0.5% eye drops, two drops in both eyes twice daily; lactulose 20 mL daily.",
+      "questionIds": [
+        "31",
+        "476",
+        "571"
+      ]
+    },
+    {
+      "id": "Case 026",
+      "context": "CB is a 59-year-old male admitted with severe chest infection. Current medication: lactulose 30 ml daily, warfarin 4 mg daily adjusted by INR, paracetamol 500 mg prn. CB is allergic to penicillin and has tinnitus and hearing loss.",
+      "questionIds": [
+        "201",
+        "478"
+      ]
+    },
+    {
+      "id": "Case 027",
+      "context": "MB is a 58-year-old woman who presents with a prescription for simvastatin 10 mg daily. Her current medication is atenolol 50 mg daily. MB suffered a myocardial infarction last year.",
+      "questionIds": [
+        "360",
+        "482",
+        "496"
+      ]
+    },
+    {
+      "id": "Case 028",
+      "context": "AV is a 64-year-old female with rheumatoid arthritis. Current medications: methotrexate 15 mg weekly, folic acid 10 mg weekly, prednisolone 5 mg daily, vitamin D and calcium tablets twice daily, and disodium pamidronate 90 mg injection every 3 months.",
+      "questionIds": [
+        "62",
+        "76",
+        "169",
+        "308",
+        "346",
+        "427",
+        "491",
+        "664"
+      ]
+    },
+    {
+      "id": "Case 029",
+      "context": "RB is a 30-year-old female with systemic sclerosis and acute Raynaud's phenomenon. PMH includes 9-year Raynaud's disease history with finger discoloration/cyanosis on cold exposure. DH: pentoxifylline 400 mg daily, nifedipine 20 mg daily. O/E includes swollen/tender fingers and mild nail-fold erythema with clear discharge.",
+      "questionIds": [
+        "185",
+        "193",
+        "211",
+        "361",
+        "521"
+      ]
+    },
+    {
+      "id": "Case 030",
+      "context": "AD is a 39-year-old female with bacterial endocarditis. She is started on gentamicin 80 mg IV twice daily and penicillin G IV 1.8 g every 6 hours.",
+      "questionIds": [
+        "49",
+        "72",
+        "98",
+        "305",
+        "485",
+        "568"
+      ]
+    },
+    {
+      "id": "Case 031",
+      "context": "JM is a 40-year-old female in terminal stages of carcinoma. Current medication: paroxetine 20 mg daily, tamoxifen 20 mg daily, co-codamol 2 tablets tds, diazepam 2 mg nocte. She is still complaining of pain.",
+      "questionIds": [
+        "181",
+        "213",
+        "561",
+        "569",
+        "655"
+      ]
+    },
+    {
+      "id": "Case 032",
+      "context": "GL is a 63-year-old obese male with diabetes, hypertension, ischaemic heart disease, and previous myocardial infarction. He presented with acute chest pain radiating to throat and left arm, sweating, breathlessness, and pulse 140 bpm. He was diagnosed with unstable angina and treated with subcutaneous heparin and isosorbide dinitrate infusion. On discharge, simvastatin 20 mg nocte and a glyceryl trinitrate patch were added.",
+      "questionIds": [
+        "123",
+        "126",
+        "285",
+        "411",
+        "412",
+        "445",
+        "446",
+        "500",
+        "585",
+        "641",
+        "645",
+        "651",
+        "716",
+        "725"
+      ]
+    },
+    {
+      "id": "Case 033",
+      "context": "MC is an 84-year-old female referred to A&E with gradual deterioration and poor oral intake for several days. PMH: diabetes mellitus, congestive heart failure, ischaemic heart disease, dementia. DH: perindopril 2 mg daily, digoxin 0.0625 mg daily, bumetanide 1 mg daily, metformin 500 mg bd, amitriptyline 20 mg nocte, ranitidine 150 mg daily. O/E includes poor respiratory effort and bilateral inspiratory crackles. Impression: dehydration and early parkinsonian features. Started on IV 0.9% saline alternating with 5% dextrose every 8 hours.",
+      "questionIds": [
+        "69",
+        "293",
+        "315",
+        "471",
+        "524",
+        "622",
+        "625"
+      ]
+    },
+    {
+      "id": "Case 034",
+      "context": "PS is hospitalised with pulmonary oedema. The patient is started on metolazone 2.5 mg once daily and bumetanide 2 mg twice daily intravenously.",
+      "questionIds": [
+        "254",
+        "280",
+        "296",
+        "637",
+        "649"
+      ]
+    },
+    {
+      "id": "Case 035",
+      "context": "AP is a 71-year-old female with hypertension, diabetes mellitus, ischaemic heart disease, congestive heart failure, and previous myocardial infarction. She presented with central compressive chest pain radiating to the epigastrium, sweating and belching, worsened by exertion. ECG showed T-wave inversion and CK 265. Impression: unstable angina. DH includes candesartan, clopidrogel, isosorbide mononitrate, fluvastatin, amlodipine, carvedilol, bumetanide, and isophane insulin.",
+      "questionIds": [
+        "236",
+        "400",
+        "410",
+        "490",
+        "502",
+        "616",
+        "646"
+      ]
+    },
+    {
+      "id": "Case 036",
+      "context": "JZ is a 78-year-old obese male diagnosed with an acute attack of gout. PMH: hypertension and heart failure. Current medicines include enalapril 5 mg daily, atenolol 100 mg daily, bendroflumethiazide 5 mg daily, and aspirin EC 75 mg daily. He is started on colchicine 500 micrograms twice daily for six days.",
+      "questionIds": [
+        "46",
+        "108",
+        "297",
+        "440",
+        "454",
+        "515",
+        "526",
+        "555",
+        "584",
+        "602",
+        "694"
+      ]
+    },
+    {
+      "id": "Case 037",
+      "context": "PS is a 69-year-old patient with orofacial unwanted movements. Current medication includes diazepam 5 mg nocte and amitriptyline 25 mg tds.",
+      "questionIds": [
+        "536",
+        "699"
+      ]
+    },
+    {
+      "id": "Case 038",
+      "context": "LJ is a 66-year-old female admitted for management of atrial fibrillation. PMH: hypertension and asthma. DH: potassium chloride one tablet daily, bendroflumethiazide 5 mg daily, warfarin 3 mg daily. O/E blood pressure 210/95 mmHg. On hospitalisation, digoxin loading at 0.25 mg daily and perindopril 2 mg nocte were started.",
+      "questionIds": [
+        "384",
+        "405",
+        "413",
+        "459",
+        "543",
+        "666",
+        "696",
+        "724"
+      ]
+    },
+    {
+      "id": "Case 039",
+      "context": "Case series about Cushing. Use this shared case context for the questions in this series.",
+      "questionIds": [
+        "728",
+        "729"
+      ]
+    },
+    {
+      "id": "Case 040",
+      "context": "Blacko has cirrhosis complicated by ascites and anemia, and is being assessed for paracentesis, transfusion, SAAG interpretation, and pleural effusion. Use this case for the related questions.",
+      "questionIds": [
+        "942",
+        "943",
+        "944",
+        "945",
+        "946",
+        "947"
+      ]
+    },
+    {
+      "id": "Case 041",
+      "context": "Mr. MH is a 50-year-old man with type 2 diabetes, left ventricular systolic dysfunction, and chronic kidney disease with eGFR 28 mL/min/1.73m2. Use this case for the related treatment question.",
+      "questionIds": [
+        "1167"
+      ]
+    },
+    {
+      "id": "Case 042",
+      "context": "Mr. KE presents with restlessness, tiredness, weight loss, palpitations, and heat intolerance suggestive of a thyroid disorder. Use this case for the related thyroid questions.",
+      "questionIds": [
+        "1212",
+        "1213",
+        "1215"
+      ]
+    },
+    {
+      "id": "Case 043",
+      "context": "Case series about Mr. KE. Use this shared case context for the questions in this series.",
+      "questionIds": [
+        "1214",
+        "1216",
+        "1217",
+        "1218",
+        "1219",
+        "1220",
+        "1221"
+      ]
+    },
+    {
+      "id": "Case 044",
+      "context": "Mr. AT develops a hypoglycemic episode while taking glucose-lowering therapy including acarbose. Use this case for the related hypoglycemia questions.",
+      "questionIds": [
+        "1236",
+        "1237",
+        "1238"
+      ]
+    },
+    {
+      "id": "Case 045",
+      "context": "This question set concerns organophosphate pesticide poisoning, including exposure routes, clinical features, and antidote use. Use this case context for the related questions.",
+      "questionIds": [
+        "1239",
+        "1240",
+        "1241",
+        "1242",
+        "1243",
+        "1244"
+      ]
+    },
+    {
+      "id": "Case 046",
+      "context": "Mr. AB is being assessed for chronic kidney disease with anemia, urinary findings, hyperkalemia risk, and medication-related concerns. Use this case for the related questions.",
+      "questionIds": [
+        "1302",
+        "1303",
+        "1304",
+        "1305",
+        "1306",
+        "1307",
+        "1308",
+        "1309",
+        "1310",
+        "1311"
+      ]
+    },
+    {
+      "id": "Case 047",
+      "context": "Mr. GO is being managed for severe asthma with acute exacerbation, alongside hypertension and diabetes mellitus. Use this case for the following questions.",
+      "questionIds": [
+        "1312",
+        "1313",
+        "1314",
+        "1315",
+        "1316",
+        "1317",
+        "1318",
+        "1319",
+        "1320",
+        "1321"
+      ]
+    },
+    {
+      "id": "Case 048",
+      "context": "Mrs Appiah is being assessed for rheumatoid arthritis with systemic features and DMARD-related management issues. Use this case for the following questions.",
+      "questionIds": [
+        "1322",
+        "1323",
+        "1324",
+        "1325",
+        "1326",
+        "1327",
+        "1328",
+        "1329",
+        "1330",
+        "1331"
+      ]
+    },
+    {
+      "id": "Case 049",
+      "context": "Adwo is pregnant and has pre-existing diabetes with chronic hypertension. Use this case for the following questions.",
+      "questionIds": [
+        "1343",
+        "1344",
+        "1346",
+        "1347"
+      ]
+    },
+    {
+      "id": "Case 050",
+      "context": "K.B, a 16-year-old girl was seen in her dormitory, harming herself by placing a hot pan on her arm. She started crying and she said she wished to be dead. She refused to eat or attend classes. Dorm-mates noticed her to be sad all the time and unable to sleep for about a month. Preliminary test results were as follows; BMI = 17.5, RBS 8.0 mmol/L, Hb 9.0 g/dl, Temp 36.5C, BP 102/75",
+      "questionIds": [
+        "1734",
+        "1735"
+      ]
+    },
+    {
+      "id": "Case 051",
+      "context": "Mr AT, a 46-year-old addict and a heavy smoker was referred to KATH by his primary care doctor at Obuasi on account of excessive mucus production (sputum was thick and viscous with green in color) and dyspnea. His breathing was distressed and noisy. He was then taken to Accident and Emergency Unit for further management. PC: Weak, palpitation. PMH: Hepatitis B. SH: Smoke 20 sticks a day (started smoking at age 30). Weight: 50kg. O/E: Jaundice, Raised JVP. Laboratory investigations: FEV1 less than 0.7% FVC, FEV1 less than 80% predicted. Electrolytes: Na+ 135 (135 - 145) mmol/L, K+ 2.5 (3.5 - 5.5) mmol/L. Hepatitis B profile: HBsAg Absent, HBcAg Absent, Antibodies of HBcAg Present in higher titres. DIAGNOSIS: COPD / Hepatitis B. Medications: IV Hydrocortisone 100mg qid, Ipratropium Bromide (Nebulization) 500mg qid, Salbutamol solution (Nebulization) 5mg 4 times daily, Liv 52 tab 1 daily × 30, IV Amoksiklav 1g tid.",
+      "questionIds": [
+        "1794",
+        "1795",
+        "1796",
+        "1797",
+        "1798",
+        "1799",
+        "1800",
+        "1801",
+        "1802",
+        "1803"
+      ]
+    },
+    {
+      "id": "Case 052",
+      "context": "Mr KO, a 65-year-old private accountant, visited the outpatient department with complaints of increasing tiredness and frequent thirsty feeling over the past few weeks. He also talks about frequent urination and especially over the night. He thinks this is abnormal and an obstruction to his work and sleep. Mr KO admits to regular club beer almost every evening to wind up his day which he said did not make him urinate much till some few weeks ago. Per his narration, he spends a lot of money on sugary snacks and fatty fast foods since he works far away from home. He admits to heavy cigarette smoking. He is obese with a body mass index of 32 kg/m2. His foot assessment was unremarkable. Mr KO's blood pressure was 135/90 mmHg and random blood sugar was 11.5 mmol/L. Mr KO's serum chemistry report the following day was: Fasting blood sugar (6 - 7mmol/L) 8.1mmol/L, Glycated haemoglobin (6.5 - 7.5%) 8.6%, Total cholesterol (<4mmol/L) 6.1 mmol/L, Creatinine (50 - 95umol/L) 78.0 umol/L, HDL cholesterol (>1.2mmol/L) 0.9mmol/L, Triglycerides (<2.3 mmol/L) 3.0 mmol/L.",
+      "questionIds": [
+        "1804",
+        "1805",
+        "1806",
+        "1807",
+        "1808",
+        "1809",
+        "1810",
+        "1811",
+        "1812",
+        "1813"
+      ]
+    },
+    {
+      "id": "Case 053",
+      "context": "Mr PK, a 40-year-old Ghanaian pharmacist on the provisional register returned from the United States of America and was detained by the immigration officers at the airport for possessing a codeine-containing syrup. He challenged the officers insisting that there was no merit in his detention because the cough syrup he was carrying is an over-the-counter medicine and so he is being wrongfully detained.",
+      "questionIds": [
+        "1814",
+        "1815",
+        "1816",
+        "1817",
+        "1818",
+        "1819",
+        "1820",
+        "1821",
+        "1822",
+        "1823"
+      ]
+    },
+    {
+      "id": "Case 054",
+      "context": "Mr YB, a Pharmacy Proprietor on his usual monitoring at his pharmacy saw the pharmacist charging and receiving some fees from a client the pharmacist had just served in the pharmacy. Mr YB was outraged and invited the pharmacist to his office to explain to him why he should not be reported to the Pharmacy Council for professional misconduct.",
+      "questionIds": [
+        "1826",
+        "1836",
+        "1846",
+        "1856",
+        "1866",
+        "1876",
+        "1886",
+        "1919",
+        "1929",
+        "1939"
+      ]
+    },
+    {
+      "id": "Case 055",
+      "context": "Adwo is a hypertensive diabetic patient whose BP is well managed with Lisinopril and hydrochlorothiazide. She was taking Metformin and glyburide for her diabetes and her last HbA1c was 8.0%",
+      "questionIds": [
+        "1830",
+        "1840",
+        "1923",
+        "1933",
+        "1943"
+      ]
+    },
+    {
+      "id": "Case 056",
+      "context": "Mr TOK, an 80-year-old gentleman reports to your community pharmacy for a medication review exercise. His medical and medication details are presented below.\nPatient name: TOK\nAddress: No. 128 Oquaye Road, Community 20, Tema\nAge: 80\nHeight: 1.97 m\nSex: M\nWeight 120 Kg\nSocial Hx: Lives alone, wife died 3 months ago, Smokes cigarettes and occasionally drinks alcoholic bitters for vitality.\nFamily Hx: Nothing significant\nMedical problems: Diabetes mellitus, Hypertension, Chronic kidney disease (Stage 3)\nMedication Record: Exforge HT 10/160/25 (Amlodipine + Valsartan + hydrochlorothiazide), Carvedilol, Galvus Met 500/1000 (Metformin + Vidagliptin), Allopurinol, Amaryl (Glimepiride)",
+      "questionIds": [
+        "1832",
+        "1842",
+        "1852",
+        "1862",
+        "1872",
+        "1882",
+        "1892",
+        "1902",
+        "1935",
+        "1945"
+      ]
+    },
+    {
+      "id": "Case 057",
+      "context": "Mrs. Adwoa Kyenkyenhene brought her 90 year old mother to the hospital in which you work. Her mother has been complaining of pain in the leg for the past three days and has not been able to walk properly. She was given some pain killers and some foot massages but the dull pain was still there. This morning Mrs. Kyenkyenhene noticed that her mother's temperature was high and decided to visit the hospital. At the hospital, she goes through the necessary protocols including consulting room, laboratory, X-ray and has finally arrived at the pharmacy with a prescription from the doctor.",
+      "questionIds": [
+        "1896",
+        "1906",
+        "1916",
+        "1926",
+        "1936",
+        "2395",
+        "2396"
+      ]
+    },
+    {
+      "id": "Case 058",
+      "context": "Patient Details:\r\nName: Amah\r\nAge: 35 years\r\nWeight: 70 kg\r\nDiagnosis: Bacterial pneumonia\r\nMedication Prescribed: Amoxicillin 500 mg every 8 hours for 10 days\r\n\r\nAmah has been diagnosed with bacterial pneumonia and has been prescribed amoxicillin 500 mg every 8 hours for 10 days. She was given an oral suspension (Formulation: Oral suspension with a concentration of 250 mg/5 mL) because she has difficulty swallowing pills. You are required to calculate the volume of the suspension she should take per dose and how much of the suspension is needed for the entire treatment period.",
+      "questionIds": [
+        "1948",
+        "1952",
+        "1956",
+        "2013",
+        "2017",
+        "2021",
+        "2025",
+        "2029",
+        "2090",
+        "2094"
+      ]
+    },
+    {
+      "id": "Case 059",
+      "context": "At the last Federation of International Pharmacists (FIP) meeting held in Cape Town in 2024, the global society of pharmacists agreed that emergency and pandemic medicines are critical for public health systems, and pharmacists everywhere must show interest in them. The Pharmaceutical Society of Ghana (PSGH) recently responded to a public health emergency — the flooding during the Bagre Dam spillage in the Oti Region (August 2024) — by donating products and services and meeting with the District Health Management Team (DHMT).",
+      "questionIds": [
+        "1950",
+        "1954",
+        "1958",
+        "1962",
+        "1966",
+        "2023",
+        "2027",
+        "2031",
+        "2035",
+        "2039"
+      ]
+    },
+    {
+      "id": "Case 060",
+      "context": "Mr. KE is a 52-year-old truck driver who reported to the outpatient department with complaints of weight loss over the past 2-3 months. He feels restless and tired, with some fast heartbeats. His medical history does not indicate diabetes, hypertension, or previous surgeries. On examination, he had a moist palm, wide gaze, tremor of the hands, and a rapid pulse. There was a small swelling on the left side of the neck near the voice box. Both lobes of the thyroid gland were enlarged and nodular in nature. Mr. KE was irritated, anxious, sweating, and complained of too much heat. The physician requested laboratory tests to confirm his impression.",
+      "questionIds": [
+        "1960",
+        "1964",
+        "1968",
+        "1972",
+        "1976",
+        "2033",
+        "2037",
+        "2041",
+        "2045",
+        "2049"
+      ]
+    },
+    {
+      "id": "Case 061",
+      "context": "Mr. Sammy, a Pharmacy Proprietor, during a routine inspection at his pharmacy, observed that the pharmacist on duty was charging and receiving fees from a client he had just served. Mr. Sammy was outraged and invited the pharmacist to his office to explain why he should not be reported to the Pharmacy Council for professional misconduct.",
+      "questionIds": [
+        "1970",
+        "1974",
+        "1978",
+        "1982",
+        "1986",
+        "2043",
+        "2047",
+        "2051",
+        "2055",
+        "2059"
+      ]
+    },
+    {
+      "id": "Case 062",
+      "context": "Mr. AT, a 35-year-old farmer went into hypoglycemia. To salvage the situation, he took biscuits and pesticides mistakenly left in a water bottle. He was taken to the nearby clinic for management.\r\n\r\nPC: Sweating, Palpitation, Pallor, Hypersalivation, Twitching, Vomiting\r\n\r\nPMH: Diabetes\r\n\r\nDrug history: Acarbose tab 200 mg bd, Insulatard 15 units daily\r\n\r\nCurrent Medication: Atropine inj 2mg every 10 minutes, Pralidoxime inj 1800 mg stat, then 2, 10% Dextrose infusion",
+      "questionIds": [
+        "1993",
+        "1997",
+        "2001",
+        "2005",
+        "2009",
+        "2070",
+        "2074",
+        "2078",
+        "2082",
+        "2086"
+      ]
+    },
+    {
+      "id": "Case 063",
+      "context": "Diazepam Injection U.S.P \nDiazepam 5 mg/ml\nEthanol 10%\nPropylene glycol 40%\nBenzyl alcohol 1.5%\nWater for Injection qs 100%",
+      "questionIds": [
+        "2129"
+      ]
+    },
+    {
+      "id": "Case 064",
+      "context": "Mr. AB, a 60-year-old trader who has had Chronic Kidney Disease for the past 6 months was admitted to the medical ward on account of breathlessness and poor concentration.\n\nPC: Fatigue, Palpitation\n\nPMHx:\nDiabetes for 3 years\nHypertension for a year\nAngina for a year\nG-6-P-D Deficiency (Full defect)\n\nO/E: Raised JVP\n\nMedications:\nTab Folic Acid 5 mg daily\nTab Pioglitazone 30 mg daily\nTab Nitrofurantoin 50 mg qid x 7",
+      "questionIds": [
+        "2155",
+        "2156",
+        "2157",
+        "2158",
+        "2159",
+        "2160",
+        "2161",
+        "2162",
+        "2163",
+        "2164"
+      ]
+    },
+    {
+      "id": "Case 065",
+      "context": "Mr. CO, a 60-year-old male currently not working, presents to the emergency department with breathlessness and wheezing.\n- PC: difficulty in breathing, feeling of nausea in his chest, chest discomfort\n- HPC: A known asthmatic seen at the emergency department 8 days ago with an attack, was given some inhalational medications and discharged home. He started experiencing difficulty in breathing and chest tightness 2 days ago and took 4 puffs of his inhaler but symptoms deteriorated. According to the wife, he has been on Ventolin inhaler for over 15 years. He is worried about strong odours like perfume that trigger his attacks.\n- ODD: Chest pain 1, cough 1, non-productive but both mucus in his chest never, chills, palpitations, pedal oedema\n- DDI: Ventolin inhaler (5/5yrs), Synthroid, Oral amoksilav, Prednisolone, Aspirin\n- FIIs: Mother has DM and HPT, grandfather has asthma\n- PMH: Asthma\n- HIIs: Lives at Lutterbeke, separated with a child, smoking(13yrs), OIT before heavy meals\n- ODI: Mild respiratory distress evidenced by noisy breathing, febrile (36.7Â°C) not pale, anemic, hydration satisfactory, difficulty completing sentence in one breath.\nRespiration rate = 28 breath/minute, Pulse = 120bpm, BP = 156/105mmHg, CC = 15/15, SPO2=94%",
+      "questionIds": [
+        "2165",
+        "2166",
+        "2167",
+        "2168",
+        "2169",
+        "2170",
+        "2171",
+        "2172",
+        "2173",
+        "2174"
+      ]
+    },
+    {
+      "id": "Case 066",
+      "context": "Mrs Appiah, a previously healthy 42-year-old, 60-kg woman, has been suffering from morning stiffness that persists for several hours, fatigue, and generalized muscle and joint pain for the past 4 months. In addition, she reports that her eyes seem red most of the time and are unusually dry. Her symptoms have been much worse during the past month and a half, causing her to limit her physical activities somewhat. She also can no longer wear her wedding ring because of swelling of her hand. Physical examination reveals bilaterally symmetrical swelling, tenderness, and warmth of the metacarpophalangeal (MCP) and proximal interphalangeal (PIP) joints of the hands and the metatarsophalangeal (MTP) joints of the feet. Pertinent laboratory findings include the following: ESR, 52 mm/hour; Hemoglobin, 10.6 g/dL; Hematocrit, 33%; Platelets, 480,000/ÂµL; Albumin, 3.8 g/dL; Serum iron, 40 mcg/dL; Total iron-binding capacity, 275 mg/dL; Positive anti-CCP at 82 units; Positive RF performed by latex fixation method in a dilution of 1:320. Tests for antinuclear antibodies (ANA) and tuberculin sensitivity are negative. Her uric acid level is normal. Radiographic films of the hands and feet show soft tissue swelling, second and third MCP and PIP joints bilaterally with no evidence of calcification. Other routine laboratory data and physical findings are normal.",
+      "questionIds": [
+        "2175",
+        "2176",
+        "2177",
+        "2178",
+        "2179",
+        "2180",
+        "2181",
+        "2182",
+        "2183",
+        "2184"
+      ]
+    },
+    {
+      "id": "Case 067",
+      "context": "A patient was rushed into a community pharmacy around 10:00 pm when the pharmacist was absent. The pharmaceutical support staff in the community pharmacy dispensed a prescription-only medicine.",
+      "questionIds": [
+        "2203",
+        "2204",
+        "2205"
+      ]
+    },
+    {
+      "id": "Case 068",
+      "context": "Dr Ankrah is the newly posted District Director for Health in South Tongu and resident in Sogakofe. The recent spillage of the Volta Dam created a challenge for the district since one of their major health facilities, Comboni Catholic Hospital was almost submerged. Meanwhile there are critical emerging issues of public health importance. The District Health Management Team (DHMT) called for an emergency meeting and asked that as the District Pharmacist, you are to chair the Emergency operations and report to the District Director.",
+      "questionIds": [
+        "2225",
+        "2226",
+        "2227",
+        "2228",
+        "2229",
+        "2230",
+        "2231",
+        "2232",
+        "2233",
+        "2234"
+      ]
+    },
+    {
+      "id": "Case 069",
+      "context": "A licensed community pharmacy in Ghana providing electronic pharmacy services without ePharmacy accreditation by the Pharmacy Council was closed down by the Data Protection Commission for various breaches of the data protection laws. The aggrieved owner of the community pharmacy petitions the Pharmacy Council to intervene on their behalf.",
+      "questionIds": [
+        "2235",
+        "2236",
+        "2237",
+        "2238",
+        "2239",
+        "2240",
+        "2241",
+        "2242",
+        "2243",
+        "2244"
+      ]
+    },
+    {
+      "id": "Case 070",
+      "context": "During a medication review of an inpatient with T2DM, Hypertension, HFpEF (EF 60%), it was observed that he has also been diagnosed with oesophageal candidal infection. The current medications are:\r\nTab. Valsartan-Sacubitril 100mg bd\r\nTab. Bisoprolol 5mg od\r\nTab. Spironolactone 25mg od\r\nTab. Dapagliflozin 10mg od\r\nTab. Vildagliptin 50/1000mg bd\r\nTab. Atorvastatin 40mg nocte\r\nThe patient is to start Cap. Fluconazole 150mg od for 3 weeks.",
+      "questionIds": [
+        "2266",
+        "2267"
+      ]
+    },
+    {
+      "id": "Case 071",
+      "context": "A 44-year-old woman presented at the pharmacy with a prescription for the following:\r\n\r\n* Tab. Tranexamic acid 500mg tds x 7/7\r\n* Tab. Naproxen 500mg bd x 7/7\r\n* Inj. Depot Medroxyprogesterone Acetate (DMPA) 150mg st\r\n* Inj. Goserelin 10.8mg st\r\n\r\n---",
+      "questionIds": [
+        "2270",
+        "2271",
+        "2272"
+      ]
+    },
+    {
+      "id": "Case 072",
+      "context": "Read this case and answer the following questions: In a bioavailability study, 40 healthy volunteers received oral doses of 500 mg of a reference formulation (R) during the first stage and 400 mg of a test formulation (T) during the second stage of a cross-over study. The average Area under the curve (AUC) for the reference and test formulation is 32 ÂµgLâ»Â¹.day and 25 ÂµgLâ»Â¹.day, respectively. Use this information to answer the questions below.",
+      "questionIds": [
+        "2310"
+      ]
+    },
+    {
+      "id": "Case 073",
+      "context": "A 40-year-old man, JD, comes to your pharmacy complaining of pains in the chest and stomach. On further questioning, he describes a burning feeling that is often worse after a large meal and at night-time. He admits to smoking and has a few drinks after his dinner on a regular basis.",
+      "questionIds": [
+        "2345",
+        "2346",
+        "2347",
+        "2348",
+        "2349",
+        "2350",
+        "2351",
+        "2352",
+        "2353",
+        "2354",
+        "2355",
+        "2356",
+        "2357",
+        "2358",
+        "2359",
+        "2360",
+        "2361",
+        "2362",
+        "2363",
+        "2364",
+        "2365",
+        "2366",
+        "2367"
+      ]
+    },
+    {
+      "id": "Case 074",
+      "context": "\"Pharma X Ltd.\" is a pharmaceutical company with a board of directors. An investigation reveals that the company has been peddling unregistered opioids \"Real\" at a local market through an unauthorised agent, which is an offence under the Health Professions Regulatory Bodies Act 2013, Act 857. Consequently, the company and all its directors are charged by the Pharmacy Council. During the disciplinary proceedings, the following facts are established:\r\n\r\ni) Director A (the CEO): Personally, approved the plan and authorized the funds for the illegal peddling scheme.\r\nii) Director B (a non-executive director): Was completely unaware of the scheme. She successfully proves in the hearings that she had no knowledge of the operation and did not consent to it.\r\niii) Director C (the Head of Compliance): Discovered the plan before it was implemented. He provides evidence of a formal, written directive he sent to the CEO and the board, explicitly warning them against the scheme and stating that it was illegal and should be stopped immediately.",
+      "questionIds": [
+        "2368"
+      ]
+    },
+    {
+      "id": "Case 075",
+      "context": "Gwendoline Chemists, a registered pharmacy, had its operating licence expire two months ago, and the owner, Mr. Koomson, has not renewed it. The superintendent pharmacist resigned three months ago, and since then, Mr. Koomson, who is not a pharmacist, has been running the pharmacy with only a trainee. To make up for declining sales, he started using his unlicensed personal storeroom, located in an adjacent building, to quietly sell restricted medicines to customers. An inspector from the Pharmacy Council, Mrs. Ofori, arrives for an inspection. When she asks to see the current operating licence and enquires about the supervising pharmacist, Mr. Koomson becomes evasive. Upon noticing a customer leaving the adjacent storeroom with a bag of medicines, Mrs. Ofori states her intent to inspect the storeroom as well. Mr. Koomson physically blocks the doorway, refusing to let her enter and telling her that her authority does not extend to his private property.\r\n\r\n---",
+      "questionIds": [
+        "2381",
+        "2382",
+        "2383",
+        "2384",
+        "2385"
+      ]
+    },
+    {
+      "id": "Case 076",
+      "context": "Case: suspected deep vein thrombosis\n\nA patient with obesity and chronic hypertension, taking amlodipine and bendrofluazide, develops unilateral leg swelling after prolonged travel from Accra to Kintampo. The clinical team suspects and confirms a provoked deep vein thrombosis and considers enoxaparin, rivaroxaban, and warfarin while assessing renal function and treatment duration.",
+      "questionIds": [
+        "2538",
+        "2539",
+        "2540",
+        "2541",
+        "2542",
+        "2543",
+        "2544",
+        "2545",
+        "2546",
+        "2547"
+      ]
+    },
+    {
+      "id": "Case 077",
+      "context": "Case II: the Bagre Dam flooding\n\nThe Bagre Dam spillage in August 2024 led to flooding in Ghana's Upper East Region, contaminating water sources and increasing the risk of cholera outbreaks. The White Volta River broke its banks, submerging farmlands and houses. The National Disaster Management Organisation reported affected areas in Binduri, Bawku West, and Talensi districts, with three deaths including a five-year-old child. A Regional Health Director constituted a team, including a pharmacist, to address the public health and pharmacy-service needs.",
+      "questionIds": [
+        "2548",
+        "2549",
+        "2550",
+        "2551",
+        "2552",
+        "2553",
+        "2554",
+        "2555",
+        "2556"
+      ]
+    },
+    {
+      "id": "Case 078",
+      "context": "Case I: illegal activities at an OTC medicine shop\n\nA complaint was lodged at the Office of the Registrar of the Pharmacy Council about an over-the-counter medicine shop. The facility sold antihypertensives, antidiabetics, vaccines kept outside the fridge, pethidine, and morphine, and employed a nurse to administer injections. Council officers found the signage “ECODIN CHEMIST”, evidence of injections, invoices showing pethidine and morphine supply from a wholesale pharmacy, doubts about product registration, and absenteeism by the wholesale pharmacy’s Superintendent Pharmacist.",
+      "questionIds": [
+        "2557",
+        "2558",
+        "2559",
+        "2560",
+        "2561",
+        "2562",
+        "2563",
+        "2564",
+        "2565",
+        "2566"
+      ]
+    },
+    {
+      "id": "Case 079",
+      "context": "Case II: Pharm Kwame Ansah at Medifast Pharmacy\n\nPharm Kwame Ansah is the superintendent pharmacist at Medifast Pharmacy in Accra. A mother requests azithromycin for her five-year-old son without a prescription. Pharm Ansah refuses and refers her. Later, a valid prescription for amoxicillin is brought, but he dispenses it without checking the child’s documented penicillin allergy or counselling. The child suffers anaphylaxis. An investigation later finds that Pharm Ansah diverted controlled medicines for personal profit and overcharged indigent patients while claiming a government subsidy.",
+      "questionIds": [
+        "2567",
+        "2568",
+        "2569",
+        "2570",
+        "2571",
+        "2572",
+        "2573",
+        "2574",
+        "2575",
+        "2576"
+      ]
+    },
+    {
+      "id": "Case 080",
+      "context": "Case I: PharmaSol manufacturing deviations\n\nPharmaSol Ltd. is a licensed pharmaceutical manufacturing company producing OTC medicines, including Parasol 500 mg tablets. During batch production, several deviations occurred, including shortened mixing time, high particulate counts, batch-record entries written in pencil and later overwritten in pen, an out-of-specification assay result of 92.2%, and an unauthorized repeat result of 96.8%.",
+      "questionIds": [
+        "2577",
+        "2578",
+        "2579",
+        "2580",
+        "2581",
+        "2582",
+        "2583",
+        "2584",
+        "2585",
+        "2586"
+      ]
+    },
+    {
+      "id": "Case 081",
+      "context": "Case II: The Silent River\n\nKwame, a 42-year-old farmer living downstream from a galamsey site, presents with metallic taste, tremors, abdominal pain, frothy urine, memory lapses, irritability, bluish-purple discoloration along the gum line, acral peeling, elevated serum creatinine, and proteinuria. Upstream miners use liquid silver (mercury) to amalgamate gold and cyanide for heap leaching. River water is used for drinking and cooking.",
+      "questionIds": [
+        "2587",
+        "2588",
+        "2589",
+        "2590",
+        "2591",
+        "2592",
+        "2593",
+        "2594",
+        "2595",
+        "2596"
+      ]
+    },
+    {
+      "id": "Case 082",
+      "context": "A 45-year-old man with heart failure recorded an ejection fraction of 70% on the echocardiogram. He has heart failure with preserved ejection fraction. He is a known hypertensive and diabetic with the current medications as: Tab. Dapagliflozin 10mg o.d., Tab. Metformin 1g b.d., Tab. Lisinopril 20mg nocte, Tab. Carvedilol 6.25mg b.d., Tab. Frusemide 20mg mane, Tab. Spironolactone 25mg o.d., Tab. Atorvastatin 20mg nocte. The current B.P. 125/70mmHg, P 68bpm, HbA1c 6.2%, eGFR 75, serum K 4.0 mmol/L, LDL 2.8 mmol/L. Weight 75kg, height 1.76m. The patient does not take alcohol and does not smoke.",
+      "questionIds": [
+        "2402",
+        "2403"
+      ]
+    },
+    {
+      "id": "Case 083",
+      "context": "A 32-year-old female presented to the clinic with a skin infection on the left shin",
+      "questionIds": []
+    },
+    {
+      "id": "Case 084",
+      "context": "Research Question: How does the incidence of chemotherapy-induced neutropenia differ \nbetween patients receiving Drug X and those receiving standard chemotherapy alone? \nMethods:\nA total of 1,000 patients with stage II or III breast cancer were enrolled from an oncology \nclinic. A total of \n500 patients received Drug X in addition to standard chemotherapy, and 500 received \nstandard chemotherapy only. Patients with a prior history of severe neutropenia were \nexcluded. Participants were followed for 24 months to record new cases of neutropenia. \nResults:\nThe follow-up rate was 75% for the Drug X group and 25% for the standard-therapy group. \nDuring followup, 20 cases of neutropenia occurred in the Drug X group and 10 cases in the \nstandard-therapy group. \nConclusion:\nThe study concludes that patients receiving Drug X have a higher risk of developing \nneutropenia compared to those on standard chemotherapy alone.",
+      "questionIds": [
+        "2457",
+        "2458",
+        "2459",
+        "2460"
+      ]
+    },
+    {
+      "id": "Case 085",
+      "context": "Location: Inpatient Medical Ward at Tamale Teaching Hospital \nTeam Members:\n• Dr. Andani Shalibu: Internist (Physician)\n• Ms. Mary Adupoku: Ward Nurse\n• Dr.(Pharm) Prosper Mensah: Clinical Pharmacist\n• Mr. Benjamin Asare: Patient (78 years old, admitted for pneumonia, history of heart\nfailure and kidney impairment)\nMr. Asare is being discharged today, and Pharmacist Prosper is reviewing the final discharge\nmedication list (medication reconciliation). He notices a potential error: Dr. Andani wrote an\norder for a new antibiotic at a dose that is too high for the patient’s current kidney function,\nwhich could lead to toxicity. The discharge process must be completed smoothly and safely",
+      "questionIds": [
+        "2467",
+        "2468",
+        "2469",
+        "2470",
+        "2471"
+      ]
+    },
+    {
+      "id": "Case 086",
+      "context": "A 35-year-old man, Teacher Manu, presents with urethral discharge that has persisted for \nthree days.",
+      "questionIds": [
+        "2472",
+        "2473",
+        "2474"
+      ]
+    }
+  ]
+}

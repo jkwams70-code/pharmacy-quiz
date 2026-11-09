@@ -2,7 +2,9 @@ node_modules/
 .env
 # Local recovered/runtime data stays out of future additions to Git.
 # questions.json is already tracked; ignore rules do not untrack existing files.
-data/
+data/*
+!data/questions.json
+!data/cases.json
 certs/*.pfx
 logs/
 backups/*

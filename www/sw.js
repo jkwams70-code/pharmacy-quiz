@@ -1,11 +1,11 @@
-const CACHE_VERSION = "ajix-app-shell-v156-question-sample-calculator1";
+const CACHE_VERSION = "ajix-app-shell-v159-question-case-registry1";
 const APP_SHELL_CACHE = `${CACHE_VERSION}:shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}:runtime`;
 
 const SHELL_ASSETS = [
   "/",
   "/index.html",
-"/engine.js?v=20261031-admin-status-composer3",
+"/engine.js?v=20261108-question-layout2",
   "/backendClient.js?v=20261031-admin-status-composer2",
   "/offlineStore.js?v=20260907-idb-recovery-v1",
   "/subscription-state.js?v=20260919-cache2",

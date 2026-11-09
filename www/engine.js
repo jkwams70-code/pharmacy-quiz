@@ -91,7 +91,7 @@ const NEGATIVE_ANSWER_FEEDBACK = [
 const QUESTION_BANK_SCHEMA_STORAGE_KEY = "quizQuestionBankSchemaVersion";
 const QUESTION_BANK_SCHEMA_VERSION = "20260613-manufacturing-set2";
 const QUESTION_BANK_REMOTE_META_STORAGE_KEY = "quizQuestionBankRemoteMeta";
-const QUESTION_BANK_CACHE_KEY = "quizQuestionBankCacheV1";
+const QUESTION_BANK_CACHE_KEY = "quizQuestionBankCacheV2";
 let questionBankReady = false;
 let questionBankBootstrapPromise = null;
 const LAW_DRILL_STORAGE_KEY = "lawDrillSessionV2";
@@ -2782,10 +2782,17 @@ function normalizeQuestionAnswerIndex(q = {}, fallback = {}) {
 }
 function mapBackendQuestionToLocal(q = {}) {
   const fallback = localQuestionFallbackById.get(Number(q?.id)) || {};
+  const rawType = String(q.type || fallback.type || "single").trim().toLowerCase();
+  const legacyComboVariants = new Set(["three-statement", "table-4", "assertion-5", "pair-relationship"]);
+  const isComboType = rawType === "combo" || legacyComboVariants.has(rawType);
+  const normalizedComboVariant = String(q.comboVariant || fallback.comboVariant || (legacyComboVariants.has(rawType) ? rawType : ""))
+    .trim()
+    .toLowerCase();
+  const sourceStatements = Array.isArray(q.statements) ? q.statements : Array.isArray(fallback.statements) ? fallback.statements : [];
   return {
     id: q.id,
     bank: String(q.bank || fallback.bank || "main").trim().toLowerCase() || "main",
-    comboVariant: String(q.comboVariant || fallback.comboVariant || "").trim().toLowerCase() || "",
+    comboVariant: normalizedComboVariant,
     year: Number.isFinite(Number(q.year)) ? Number(q.year) : Number(fallback.year) || undefined,
     sitting: String(q.sitting || fallback.sitting || "").trim().toLowerCase() || undefined,
     displayNumber: Number.isFinite(Number(q.displayNumber))
@@ -2802,7 +2809,7 @@ function mapBackendQuestionToLocal(q = {}) {
       ? q.options
       : Array.isArray(fallback.options) && fallback.options.length
         ? fallback.options
-        : ((String(q.type || fallback.type || '').toLowerCase() === 'combo' || String(q.type || fallback.type || '').toLowerCase() === 'three-statement') && Array.isArray(q.statements || fallback.statements) && (q.statements || fallback.statements).length === 3
+        : (isComboType && sourceStatements.length === 3
           ? ['I, II, III', 'I, II', 'II, III', 'I only', 'III only']
           : []),
     statements: Array.isArray(q.statements)
@@ -2810,8 +2817,14 @@ function mapBackendQuestionToLocal(q = {}) {
       : Array.isArray(fallback.statements)
         ? fallback.statements
         : [],
-    caseId: q.caseId || fallback.caseId || "",
-    caseBlock: q.caseBlock || fallback.caseBlock || "",
+    // Backend/admin records are authoritative. Never borrow case metadata from
+    // the bundled fallback when the API record does not contain it.
+    caseId: q.caseId || "",
+    caseBlock: q.caseBlock || "",
+    setLetter: String(q.setLetter || "").trim().toUpperCase()
+      || (String(q.sitting || "").trim().toLowerCase()
+        ? (String(q.sitting || "").trim().toLowerCase() === "resit" ? "B" : "")
+        : String(fallback.setLetter || "").trim().toUpperCase()),
     correct: normalizeQuestionCorrectValue(q, fallback),
     answer: normalizeQuestionAnswerIndex(q, fallback) >= 0 ? normalizeQuestionAnswerIndex(q, fallback) : undefined,
     explanation: q.explanation || fallback.explanation || "",
@@ -2824,7 +2837,7 @@ function mapBackendQuestionToLocal(q = {}) {
           ? fallback.wrongOptionExplanations
           : {},
     memoryTrick: q.memoryTrick || fallback.memoryTrick || "",
-    type: q.type || fallback.type || "single",
+    type: isComboType ? "combo" : rawType,
     topicSlug: q.topicSlug || fallback.topicSlug || "",
     sectionId: q.sectionId || fallback.sectionId || "",
     drillTags: Array.isArray(q.drillTags)
@@ -2941,7 +2954,9 @@ async function loadQuestionsFromBackend({ preferCache = false } = {}) {
         .filter((question) => !isRetiredLawCategoryQuestion(question))
         .map(mapBackendQuestionToLocal)
         .sort(byQuestionIdAscending);
-      questionBank = enrichImportedCaseQuestions(backendQuestions);
+      // Do not infer case metadata for backend/admin records. A question is a
+      // case question only when its authoritative record says it is one.
+      questionBank = backendQuestions;
       await setOfflineEntry(QUESTION_BANK_CACHE_KEY, questionBank);
       localTopicQuestionBank = [...questionBank];
       normalizedLocalQuestions = [...questionBank];
@@ -3709,7 +3724,11 @@ function gppqeGetSelectedSampleKeys(value = gppqeState.selectedYear) {
   const values = Array.isArray(value) ? value : value === "" || value == null ? [] : [value];
   return [...new Set(values.map((item) => String(item).trim()).filter(Boolean).map((item) => {
     if (item === "all") return "all";
-    if (item.includes("|")) return item;
+    if (item.includes("|")) {
+      const [yearPart, legacySuffix = ""] = item.split("|");
+      const suffix = ["december", "dec", "b"].includes(legacySuffix.toLowerCase()) ? "B" : legacySuffix.toUpperCase() === "B" ? "B" : "";
+      return `${yearPart}|${suffix}`;
+    }
     const numericYear = Number(item);
     return Number.isFinite(numericYear) ? `${numericYear}|` : "";
   }).filter(Boolean))];
@@ -4046,9 +4065,10 @@ function gppqeGetYearLabel(year = []) {
 function gppqeGetSampleKey(question = {}) {
   const numericYear = Number(question?.year);
   if (!Number.isFinite(numericYear)) return "";
+  const setLetter = String(question?.setLetter || "").trim().toUpperCase();
+  if (setLetter) return `${numericYear}|${setLetter}`;
   const rawSitting = String(question?.sitting || "").trim().toLowerCase();
-  const sitting = ["july", "jul", "a"].includes(rawSitting) ? "" : rawSitting;
-  return `${numericYear}|${sitting}`;
+  return `${numericYear}|${rawSitting === "resit" ? "B" : ""}`;
 }
 
 function gppqeGetSampleLabel(sample) {
@@ -4056,7 +4076,7 @@ function gppqeGetSampleLabel(sample) {
   const [yearPart, sittingPart = ""] = raw.split("|");
   const numericYear = Number(yearPart);
   if (!Number.isFinite(numericYear)) return "Sample";
-  const suffix = ["december", "dec", "b"].includes(sittingPart.toLowerCase()) ? "B" : "";
+  const suffix = String(sittingPart || "").toUpperCase() === "B" || ["december", "dec"].includes(sittingPart.toLowerCase()) ? "B" : "";
   return `Sample ${String(numericYear).slice(-2)}${suffix}`;
 }
 
@@ -4087,41 +4107,35 @@ function gppqeGetCategoriesForYear(year = []) {
 
 function gppqeFormatQuestionMarkup(question = {}) {
   const raw = stripBankQuestionLabel(question.question || question.text || "");
-  if (!raw) return "";
-
   let prompt = raw;
-  let caseText = "";
-  const caseMarker = /\s+Use the above to answer questions?\s+\d+\s*-\s*\d+\.?\s*/i;
-  const caseMatch = prompt.match(caseMarker);
-  if (caseMatch && Number.isFinite(caseMatch.index)) {
-    caseText = prompt.slice(0, caseMatch.index).trim();
-    prompt = prompt.slice(caseMatch.index + caseMatch[0].length).trim();
-  }
+  let caseText = resolveQuestionCaseText(question);
 
-  if (!caseText) {
-    const derivedCase = deriveCaseNarrativeFromStem(prompt);
-    if (derivedCase.caseBlock && !/(?:\s|^)(?:I|1)[.:)]?$/i.test(derivedCase.caseBlock)) {
-      caseText = derivedCase.caseBlock;
-      prompt = derivedCase.prompt;
-    }
+  // A correctly edited question stores the shared case separately. Remove a
+  // duplicated case prefix from the prompt, but never infer a case from the
+  // wording. The admin/backend record is the source of truth.
+  if (caseText) {
+    prompt = stripCaseStemFromQuestion(prompt, caseText);
   }
 
   const storedStatements = Array.isArray(question.statements)
     ? question.statements.map((statement) => String(statement || "").trim()).filter(Boolean)
     : [];
-  const statementMatch = prompt.match(/\s+(?=(?:1|I)[.)]\s)/i);
+  const isStatementQuestion = String(question.type || "").trim().toLowerCase() === "combo" ||
+    String(question.comboVariant || "").trim().toLowerCase() === "three-statement" ||
+    String(question.comboVariant || "").trim().toLowerCase() === "table-4" ||
+    String(question.comboVariant || "").trim().toLowerCase() === "assertion-5" ||
+    storedStatements.length >= 2;
+  const statementMatch = isStatementQuestion ? prompt.match(/\s+(?=(?:1|I)[.)]\s)/i) : null;
   const parsedStatements = statementMatch
     ? prompt.slice(statementMatch.index + 1).split(/\s+(?=(?:[2-5]|II|III|IV|V)[.)]\s)/i).map((part) => part.trim()).filter(Boolean)
     : [];
   const statementParts = storedStatements.length >= 2 ? storedStatements : parsedStatements;
-  const questionPrompt = storedStatements.length >= 2
-    ? prompt
-    : statementParts.length >= 2
-      ? prompt.slice(0, statementMatch.index).trim()
-      : prompt;
+  const questionPrompt = statementParts.length >= 2 && statementMatch
+    ? prompt.slice(0, statementMatch.index).trim()
+    : prompt;
 
   const caseMarkup = caseText ? "<div class=\"gppqe-case-context\"><strong>Case</strong><span>" + escapeHtml(caseText) + "</span></div>" : "";
-  const promptMarkup = "<div class=\"gppqe-prompt\">" + escapeHtml(questionPrompt) + "</div>";
+  const promptMarkup = questionPrompt ? "<div class=\"gppqe-prompt\">" + escapeHtml(questionPrompt) + "</div>" : "";
   const statementsMarkup = statementParts.length >= 2
     ? "<div class=\"gppqe-statements\"><strong>Statements</strong>" + statementParts.map((statement) => "<div>" + escapeHtml(statement) + "</div>").join("") + "</div>"
     : "";
@@ -38689,7 +38703,7 @@ function showQuestion() {
   // Render
   if (caseText) {
     questionEl.innerHTML =
-      `<strong>Case:</strong><br>${caseText}<br><br>` + displayText;
+      `<strong>Case:</strong><br>${escapeHtml(caseText)}<br><br>` + displayText;
   } else {
     questionEl.innerHTML = displayText;
   }
@@ -40370,7 +40384,7 @@ function renderDetailedQuestion() {
   const questionBody = sharedCaseText
     ? stripCaseStemFromQuestion(String(q.question || "").replace(/^Q\d+\.\s*/, ""), sharedCaseText)
     : String(q.question || "").replace(/^Q\d+\.\s*/, "").trim();
-  const caseText = sharedCaseText ? `<strong>Case:</strong><br>${sharedCaseText}<br><br>` : "";
+  const caseText = sharedCaseText ? `<strong>Case:</strong><br>${escapeHtml(sharedCaseText)}<br><br>` : "";
 
   questionEl.innerHTML =
     caseText +
@@ -40506,7 +40520,7 @@ function showQuestionDetailedMode() {
   const questionBody = sharedCaseText
     ? stripCaseStemFromQuestion(String(q.question || "").replace(/^Q\d+\.\s*/, ""), sharedCaseText)
     : stripImportedCaseLabel(String(q.question || "").replace(/^Q\d+\.\s*/, ""));
-  const caseText = sharedCaseText ? `<strong>Case:</strong><br>${sharedCaseText}<br><br>` : "";
+  const caseText = sharedCaseText ? `<strong>Case:</strong><br>${escapeHtml(sharedCaseText)}<br><br>` : "";
   questionEl.innerHTML =
     caseText +
     `<span class="question-kicker">Question ${current + 1}</span><br><br>` +

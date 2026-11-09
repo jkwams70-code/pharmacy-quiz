@@ -4,6 +4,7 @@
   const stateKey = "ajix-question-review-state-v1";
   const isReviewPage = /question-review\.html$/i.test(location.pathname);
   const isQuestionApi = (url) => /\/api\/admin\/questions(?:\/|$)/i.test(String(url || ""));
+  let currentViewQuestionId = "";
 
   function readState() {
     try {
@@ -18,6 +19,8 @@
     if (!isReviewPage) return;
     const active = document.querySelector("[data-qa-filter].active");
     const search = document.querySelector("[data-qa-search]");
+    const typeFilter = document.querySelector("[data-qa-type-filter]");
+    const yearFilter = document.querySelector("[data-qa-year-filter]");
     const sort = document.querySelector("[data-qa-sort]");
     const tableScroll = document.querySelector(".ajx-table-scroll");
     const rows = [...document.querySelectorAll("[data-question-row]")]
@@ -27,6 +30,8 @@
     sessionStorage.setItem(stateKey, JSON.stringify({
       filter: active?.dataset.qaFilter || "all",
       search: search?.value || "",
+      typeFilter: typeFilter?.value || "all",
+      yearFilter: yearFilter?.value || "",
       ascending: label.indexOf("1") < label.indexOf("last"),
       order: rows,
       viewQuestionId: String(viewQuestionId || ""),
@@ -36,7 +41,7 @@
     }));
   }
 
-  function restoreState() {
+  function restoreState(attempt = 0) {
     const state = readState();
     if (!state || Date.now() - Number(state.savedAt || 0) > 30 * 60 * 1000) return;
 
@@ -45,10 +50,27 @@
     const tab = [...document.querySelectorAll("[data-qa-filter]")]
       .find((item) => item.dataset.qaFilter === filterValue);
     const search = document.querySelector("[data-qa-search]");
+    const typeFilter = document.querySelector("[data-qa-type-filter]");
+    const yearFilter = document.querySelector("[data-qa-year-filter]");
     const sort = document.querySelector("[data-qa-sort]");
     if (search && search.value !== String(state.search || "")) {
       search.value = String(state.search || "");
       search.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    if (typeFilter && typeFilter.value !== String(state.typeFilter || "all")) {
+      typeFilter.value = String(state.typeFilter || "all");
+      typeFilter.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    const requestedYear = String(state.yearFilter || "");
+    if (yearFilter && requestedYear && ![...yearFilter.options].some((option) => option.value === requestedYear)) {
+      if (attempt < 40) {
+        setTimeout(() => restoreState(attempt + 1), 150);
+      }
+      return;
+    }
+    if (yearFilter && yearFilter.value !== requestedYear) {
+      yearFilter.value = requestedYear;
+      yearFilter.dispatchEvent(new Event("change", { bubbles: true }));
     }
     if (tab && !tab.classList.contains("active")) tab.click();
 
@@ -83,9 +105,13 @@
   }
 
   document.addEventListener("click", (event) => {
+    const view = event.target.closest("[data-view]");
+    if (view) currentViewQuestionId = String(view.dataset.view || "");
+    const row = event.target.closest("[data-question-row]");
+    if (row) currentViewQuestionId = String(row.dataset.questionRow || "");
     const link = event.target.closest('a[href*="question-edit.html"]');
     if (link) {
-      let viewQuestionId = "";
+      let viewQuestionId = currentViewQuestionId;
       if (document.querySelector("#ajxModal.open")) {
         try {
           viewQuestionId = new URL(link.href, location.href).searchParams.get("id") || "";
@@ -94,6 +120,12 @@
       saveState(viewQuestionId);
     }
   }, true);
+
+  window.addEventListener("pagehide", () => {
+    if (isReviewPage) {
+      saveState(document.querySelector("#ajxModal.open") ? currentViewQuestionId : "");
+    }
+  });
 
   // Store the selected option text, not a transient UI index. This keeps the
   // saved answer stable when the editor rebuilds the option controls.
